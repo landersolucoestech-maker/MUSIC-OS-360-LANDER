@@ -45,6 +45,14 @@ export interface LancamentoWithRelations extends Lancamento {
   artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
 }
 
+export interface ShareHistoricoEntry {
+  versao: number;
+  data: string;
+  percentual: number | null;
+  autor?: string;
+  descricao?: string;
+}
+
 export interface Share {
   id: string;
   user_id?: string;
@@ -53,6 +61,10 @@ export interface Share {
   percentual?: number | null;
   tipo?: string | null;
   detentor?: string | null;
+  acordo_notas?: string | null;
+  acordo_url?: string | null;
+  versao?: number | null;
+  historico?: ShareHistoricoEntry[] | null;
   created_at?: string;
   [key: string]: unknown;
 }

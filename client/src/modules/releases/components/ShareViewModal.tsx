@@ -5,109 +5,161 @@ import {
   DialogTitle,
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
-import { Share2, User, Calendar, Percent, Image } from "lucide-react";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Share2, User, Calendar, Percent, ExternalLink, FileText, Clock, History } from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import type { ShareWithRelations, ShareHistoricoEntry } from "../types";
+import { formatDate } from "@/shared/lib/format-utils";
 
 interface ShareViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lancamento?: any;
+  share?: ShareWithRelations | null;
 }
 
-export function ShareViewModal({ open, onOpenChange, lancamento }: ShareViewModalProps) {
-  if (!lancamento) return null;
+function Field({ label, value, icon: Icon }: { label: string; value: React.ReactNode; icon?: React.ComponentType<{ className?: string }> }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-muted-foreground flex items-center gap-1.5">
+        {Icon && <Icon className="h-3 w-3" />}
+        {label}
+      </p>
+      <div className="text-sm font-medium text-foreground">
+        {value || <span className="text-muted-foreground italic">—</span>}
+      </div>
+    </div>
+  );
+}
 
-  const getShareBadge = (share: string) => {
-    if (share?.toLowerCase().includes("aplicado")) {
-      return <Badge className="bg-status-active text-primary-foreground">{share}</Badge>;
-    }
-    if (share?.toLowerCase().includes("pendente")) {
-      return <Badge className="bg-status-pending text-primary-foreground">{share}</Badge>;
-    }
-    return <Badge variant="secondary">{share}</Badge>;
-  };
+const TIPO_LABELS: Record<string, string> = {
+  interprete: "Intérprete",
+  compositor: "Compositor",
+  produtor: "Produtor",
+  musico: "Músico",
+  arranjador: "Arranjador",
+  editor: "Editor",
+  autor: "Autor",
+  outro: "Outro",
+};
+
+export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProps) {
+  if (!share) return null;
+
+  const historico: ShareHistoricoEntry[] = (share.historico as ShareHistoricoEntry[]) ?? [];
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-card border-border">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="modal-share-view">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
-            <Share2 className="h-5 w-5" />
-            Detalhes do Lançamento
+            <Share2 className="h-5 w-5 text-primary" />
+            Detalhe do Share
+            {share.versao && (
+              <Badge variant="outline" className="text-[10px] font-mono ml-1">v{share.versao}</Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Capa e Título */}
-          <div className="flex items-start gap-4">
-            <div className="w-16 h-16 bg-muted rounded-lg flex items-center justify-center shrink-0">
-              <Image className="h-6 w-6 text-muted-foreground" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-foreground">{lancamento.title}</h2>
-              <p className="text-muted-foreground">{lancamento.artist}</p>
-            </div>
-          </div>
+        <div className="space-y-5">
+          {/* ── Dados principais ── */}
+          <Card className="bg-muted/30">
+            <CardContent className="p-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
+              <Field
+                label="Obra"
+                value={share.obras?.titulo as string}
+                icon={FileText}
+              />
+              <Field
+                label="Artista"
+                value={share.artistas?.nome_artistico as string}
+                icon={User}
+              />
+              <Field
+                label="Beneficiário (Detentor)"
+                value={share.detentor as string}
+                icon={User}
+              />
+              <Field
+                label="Função"
+                value={share.tipo ? (TIPO_LABELS[share.tipo] ?? share.tipo) : null}
+                icon={Share2}
+              />
+              <Field
+                label="Percentual"
+                value={share.percentual != null ? (
+                  <span className="font-mono text-primary font-semibold">{share.percentual}%</span>
+                ) : null}
+                icon={Percent}
+              />
+              {share.created_at && (
+                <Field
+                  label="Registrado em"
+                  value={formatDate(share.created_at)}
+                  icon={Calendar}
+                />
+              )}
+            </CardContent>
+          </Card>
 
-          {/* Badges */}
-          <div className="flex gap-2">
-            <Badge className="bg-status-confirmed text-primary-foreground">
-              {lancamento.type}
-            </Badge>
-            {getShareBadge(lancamento.share)}
-          </div>
+          {/* ── Acordo ── */}
+          {(share.acordo_notas || share.acordo_url) && (
+            <Card className="bg-muted/30">
+              <CardContent className="p-4 space-y-3">
+                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Acordo / Documento</p>
+                {share.acordo_notas && (
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{share.acordo_notas}</p>
+                )}
+                {share.acordo_url && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5"
+                    onClick={() => window.open(share.acordo_url as string, "_blank")}
+                    data-testid="btn-acordo-url"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Ver Documento
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
-          {/* Grid de Informações */}
-          <div className="grid grid-cols-3 gap-4">
+          {/* ── Histórico de versões ── */}
+          {historico.length > 0 && (
             <div>
-              <p className="text-sm text-muted-foreground">Data de Lançamento</p>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{lancamento.date || "-"}</span>
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+                <History className="h-3.5 w-3.5" /> Histórico de Versões
+              </p>
+              <div className="space-y-2">
+                {historico.slice().reverse().map((h, i) => (
+                  <div
+                    key={i}
+                    className="flex items-start gap-3 p-3 rounded-lg border border-border bg-muted/20"
+                    data-testid={`historico-v${h.versao}`}
+                  >
+                    <div className="shrink-0">
+                      <Badge variant="outline" className="font-mono text-[10px]">v{h.versao}</Badge>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {h.percentual != null && (
+                          <span className="text-sm font-mono font-semibold text-primary">{h.percentual}%</span>
+                        )}
+                        {h.descricao && (
+                          <span className="text-xs text-muted-foreground">{h.descricao}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
+                        {h.autor && <span className="flex items-center gap-1"><User className="h-3 w-3" />{h.autor}</span>}
+                        {h.data && <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{formatDate(h.data)}</span>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Percentual</p>
-              <div className="flex items-center gap-1.5">
-                <Percent className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{lancamento.percentual || "-"}</span>
-              </div>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Share Enviado</p>
-              <p className="font-medium text-foreground">{lancamento.enviado || "-"}</p>
-            </div>
-          </div>
-
-          {/* Status do Share */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Status do Share</p>
-              <p className="font-medium text-foreground">{lancamento.share || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Tipo de Lançamento</p>
-              <p className="font-medium text-foreground">{lancamento.type || "-"}</p>
-            </div>
-          </div>
-
-          {/* Envolvido */}
-          <div>
-            <p className="text-sm text-muted-foreground mb-3">Artista Principal</p>
-            <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-primary-foreground font-medium">
-                    {lancamento.artist?.charAt(0) || "A"}
-                  </span>
-                </div>
-                <div>
-                  <p className="font-medium text-foreground">{lancamento.artist}</p>
-                  <p className="text-sm text-muted-foreground">Artista Principal</p>
-                </div>
-              </div>
-              <Badge variant="outline">100%</Badge>
-            </div>
-          </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>

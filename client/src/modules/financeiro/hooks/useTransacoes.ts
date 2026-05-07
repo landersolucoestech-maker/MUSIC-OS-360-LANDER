@@ -15,6 +15,9 @@ export interface Transacao {
   venda_id?: string | null;
   origem?: string | null;
   observacoes?: string | null;
+  conciliado?: boolean | null;
+  anexo_url?: string | null;
+  forma_pagamento?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

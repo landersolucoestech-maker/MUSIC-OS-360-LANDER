@@ -278,7 +278,7 @@ export default function GestaoShares() {
       <ShareViewModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ ...viewModal, open })}
-        lancamento={viewModal.share}
+        share={viewModal.share}
       />
 
       <DeleteConfirmModal

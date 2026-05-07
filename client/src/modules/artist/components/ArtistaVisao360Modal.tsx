@@ -263,7 +263,6 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
     return fim > today && fim <= in60Days;
   }).length;
 
-  // ── Saúde da carreira (derivada de dados reais) ───────────────────────
 
   // ── Histórico derivado de dados reais ────────────────────────────────
   const historicoReal: { id: string; tipo: string; descricao: string; data: string; usuario: string }[] = [];
@@ -466,20 +465,7 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
             >
               Perfil
             </TabsTrigger>
-            <TabsTrigger
-              value="midia"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-              data-testid="tab-midia"
-            >
-              Mídia
-            </TabsTrigger>
-            <TabsTrigger
-              value="documentos"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-              data-testid="tab-documentos"
-            >
-              Documentos
-            </TabsTrigger>
+            
             <TabsTrigger
               value="relacionamentos"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"

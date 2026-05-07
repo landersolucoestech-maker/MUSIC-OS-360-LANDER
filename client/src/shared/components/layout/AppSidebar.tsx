@@ -43,6 +43,7 @@ import {
   ChevronsUpDown,
   CheckCircle2,
   Activity,
+  BarChart,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -93,9 +94,12 @@ const NAV_ITEMS: NavItem[] = [
     title: "Financeiro",
     icon: DollarSign,
     children: [
-      { title: "Transações",           href: "/financeiro",       icon: DollarSign },
-      { title: "Contabilidade",        href: "/contabilidade",    icon: Calculator },
-      { title: "Nota Fiscal",          href: "/nota-fiscal",      icon: Receipt },
+      { title: "Transações",           href: "/financeiro",                  icon: DollarSign },
+      { title: "Fluxo de Caixa",       href: "/financeiro/fluxo",            icon: TrendingUp },
+      { title: "Conciliação",          href: "/financeiro/conciliacao",      icon: CheckCircle2 },
+      { title: "Relatórios",           href: "/financeiro/relatorios",       icon: BarChart },
+      { title: "Contabilidade",        href: "/contabilidade",               icon: Calculator },
+      { title: "Nota Fiscal",          href: "/nota-fiscal",                 icon: Receipt },
     ],
   },
   { title: "Agenda",       href: "/agenda",    icon: Calendar },
