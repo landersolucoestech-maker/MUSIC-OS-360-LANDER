@@ -528,10 +528,6 @@ export default function Projetos() {
                         return (
                           <>
                             <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Responsável</span>
-                              <span className="truncate block" data-testid={`text-artista-${project.id}`}>{project.artistas?.nome_artistico || "-"}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
                               <span className="text-muted-foreground text-xs block">Compositores</span>
                               <span className="truncate block" data-testid={`text-compositores-${project.id}`}>{info.compositores || "-"}</span>
                             </div>
