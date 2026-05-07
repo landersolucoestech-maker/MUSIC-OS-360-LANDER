@@ -1,252 +1,243 @@
 import { useMemo, useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
-import { TrendingUp, TrendingDown, DollarSign, ChevronLeft, ChevronRight } from "lucide-react";
+import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
 import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { cn } from "@/shared/lib/utils";
 
-const MONTH_NAMES = [
-  "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro",
-];
+const MONTH_NAMES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+const MONTH_NAMES_SHORT = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
+
+function buildMonthOptions() {
+  const opts: { label: string; month: number; year: number }[] = [];
+  const now = new Date();
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    opts.push({ label: `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`, month: d.getMonth(), year: d.getFullYear() });
+  }
+  return opts;
+}
+
+const MONTH_OPTIONS = buildMonthOptions();
+
+interface DayEntry {
+  date: string;
+  label: string;
+  receitas: number;
+  despesas: number;
+  saldo: number;
+  saldoAcumulado: number;
+}
 
 export default function FluxoCaixa() {
   const { transacoes, isLoading } = useTransacoes();
-  const today = new Date();
-  const [month, setMonth] = useState(today.getMonth());
-  const [year, setYear] = useState(today.getFullYear());
+  const now = new Date();
+  const [selectedIdx, setSelectedIdx] = useState(() => {
+    const idx = MONTH_OPTIONS.findIndex(o => o.month === now.getMonth() && o.year === now.getFullYear());
+    return idx >= 0 ? idx : MONTH_OPTIONS.length - 1;
+  });
 
-  const years = useMemo(() => {
-    const y = today.getFullYear();
-    return [y - 2, y - 1, y, y + 1];
-  }, []);
+  const selected = MONTH_OPTIONS[selectedIdx];
 
-  const prevMonth = () => {
-    if (month === 0) { setMonth(11); setYear(y => y - 1); }
-    else setMonth(m => m - 1);
-  };
-  const nextMonth = () => {
-    if (month === 11) { setMonth(0); setYear(y => y + 1); }
-    else setMonth(m => m + 1);
-  };
-
-  const { dailyRows, totals } = useMemo(() => {
-    const filtered = transacoes.filter(t => {
+  const { days, totais, saldoInicial } = useMemo(() => {
+    const { month, year } = selected;
+    const monthTx = transacoes.filter(t => {
       const d = new Date(t.data + "T12:00:00");
       return d.getMonth() === month && d.getFullYear() === year;
     });
+    const prevTx = transacoes.filter(t => {
+      const d = new Date(t.data + "T12:00:00");
+      return d.getFullYear() < year || (d.getFullYear() === year && d.getMonth() < month);
+    });
+    const saldoInicial =
+      prevTx.filter(t => t.tipo === "receita").reduce((s, t) => s + t.valor, 0) -
+      prevTx.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
 
-    const byDay: Record<string, { receitas: number; despesas: number; items: typeof filtered }> = {};
-    for (const t of filtered) {
-      const day = t.data.slice(0, 10);
-      if (!byDay[day]) byDay[day] = { receitas: 0, despesas: 0, items: [] };
-      if (t.tipo === "receita") byDay[day].receitas += t.valor;
-      else byDay[day].despesas += t.valor;
-      byDay[day].items.push(t);
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    let acumulado = saldoInicial;
+    const days: DayEntry[] = [];
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const dayTx = monthTx.filter(t => t.data === dateStr);
+      const rec = dayTx.filter(t => t.tipo === "receita").reduce((s, t) => s + t.valor, 0);
+      const desp = dayTx.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
+      const saldo = rec - desp;
+      acumulado += saldo;
+      days.push({
+        date: dateStr,
+        label: `${String(d).padStart(2, "0")}/${MONTH_NAMES_SHORT[month]}`,
+        receitas: rec,
+        despesas: desp,
+        saldo,
+        saldoAcumulado: acumulado,
+      });
     }
 
-    const sortedDays = Object.keys(byDay).sort();
-    let balance = 0;
-    const rows = sortedDays.map(day => {
-      const { receitas, despesas, items } = byDay[day];
-      const net = receitas - despesas;
-      balance += net;
-      return { day, receitas, despesas, net, balance, items };
-    });
+    const totais = {
+      receitas: monthTx.filter(t => t.tipo === "receita").reduce((s, t) => s + t.valor, 0),
+      despesas: monthTx.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0),
+      saldoFinal: acumulado,
+      txCount: monthTx.length,
+    };
 
-    const totalReceitas = filtered.filter(t => t.tipo === "receita").reduce((s, t) => s + t.valor, 0);
-    const totalDespesas = filtered.filter(t => t.tipo === "despesa").reduce((s, t) => s + t.valor, 0);
+    return { days, totais, saldoInicial };
+  }, [transacoes, selected]);
 
-    return { dailyRows: rows, totals: { receitas: totalReceitas, despesas: totalDespesas, saldo: totalReceitas - totalDespesas } };
-  }, [transacoes, month, year]);
-
-  const formatDay = (dateStr: string) => {
-    const d = new Date(dateStr + "T12:00:00");
-    return d.toLocaleDateString("pt-BR", { weekday: "short", day: "2-digit", month: "2-digit" });
-  };
+  const activeDays = days.filter(d => d.receitas > 0 || d.despesas > 0);
+  const maxVal = Math.max(1, ...days.map(d => Math.max(d.receitas, d.despesas)));
 
   return (
     <MainLayout
       title="Fluxo de Caixa"
-      description="Movimentação diária de entradas e saídas"
+      description="Movimentação diária e saldo acumulado do período"
     >
-      <div className="space-y-6">
-        {/* KPI Cards */}
-        <div className="grid gap-4 sm:grid-cols-3">
+      <div className="space-y-5">
+        <div className="flex items-center gap-3">
+          <Select value={String(selectedIdx)} onValueChange={v => setSelectedIdx(Number(v))}>
+            <SelectTrigger className="w-[200px] h-9 text-sm bg-card border-border" data-testid="select-periodo">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTH_OPTIONS.map((o, i) => (
+                <SelectItem key={i} value={String(i)}>{o.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Badge variant="outline" className="text-xs text-muted-foreground">
+            {totais.txCount} lançamento{totais.txCount !== 1 ? "s" : ""}
+          </Badge>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Card className="border-muted/50">
+            <CardContent className="p-4 space-y-0.5">
+              <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo Inicial</p>
+              <p className={cn("text-lg font-bold font-mono", saldoInicial >= 0 ? "text-foreground" : "text-destructive")}>
+                {formatCurrency(saldoInicial)}
+              </p>
+            </CardContent>
+          </Card>
           <Card className="border-success/20 bg-success/5">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-success/10 border border-success/20 flex items-center justify-center shrink-0">
-                <TrendingUp className="h-4 w-4 text-success" />
+            <CardContent className="p-4 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="h-3.5 w-3.5 text-success" />
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Entradas</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Entradas</p>
-                <p className="text-base font-semibold text-success font-mono">{formatCurrency(totals.receitas)}</p>
-              </div>
+              <p className="text-lg font-bold font-mono text-success">{formatCurrency(totais.receitas)}</p>
             </CardContent>
           </Card>
           <Card className="border-destructive/20 bg-destructive/5">
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className="w-9 h-9 rounded-lg bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
-                <TrendingDown className="h-4 w-4 text-destructive" />
+            <CardContent className="p-4 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saídas</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Total Saídas</p>
-                <p className="text-base font-semibold text-destructive font-mono">{formatCurrency(totals.despesas)}</p>
-              </div>
+              <p className="text-lg font-bold font-mono text-destructive">{formatCurrency(totais.despesas)}</p>
             </CardContent>
           </Card>
-          <Card className={cn(
-            "border-border",
-            totals.saldo >= 0 ? "border-success/20 bg-success/5" : "border-destructive/20 bg-destructive/5"
-          )}>
-            <CardContent className="p-4 flex items-center gap-3">
-              <div className={cn(
-                "w-9 h-9 rounded-lg flex items-center justify-center shrink-0",
-                totals.saldo >= 0 ? "bg-success/10 border border-success/20" : "bg-destructive/10 border border-destructive/20"
-              )}>
-                <DollarSign className={cn("h-4 w-4", totals.saldo >= 0 ? "text-success" : "text-destructive")} />
+          <Card className={cn(totais.saldoFinal >= 0 ? "border-success/20 bg-success/5" : "border-destructive/20 bg-destructive/5")}>
+            <CardContent className="p-4 space-y-0.5">
+              <div className="flex items-center gap-1.5">
+                <Wallet className="h-3.5 w-3.5 text-primary" />
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider">Saldo Final</p>
               </div>
-              <div>
-                <p className="text-xs text-muted-foreground">Saldo do Período</p>
-                <p className={cn(
-                  "text-base font-semibold font-mono",
-                  totals.saldo >= 0 ? "text-success" : "text-destructive"
-                )}>{formatCurrency(totals.saldo)}</p>
-              </div>
+              <p className={cn("text-lg font-bold font-mono", totais.saldoFinal >= 0 ? "text-success" : "text-destructive")}>
+                {formatCurrency(totais.saldoFinal)}
+              </p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Period Selector */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={prevMonth}>
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <Select value={String(month)} onValueChange={v => setMonth(Number(v))}>
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTH_NAMES.map((n, i) => (
-                <SelectItem key={i} value={String(i)}>{n}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={String(year)} onValueChange={v => setYear(Number(v))}>
-            <SelectTrigger className="w-[100px] h-8 text-sm bg-card border-border">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {years.map(y => (
-                <SelectItem key={y} value={String(y)}>{y}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Button variant="outline" size="icon" className="h-8 w-8" onClick={nextMonth}>
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-muted-foreground ml-1">
-            {MONTH_NAMES[month]} {year} — {dailyRows.length} dia(s) com movimentação
-          </span>
-        </div>
-
-        {/* Daily Table */}
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-semibold">Movimentação Diária</CardTitle>
           </CardHeader>
+          <CardContent className="pt-0">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
+            ) : activeDays.length === 0 ? (
+              <p className="text-sm text-muted-foreground py-10 text-center">Nenhuma movimentação neste período.</p>
+            ) : (
+              <div className="space-y-3">
+                {activeDays.map(day => (
+                  <div key={day.date} data-testid={`fluxo-dia-${day.date}`} className="space-y-1">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-mono font-medium text-foreground w-16 shrink-0">{day.label}</span>
+                      <div className="flex items-center gap-4 font-mono text-[11px]">
+                        {day.receitas > 0 && <span className="text-success">+{formatCurrency(day.receitas)}</span>}
+                        {day.despesas > 0 && <span className="text-destructive">−{formatCurrency(day.despesas)}</span>}
+                        <span className={cn("font-semibold", day.saldoAcumulado >= 0 ? "text-foreground" : "text-destructive")}>
+                          ={formatCurrency(day.saldoAcumulado)}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex gap-1 ml-16">
+                      {day.receitas > 0 && (
+                        <div className="h-2 bg-success/50 rounded-full transition-all" style={{ width: `${(day.receitas / maxVal) * 100}%` }} />
+                      )}
+                      {day.despesas > 0 && (
+                        <div className="h-2 bg-destructive/50 rounded-full transition-all" style={{ width: `${(day.despesas / maxVal) * 100}%` }} />
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">Tabela Completa do Mês</CardTitle>
+          </CardHeader>
           <CardContent className="pt-0 overflow-x-auto">
             {isLoading ? (
-              <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>
-            ) : dailyRows.length === 0 ? (
-              <p className="text-sm text-muted-foreground py-8 text-center">
-                Nenhuma transação em {MONTH_NAMES[month]} {year}.
-              </p>
+              <p className="text-sm text-muted-foreground py-8 text-center">Carregando...</p>
             ) : (
-              <table className="w-full text-sm">
+              <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 pr-4 text-xs font-semibold text-muted-foreground">Data</th>
-                    <th className="text-right py-2 px-4 text-xs font-semibold text-muted-foreground">Entradas</th>
-                    <th className="text-right py-2 px-4 text-xs font-semibold text-muted-foreground">Saídas</th>
-                    <th className="text-right py-2 px-4 text-xs font-semibold text-muted-foreground">Líquido</th>
-                    <th className="text-right py-2 pl-4 text-xs font-semibold text-muted-foreground">Saldo Acumulado</th>
+                  <tr className="border-b border-border text-muted-foreground">
+                    <th className="text-left py-2 pr-4 font-medium">Data</th>
+                    <th className="text-right py-2 pr-4 font-medium text-success">Entradas</th>
+                    <th className="text-right py-2 pr-4 font-medium text-destructive">Saídas</th>
+                    <th className="text-right py-2 pr-4 font-medium">Variação</th>
+                    <th className="text-right py-2 font-medium">Saldo Acum.</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-border/60">
-                  {dailyRows.map(row => (
-                    <tr
-                      key={row.day}
-                      className="hover:bg-muted/30 transition-colors"
-                      data-testid={`row-fluxo-${row.day}`}
-                    >
-                      <td className="py-2.5 pr-4 font-mono text-xs text-foreground">{formatDay(row.day)}</td>
-                      <td className="py-2.5 px-4 text-right">
-                        {row.receitas > 0 ? (
-                          <span className="font-mono text-xs text-success">+{formatCurrency(row.receitas)}</span>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                <tbody>
+                  {days.filter(d => d.receitas > 0 || d.despesas > 0).map(day => (
+                    <tr key={day.date} className="border-b border-border/50 hover:bg-muted/20 transition-colors" data-testid={`fluxo-row-${day.date}`}>
+                      <td className="py-2 pr-4 font-mono text-muted-foreground">{day.label}</td>
+                      <td className="py-2 pr-4 text-right font-mono text-success">
+                        {day.receitas > 0 ? `+${formatCurrency(day.receitas)}` : "—"}
                       </td>
-                      <td className="py-2.5 px-4 text-right">
-                        {row.despesas > 0 ? (
-                          <span className="font-mono text-xs text-destructive">−{formatCurrency(row.despesas)}</span>
-                        ) : <span className="text-muted-foreground text-xs">—</span>}
+                      <td className="py-2 pr-4 text-right font-mono text-destructive">
+                        {day.despesas > 0 ? `−${formatCurrency(day.despesas)}` : "—"}
                       </td>
-                      <td className="py-2.5 px-4 text-right">
-                        <span className={cn(
-                          "font-mono text-xs font-medium",
-                          row.net >= 0 ? "text-success" : "text-destructive"
-                        )}>
-                          {row.net >= 0 ? "+" : "−"}{formatCurrency(Math.abs(row.net))}
-                        </span>
+                      <td className={cn("py-2 pr-4 text-right font-mono font-medium", day.saldo >= 0 ? "text-foreground" : "text-destructive")}>
+                        {day.saldo >= 0 ? "+" : ""}{formatCurrency(day.saldo)}
                       </td>
-                      <td className="py-2.5 pl-4 text-right">
-                        <span className={cn(
-                          "font-mono text-xs font-semibold",
-                          row.balance >= 0 ? "text-foreground" : "text-destructive"
-                        )}>
-                          {formatCurrency(row.balance)}
-                        </span>
+                      <td className={cn("py-2 text-right font-mono font-semibold", day.saldoAcumulado >= 0 ? "text-foreground" : "text-destructive")}>
+                        {formatCurrency(day.saldoAcumulado)}
                       </td>
                     </tr>
                   ))}
+                  <tr className="border-t-2 border-border font-semibold bg-muted/30">
+                    <td className="py-2 pr-4">Total</td>
+                    <td className="py-2 pr-4 text-right font-mono text-success">+{formatCurrency(totais.receitas)}</td>
+                    <td className="py-2 pr-4 text-right font-mono text-destructive">−{formatCurrency(totais.despesas)}</td>
+                    <td className={cn("py-2 pr-4 text-right font-mono", (totais.receitas - totais.despesas) >= 0 ? "text-foreground" : "text-destructive")}>
+                      {(totais.receitas - totais.despesas) >= 0 ? "+" : ""}{formatCurrency(totais.receitas - totais.despesas)}
+                    </td>
+                    <td className={cn("py-2 text-right font-mono", totais.saldoFinal >= 0 ? "text-foreground" : "text-destructive")}>
+                      {formatCurrency(totais.saldoFinal)}
+                    </td>
+                  </tr>
                 </tbody>
-                {dailyRows.length > 0 && (
-                  <tfoot>
-                    <tr className="border-t-2 border-border bg-muted/20">
-                      <td className="py-2.5 pr-4 text-xs font-semibold text-foreground">TOTAL</td>
-                      <td className="py-2.5 px-4 text-right font-mono text-xs font-semibold text-success">
-                        +{formatCurrency(totals.receitas)}
-                      </td>
-                      <td className="py-2.5 px-4 text-right font-mono text-xs font-semibold text-destructive">
-                        −{formatCurrency(totals.despesas)}
-                      </td>
-                      <td className="py-2.5 px-4 text-right font-mono text-xs font-semibold">
-                        <span className={totals.saldo >= 0 ? "text-success" : "text-destructive"}>
-                          {totals.saldo >= 0 ? "+" : "−"}{formatCurrency(Math.abs(totals.saldo))}
-                        </span>
-                      </td>
-                      <td className="py-2.5 pl-4 text-right font-mono text-xs font-semibold">
-                        {dailyRows.length > 0 && (
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "font-mono text-[11px]",
-                              dailyRows[dailyRows.length - 1].balance >= 0
-                                ? "border-success/40 text-success"
-                                : "border-destructive/40 text-destructive"
-                            )}
-                          >
-                            {formatCurrency(dailyRows[dailyRows.length - 1].balance)}
-                          </Badge>
-                        )}
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
               </table>
             )}
           </CardContent>
