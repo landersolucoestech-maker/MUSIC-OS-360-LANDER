@@ -1,29 +1,18 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent } from "@/shared/ui/card";
 import {
-  FileText, ExternalLink, Send, Loader2, Plus, Trash2,
-  History, Music, Clock, AlertCircle, Info,
+  FileText, ExternalLink, Send, History, Music, Clock, AlertCircle, Info, User,
 } from "lucide-react";
-import { useAutentique } from "@/modules/integrations/hooks/useAutentique";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
-import { toast } from "sonner";
-
-interface Signer {
-  email: string;
-  name: string;
-}
 
 interface ContratoViewModalProps {
   open: boolean;
@@ -36,11 +25,8 @@ export function ContratoViewModal({
   onOpenChange,
   contrato,
 }: ContratoViewModalProps) {
-  const { createDocument, isCreating } = useAutentique();
   const { lancamentos } = useLancamentos();
   const navigate = useNavigate();
-  const [showSignerForm, setShowSignerForm] = useState(false);
-  const [signers, setSigners] = useState<Signer[]>([{ email: "", name: "" }]);
 
   if (!contrato) return null;
 
@@ -59,36 +45,6 @@ export function ContratoViewModal({
   const diasRestantes = dataFim
     ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     : null;
-
-  const handleAddSigner = () => setSigners([...signers, { email: "", name: "" }]);
-  const handleRemoveSigner = (index: number) => {
-    if (signers.length > 1) setSigners(signers.filter((_, i) => i !== index));
-  };
-  const handleSignerChange = (index: number, field: keyof Signer, value: string) => {
-    const updated = [...signers];
-    updated[index][field] = value;
-    setSigners(updated);
-  };
-
-  const handleAutentique = async () => {
-    const validSigners = signers.filter((s) => s.email && s.name);
-    if (validSigners.length === 0) {
-      toast.error("Adicione pelo menos um signatário com nome e email");
-      return;
-    }
-    const html = `<html><body><h1>${contrato.titulo || "Contrato"}</h1></body></html>`;
-    const base64Content = btoa(unescape(encodeURIComponent(html)));
-    try {
-      await createDocument.mutateAsync({
-        name: contrato.titulo || "Contrato",
-        content: base64Content,
-        signers: validSigners.map((s) => ({ email: s.email, name: s.name, action: "SIGN" as const })),
-        message: `Você foi convidado a assinar: ${contrato.titulo}`,
-      });
-      setShowSignerForm(false);
-      setSigners([{ email: "", name: "" }]);
-    } catch {}
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -227,10 +183,16 @@ export function ContratoViewModal({
                             </Badge>
                           )}
                         </div>
-                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                        <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
                           <Clock className="h-3 w-3" />
                           {v.criado_em ? new Date(v.criado_em).toLocaleDateString("pt-BR") : "—"}
                         </p>
+                        {v.autor && (
+                          <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {v.autor}
+                          </p>
+                        )}
                         {v.notas && (
                           <p className="text-xs text-muted-foreground">{v.notas}</p>
                         )}

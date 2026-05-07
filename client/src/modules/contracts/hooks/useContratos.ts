@@ -6,6 +6,7 @@ export interface ContratoVersao {
   url: string;
   criado_em: string;
   notas?: string;
+  autor?: string;
 }
 
 export interface Contrato {

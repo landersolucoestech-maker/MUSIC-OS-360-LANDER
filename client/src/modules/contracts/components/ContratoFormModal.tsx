@@ -844,6 +844,7 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
           url: newUrl as string,
           criado_em: new Date().toISOString(),
           notas: notas_versao || undefined,
+          autor: "Usuário atual",
         };
         payload.versoes = [...existingVersions, newVersion];
       } else {
@@ -860,6 +861,7 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
           url: arquivo_url,
           criado_em: new Date().toISOString(),
           notas: notas_versao || undefined,
+          autor: "Usuário atual",
         };
         payload.versoes = [firstVersion];
       } else {
