@@ -15,17 +15,43 @@ interface ParticipanteViewModalProps {
   artista: Artista | null;
 }
 
-const formatDateBR = (d?: string | null) => {
+// Normaliza qualquer formato de data para DD-MM-YYYY
+const formatDateDMY = (d?: string | null): string => {
   if (!d) return "";
-  try {
-    // Pega só a parte YYYY-MM-DD para evitar problemas de timezone
-    const datePart = d.split("T")[0];
-    const [year, month, day] = datePart.split("-");
-    if (!year || !month || !day) return d;
+  // Já está em DD-MM-YYYY
+  if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
+  // Está em DD/MM/YYYY → troca barras por traços
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d.replace(/\//g, "-");
+  // Está em YYYY-MM-DD (com ou sem timestamp)
+  const datePart = d.split("T")[0];
+  const parts = datePart.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    const [year, month, day] = parts;
     return `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
-  } catch {
-    return d;
   }
+  return d;
+};
+
+// Deriva tipo de pessoa: artistas individuais → Física; empresas → Jurídica
+const deriveTipoPessoa = (artista: Artista): string => {
+  const raw = artista.tipo_pessoa as string | null | undefined;
+  if (raw) {
+    const r = raw.toLowerCase();
+    if (r.includes("juridica") || r.includes("jurídica") || r === "juridica")
+      return "Jurídica";
+    if (r.includes("fisica") || r.includes("física") || r === "fisica")
+      return "Física";
+    // capitaliza se já vier formatado
+    return raw;
+  }
+  // Deriva de tipo_perfil
+  const perfil = (artista.tipo_perfil as string | null | undefined) ?? "";
+  if (perfil.toLowerCase().includes("empresa")) return "Jurídica";
+  // Deriva de tipo
+  const tipo = (artista.tipo as string | null | undefined) ?? "";
+  if (tipo.toLowerCase() === "empresa") return "Jurídica";
+  // Padrão: artistas individuais são pessoa física
+  return "Física";
 };
 
 export function ParticipanteViewModal({
@@ -37,10 +63,9 @@ export function ParticipanteViewModal({
 
   const nomeCivil = artista.nome_civil || artista.nome || artista.nome_artistico || "";
   const pseudonimo = artista.nome_artistico || "";
-  const tipoPessoa = (artista.tipo_pessoa as string | null | undefined) ?? "";
-  const genero = (artista as Record<string, unknown>).genero as string | null | undefined;
-  const generoVal = genero ?? "";
-  const dataNascimento = formatDateBR(artista.data_nascimento);
+  const tipoPessoa = deriveTipoPessoa(artista);
+  const genero = ((artista as Record<string, unknown>).genero as string | null | undefined) ?? "";
+  const dataNascimento = formatDateDMY(artista.data_nascimento);
   const cpfCnpj = artista.cpf_cnpj || "";
   const cae = ((artista as Record<string, unknown>).cae as string | null | undefined) ?? "";
 
@@ -62,7 +87,7 @@ export function ParticipanteViewModal({
             <Input
               value={nomeCivil}
               readOnly
-              className="bg-muted/30 text-sm"
+              className="bg-muted/30 text-sm cursor-default"
               data-testid="input-participante-nome"
             />
           </div>
@@ -74,7 +99,7 @@ export function ParticipanteViewModal({
               <Input
                 value={pseudonimo}
                 readOnly
-                className="bg-muted/30 text-sm"
+                className="bg-muted/30 text-sm cursor-default"
                 data-testid="input-participante-pseudonimo"
               />
             </div>
@@ -87,14 +112,12 @@ export function ParticipanteViewModal({
                 <SelectContent>
                   <SelectItem value="Física">Física</SelectItem>
                   <SelectItem value="Jurídica">Jurídica</SelectItem>
-                  <SelectItem value="fisica">Física</SelectItem>
-                  <SelectItem value="juridica">Jurídica</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
               <Label className="text-xs text-muted-foreground">Gênero</Label>
-              <Select value={generoVal} disabled>
+              <Select value={genero} disabled>
                 <SelectTrigger className="bg-muted/30 text-sm h-9" data-testid="select-participante-genero">
                   <SelectValue placeholder="—" />
                 </SelectTrigger>
@@ -114,7 +137,8 @@ export function ParticipanteViewModal({
               <Input
                 value={dataNascimento}
                 readOnly
-                className="bg-muted/30 text-sm"
+                placeholder="DD-MM-YYYY"
+                className="bg-muted/30 text-sm cursor-default"
                 data-testid="input-participante-data-nascimento"
               />
             </div>
@@ -123,7 +147,7 @@ export function ParticipanteViewModal({
               <Input
                 value={cpfCnpj}
                 readOnly
-                className="bg-muted/30 text-sm"
+                className="bg-muted/30 text-sm cursor-default"
                 data-testid="input-participante-cpf-cnpj"
               />
             </div>
@@ -132,7 +156,7 @@ export function ParticipanteViewModal({
               <Input
                 value={cae}
                 readOnly
-                className="bg-muted/30 text-sm"
+                className="bg-muted/30 text-sm cursor-default"
                 data-testid="input-participante-cae"
               />
             </div>
