@@ -15,6 +15,7 @@ import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X, Eye } f
 import { useObras, type ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert, type FonogramaUpdate } from "@/modules/catalog/hooks/useFonogramas";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
+import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { ParticipanteViewModal } from "@/modules/catalog/components/ParticipanteViewModal";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { useDebounce } from "@/shared/hooks/useDebounce";
@@ -250,6 +251,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
   const { addFonograma, updateFonograma } = useFonogramas();
   const { orgId } = useCurrentOrgId();
   const { artistas } = useArtistas();
+  const { projetos } = useProjetos();
   const [viewArtista, setViewArtista] = useState<Artista | null>(null);
 
   // Build initial obra vinculada from form-shape OR DB-shape (snake_case).
@@ -422,7 +424,6 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
   const LOCAL_RESULTS_LIMIT = 20;
   const collatorFono = new Intl.Collator("pt-BR", { sensitivity: "base" });
   const obrasRegistradasFiltradasFull: ObraVinculada[] = obras
-    .filter((o: ObraWithRelations) => o.status === "registrado" || o.status === "analise")
     .filter((o: ObraWithRelations) => {
       if (!buscaObra) return true;
       const termo = buscaObra.toLowerCase();
@@ -773,11 +774,26 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                                   : typeof fullObra.compositor === "string"
                                   ? fullObra.compositor
                                   : "";
-                                const musicosArr: Participante[] = compositoresStr
-                                  .split(",")
-                                  .map((s: string) => s.trim())
-                                  .filter(Boolean)
-                                  .map((nome: string) => ({ id: crypto.randomUUID(), nome, percentual: "" }));
+                                // Resolve músico/arranjador from project producers
+                                let musicosArr: Participante[] = [];
+                                if ((fullObra.projeto_id as string | null | undefined)) {
+                                  const projeto = projetos.find(p => p.id === (fullObra.projeto_id as string));
+                                  if (projeto?.descricao) {
+                                    try {
+                                      const normT = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                                      const musicas = JSON.parse(projeto.descricao as string) as Array<{ nome?: string; produtores?: string[] }>;
+                                      const musicaMatch = musicas.find(m =>
+                                        normT(m.nome || "") === normT(fullObra.titulo || "") ||
+                                        normT(m.nome || "") === normT(obra.title || "")
+                                      );
+                                      if (musicaMatch?.produtores?.length) {
+                                        musicosArr = musicaMatch.produtores.map((nome: string) => ({
+                                          id: crypto.randomUUID(), nome, percentual: "",
+                                        }));
+                                      }
+                                    } catch { /* invalid JSON — leave blank */ }
+                                  }
+                                }
                                 // Resolve artista for interprete:
                                 // 1) DB join (non-mock), 2) artista_id lookup, 3) compositor name match
                                 const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
