@@ -38,6 +38,16 @@ export interface CreateArtistaInput {
   observacoes?: string;
   org_slug?: string;
   redes_sociais?: string;
+  // redes sociais individuais
+  instagram?: string;
+  tiktok?: string;
+  youtube_channel_id?: string;
+  spotify_artist_id?: string;
+  soundcloud_url?: string;
+  apple_music_url?: string;
+  // docs e links extras
+  presskit_url?: string;
+  notas_internas?: string;
   [key: string]: unknown;
 }
 
@@ -87,6 +97,16 @@ export async function createArtistUseCase(
     foto_url: input.foto_url?.trim() || null,
     observacoes: observacoes || null,
     org_slug: input.org_slug ?? null,
+    // redes sociais individuais
+    instagram: input.instagram?.trim() || null,
+    tiktok: input.tiktok?.trim() || null,
+    youtube_channel_id: input.youtube_channel_id?.trim() || null,
+    spotify_artist_id: input.spotify_artist_id?.trim() || null,
+    soundcloud_url: input.soundcloud_url?.trim() || null,
+    apple_music_url: input.apple_music_url?.trim() || null,
+    // docs
+    presskit_url: input.presskit_url?.trim() || null,
+    notas_internas: input.notas_internas?.trim() || null,
   } as ArtistaInsert);
 
   // 6. Persistir via service

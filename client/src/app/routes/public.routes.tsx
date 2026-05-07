@@ -21,6 +21,8 @@ export function publicRoutes(S: SuspenseRouteComponent) {
       <Route path="/captar" element={<S><LeadCapture /></S>} />
       <Route path="/signup/artista" element={<S><ArtistaSignupPublic /></S>} />
       <Route path="/signup/artista/:orgSlug" element={<S><ArtistaSignupPublic /></S>} />
+      <Route path="/cadastro/:orgSlug" element={<S><ArtistaSignupPublic /></S>} />
+      <Route path="/cadastro" element={<S><ArtistaSignupPublic /></S>} />
       <Route path="*" element={<S><NotFound /></S>} />
     </>
   );
