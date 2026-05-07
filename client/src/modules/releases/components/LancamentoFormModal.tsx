@@ -8,7 +8,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { toast } from "sonner";
-import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, LogIn, AlertCircle } from "lucide-react";
+import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -95,7 +95,20 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
   const [metadadosOpen, setMetadadosOpen] = useState(true);
   const [artesOpen, setArtesOpen] = useState(true);
   const [distribuicaoOpen, setDistribuicaoOpen] = useState(true);
-  const [distribuidoraConectada, setDistribuidoraConectada] = useState(false);
+  // ── Distributor connections (from Settings > Integrações) ─────────────────
+  const DIST_STORAGE_KEY = "musicos360_distributor_connections";
+  const DISTRIBUTORS = [
+    { id: "onerpm",    name: "ONErpm",    description: "Distribuição global com analytics avançados e suporte a label" },
+    { id: "distrokid", name: "DistroKid", description: "Distribuição rápida para todas as plataformas de streaming" },
+    { id: "symphonic", name: "Symphonic", description: "Distribuição e marketing para artistas e selos independentes" },
+    { id: "soundon",   name: "SoundOn",   description: "Distribuidora oficial do TikTok com monetização integrada" },
+    { id: "musicpro",  name: "MusicPro",  description: "Distribuição profissional com suporte dedicado e royalties mensais" },
+    { id: "somvibe",   name: "SomVibe",   description: "Distribuidora brasileira independente com foco no mercado nacional" },
+  ];
+  const [distributorConnections] = useState<Record<string, { username: string }>>(() => {
+    try { return JSON.parse(localStorage.getItem(DIST_STORAGE_KEY) || "{}"); } catch { return {}; }
+  });
+  const connectedDistributors = DISTRIBUTORS.filter(d => Boolean(distributorConnections[d.id]));
 
   // ── Auto-fill handlers ───────────────────────────────────────────────────
 
@@ -281,10 +294,6 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
     );
   };
 
-  const handleConectarDistribuidora = () => {
-    toast.success("Conectando com ONErpm...");
-    setDistribuidoraConectada(true);
-  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -728,55 +737,63 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <Label>Distribuidora *</Label>
-                <Select value={formData.distribuidora} onValueChange={(v) => setFormData({ ...formData, distribuidora: v })} disabled={isViewMode}>
-                  <SelectTrigger>
-                    <div className="flex items-center gap-2">
-                      <Music className="h-4 w-4 text-primary" />
-                      <SelectValue />
-                    </div>
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="onerpm">ONErpm</SelectItem>
-                    <SelectItem value="distrokid">DistroKid</SelectItem>
-                    <SelectItem value="tunecore">TuneCore</SelectItem>
-                    <SelectItem value="cdbaby">CD Baby</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Status da distribuidora */}
-              <div className="border border-border rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-primary/10 rounded-lg">
-                      <Music className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-foreground">ONErpm</p>
-                      <p className="text-sm text-muted-foreground">Distribuidora global com presença na América Latina</p>
-                    </div>
+                {connectedDistributors.length === 0 ? (
+                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    Nenhuma distribuidora conectada. Configure em{" "}
+                    <span className="font-medium text-foreground">Configurações &gt; Integrações</span>.
                   </div>
-                  <span className="text-sm text-muted-foreground flex items-center gap-1">
-                    <X className="h-3 w-3" />
-                    {distribuidoraConectada ? "Conectado" : "Não conectado"}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <Button 
-                    type="button" 
-                    className="flex-1 gap-2 bg-primary hover:bg-primary/90"
-                    onClick={handleConectarDistribuidora}
+                ) : (
+                  <Select
+                    value={formData.distribuidora}
+                    onValueChange={(v) => setFormData({ ...formData, distribuidora: v })}
                     disabled={isViewMode}
                   >
-                    <LogIn className="h-4 w-4" />
-                    Conectar com ONErpm
-                  </Button>
-                  <Button type="button" variant="outline" className="gap-2">
-                    <ExternalLink className="h-4 w-4" />
-                    Abrir site
-                  </Button>
-                </div>
+                    <SelectTrigger data-testid="select-distribuidora">
+                      <div className="flex items-center gap-2">
+                        <Music className="h-4 w-4 text-primary" />
+                        <SelectValue placeholder="Selecione uma distribuidora conectada" />
+                      </div>
+                    </SelectTrigger>
+                    <SelectContent>
+                      {connectedDistributors.map((d) => (
+                        <SelectItem key={d.id} value={d.id}>
+                          {d.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
+
+              {/* Status da distribuidora selecionada */}
+              {(() => {
+                const selected = DISTRIBUTORS.find(d => d.id === formData.distribuidora);
+                const conn = selected ? distributorConnections[selected.id] : null;
+                if (!selected) return null;
+                return (
+                  <div className="border border-border rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-lg">
+                          <Music className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-foreground">{selected.name}</p>
+                          <p className="text-sm text-muted-foreground">{selected.description}</p>
+                          {conn?.username && (
+                            <p className="text-xs text-muted-foreground mt-0.5">Conta: {conn.username}</p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 text-sm text-success">
+                        <CheckCircle2 className="h-4 w-4" />
+                        Conectado
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="space-y-2">
                 <Label>Notas de Distribuição</Label>
