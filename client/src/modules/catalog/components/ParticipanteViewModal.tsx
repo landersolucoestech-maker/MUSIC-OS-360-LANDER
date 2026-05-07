@@ -15,14 +15,10 @@ interface ParticipanteViewModalProps {
   artista: Artista | null;
 }
 
-// Normaliza qualquer formato de data para DD-MM-YYYY
 const formatDateDMY = (d?: string | null): string => {
   if (!d) return "";
-  // Já está em DD-MM-YYYY
   if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
-  // Está em DD/MM/YYYY → troca barras por traços
   if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d.replace(/\//g, "-");
-  // Está em YYYY-MM-DD (com ou sem timestamp)
   const datePart = d.split("T")[0];
   const parts = datePart.split("-");
   if (parts.length === 3 && parts[0].length === 4) {
@@ -32,25 +28,18 @@ const formatDateDMY = (d?: string | null): string => {
   return d;
 };
 
-// Deriva tipo de pessoa: artistas individuais → Física; empresas → Jurídica
 const deriveTipoPessoa = (artista: Artista): string => {
   const raw = artista.tipo_pessoa as string | null | undefined;
   if (raw) {
     const r = raw.toLowerCase();
-    if (r.includes("juridica") || r.includes("jurídica") || r === "juridica")
-      return "Jurídica";
-    if (r.includes("fisica") || r.includes("física") || r === "fisica")
-      return "Física";
-    // capitaliza se já vier formatado
+    if (r.includes("juridica") || r.includes("jurídica")) return "Jurídica";
+    if (r.includes("fisica") || r.includes("física")) return "Física";
     return raw;
   }
-  // Deriva de tipo_perfil
   const perfil = (artista.tipo_perfil as string | null | undefined) ?? "";
   if (perfil.toLowerCase().includes("empresa")) return "Jurídica";
-  // Deriva de tipo
   const tipo = (artista.tipo as string | null | undefined) ?? "";
   if (tipo.toLowerCase() === "empresa") return "Jurídica";
-  // Padrão: artistas individuais são pessoa física
   return "Física";
 };
 
@@ -86,8 +75,8 @@ export function ParticipanteViewModal({
             </Label>
             <Input
               value={nomeCivil}
-              readOnly
-              className="bg-muted/30 text-sm cursor-default"
+              disabled
+              className="bg-muted/30 text-sm opacity-100 cursor-not-allowed"
               data-testid="input-participante-nome"
             />
           </div>
@@ -98,8 +87,8 @@ export function ParticipanteViewModal({
               <Label className="text-xs text-muted-foreground">Pseudônimo</Label>
               <Input
                 value={pseudonimo}
-                readOnly
-                className="bg-muted/30 text-sm cursor-default"
+                disabled
+                className="bg-muted/30 text-sm opacity-100 cursor-not-allowed"
                 data-testid="input-participante-pseudonimo"
               />
             </div>
@@ -136,9 +125,9 @@ export function ParticipanteViewModal({
               <Label className="text-xs text-muted-foreground">Data de Nascimento</Label>
               <Input
                 value={dataNascimento}
-                readOnly
+                disabled
                 placeholder="DD-MM-YYYY"
-                className="bg-muted/30 text-sm cursor-default"
+                className="bg-muted/30 text-sm opacity-100 cursor-not-allowed"
                 data-testid="input-participante-data-nascimento"
               />
             </div>
@@ -146,8 +135,8 @@ export function ParticipanteViewModal({
               <Label className="text-xs text-muted-foreground">CPF / CNPJ</Label>
               <Input
                 value={cpfCnpj}
-                readOnly
-                className="bg-muted/30 text-sm cursor-default"
+                disabled
+                className="bg-muted/30 text-sm opacity-100 cursor-not-allowed"
                 data-testid="input-participante-cpf-cnpj"
               />
             </div>
@@ -155,8 +144,8 @@ export function ParticipanteViewModal({
               <Label className="text-xs text-muted-foreground">CAE</Label>
               <Input
                 value={cae}
-                readOnly
-                className="bg-muted/30 text-sm cursor-default"
+                disabled
+                className="bg-muted/30 text-sm opacity-100 cursor-not-allowed"
                 data-testid="input-participante-cae"
               />
             </div>
