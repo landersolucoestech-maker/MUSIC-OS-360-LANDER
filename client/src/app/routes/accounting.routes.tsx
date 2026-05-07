@@ -3,7 +3,6 @@ import { Route } from "react-router-dom";
 import type { SuspenseRouteComponent } from "./types";
 
 const Accounting    = lazy(() => import("@/modules/accounting/pages/Financeiro"));
-const AccountingRegras = lazy(() => import("@/modules/accounting/pages/FinanceiroRegras"));
 const Contabilidade = lazy(() => import("@/modules/accounting/pages/Contabilidade"));
 const NotaFiscal    = lazy(() => import("@/modules/accounting/pages/NotaFiscal"));
 const FluxoCaixa    = lazy(() => import("@/modules/accounting/pages/FluxoCaixa"));
@@ -16,7 +15,6 @@ export function accountingRoutes(P: SuspenseRouteComponent) {
   return (
     <>
       <Route path="/accounting"               element={<P><Accounting /></P>} />
-      <Route path="/accounting/regras"         element={<P><AccountingRegras /></P>} />
       <Route path="/accounting/fluxo"          element={<P><FluxoCaixa /></P>} />
       <Route path="/accounting/conciliacao"    element={<P><Conciliacao /></P>} />
       <Route path="/accounting/relatorios"     element={<P><Relatorios /></P>} />

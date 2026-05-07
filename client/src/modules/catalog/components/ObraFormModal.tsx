@@ -48,7 +48,6 @@ import { ParticipanteViewModal } from "@/modules/catalog/components/Participante
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import type { TipoObra } from "@/modules/catalog/components/ObraTipoSelectorModal";
 import {
@@ -280,7 +279,6 @@ export function ObraFormModal({
   const { projetos } = useProjetos();
   const { addObra, updateObra } = useObras();
   const { orgId } = useCurrentOrgId();
-  const { addContrato } = useContratos();
   const { artistas } = useArtistas();
 
   // Resolução do tipo da obra. Em criação vem do seletor (prop). Em
