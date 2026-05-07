@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
@@ -171,20 +172,22 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Data Início</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={formData.dataInicio}
-                  onChange={(e) => setFormData({ ...formData, dataInicio: e.target.value })}
+                  onChange={(iso) => setFormData({ ...formData, dataInicio: iso })}
                   disabled={isViewMode}
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-data-inicio"
                 />
               </div>
               <div className="space-y-2">
                 <Label>Data Fim</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={formData.dataFim}
-                  onChange={(e) => setFormData({ ...formData, dataFim: e.target.value })}
+                  onChange={(iso) => setFormData({ ...formData, dataFim: iso })}
                   disabled={isViewMode}
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-data-fim"
                 />
               </div>
               <div className="space-y-2">

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -272,13 +273,12 @@ export function FuncionarioFormModal({
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label htmlFor="data_nascimento">Data de Nascimento</Label>
-                <Input
-                  id="data_nascimento"
-                  type="date"
+                <DatePickerField
                   value={dataNascimento}
-                  onChange={(e) => setDataNascimento(e.target.value)}
+                  onChange={setDataNascimento}
                   disabled={isViewMode}
-                  data-testid="input-data-nascimento"
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-data-nascimento"
                 />
               </div>
               <div className="space-y-1.5">
@@ -390,13 +390,12 @@ export function FuncionarioFormModal({
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="data_admissao">Data de Admissão</Label>
-                <Input
-                  id="data_admissao"
-                  type="date"
+                <DatePickerField
                   value={dataAdmissao}
-                  onChange={(e) => setDataAdmissao(e.target.value)}
+                  onChange={setDataAdmissao}
                   disabled={isViewMode}
-                  data-testid="input-data-admissao"
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-data-admissao"
                 />
               </div>
             </div>

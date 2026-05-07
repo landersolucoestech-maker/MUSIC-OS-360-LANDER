@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -241,16 +242,13 @@ export function FeriasAusenciasFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data Início *</Label>
-              <Input
-                type="date"
+              <DatePickerField
                 value={dataInicio}
-                onChange={(e) => {
-                  setDataInicio(e.target.value);
-                  clearError("data_inicio");
-                }}
+                onChange={(iso) => { setDataInicio(iso); clearError("data_inicio"); }}
                 disabled={isViewMode}
+                placeholder="Selecione a data"
                 className={errors.data_inicio ? "border-destructive" : ""}
-                data-testid="input-data-inicio"
+                data-testid="datepicker-data-inicio"
               />
               {errors.data_inicio && (
                 <p className="text-sm text-destructive">{errors.data_inicio}</p>
@@ -258,16 +256,13 @@ export function FeriasAusenciasFormModal({
             </div>
             <div className="space-y-2">
               <Label>Data Fim *</Label>
-              <Input
-                type="date"
+              <DatePickerField
                 value={dataFim}
-                onChange={(e) => {
-                  setDataFim(e.target.value);
-                  clearError("data_fim");
-                }}
+                onChange={(iso) => { setDataFim(iso); clearError("data_fim"); }}
                 disabled={isViewMode}
+                placeholder="Selecione a data"
                 className={errors.data_fim ? "border-destructive" : ""}
-                data-testid="input-data-fim"
+                data-testid="datepicker-data-fim"
               />
               {errors.data_fim && (
                 <p className="text-sm text-destructive">{errors.data_fim}</p>

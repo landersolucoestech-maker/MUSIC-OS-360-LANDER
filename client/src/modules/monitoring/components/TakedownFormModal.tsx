@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
@@ -172,11 +173,12 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
               </div>
               <div className="space-y-2">
                 <Label>Data de Identificação</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={formData.dataIdentificacao}
-                  onChange={(e) => setFormData({ ...formData, dataIdentificacao: e.target.value })}
+                  onChange={(iso) => setFormData({ ...formData, dataIdentificacao: iso })}
                   disabled={isViewMode}
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-data-identificacao"
                 />
               </div>
             </div>

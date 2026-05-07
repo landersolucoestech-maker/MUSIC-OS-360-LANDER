@@ -1,4 +1,5 @@
 import { useEffect, useMemo } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -324,10 +325,12 @@ export function InventarioFormModal({ open, onOpenChange, item, mode }: Inventar
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Data de Entrada</Label>
-                  <Input
-                    type="date"
-                    {...register("dataEntrada")}
+                  <DatePickerField
+                    value={watch("dataEntrada") ?? ""}
+                    onChange={(iso) => setValue("dataEntrada", iso)}
                     disabled={isViewMode}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-entrada"
                   />
                 </div>
                 <div className="space-y-2">

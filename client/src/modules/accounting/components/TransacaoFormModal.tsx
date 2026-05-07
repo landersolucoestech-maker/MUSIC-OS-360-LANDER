@@ -8,6 +8,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { X, Upload, FileText, Loader2, AlertCircle } from "lucide-react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
@@ -904,12 +905,13 @@ export function TransacaoFormModal({ open, onOpenChange, transacao, mode }: Tran
 
                 <div className="space-y-2">
                   <Label className="text-sm">Data da Transação *</Label>
-                  <Input
-                    type="date"
+                  <DatePickerField
                     value={formData.dataTransacao}
-                    onChange={(e) => updateField("dataTransacao", e.target.value)}
+                    onChange={(iso) => updateField("dataTransacao", iso)}
                     disabled={isViewMode}
+                    placeholder="Selecione a data"
                     className={errors.dataTransacao ? "border-destructive" : ""}
+                    data-testid="datepicker-data-transacao"
                   />
                   <FieldError error={errors.dataTransacao} />
                 </div>
@@ -974,12 +976,13 @@ export function TransacaoFormModal({ open, onOpenChange, transacao, mode }: Tran
 
                   <div className="space-y-2">
                     <Label className="text-sm">Data da 1ª Parcela *</Label>
-                    <Input
-                      type="date"
+                    <DatePickerField
                       value={formData.dataPrimeiraParcela}
-                      onChange={(e) => updateField("dataPrimeiraParcela", e.target.value)}
+                      onChange={(iso) => updateField("dataPrimeiraParcela", iso)}
                       disabled={isViewMode}
+                      placeholder="Selecione a data"
                       className={errors.dataPrimeiraParcela ? "border-destructive" : ""}
+                      data-testid="datepicker-data-primeira-parcela"
                     />
                     <FieldError error={errors.dataPrimeiraParcela} />
                   </div>

@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -749,11 +750,12 @@ export function ContatoFormModal({ open, onOpenChange, contato, mode }: ContatoF
                 </div>
                 <div className="space-y-2">
                   <Label>Data do Follow-up</Label>
-                  <Input 
-                    type="date"
-                    value={formData.dataProximaAcao} 
-                    onChange={(e) => setFormData({ ...formData, dataProximaAcao: e.target.value })} 
-                    disabled={isViewMode} 
+                  <DatePickerField
+                    value={formData.dataProximaAcao}
+                    onChange={(iso) => setFormData({ ...formData, dataProximaAcao: iso })}
+                    disabled={isViewMode}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-proxima-acao"
                   />
                 </div>
               </div>

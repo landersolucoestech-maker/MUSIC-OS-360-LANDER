@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { ESPECIALIDADES_LABELS } from "@/modules/artist/mappers";
 import {
   Dialog,
@@ -2468,23 +2469,21 @@ export function ArtistaVisao360Modal({
 
               <div>
                 <Label>Data de Início</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={metaForm.dataInicio}
-                  onChange={(e) =>
-                    setMetaForm({ ...metaForm, dataInicio: e.target.value })
-                  }
+                  onChange={(iso) => setMetaForm({ ...metaForm, dataInicio: iso })}
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-meta-data-inicio"
                 />
               </div>
 
               <div>
                 <Label>Data de Fim</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={metaForm.dataFim}
-                  onChange={(e) =>
-                    setMetaForm({ ...metaForm, dataFim: e.target.value })
-                  }
+                  onChange={(iso) => setMetaForm({ ...metaForm, dataFim: iso })}
+                  placeholder="Selecione a data"
+                  data-testid="datepicker-meta-data-fim"
                 />
               </div>
             </div>

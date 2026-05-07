@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -655,12 +656,12 @@ export function LeadFormModal({ open, onOpenChange, lead, mode }: LeadFormModalP
           <div className="grid grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label>Data de Entrada</Label>
-              <Input
-                type="date"
+              <DatePickerField
                 value={dataEntrada}
+                onChange={() => {}}
                 disabled
-                className="opacity-70"
-                data-testid="input-data-entrada"
+                placeholder="Data de entrada"
+                data-testid="datepicker-data-entrada"
               />
               <p className="text-xs text-muted-foreground">Definida automaticamente</p>
             </div>
@@ -896,11 +897,11 @@ export function LeadFormModal({ open, onOpenChange, lead, mode }: LeadFormModalP
               <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-2">
                   <Label>Data do Evento</Label>
-                  <Input
-                    type="date"
+                  <DatePickerField
                     value={dataEvento}
-                    onChange={(e) => setDataEvento(e.target.value)}
-                    data-testid="input-data-evento"
+                    onChange={setDataEvento}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-evento"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1029,11 +1030,11 @@ export function LeadFormModal({ open, onOpenChange, lead, mode }: LeadFormModalP
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Prazo Desejado</Label>
-                  <Input
-                    type="date"
+                  <DatePickerField
                     value={prazoProducaoMusical}
-                    onChange={(e) => setPrazoProducaoMusical(e.target.value)}
-                    data-testid="input-prazo-producao-musical"
+                    onChange={setPrazoProducaoMusical}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-prazo-producao-musical"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1085,11 +1086,11 @@ export function LeadFormModal({ open, onOpenChange, lead, mode }: LeadFormModalP
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Data Prevista</Label>
-                  <Input
-                    type="date"
+                  <DatePickerField
                     value={dataPrevistaAV}
-                    onChange={(e) => setDataPrevistaAV(e.target.value)}
-                    data-testid="input-data-prevista-av"
+                    onChange={setDataPrevistaAV}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-prevista-av"
                   />
                 </div>
                 <div className="space-y-2">
@@ -1179,11 +1180,11 @@ export function LeadFormModal({ open, onOpenChange, lead, mode }: LeadFormModalP
             </div>
             <div className="space-y-2">
               <Label>Validade da Proposta</Label>
-              <Input
-                type="date"
+              <DatePickerField
                 value={validadeProposta}
-                onChange={(e) => setValidadeProposta(e.target.value)}
-                data-testid="input-validade-proposta"
+                onChange={setValidadeProposta}
+                placeholder="Selecione a data"
+                data-testid="datepicker-validade-proposta"
               />
             </div>
           </div>

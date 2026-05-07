@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -979,15 +980,15 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Emissão</span>
-                <Input type="date" value={emissao} onChange={(e) => setEmissao(e.target.value)} disabled={isViewMode} className="h-9 px-2 text-sm min-w-0" />
+                <DatePickerField value={emissao} onChange={setEmissao} disabled={isViewMode} placeholder="Data" data-testid="datepicker-emissao" />
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Gravação Original</span>
-                <Input type="date" value={gravacaoOriginal} onChange={(e) => setGravacaoOriginal(e.target.value)} disabled={isViewMode} className="h-9 px-2 text-sm min-w-0" />
+                <DatePickerField value={gravacaoOriginal} onChange={setGravacaoOriginal} disabled={isViewMode} placeholder="Data" data-testid="datepicker-gravacao-original" />
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Lançamento</span>
-                <Input type="date" value={lancamento} onChange={(e) => setLancamento(e.target.value)} disabled={isViewMode} className="h-9 px-2 text-sm min-w-0" />
+                <DatePickerField value={lancamento} onChange={setLancamento} disabled={isViewMode} placeholder="Data" data-testid="datepicker-lancamento" />
               </div>
               <div className="col-span-4">
                 <span className="text-xs text-muted-foreground mb-1 block">Duração</span>

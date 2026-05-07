@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -266,12 +267,12 @@ export function FolhaPagamentoFormModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Data de Pagamento</Label>
-              <Input
-                type="date"
+              <DatePickerField
                 value={dataPagamento}
-                onChange={(e) => setDataPagamento(e.target.value)}
+                onChange={setDataPagamento}
                 disabled={isViewMode}
-                data-testid="input-data-pagamento"
+                placeholder="Selecione a data"
+                data-testid="datepicker-data-pagamento"
               />
             </div>
             <div className="space-y-2">

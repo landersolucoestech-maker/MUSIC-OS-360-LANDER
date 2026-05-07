@@ -1,6 +1,4 @@
 import { useState, useEffect } from "react";
-import { format, parseISO, isValid } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -9,10 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Calendar } from "@/shared/ui/calendar";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { toast } from "sonner";
-import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2, CalendarIcon } from "lucide-react";
+import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -36,56 +33,6 @@ const FieldError = ({ error }: { error?: string }) => {
   );
 };
 
-// DatePickerField — replaces native <input type="date"> with system-themed Calendar
-function DatePickerField({
-  value,
-  onChange,
-  disabled,
-  placeholder = "Selecione uma data",
-}: {
-  value: string;
-  onChange: (iso: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const parsed = value ? parseISO(value) : undefined;
-  const selected = parsed && isValid(parsed) ? parsed : undefined;
-  return (
-    <Popover open={open && !disabled} onOpenChange={disabled ? undefined : setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="outline"
-          disabled={disabled}
-          className="w-full justify-start text-left font-normal bg-background border-border text-sm h-9"
-          data-testid="datepicker-trigger"
-        >
-          <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
-          {selected ? (
-            <span>{format(selected, "dd/MM/yyyy", { locale: ptBR })}</span>
-          ) : (
-            <span className="text-muted-foreground">{placeholder}</span>
-          )}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
-        <Calendar
-          mode="single"
-          selected={selected}
-          onSelect={(date) => {
-            if (date) {
-              onChange(format(date, "yyyy-MM-dd"));
-              setOpen(false);
-            }
-          }}
-          initialFocus
-          locale={ptBR}
-        />
-      </PopoverContent>
-    </Popover>
-  );
-}
 
 interface Faixa {
   id: number;
@@ -277,18 +224,18 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
   };
 
   // Hydrate form from entity whenever modal opens or lancamento changes.
+  // Always reset all auxiliary state so no stale data leaks between lançamentos.
   useEffect(() => {
     if (!open) return;
     setFormData(lancamentoToFormFields(lancamento ?? null));
     setSelectedObraId((lancamento as any)?.obra_id ?? "");
     setSelectedFonogramaId((lancamento as any)?.fonograma_id ?? "");
-    if (!lancamento) {
-      setFaixas([{
-        id: 1, titulo: "", artista: "", isrc: "",
-        compositores: [""], interpretes: [""], produtores: [""],
-        arquivoAudio: null, letra: "",
-      }]);
-    }
+    setCapaPrincipal(null);
+    setFaixas([{
+      id: 1, titulo: "", artista: "", isrc: "",
+      compositores: [""], interpretes: [""], produtores: [""],
+      arquivoAudio: null, letra: "",
+    }]);
   }, [open, lancamento]);
 
   const isViewMode = mode === "view";
