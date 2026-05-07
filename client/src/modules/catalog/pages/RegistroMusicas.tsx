@@ -706,19 +706,6 @@ export default function RegistroMusicas() {
               <SelectItem value="registrado">Registrado</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={genreFilter} onValueChange={setGenreFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border">
-              <SelectValue placeholder="Todos Gêneros" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-genre">Todos Gêneros</SelectItem>
-              {generosUnicos.map(g => (
-                <SelectItem key={g} value={g.toLowerCase()}>
-                  {g.charAt(0).toUpperCase() + g.slice(1)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           {activeTab === "obras" && projetosDisponiveis.length > 0 && (
             <Select value={projetoFilter} onValueChange={setProjetoFilter}>
               <SelectTrigger className="w-[180px] bg-card border-border" data-testid="select-filter-projeto">
@@ -733,6 +720,19 @@ export default function RegistroMusicas() {
               </SelectContent>
             </Select>
           )}
+          <Select value={genreFilter} onValueChange={setGenreFilter}>
+            <SelectTrigger className="w-[160px] bg-card border-border">
+              <SelectValue placeholder="Todos Gêneros" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-genre">Todos Gêneros</SelectItem>
+              {generosUnicos.map(g => (
+                <SelectItem key={g} value={g.toLowerCase()}>
+                  {g.charAt(0).toUpperCase() + g.slice(1)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           {activeTab === "fonogramas" && (
             <Select value={obraVinculadaFilter} onValueChange={setObraVinculadaFilter} data-testid="select-filter-obra-vinculada">
               <SelectTrigger className="w-[200px] bg-card border-border" data-testid="trigger-filter-obra-vinculada">
