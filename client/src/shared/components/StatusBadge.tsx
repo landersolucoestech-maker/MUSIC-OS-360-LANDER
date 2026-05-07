@@ -22,6 +22,7 @@ type StatusType =
   | "disponivel" | "em_uso" | "emprestado" | "manutencao" | "danificado" | "descartado"
   | "pausada"
   | "vigente" | "assinado" | "em_vigor"
+  | "onboarding"
   | string;
 
 interface StatusBadgeProps {
@@ -75,6 +76,7 @@ const statusStyles: Record<string, string> = {
   manutencao:    "bg-warning/10 text-warning border-warning/20",
   programado:    "bg-warning/10 text-warning border-warning/20",
   pausada:       "bg-warning/10 text-warning border-warning/20",
+  onboarding:    "bg-warning/10 text-warning border-warning/20",
 
   // ── Info / Blue
   confirmed:     "bg-primary/10 text-primary border-primary/20",

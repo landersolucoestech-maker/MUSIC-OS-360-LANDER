@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Loader2, Save } from "lucide-react";
+import { Loader2, Save, Plus, Trash2, X } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { type TipoArtista, type StatusArtista } from "@/modules/artist/components/ArtistaForm";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
@@ -138,6 +138,23 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [distribuidorasSelecionadas, setDistribuidorasSelecionadas] = useState<Record<string, boolean>>({});
   const [distribuidorasEmails, setDistribuidorasEmails] = useState<Record<string, string>>({});
 
+  // ── 7. Mídias ─────────────────────────────────────────────────
+  const [galeriaUrls, setGaleriaUrls] = useState<string[]>([]);
+  const [galeriaInput, setGaleriaInput] = useState("");
+  const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
+
+  // ── 8. Relacionamentos ────────────────────────────────────────
+  const [managerNome, setManagerNome] = useState("");
+  const [managerContato, setManagerContato] = useState("");
+  const [produtorExecutivo, setProdutorExecutivo] = useState("");
+  const [agenciaBooking, setAgenciaBooking] = useState("");
+  const [labelParceira, setLabelParceira] = useState("");
+
+  // ── 9. Documentos vinculados ──────────────────────────────────
+  const [documentosList, setDocumentosList] = useState<{ nome: string; url: string }[]>([]);
+  const [docNomeInput, setDocNomeInput] = useState("");
+  const [docUrlInput, setDocUrlInput] = useState("");
+
   // ── Contrato vinculado ─────────────────────────────────────────
   const [contratoSelecionadoId, setContratoSelecionadoId] = useState("");
 
@@ -168,6 +185,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setDistribuidorasSelecionadas({}); setDistribuidorasEmails({});
     setContratoSelecionadoId("");
     setNotasInternas("");
+    setGaleriaUrls([]); setGaleriaInput(""); setVideoApresentacaoUrl("");
+    setManagerNome(""); setManagerContato(""); setProdutorExecutivo("");
+    setAgenciaBooking(""); setLabelParceira("");
+    setDocumentosList([]); setDocNomeInput(""); setDocUrlInput("");
   };
 
   useEffect(() => {
@@ -240,6 +261,15 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         setPresskit([]);
       }
       setContratoSelecionadoId(f.contratoId);
+      // Perfil 360
+      setGaleriaUrls(Array.isArray(artista.galeria_urls) ? artista.galeria_urls : []);
+      setVideoApresentacaoUrl(typeof artista.video_apresentacao_url === "string" ? artista.video_apresentacao_url : "");
+      setManagerNome(typeof artista.manager_nome === "string" ? artista.manager_nome : "");
+      setManagerContato(typeof artista.manager_contato === "string" ? artista.manager_contato : "");
+      setProdutorExecutivo(typeof artista.produtor_executivo === "string" ? artista.produtor_executivo : "");
+      setAgenciaBooking(typeof artista.agencia_booking === "string" ? artista.agencia_booking : "");
+      setLabelParceira(typeof artista.label_parceira === "string" ? artista.label_parceira : "");
+      setDocumentosList(Array.isArray(artista.documentos) ? artista.documentos as { nome: string; url: string }[] : []);
     } else {
       resetForm();
     }
@@ -349,8 +379,19 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         contratoId: contratoSelecionadoId,
       });
 
+      const extraFields = {
+        galeria_urls: galeriaUrls.length > 0 ? galeriaUrls : null,
+        video_apresentacao_url: videoApresentacaoUrl.trim() || null,
+        manager_nome: managerNome.trim() || null,
+        manager_contato: managerContato.trim() || null,
+        produtor_executivo: produtorExecutivo.trim() || null,
+        agencia_booking: agenciaBooking.trim() || null,
+        label_parceira: labelParceira.trim() || null,
+        documentos: documentosList.length > 0 ? documentosList : null,
+      };
+
       if (isEditing) {
-        await updateArtista.mutateAsync({ id: artista.id, ...camposComuns });
+        await updateArtista.mutateAsync({ id: artista.id, ...camposComuns, ...extraFields });
       } else {
         const clienteData = {
           tipo_pessoa: "pessoa_fisica" as const,
@@ -366,7 +407,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           status: "ativo",
         };
         await addCliente.mutateAsync(clienteData);
-        await addArtista.mutateAsync({ ...camposComuns, contrato_id: contratoSelecionadoId || null });
+        await addArtista.mutateAsync({ ...camposComuns, ...extraFields, contrato_id: contratoSelecionadoId || null });
       }
       handleClose(false);
       onSuccess?.();
@@ -850,6 +891,197 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                   data-testid="textarea-observacoes"
                 />
               </div>
+            </div>
+
+            {/* ═══ 8. Mídia ═══ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-primary">8.</span>
+                <h3 className="text-lg font-semibold">Mídia</h3>
+              </div>
+              <Separator />
+
+              {/* Galeria de fotos */}
+              <div className="space-y-2">
+                <Label>Galeria de Fotos (URLs)</Label>
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="https://exemplo.com/foto.jpg"
+                    value={galeriaInput}
+                    onChange={(e) => setGaleriaInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && galeriaInput.trim()) {
+                        e.preventDefault();
+                        setGaleriaUrls((prev) => [...prev, galeriaInput.trim()]);
+                        setGaleriaInput("");
+                      }
+                    }}
+                    data-testid="input-galeria-url"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (galeriaInput.trim()) {
+                        setGaleriaUrls((prev) => [...prev, galeriaInput.trim()]);
+                        setGaleriaInput("");
+                      }
+                    }}
+                    data-testid="button-add-galeria"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+                {galeriaUrls.length > 0 && (
+                  <div className="space-y-1 mt-2">
+                    {galeriaUrls.map((url, idx) => (
+                      <div key={idx} className="flex items-center gap-2 p-2 bg-muted/40 rounded text-sm">
+                        <span className="flex-1 truncate text-muted-foreground">{url}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => setGaleriaUrls((prev) => prev.filter((_, i) => i !== idx))}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Vídeo de apresentação */}
+              <div className="space-y-2">
+                <Label>Vídeo de Apresentação (YouTube URL)</Label>
+                <Input
+                  placeholder="https://www.youtube.com/watch?v=..."
+                  value={videoApresentacaoUrl}
+                  onChange={(e) => setVideoApresentacaoUrl(e.target.value)}
+                  data-testid="input-video-apresentacao"
+                />
+              </div>
+            </div>
+
+            {/* ═══ 9. Relacionamentos ═══ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-primary">9.</span>
+                <h3 className="text-lg font-semibold">Relacionamentos</h3>
+              </div>
+              <Separator />
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Manager / Empresário</Label>
+                  <Input
+                    placeholder="Nome do manager"
+                    value={managerNome}
+                    onChange={(e) => setManagerNome(e.target.value)}
+                    data-testid="input-manager-nome"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Contato do Manager</Label>
+                  <Input
+                    placeholder="Telefone ou e-mail"
+                    value={managerContato}
+                    onChange={(e) => setManagerContato(e.target.value)}
+                    data-testid="input-manager-contato"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Produtor Executivo</Label>
+                  <Input
+                    placeholder="Nome do produtor executivo"
+                    value={produtorExecutivo}
+                    onChange={(e) => setProdutorExecutivo(e.target.value)}
+                    data-testid="input-produtor-executivo"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Agência de Booking</Label>
+                  <Input
+                    placeholder="Nome da agência"
+                    value={agenciaBooking}
+                    onChange={(e) => setAgenciaBooking(e.target.value)}
+                    data-testid="input-agencia-booking"
+                  />
+                </div>
+                <div className="col-span-2 space-y-2">
+                  <Label>Label Parceira</Label>
+                  <Input
+                    placeholder="Nome da gravadora / label parceira"
+                    value={labelParceira}
+                    onChange={(e) => setLabelParceira(e.target.value)}
+                    data-testid="input-label-parceira"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* ═══ 10. Documentos Vinculados ═══ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-primary">10.</span>
+                <h3 className="text-lg font-semibold">Documentos Vinculados</h3>
+              </div>
+              <Separator />
+
+              <div className="space-y-2">
+                <Label>Adicionar Documento</Label>
+                <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
+                  <Input
+                    placeholder="Nome (ex: Press Kit 2025)"
+                    value={docNomeInput}
+                    onChange={(e) => setDocNomeInput(e.target.value)}
+                    data-testid="input-doc-nome"
+                  />
+                  <Input
+                    placeholder="URL do documento"
+                    value={docUrlInput}
+                    onChange={(e) => setDocUrlInput(e.target.value)}
+                    data-testid="input-doc-url"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (docNomeInput.trim() && docUrlInput.trim()) {
+                        setDocumentosList((prev) => [...prev, { nome: docNomeInput.trim(), url: docUrlInput.trim() }]);
+                        setDocNomeInput("");
+                        setDocUrlInput("");
+                      }
+                    }}
+                    data-testid="button-add-documento"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              {documentosList.length > 0 && (
+                <div className="space-y-1">
+                  {documentosList.map((doc, idx) => (
+                    <div key={idx} className="flex items-center gap-2 p-2 bg-muted/40 rounded text-sm">
+                      <span className="font-medium min-w-[120px]">{doc.nome}</span>
+                      <span className="flex-1 truncate text-muted-foreground">{doc.url}</span>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 shrink-0"
+                        onClick={() => setDocumentosList((prev) => prev.filter((_, i) => i !== idx))}
+                      >
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
           </div>

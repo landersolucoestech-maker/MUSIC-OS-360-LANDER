@@ -132,7 +132,8 @@ export default function Artistas() {
       const matchesStatus =
         statusFilter === "todos" ||
         (statusFilter === "exclusivo" && isExclusivo) ||
-        (statusFilter === "parceiro" && !isExclusivo);
+        (statusFilter === "parceiro" && !isExclusivo) ||
+        (statusFilter === "onboarding" && artista.status === "onboarding");
       const matchesGenero = generoFilter === "todos" || artista.genero_musical === generoFilter;
       return matchesSearch && matchesStatus && matchesGenero;
     }).sort((a, b) => a.nome_artistico.localeCompare(b.nome_artistico, "pt-BR", { sensitivity: "base" }));
@@ -341,6 +342,7 @@ export default function Artistas() {
               <SelectItem value="todos">Todos os artistas</SelectItem>
               <SelectItem value="exclusivo">Artista exclusivo</SelectItem>
               <SelectItem value="parceiro">Artista parceiro</SelectItem>
+              <SelectItem value="onboarding">Em Onboarding</SelectItem>
             </SelectContent>
           </Select>
           <Select value={generoFilter} onValueChange={setGeneroFilter}>
@@ -445,7 +447,11 @@ export default function Artistas() {
                                 <h3 className="font-semibold text-sm leading-tight text-foreground">
                                   {artista.nome_artistico}
                                 </h3>
-                                <StatusBadge status={vinculo.status} label={vinculo.label} />
+                                {artista.status === "onboarding" ? (
+                                  <StatusBadge status="onboarding" label="Onboarding" />
+                                ) : (
+                                  <StatusBadge status={vinculo.status} label={vinculo.label} />
+                                )}
                               </div>
                               {artista.genero_musical && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border text-muted-foreground h-5">

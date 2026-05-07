@@ -44,6 +44,11 @@ import {
   Award,
   Lightbulb,
   BarChart3,
+  ImageIcon,
+  Video,
+  Briefcase,
+  Headphones,
+  Link2,
 } from "lucide-react";
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
 import { PlatformMiniTrend } from "@/shared/components/PlatformMiniTrend";
@@ -425,6 +430,27 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
             >
               Perfil
+            </TabsTrigger>
+            <TabsTrigger
+              value="midia"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              data-testid="tab-midia"
+            >
+              Mídia
+            </TabsTrigger>
+            <TabsTrigger
+              value="documentos"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              data-testid="tab-documentos"
+            >
+              Documentos
+            </TabsTrigger>
+            <TabsTrigger
+              value="relacionamentos"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              data-testid="tab-relacionamentos"
+            >
+              Relações
             </TabsTrigger>
             <TabsTrigger
               value="catalogo"
@@ -1011,6 +1037,247 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <span>Data de Cadastro: </span>
                 <span>{artista.created_at ? new Date(artista.created_at).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR")}</span>
               </div>
+            </TabsContent>
+
+            {/* Mídia */}
+            <TabsContent value="midia" className="p-6 space-y-6 mt-0">
+              {/* Galeria de Fotos */}
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Galeria de Fotos</h3>
+                  </div>
+                  {Array.isArray(artista.galeria_urls) && artista.galeria_urls.length > 0 ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {(artista.galeria_urls as string[]).map((url, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border group">
+                          <img
+                            src={url}
+                            alt={`Foto ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).style.display = "none";
+                              (e.currentTarget.nextSibling as HTMLElement)!.style.display = "flex";
+                            }}
+                          />
+                          <div className="hidden w-full h-full items-center justify-center">
+                            <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
+                          </div>
+                          <a
+                            href={url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                          >
+                            <ExternalLink className="h-5 w-5 text-white" />
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                      <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhuma foto na galeria</p>
+                      <p className="text-xs text-muted-foreground/60">Adicione URLs de fotos na edição do artista</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Vídeo de Apresentação */}
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Video className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Vídeo de Apresentação</h3>
+                  </div>
+                  {artista.video_apresentacao_url ? (
+                    <div className="space-y-3">
+                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+                        <iframe
+                          src={(() => {
+                            const url = artista.video_apresentacao_url as string;
+                            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
+                            if (match) return `https://www.youtube.com/embed/${match[1]}`;
+                            return url;
+                          })()}
+                          className="w-full h-full"
+                          allowFullScreen
+                          title="Vídeo de apresentação"
+                        />
+                      </div>
+                      <a
+                        href={artista.video_apresentacao_url as string}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
+                        data-testid="link-video-apresentacao"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Abrir no YouTube
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                      <Video className="h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhum vídeo de apresentação cadastrado</p>
+                      <p className="text-xs text-muted-foreground/60">Adicione uma URL do YouTube na edição do artista</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            {/* Documentos */}
+            <TabsContent value="documentos" className="p-6 space-y-6 mt-0">
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <FileText className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Documentos Vinculados</h3>
+                  </div>
+                  {Array.isArray(artista.documentos) && artista.documentos.length > 0 ? (
+                    <div className="space-y-2">
+                      {(artista.documentos as { nome: string; url: string }[]).map((doc, idx) => (
+                        <div
+                          key={idx}
+                          className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/50"
+                          data-testid={`row-documento-${idx}`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <FileText className="h-4 w-4 text-primary shrink-0" />
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{doc.nome}</p>
+                              <p className="text-xs text-muted-foreground truncate">{doc.url}</p>
+                            </div>
+                          </div>
+                          <a
+                            href={doc.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 ml-4"
+                            data-testid={`link-documento-${idx}`}
+                          >
+                            <Button variant="outline" size="sm" className="gap-1.5">
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              Abrir
+                            </Button>
+                          </a>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
+                      <FileText className="h-10 w-10 text-muted-foreground/30" />
+                      <p className="text-sm text-muted-foreground">Nenhum documento vinculado</p>
+                      <p className="text-xs text-muted-foreground/60">Adicione documentos (press kit, bio PDF, rider) na edição do artista</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Links de documentos legados */}
+              {((artista as any).documentos_pessoais_url || (artista as any).presskit_url) && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">Arquivos Rápidos</h3>
+                    <div className="space-y-2">
+                      {(artista as any).documentos_pessoais_url && (
+                        <a
+                          href={(artista as any).documentos_pessoais_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded text-sm text-primary"
+                        >
+                          <FileText className="h-4 w-4" />
+                          Documentos Pessoais
+                          <ExternalLink className="h-3 w-3 ml-auto" />
+                        </a>
+                      )}
+                      {(artista as any).presskit_url && (
+                        <a
+                          href={(artista as any).presskit_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded text-sm text-primary"
+                        >
+                          <Link2 className="h-4 w-4" />
+                          Press Kit
+                          <ExternalLink className="h-3 w-3 ml-auto" />
+                        </a>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Relacionamentos */}
+            <TabsContent value="relacionamentos" className="p-6 space-y-6 mt-0">
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                    <h3 className="font-semibold">Equipe & Parceiros</h3>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    {[
+                      { label: "Manager / Empresário", value: artista.manager_nome, sub: artista.manager_contato, icon: <Users className="h-4 w-4 text-primary" /> },
+                      { label: "Produtor Executivo", value: artista.produtor_executivo, icon: <Headphones className="h-4 w-4 text-primary" /> },
+                      { label: "Agência de Booking", value: artista.agencia_booking, icon: <Briefcase className="h-4 w-4 text-primary" /> },
+                      { label: "Label Parceira", value: artista.label_parceira, icon: <Building className="h-4 w-4 text-primary" /> },
+                    ].map(({ label, value, sub, icon }) => (
+                      <div key={label} className="p-4 bg-background/50 rounded-lg border border-border/50">
+                        <div className="flex items-center gap-2 mb-2">
+                          {icon}
+                          <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
+                        </div>
+                        {value ? (
+                          <div>
+                            <p className="font-medium text-sm" data-testid={`text-${label.toLowerCase().replace(/\s+/g, "-")}`}>{value as string}</p>
+                            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub as string}</p>}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground/60 italic">Não informado</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Perfil profissional da tab Perfil — empresário/gravadora */}
+              {(artista.empresario_nome || artista.gravadora_nome) && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Building className="h-5 w-5 text-muted-foreground" />
+                      <h3 className="font-semibold">Estrutura Contratual</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {artista.empresario_nome && (
+                        <div className="flex justify-between items-center py-2 border-b border-border/40">
+                          <span className="text-sm text-muted-foreground">Empresário</span>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{artista.empresario_nome as string}</p>
+                            {artista.empresario_telefone && <p className="text-xs text-muted-foreground">{artista.empresario_telefone as string}</p>}
+                          </div>
+                        </div>
+                      )}
+                      {artista.gravadora_nome && (
+                        <div className="flex justify-between items-center py-2 border-b border-border/40">
+                          <span className="text-sm text-muted-foreground">Gravadora</span>
+                          <div className="text-right">
+                            <p className="text-sm font-medium">{artista.gravadora_nome as string}</p>
+                            {artista.gravadora_email && <p className="text-xs text-muted-foreground">{artista.gravadora_email as string}</p>}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Catálogo */}

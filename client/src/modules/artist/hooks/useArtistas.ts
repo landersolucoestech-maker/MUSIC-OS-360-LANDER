@@ -71,6 +71,17 @@ export interface Artista {
   presskit_url?: string | null;
   // notas internas (separado de observacoes/biografia)
   notas_internas?: string | null;
+  // ── Campos Perfil 360 ─────────────────────────────────────────
+  galeria_urls?: string[] | null;
+  video_apresentacao_url?: string | null;
+  manager_nome?: string | null;
+  manager_contato?: string | null;
+  produtor_executivo?: string | null;
+  agencia_booking?: string | null;
+  label_parceira?: string | null;
+  documentos?: { nome: string; url: string }[] | null;
+  // status de onboarding
+  org_slug?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
