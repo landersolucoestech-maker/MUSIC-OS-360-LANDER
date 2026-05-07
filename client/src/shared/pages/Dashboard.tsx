@@ -1,24 +1,49 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
+import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Users, FileText, DollarSign, Calendar, ArrowRight,
   Music, TrendingUp, BarChart3, AlertTriangle, Activity,
+  UserCheck, Radio, Shield,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMetrics } from "@/shared/hooks/useMetrics";
-import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
-import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
 import { FinanceChart } from "@/shared/components/FinanceChart";
-import { ActivityFeed } from "@/shared/components/ActivityFeed";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
+import { useWsEvent } from "@/shared/hooks/useWsEvent";
 import { cn } from "@/shared/lib/utils";
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+interface ActivityItem {
+  id: string;
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  badge?: string;
+  badgeVariant?: "default" | "secondary" | "outline";
+  timestamp: Date;
+}
+
+const MAX_ITEMS = 30;
+
+function timeAgo(date: Date): string {
+  const diffMs = Date.now() - date.getTime();
+  const s = Math.floor(diffMs / 1000);
+  if (s < 60) return `${s}s atrás`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}min atrás`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h atrás`;
+  return date.toLocaleDateString("pt-BR");
+}
 
 // ─── Stat Card ────────────────────────────────────────────────────────────────
 
@@ -98,9 +123,143 @@ function SectionHeader({
 export default function Dashboard() {
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: any }>({ open: false });
   const { dashboardMetrics, artistasMetrics, isLoading } = useMetrics();
-  const { transacoes } = useTransacoes();
   const { eventos } = useEventos();
   const { contratos } = useContratos();
+
+  // ── Activity state ──────────────────────────────────────────────────────────
+  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const [tick, setTick] = useState(0);
+
+  const push = useCallback((item: Omit<ActivityItem, "id" | "timestamp">) => {
+    setActivities((prev) =>
+      [{ id: crypto.randomUUID(), timestamp: new Date(), ...item }, ...prev].slice(0, MAX_ITEMS),
+    );
+  }, []);
+
+  useEffect(() => {
+    const id = setInterval(() => setTick((t) => t + 1), 30_000);
+    return () => clearInterval(id);
+  }, []);
+
+  // WS subscriptions
+  useWsEvent("artist.created", (d) =>
+    push({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista cadastrado", description: d.id, badge: "Artista", badgeVariant: "default" }),
+  );
+  useWsEvent("artist.updated", (d) =>
+    push({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista atualizado", description: d.id, badge: "Artista", badgeVariant: "secondary" }),
+  );
+  useWsEvent("artist.deleted", (d) =>
+    push({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista removido", description: d.id, badge: "Artista", badgeVariant: "outline" }),
+  );
+  useWsEvent("catalog.music.registered", (d) =>
+    push({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: (d as { titulo?: string }).titulo ?? d.id, badge: "Catálogo", badgeVariant: "default" }),
+  );
+  useWsEvent("catalog.phonogram.registered", (d) =>
+    push({ icon: <Music className="h-3.5 w-3.5" />, label: "Fonograma registrado", description: d.id, badge: "Catálogo", badgeVariant: "secondary" }),
+  );
+  useWsEvent("contract.created", () =>
+    push({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato criado", description: "Novo contrato adicionado", badge: "Contrato", badgeVariant: "default" }),
+  );
+  useWsEvent("contract.updated", () =>
+    push({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato atualizado", description: "Alterações salvas", badge: "Contrato", badgeVariant: "secondary" }),
+  );
+  useWsEvent("contract.signed", () =>
+    push({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato assinado", description: "Assinatura registrada", badge: "Contrato", badgeVariant: "default" }),
+  );
+  useWsEvent("crm.lead.captured", (d) =>
+    push({ icon: <UserCheck className="h-3.5 w-3.5" />, label: "Lead capturado", description: (d as { nome?: string }).nome ?? d.id, badge: "CRM", badgeVariant: "default" }),
+  );
+  useWsEvent("crm.lead.converted", () =>
+    push({ icon: <UserCheck className="h-3.5 w-3.5" />, label: "Lead convertido", description: "Lead virou artista/cliente", badge: "CRM", badgeVariant: "default" }),
+  );
+  useWsEvent("finance.transaction.created", (d) =>
+    push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: `${(d as { tipo?: string }).tipo ?? "transação"}`, badge: "Accounting", badgeVariant: "default" }),
+  );
+  useWsEvent("finance.transaction.updated", () =>
+    push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação atualizada", description: "Alterações salvas", badge: "Accounting", badgeVariant: "secondary" }),
+  );
+  useWsEvent("finance.calculated", () =>
+    push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Apuração concluída", description: "Accounting recalculado", badge: "Accounting", badgeVariant: "default" }),
+  );
+  useWsEvent("audit.entry.created", (d) =>
+    push({ icon: <Shield className="h-3.5 w-3.5" />, label: `Auditoria: ${d.action}`, description: d.entity, badge: "Sistema", badgeVariant: "outline" }),
+  );
+
+  // Mock mode: window CustomEvents
+  const pushRef = useRef(push);
+  pushRef.current = push;
+
+  useEffect(() => {
+    const handlers: { event: string; fn: EventListener }[] = [
+      {
+        event: "musicos360:ARTIST_CREATED",
+        fn: (e) => {
+          const d = (e as CustomEvent).detail as { nome_artistico?: string };
+          pushRef.current({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista cadastrado", description: d.nome_artistico ?? "–", badge: "Artista", badgeVariant: "default" });
+        },
+      },
+      {
+        event: "musicos360:ARTIST_UPDATED",
+        fn: () => pushRef.current({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista atualizado", description: "Dados alterados", badge: "Artista", badgeVariant: "secondary" }),
+      },
+      {
+        event: "musicos360:ARTIST_DELETED",
+        fn: () => pushRef.current({ icon: <Users className="h-3.5 w-3.5" />, label: "Artista removido", description: "–", badge: "Artista", badgeVariant: "outline" }),
+      },
+      {
+        event: "musicos360:MUSIC_REGISTERED",
+        fn: (e) => {
+          const d = (e as CustomEvent).detail as { titulo?: string };
+          pushRef.current({ icon: <Music className="h-3.5 w-3.5" />, label: "Música registrada", description: d.titulo ?? "–", badge: "Catálogo", badgeVariant: "default" });
+        },
+      },
+      {
+        event: "musicos360:CONTRACT_CREATED",
+        fn: () => pushRef.current({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato criado", description: "Novo contrato adicionado", badge: "Contrato", badgeVariant: "default" }),
+      },
+      {
+        event: "musicos360:CONTRACT_UPDATED",
+        fn: () => pushRef.current({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato atualizado", description: "Alterações salvas", badge: "Contrato", badgeVariant: "secondary" }),
+      },
+      {
+        event: "musicos360:CONTRACT_SIGNED",
+        fn: () => pushRef.current({ icon: <FileText className="h-3.5 w-3.5" />, label: "Contrato assinado", description: "Assinatura registrada", badge: "Contrato", badgeVariant: "default" }),
+      },
+      {
+        event: "musicos360:LEAD_CAPTURED",
+        fn: (e) => {
+          const d = (e as CustomEvent).detail as { nome?: string };
+          pushRef.current({ icon: <UserCheck className="h-3.5 w-3.5" />, label: "Lead capturado", description: d.nome ?? "–", badge: "CRM", badgeVariant: "default" });
+        },
+      },
+      {
+        event: "musicos360:LEAD_CONVERTED",
+        fn: () => pushRef.current({ icon: <UserCheck className="h-3.5 w-3.5" />, label: "Lead convertido", description: "Lead virou artista/cliente", badge: "CRM", badgeVariant: "default" }),
+      },
+      {
+        event: "musicos360:TRANSACTION_CREATED",
+        fn: (e) => {
+          const d = (e as CustomEvent).detail as { tipo?: string; descricao?: string };
+          pushRef.current({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação registrada", description: d.descricao ?? d.tipo ?? "transação", badge: "Accounting", badgeVariant: "default" });
+        },
+      },
+      {
+        event: "musicos360:TRANSACTION_UPDATED",
+        fn: () => pushRef.current({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Transação atualizada", description: "Alterações salvas", badge: "Accounting", badgeVariant: "secondary" }),
+      },
+      {
+        event: "musicos360:FINANCE_CALCULATED",
+        fn: () => pushRef.current({ icon: <Radio className="h-3.5 w-3.5" />, label: "Apuração concluída", description: "Accounting recalculado", badge: "Accounting", badgeVariant: "default" }),
+      },
+    ];
+
+    handlers.forEach(({ event, fn }) => window.addEventListener(event, fn));
+    return () => handlers.forEach(({ event, fn }) => window.removeEventListener(event, fn));
+  }, []);
+
+  void tick;
+
+  // ── Derived data ────────────────────────────────────────────────────────────
 
   const contratosPorArtista = (() => {
     const map = new Map<string, ContratoWithRelations[]>();
@@ -179,61 +338,76 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* ── Main Grid: Atividades + Agenda ── */}
+        {/* ── Main Grid: Atividades Recentes + Agenda ── */}
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
 
-          {/* Transações Recentes */}
-          <Card>
+          {/* Atividades Recentes — all system events */}
+          <Card data-testid="card-activity-feed">
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-sm font-semibold">Atividades Recentes</CardTitle>
-                  <CardDescription className="text-xs mt-0.5">Últimas movimentações financeiras</CardDescription>
+                <div className="flex items-center gap-2">
+                  <div className="rounded-md bg-primary/10 border border-primary/20 p-1.5">
+                    <Activity className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Atividades Recentes</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Todas as ações realizadas no sistema
+                    </CardDescription>
+                  </div>
                 </div>
-                <Link to="/financeiro">
-                  <Button variant="ghost" size="sm" className="h-7 text-xs text-muted-foreground hover:text-foreground gap-1.5">
-                    Ver todas <ArrowRight className="h-3 w-3" />
-                  </Button>
-                </Link>
+                {activities.length > 0 && (
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {activities.length}
+                  </Badge>
+                )}
               </div>
             </CardHeader>
-            <CardContent className="pt-0">
-              {transacoes.length > 0 ? (
-                <div className="divide-y divide-border/60">
-                  {transacoes.slice(0, 6).map((t) => (
-                    <div key={t.id} className="flex items-center gap-3 py-3 first:pt-0 last:pb-0">
-                      <div className={cn(
-                        "w-7 h-7 rounded-md flex items-center justify-center shrink-0 border",
-                        t.tipo === "receita"
-                          ? "bg-success/10 border-success/20 text-success"
-                          : "bg-destructive/10 border-destructive/20 text-destructive"
-                      )}>
-                        <DollarSign className="h-3.5 w-3.5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium leading-tight truncate">{t.descricao}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {new Date(t.data).toLocaleDateString("pt-BR")}
-                        </p>
-                      </div>
-                      <span className={cn(
-                        "text-sm font-mono font-medium shrink-0",
-                        t.tipo === "receita" ? "text-success" : "text-destructive"
-                      )}>
-                        {t.tipo === "receita" ? "+" : "-"}{formatCurrency(t.valor)}
-                      </span>
+            <CardContent className="pt-0 p-0">
+              <ScrollArea className="h-[320px] px-6 pb-4">
+                {activities.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-[280px] text-center">
+                    <div className="rounded-xl bg-muted/60 border border-border p-4 mb-3">
+                      <TrendingUp className="h-6 w-6 text-muted-foreground" />
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-10 text-center">
-                  <div className="rounded-xl bg-muted/60 border border-border p-4 mb-3">
-                    <TrendingUp className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-sm font-medium text-muted-foreground">Nenhuma atividade ainda</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">
+                      Ações como criar artistas, registrar músicas ou transações aparecerão aqui
+                    </p>
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">Nenhuma atividade</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">As movimentações aparecerão aqui</p>
-                </div>
-              )}
+                ) : (
+                  <div className="divide-y divide-border/60">
+                    {activities.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          "flex items-start gap-3 py-3 first:pt-0 last:pb-0 transition-colors",
+                          idx === 0 && "animate-in slide-in-from-top-1 duration-300",
+                        )}
+                        data-testid={`activity-item-${item.id}`}
+                      >
+                        <div className="mt-0.5 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+                          {item.icon}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-medium">{item.label}</span>
+                            {item.badge && (
+                              <Badge variant={item.badgeVariant ?? "secondary"} className="text-xs px-1.5 py-0">
+                                {item.badge}
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">{item.description}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0 font-mono">
+                          {timeAgo(item.timestamp)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
             </CardContent>
           </Card>
 
@@ -293,9 +467,6 @@ export default function Dashboard() {
         {/* ── Finance Chart ── */}
         <FinanceChart />
 
-        {/* ── Activity Feed ── */}
-        <ActivityFeed />
-
         {/* ── Artistas em Destaque ── */}
         <div>
           <SectionHeader
@@ -312,7 +483,6 @@ export default function Dashboard() {
                   data-testid={`card-artista-destaque-${artista.id}`}
                 >
                   <CardContent className="p-4">
-                    {/* Header row */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="min-w-0 flex-1">
                         <h3 className="font-semibold text-sm leading-tight truncate">{artista.nome}</h3>
@@ -328,7 +498,6 @@ export default function Dashboard() {
                       </span>
                     </div>
 
-                    {/* Stats */}
                     <div className="space-y-1.5">
                       <div className="flex items-center justify-between">
                         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
@@ -355,7 +524,6 @@ export default function Dashboard() {
                       </div>
                     </div>
 
-                    {/* CTA */}
                     <Button
                       variant="ghost"
                       size="sm"
