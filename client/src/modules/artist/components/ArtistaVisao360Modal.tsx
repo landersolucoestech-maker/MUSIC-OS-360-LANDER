@@ -466,13 +466,6 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               Perfil
             </TabsTrigger>
             <TabsTrigger
-              value="relacionamentos"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-              data-testid="tab-relacionamentos"
-            >
-              Relações
-            </TabsTrigger>
-            <TabsTrigger
               value="catalogo"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
             >
@@ -1233,72 +1226,6 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               )}
             </TabsContent>
 
-            {/* Relacionamentos */}
-            <TabsContent value="relacionamentos" className="p-6 space-y-6 mt-0">
-              <Card className="bg-muted/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Briefcase className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold">Equipe & Parceiros</h3>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    {[
-                      { label: "Manager / Empresário", value: artista.manager_nome, sub: artista.manager_contato, icon: <Users className="h-4 w-4 text-primary" /> },
-                      { label: "Produtor Executivo", value: artista.produtor_executivo, icon: <Headphones className="h-4 w-4 text-primary" /> },
-                      { label: "Agência de Booking", value: artista.agencia_booking, icon: <Briefcase className="h-4 w-4 text-primary" /> },
-                      { label: "Label Parceira", value: artista.label_parceira, icon: <Building className="h-4 w-4 text-primary" /> },
-                    ].map(({ label, value, sub, icon }) => (
-                      <div key={label} className="p-4 bg-background/50 rounded-lg border border-border/50">
-                        <div className="flex items-center gap-2 mb-2">
-                          {icon}
-                          <p className="text-xs text-muted-foreground uppercase tracking-wide">{label}</p>
-                        </div>
-                        {value ? (
-                          <div>
-                            <p className="font-medium text-sm" data-testid={`text-${label.toLowerCase().replace(/\s+/g, "-")}`}>{value as string}</p>
-                            {sub && <p className="text-xs text-muted-foreground mt-0.5">{sub as string}</p>}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground/60 italic">Não informado</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Perfil profissional da tab Perfil — empresário/gravadora */}
-              {(artista.empresario_nome || artista.gravadora_nome) && (
-                <Card className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Building className="h-5 w-5 text-muted-foreground" />
-                      <h3 className="font-semibold">Estrutura Contratual</h3>
-                    </div>
-                    <div className="space-y-3">
-                      {artista.empresario_nome && (
-                        <div className="flex justify-between items-center py-2 border-b border-border/40">
-                          <span className="text-sm text-muted-foreground">Empresário</span>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{artista.empresario_nome as string}</p>
-                            {artista.empresario_telefone && <p className="text-xs text-muted-foreground">{artista.empresario_telefone as string}</p>}
-                          </div>
-                        </div>
-                      )}
-                      {artista.gravadora_nome && (
-                        <div className="flex justify-between items-center py-2 border-b border-border/40">
-                          <span className="text-sm text-muted-foreground">Gravadora</span>
-                          <div className="text-right">
-                            <p className="text-sm font-medium">{artista.gravadora_nome as string}</p>
-                            {artista.gravadora_email && <p className="text-xs text-muted-foreground">{artista.gravadora_email as string}</p>}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-            </TabsContent>
 
             {/* Catálogo */}
             <TabsContent value="catalogo" className="p-6 space-y-6 mt-0">
