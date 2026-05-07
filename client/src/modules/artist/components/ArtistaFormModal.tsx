@@ -89,6 +89,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [dataNascimento, setDataNascimento] = useState("");
   const [cpfCnpj, setCpfCnpj] = useState("");
   const [rg, setRg] = useState("");
+  const [genero, setGenero] = useState("");
   const [endereco, setEndereco] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
@@ -165,7 +166,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setImagemArtista([]); setNomeArtistico(""); setGeneroMusical("");
     setTipoArtistaTabela("artista_solo"); setStatusArtistaTabela("contratado");
     setEspecialidades([]); setDocumentosPessoais([]); setPresskit([]); setBiografia("");
-    setNome(""); setDataNascimento(""); setCpfCnpj(""); setRg("");
+    setNome(""); setDataNascimento(""); setCpfCnpj(""); setRg(""); setGenero("");
     setEndereco(""); setTelefone(""); setEmail("");
     setBanco(""); setAgencia(""); setConta(""); setChavePix(""); setTitularConta("");
     setSpotify(""); setSpotifyOuvintes("");
@@ -207,6 +208,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       setDataNascimento(f.dataNascimento);
       setCpfCnpj(f.cpfCnpj);
       setRg(f.rg);
+      setGenero(typeof artista.genero === "string" ? artista.genero : "");
       setEndereco(f.endereco);
       setTelefone(f.telefone);
       setEmail(f.email);
@@ -380,6 +382,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       });
 
       const extraFields = {
+        genero: genero || null,
         banner_url: bannerUrl.trim() || null,
         galeria_urls: galeriaUrls.length > 0 ? galeriaUrls : null,
         video_apresentacao_url: videoApresentacaoUrl.trim() || null,
@@ -580,14 +583,28 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Endereço Completo</Label>
-                <Input
-                  placeholder="Rua, número, bairro, cidade, estado, CEP"
-                  value={endereco}
-                  onChange={(e) => setEndereco(e.target.value)}
-                  data-testid="input-endereco"
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Gênero</Label>
+                  <Select value={genero} onValueChange={setGenero}>
+                    <SelectTrigger data-testid="select-genero-pessoa">
+                      <SelectValue placeholder="Selecione o gênero" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-background border border-border z-50">
+                      <SelectItem value="Masculino">Masculino</SelectItem>
+                      <SelectItem value="Feminino">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label>Endereço Completo</Label>
+                  <Input
+                    placeholder="Rua, número, bairro, cidade, estado, CEP"
+                    value={endereco}
+                    onChange={(e) => setEndereco(e.target.value)}
+                    data-testid="input-endereco"
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">

@@ -1077,6 +1077,12 @@ export function ArtistaVisao360Modal({
                         {artista.rg || "Não informado"}
                       </p>
                     </div>
+                    <div>
+                      <p className="text-xs text-muted-foreground">Gênero</p>
+                      <p className="text-sm font-medium">
+                        {(artista as Record<string, unknown>).genero as string || "Não informado"}
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
