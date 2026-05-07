@@ -7,6 +7,10 @@
  * Os paths legados (hooks/useXxx) continuam funcionando sem quebras.
  * Novo código deve importar via submodule ou via este barrel.
  */
+
+// Integration registry — metadata for all integrations
+export * from "./registry";
+
 export * from "./hooks/useAbramus";
 export * from "./hooks/useAppleMusic";
 export * from "./hooks/useAutentique";

@@ -4,17 +4,15 @@ import { TooltipProvider } from "@/shared/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/app/providers/AuthContext";
+import { TenantProvider } from "@/app/providers/TenantContext";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { RouteErrorBoundary } from "@/shared/components/RouteErrorBoundary";
 import { PageSkeleton } from "@/shared/components/PageSkeletons";
 import { createQueryClient } from "@/shared/lib/query-config";
 import type { SuspenseRouteComponent } from "@/app/routes/types";
-// STEP 4 — Consistency hooks auto-register on import (side-effect)
 import "@/shared/domain-events/consistency";
 import { RealtimeLayer } from "@/shared/components/RealtimeLayer";
 
-// Domain route factories — called as functions (not JSX components) so React Router
-// receives plain <React.Fragment> children, which <Routes> accepts.
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
 import { catalogRoutes } from "@/app/routes/catalog.routes";
@@ -39,9 +37,7 @@ const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
 );
 
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
-  <SuspenseRoute>
-    {children}
-  </SuspenseRoute>
+  <SuspenseRoute>{children}</SuspenseRoute>
 );
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
@@ -62,31 +58,30 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <RealtimeLayer />
-        <TooltipProvider>
-          <Sonner />
-          <BrowserRouter>
-            <Routes>
-              {/* Public (no auth required) */}
-              {publicRoutes(SuspenseRoute)}
+        <TenantProvider>
+          <RealtimeLayer />
+          <TooltipProvider>
+            <Sonner />
+            <BrowserRouter>
+              <Routes>
+                {publicRoutes(SuspenseRoute)}
 
-              {/* Dashboard */}
-              <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-              <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
-              {/* Domain route groups */}
-              {artistRoutes(ProtectedRoute)}
-              {catalogRoutes(ProtectedRoute)}
-              {financeiroRoutes(ProtectedRoute)}
-              {releasesRoutes(ProtectedRoute)}
-              {crmRoutes(ProtectedRoute)}
-              {marketingRoutes(ProtectedRoute)}
-              {settingsRoutes(ProtectedRoute)}
-              {operationsRoutes(ProtectedRoute)}
-              {adminRoutes(SuspenseRoute, SuperAdminRoute)}
-            </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+                {artistRoutes(ProtectedRoute)}
+                {catalogRoutes(ProtectedRoute)}
+                {financeiroRoutes(ProtectedRoute)}
+                {releasesRoutes(ProtectedRoute)}
+                {crmRoutes(ProtectedRoute)}
+                {marketingRoutes(ProtectedRoute)}
+                {settingsRoutes(ProtectedRoute)}
+                {operationsRoutes(ProtectedRoute)}
+                {adminRoutes(SuspenseRoute, SuperAdminRoute)}
+              </Routes>
+            </BrowserRouter>
+          </TooltipProvider>
+        </TenantProvider>
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
