@@ -40,6 +40,7 @@ import { toast } from "sonner";
 import {
   artistaToExportRow,
   importRowToArtista,
+  ESPECIALIDADES_LABELS,
 } from "@/modules/artist/mappers";
 import { cn } from "@/shared/lib/utils";
 
@@ -475,6 +476,11 @@ export default function Artistas() {
                                   <StatusBadge status={vinculo.status} label={vinculo.label} />
                                 )}
                               </div>
+                              {Array.isArray(artista.especialidades) && artista.especialidades.length > 0 && (
+                                <p className="text-[11px] text-muted-foreground leading-tight">
+                                  {artista.especialidades.map((e: string) => ESPECIALIDADES_LABELS[e] ?? e).join(" · ")}
+                                </p>
+                              )}
                               {artista.genero_musical && (
                                 <Badge variant="outline" className="text-[10px] px-1.5 py-0 border-border text-muted-foreground h-5">
                                   {artista.genero_musical}
