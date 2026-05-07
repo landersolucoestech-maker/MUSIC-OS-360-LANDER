@@ -19,7 +19,7 @@ const getStatusBadge = (status: string) => {
     case "nao_reportado":
     case "não reportado": return <Badge className="bg-destructive">Não Reportado</Badge>;
     case "processado": return <Badge className="bg-success capitalize">{status}</Badge>;
-    default:           return <Badge variant="secondary" className="capitalize">{status}</Badge>;
+    default:           return <Badge variant="secondary" className="capitalize">{status?.replace(/_/g, " ")}</Badge>;
   }
 };
 

@@ -51,7 +51,7 @@ export const CRMViewModal = forwardRef<HTMLDivElement, CRMViewModalProps>(
         case "cliente_ativo": return <Badge className="bg-success">Cliente Ativo</Badge>;
         case "lead": return <Badge className="bg-blue-600">Lead</Badge>;
         case "inativo": return <Badge className="bg-slate-500">Inativo</Badge>;
-        default: return <Badge variant="secondary">{status}</Badge>;
+        default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;
       }
     };
 

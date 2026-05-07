@@ -18,7 +18,7 @@ export function TakedownViewModal({ open, onOpenChange, takedown }: TakedownView
       case "Pendente": return <Badge className="bg-warning text-warning-foreground">{status}</Badge>;
       case "Em Análise": return <Badge className="bg-blue-500">{status}</Badge>;
       case "Rejeitado": return <Badge className="bg-destructive">{status}</Badge>;
-      default: return <Badge variant="secondary">{status}</Badge>;
+      default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;
     }
   };
 

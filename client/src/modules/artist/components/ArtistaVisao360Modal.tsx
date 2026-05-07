@@ -1,6 +1,11 @@
 import { useState } from "react";
 import { ESPECIALIDADES_LABELS } from "@/modules/artist/mappers";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/shared/ui/dialog";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -9,7 +14,13 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Progress } from "@/shared/ui/progress";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { Separator } from "@/shared/ui/separator";
 import {
@@ -63,17 +74,39 @@ import {
 const estagiosCarreira = [
   { nivel: 1, nome: "Iniciante", descricao: "Começando a carreira musical" },
   { nivel: 2, nome: "Emergente", descricao: "Construindo uma base de fãs" },
-  { nivel: 3, nome: "Em Desenvolvimento", descricao: "Ganhando tração no mercado" },
-  { nivel: 4, nome: "Promissor", descricao: "Potencial reconhecido pela indústria" },
-  { nivel: 5, nome: "Estabelecido", descricao: "Presença consolidada no mercado" },
-  { nivel: 6, nome: "Sustentável", descricao: "Receita recorrente e base de fãs leal" },
+  {
+    nivel: 3,
+    nome: "Em Desenvolvimento",
+    descricao: "Ganhando tração no mercado",
+  },
+  {
+    nivel: 4,
+    nome: "Promissor",
+    descricao: "Potencial reconhecido pela indústria",
+  },
+  {
+    nivel: 5,
+    nome: "Estabelecido",
+    descricao: "Presença consolidada no mercado",
+  },
+  {
+    nivel: 6,
+    nome: "Sustentável",
+    descricao: "Receita recorrente e base de fãs leal",
+  },
   { nivel: 7, nome: "Influente", descricao: "Referência no gênero musical" },
   { nivel: 8, nome: "Dominante", descricao: "Liderança no mercado nacional" },
   { nivel: 9, nome: "Elite", descricao: "Top do mercado brasileiro" },
   { nivel: 10, nome: "Lendário", descricao: "Ícone da música brasileira" },
 ];
 
-function CircularProgress({ value, label, sublabel, color = "teal", badge }: {
+function CircularProgress({
+  value,
+  label,
+  sublabel,
+  color = "teal",
+  badge,
+}: {
   value: number;
   label: string;
   sublabel?: string;
@@ -87,7 +120,7 @@ function CircularProgress({ value, label, sublabel, color = "teal", badge }: {
     /* intentional: SVG stroke for donut chart — CSS var cannot drive SVG stroke directly */
     red: { stroke: "stroke-red-500", text: "text-red-500" },
   };
-  
+
   const badgeColors = {
     high: "bg-success text-success-foreground",
     medium: "bg-warning text-warning-foreground",
@@ -102,21 +135,45 @@ function CircularProgress({ value, label, sublabel, color = "teal", badge }: {
   return (
     <div className="flex flex-col items-center gap-1">
       {badge && (
-        <span className={`text-[10px] px-2 py-0.5 rounded-full ${badgeColors[badge.variant]}`}>
+        <span
+          className={`text-[10px] px-2 py-0.5 rounded-full ${badgeColors[badge.variant]}`}
+        >
           {badge.text}
         </span>
       )}
       <div className="relative w-16 h-16">
         <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
-          <circle cx="40" cy="40" r={radius} fill="none" stroke="currentColor" strokeWidth={6} className="text-muted/20" />
-          <circle cx="40" cy="40" r={radius} fill="none" strokeWidth={6} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={strokeDashoffset} className={c.stroke} />
+          <circle
+            cx="40"
+            cy="40"
+            r={radius}
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={6}
+            className="text-muted/20"
+          />
+          <circle
+            cx="40"
+            cy="40"
+            r={radius}
+            fill="none"
+            strokeWidth={6}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            className={c.stroke}
+          />
         </svg>
         <div className="absolute inset-0 flex items-center justify-center">
           <span className={`font-bold text-lg ${c.text}`}>{value}</span>
         </div>
       </div>
       <span className="text-xs font-medium text-center">{label}</span>
-      {sublabel && <span className="text-[10px] text-muted-foreground text-center max-w-[70px] truncate">{sublabel}</span>}
+      {sublabel && (
+        <span className="text-[10px] text-muted-foreground text-center max-w-[70px] truncate">
+          {sublabel}
+        </span>
+      )}
     </div>
   );
 }
@@ -126,9 +183,15 @@ import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useMetas } from "@/modules/marketing/hooks/useMetas";
-import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
+import {
+  useContratos,
+  type ContratoWithRelations,
+} from "@/modules/contracts/hooks/useContratos";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
+import {
+  ContratoStatusBadge,
+  getContratoSituacao,
+} from "@/shared/components/ContratoStatusBadge";
 
 interface Meta {
   id: number;
@@ -149,7 +212,6 @@ interface ArtistaVisao360ModalProps {
   onOpenChange: (open: boolean) => void;
   artista?: any;
 }
-
 
 const getHistoricoIcon = (tipo: string) => {
   switch (tipo) {
@@ -181,7 +243,9 @@ const getHistoricoBadge = (tipo: string) => {
     case "obra":
       return <Badge className="bg-purple-600">Obra</Badge>;
     case "contrato":
-      return <Badge className="bg-warning text-warning-foreground">Contrato</Badge>;
+      return (
+        <Badge className="bg-warning text-warning-foreground">Contrato</Badge>
+      );
     case "financeiro":
       return <Badge className="bg-emerald-600">Financeiro</Badge>;
     case "exclusao":
@@ -217,28 +281,46 @@ const statusMeta = [
   { value: "cancelada", label: "Cancelada", color: "bg-destructive" },
 ];
 
-export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVisao360ModalProps) {
+export function ArtistaVisao360Modal({
+  open,
+  onOpenChange,
+  artista,
+}: ArtistaVisao360ModalProps) {
   const { obras } = useObras();
   const { fonogramas } = useFonogramas();
   const { lancamentos } = useLancamentos();
   const { projetos } = useProjetos();
-  const { metas: metasList, addMeta, updateMeta, deleteMeta, getProgressPercent: calcProgress } = useMetas();
+  const {
+    metas: metasList,
+    addMeta,
+    updateMeta,
+    deleteMeta,
+    getProgressPercent: calcProgress,
+  } = useMetas();
   const { contratos } = useContratos();
   const { transacoes } = useTransacoes();
 
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [showMetaForm, setShowMetaForm] = useState(false);
   const [editingMeta, setEditingMeta] = useState<Meta | null>(null);
-  
+
   // Filter data by artista_id
   const artistaId = artista?.id;
   const obrasReais = obras.filter((o: any) => o.artista_id === artistaId);
-  const fonogramasReais = fonogramas.filter((f: any) => f.artista_id === artistaId);
-  const lancamentosReais = lancamentos.filter((l: any) => l.artista_id === artistaId);
+  const fonogramasReais = fonogramas.filter(
+    (f: any) => f.artista_id === artistaId,
+  );
+  const lancamentosReais = lancamentos.filter(
+    (l: any) => l.artista_id === artistaId,
+  );
   const projetosReais = projetos.filter((p: any) => p.artista_id === artistaId);
   const metasReais = metasList.filter((m: any) => m.artista_id === artistaId);
-  const contratosReais: ContratoWithRelations[] = contratos.filter((c) => c.artista_id === artistaId);
-  const transacoesArtista = transacoes.filter((t) => t.artista_id === artistaId);
+  const contratosReais: ContratoWithRelations[] = contratos.filter(
+    (c) => c.artista_id === artistaId,
+  );
+  const transacoesArtista = transacoes.filter(
+    (t) => t.artista_id === artistaId,
+  );
 
   // ── Financeiro real ──────────────────────────────────────────────────
   const receitasTotal = transacoesArtista
@@ -256,30 +338,71 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
   const today = new Date();
   const in60Days = new Date(Date.now() + 60 * 24 * 60 * 60 * 1000);
   const ATIVOS_STATUS = ["assinado", "vigente"];
-  const contratosAtivos = contratosReais.filter((c) => ATIVOS_STATUS.includes(c.status ?? "")).length;
+  const contratosAtivos = contratosReais.filter((c) =>
+    ATIVOS_STATUS.includes(c.status ?? ""),
+  ).length;
   const contratosVencendo = contratosReais.filter((c) => {
     if (!c.data_fim || !ATIVOS_STATUS.includes(c.status ?? "")) return false;
     const fim = new Date(c.data_fim);
     return fim > today && fim <= in60Days;
   }).length;
 
-
   // ── Histórico derivado de dados reais ────────────────────────────────
-  const historicoReal: { id: string; tipo: string; descricao: string; data: string; usuario: string }[] = [];
+  const historicoReal: {
+    id: string;
+    tipo: string;
+    descricao: string;
+    data: string;
+    usuario: string;
+  }[] = [];
   if (artista?.created_at) {
-    historicoReal.push({ id: "criacao", tipo: "criacao", descricao: "Artista cadastrado no sistema", data: artista.created_at, usuario: "Admin" });
+    historicoReal.push({
+      id: "criacao",
+      tipo: "criacao",
+      descricao: "Artista cadastrado no sistema",
+      data: artista.created_at,
+      usuario: "Admin",
+    });
   }
   contratosReais.forEach((c) => {
-    if (c.created_at) historicoReal.push({ id: `ctr-${c.id}`, tipo: "contrato", descricao: `Contrato assinado: ${c.titulo}`, data: c.created_at, usuario: "Admin" });
+    if (c.created_at)
+      historicoReal.push({
+        id: `ctr-${c.id}`,
+        tipo: "contrato",
+        descricao: `Contrato assinado: ${c.titulo}`,
+        data: c.created_at,
+        usuario: "Admin",
+      });
   });
   obrasReais.slice(0, 5).forEach((o: any) => {
-    if (o.created_at) historicoReal.push({ id: `obra-${o.id}`, tipo: "obra", descricao: `Obra registrada: ${o.titulo}`, data: o.created_at, usuario: "Produtor" });
+    if (o.created_at)
+      historicoReal.push({
+        id: `obra-${o.id}`,
+        tipo: "obra",
+        descricao: `Obra registrada: ${o.titulo}`,
+        data: o.created_at,
+        usuario: "Produtor",
+      });
   });
   lancamentosReais.slice(0, 5).forEach((l: any) => {
-    if (l.created_at) historicoReal.push({ id: `lanc-${l.id}`, tipo: "obra", descricao: `Lançamento registrado: ${l.titulo}`, data: l.created_at, usuario: "Admin" });
+    if (l.created_at)
+      historicoReal.push({
+        id: `lanc-${l.id}`,
+        tipo: "obra",
+        descricao: `Lançamento registrado: ${l.titulo}`,
+        data: l.created_at,
+        usuario: "Admin",
+      });
   });
   transacoesArtista.slice(0, 3).forEach((t) => {
-    if (t.created_at) historicoReal.push({ id: `txn-${t.id}`, tipo: "financeiro", descricao: t.descricao, data: t.created_at, usuario: "Financeiro" });
+    if (t.created_at)
+      historicoReal.push({
+        id: `txn-${t.id}`,
+        tipo: "financeiro",
+        descricao: t.descricao,
+        data: t.created_at,
+        usuario: "Financeiro",
+      });
   });
   // Status-change events derivados do status atual do artista
   const STATUS_LABELS: Record<string, string> = {
@@ -289,11 +412,25 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
     inativo: "Artista inativado",
     suspenso: "Artista suspenso",
   };
-  if (artista?.status && artista.status !== "contratado" && artista.updated_at) {
-    const label = STATUS_LABELS[artista.status] ?? `Status alterado para: ${artista.status}`;
-    historicoReal.push({ id: `status-${artista.status}`, tipo: "status", descricao: label, data: artista.updated_at, usuario: "Admin" });
+  if (
+    artista?.status &&
+    artista.status !== "contratado" &&
+    artista.updated_at
+  ) {
+    const label =
+      STATUS_LABELS[artista.status] ??
+      `Status alterado para: ${artista.status}`;
+    historicoReal.push({
+      id: `status-${artista.status}`,
+      tipo: "status",
+      descricao: label,
+      data: artista.updated_at,
+      usuario: "Admin",
+    });
   }
-  historicoReal.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  historicoReal.sort(
+    (a, b) => new Date(b.data).getTime() - new Date(a.data).getTime(),
+  );
 
   // Tendência da evolução (Task #361): chips de "↑/↓/—" nos cards de
   // plataforma do dashboard 360 reusam os mesmos snapshots diários
@@ -393,11 +530,18 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
     await deleteMeta(String(id));
   };
 
-  const metasEmProgresso = metasReais.filter((m) => m.status === "em_progresso").length;
-  const metasConcluidas = metasReais.filter((m) => m.status === "concluida").length;
+  const metasEmProgresso = metasReais.filter(
+    (m) => m.status === "em_progresso",
+  ).length;
+  const metasConcluidas = metasReais.filter(
+    (m) => m.status === "concluida",
+  ).length;
   const progressoMedio =
     metasReais.length > 0
-      ? Math.round(metasReais.reduce((acc, m) => acc + calcProgress(m), 0) / metasReais.length)
+      ? Math.round(
+          metasReais.reduce((acc, m) => acc + calcProgress(m), 0) /
+            metasReais.length,
+        )
       : 0;
 
   return (
@@ -411,7 +555,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 src={artista.banner_url}
                 alt="Banner do artista"
                 className="w-full h-full object-cover"
-                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
             </div>
@@ -419,30 +565,55 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
           <div className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
-                <div className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}>
+                <div
+                  className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}
+                >
                   {artista.foto_url ? (
-                    <img src={artista.foto_url} alt={artista.nome_artistico} className="w-full h-full rounded-full object-cover" />
+                    <img
+                      src={artista.foto_url}
+                      alt={artista.nome_artistico}
+                      className="w-full h-full rounded-full object-cover"
+                    />
                   ) : (
                     artista.nome_artistico?.[0] || "A"
                   )}
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold">{artista.nome_artistico}</h2>
+                  <h2 className="text-xl font-bold">
+                    {artista.nome_artistico}
+                  </h2>
                   <div className="flex items-center gap-2 mt-1">
                     <Badge variant="outline" className="bg-muted">
                       {artista.genero_musical || "Não informado"}
                     </Badge>
                     {artista.status === "onboarding" ? (
-                      <Badge className="bg-warning text-warning-foreground">Onboarding</Badge>
-                    ) : (() => {
-                      const ATIVO_S = new Set(["ativo", "assinado", "vigente", "vencendo"]);
-                      const isExclusivo = contratosReais.some(
-                        c => c.exclusivo === true && ATIVO_S.has((c.status || "").toLowerCase())
-                      );
-                      return isExclusivo
-                        ? <Badge className="bg-success hover:bg-success text-success-foreground">Artista exclusivo</Badge>
-                        : <Badge className="bg-primary hover:bg-primary text-primary-foreground">Artista parceiro</Badge>;
-                    })()}
+                      <Badge className="bg-warning text-warning-foreground">
+                        Onboarding
+                      </Badge>
+                    ) : (
+                      (() => {
+                        const ATIVO_S = new Set([
+                          "ativo",
+                          "assinado",
+                          "vigente",
+                          "vencendo",
+                        ]);
+                        const isExclusivo = contratosReais.some(
+                          (c) =>
+                            c.exclusivo === true &&
+                            ATIVO_S.has((c.status || "").toLowerCase()),
+                        );
+                        return isExclusivo ? (
+                          <Badge className="bg-success hover:bg-success text-success-foreground">
+                            Artista exclusivo
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-primary hover:bg-primary text-primary-foreground">
+                            Artista parceiro
+                          </Badge>
+                        );
+                      })()
+                    )}
                   </div>
                 </div>
               </div>
@@ -521,30 +692,56 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                         <div className="flex items-start gap-4 mb-4">
                           <div className="relative">
                             <div className="h-14 w-14 rounded-full bg-teal-500/20 border-4 border-teal-500 flex items-center justify-center">
-                              <span className="text-xl font-bold text-teal-400">{artista.estagio_carreira}</span>
+                              <span className="text-xl font-bold text-teal-400">
+                                {artista.estagio_carreira}
+                              </span>
                             </div>
-                            <span className="absolute -top-1 -right-1 text-[9px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full">de 10</span>
+                            <span className="absolute -top-1 -right-1 text-[9px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full">
+                              de 10
+                            </span>
                           </div>
                           <div className="flex-1">
-                            <h4 className="text-lg font-bold text-teal-400">{estagiosCarreira[artista.estagio_carreira - 1]?.nome}</h4>
-                            <p className="text-xs text-muted-foreground mt-1">{estagiosCarreira[artista.estagio_carreira - 1]?.descricao}</p>
+                            <h4 className="text-lg font-bold text-teal-400">
+                              {
+                                estagiosCarreira[artista.estagio_carreira - 1]
+                                  ?.nome
+                              }
+                            </h4>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {
+                                estagiosCarreira[artista.estagio_carreira - 1]
+                                  ?.descricao
+                              }
+                            </p>
                           </div>
                         </div>
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          {[1,2,3,4,5,6,7,8,9,10].map((n) => (
-                            <div key={n} className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ${
-                              n < artista.estagio_carreira ? "bg-teal-500 text-white"
-                                : n === artista.estagio_carreira ? "bg-teal-500 text-white ring-2 ring-teal-400 ring-offset-1 ring-offset-background"
-                                : "bg-muted text-muted-foreground"
-                            }`}>{n}</div>
+                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((n) => (
+                            <div
+                              key={n}
+                              className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ${
+                                n < artista.estagio_carreira
+                                  ? "bg-teal-500 text-white"
+                                  : n === artista.estagio_carreira
+                                    ? "bg-teal-500 text-white ring-2 ring-teal-400 ring-offset-1 ring-offset-background"
+                                    : "bg-muted text-muted-foreground"
+                              }`}
+                            >
+                              {n}
+                            </div>
                           ))}
                         </div>
                       </>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
                         <TrendingUp className="h-10 w-10 text-muted-foreground/30" />
-                        <p className="text-sm font-medium text-muted-foreground">Estágio não definido</p>
-                        <p className="text-xs text-muted-foreground/70">Edite o perfil do artista e defina o estágio da carreira (1–10).</p>
+                        <p className="text-sm font-medium text-muted-foreground">
+                          Estágio não definido
+                        </p>
+                        <p className="text-xs text-muted-foreground/70">
+                          Edite o perfil do artista e defina o estágio da
+                          carreira (1–10).
+                        </p>
                       </div>
                     )}
                   </CardContent>
@@ -559,8 +756,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     </div>
                     <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
                       <BarChart3 className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm font-medium text-muted-foreground">Sem dados de mercado</p>
-                      <p className="text-xs text-muted-foreground/70">Conecte uma fonte de análise de mercado para visualizar o benchmark comparativo.</p>
+                      <p className="text-sm font-medium text-muted-foreground">
+                        Sem dados de mercado
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Conecte uma fonte de análise de mercado para visualizar
+                        o benchmark comparativo.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -592,7 +794,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <Disc className="h-4 w-4 text-success" />
                       <span className="text-sm">Fonogramas</span>
                     </div>
-                    <p className="text-2xl font-bold">{fonogramasReais.length}</p>
+                    <p className="text-2xl font-bold">
+                      {fonogramasReais.length}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
@@ -601,7 +805,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <Rocket className="h-4 w-4 text-warning" />
                       <span className="text-sm">Lançamentos</span>
                     </div>
-                    <p className="text-2xl font-bold">{lancamentosReais.length}</p>
+                    <p className="text-2xl font-bold">
+                      {lancamentosReais.length}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
@@ -610,7 +816,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <FileText className="h-4 w-4 text-blue-500" />
                       <span className="text-sm">Contratos</span>
                     </div>
-                    <p className="text-2xl font-bold">{contratosReais.length}</p>
+                    <p className="text-2xl font-bold">
+                      {contratosReais.length}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -624,8 +832,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   </div>
                   <div className="flex flex-col items-center justify-center py-6 text-center gap-2">
                     <Zap className="h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">Plano não configurado</p>
-                    <p className="text-xs text-muted-foreground/70">O plano de aceleração será exibido quando métricas validadas forem cadastradas para este artista.</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Plano não configurado
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      O plano de aceleração será exibido quando métricas
+                      validadas forem cadastradas para este artista.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -637,13 +850,20 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     <div className="flex items-center gap-2 mb-3">
                       <Lightbulb className="h-5 w-5 text-teal-500" />
                       <div>
-                        <h3 className="font-semibold">Diagnóstico de Gargalo</h3>
+                        <h3 className="font-semibold">
+                          Diagnóstico de Gargalo
+                        </h3>
                       </div>
                     </div>
                     <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
                       <Lightbulb className="h-8 w-8 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Sem diagnóstico disponível</p>
-                      <p className="text-xs text-muted-foreground/70">Preencha os dados do artista para gerar análise de gargalos.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sem diagnóstico disponível
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        Preencha os dados do artista para gerar análise de
+                        gargalos.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -655,8 +875,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     </div>
                     <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
                       <AlertTriangle className="h-8 w-8 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Sem riscos identificados</p>
-                      <p className="text-xs text-muted-foreground/70">A análise de riscos estará disponível quando houver dados suficientes.</p>
+                      <p className="text-sm text-muted-foreground">
+                        Sem riscos identificados
+                      </p>
+                      <p className="text-xs text-muted-foreground/70">
+                        A análise de riscos estará disponível quando houver
+                        dados suficientes.
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
@@ -672,19 +897,29 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   <div className="grid grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Receitas</p>
-                      <p className="text-xl font-bold text-success">{formatCurrency(receitasTotal)}</p>
+                      <p className="text-xl font-bold text-success">
+                        {formatCurrency(receitasTotal)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Despesas</p>
-                      <p className="text-xl font-bold text-destructive">{formatCurrency(despesasTotal)}</p>
+                      <p className="text-xl font-bold text-destructive">
+                        {formatCurrency(despesasTotal)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Saldo</p>
-                      <p className={`text-xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}>{formatCurrency(saldoTotal)}</p>
+                      <p
+                        className={`text-xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}
+                      >
+                        {formatCurrency(saldoTotal)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Pendentes</p>
-                      <p className="text-xl font-bold text-warning">{formatCurrency(pendentesTotal)}</p>
+                      <p className="text-xl font-bold text-warning">
+                        {formatCurrency(pendentesTotal)}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -698,18 +933,30 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     <h3 className="font-semibold">Progresso das Metas</h3>
                   </div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-muted-foreground">Progresso Médio</span>
-                    <span className="text-sm font-medium">{progressoMedio}%</span>
+                    <span className="text-sm text-muted-foreground">
+                      Progresso Médio
+                    </span>
+                    <span className="text-sm font-medium">
+                      {progressoMedio}%
+                    </span>
                   </div>
                   <Progress value={progressoMedio} className="h-2" />
                   <div className="grid grid-cols-3 gap-4 mt-4 text-center">
                     <div>
-                      <p className="text-2xl font-bold text-warning">{metasEmProgresso}</p>
-                      <p className="text-xs text-muted-foreground">Em Progresso</p>
+                      <p className="text-2xl font-bold text-warning">
+                        {metasEmProgresso}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Em Progresso
+                      </p>
                     </div>
                     <div>
-                      <p className="text-2xl font-bold text-success">{metasConcluidas}</p>
-                      <p className="text-xs text-muted-foreground">Concluídas</p>
+                      <p className="text-2xl font-bold text-success">
+                        {metasConcluidas}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Concluídas
+                      </p>
                     </div>
                     <div>
                       <p className="text-2xl font-bold">{metasReais.length}</p>
@@ -728,8 +975,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   </div>
                   <div className="flex flex-col items-center justify-center py-4 text-center gap-2">
                     <Target className="h-8 w-8 text-muted-foreground/30" />
-                    <p className="text-sm text-muted-foreground">Foco não definido</p>
-                    <p className="text-xs text-muted-foreground/70">Crie metas com prazo para que o foco dos próximos 90 dias seja gerado automaticamente.</p>
+                    <p className="text-sm text-muted-foreground">
+                      Foco não definido
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Crie metas com prazo para que o foco dos próximos 90 dias
+                      seja gerado automaticamente.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -746,20 +998,32 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Nome Artístico</p>
-                      <p className="text-sm font-medium">{artista.nome_artistico || "Não informado"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Nome Artístico
+                      </p>
+                      <p className="text-sm font-medium">
+                        {artista.nome_artistico || "Não informado"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Gênero Musical</p>
-                      <p className="text-sm font-medium capitalize">{artista.genero_musical || "Não informado"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gênero Musical
+                      </p>
+                      <p className="text-sm font-medium capitalize">
+                        {artista.genero_musical || "Não informado"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Função</p>
                       <p className="text-sm font-medium">
                         {(() => {
-                          const esp = Array.isArray(artista.especialidades) ? artista.especialidades : [];
+                          const esp = Array.isArray(artista.especialidades)
+                            ? artista.especialidades
+                            : [];
                           if (esp.length === 0) return "Não informado";
-                          return esp.map((e: string) => ESPECIALIDADES_LABELS[e] ?? e).join(", ");
+                          return esp
+                            .map((e: string) => ESPECIALIDADES_LABELS[e] ?? e)
+                            .join(", ");
                         })()}
                       </p>
                     </div>
@@ -767,7 +1031,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   {artista.observacoes && (
                     <div className="mt-4">
                       <p className="text-xs text-muted-foreground">Biografia</p>
-                      <p className="text-sm font-medium">{artista.observacoes}</p>
+                      <p className="text-sm font-medium">
+                        {artista.observacoes}
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -782,20 +1048,34 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Nome Completo</p>
-                      <p className="text-sm font-medium">{artista.nome_civil || artista.nome_artistico || "Não informado"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Nome Completo
+                      </p>
+                      <p className="text-sm font-medium">
+                        {artista.nome_civil ||
+                          artista.nome_artistico ||
+                          "Não informado"}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Data de Nascimento</p>
-                      <p className="text-sm font-medium">{artista.data_nascimento || "Não informado"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Data de Nascimento
+                      </p>
+                      <p className="text-sm font-medium">
+                        {artista.data_nascimento || "Não informado"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">CPF/CNPJ</p>
-                      <p className="text-sm font-medium">{artista.cpf_cnpj || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.cpf_cnpj || "Não informado"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">RG</p>
-                      <p className="text-sm font-medium">{artista.rg || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.rg || "Não informado"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -811,17 +1091,23 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">E-mail</p>
-                      <p className="text-sm font-medium">{artista.email || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.email || "Não informado"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Telefone</p>
-                      <p className="text-sm font-medium">{artista.telefone || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.telefone || "Não informado"}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 gap-4 mt-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Endereço</p>
-                      <p className="text-sm font-medium">{artista.endereco || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.endereco || "Não informado"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -843,23 +1129,33 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Agência</p>
-                      <p className="text-sm font-medium">{artista.agencia || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.agencia || "Não informado"}
+                      </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Conta</p>
-                      <p className="text-sm font-medium">{artista.conta || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.conta || "Não informado"}
+                      </p>
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4 mt-4">
                     <div>
-                      <p className="text-xs text-muted-foreground">Titular da Conta</p>
+                      <p className="text-xs text-muted-foreground">
+                        Titular da Conta
+                      </p>
                       <p className="text-sm font-medium">
-                        {artista.titular_conta || artista.nome_civil || "Não informado"}
+                        {artista.titular_conta ||
+                          artista.nome_civil ||
+                          "Não informado"}
                       </p>
                     </div>
                     <div>
                       <p className="text-xs text-muted-foreground">Chave PIX</p>
-                      <p className="text-sm font-medium">{artista.chave_pix || "Não informado"}</p>
+                      <p className="text-sm font-medium">
+                        {artista.chave_pix || "Não informado"}
+                      </p>
                     </div>
                   </div>
                 </CardContent>
@@ -909,52 +1205,96 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     {artista.tipo_perfil === "com_empresario" && (
                       <>
                         <div>
-                          <p className="text-xs text-muted-foreground">Nome do Empresário</p>
-                          <p className="text-sm font-medium">{artista.empresario_nome || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Nome do Empresário
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.empresario_nome || "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Telefone do Empresário</p>
-                          <p className="text-sm font-medium">{artista.empresario_telefone || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Telefone do Empresário
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.empresario_telefone || "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">E-mail do Empresário</p>
-                          <p className="text-sm font-medium">{artista.empresario_email || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            E-mail do Empresário
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.empresario_email || "Não informado"}
+                          </p>
                         </div>
                       </>
                     )}
                     {artista.tipo_perfil === "gravadora" && (
                       <>
                         <div>
-                          <p className="text-xs text-muted-foreground">Nome da Gravadora</p>
-                          <p className="text-sm font-medium">{artista.gravadora_nome || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Nome da Gravadora
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_nome || "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Contato na Gravadora</p>
-                          <p className="text-sm font-medium">{artista.gravadora_responsavel_nome || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Contato na Gravadora
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_responsavel_nome ||
+                              "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Telefone da Gravadora</p>
-                          <p className="text-sm font-medium">{artista.gravadora_telefone || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Telefone da Gravadora
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_telefone || "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">E-mail da Gravadora</p>
-                          <p className="text-sm font-medium">{artista.gravadora_email || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            E-mail da Gravadora
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_email || "Não informado"}
+                          </p>
                         </div>
                       </>
                     )}
                     {artista.tipo_perfil === "editora" && (
                       <>
                         <div>
-                          <p className="text-xs text-muted-foreground">Nome do Responsável</p>
-                          <p className="text-sm font-medium">{artista.gravadora_responsavel_nome || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Nome do Responsável
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_responsavel_nome ||
+                              "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">Telefone do Responsável</p>
-                          <p className="text-sm font-medium">{artista.gravadora_responsavel_telefone || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            Telefone do Responsável
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_responsavel_telefone ||
+                              "Não informado"}
+                          </p>
                         </div>
                         <div>
-                          <p className="text-xs text-muted-foreground">E-mail do Responsável</p>
-                          <p className="text-sm font-medium">{artista.gravadora_responsavel_email || "Não informado"}</p>
+                          <p className="text-xs text-muted-foreground">
+                            E-mail do Responsável
+                          </p>
+                          <p className="text-sm font-medium">
+                            {artista.gravadora_responsavel_email ||
+                              "Não informado"}
+                          </p>
                         </div>
                       </>
                     )}
@@ -967,67 +1307,81 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <CardContent className="p-4">
                   <div className="flex items-center gap-2 mb-4">
                     <Globe className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold">Distribuidoras / Agregadoras</h3>
+                    <h3 className="font-semibold">
+                      Distribuidoras / Agregadoras
+                    </h3>
                   </div>
                   {(() => {
                     const distSel = artista.distribuidoras_selecionadas ?? {};
-                    const ativas = Object.entries(distSel).filter(([, v]) => v).map(([k]) => k);
+                    const ativas = Object.entries(distSel)
+                      .filter(([, v]) => v)
+                      .map(([k]) => k);
                     const emails = artista.distribuidoras_emails ?? {};
                     return ativas.length > 0 ? (
-                    <>
-                      <div className="flex flex-wrap gap-2">
-                        {ativas.map((dist: string) => (
-                          <Badge key={dist} variant="secondary" className="capitalize">
-                            {dist === "cdbaby"
-                              ? "CD Baby"
-                              : dist === "distrokid"
-                                ? "DistroKid"
-                                : dist === "tunecore"
-                                  ? "TuneCore"
-                                  : dist === "ditto"
-                                    ? "Ditto Music"
-                                    : dist === "onerpm"
-                                      ? "ONErpm"
-                                      : dist === "imusics"
-                                        ? "iMusics"
-                                        : dist === "symphonic"
-                                          ? "Symphonic Distribution"
-                                          : dist}
-                          </Badge>
-                        ))}
-                      </div>
-                      {Object.keys(emails).length > 0 && (
-                        <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-border">
-                          {Object.entries(emails).map(([distId, email]) => {
-                            const distName =
-                              distId === "cdbaby"
+                      <>
+                        <div className="flex flex-wrap gap-2">
+                          {ativas.map((dist: string) => (
+                            <Badge
+                              key={dist}
+                              variant="secondary"
+                              className="capitalize"
+                            >
+                              {dist === "cdbaby"
                                 ? "CD Baby"
-                                : distId === "distrokid"
+                                : dist === "distrokid"
                                   ? "DistroKid"
-                                  : distId === "tunecore"
+                                  : dist === "tunecore"
                                     ? "TuneCore"
-                                    : distId === "ditto"
+                                    : dist === "ditto"
                                       ? "Ditto Music"
-                                      : distId === "onerpm"
+                                      : dist === "onerpm"
                                         ? "ONErpm"
-                                        : distId === "imusics"
+                                        : dist === "imusics"
                                           ? "iMusics"
-                                          : distId === "symphonic"
+                                          : dist === "symphonic"
                                             ? "Symphonic Distribution"
-                                            : distId;
-                            return (
-                              <div key={distId}>
-                                <p className="text-xs text-muted-foreground">E-mail Share - {distName}</p>
-                                <p className="text-sm font-medium">{(email as string) || "Não informado"}</p>
-                              </div>
-                            );
-                          })}
+                                            : dist}
+                            </Badge>
+                          ))}
                         </div>
-                      )}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground">Nenhuma distribuidora vinculada</p>
-                  );
+                        {Object.keys(emails).length > 0 && (
+                          <div className="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-border">
+                            {Object.entries(emails).map(([distId, email]) => {
+                              const distName =
+                                distId === "cdbaby"
+                                  ? "CD Baby"
+                                  : distId === "distrokid"
+                                    ? "DistroKid"
+                                    : distId === "tunecore"
+                                      ? "TuneCore"
+                                      : distId === "ditto"
+                                        ? "Ditto Music"
+                                        : distId === "onerpm"
+                                          ? "ONErpm"
+                                          : distId === "imusics"
+                                            ? "iMusics"
+                                            : distId === "symphonic"
+                                              ? "Symphonic Distribution"
+                                              : distId;
+                              return (
+                                <div key={distId}>
+                                  <p className="text-xs text-muted-foreground">
+                                    E-mail Share - {distName}
+                                  </p>
+                                  <p className="text-sm font-medium">
+                                    {(email as string) || "Não informado"}
+                                  </p>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma distribuidora vinculada
+                      </p>
+                    );
                   })()}
                 </CardContent>
               </Card>
@@ -1048,7 +1402,11 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               {/* Data de Cadastro */}
               <div className="text-sm text-muted-foreground">
                 <span>Data de Cadastro: </span>
-                <span>{artista.created_at ? new Date(artista.created_at).toLocaleDateString("pt-BR") : new Date().toLocaleDateString("pt-BR")}</span>
+                <span>
+                  {artista.created_at
+                    ? new Date(artista.created_at).toLocaleDateString("pt-BR")
+                    : new Date().toLocaleDateString("pt-BR")}
+                </span>
               </div>
             </TabsContent>
 
@@ -1061,17 +1419,25 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     <ImageIcon className="h-5 w-5 text-muted-foreground" />
                     <h3 className="font-semibold">Galeria de Fotos</h3>
                   </div>
-                  {Array.isArray(artista.galeria_urls) && artista.galeria_urls.length > 0 ? (
+                  {Array.isArray(artista.galeria_urls) &&
+                  artista.galeria_urls.length > 0 ? (
                     <div className="grid grid-cols-3 gap-3">
                       {(artista.galeria_urls as string[]).map((url, idx) => (
-                        <div key={idx} className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border group">
+                        <div
+                          key={idx}
+                          className="relative aspect-square rounded-lg overflow-hidden bg-muted border border-border group"
+                        >
                           <img
                             src={url}
                             alt={`Foto ${idx + 1}`}
                             className="w-full h-full object-cover"
                             onError={(e) => {
-                              (e.currentTarget as HTMLImageElement).style.display = "none";
-                              (e.currentTarget.nextSibling as HTMLElement)!.style.display = "flex";
+                              (
+                                e.currentTarget as HTMLImageElement
+                              ).style.display = "none";
+                              (e.currentTarget
+                                .nextSibling as HTMLElement)!.style.display =
+                                "flex";
                             }}
                           />
                           <div className="hidden w-full h-full items-center justify-center">
@@ -1091,8 +1457,12 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                       <ImageIcon className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Nenhuma foto na galeria</p>
-                      <p className="text-xs text-muted-foreground/60">Adicione URLs de fotos na edição do artista</p>
+                      <p className="text-sm text-muted-foreground">
+                        Nenhuma foto na galeria
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Adicione URLs de fotos na edição do artista
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -1110,9 +1480,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
                         <iframe
                           src={(() => {
-                            const url = artista.video_apresentacao_url as string;
-                            const match = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/);
-                            if (match) return `https://www.youtube.com/embed/${match[1]}`;
+                            const url =
+                              artista.video_apresentacao_url as string;
+                            const match = url.match(
+                              /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/,
+                            );
+                            if (match)
+                              return `https://www.youtube.com/embed/${match[1]}`;
                             return url;
                           })()}
                           className="w-full h-full"
@@ -1134,8 +1508,12 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                       <Video className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Nenhum vídeo de apresentação cadastrado</p>
-                      <p className="text-xs text-muted-foreground/60">Adicione uma URL do YouTube na edição do artista</p>
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum vídeo de apresentação cadastrado
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Adicione uma URL do YouTube na edição do artista
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -1150,9 +1528,12 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     <FileText className="h-5 w-5 text-muted-foreground" />
                     <h3 className="font-semibold">Documentos Vinculados</h3>
                   </div>
-                  {Array.isArray(artista.documentos) && artista.documentos.length > 0 ? (
+                  {Array.isArray(artista.documentos) &&
+                  artista.documentos.length > 0 ? (
                     <div className="space-y-2">
-                      {(artista.documentos as { nome: string; url: string }[]).map((doc, idx) => (
+                      {(
+                        artista.documentos as { nome: string; url: string }[]
+                      ).map((doc, idx) => (
                         <div
                           key={idx}
                           className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/50"
@@ -1161,8 +1542,12 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                           <div className="flex items-center gap-3 min-w-0">
                             <FileText className="h-4 w-4 text-primary shrink-0" />
                             <div className="min-w-0">
-                              <p className="text-sm font-medium truncate">{doc.nome}</p>
-                              <p className="text-xs text-muted-foreground truncate">{doc.url}</p>
+                              <p className="text-sm font-medium truncate">
+                                {doc.nome}
+                              </p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                {doc.url}
+                              </p>
                             </div>
                           </div>
                           <a
@@ -1172,7 +1557,11 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                             className="shrink-0 ml-4"
                             data-testid={`link-documento-${idx}`}
                           >
-                            <Button variant="outline" size="sm" className="gap-1.5">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="gap-1.5"
+                            >
                               <ExternalLink className="h-3.5 w-3.5" />
                               Abrir
                             </Button>
@@ -1183,8 +1572,13 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   ) : (
                     <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
                       <FileText className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">Nenhum documento vinculado</p>
-                      <p className="text-xs text-muted-foreground/60">Adicione documentos (press kit, bio PDF, rider) na edição do artista</p>
+                      <p className="text-sm text-muted-foreground">
+                        Nenhum documento vinculado
+                      </p>
+                      <p className="text-xs text-muted-foreground/60">
+                        Adicione documentos (press kit, bio PDF, rider) na
+                        edição do artista
+                      </p>
                     </div>
                   )}
                 </CardContent>
@@ -1226,17 +1620,20 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               )}
             </TabsContent>
 
-
             {/* Catálogo */}
             <TabsContent value="catalogo" className="p-6 space-y-6 mt-0">
               {/* Estatísticas */}
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
-                  <h3 className="font-semibold mb-4">Estatísticas do Catálogo</h3>
+                  <h3 className="font-semibold mb-4">
+                    Estatísticas do Catálogo
+                  </h3>
                   <div className="grid grid-cols-5 gap-3">
                     <div className="text-center p-3 bg-primary/10 rounded-lg">
                       <Building className="h-5 w-5 mx-auto text-primary mb-2" />
-                      <p className="text-2xl font-bold">{projetosReais.length}</p>
+                      <p className="text-2xl font-bold">
+                        {projetosReais.length}
+                      </p>
                       <p className="text-xs text-muted-foreground">Projetos</p>
                     </div>
                     <div className="text-center p-3 bg-primary/10 rounded-lg">
@@ -1246,19 +1643,29 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     </div>
                     <div className="text-center p-3 bg-primary/10 rounded-lg">
                       <Disc className="h-5 w-5 mx-auto text-primary mb-2" />
-                      <p className="text-2xl font-bold">{fonogramasReais.length}</p>
-                      <p className="text-xs text-muted-foreground">Fonogramas</p>
+                      <p className="text-2xl font-bold">
+                        {fonogramasReais.length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Fonogramas
+                      </p>
                     </div>
                     <div className="text-center p-3 bg-primary/10 rounded-lg">
                       <Rocket className="h-5 w-5 mx-auto text-primary mb-2" />
-                      <p className="text-2xl font-bold">{lancamentosReais.length}</p>
-                      <p className="text-xs text-muted-foreground">Lançamentos</p>
+                      <p className="text-2xl font-bold">
+                        {lancamentosReais.length}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Lançamentos
+                      </p>
                     </div>
                     <div className="text-center p-3 bg-primary/10 rounded-lg">
                       <TrendingUp className="h-5 w-5 mx-auto text-primary mb-2" />
                       <p className="text-2xl font-bold">
                         {artista.spotify_ouvintes != null
-                          ? Number(artista.spotify_ouvintes).toLocaleString("pt-BR")
+                          ? Number(artista.spotify_ouvintes).toLocaleString(
+                              "pt-BR",
+                            )
                           : "—"}
                       </p>
                       <p className="text-xs text-muted-foreground">Streams</p>
@@ -1267,12 +1674,21 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 </CardContent>
               </Card>
 
-              {(obrasReais.length + fonogramasReais.length + lancamentosReais.length + projetosReais.length) === 0 ? (
+              {obrasReais.length +
+                fonogramasReais.length +
+                lancamentosReais.length +
+                projetosReais.length ===
+              0 ? (
                 <Card className="bg-muted/30">
                   <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-2">
                     <Music className="h-10 w-10 text-muted-foreground/30" />
-                    <p className="text-sm font-medium text-muted-foreground">Nenhum registro de catálogo vinculado</p>
-                    <p className="text-xs text-muted-foreground/70">Cadastre projetos, obras, fonogramas ou lançamentos e vincule-os a este artista para que apareçam aqui.</p>
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nenhum registro de catálogo vinculado
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Cadastre projetos, obras, fonogramas ou lançamentos e
+                      vincule-os a este artista para que apareçam aqui.
+                    </p>
                   </CardContent>
                 </Card>
               ) : (
@@ -1280,14 +1696,24 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   {obrasReais.length > 0 && (
                     <Card className="bg-muted/30">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold mb-3">Obras Musicais ({obrasReais.length})</h3>
+                        <h3 className="font-semibold mb-3">
+                          Obras Musicais ({obrasReais.length})
+                        </h3>
                         <ScrollArea className="h-[150px]">
                           <div className="space-y-2">
                             {obrasReais.map((obra) => (
-                              <div key={obra.id} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
-                                <span className="text-sm truncate flex-1 mr-2">{obra.titulo}</span>
-                                <Badge variant="outline" className="text-xs capitalize shrink-0">
-                                  {obra.status.replace(/_/g, ' ')}
+                              <div
+                                key={obra.id}
+                                className="flex items-center justify-between py-1 border-b border-border/40 last:border-0"
+                              >
+                                <span className="text-sm truncate flex-1 mr-2">
+                                  {obra.titulo}
+                                </span>
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize shrink-0"
+                                >
+                                  {obra.status.replace(/_/g, " ")}
                                 </Badge>
                               </div>
                             ))}
@@ -1300,17 +1726,31 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   {fonogramasReais.length > 0 && (
                     <Card className="bg-muted/30">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold mb-3">Fonogramas ({fonogramasReais.length})</h3>
+                        <h3 className="font-semibold mb-3">
+                          Fonogramas ({fonogramasReais.length})
+                        </h3>
                         <ScrollArea className="h-[150px]">
                           <div className="space-y-2">
                             {fonogramasReais.map((fono) => (
-                              <div key={fono.id} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+                              <div
+                                key={fono.id}
+                                className="flex items-center justify-between py-1 border-b border-border/40 last:border-0"
+                              >
                                 <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-sm font-medium truncate">{fono.titulo}</p>
-                                  {fono.gravadora && <p className="text-xs text-muted-foreground truncate">{fono.gravadora}</p>}
+                                  <p className="text-sm font-medium truncate">
+                                    {fono.titulo}
+                                  </p>
+                                  {fono.gravadora && (
+                                    <p className="text-xs text-muted-foreground truncate">
+                                      {fono.gravadora}
+                                    </p>
+                                  )}
                                 </div>
-                                <Badge variant="outline" className="text-xs capitalize shrink-0">
-                                  {fono.status.replace(/_/g, ' ')}
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize shrink-0"
+                                >
+                                  {fono.status.replace(/_/g, " ")}
                                 </Badge>
                               </div>
                             ))}
@@ -1323,21 +1763,33 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   {lancamentosReais.length > 0 && (
                     <Card className="bg-muted/30">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold mb-3">Lançamentos ({lancamentosReais.length})</h3>
+                        <h3 className="font-semibold mb-3">
+                          Lançamentos ({lancamentosReais.length})
+                        </h3>
                         <ScrollArea className="h-[150px]">
                           <div className="space-y-2">
                             {lancamentosReais.map((lanc) => (
-                              <div key={lanc.id} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+                              <div
+                                key={lanc.id}
+                                className="flex items-center justify-between py-1 border-b border-border/40 last:border-0"
+                              >
                                 <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-sm font-medium truncate">{lanc.titulo}</p>
+                                  <p className="text-sm font-medium truncate">
+                                    {lanc.titulo}
+                                  </p>
                                   <p className="text-xs text-muted-foreground">
                                     {lanc.data_lancamento
-                                      ? new Date(lanc.data_lancamento).toLocaleDateString("pt-BR")
+                                      ? new Date(
+                                          lanc.data_lancamento,
+                                        ).toLocaleDateString("pt-BR")
                                       : "Sem data"}
                                   </p>
                                 </div>
-                                <Badge variant="outline" className="text-xs capitalize shrink-0">
-                                  {lanc.status.replace(/_/g, ' ')}
+                                <Badge
+                                  variant="outline"
+                                  className="text-xs capitalize shrink-0"
+                                >
+                                  {lanc.status.replace(/_/g, " ")}
                                 </Badge>
                               </div>
                             ))}
@@ -1350,21 +1802,34 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   {projetosReais.length > 0 && (
                     <Card className="bg-muted/30">
                       <CardContent className="p-4">
-                        <h3 className="font-semibold mb-3">Projetos ({projetosReais.length})</h3>
+                        <h3 className="font-semibold mb-3">
+                          Projetos ({projetosReais.length})
+                        </h3>
                         <ScrollArea className="h-[150px]">
                           <div className="space-y-2">
                             {projetosReais.map((proj) => (
-                              <div key={proj.id} className="flex items-center justify-between py-1 border-b border-border/40 last:border-0">
+                              <div
+                                key={proj.id}
+                                className="flex items-center justify-between py-1 border-b border-border/40 last:border-0"
+                              >
                                 <div className="flex-1 min-w-0 mr-2">
-                                  <p className="text-sm font-medium truncate">{proj.titulo}</p>
-                                  {Array.isArray(proj.produtores) && (proj.produtores as string[]).length > 0 && (
-                                    <p className="text-xs text-muted-foreground truncate">
-                                      {(proj.produtores as string[]).join(", ")}
-                                    </p>
-                                  )}
+                                  <p className="text-sm font-medium truncate">
+                                    {proj.titulo}
+                                  </p>
+                                  {Array.isArray(proj.produtores) &&
+                                    (proj.produtores as string[]).length >
+                                      0 && (
+                                      <p className="text-xs text-muted-foreground truncate">
+                                        {(proj.produtores as string[]).join(
+                                          ", ",
+                                        )}
+                                      </p>
+                                    )}
                                 </div>
-                                <Badge className={`text-xs shrink-0 ${proj.status === 'concluido' ? 'bg-success' : proj.status === 'em_andamento' ? 'bg-blue-600' : 'bg-gray-600'}`}>
-                                  {proj.status.replace(/_/g, ' ')}
+                                <Badge
+                                  className={`text-xs shrink-0 ${proj.status === "concluido" ? "bg-success" : proj.status === "em_andamento" ? "bg-blue-600" : "bg-gray-600"}`}
+                                >
+                                  {proj.status.replace(/_/g, " ")}
                                 </Badge>
                               </div>
                             ))}
@@ -1383,26 +1848,40 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               <div className="grid grid-cols-4 gap-4">
                 <Card className="bg-success/10 border-success/20">
                   <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Receitas Total</p>
-                    <p className="text-2xl font-bold text-success">{formatCurrency(receitasTotal)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Receitas Total
+                    </p>
+                    <p className="text-2xl font-bold text-success">
+                      {formatCurrency(receitasTotal)}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-destructive/10 border-destructive/20">
                   <CardContent className="p-4">
-                    <p className="text-sm text-muted-foreground">Despesas Total</p>
-                    <p className="text-2xl font-bold text-destructive">{formatCurrency(despesasTotal)}</p>
+                    <p className="text-sm text-muted-foreground">
+                      Despesas Total
+                    </p>
+                    <p className="text-2xl font-bold text-destructive">
+                      {formatCurrency(despesasTotal)}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-blue-600/10 border-blue-600/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Saldo</p>
-                    <p className={`text-2xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}>{formatCurrency(saldoTotal)}</p>
+                    <p
+                      className={`text-2xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}
+                    >
+                      {formatCurrency(saldoTotal)}
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-warning/10 border-warning/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Pendentes</p>
-                    <p className="text-2xl font-bold text-warning">{formatCurrency(pendentesTotal)}</p>
+                    <p className="text-2xl font-bold text-warning">
+                      {formatCurrency(pendentesTotal)}
+                    </p>
                   </CardContent>
                 </Card>
               </div>
@@ -1410,25 +1889,42 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               {/* Últimas Transações */}
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
-                  <h3 className="font-semibold mb-4">Últimas Transações ({transacoesArtista.length})</h3>
+                  <h3 className="font-semibold mb-4">
+                    Últimas Transações ({transacoesArtista.length})
+                  </h3>
                   {transacoesArtista.length === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhuma transação vinculada a este artista</p>
+                    <p className="text-sm text-muted-foreground">
+                      Nenhuma transação vinculada a este artista
+                    </p>
                   ) : (
                     <div className="space-y-3">
                       {transacoesArtista.slice(0, 10).map((t) => (
-                        <div key={t.id} className="flex items-center justify-between py-2 border-b border-border/50 last:border-0">
+                        <div
+                          key={t.id}
+                          className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
+                        >
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium truncate">{t.descricao}</p>
+                            <p className="text-sm font-medium truncate">
+                              {t.descricao}
+                            </p>
                             <p className="text-xs text-muted-foreground">
-                              {t.data ? new Date(t.data).toLocaleDateString("pt-BR") : "—"}
-                              {t.categoria && ` · ${t.categoria.replace(/_/g, " ")}`}
+                              {t.data
+                                ? new Date(t.data).toLocaleDateString("pt-BR")
+                                : "—"}
+                              {t.categoria &&
+                                ` · ${t.categoria.replace(/_/g, " ")}`}
                             </p>
                           </div>
                           <div className="ml-4 text-right">
-                            <p className={`text-sm font-bold ${t.tipo === "receita" ? "text-success" : "text-destructive"}`}>
-                              {t.tipo === "receita" ? "+" : "-"}{formatCurrency(t.valor)}
+                            <p
+                              className={`text-sm font-bold ${t.tipo === "receita" ? "text-success" : "text-destructive"}`}
+                            >
+                              {t.tipo === "receita" ? "+" : "-"}
+                              {formatCurrency(t.valor)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground capitalize">{t.status?.replace(/_/g, " ") ?? "—"}</p>
+                            <p className="text-[10px] text-muted-foreground capitalize">
+                              {t.status?.replace(/_/g, " ") ?? "—"}
+                            </p>
                           </div>
                         </div>
                       ))}
@@ -1453,13 +1949,17 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   <CardContent className="p-4 text-center">
                     <Clock className="h-8 w-8 mx-auto text-warning mb-2" />
                     <p className="text-2xl font-bold">{contratosVencendo}</p>
-                    <p className="text-sm text-muted-foreground">Vencendo em 60d</p>
+                    <p className="text-sm text-muted-foreground">
+                      Vencendo em 60d
+                    </p>
                   </CardContent>
                 </Card>
                 <Card className="bg-muted/30">
                   <CardContent className="p-4 text-center">
                     <FileText className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-                    <p className="text-2xl font-bold">{contratosReais.length}</p>
+                    <p className="text-2xl font-bold">
+                      {contratosReais.length}
+                    </p>
                     <p className="text-sm text-muted-foreground">Total</p>
                   </CardContent>
                 </Card>
@@ -1468,7 +1968,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               {/* Lista de Contratos */}
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
-                  <h3 className="font-semibold mb-4">Contratos ({contratosReais.length})</h3>
+                  <h3 className="font-semibold mb-4">
+                    Contratos ({contratosReais.length})
+                  </h3>
                   {contratosReais.length > 0 ? (
                     <div className="space-y-3">
                       {contratosReais.map((contrato) => {
@@ -1476,17 +1978,28 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                         today.setHours(0, 0, 0, 0);
                         const in30Days = new Date(today);
                         in30Days.setDate(in30Days.getDate() + 30);
-                        const dataFim = contrato.data_fim ? new Date(contrato.data_fim) : null;
-                        const expirando = dataFim && dataFim >= today && dataFim <= in30Days;
+                        const dataFim = contrato.data_fim
+                          ? new Date(contrato.data_fim)
+                          : null;
+                        const expirando =
+                          dataFim && dataFim >= today && dataFim <= in30Days;
                         const diasRestantes = dataFim
-                          ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                          ? Math.ceil(
+                              (dataFim.getTime() - today.getTime()) /
+                                (1000 * 60 * 60 * 24),
+                            )
                           : null;
 
                         return (
-                          <div key={contrato.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3">
+                          <div
+                            key={contrato.id}
+                            className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3"
+                          >
                             <div className="flex-1 min-w-0">
                               <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-sm truncate">{contrato.titulo}</p>
+                                <p className="font-medium text-sm truncate">
+                                  {contrato.titulo}
+                                </p>
                                 {expirando && (
                                   <span className="inline-flex items-center gap-0.5 text-[10px] text-warning border border-warning/20 bg-warning/10 rounded px-1 py-0.5 shrink-0">
                                     <AlertTriangle className="h-2.5 w-2.5" />
@@ -1495,12 +2008,22 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                                 )}
                               </div>
                               <p className="text-xs text-muted-foreground">
-                                {contrato.data_inicio ? new Date(contrato.data_inicio).toLocaleDateString("pt-BR") : "—"}
+                                {contrato.data_inicio
+                                  ? new Date(
+                                      contrato.data_inicio,
+                                    ).toLocaleDateString("pt-BR")
+                                  : "—"}
                                 {" → "}
-                                {contrato.data_fim ? new Date(contrato.data_fim).toLocaleDateString("pt-BR") : "Indeterminado"}
+                                {contrato.data_fim
+                                  ? new Date(
+                                      contrato.data_fim,
+                                    ).toLocaleDateString("pt-BR")
+                                  : "Indeterminado"}
                               </p>
                               {contrato.valor != null && (
-                                <p className="text-xs text-muted-foreground">Valor: {formatCurrency(contrato.valor)}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  Valor: {formatCurrency(contrato.valor)}
+                                </p>
                               )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
@@ -1512,7 +2035,11 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                                   rel="noopener noreferrer"
                                   data-testid={`link-contrato-pdf-${contrato.id}`}
                                 >
-                                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs gap-1"
+                                  >
                                     <ExternalLink className="h-3 w-3" />
                                     PDF
                                   </Button>
@@ -1541,10 +2068,16 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <Target className="h-5 w-5 text-muted-foreground" />
                       <div>
                         <h3 className="font-semibold">Metas & OKRs</h3>
-                        <p className="text-sm text-muted-foreground">{artista.nome_artistico}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {artista.nome_artistico}
+                        </p>
                       </div>
                     </div>
-                    <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setShowMetaForm(true)}>
+                    <Button
+                      size="sm"
+                      className="bg-primary hover:bg-primary/90"
+                      onClick={() => setShowMetaForm(true)}
+                    >
                       <Plus className="h-4 w-4 mr-1" />
                       Nova Meta
                     </Button>
@@ -1557,27 +2090,45 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                       <p className="text-xs text-muted-foreground">Total</p>
                     </div>
                     <div className="text-center p-3 bg-warning/10 rounded-lg">
-                      <p className="text-2xl font-bold text-warning">{metasEmProgresso}</p>
-                      <p className="text-xs text-muted-foreground">Em Progresso</p>
+                      <p className="text-2xl font-bold text-warning">
+                        {metasEmProgresso}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Em Progresso
+                      </p>
                     </div>
                     <div className="text-center p-3 bg-success/10 rounded-lg">
-                      <p className="text-2xl font-bold text-success">{metasConcluidas}</p>
-                      <p className="text-xs text-muted-foreground">Concluídas</p>
+                      <p className="text-2xl font-bold text-success">
+                        {metasConcluidas}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Concluídas
+                      </p>
                     </div>
                     <div className="text-center p-3 bg-blue-500/10 rounded-lg">
-                      <p className="text-2xl font-bold text-blue-500">{progressoMedio}%</p>
-                      <p className="text-xs text-muted-foreground">Progresso Médio</p>
+                      <p className="text-2xl font-bold text-blue-500">
+                        {progressoMedio}%
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Progresso Médio
+                      </p>
                     </div>
                   </div>
 
                   {metasReais.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
                       <Target className="h-16 w-16 text-muted-foreground mb-4" />
-                      <h4 className="font-medium mb-1">Nenhuma meta definida</h4>
+                      <h4 className="font-medium mb-1">
+                        Nenhuma meta definida
+                      </h4>
                       <p className="text-sm text-muted-foreground mb-4">
                         Defina metas para acompanhar o progresso do artista
                       </p>
-                      <Button size="sm" className="bg-primary hover:bg-primary/90" onClick={() => setShowMetaForm(true)}>
+                      <Button
+                        size="sm"
+                        className="bg-primary hover:bg-primary/90"
+                        onClick={() => setShowMetaForm(true)}
+                      >
                         <Plus className="h-4 w-4 mr-1" />
                         Criar Primeira Meta
                       </Button>
@@ -1586,11 +2137,19 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                     <div className="space-y-4">
                       {metasReais.map((meta) => {
                         const progress = calcProgress(meta);
-                        const statusInfo = statusMeta.find((s) => s.value === meta.status);
-                        const titulo = (meta as any).titulo || meta.tipo_meta || meta.descricao || "Meta";
-                        const tipoMeta = (meta as any).tipo_meta || (meta as any).tipo;
+                        const statusInfo = statusMeta.find(
+                          (s) => s.value === meta.status,
+                        );
+                        const titulo =
+                          (meta as any).titulo ||
+                          meta.tipo_meta ||
+                          meta.descricao ||
+                          "Meta";
+                        const tipoMeta =
+                          (meta as any).tipo_meta || (meta as any).tipo;
                         const categoria = (meta as any).categoria;
-                        const dataInicio = meta.data_inicio || (meta as any).dataInicio;
+                        const dataInicio =
+                          meta.data_inicio || (meta as any).dataInicio;
                         const dataFim = meta.data_fim || (meta as any).dataFim;
                         return (
                           <Card key={meta.id} className="bg-background/50">
@@ -1599,17 +2158,34 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <h4 className="font-medium">{titulo}</h4>
-                                    <Badge className={statusInfo?.color ?? "bg-gray-500"}>{statusInfo?.label ?? meta.status}</Badge>
+                                    <Badge
+                                      className={
+                                        statusInfo?.color ?? "bg-gray-500"
+                                      }
+                                    >
+                                      {statusInfo?.label ?? meta.status}
+                                    </Badge>
                                   </div>
-                                  {meta.descricao && titulo !== meta.descricao && (
-                                    <p className="text-sm text-muted-foreground">{meta.descricao}</p>
-                                  )}
+                                  {meta.descricao &&
+                                    titulo !== meta.descricao && (
+                                      <p className="text-sm text-muted-foreground">
+                                        {meta.descricao}
+                                      </p>
+                                    )}
                                 </div>
                                 <div className="flex items-center gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEditMeta(meta)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleEditMeta(meta)}
+                                  >
                                     <Edit className="h-4 w-4" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => handleDeleteMeta(meta.id)}>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => handleDeleteMeta(meta.id)}
+                                  >
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 </div>
@@ -1619,10 +2195,14 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                                 <div className="flex-1">
                                   <div className="flex items-center justify-between mb-1">
                                     <span className="text-sm text-muted-foreground">
-                                      {(meta.valor_atual ?? 0).toLocaleString()} / {(meta.valor_meta ?? 0).toLocaleString()}{" "}
+                                      {(meta.valor_atual ?? 0).toLocaleString()}{" "}
+                                      /{" "}
+                                      {(meta.valor_meta ?? 0).toLocaleString()}{" "}
                                       {meta.unidade}
                                     </span>
-                                    <span className="text-sm font-medium">{progress}%</span>
+                                    <span className="text-sm font-medium">
+                                      {progress}%
+                                    </span>
                                   </div>
                                   <Progress value={progress} className="h-2" />
                                 </div>
@@ -1633,19 +2213,27 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                                   <Calendar className="h-3 w-3" />
                                   {dataInicio && dataFim && (
                                     <span>
-                                      {new Date(dataInicio).toLocaleDateString("pt-BR")} -{" "}
-                                      {new Date(dataFim).toLocaleDateString("pt-BR")}
+                                      {new Date(dataInicio).toLocaleDateString(
+                                        "pt-BR",
+                                      )}{" "}
+                                      -{" "}
+                                      {new Date(dataFim).toLocaleDateString(
+                                        "pt-BR",
+                                      )}
                                     </span>
                                   )}
                                 </div>
                                 {categoria && (
                                   <Badge variant="outline" className="text-xs">
-                                    {categoriasMeta.find((c) => c.value === categoria)?.label ?? categoria}
+                                    {categoriasMeta.find(
+                                      (c) => c.value === categoria,
+                                    )?.label ?? categoria}
                                   </Badge>
                                 )}
                                 {tipoMeta && (
                                   <Badge variant="outline" className="text-xs">
-                                    {tiposMeta.find((t) => t.value === tipoMeta)?.label ?? tipoMeta}
+                                    {tiposMeta.find((t) => t.value === tipoMeta)
+                                      ?.label ?? tipoMeta}
                                   </Badge>
                                 )}
                               </div>
@@ -1694,11 +2282,17 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                               <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {new Date(item.data).toLocaleDateString("pt-BR")} às{" "}
-                                  {new Date(item.data).toLocaleTimeString("pt-BR", {
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  })}
+                                  {new Date(item.data).toLocaleDateString(
+                                    "pt-BR",
+                                  )}{" "}
+                                  às{" "}
+                                  {new Date(item.data).toLocaleTimeString(
+                                    "pt-BR",
+                                    {
+                                      hour: "2-digit",
+                                      minute: "2-digit",
+                                    },
+                                  )}
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <User className="h-3 w-3" />
@@ -1722,10 +2316,15 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
         </Tabs>
 
         {/* Modal de Nova/Editar Meta */}
-        <Dialog open={showMetaForm} onOpenChange={(open) => !open && resetForm()}>
+        <Dialog
+          open={showMetaForm}
+          onOpenChange={(open) => !open && resetForm()}
+        >
           <DialogContent className="max-w-lg">
             <DialogHeader>
-              <DialogTitle>{editingMeta ? "Editar Meta" : "Nova Meta"}</DialogTitle>
+              <DialogTitle>
+                {editingMeta ? "Editar Meta" : "Nova Meta"}
+              </DialogTitle>
             </DialogHeader>
 
             <div className="grid grid-cols-2 gap-4 mt-4">
@@ -1733,7 +2332,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Label>Título da Meta *</Label>
                 <Input
                   value={metaForm.titulo}
-                  onChange={(e) => setMetaForm({ ...metaForm, titulo: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, titulo: e.target.value })
+                  }
                   placeholder="Ex: Alcançar 1M de streams"
                 />
               </div>
@@ -1742,7 +2343,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Label>Descrição</Label>
                 <Textarea
                   value={metaForm.descricao}
-                  onChange={(e) => setMetaForm({ ...metaForm, descricao: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, descricao: e.target.value })
+                  }
                   placeholder="Descreva a meta em detalhes..."
                   rows={2}
                 />
@@ -1750,7 +2353,10 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
 
               <div>
                 <Label>Tipo de Meta *</Label>
-                <Select value={metaForm.tipo} onValueChange={(v) => setMetaForm({ ...metaForm, tipo: v })}>
+                <Select
+                  value={metaForm.tipo}
+                  onValueChange={(v) => setMetaForm({ ...metaForm, tipo: v })}
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -1766,7 +2372,12 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
 
               <div>
                 <Label>Categoria</Label>
-                <Select value={metaForm.categoria} onValueChange={(v) => setMetaForm({ ...metaForm, categoria: v })}>
+                <Select
+                  value={metaForm.categoria}
+                  onValueChange={(v) =>
+                    setMetaForm({ ...metaForm, categoria: v })
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
@@ -1785,7 +2396,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Input
                   type="number"
                   value={metaForm.valorMeta}
-                  onChange={(e) => setMetaForm({ ...metaForm, valorMeta: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, valorMeta: e.target.value })
+                  }
                   placeholder="1000000"
                 />
               </div>
@@ -1795,7 +2408,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Input
                   type="number"
                   value={metaForm.valorAtual}
-                  onChange={(e) => setMetaForm({ ...metaForm, valorAtual: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, valorAtual: e.target.value })
+                  }
                   placeholder="0"
                 />
               </div>
@@ -1804,7 +2419,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Label>Unidade de Medida</Label>
                 <Input
                   value={metaForm.unidade}
-                  onChange={(e) => setMetaForm({ ...metaForm, unidade: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, unidade: e.target.value })
+                  }
                   placeholder="Ex: streams, seguidores, R$"
                 />
               </div>
@@ -1813,7 +2430,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Label>Status</Label>
                 <Select
                   value={metaForm.status}
-                  onValueChange={(v) => setMetaForm({ ...metaForm, status: v as Meta["status"] })}
+                  onValueChange={(v) =>
+                    setMetaForm({ ...metaForm, status: v as Meta["status"] })
+                  }
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione" />
@@ -1833,7 +2452,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Input
                   type="date"
                   value={metaForm.dataInicio}
-                  onChange={(e) => setMetaForm({ ...metaForm, dataInicio: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, dataInicio: e.target.value })
+                  }
                 />
               </div>
 
@@ -1842,7 +2463,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                 <Input
                   type="date"
                   value={metaForm.dataFim}
-                  onChange={(e) => setMetaForm({ ...metaForm, dataFim: e.target.value })}
+                  onChange={(e) =>
+                    setMetaForm({ ...metaForm, dataFim: e.target.value })
+                  }
                 />
               </div>
             </div>
@@ -1851,7 +2474,10 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               <Button variant="outline" onClick={resetForm}>
                 Cancelar
               </Button>
-              <Button onClick={handleSaveMeta} className="bg-primary hover:bg-primary/90">
+              <Button
+                onClick={handleSaveMeta}
+                className="bg-primary hover:bg-primary/90"
+              >
                 {editingMeta ? "Salvar Alterações" : "Criar Meta"}
               </Button>
             </div>

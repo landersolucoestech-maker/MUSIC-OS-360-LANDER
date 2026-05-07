@@ -91,7 +91,7 @@ export const ArtistaViewModal = forwardRef<HTMLDivElement, ArtistaViewModalProps
         case "contratado": return <Badge className="bg-success hover:bg-success">Contratado</Badge>;
         case "parceiro": return <Badge className="bg-blue-600 hover:bg-blue-600">Parceiro</Badge>;
         case "independente": return <Badge className="bg-purple-600 hover:bg-purple-600">Independente</Badge>;
-        default: return <Badge variant="secondary">{status}</Badge>;
+        default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;
       }
     };
 

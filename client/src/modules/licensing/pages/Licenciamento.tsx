@@ -21,7 +21,7 @@ const getStatusBadge = (status: string) => {
     case "negociacao": return <Badge className="bg-warning text-warning-foreground">Em Negociação</Badge>;
     case "proposta": return <Badge className="bg-blue-500">Proposta Enviada</Badge>;
     case "expirada": return <Badge className="bg-destructive text-destructive-foreground">Expirada</Badge>;
-    default: return <Badge variant="secondary">{status}</Badge>;
+    default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;
   }
 };
 
