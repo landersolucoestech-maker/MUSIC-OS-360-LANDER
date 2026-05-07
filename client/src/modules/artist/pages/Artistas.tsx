@@ -362,9 +362,9 @@ export default function Artistas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os artistas</SelectItem>
-              <SelectItem value="exclusivo">Artista exclusivo</SelectItem>
-              <SelectItem value="parceiro">Artista parceiro</SelectItem>
               <SelectItem value="onboarding">Em Onboarding</SelectItem>
+              <SelectItem value="exclusivo">Exclusivo</SelectItem>
+              <SelectItem value="parceiro">Parceiro</SelectItem>
             </SelectContent>
           </Select>
           <Select value={perfilFilter} onValueChange={setPerfilFilter}>
@@ -373,7 +373,7 @@ export default function Artistas() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os Perfis</SelectItem>
-              {Object.entries(PERFIL_LABELS).map(([value, label]) => (
+              {Object.entries(PERFIL_LABELS).sort(([, a], [, b]) => a.localeCompare(b, "pt-BR")).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{label}</SelectItem>
               ))}
             </SelectContent>
