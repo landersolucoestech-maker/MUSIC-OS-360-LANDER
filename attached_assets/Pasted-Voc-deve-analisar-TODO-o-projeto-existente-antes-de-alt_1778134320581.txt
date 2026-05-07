@@ -1,0 +1,130 @@
+Você deve analisar TODO o projeto existente antes de alterar qualquer coisa.
+
+OBJETIVO DESTA FASE:
+realizar limpeza técnica, organização estrutural e padronização inicial SEM recriar o projeto do zero.
+
+REGRAS CRÍTICAS:
+
+* NÃO recriar projeto
+* NÃO quebrar funcionalidades existentes
+* NÃO criar novas features ainda
+* NÃO fazer redesign completo ainda
+* NÃO alterar regras de negócio
+* NÃO criar overengineering
+* NÃO centralizar tudo em shared
+* NÃO criar componentes gigantes
+* NÃO remover funcionalidades ativas
+* NÃO criar arquitetura nova sem compatibilidade
+
+EXECUTAR:
+
+1. ANALISAR TODA A ESTRUTURA EXISTENTE
+
+* mapear módulos
+* mapear hooks
+* mapear services
+* mapear components
+* mapear providers
+* mapear rotas
+* mapear dependências
+* mapear duplicações
+* mapear dead code
+* mapear inconsistências
+
+2. LIMPEZA TÉCNICA
+   REMOVER:
+
+* componentes mortos
+* hooks não utilizados
+* imports não utilizados
+* arquivos antigos
+* lógica abandonada
+* modais obsoletos
+* páginas não utilizadas
+* duplicações
+* estados inúteis
+* services duplicados
+* código comentado inútil
+
+3. PADRONIZAR ESTRUTURA DOS MÓDULOS
+
+TODOS módulos devem seguir:
+
+module/
+application/
+domain/
+infrastructure/
+presentation/
+hooks/
+services/
+contracts/
+mappers/
+types/
+
+NÃO mover tudo de forma destrutiva.
+Fazer refatoração progressiva.
+
+4. PADRONIZAR NOMENCLATURA
+   Padronizar:
+
+* nomes de arquivos
+* nomes de hooks
+* nomes de services
+* nomes de providers
+* nomes de componentes
+* nomes de DTOs
+* nomes de types
+
+5. ORGANIZAR SHARED
+
+PADRONIZAR:
+
+shared/
+ui/
+hooks/
+lib/
+types/
+contracts/
+utils/
+design-system/
+
+EVITAR:
+
+* shared virar monólito
+* lógica de domínio dentro de shared
+
+6. IMPLEMENTAR BARREL EXPORTS
+
+Criar index.ts padronizados para:
+
+* módulos
+* hooks
+* services
+* components
+* ui
+* contracts
+
+7. IDENTIFICAR E DOCUMENTAR:
+
+* tech debt
+* gargalos
+* inconsistências
+* módulos problemáticos
+* componentes monolíticos
+* problemas de UX
+* problemas de performance
+
+8. NÃO IMPLEMENTAR AINDA:
+
+* backend novo
+* websocket
+* workflow engine
+* dashboards novos
+* redesign completo
+* realtime
+* multi-tenancy
+* billing
+* automações
+
+OBJETIVO FINAL:
+deixar o projeto limpo, consistente, organizado e preparado para evolução enterprise.

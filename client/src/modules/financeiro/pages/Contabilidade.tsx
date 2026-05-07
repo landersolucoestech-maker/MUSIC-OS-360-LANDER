@@ -10,7 +10,7 @@ import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { formatCurrency } from "@/shared/lib/utils-format";
+import { formatCurrency } from "@/shared/lib/format-utils";
 import { EmptyState } from "@/shared/components/EmptyState";
 
 const periodoLabel = (p: string) => {

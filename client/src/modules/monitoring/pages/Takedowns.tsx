@@ -13,7 +13,7 @@ import { TakedownViewModal } from "@/modules/monitoring/components/TakedownViewM
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useTakedowns } from "@/modules/monitoring/hooks/useTakedowns";
-import { formatDate } from "@/shared/lib/utils-format";
+import { formatDate } from "@/shared/lib/format-utils";
 
 const getStatusBadge = (status: string) => {
   switch (status) {

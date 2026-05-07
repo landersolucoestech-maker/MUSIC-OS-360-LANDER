@@ -13,7 +13,7 @@ import { LicencaViewModal } from "@/modules/licensing/components/LicencaViewModa
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
-import { formatCurrency } from "@/shared/lib/utils-format";
+import { formatCurrency } from "@/shared/lib/format-utils";
 
 const getStatusBadge = (status: string) => {
   switch (status) {

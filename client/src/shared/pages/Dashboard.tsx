@@ -10,7 +10,7 @@ import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
-import { formatCurrency } from "@/shared/lib/utils-format";
+import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
 import { FinanceChart } from "@/shared/components/FinanceChart";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";

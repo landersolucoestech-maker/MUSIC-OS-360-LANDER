@@ -3,7 +3,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { FileText, Calendar, Building2, MapPin, Mail, ExternalLink, Pencil, Receipt, CreditCard, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { formatCpfCnpj } from "@/shared/lib/br-validators";
 import { parseTipoOperacao } from "@/shared/lib/nota-fiscal-tipo";
 

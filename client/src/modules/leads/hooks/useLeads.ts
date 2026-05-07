@@ -191,12 +191,6 @@ export const OBJETIVO_MARKETING_OPTIONS = [
   { value: "viralizar_conteudo", label: "Viralizar Conteúdo" },
 ] as const;
 
-export const TEMPERATURA_LEAD_OPTIONS = [
-  { value: "frio", label: "Frio" },
-  { value: "morno", label: "Morno" },
-  { value: "quente", label: "Quente" },
-] as const;
-
 export const FORMA_PAGAMENTO_OPTIONS = [
   { value: "pix", label: "PIX" },
   { value: "cartao", label: "Cartão" },

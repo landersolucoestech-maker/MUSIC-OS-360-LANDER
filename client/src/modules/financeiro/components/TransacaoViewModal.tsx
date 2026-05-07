@@ -2,7 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
 import { DollarSign, Calendar, TrendingUp, TrendingDown, CreditCard, Repeat, Building2, FileText, Paperclip, ExternalLink, Briefcase, User, Tag, Receipt } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { Button } from "@/shared/ui/button";
 
 interface TransacaoViewModalProps {

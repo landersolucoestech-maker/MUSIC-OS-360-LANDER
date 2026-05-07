@@ -29,7 +29,7 @@ import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useMetrics } from "@/shared/hooks/useMetrics";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
-import { formatCurrency } from "@/shared/lib/utils-format";
+import { formatCurrency } from "@/shared/lib/format-utils";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";

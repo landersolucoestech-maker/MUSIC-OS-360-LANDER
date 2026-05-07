@@ -4,7 +4,7 @@ import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { format, parseISO, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { formatCurrency } from "@/shared/lib/utils-format";
+import { formatCurrency } from "@/shared/lib/format-utils";
 
 export function FinanceChart() {
   const { transacoes } = useTransacoes();

@@ -14,7 +14,7 @@ import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewMo
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 

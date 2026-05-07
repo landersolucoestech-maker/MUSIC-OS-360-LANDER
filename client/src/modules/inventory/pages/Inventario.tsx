@@ -7,7 +7,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Package, Wrench, CheckCircle, Upload, Download, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { InventarioFormModal } from "@/modules/inventory/components/InventarioFormModal";
 import { InventarioViewModal } from "@/modules/inventory/components/InventarioViewModal";

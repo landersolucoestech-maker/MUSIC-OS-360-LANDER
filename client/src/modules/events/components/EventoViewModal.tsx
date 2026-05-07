@@ -4,7 +4,7 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Calendar, Clock, MapPin, User, Phone, Mail, Users, DollarSign, Tag, FileText, Pencil, Building2, CheckSquare } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 
 interface EventoViewModalProps {
   open: boolean;

@@ -1,4 +1,5 @@
 // releases module — barrel export
+export * from "./types";
 export * from "./hooks/useLancamentos";
 export * from "./hooks/useShares";
 export * from "./components/LancamentoFormModal";

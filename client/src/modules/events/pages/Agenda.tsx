@@ -9,7 +9,7 @@ import { Calendar, CheckCircle, Clock, Users, Upload, Download, Plus, Search, Ma
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { formatDate, formatCurrency } from "@/shared/lib/utils-format";
+import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { EventoFormModal } from "@/modules/events/components/EventoFormModal";
 import { EventoViewModal } from "@/modules/events/components/EventoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";

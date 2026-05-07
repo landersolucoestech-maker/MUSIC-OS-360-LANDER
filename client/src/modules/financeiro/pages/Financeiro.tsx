@@ -15,7 +15,7 @@ import { DollarSign, TrendingUp, TrendingDown, FileText, Link as LinkIcon, Downl
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { useMetrics } from "@/shared/hooks/useMetrics";
-import { formatCurrency, formatDate } from "@/shared/lib/utils-format";
+import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { TransacaoFormModal } from "@/modules/financeiro/components/TransacaoFormModal";
 import { TransacaoViewModal } from "@/modules/financeiro/components/TransacaoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
