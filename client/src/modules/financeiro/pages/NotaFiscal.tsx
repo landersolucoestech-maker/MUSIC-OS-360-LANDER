@@ -249,99 +249,94 @@ export default function NotaFiscal() {
 
   return (
     <MainLayout title="Notas Fiscais" description="Registro e controle de notas fiscais de entrada e saída" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* Metrics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <Card className="border-t-2 border-t-primary">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total Registradas</span>
-                <FileText className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</span>
+                <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <FileText className="h-3.5 w-3.5 text-primary" />
+                </div>
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground" data-testid="metric-total-registradas">{totalRegistradas}</span>
-              </div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-total-registradas">{totalRegistradas}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">registradas</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-t-2 border-t-success">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Saídas (qtd)</span>
-                <ArrowUpRight className="h-4 w-4 text-success" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Saídas</span>
+                <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
+                  <ArrowUpRight className="h-3.5 w-3.5 text-success" />
+                </div>
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground" data-testid="metric-saidas-qtd">{saidas.length}</span>
-              </div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-saidas-qtd">{saidas.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">notas emitidas</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-t-2 border-t-warning">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Entradas (qtd)</span>
-                <ArrowDownLeft className="h-4 w-4 text-warning" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Entradas</span>
+                <div className="w-7 h-7 rounded-md bg-warning/10 border border-warning/20 flex items-center justify-center">
+                  <ArrowDownLeft className="h-3.5 w-3.5 text-warning" />
+                </div>
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground" data-testid="metric-entradas-qtd">{entradas.length}</span>
-              </div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-entradas-qtd">{entradas.length}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">notas recebidas</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-t-2 border-t-success">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Valor Saídas</span>
-                <ArrowUpRight className="h-4 w-4 text-success" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valor Saídas</span>
+                <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
+                  <ArrowUpRight className="h-3.5 w-3.5 text-success" />
+                </div>
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold" data-testid="metric-valor-saidas">
-                  {fmtCurrency(valorSaidas)}
-                </span>
-              </div>
+              <p className="text-sm font-mono font-semibold text-foreground leading-tight" data-testid="metric-valor-saidas">{fmtCurrency(valorSaidas)}</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="border-t-2 border-t-warning">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Valor Entradas</span>
-                <ArrowDownLeft className="h-4 w-4 text-warning" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valor Entradas</span>
+                <div className="w-7 h-7 rounded-md bg-warning/10 border border-warning/20 flex items-center justify-center">
+                  <ArrowDownLeft className="h-3.5 w-3.5 text-warning" />
+                </div>
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold" data-testid="metric-valor-entradas">
-                  {fmtCurrency(valorEntradas)}
-                </span>
-              </div>
+              <p className="text-sm font-mono font-semibold text-foreground leading-tight" data-testid="metric-valor-entradas">{fmtCurrency(valorEntradas)}</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className={`border-t-2 ${saldo >= 0 ? "border-t-success" : "border-t-destructive"}`}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Saldo</span>
-                <Scale className={`h-4 w-4 ${saldo >= 0 ? "text-success" : "text-destructive"}`} />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Saldo</span>
+                <div className={`w-7 h-7 rounded-md flex items-center justify-center ${saldo >= 0 ? "bg-success/10 border border-success/20" : "bg-destructive/10 border border-destructive/20"}`}>
+                  <Scale className={`h-3.5 w-3.5 ${saldo >= 0 ? "text-success" : "text-destructive"}`} />
+                </div>
               </div>
-              <div className="mt-2">
-                <span
-                  className={`text-2xl font-bold ${saldo >= 0 ? "text-success" : "text-destructive"}`}
-                  data-testid="metric-saldo"
-                >
-                  {saldo >= 0 ? "+" : ""}
-                  {fmtCurrency(saldo)}
-                </span>
-              </div>
+              <p className={`text-sm font-mono font-semibold leading-tight ${saldo >= 0 ? "text-success" : "text-destructive"}`} data-testid="metric-saldo">
+                {saldo >= 0 ? "+" : ""}{fmtCurrency(saldo)}
+              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-col md:flex-row md:items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por número, cliente ou fornecedor..."
-              className="pl-10"
+              placeholder="Buscar por número, cliente ou fornecedor…"
+              className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               data-testid="input-busca-nf"
@@ -366,7 +361,7 @@ export default function NotaFiscal() {
             </ToggleGroupItem>
           </ToggleGroup>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[150px]" data-testid="select-status-filter">
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status-filter">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -382,12 +377,12 @@ export default function NotaFiscal() {
         {/* Table or Empty State */}
         {filteredNotas.length > 0 ? (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Lista de Notas Fiscais</CardTitle>
-              <CardDescription>
-                {filteredNotas.length} nota{filteredNotas.length !== 1 ? "s" : ""} encontrada
-                {filteredNotas.length !== 1 ? "s" : ""}
-              </CardDescription>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">
+                Lista de Notas Fiscais
+                <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredNotas.length})</span>
+              </CardTitle>
+              <CardDescription className="text-xs mt-0.5">Registro de notas de entrada e saída</CardDescription>
             </CardHeader>
             <CardContent>
               {selectedIds.length > 0 && (

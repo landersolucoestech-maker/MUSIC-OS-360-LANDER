@@ -85,68 +85,76 @@ export default function Contabilidade() {
 
   return (
     <MainLayout title="Contabilidade" description="Fechamento de período, P&L e recoupment">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* KPIs */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Card className="border-t-2 border-t-success">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Receitas do Mês</span>
-                <TrendingUp className="h-5 w-5 text-success" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Receitas do Mês</span>
+                <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
+                  <TrendingUp className="h-3.5 w-3.5 text-success" />
+                </div>
               </div>
-              <div className="mt-2"><span className="text-2xl font-bold font-mono" data-testid="text-kpi-receitas">{formatCurrency(totalReceitas)}</span></div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="text-kpi-receitas">{formatCurrency(totalReceitas)}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-t-2 border-t-destructive">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Despesas do Mês</span>
-                <TrendingDown className="h-5 w-5 text-destructive" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Despesas do Mês</span>
+                <div className="w-7 h-7 rounded-md bg-destructive/10 border border-destructive/20 flex items-center justify-center">
+                  <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                </div>
               </div>
-              <div className="mt-2"><span className="text-2xl font-bold font-mono" data-testid="text-kpi-despesas">{formatCurrency(totalDespesas)}</span></div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="text-kpi-despesas">{formatCurrency(totalDespesas)}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className={`border-t-2 ${lucroLiquido >= 0 ? "border-t-success" : "border-t-destructive"}`}>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Resultado</span>
-                <DollarSign className={`h-5 w-5 ${lucroLiquido >= 0 ? "text-success" : "text-destructive"}`} />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Resultado</span>
+                <div className={`w-7 h-7 rounded-md flex items-center justify-center ${lucroLiquido >= 0 ? "bg-success/10 border border-success/20" : "bg-destructive/10 border border-destructive/20"}`}>
+                  <DollarSign className={`h-3.5 w-3.5 ${lucroLiquido >= 0 ? "text-success" : "text-destructive"}`} />
+                </div>
               </div>
-              <div className="mt-2"><span className={`text-2xl font-bold font-mono ${lucroLiquido >= 0 ? "text-success" : "text-destructive"}`} data-testid="text-kpi-resultado">{formatCurrency(lucroLiquido)}</span></div>
+              <p className={`text-lg font-mono font-semibold ${lucroLiquido >= 0 ? "text-success" : "text-destructive"}`} data-testid="text-kpi-resultado">{formatCurrency(lucroLiquido)}</p>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="border-t-2 border-t-primary">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Períodos Fechados</span>
-                <Calendar className="h-5 w-5 text-muted-foreground" />
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Períodos Fechados</span>
+                <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+                  <Calendar className="h-3.5 w-3.5 text-primary" />
+                </div>
               </div>
-              <div className="mt-2"><span className="text-2xl font-bold font-mono" data-testid="text-kpi-fechados">{periodosFechados}</span></div>
+              <p className="text-lg font-mono font-semibold text-foreground" data-testid="text-kpi-fechados">{periodosFechados}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Tabs */}
         <div className="flex items-center gap-2 flex-wrap">
-          <Button variant={activeTab === "fechamento" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("fechamento")} className="gap-2" data-testid="tab-fechamento">
-            <Calendar className="h-4 w-4" />Fechamento de Período
+          <Button variant={activeTab === "fechamento" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setActiveTab("fechamento")} data-testid="tab-fechamento">
+            <Calendar className="h-3.5 w-3.5" />Fechamento de Período
           </Button>
-          <Button variant={activeTab === "pl-projeto" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("pl-projeto")} className="gap-2" data-testid="tab-pl-projeto">
-            <Briefcase className="h-4 w-4" />P&L por Projeto
+          <Button variant={activeTab === "pl-projeto" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setActiveTab("pl-projeto")} data-testid="tab-pl-projeto">
+            <Briefcase className="h-3.5 w-3.5" />P&L por Projeto
           </Button>
-          <Button variant={activeTab === "pl-artista" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("pl-artista")} className="gap-2" data-testid="tab-pl-artista">
-            <Users className="h-4 w-4" />P&L por Artista
+          <Button variant={activeTab === "pl-artista" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setActiveTab("pl-artista")} data-testid="tab-pl-artista">
+            <Users className="h-3.5 w-3.5" />P&L por Artista
           </Button>
-          <Button variant={activeTab === "recoupment" ? "default" : "outline"} size="sm" onClick={() => setActiveTab("recoupment")} className="gap-2" data-testid="tab-recoupment">
-            <RefreshCw className="h-4 w-4" />Recoupment
+          <Button variant={activeTab === "recoupment" ? "default" : "outline"} size="sm" className="h-8 text-xs gap-1.5" onClick={() => setActiveTab("recoupment")} data-testid="tab-recoupment">
+            <RefreshCw className="h-3.5 w-3.5" />Recoupment
           </Button>
         </div>
 
         {/* FECHAMENTO */}
         {activeTab === "fechamento" && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Fechamento Contábil de Períodos</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold">Fechamento Contábil de Períodos</CardTitle>
               <CardDescription>Demonstrativo mensal de receitas, despesas e resultado.</CardDescription>
             </CardHeader>
             <CardContent>

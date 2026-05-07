@@ -42,7 +42,7 @@ export default function Aparencia() {
 
   return (
     <MainLayout title="Aparência" description="Personalize a aparência do sistema">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Tema</CardTitle>

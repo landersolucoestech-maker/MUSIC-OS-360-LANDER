@@ -144,7 +144,7 @@ export default function MarketingIACriativa() {
       description="Acelere a criação e otimização com IA integrada à estratégia e análise de resultados"
       actions={headerActions}
     >
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap">

@@ -29,28 +29,24 @@ export default function Perfil() {
     setIsEditing(false);
   };
 
+  const headerActions = isEditing ? (
+    <div className="flex gap-2">
+      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleCancel}>
+        <X className="h-3.5 w-3.5" /> Cancelar
+      </Button>
+      <Button size="sm" className="h-8 text-xs gap-1.5 bg-success hover:bg-success/90" onClick={handleSave}>
+        <Save className="h-3.5 w-3.5" /> Salvar
+      </Button>
+    </div>
+  ) : (
+    <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setIsEditing(true)}>
+      <Pencil className="h-3.5 w-3.5" /> Editar Perfil
+    </Button>
+  );
+
   return (
-    <MainLayout title="Meu Perfil" description="Gerencie suas informações pessoais">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        <div className="flex justify-end">
-          {isEditing ? (
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={handleCancel}>
-                <X className="mr-2 h-4 w-4" />
-                Cancelar
-              </Button>
-              <Button className="bg-success hover:bg-success/90" onClick={handleSave}>
-                <Save className="mr-2 h-4 w-4" />
-                Salvar
-              </Button>
-            </div>
-          ) : (
-            <Button className="bg-primary hover:bg-primary/90" onClick={() => setIsEditing(true)}>
-              <Pencil className="mr-2 h-4 w-4" />
-              Editar Perfil
-            </Button>
-          )}
-        </div>
+    <MainLayout title="Meu Perfil" description="Gerencie suas informações pessoais" actions={headerActions}>
+      <div className="space-y-6">
 
         {/* Profile Content */}
         <div className="grid gap-6 lg:grid-cols-3">

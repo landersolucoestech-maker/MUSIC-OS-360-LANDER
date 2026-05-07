@@ -14,7 +14,7 @@ export default function MarketingMetricas() {
 
   return (
     <MainLayout title="Métricas e Resultados" description="Análise detalhada do desempenho das campanhas e redes sociais" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* Tabs */}
         <Tabs defaultValue="metricas">
           <TabsList>
@@ -34,56 +34,56 @@ export default function MarketingMetricas() {
 
           <TabsContent value="metricas" className="mt-6 space-y-6">
             {/* Metrics Cards */}
-            <div className="grid gap-4 md:grid-cols-4">
-              <Card className="bg-card">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Card className="border-t-2 border-t-primary">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Alcance Total</span>
-                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Alcance Total</span>
+                    <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <Eye className="h-3.5 w-3.5 text-primary" />
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold">...</span>
-                    <p className="text-xs text-muted-foreground mt-1">impressões este mês</p>
-                  </div>
+                  <p className="text-xl font-mono font-semibold">—</p>
+                  <p className="text-xs text-muted-foreground mt-1">impressões este mês</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-card">
+              <Card className="border-t-2 border-t-success">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Engajamento Médio</span>
-                    <Heart className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Engajamento</span>
+                    <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
+                      <Heart className="h-3.5 w-3.5 text-success" />
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold">...</span>
-                    <p className="text-xs text-muted-foreground mt-1">taxa de interação</p>
-                  </div>
+                  <p className="text-xl font-mono font-semibold">—</p>
+                  <p className="text-xs text-muted-foreground mt-1">taxa de interação</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-card">
+              <Card className="border-t-2 border-t-primary">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">Seguidores Totais</span>
-                    <Users className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Seguidores</span>
+                    <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold">...</span>
-                    <p className="text-xs text-muted-foreground mt-1">em todas as plataformas</p>
-                  </div>
+                  <p className="text-xl font-mono font-semibold">—</p>
+                  <p className="text-xs text-muted-foreground mt-1">em todas as plataformas</p>
                 </CardContent>
               </Card>
 
-              <Card className="bg-card">
+              <Card className="border-t-2 border-t-success">
                 <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">ROI Médio</span>
-                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">ROI Médio</span>
+                    <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
+                      <TrendingUp className="h-3.5 w-3.5 text-success" />
+                    </div>
                   </div>
-                  <div className="mt-2">
-                    <span className="text-2xl font-bold">0%</span>
-                    <p className="text-xs text-muted-foreground mt-1">retorno sobre investimento</p>
-                  </div>
+                  <p className="text-xl font-mono font-semibold">0%</p>
+                  <p className="text-xs text-muted-foreground mt-1">retorno sobre investimento</p>
                 </CardContent>
               </Card>
             </div>

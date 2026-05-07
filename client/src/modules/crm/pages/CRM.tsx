@@ -5,32 +5,36 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Users, Download, Plus, Phone, Mail, Search, Eye, Upload, Pencil, Trash2, MoreHorizontal, UserCheck, UserPlus, FileText } from "lucide-react";
+import {
+  Users, Download, Plus, Phone, Mail, Search, Eye, Upload,
+  Pencil, Trash2, MoreHorizontal, UserCheck, UserPlus, FileText, X,
+} from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { MetricCard } from "@/shared/components/MetricCard";
+import { EmptyState } from "@/shared/components/EmptyState";
 import { CRMFormModal } from "@/modules/crm/components/CRMFormModal";
 import { CRMViewModal } from "@/modules/crm/components/CRMViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { ListItemSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
+import { cn } from "@/shared/lib/utils";
+
 const getXLSX = () => import("xlsx");
 
 type Cliente = Record<string, any>;
 
-const temperaturaBadge: Record<string, string> = {
-  quente: "bg-warning text-warning-foreground",
-  frio: "bg-blue-500 text-white",
-  morno: "bg-orange-400 text-white",
-};
-
-const prioridadeBadge: Record<string, string> = {
-  alta: "bg-destructive text-white",
-  media: "bg-warning text-warning-foreground",
-  baixa: "bg-success text-success-foreground",
+// Enterprise tinted temperature/priority badges
+const temperaturaStyle: Record<string, string> = {
+  quente: "bg-destructive/10 text-destructive border-destructive/20",
+  morno:  "bg-warning/10 text-warning border-warning/20",
+  frio:   "bg-primary/10 text-primary border-primary/20",
 };
 
 export default function CRM() {
@@ -38,8 +42,6 @@ export default function CRM() {
   const { contratos } = useContratos();
   const clientes = rawClientes as Cliente[];
   const csvInputRef = useRef<HTMLInputElement>(null);
-
-  const isLoading = clientesLoading;
 
   const contratosPorCliente = useMemo(() => {
     const map = new Map<string, Array<{ status?: string | null; data_fim?: string | null }>>();
@@ -54,46 +56,15 @@ export default function CRM() {
 
   const kpis = useMemo(() => ({
     total: clientes.length,
-    ativos: clientes.filter(c => c.status === "ativo").length,
-    leads: clientes.filter(c => c.status === "lead").length,
-    comContrato: clientes.filter(c => contratosPorCliente.has(c.id)).length,
+    ativos: clientes.filter((c) => c.status === "ativo").length,
+    leads: clientes.filter((c) => c.status === "lead").length,
+    comContrato: clientes.filter((c) => contratosPorCliente.has(c.id)).length,
   }), [clientes, contratosPorCliente]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredClientes.length && filteredClientes.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredClientes.map((c: any) => c.id));
-    }
-  };
-  const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => deleteCliente.mutate(id));
-    toast.success(`${selectedIds.length} contato(s) excluído(s) com sucesso`);
-    setSelectedIds([]);
-  };
-  const [formModal, setFormModal] = useState<{
-    open: boolean;
-    mode: "create" | "edit";
-    cliente?: Cliente;
-  }>({
-    open: false,
-    mode: "create"
-  });
-  const [viewModal, setViewModal] = useState<{
-    open: boolean;
-    cliente?: Cliente;
-  }>({
-    open: false
-  });
-  const [deleteModal, setDeleteModal] = useState<{
-    open: boolean;
-    cliente?: Cliente;
-  }>({
-    open: false
-  });
+  const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; cliente?: Cliente }>({ open: false, mode: "create" });
+  const [viewModal, setViewModal] = useState<{ open: boolean; cliente?: Cliente }>({ open: false });
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; cliente?: Cliente }>({ open: false });
 
   useEditQueryParam(
     "edit",
@@ -106,10 +77,11 @@ export default function CRM() {
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredClientes = useMemo(() => {
-    return clientes.filter(cliente => {
-      const matchesSearch = searchTerm === "" || 
-        cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) || 
-        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) || 
+    return clientes.filter((cliente) => {
+      const matchesSearch =
+        searchTerm === "" ||
+        cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         cliente.responsavel?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesTipoPessoa = tipoPessoaFilter === "all" || cliente.tipo_pessoa === tipoPessoaFilter;
       const matchesStatus = statusFilter === "all" || cliente.status === statusFilter;
@@ -118,6 +90,22 @@ export default function CRM() {
   }, [clientes, searchTerm, tipoPessoaFilter, statusFilter]);
 
   const hasActiveFilters = searchTerm !== "" || tipoPessoaFilter !== "all" || statusFilter !== "all";
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredClientes.length && filteredClientes.length > 0) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredClientes.map((c: any) => c.id));
+    }
+  };
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const handleBulkDelete = () => {
+    if (selectedIds.length === 0) return;
+    selectedIds.forEach((id) => deleteCliente.mutate(id));
+    toast.success(`${selectedIds.length} contato(s) excluído(s) com sucesso`);
+    setSelectedIds([]);
+  };
 
   const handleDelete = () => {
     if (deleteModal.cliente) {
@@ -132,64 +120,47 @@ export default function CRM() {
     setStatusFilter("all");
   };
 
-  const getInitials = (nome: string) => {
-    return nome.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
-  };
+  const getInitials = (nome: string) =>
+    nome.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase();
 
   const handleExcelExport = async () => {
     if (filteredClientes.length === 0) {
       toast.error("Nenhum cliente para exportar");
       return;
     }
-    const exportData = filteredClientes.map(c => ({
-      nome: c.nome,
-      tipo: c.tipo || "",
-      email: c.email || "",
-      telefone: c.telefone || "",
-      cpf: c.cpf || "",
-      cnpj: c.cnpj || "",
-      endereco: c.endereco || "",
-      cidade: c.cidade || "",
-      estado: c.estado || "",
-      cep: c.cep || "",
-      status: c.status || "",
-      observacoes: c.observacoes || "",
+    const exportData = filteredClientes.map((c) => ({
+      nome: c.nome, tipo: c.tipo || "", email: c.email || "",
+      telefone: c.telefone || "", cpf: c.cpf || "", cnpj: c.cnpj || "",
+      endereco: c.endereco || "", cidade: c.cidade || "", estado: c.estado || "",
+      cep: c.cep || "", status: c.status || "", observacoes: c.observacoes || "",
     }));
     const XLSX = await getXLSX();
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "CRM");
-    XLSX.writeFile(workbook, `clientes_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `clientes_${new Date().toISOString().split("T")[0]}.xlsx`);
     toast.success(`${filteredClientes.length} cliente(s) exportado(s) com sucesso!`);
   };
 
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
-
     try {
       const XLSX = await getXLSX();
       const arrayBuffer = await file.arrayBuffer();
       const workbook = XLSX.read(arrayBuffer, { type: "array" });
-      const sheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[sheetName];
+      const worksheet = workbook.Sheets[workbook.SheetNames[0]];
       const data: Record<string, any>[] = XLSX.utils.sheet_to_json(worksheet);
-      
-      if (data.length === 0) {
-        toast.error("Arquivo Excel vazio");
-        return;
-      }
-
+      if (data.length === 0) { toast.error("Arquivo Excel vazio"); return; }
       let importados = 0;
       for (const row of data) {
         const nome = row.nome || row.Nome || row.NOME || row.name || row.Name;
         if (!nome) continue;
-
         await addCliente.mutateAsync({
           nome,
           tipo: row.tipo || row.Tipo || null,
           email: row.email || row.Email || row.EMAIL || null,
-          telefone: row.telefone || row.Telefone || row.TELEFONE || row.phone || row.Phone || null,
+          telefone: row.telefone || row.Telefone || row.TELEFONE || null,
           cpf: row.cpf || row.CPF || null,
           cnpj: row.cnpj || row.CNPJ || null,
           cep: row.cep || row.CEP || null,
@@ -201,114 +172,101 @@ export default function CRM() {
         });
         importados++;
       }
-
       toast.success(`${importados} cliente(s) importado(s) com sucesso!`);
     } catch {
       toast.error("Erro ao importar Excel");
     }
-
-    if (csvInputRef.current) {
-      csvInputRef.current.value = "";
-    }
+    if (csvInputRef.current) csvInputRef.current.value = "";
   };
 
-  const headerActions = (
-    <>
-      <input
-        type="file"
-        ref={csvInputRef}
-        accept=".xlsx,.xls"
-        onChange={handleExcelUpload}
-        className="hidden"
-      />
-      <Button variant="outline" size="sm" className="gap-2" data-testid="button-importar-crm" onClick={() => csvInputRef.current?.click()}>
-        <Upload className="h-4 w-4" />
-        Importar
-      </Button>
-      <Button variant="outline" size="sm" className="gap-2" data-testid="button-exportar-crm" onClick={handleExcelExport}>
-        <Download className="h-4 w-4" />
-        Exportar
-      </Button>
-      <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-contato" onClick={() => setFormModal({
-        open: true,
-        mode: "create"
-      })}>
-        <Plus className="h-4 w-4" />
-        Novo Contato
-      </Button>
-    </>
-  );
-
   return (
-    <MainLayout title="CRM" description="Gestão de relacionamento com clientes" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <Card data-testid="kpi-total-contatos">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Total de Contatos</p>
-                  <p className="text-3xl font-bold mt-1">{isLoading ? "—" : kpis.total}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="kpi-clientes-ativos">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Clientes Ativos</p>
-                  <p className="text-3xl font-bold mt-1 text-success">{isLoading ? "—" : kpis.ativos}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
-                  <UserCheck className="h-6 w-6 text-success" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="kpi-leads">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Leads</p>
-                  <p className="text-3xl font-bold mt-1 text-blue-600 dark:text-blue-400">{isLoading ? "—" : kpis.leads}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-blue-500/10 flex items-center justify-center">
-                  <UserPlus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card data-testid="kpi-com-contrato">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">Com Contrato</p>
-                  <p className="text-3xl font-bold mt-1 text-purple-600 dark:text-purple-400">{isLoading ? "—" : kpis.comContrato}</p>
-                </div>
-                <div className="h-12 w-12 rounded-full bg-purple-500/10 flex items-center justify-center">
-                  <FileText className="h-6 w-6 text-purple-600 dark:text-purple-400" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+    <MainLayout
+      title="CRM"
+      description="Gestão de relacionamento com clientes"
+      actions={
+        <>
+          <input
+            type="file"
+            ref={csvInputRef}
+            accept=".xlsx,.xls"
+            onChange={handleExcelUpload}
+            className="hidden"
+          />
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            data-testid="button-importar-crm"
+            onClick={() => csvInputRef.current?.click()}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Importar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            data-testid="button-exportar-crm"
+            onClick={handleExcelExport}
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exportar
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 text-xs gap-1.5"
+            data-testid="button-novo-contato"
+            onClick={() => setFormModal({ open: true, mode: "create" })}
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Novo Contato
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-6">
+        {/* ── KPI Stats ── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard
+            title="Total de Contatos"
+            value={clientesLoading ? "—" : kpis.total}
+            icon={Users}
+            accent="primary"
+          />
+          <MetricCard
+            title="Clientes Ativos"
+            value={clientesLoading ? "—" : kpis.ativos}
+            icon={UserCheck}
+            accent="success"
+          />
+          <MetricCard
+            title="Leads"
+            value={clientesLoading ? "—" : kpis.leads}
+            icon={UserPlus}
+            accent="warning"
+          />
+          <MetricCard
+            title="Com Contrato"
+            value={clientesLoading ? "—" : kpis.comContrato}
+            icon={FileText}
+            accent="primary"
+          />
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar por nome, email ou responsável..." className="pl-10 bg-card border-border" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} data-testid="input-search-crm" />
+        {/* ── Filter Bar ── */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome, email ou responsável…"
+              className="pl-9 h-8 text-sm bg-card border-border"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              data-testid="input-search-crm"
+            />
           </div>
-
           <Select value={tipoPessoaFilter} onValueChange={setTipoPessoaFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border" data-testid="select-tipo-pessoa">
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border" data-testid="select-tipo-pessoa">
               <SelectValue placeholder="Tipo Pessoa" />
             </SelectTrigger>
             <SelectContent>
@@ -317,9 +275,8 @@ export default function CRM() {
               <SelectItem value="pessoa_juridica">Pessoa Jurídica</SelectItem>
             </SelectContent>
           </Select>
-
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border" data-testid="select-status">
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -329,179 +286,233 @@ export default function CRM() {
               <SelectItem value="inativo">Inativo</SelectItem>
             </SelectContent>
           </Select>
-
-          {hasActiveFilters && <Button variant="outline" onClick={clearFilters} data-testid="button-clear-filters">Limpar</Button>}
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs gap-1.5 text-muted-foreground"
+              onClick={clearFilters}
+              data-testid="button-clear-filters"
+            >
+              <X className="h-3 w-3" />
+              Limpar
+            </Button>
+          )}
+          {hasActiveFilters && (
+            <span className="text-xs text-muted-foreground ml-auto">
+              {filteredClientes.length} de {clientes.length} contatos
+            </span>
+          )}
         </div>
 
+        {/* ── Contacts List ── */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-4">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Lista de Contatos</CardTitle>
-                <CardDescription>Todos os contatos e prospects em acompanhamento</CardDescription>
+                <CardTitle className="text-sm font-semibold">
+                  Lista de Contatos
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredClientes.length})</span>
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">Todos os contatos e prospects em acompanhamento</CardDescription>
               </div>
-              {clientes.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer"
-                    onClick={toggleSelectAll}
-                    data-testid="checkbox-select-all"
-                  >
-                    {selectedIds.length === filteredClientes.length && filteredClientes.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                  </div>
-                  <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
-                  {selectedIds.length > 0 && (
-                    <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Excluir ({selectedIds.length})
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
           </CardHeader>
-          <CardContent className="space-y-2">
-            {isLoading ? (
-              Array.from({ length: 5 }).map((_, i) => <ListItemSkeleton key={i} />)
-            ) : filteredClientes.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p>Nenhum cliente encontrado</p>
-                <Button variant="outline" size="sm" className="mt-4" onClick={() => setFormModal({
-                  open: true,
-                  mode: "create"
-                })}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar primeiro cliente
-                </Button>
+          <CardContent className="pt-0">
+            {/* Bulk selection bar */}
+            {clientes.length > 0 && (
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                <Checkbox
+                  checked={selectedIds.length === filteredClientes.length && filteredClientes.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  data-testid="checkbox-select-all"
+                />
+                <span className="text-xs text-muted-foreground flex-1">
+                  {selectedIds.length > 0
+                    ? `${selectedIds.length} selecionado(s)`
+                    : "Selecionar todos"}
+                </span>
+                {selectedIds.length > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 text-xs gap-1.5"
+                    onClick={handleBulkDelete}
+                    data-testid="button-bulk-delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir ({selectedIds.length})
+                  </Button>
+                )}
               </div>
+            )}
+
+            {clientesLoading ? (
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <ListItemSkeleton key={i} />
+                ))}
+              </div>
+            ) : filteredClientes.length === 0 ? (
+              <EmptyState
+                icon={Users}
+                title={hasActiveFilters ? "Nenhum resultado" : "Nenhum contato cadastrado"}
+                description={
+                  hasActiveFilters
+                    ? "Nenhum contato corresponde aos filtros aplicados."
+                    : "Adicione seu primeiro cliente ou prospect."
+                }
+                actionLabel={hasActiveFilters ? undefined : "Novo Contato"}
+                onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
+              />
             ) : (
-              filteredClientes.map(cliente => {
-                const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
-                const situacao = getContratoSituacao(clienteContratos);
-                return (
-                  <div key={cliente.id} data-testid={`row-contato-${cliente.id}`} className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border">
-                    <div className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer flex-shrink-0 ${selectedIds.includes(cliente.id) ? 'bg-primary' : ''}`} onClick={() => toggleSelect(cliente.id)} data-testid={`checkbox-contato-${cliente.id}`}>
-                      {selectedIds.includes(cliente.id) && <div className="w-2 h-2 bg-white rounded-full" />}
-                    </div>
+              <div className="divide-y divide-border/60">
+                {filteredClientes.map((cliente) => {
+                  const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
+                  const situacao = getContratoSituacao(clienteContratos);
 
-                    <Avatar className="h-10 w-10 flex-shrink-0">
-                      <AvatarFallback className="bg-muted-foreground/20 text-foreground text-sm">
-                        {getInitials(cliente.nome)}
-                      </AvatarFallback>
-                    </Avatar>
+                  return (
+                    <div
+                      key={cliente.id}
+                      data-testid={`row-contato-${cliente.id}`}
+                      className="flex items-center gap-3 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
+                    >
+                      <Checkbox
+                        checked={selectedIds.includes(cliente.id)}
+                        onCheckedChange={() => toggleSelect(cliente.id)}
+                        data-testid={`checkbox-contato-${cliente.id}`}
+                        className="shrink-0"
+                      />
 
-                    <div className="min-w-0 w-36 flex-shrink-0">
-                      <h3 className="font-semibold text-sm truncate" data-testid={`text-nome-${cliente.id}`}>{cliente.nome}</h3>
-                      <div className="flex items-center gap-1 flex-wrap mt-0.5">
-                        {cliente.cargo && (
-                          <Badge variant="outline" className="text-[10px] py-0 no-default-hover-elevate no-default-active-elevate">{cliente.cargo}</Badge>
-                        )}
-                        {cliente.temperatura && (
-                          <Badge className={`text-[10px] py-0 no-default-hover-elevate no-default-active-elevate ${temperaturaBadge[cliente.temperatura] || "bg-muted text-muted-foreground"}`}>
-                            {cliente.temperatura}
-                          </Badge>
-                        )}
-                        {cliente.prioridade && (
-                          <Badge className={`text-[10px] py-0 no-default-hover-elevate no-default-active-elevate ${prioridadeBadge[cliente.prioridade] || "bg-muted text-muted-foreground"}`}>
-                            {cliente.prioridade}
-                          </Badge>
-                        )}
-                        <ContratoStatusBadge
-                          situacao={situacao}
-                          className="no-default-hover-elevate no-default-active-elevate"
-                          data-testid={`badge-contrato-${cliente.id}`}
-                        />
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+                          {getInitials(cliente.nome)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      {/* Name + badges */}
+                      <div className="min-w-0 w-36 shrink-0">
+                        <h3
+                          className="font-medium text-sm leading-tight truncate"
+                          data-testid={`text-nome-${cliente.id}`}
+                        >
+                          {cliente.nome}
+                        </h3>
+                        <div className="flex items-center gap-1 flex-wrap mt-1">
+                          <StatusBadge status={cliente.status || "lead"} />
+                          {cliente.temperatura && (
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "text-[10px] px-1.5 py-0 h-4 border",
+                                temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border"
+                              )}
+                            >
+                              {cliente.temperatura}
+                            </Badge>
+                          )}
+                          <ContratoStatusBadge
+                            situacao={situacao}
+                            data-testid={`badge-contrato-${cliente.id}`}
+                          />
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex items-center gap-4 flex-1 min-w-0 text-xs text-muted-foreground">
-                      {cliente.telefone && (
-                        <span className="flex items-center gap-1 flex-shrink-0">
-                          <Phone className="h-3 w-3" />
-                          <span className="truncate">{cliente.telefone}</span>
-                        </span>
-                      )}
-                      {cliente.email && (
-                        <span className="flex items-center gap-1 min-w-0">
-                          <Mail className="h-3 w-3 flex-shrink-0" />
-                          <span className="truncate">{cliente.email}</span>
-                        </span>
-                      )}
-                    </div>
+                      {/* Contact info */}
+                      <div className="flex items-center gap-4 flex-1 min-w-0 text-xs text-muted-foreground">
+                        {cliente.telefone && (
+                          <span className="flex items-center gap-1 shrink-0">
+                            <Phone className="h-3 w-3" />
+                            {cliente.telefone}
+                          </span>
+                        )}
+                        {cliente.email && (
+                          <span className="flex items-center gap-1 min-w-0">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{cliente.email}</span>
+                          </span>
+                        )}
+                      </div>
 
-                    <div className="flex items-center gap-4 text-xs flex-shrink-0">
-                      {cliente.empresa && (
-                        <div className="text-center">
-                          <p className="text-muted-foreground">Empresa</p>
-                          <p className="font-medium text-foreground truncate max-w-[100px]">{cliente.empresa}</p>
-                        </div>
-                      )}
-                      {cliente.cargo && (
-                        <div className="text-center">
-                          <p className="text-muted-foreground">Cargo</p>
-                          <p className="font-medium text-foreground truncate max-w-[80px]">{cliente.cargo}</p>
-                        </div>
-                      )}
-                      {cliente.cidade && (
-                        <div className="text-center">
-                          <p className="text-muted-foreground">Cidade</p>
-                          <p className="font-medium text-foreground truncate max-w-[100px]">{cliente.cidade}/{cliente.estado}</p>
-                        </div>
-                      )}
-                    </div>
+                      {/* Meta info */}
+                      <div className="hidden lg:flex items-center gap-6 text-xs shrink-0">
+                        {cliente.empresa && (
+                          <div>
+                            <p className="text-muted-foreground mb-0.5">Empresa</p>
+                            <p className="font-medium text-foreground truncate max-w-[100px]">{cliente.empresa}</p>
+                          </div>
+                        )}
+                        {cliente.cidade && (
+                          <div>
+                            <p className="text-muted-foreground mb-0.5">Cidade</p>
+                            <p className="font-medium text-foreground">{cliente.cidade}/{cliente.estado}</p>
+                          </div>
+                        )}
+                      </div>
 
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-muted-foreground mb-1">Ações</span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid={`button-menu-${cliente.id}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver
-                        </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`button-excluir-${cliente.id}`} className="text-destructive" onClick={() => setDeleteModal({ open: true, cliente })}>
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                      {/* Actions */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0 shrink-0"
+                            data-testid={`button-menu-${cliente.id}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            data-testid={`button-ver-${cliente.id}`}
+                            onClick={() => setViewModal({ open: true, cliente })}
+                          >
+                            <Eye className="h-3.5 w-3.5 mr-2" />
+                            Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-testid={`button-editar-${cliente.id}`}
+                            onClick={() => setFormModal({ open: true, mode: "edit", cliente })}
+                          >
+                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            data-testid={`button-excluir-${cliente.id}`}
+                            className="text-destructive focus:text-destructive"
+                            onClick={() => setDeleteModal({ open: true, cliente })}
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })}
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <CRMFormModal 
-        open={formModal.open} 
-        onOpenChange={open => setFormModal({ ...formModal, open })} 
-        cliente={formModal.cliente as any} 
-        mode={formModal.mode} 
+      <CRMFormModal
+        open={formModal.open}
+        onOpenChange={(open) => setFormModal({ ...formModal, open })}
+        cliente={formModal.cliente as any}
+        mode={formModal.mode}
       />
-
-      <CRMViewModal 
-        open={viewModal.open} 
-        onOpenChange={open => setViewModal({ ...viewModal, open })} 
-        cliente={viewModal.cliente as any} 
+      <CRMViewModal
+        open={viewModal.open}
+        onOpenChange={(open) => setViewModal({ ...viewModal, open })}
+        cliente={viewModal.cliente as any}
       />
-
-      <DeleteConfirmModal 
-        open={deleteModal.open} 
-        onOpenChange={open => setDeleteModal({ ...deleteModal, open })} 
-        title="Excluir Cliente" 
-        description="Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita." 
-        onConfirm={handleDelete} 
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
+        title="Excluir Cliente"
+        description="Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita."
+        onConfirm={handleDelete}
       />
     </MainLayout>
   );

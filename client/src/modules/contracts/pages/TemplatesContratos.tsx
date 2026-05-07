@@ -112,7 +112,7 @@ export default function TemplatesContratos() {
 
   return (
     <MainLayout title="Templates de Contratos" description="Gerencie modelos de contratos personalizáveis">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <div className="flex justify-end">
           <Button size="sm" className="gap-2" onClick={handleAdd}><Plus className="h-4 w-4" />Novo Template</Button>
         </div>

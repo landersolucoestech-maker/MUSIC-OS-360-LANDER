@@ -2,26 +2,25 @@ import { useCallback, useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Target, DollarSign, MousePointer, BarChart3, Search, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import {
+  Target, DollarSign, MousePointer, BarChart3,
+  Search, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { CampanhaFormModal } from "@/modules/marketing/components/CampanhaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { MetricCard } from "@/shared/components/MetricCard";
 import { useCampanhas } from "@/modules/marketing/hooks/useCampanhas";
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "ativa": return "bg-success text-success-foreground";
-    case "pausada": return "bg-warning text-warning-foreground";
-    case "concluida": return "bg-blue-600 text-white";
-    case "rascunho": return "bg-gray-500 text-white";
-    default: return "bg-muted text-muted-foreground";
-  }
-};
+import { toast } from "sonner";
+import { formatCurrency } from "@/shared/lib/format-utils";
 
 export default function MarketingCampanhas() {
   const { campanhas, isLoading, deleteCampanha } = useCampanhas();
@@ -32,6 +31,7 @@ export default function MarketingCampanhas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all-plat");
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
   const handleNovaCampanha = () => {
     setSelectedCampanha(null);
@@ -54,7 +54,18 @@ export default function MarketingCampanhas() {
     }
   };
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const filteredCampanhas = campanhas.filter((c: any) => {
+    const matchesSearch =
+      searchTerm === "" ||
+      c.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
+    const matchesPlatform = platformFilter === "all-plat" || c.plataforma === platformFilter;
+    return matchesSearch && matchesStatus && matchesPlatform;
+  });
+
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || platformFilter !== "all-plat";
+
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredCampanhas.length && filteredCampanhas.length > 0) {
       setSelectedIds([]);
@@ -62,23 +73,14 @@ export default function MarketingCampanhas() {
       setSelectedIds(filteredCampanhas.map((c: any) => c.id));
     }
   };
-  const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
-    selectedIds.forEach(id => deleteCampanha.mutate(id));
+    selectedIds.forEach((id) => deleteCampanha.mutate(id));
     toast.success(`${selectedIds.length} campanha(s) excluída(s) com sucesso`);
     setSelectedIds([]);
   };
-
-  // Filter campanhas
-  const filteredCampanhas = campanhas.filter((c: any) => {
-    const matchesSearch = searchTerm === "" || 
-      c.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || c.status === statusFilter;
-    const matchesPlatform = platformFilter === "all-plat" || c.plataforma === platformFilter;
-    return matchesSearch && matchesStatus && matchesPlatform;
-  });
 
   // Metrics
   const campanhasAtivas = campanhas.filter((c: any) => c.status === "ativa").length;
@@ -96,185 +98,147 @@ export default function MarketingCampanhas() {
     );
   }
 
-  const headerActions = (
-    <Button className="bg-primary hover:bg-primary/90" onClick={handleNovaCampanha}>
-      + Nova Campanha
-    </Button>
-  );
-
   return (
-    <MainLayout title="Campanhas de Marketing" description="Planeje, execute e monitore campanhas de marketing e tráfego pago" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        <div className="grid gap-4 md:grid-cols-5">
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Campanhas Ativas</span>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{campanhasAtivas}</span>
-                <p className="text-xs text-muted-foreground mt-1">em execução</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Budget Total</span>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">R$ {budgetTotal.toLocaleString("pt-BR")}</span>
-                <p className="text-xs text-muted-foreground mt-1">investimento</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Gasto Total</span>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">R$ {gastoTotal.toLocaleString("pt-BR")}</span>
-                <p className="text-xs text-muted-foreground mt-1">executado</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Cliques</span>
-                <MousePointer className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{cliquesTotal.toLocaleString("pt-BR")}</span>
-                <p className="text-xs text-muted-foreground mt-1">total</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">CTR Médio</span>
-                <BarChart3 className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">0%</span>
-                <p className="text-xs text-muted-foreground mt-1">taxa de clique</p>
-              </div>
-            </CardContent>
-          </Card>
+    <MainLayout
+      title="Campanhas de Marketing"
+      description="Planeje, execute e monitore campanhas e tráfego pago"
+      actions={
+        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleNovaCampanha}>
+          <Plus className="h-3.5 w-3.5" />
+          Nova Campanha
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* ── KPI Stats ── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+          <MetricCard title="Campanhas Ativas" value={campanhasAtivas} description="em execução" icon={Target} accent="primary" />
+          <MetricCard title="Budget Total" value={formatCurrency(budgetTotal)} description="investimento" icon={DollarSign} accent="success" />
+          <MetricCard title="Gasto Total" value={formatCurrency(gastoTotal)} description="executado" icon={DollarSign} accent={gastoTotal > budgetTotal ? "destructive" : "warning"} />
+          <MetricCard title="Cliques" value={cliquesTotal.toLocaleString("pt-BR")} description="total" icon={MousePointer} accent="primary" />
+          <MetricCard title="CTR Médio" value="0%" description="taxa de clique" icon={BarChart3} accent="primary" />
         </div>
 
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar campanhas por nome ou descrição..." 
-              className="pl-10"
+        {/* ── Filter Bar ── */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou descrição…"
+              className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Status" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="all">Todos os status</SelectItem>
               <SelectItem value="ativa">Ativa</SelectItem>
               <SelectItem value="pausada">Pausada</SelectItem>
               <SelectItem value="concluida">Concluída</SelectItem>
             </SelectContent>
           </Select>
           <Select value={platformFilter} onValueChange={setPlatformFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todas Plataformas" />
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Plataforma" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-plat">Todas Plataformas</SelectItem>
+              <SelectItem value="all-plat">Todas</SelectItem>
               <SelectItem value="meta">Meta Ads</SelectItem>
               <SelectItem value="google">Google Ads</SelectItem>
               <SelectItem value="tiktok">TikTok Ads</SelectItem>
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || statusFilter !== "all" || platformFilter !== "all-plat") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPlatformFilter("all-plat"); }}>
-              Limpar
+          {hasActiveFilters && (
+            <Button
+              variant="ghost" size="sm"
+              className="h-8 text-xs gap-1.5 text-muted-foreground"
+              onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPlatformFilter("all-plat"); }}
+            >
+              <X className="h-3 w-3" /> Limpar
             </Button>
           )}
         </div>
 
+        {/* ── Table Card ── */}
         <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between gap-2">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
               <div>
-                <CardTitle>Todas as Campanhas</CardTitle>
-                <CardDescription>Gerencie campanhas de marketing e tráfego pago em um só lugar</CardDescription>
+                <CardTitle className="text-sm font-semibold">
+                  Todas as Campanhas
+                  <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredCampanhas.length})</span>
+                </CardTitle>
+                <CardDescription className="text-xs mt-0.5">Gerencie campanhas em um só lugar</CardDescription>
               </div>
-              {filteredCampanhas.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer"
-                    onClick={toggleSelectAll}
-                    data-testid="checkbox-select-all"
-                  >
-                    {selectedIds.length === filteredCampanhas.length && filteredCampanhas.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                  </div>
-                  <span className="text-sm text-muted-foreground">Selecionar todos</span>
-                  {selectedIds.length > 0 && (
-                    <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Excluir ({selectedIds.length})
-                    </Button>
-                  )}
-                </div>
-              )}
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
+            {filteredCampanhas.length > 0 && (
+              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                <Checkbox
+                  checked={selectedIds.length === filteredCampanhas.length && filteredCampanhas.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                  data-testid="checkbox-select-all"
+                />
+                <span className="text-xs text-muted-foreground flex-1">
+                  {selectedIds.length > 0 ? `${selectedIds.length} selecionada(s)` : "Selecionar todas"}
+                </span>
+                {selectedIds.length > 0 && (
+                  <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Excluir ({selectedIds.length})
+                  </Button>
+                )}
+              </div>
+            )}
+
             {filteredCampanhas.length > 0 ? (
-              <div className="space-y-3">
-                <div className="hidden md:flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <div className="w-10" />
-                  <div className="flex-1 min-w-0">Campanha</div>
-                  <div className="w-9 text-center">Ações</div>
-                </div>
+              <div className="divide-y divide-border/60">
                 {filteredCampanhas.map((campanha: any) => (
-                  <div key={campanha.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer shrink-0 ${selectedIds.includes(campanha.id) ? 'bg-primary' : ''}`}
-                      onClick={() => toggleSelect(campanha.id)}
+                  <div
+                    key={campanha.id}
+                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
+                    data-testid={`row-campanha-${campanha.id}`}
+                  >
+                    <Checkbox
+                      checked={selectedIds.includes(campanha.id)}
+                      onCheckedChange={() => toggleSelect(campanha.id)}
                       data-testid={`checkbox-campanha-${campanha.id}`}
-                    >
-                      {selectedIds.includes(campanha.id) && <div className="w-2 h-2 bg-white rounded-full" />}
-                    </div>
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                      <Target className="h-5 w-5 text-white" />
+                      className="shrink-0"
+                    />
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <Target className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground">{campanha.nome}</h3>
+                      <h3 className="text-sm font-medium leading-tight">{campanha.nome}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">{campanha.plataforma || "Não definido"}</Badge>
-                        <Badge className={`text-xs ${getStatusColor(campanha.status)}`}>{campanha.status}</Badge>
+                        {campanha.plataforma && (
+                          <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
+                            {campanha.plataforma}
+                          </span>
+                        )}
+                        <StatusBadge status={campanha.status} />
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(campanha)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
+                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteModal({ open: true, campanha })} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                        <DropdownMenuItem
+                          onClick={() => setDeleteModal({ open: true, campanha })}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -284,10 +248,14 @@ export default function MarketingCampanhas() {
             ) : (
               <EmptyState
                 icon={Target}
-                title="Nenhuma campanha cadastrada"
-                description="Comece criando sua primeira campanha de marketing"
-                actionLabel="Nova Campanha"
-                onAction={handleNovaCampanha}
+                title={hasActiveFilters ? "Nenhum resultado" : "Nenhuma campanha cadastrada"}
+                description={
+                  hasActiveFilters
+                    ? "Nenhuma campanha corresponde aos filtros."
+                    : "Comece criando sua primeira campanha de marketing."
+                }
+                actionLabel={hasActiveFilters ? undefined : "Nova Campanha"}
+                onAction={hasActiveFilters ? undefined : handleNovaCampanha}
               />
             )}
           </CardContent>
@@ -295,12 +263,12 @@ export default function MarketingCampanhas() {
       </div>
 
       <CampanhaFormModal open={modalOpen} onOpenChange={setModalOpen} initialData={selectedCampanha} mode={modalMode} />
-      <DeleteConfirmModal 
-        open={deleteModal.open} 
-        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} 
-        title="Excluir Campanha" 
-        description={`Tem certeza que deseja excluir a campanha "${deleteModal.campanha?.nome}"?`} 
-        onConfirm={handleDelete} 
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
+        title="Excluir Campanha"
+        description={`Tem certeza que deseja excluir a campanha "${deleteModal.campanha?.nome}"?`}
+        onConfirm={handleDelete}
       />
     </MainLayout>
   );

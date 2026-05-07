@@ -80,7 +80,7 @@ export default function FinanceiroRegras() {
 
   return (
     <MainLayout title="Regras de Categorização" description="Configure regras automáticas para categorizar transações">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <div className="flex justify-end">
           <Button size="sm" className="gap-2" onClick={handleCreateRule}><Plus className="h-4 w-4" />Nova Regra</Button>
         </div>

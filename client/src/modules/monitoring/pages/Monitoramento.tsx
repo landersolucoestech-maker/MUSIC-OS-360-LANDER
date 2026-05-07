@@ -67,7 +67,7 @@ export default function Monitoramento() {
 
   return (
     <MainLayout title="Monitoramento" description="Detecte execuções em rádio, TV e reconcilie com ECAD">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>

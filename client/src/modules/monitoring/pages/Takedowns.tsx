@@ -102,7 +102,7 @@ export default function Takedowns() {
 
   return (
     <MainLayout title="Takedowns" description="Gerencie solicitações de remoção e claims" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
 
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Total</span><AlertTriangle className="h-5 w-5 text-primary" /></div><div className="mt-2"><span className="text-2xl font-bold">{metricas.total}</span></div></CardContent></Card>

@@ -236,7 +236,7 @@ export default function Agenda() {
 
   return (
     <MainLayout title="Agenda" description="Gerencie shows, eventos e compromissos" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4">

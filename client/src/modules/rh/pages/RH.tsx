@@ -469,7 +469,7 @@ export default function RH() {
         </div>
       }
     >
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="funcionarios" className="flex items-center gap-2" data-testid="tab-funcionarios">
@@ -984,7 +984,7 @@ export default function RH() {
                 description="Escolha um funcionário na lista acima para visualizar e gerenciar seus documentos."
               />
             ) : (
-              <div className="space-y-6 pt-[10px] pb-[10px]">
+              <div className="space-y-6">
                 <Card>
                   <CardContent className="p-4 space-y-4">
                     <h3 className="font-semibold text-sm" data-testid="text-upload-title">Enviar Novo Documento</h3>

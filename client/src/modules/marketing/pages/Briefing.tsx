@@ -1,34 +1,21 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { FileText, Clock, CheckCircle, FileEdit, Search, AlertTriangle, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import {
+  FileText, Clock, CheckCircle, FileEdit, Search, Loader2,
+  MoreHorizontal, Pencil, Trash2, Plus, X, List,
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { BriefingFormModal } from "@/modules/marketing/components/BriefingFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { MetricCard } from "@/shared/components/MetricCard";
 import { useBriefings } from "@/modules/marketing/hooks/useBriefings";
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "ativo": return "bg-success text-success-foreground";
-    case "pendente": return "bg-warning text-warning-foreground";
-    case "aprovado": return "bg-blue-600 text-white";
-    default: return "bg-muted text-muted-foreground";
-  }
-};
-
-const getPrioridadeColor = (prioridade: string) => {
-  switch (prioridade) {
-    case "alta": return "border-primary text-primary";
-    case "media": return "border-warning text-warning";
-    case "baixa": return "border-success text-success";
-    default: return "border-muted-foreground text-muted-foreground";
-  }
-};
+import { cn } from "@/shared/lib/utils";
 
 export default function MarketingBriefing() {
   const { briefings, isLoading, deleteBriefing } = useBriefings();
@@ -59,15 +46,17 @@ export default function MarketingBriefing() {
     }
   };
 
-  // Filter briefings
   const filteredBriefings = briefings.filter((b: any) => {
-    const matchesSearch = searchTerm === "" || 
+    const matchesSearch =
+      searchTerm === "" ||
       b.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       b.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || b.status === statusFilter;
     const matchesPrioridade = prioridadeFilter === "all" || b.prioridade === prioridadeFilter;
     return matchesSearch && matchesStatus && matchesPrioridade;
   });
+
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all" || prioridadeFilter !== "all";
 
   // Metrics
   const briefingsAtivos = briefings.filter((b: any) => b.status === "ativo").length;
@@ -84,152 +73,120 @@ export default function MarketingBriefing() {
     );
   }
 
-  const headerActions = (
-    <Button className="bg-primary hover:bg-primary/90" onClick={handleNovoBriefing}>
-      + Novo Briefing
-    </Button>
-  );
-
   return (
-    <MainLayout title="Central de Briefing" description="Gerencie briefings e diretrizes para campanhas de marketing" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        {/* Metrics Cards */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Briefings Ativos</span>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{briefingsAtivos}</span>
-                <p className="text-xs text-muted-foreground mt-1">em desenvolvimento</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Pendentes Aprovação</span>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{pendentesAprovacao}</span>
-                <p className="text-xs text-muted-foreground mt-1">aguardando review</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Aprovados este mês</span>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{aprovados}</span>
-                <p className="text-xs text-muted-foreground mt-1">prontos para execução</p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total de Briefings</span>
-                <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{briefings.length}</span>
-                <p className="text-xs text-muted-foreground mt-1">no sistema</p>
-              </div>
-            </CardContent>
-          </Card>
+    <MainLayout
+      title="Central de Briefing"
+      description="Gerencie briefings e diretrizes para campanhas de marketing"
+      actions={
+        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleNovoBriefing}>
+          <Plus className="h-3.5 w-3.5" /> Novo Briefing
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* ── KPI Stats ── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Briefings Ativos" value={briefingsAtivos} description="em desenvolvimento" icon={FileText} accent="primary" />
+          <MetricCard title="Pendentes Aprovação" value={pendentesAprovacao} description="aguardando review" icon={Clock} accent={pendentesAprovacao > 0 ? "warning" : "primary"} />
+          <MetricCard title="Aprovados" value={aprovados} description="prontos para execução" icon={CheckCircle} accent="success" />
+          <MetricCard title="Total" value={briefings.length} description="no sistema" icon={List} accent="primary" />
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar briefings por título, campanha ou descrição..." 
-              className="pl-10"
+        {/* ── Filter Bar ── */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por título ou descrição…"
+              className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Status" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
               <SelectItem value="aprovado">Aprovado</SelectItem>
             </SelectContent>
           </Select>
           <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Prioridade" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Prioridade</SelectItem>
+              <SelectItem value="all">Todas</SelectItem>
               <SelectItem value="alta">Alta</SelectItem>
               <SelectItem value="media">Média</SelectItem>
               <SelectItem value="baixa">Baixa</SelectItem>
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || statusFilter !== "all" || prioridadeFilter !== "all") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPrioridadeFilter("all"); }}>
-              Limpar
+          {hasActiveFilters && (
+            <Button
+              variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground"
+              onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPrioridadeFilter("all"); }}
+            >
+              <X className="h-3 w-3" /> Limpar
             </Button>
           )}
         </div>
 
-        {/* Content Section */}
+        {/* ── Table Card ── */}
         <Card>
-          <CardHeader>
-            <CardTitle>Briefings de Marketing</CardTitle>
-            <CardDescription>Todos os briefings e diretrizes de campanhas</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">
+              Briefings de Marketing
+              <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredBriefings.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Todos os briefings e diretrizes de campanhas</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {filteredBriefings.length > 0 ? (
-              <div className="space-y-3">
-                <div className="hidden md:flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <div className="w-10" />
-                  <div className="flex-1 min-w-0">Briefing</div>
-                  <div className="w-9 text-center">Ações</div>
-                </div>
+              <div className="divide-y divide-border/60">
                 {filteredBriefings.map((briefing: any) => (
-                  <div key={briefing.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                      <FileEdit className="h-5 w-5 text-white" />
+                  <div
+                    key={briefing.id}
+                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
+                    data-testid={`row-briefing-${briefing.id}`}
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                      <FileEdit className="h-4 w-4 text-primary" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground">{briefing.titulo}</h3>
+                      <h3 className="text-sm font-medium leading-tight">{briefing.titulo}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className={`text-xs ${getPrioridadeColor(briefing.prioridade)}`}>
-                          {briefing.prioridade || "Normal"}
-                        </Badge>
-                        <Badge className={`text-xs ${getStatusColor(briefing.status)}`}>{briefing.status}</Badge>
+                        {briefing.prioridade && (
+                          <span className={cn(
+                            "text-[10px] border px-1.5 py-0.5 rounded-sm",
+                            briefing.prioridade === "alta"  ? "border-primary/40 text-primary" :
+                            briefing.prioridade === "media" ? "border-warning/40 text-warning" :
+                            "border-success/40 text-success"
+                          )}>
+                            {briefing.prioridade}
+                          </span>
+                        )}
+                        <StatusBadge status={briefing.status} />
                       </div>
                     </div>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(briefing)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
+                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteModal({ open: true, briefing })} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                        <DropdownMenuItem
+                          onClick={() => setDeleteModal({ open: true, briefing })}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -239,10 +196,14 @@ export default function MarketingBriefing() {
             ) : (
               <EmptyState
                 icon={FileEdit}
-                title="Nenhum briefing cadastrado"
-                description="Comece a criar briefings para suas campanhas"
-                actionLabel="Novo Briefing"
-                onAction={handleNovoBriefing}
+                title={hasActiveFilters ? "Nenhum resultado" : "Nenhum briefing cadastrado"}
+                description={
+                  hasActiveFilters
+                    ? "Nenhum briefing corresponde aos filtros aplicados."
+                    : "Comece a criar briefings para suas campanhas."
+                }
+                actionLabel={hasActiveFilters ? undefined : "Novo Briefing"}
+                onAction={hasActiveFilters ? undefined : handleNovoBriefing}
               />
             )}
           </CardContent>
@@ -255,7 +216,6 @@ export default function MarketingBriefing() {
         initialData={selectedBriefing}
         mode={modalMode}
       />
-
       <DeleteConfirmModal
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}

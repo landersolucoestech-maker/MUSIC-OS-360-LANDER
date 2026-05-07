@@ -64,55 +64,57 @@ export default function Usuarios() {
   }
 
   return (
-    <MainLayout title="Usuários" description="Gerencie usuários e permissões do sistema">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        <div className="flex justify-end">
-          <Button 
-            size="sm" 
-            className="gap-2 bg-primary hover:bg-primary/90 text-primary-foreground" 
-            onClick={() => setFormModal({ open: true, mode: "create" })}
-          >
-            <Users className="h-4 w-4" />
-            Novo Usuário
-          </Button>
-        </div>
+    <MainLayout
+      title="Usuários"
+      description="Gerencie usuários e permissões do sistema"
+      actions={
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => setFormModal({ open: true, mode: "create" })}
+        >
+          <Users className="h-3.5 w-3.5" /> Novo Usuário
+        </Button>
+      }
+    >
+      <div className="space-y-6">
 
-        <Card className="bg-card border-border">
-          <CardContent className="p-4">
-            <div className="flex items-center gap-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input 
-                  placeholder="Buscar por nome ou email..." 
-                  className="pl-10 bg-card border-border" 
-                  value={searchTerm} 
-                  onChange={(e) => setSearchTerm(e.target.value)} 
-                />
-              </div>
-              <Select value={cargoFilter} onValueChange={setCargoFilter}>
-                <SelectTrigger className="w-[160px] bg-card border-border">
-                  <SelectValue placeholder="Todos os Cargos" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-cargo">Todos os Cargos</SelectItem>
-                  <SelectItem value="admin">Administrador</SelectItem>
-                  <SelectItem value="usuario">Usuário</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[160px] bg-card border-border">
-                  <SelectValue placeholder="Todos os Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all-status">Todos os Status</SelectItem>
-                  <SelectItem value="ativo">Ativo</SelectItem>
-                  <SelectItem value="inativo">Inativo</SelectItem>
-                </SelectContent>
-              </Select>
-              {hasActiveFilters && <Button variant="outline" onClick={handleClearFilters}>Limpar</Button>}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou email…"
+              className="pl-9 h-8 text-sm bg-card border-border"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Select value={cargoFilter} onValueChange={setCargoFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Todos os Cargos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-cargo">Todos os Cargos</SelectItem>
+              <SelectItem value="admin">Administrador</SelectItem>
+              <SelectItem value="usuario">Usuário</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Todos os Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-status">Todos os Status</SelectItem>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+          {hasActiveFilters && (
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleClearFilters}>
+              Limpar
+            </Button>
+          )}
+        </div>
 
         {filteredUsuarios.length === 0 ? (
           <EmptyState

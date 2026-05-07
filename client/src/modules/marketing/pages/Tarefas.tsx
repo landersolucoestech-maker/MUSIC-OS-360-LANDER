@@ -1,35 +1,18 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Clock, FileText, CheckCircle, Target, Search, Check, Loader2, MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Clock, FileText, CheckCircle, Target, Search, Check, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { TarefaMarketingFormModal } from "@/modules/marketing/components/TarefaMarketingFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { MetricCard } from "@/shared/components/MetricCard";
 import { useTarefasMarketing } from "@/modules/marketing/hooks/useTarefasMarketing";
-
-const getStatusColor = (status: string) => {
-  switch (status) {
-    case "concluida": return "bg-success text-success-foreground";
-    case "em_andamento": return "bg-blue-600 text-white";
-    case "pendente": return "bg-warning text-warning-foreground";
-    case "atrasada": return "bg-destructive text-destructive-foreground";
-    default: return "bg-muted text-muted-foreground";
-  }
-};
-
-const getPrioridadeColor = (prioridade: string) => {
-  switch (prioridade) {
-    case "alta": return "border-primary text-primary";
-    case "media": return "border-amber-500 text-amber-500";
-    case "baixa": return "border-success text-success";
-    default: return "border-muted-foreground text-muted-foreground";
-  }
-};
+import { cn } from "@/shared/lib/utils";
 
 export default function MarketingTarefas() {
   const { tarefas, isLoading, deleteTarefa } = useTarefasMarketing();
@@ -61,9 +44,9 @@ export default function MarketingTarefas() {
     }
   };
 
-  // Filter tarefas
   const filteredTarefas = tarefas.filter((t: any) => {
-    const matchesSearch = searchTerm === "" || 
+    const matchesSearch =
+      searchTerm === "" ||
       t.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || t.status === statusFilter;
@@ -71,6 +54,9 @@ export default function MarketingTarefas() {
     const matchesCategoria = categoriaFilter === "all-cat" || t.categoria === categoriaFilter;
     return matchesSearch && matchesStatus && matchesPrioridade && matchesCategoria;
   });
+
+  const hasActiveFilters =
+    searchTerm !== "" || statusFilter !== "all" || prioridadeFilter !== "all-pri" || categoriaFilter !== "all-cat";
 
   // Metrics
   const pendentes = tarefas.filter((t: any) => t.status === "pendente").length;
@@ -88,154 +74,149 @@ export default function MarketingTarefas() {
     );
   }
 
-  const headerActions = (
-    <Button className="bg-primary hover:bg-primary/90" onClick={handleNovaTarefa}>+ Nova Tarefa</Button>
-  );
-
   return (
-    <MainLayout title="Gestão de Tarefas" description="Organize e acompanhe todas as tarefas de marketing" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Tarefas Pendentes</span>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{pendentes}</span>
-                <p className="text-xs text-muted-foreground mt-1">aguardando execução</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Em Andamento</span>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{emAndamento}</span>
-                <p className="text-xs text-muted-foreground mt-1">sendo executadas</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Concluídas</span>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{concluidas}</span>
-                <p className="text-xs text-muted-foreground mt-1">este mês</p>
-              </div>
-            </CardContent>
-          </Card>
-          <Card className="bg-card">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Taxa de Conclusão</span>
-                <Target className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{taxaConclusao}%</span>
-                <p className="text-xs text-muted-foreground mt-1">no prazo</p>
-              </div>
-            </CardContent>
-          </Card>
+    <MainLayout
+      title="Gestão de Tarefas"
+      description="Organize e acompanhe todas as tarefas de marketing"
+      actions={
+        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleNovaTarefa}>
+          <Plus className="h-3.5 w-3.5" /> Nova Tarefa
+        </Button>
+      }
+    >
+      <div className="space-y-6">
+        {/* ── KPI Stats ── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <MetricCard title="Pendentes" value={pendentes} description="aguardando execução" icon={Clock} accent={pendentes > 0 ? "warning" : "primary"} />
+          <MetricCard title="Em Andamento" value={emAndamento} description="sendo executadas" icon={FileText} accent="primary" />
+          <MetricCard title="Concluídas" value={concluidas} description="este mês" icon={CheckCircle} accent="success" />
+          <MetricCard title="Taxa de Conclusão" value={`${taxaConclusao}%`} description="no prazo" icon={Target} accent="success" />
         </div>
 
-        <div className="flex gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar tarefas por título, descrição ou campanha..." 
-              className="pl-10"
+        {/* ── Filter Bar ── */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por título ou descrição…"
+              className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Status" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos Status</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
               <SelectItem value="em_andamento">Em Andamento</SelectItem>
               <SelectItem value="concluida">Concluída</SelectItem>
             </SelectContent>
           </Select>
           <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Prioridade" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Prioridade" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-pri">Todos Prioridade</SelectItem>
+              <SelectItem value="all-pri">Todas</SelectItem>
               <SelectItem value="alta">Alta</SelectItem>
               <SelectItem value="media">Média</SelectItem>
               <SelectItem value="baixa">Baixa</SelectItem>
             </SelectContent>
           </Select>
           <Select value={categoriaFilter} onValueChange={setCategoriaFilter}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Todos Categoria" />
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all-cat">Todos Categoria</SelectItem>
+              <SelectItem value="all-cat">Todas</SelectItem>
               <SelectItem value="design">Design</SelectItem>
               <SelectItem value="video">Vídeo</SelectItem>
               <SelectItem value="conteudo">Conteúdo</SelectItem>
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || statusFilter !== "all" || prioridadeFilter !== "all-pri" || categoriaFilter !== "all-cat") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPrioridadeFilter("all-pri"); setCategoriaFilter("all-cat"); }}>
-              Limpar
+          {hasActiveFilters && (
+            <Button
+              variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground"
+              onClick={() => { setSearchTerm(""); setStatusFilter("all"); setPrioridadeFilter("all-pri"); setCategoriaFilter("all-cat"); }}
+            >
+              <X className="h-3 w-3" /> Limpar
             </Button>
           )}
         </div>
 
+        {/* ── Table Card ── */}
         <Card>
-          <CardHeader>
-            <CardTitle>Lista de Tarefas</CardTitle>
-            <CardDescription>Gerencie todas as tarefas de marketing e seus prazos</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-semibold">
+              Lista de Tarefas
+              <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredTarefas.length})</span>
+            </CardTitle>
+            <CardDescription className="text-xs mt-0.5">Gerencie todas as tarefas de marketing e seus prazos</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {filteredTarefas.length > 0 ? (
-              <div className="space-y-3">
-                <div className="hidden md:flex items-center gap-4 px-4 py-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                  <div className="w-10" />
-                  <div className="flex-1 min-w-0">Tarefa</div>
-                  <div className="w-9 text-center">Ações</div>
-                </div>
+              <div className="divide-y divide-border/60">
                 {filteredTarefas.map((tarefa: any) => (
-                  <div key={tarefa.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${tarefa.status === 'concluida' ? 'bg-success' : 'bg-primary'}`}>
-                      {tarefa.status === 'concluida' ? <Check className="h-5 w-5 text-white" /> : <Clock className="h-5 w-5 text-white" />}
+                  <div
+                    key={tarefa.id}
+                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
+                    data-testid={`row-tarefa-${tarefa.id}`}
+                  >
+                    {/* Icon */}
+                    <div className={cn(
+                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
+                      tarefa.status === "concluida"
+                        ? "bg-success/10 border border-success/20"
+                        : "bg-primary/10 border border-primary/20"
+                    )}>
+                      {tarefa.status === "concluida"
+                        ? <Check className="h-4 w-4 text-success" />
+                        : <Clock className="h-4 w-4 text-primary" />
+                      }
                     </div>
+
+                    {/* Info */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-semibold text-foreground">{tarefa.titulo}</h3>
+                      <h3 className="text-sm font-medium leading-tight">{tarefa.titulo}</h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-xs">{tarefa.categoria || "Geral"}</Badge>
-                        <Badge variant="outline" className={`text-xs ${getPrioridadeColor(tarefa.prioridade)}`}>{tarefa.prioridade || "Normal"}</Badge>
-                        <Badge className={`text-xs ${getStatusColor(tarefa.status)}`}>{tarefa.status}</Badge>
+                        {tarefa.categoria && (
+                          <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
+                            {tarefa.categoria}
+                          </span>
+                        )}
+                        {tarefa.prioridade && (
+                          <span className={cn(
+                            "text-[10px] border px-1.5 py-0.5 rounded-sm",
+                            tarefa.prioridade === "alta"   ? "border-primary/40 text-primary" :
+                            tarefa.prioridade === "media"  ? "border-warning/40 text-warning" :
+                            "border-success/40 text-success"
+                          )}>
+                            {tarefa.prioridade}
+                          </span>
+                        )}
+                        <StatusBadge status={tarefa.status} />
                       </div>
                     </div>
+
+                    {/* Actions */}
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
                           <MoreHorizontal className="h-4 w-4" />
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem onClick={() => handleEdit(tarefa)}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
+                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setDeleteModal({ open: true, tarefa })} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
+                        <DropdownMenuItem
+                          onClick={() => setDeleteModal({ open: true, tarefa })}
+                          className="text-destructive focus:text-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
@@ -245,10 +226,14 @@ export default function MarketingTarefas() {
             ) : (
               <EmptyState
                 icon={FileText}
-                title="Nenhuma tarefa cadastrada"
-                description="Comece criando sua primeira tarefa de marketing"
-                actionLabel="Nova Tarefa"
-                onAction={handleNovaTarefa}
+                title={hasActiveFilters ? "Nenhuma tarefa encontrada" : "Nenhuma tarefa cadastrada"}
+                description={
+                  hasActiveFilters
+                    ? "Nenhuma tarefa corresponde aos filtros aplicados."
+                    : "Comece criando sua primeira tarefa de marketing."
+                }
+                actionLabel={hasActiveFilters ? undefined : "Nova Tarefa"}
+                onAction={hasActiveFilters ? undefined : handleNovaTarefa}
               />
             )}
           </CardContent>
@@ -256,12 +241,12 @@ export default function MarketingTarefas() {
       </div>
 
       <TarefaMarketingFormModal open={modalOpen} onOpenChange={setModalOpen} initialData={selectedTarefa} mode={modalMode} />
-      <DeleteConfirmModal 
-        open={deleteModal.open} 
-        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} 
-        title="Excluir Tarefa" 
-        description={`Tem certeza que deseja excluir a tarefa "${deleteModal.tarefa?.titulo}"?`} 
-        onConfirm={handleDelete} 
+      <DeleteConfirmModal
+        open={deleteModal.open}
+        onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
+        title="Excluir Tarefa"
+        description={`Tem certeza que deseja excluir a tarefa "${deleteModal.tarefa?.titulo}"?`}
+        onConfirm={handleDelete}
       />
     </MainLayout>
   );

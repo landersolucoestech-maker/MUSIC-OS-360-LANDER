@@ -122,7 +122,7 @@ export default function MarketingCalendario() {
 
   return (
     <MainLayout title="Calendário de Conteúdo" description="Planeje e agende todo o conteúdo das redes sociais" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
           <Card className="bg-card"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Conteúdos Agendados</span><CalendarDays className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2"><span className="text-2xl font-bold" data-testid="text-agendados">{agendados}</span><p className="text-xs text-muted-foreground mt-1">próximos 7 dias</p></div></CardContent></Card>
           <Card className="bg-card"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Posts Publicados</span><FileText className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2"><span className="text-2xl font-bold" data-testid="text-publicados">{publicados}</span><p className="text-xs text-muted-foreground mt-1">este mês</p></div></CardContent></Card>

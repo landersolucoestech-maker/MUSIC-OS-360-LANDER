@@ -473,7 +473,7 @@ export default function Configuracoes() {
 
   return (
     <MainLayout title="Configurações" description="Gerencie as configurações do sistema e preferências">
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* Tabs */}
         <Tabs defaultValue="empresa">
           <TabsList className="flex-wrap h-auto">

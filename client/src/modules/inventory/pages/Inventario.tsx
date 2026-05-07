@@ -141,7 +141,7 @@ export default function Inventario() {
 
   return (
     <MainLayout title="Inventário" description="Controle de equipamentos e patrimônio" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Total de Itens</span><Package className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.total}</span></div><p className="text-xs text-muted-foreground mt-1">equipamentos cadastrados</p></CardContent></Card>
           <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Em Uso</span><Package className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.emUso}</span></div><p className="text-xs text-muted-foreground mt-1">em operação</p></CardContent></Card>

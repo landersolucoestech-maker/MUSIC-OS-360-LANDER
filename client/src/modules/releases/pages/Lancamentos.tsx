@@ -152,7 +152,7 @@ export default function Lancamentos() {
 
   return (
     <MainLayout title="Lançamentos" description="Gestão de lançamentos e distribuição" actions={headerActions}>
-      <div className="space-y-6 pt-[10px] pb-[10px]">
+      <div className="space-y-6">
         {/* Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <Card className="bg-card border-border">
