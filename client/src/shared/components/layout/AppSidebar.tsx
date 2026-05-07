@@ -224,8 +224,8 @@ export function AppSidebar() {
     >
       {/* ── Brand header ──────────────────────────────────────────────────── */}
       <div className={cn(
-        "flex h-[52px] items-center border-b border-sidebar-border px-3",
-        collapsed ? "justify-center" : "justify-between gap-2",
+        "flex items-center border-b border-sidebar-border px-3",
+        collapsed ? "h-[52px] justify-center" : "h-[64px] justify-between gap-2",
       )}>
         <div className="flex items-center gap-2.5 min-w-0">
           <div className={cn(
@@ -239,9 +239,17 @@ export function AppSidebar() {
               <p className="text-[12.5px] font-bold leading-none tracking-tight text-sidebar-foreground">
                 MUSIC OS 360
               </p>
-              <p className="text-[9.5px] font-medium text-sidebar-foreground/35 uppercase tracking-[0.1em] leading-none mt-1">
-                ERP Operacional
+              <p className="text-[9px] font-medium text-sidebar-foreground/40 uppercase tracking-[0.09em] leading-none mt-[3px]">
+                ERP OPERACIONAL MUSICAL
               </p>
+              <span className={cn(
+                "inline-flex items-center mt-[4px]",
+                "text-[8.5px] font-bold uppercase tracking-[0.12em] leading-none",
+                "px-1.5 py-[2px] rounded-[3px]",
+                "bg-primary/10 border border-primary/20 text-primary",
+              )}>
+                SISTEMA MULTI-TENANT
+              </span>
             </div>
           )}
         </div>
@@ -275,7 +283,10 @@ export function AppSidebar() {
 
       {/* ── Tenant block ──────────────────────────────────────────────────── */}
       {!collapsed && (
-        <div className="px-2.5 py-2 border-b border-sidebar-border">
+        <div className="px-2.5 pt-1.5 pb-2 border-b border-sidebar-border">
+          <p className="text-[8.5px] font-semibold text-sidebar-foreground/30 uppercase tracking-[0.14em] px-1 pb-1">
+            Tenant Atual
+          </p>
           <div className={cn(
             "flex items-center gap-2 rounded-md px-2 py-1.5",
             "bg-sidebar-accent/50 border border-sidebar-border/60",

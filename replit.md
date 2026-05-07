@@ -24,6 +24,7 @@ MUSIC OS 360 is an enterprise music management SaaS that centralizes every aspec
 - **Releases module** lives at `client/src/modules/releases/` — Lançamentos musicais (álbum/single/EP, distribuidora, plataformas) + Gestão de Shares; routes in `releases.routes.tsx` (`/lancamentos`, `/gestao-shares`)
 - **Monitoring module** includes `ECADViewModal` for ECAD conciliation details
 - **Analytics module** — ONLY social/ads platforms: YouTube, TikTok, Instagram, Meta Ads, Google Ads. No individual artist analysis (covered by Visão 360 modal).
+- **Multi-tenant architecture** — `TenantContext` at `client/src/app/providers/TenantContext.tsx`: Tenant type, TenantPermissions (RBAC), TenantConfig (branding), TenantBilling, TenantOnboarding, feature flags; isolation utilities at `client/src/shared/lib/tenant-isolation.ts`
 
 ## Product
 - Music Catalog: obras, fonogramas, shares, licenses, ISRC/ISWC
@@ -41,7 +42,7 @@ MUSIC OS 360 is an enterprise music management SaaS that centralizes every aspec
 - Messaging feature: **MusicChat** (route `/chat`)
 - Design: enterprise blue `hsl(217 91% 60%)`, dark navy `hsl(222 47% 4%)`, Plus Jakarta Sans + IBM Plex Mono
 - Semantic red: destructive/cancelled/rejected/expired/negative values ONLY
-- No "SISTEMA MULTI-TENANT" text anywhere in the app
+- Sidebar header shows: MUSIC OS 360 / ERP OPERACIONAL MUSICAL / badge "SISTEMA MULTI-TENANT" / label "Tenant Atual" + nome do tenant
 - No IA Assistente module (AI functionality limited to form-level buttons in Marketing and artist forms)
 - Mock data is intentional — serves as visual reference for how real data will appear
 - Analytics must NOT duplicate individual artist analysis (already in Visão 360 modal)
