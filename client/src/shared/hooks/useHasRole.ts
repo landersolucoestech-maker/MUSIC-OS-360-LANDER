@@ -7,7 +7,7 @@ export type AppRole =
   | "super_admin"
   | "tenant_owner"
   | "admin"
-  | "financeiro"
+  | "accounting"
   | "juridico"
   | "artista"
   | "produtor"
@@ -22,7 +22,7 @@ const ROLE_HIERARCHY: Record<AppRole, number> = {
   super_admin:       0,
   tenant_owner:      1,
   admin:             2,
-  financeiro:        3,
+  accounting:        3,
   juridico:          3,
   rh_manager:        3,
   marketing_manager: 4,
@@ -37,7 +37,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   super_admin:       "Super Admin",
   tenant_owner:      "Proprietário",
   admin:             "Administrador",
-  financeiro:        "Gestor Financeiro",
+  accounting:        "Gestor Accounting",
   juridico:          "Jurídico / Contratos",
   artista:           "Artista",
   produtor:          "Produtor Musical",

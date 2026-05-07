@@ -44,7 +44,7 @@ import {
   servicosReceitaComArtistaEProjeto,
   servicosReceitaComArtista,
 } from "@/shared/lib/transacao-constants";
-import { transacaoToFormFields } from "@/modules/financeiro/mappers";
+import { transacaoToFormFields } from "@/modules/accounting/mappers";
 
 interface TransacaoFormModalProps {
   open: boolean;

@@ -32,7 +32,7 @@ export type ResourceScope =
   | "catalog"
   | "releases"
   | "contracts"
-  | "financeiro"
+  | "accounting"
   | "crm"
   | "leads"
   | "marketing"

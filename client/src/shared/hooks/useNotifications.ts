@@ -19,7 +19,7 @@ interface Notification {
     | "contrato_vencendo"
     | "evento_proximo"
     | "tarefa_pendente"
-    | "financeiro"
+    | "accounting"
     | "system";
   title: string;
   message: string;

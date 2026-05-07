@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import { TrendingUp, TrendingDown, Wallet } from "lucide-react";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { cn } from "@/shared/lib/utils";
 

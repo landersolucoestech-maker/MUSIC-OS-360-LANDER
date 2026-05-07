@@ -281,11 +281,11 @@ export const ArtistaViewModal = forwardRef<HTMLDivElement, ArtistaViewModalProps
                 </div>
               </div>
               <Link
-                to="/financeiro"
+                to="/accounting"
                 className="inline-flex items-center gap-1.5 text-xs text-primary hover:underline pl-2"
               >
                 <ExternalLink className="h-3 w-3" />
-                Abrir módulo financeiro completo
+                Abrir módulo Accounting completo
               </Link>
             </div>
 

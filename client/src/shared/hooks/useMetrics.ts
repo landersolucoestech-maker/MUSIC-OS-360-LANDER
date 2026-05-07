@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { format, isToday, differenceInDays, startOfMonth, endOfMonth, parseISO, subDays } from "date-fns";

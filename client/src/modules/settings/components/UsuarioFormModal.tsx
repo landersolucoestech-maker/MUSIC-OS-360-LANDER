@@ -45,7 +45,7 @@ const SETORES = [
 const NIVEIS_ACESSO = [
   { value: "admin_master", label: "Administrador Master", description: "Acesso total a todos os módulos e configurações do sistema." },
   { value: "ar_gestao", label: "A&R / Gestão Artística", description: "Gestão de artistas, projetos, lançamentos e repertório." },
-  { value: "financeiro_contabil", label: "Financeiro / Contábil", description: "Acesso a módulos financeiros, royalties e notas fiscais." },
+  { value: "financeiro_contabil", label: "Accounting / Contábil", description: "Acesso ao módulo Accounting: transações, contabilidade e notas fiscais." },
   { value: "juridico", label: "Jurídico", description: "Gestão de contratos, licenciamentos e questões legais." },
   { value: "marketing", label: "Marketing", description: "Campanhas, métricas e gestão de conteúdo promocional." },
   { value: "artista", label: "Artista", description: "Acesso restrito aos próprios dados e projetos vinculados." },
@@ -59,7 +59,7 @@ const MODULOS = [
   { id: "lancamentos", label: "Lançamentos", icon: Music, actions: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"] as PermissionAction[] },
   { id: "registro_musicas", label: "Registro de Músicas", icon: Music, actions: ["visualizar", "criar", "editar", "excluir", "exportar"] as PermissionAction[] },
   { id: "contratos", label: "Contratos", icon: Shield, actions: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"] as PermissionAction[] },
-  { id: "financeiro", label: "Financeiro", icon: Building2, actions: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"] as PermissionAction[] },
+  { id: "accounting", label: "Accounting", icon: Building2, actions: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"] as PermissionAction[] },
   { id: "marketing", label: "Marketing", icon: Building2, actions: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"] as PermissionAction[] },
   { id: "crm", label: "CRM", icon: UserCheck, actions: ["visualizar", "criar", "editar", "excluir", "exportar"] as PermissionAction[] },
   { id: "agenda", label: "Agenda", icon: Building2, actions: ["visualizar", "criar", "editar", "excluir", "exportar"] as PermissionAction[] },
@@ -104,7 +104,7 @@ const PERMISSION_TEMPLATES: Record<string, ModulePermissions> = {
     relatorios: ["visualizar", "exportar"],
   },
   financeiro_contabil: {
-    financeiro: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"],
+    accounting: ["visualizar", "criar", "editar", "excluir", "aprovar", "exportar"],
     nota_fiscal: ["visualizar", "criar", "editar", "excluir", "exportar"],
     contratos: ["visualizar", "exportar"],
     relatorios: ["visualizar", "exportar"],
@@ -144,7 +144,7 @@ const PERMISSION_TEMPLATES: Record<string, ModulePermissions> = {
 
 const SETOR_PERMISSIONS: Record<string, ModulePermissions> = {
   Artístico: { artistas: ["visualizar"], projetos: ["visualizar"], lancamentos: ["visualizar"] },
-  Financeiro: { financeiro: ["visualizar"] },
+  Accounting: { accounting: ["visualizar"] },
   Jurídico: { contratos: ["visualizar"] },
   Marketing: { marketing: ["visualizar"], crm: ["visualizar"] },
   Eventos: { agenda: ["visualizar", "criar", "editar"] },

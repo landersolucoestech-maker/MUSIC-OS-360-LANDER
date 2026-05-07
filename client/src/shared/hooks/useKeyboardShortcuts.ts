@@ -19,7 +19,7 @@ export function useKeyboardShortcuts() {
     // Navigation
     { key: "h", altKey: true, action: () => navigate("/"), description: "Ir para Dashboard" },
     { key: "a", altKey: true, action: () => navigate("/artistas"), description: "Ir para Artistas" },
-    { key: "f", altKey: true, action: () => navigate("/financeiro"), description: "Ir para Financeiro" },
+    { key: "f", altKey: true, action: () => navigate("/accounting"), description: "Ir para Accounting" },
     { key: "c", altKey: true, action: () => navigate("/contratos"), description: "Ir para Contratos" },
     { key: "m", altKey: true, action: () => navigate("/marketing/visao-geral"), description: "Ir para Marketing" },
     

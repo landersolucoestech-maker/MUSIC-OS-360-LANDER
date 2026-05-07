@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { format, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatCurrency } from "@/shared/lib/format-utils";

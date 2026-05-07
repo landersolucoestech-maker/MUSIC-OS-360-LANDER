@@ -14,7 +14,7 @@ import { CalendarIcon, Loader2, Upload, FileText, X, ExternalLink, Plus, Trash2,
 import { cn } from "@/shared/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useNotasFiscais } from "@/modules/financeiro/hooks/useNotasFiscais";
+import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
 import { useStorage } from "@/modules/integrations/hooks/useStorage";

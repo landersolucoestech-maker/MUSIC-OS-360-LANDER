@@ -16,7 +16,7 @@ import { RealtimeLayer } from "@/shared/components/RealtimeLayer";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
 import { catalogRoutes } from "@/app/routes/catalog.routes";
-import { financeiroRoutes } from "@/app/routes/financeiro.routes";
+import { accountingRoutes } from "@/app/routes/accounting.routes";
 import { releasesRoutes } from "@/app/routes/releases.routes";
 import { crmRoutes } from "@/app/routes/crm.routes";
 import { marketingRoutes } from "@/app/routes/marketing.routes";
@@ -24,7 +24,6 @@ import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
 import { analyticsRoutes } from "@/app/routes/analytics.routes";
-import { aiRoutes } from "@/app/routes/ai.routes";
 
 const Dashboard = lazy(() => import("@/shared/pages/Dashboard"));
 
@@ -73,7 +72,7 @@ const App = () => (
 
                 {artistRoutes(ProtectedRoute)}
                 {catalogRoutes(ProtectedRoute)}
-                {financeiroRoutes(ProtectedRoute)}
+                {accountingRoutes(ProtectedRoute)}
                 {releasesRoutes(ProtectedRoute)}
                 {crmRoutes(ProtectedRoute)}
                 {marketingRoutes(ProtectedRoute)}
@@ -81,7 +80,6 @@ const App = () => (
                 {operationsRoutes(ProtectedRoute)}
                 {adminRoutes(SuspenseRoute, SuperAdminRoute)}
                 {analyticsRoutes(ProtectedRoute)}
-                {aiRoutes(ProtectedRoute)}
               </Routes>
             </BrowserRouter>
           </TooltipProvider>

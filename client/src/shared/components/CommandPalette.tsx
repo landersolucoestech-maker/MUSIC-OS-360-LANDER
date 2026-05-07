@@ -62,9 +62,9 @@ const pages = [
   { name: "Gestão de Shares", href: "/gestao-shares", icon: Share2, keywords: ["share", "participação", "royalty"] },
   { name: "Contratos", href: "/contratos", icon: FileText, keywords: ["contrato", "acordo"] },
   { name: "Templates de Contratos", href: "/contratos/templates", icon: FileEdit, keywords: ["template", "modelo"] },
-  { name: "Financeiro", href: "/financeiro", icon: DollarSign, keywords: ["financeiro", "transação", "receita", "despesa"] },
-  { name: "Contabilidade", href: "/contabilidade", icon: Calculator, keywords: ["contabilidade", "fiscal"] },
-  { name: "Notas Fiscais", href: "/nota-fiscal", icon: Receipt, keywords: ["nota", "nf", "fiscal"] },
+  { name: "Accounting", href: "/accounting", icon: DollarSign, keywords: ["accounting", "transação", "receita", "despesa"] },
+  { name: "Contabilidade", href: "/accounting/contabilidade", icon: Calculator, keywords: ["contabilidade", "fiscal"] },
+  { name: "Notas Fiscais", href: "/accounting/nota-fiscal", icon: Receipt, keywords: ["nota", "nf", "fiscal"] },
   { name: "Agenda", href: "/agenda", icon: Calendar, keywords: ["agenda", "evento", "show"] },
   { name: "Inventário", href: "/inventario", icon: Package, keywords: ["inventario", "equipamento", "estoque"] },
   { name: "MusicChat", href: "/chat", icon: MessageCircle, keywords: ["chat", "mensagem", "comunicação"] },
@@ -149,7 +149,7 @@ export function CommandPalette({ open, onOpenChange }: CommandPaletteProps) {
             <Plus className="mr-2 h-4 w-4" />
             <span>Nova Venda</span>
           </CommandItem>
-          <CommandItem onSelect={() => runCommand(() => navigate("/financeiro?action=new"))}>
+          <CommandItem onSelect={() => runCommand(() => navigate("/accounting?action=new"))}>
             <Plus className="mr-2 h-4 w-4" />
             <span>Nova Transação</span>
           </CommandItem>

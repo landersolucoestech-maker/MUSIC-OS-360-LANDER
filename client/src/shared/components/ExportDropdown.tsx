@@ -25,7 +25,7 @@ import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useContatos } from "@/modules/crm/hooks/useContatos";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
 import { useLeads } from "@/modules/leads/hooks/useLeads";

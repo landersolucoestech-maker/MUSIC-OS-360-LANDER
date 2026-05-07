@@ -5,7 +5,7 @@
  *
  * Cross-domain seed functions live in their respective domain barrels:
  *   - projetoToObraSeed       → @/modules/catalog/mappers
- *   - projetoToLancamentoSeed → @/modules/financeiro/mappers
+ *   - projetoToLancamentoSeed → @/modules/accounting/mappers
  * ─────────────────────────────────────────────────────────────────────────────
  */
 

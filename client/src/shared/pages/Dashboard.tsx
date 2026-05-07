@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useMetrics } from "@/shared/hooks/useMetrics";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";

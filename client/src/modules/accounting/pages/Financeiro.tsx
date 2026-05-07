@@ -17,11 +17,11 @@ import {
   Calendar, Upload, MoreHorizontal, Eye, Pencil, Trash2, X,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useMetrics } from "@/shared/hooks/useMetrics";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
-import { TransacaoFormModal } from "@/modules/financeiro/components/TransacaoFormModal";
-import { TransacaoViewModal } from "@/modules/financeiro/components/TransacaoViewModal";
+import { TransacaoFormModal } from "@/modules/accounting/components/TransacaoFormModal";
+import { TransacaoViewModal } from "@/modules/accounting/components/TransacaoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -196,7 +196,7 @@ export default function Financeiro() {
 
   return (
     <MainLayout
-      title="Financeiro"
+      title="Accounting"
       description="Controle financeiro e fluxo de caixa"
       actions={
         <>

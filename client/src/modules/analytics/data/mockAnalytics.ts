@@ -622,6 +622,100 @@ export const INSTAGRAM_TOTALS = {
   artistasAtivos: INSTAGRAM_MOCK.length,
 };
 
+// ─── TikTok ───────────────────────────────────────────────────────────────────
+
+export interface TikTokArtistMetrics {
+  artistaId: string;
+  nome: string;
+  followers: number;
+  seguindo: number;
+  curtidas: number;
+  videosMes: number;
+  viewsMes: number;
+  engagementRate: number;
+  topVideos: { descricao: string; views: number; curtidas: number; comentarios: number; compartilhamentos: number }[];
+  evolution: MonthlyPoint[];
+}
+
+export const TIKTOK_MOCK: TikTokArtistMetrics[] = [
+  {
+    artistaId: "art-001",
+    nome: "Vitória Lunar",
+    followers: 412_800,
+    seguindo: 124,
+    curtidas: 8_200_000,
+    videosMes: 18,
+    viewsMes: 6_400_000,
+    engagementRate: 7.82,
+    topVideos: [
+      { descricao: "Noite de Luz — versão acústica 🌙", views: 1_840_000, curtidas: 248_000, comentarios: 8_400, compartilhamentos: 32_000 },
+      { descricao: "Bastidores do clipe no RJ 🎬", views: 980_000, curtidas: 124_000, comentarios: 4_200, compartilhamentos: 18_600 },
+      { descricao: "Dueto viral com fã em SP ✨", views: 740_000, curtidas: 98_000, comentarios: 3_800, compartilhamentos: 14_200 },
+    ],
+    evolution: [
+      { mes: "Dez", value: 2_400_000 },
+      { mes: "Jan", value: 3_200_000 },
+      { mes: "Fev", value: 4_100_000 },
+      { mes: "Mar", value: 5_000_000 },
+      { mes: "Abr", value: 5_800_000 },
+      { mes: "Mai", value: 6_400_000 },
+    ],
+  },
+  {
+    artistaId: "art-002",
+    nome: "Grupo Raiz Nordestina",
+    followers: 284_200,
+    seguindo: 380,
+    curtidas: 5_600_000,
+    videosMes: 12,
+    viewsMes: 3_800_000,
+    engagementRate: 6.14,
+    topVideos: [
+      { descricao: "Forró pé de serra ao vivo 🎸", views: 1_200_000, curtidas: 168_000, comentarios: 6_200, compartilhamentos: 28_400 },
+      { descricao: "Beira do Rio — clipe completo 🌊", views: 840_000, curtidas: 112_000, comentarios: 3_600, compartilhamentos: 19_800 },
+      { descricao: "São João em Recife 🎉", views: 620_000, curtidas: 82_000, comentarios: 2_800, compartilhamentos: 12_600 },
+    ],
+    evolution: [
+      { mes: "Dez", value: 1_800_000 },
+      { mes: "Jan", value: 2_200_000 },
+      { mes: "Fev", value: 2_700_000 },
+      { mes: "Mar", value: 3_100_000 },
+      { mes: "Abr", value: 3_500_000 },
+      { mes: "Mai", value: 3_800_000 },
+    ],
+  },
+  {
+    artistaId: "art-003",
+    nome: "DJ Marcus Flow",
+    followers: 186_400,
+    seguindo: 840,
+    curtidas: 3_200_000,
+    videosMes: 24,
+    viewsMes: 4_200_000,
+    engagementRate: 9.48,
+    topVideos: [
+      { descricao: "Transição épica no Club Madame 🎧🔥", views: 1_600_000, curtidas: 248_000, comentarios: 9_800, compartilhamentos: 42_000 },
+      { descricao: "Frequência 440 — preview exclusivo", views: 980_000, curtidas: 148_000, comentarios: 4_200, compartilhamentos: 22_000 },
+      { descricao: "Set completo ao vivo BH 🔊", views: 720_000, curtidas: 98_000, comentarios: 3_400, compartilhamentos: 16_800 },
+    ],
+    evolution: [
+      { mes: "Dez", value: 1_400_000 },
+      { mes: "Jan", value: 1_900_000 },
+      { mes: "Fev", value: 2_600_000 },
+      { mes: "Mar", value: 3_200_000 },
+      { mes: "Abr", value: 3_800_000 },
+      { mes: "Mai", value: 4_200_000 },
+    ],
+  },
+];
+
+export const TIKTOK_TOTALS = {
+  totalFollowers: TIKTOK_MOCK.reduce((s, a) => s + a.followers, 0),
+  totalViewsMes: TIKTOK_MOCK.reduce((s, a) => s + a.viewsMes, 0),
+  avgEngagement: Number((TIKTOK_MOCK.reduce((s, a) => s + a.engagementRate, 0) / TIKTOK_MOCK.length).toFixed(2)),
+  artistasAtivos: TIKTOK_MOCK.length,
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function fmtNum(n: number): string {

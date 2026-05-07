@@ -11,7 +11,7 @@ export type AppRole =
   | "super_admin"
   | "tenant_owner"
   | "admin"
-  | "financeiro"
+  | "accounting"
   | "juridico"
   | "artista"
   | "produtor"

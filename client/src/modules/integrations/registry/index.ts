@@ -21,7 +21,7 @@ export type IntegrationCategory =
   | "assinatura"
   | "comunicacao"
   | "storage"
-  | "financeiro";
+  | "accounting";
 
 export type IntegrationStatus = "active" | "beta" | "planned" | "disabled";
 
@@ -308,5 +308,5 @@ export const INTEGRATION_CATEGORY_LABEL: Record<IntegrationCategory, string> = {
   assinatura:   "Assinatura Digital",
   comunicacao:  "Comunicação",
   storage:      "Armazenamento",
-  financeiro:   "Financeiro",
+  accounting:   "Accounting",
 };

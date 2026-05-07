@@ -6,7 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { CheckCircle2, Circle, Search, CheckCheck, SlidersHorizontal } from "lucide-react";
-import { useTransacoes, type TransacaoWithRelations } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes, type TransacaoWithRelations } from "@/modules/accounting/hooks/useTransacoes";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { cn } from "@/shared/lib/utils";
 import { toast } from "sonner";

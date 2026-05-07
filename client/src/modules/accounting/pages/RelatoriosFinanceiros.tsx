@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Button } from "@/shared/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Download, TrendingUp, TrendingDown, BarChart2 } from "lucide-react";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
 import { cn } from "@/shared/lib/utils";

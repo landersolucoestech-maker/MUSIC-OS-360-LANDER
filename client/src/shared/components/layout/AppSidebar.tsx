@@ -90,15 +90,15 @@ const NAV_ITEMS: NavItem[] = [
   },
   { title: "Contratos",    href: "/contratos", icon: FileText },
   {
-    title: "Financeiro",
+    title: "Accounting",
     icon: DollarSign,
     children: [
-      { title: "Transações",           href: "/financeiro",                  icon: DollarSign },
-      { title: "Fluxo de Caixa",       href: "/financeiro/fluxo",            icon: TrendingUp },
-      { title: "Conciliação",          href: "/financeiro/conciliacao",      icon: CheckCircle2 },
-      { title: "Relatórios",           href: "/financeiro/relatorios",       icon: BarChart },
-      { title: "Contabilidade",        href: "/contabilidade",               icon: Calculator },
-      { title: "Nota Fiscal",          href: "/nota-fiscal",                 icon: Receipt },
+      { title: "Transações",           href: "/accounting",                       icon: DollarSign },
+      { title: "Fluxo de Caixa",       href: "/accounting/fluxo",                icon: TrendingUp },
+      { title: "Conciliação",          href: "/accounting/conciliacao",           icon: CheckCircle2 },
+      { title: "Relatórios",           href: "/accounting/relatorios",            icon: BarChart },
+      { title: "Contabilidade",        href: "/accounting/contabilidade",         icon: Calculator },
+      { title: "Nota Fiscal",          href: "/accounting/nota-fiscal",           icon: Receipt },
     ],
   },
   { title: "Agenda",       href: "/agenda",    icon: Calendar },
@@ -108,7 +108,6 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Leads",        href: "/leads",     icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh",    icon: Briefcase },
   { title: "Analytics",        href: "/analytics", icon: Activity },
-  { title: "IA Assistente",    href: "/ai",         icon: Sparkles },
   {
     title: "Marketing",
     icon: Megaphone,
@@ -320,9 +319,6 @@ export function AppSidebar() {
             </div>
             <ChevronsUpDown className="h-3.5 w-3.5 text-sidebar-foreground/30 shrink-0" />
           </div>
-          <p className="text-[9.5px] font-semibold uppercase tracking-widest text-sidebar-foreground/30 mt-2 px-1">
-            Sistema Multi-Tenant
-          </p>
         </div>
       )}
 

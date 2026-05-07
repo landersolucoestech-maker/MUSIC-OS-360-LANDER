@@ -71,7 +71,7 @@ const PERMISSION_MODULES = [
   { id: "projetos", name: "Projetos" },
   { id: "lancamentos", name: "Lançamentos" },
   { id: "contratos", name: "Contratos" },
-  { id: "financeiro", name: "Financeiro" },
+  { id: "accounting", name: "Accounting" },
   { id: "marketing", name: "Marketing" },
   { id: "integracoes", name: "Integrações" },
   { id: "usuarios", name: "Usuários" },

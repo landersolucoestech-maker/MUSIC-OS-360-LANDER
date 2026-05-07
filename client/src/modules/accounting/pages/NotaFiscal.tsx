@@ -26,9 +26,9 @@ import {
   ArrowDownLeft,
   Scale,
 } from "lucide-react";
-import { NotaFiscalFormModal } from "@/modules/financeiro/components/NotaFiscalFormModal";
-import { NotaFiscalViewModal } from "@/modules/financeiro/components/NotaFiscalViewModal";
-import { useNotasFiscais } from "@/modules/financeiro/hooks/useNotasFiscais";
+import { NotaFiscalFormModal } from "@/modules/accounting/components/NotaFiscalFormModal";
+import { NotaFiscalViewModal } from "@/modules/accounting/components/NotaFiscalViewModal";
+import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { DataTable } from "@/shared/components/DataTable";
 import { Badge } from "@/shared/ui/badge";

@@ -127,7 +127,7 @@ import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useMetas } from "@/modules/marketing/hooks/useMetas";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
-import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
 
 interface Meta {
