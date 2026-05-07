@@ -9,11 +9,8 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Calendar } from "@/shared/ui/calendar";
-import { CalendarIcon } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format, parseISO } from "date-fns";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { cn } from "@/shared/lib/utils";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
@@ -435,56 +432,22 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
               <Label>Data de Início</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.watch("start_date") && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.watch("start_date") ? format(form.watch("start_date"), "dd/MM/yyyy", { locale: ptBR }) : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={form.watch("start_date")}
-                    onSelect={(date) => form.setValue("start_date", date as Date)}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerField
+                value={form.watch("start_date") ? format(form.watch("start_date"), "yyyy-MM-dd") : ""}
+                onChange={(iso) => form.setValue("start_date", iso ? parseISO(iso) : (undefined as any))}
+                placeholder="Selecione uma data"
+                data-testid="datepicker-start-date"
+              />
             </div>
 
             <div className="space-y-2">
               <Label>Data de Término</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.watch("end_date") && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.watch("end_date") ? format(form.watch("end_date"), "dd/MM/yyyy", { locale: ptBR }) : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={form.watch("end_date")}
-                    onSelect={(date) => form.setValue("end_date", date)}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerField
+                value={form.watch("end_date") ? format(form.watch("end_date") as Date, "yyyy-MM-dd") : ""}
+                onChange={(iso) => form.setValue("end_date", iso ? parseISO(iso) : undefined)}
+                placeholder="Selecione uma data"
+                data-testid="datepicker-end-date"
+              />
             </div>
 
             <div className="flex items-center space-x-2">
@@ -500,29 +463,12 @@ export const ContractForm: React.FC<ContractFormProps> = ({
           {form.watch("registry_office") && (
             <div className="space-y-2">
               <Label>Data de Registro em Cartório</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !form.watch("registry_date") && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {form.watch("registry_date") ? format(form.watch("registry_date"), "dd/MM/yyyy", { locale: ptBR }) : "Selecione uma data"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={form.watch("registry_date")}
-                    onSelect={(date) => form.setValue("registry_date", date)}
-                    initialFocus
-                    locale={ptBR}
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerField
+                value={form.watch("registry_date") ? format(form.watch("registry_date") as Date, "yyyy-MM-dd") : ""}
+                onChange={(iso) => form.setValue("registry_date", iso ? parseISO(iso) : undefined)}
+                placeholder="Selecione uma data"
+                data-testid="datepicker-registry-date"
+              />
             </div>
           )}
         </CardContent>

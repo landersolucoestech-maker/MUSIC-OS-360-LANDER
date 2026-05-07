@@ -7,13 +7,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { Switch } from "@/shared/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Calendar } from "@/shared/ui/calendar";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2, Upload, FileText, X, ExternalLink, Plus, Trash2, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
+import { Loader2, Upload, FileText, X, ExternalLink, Plus, Trash2, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
@@ -537,17 +536,13 @@ export function NotaFiscalFormModal({ open, onOpenChange, notaFiscal, mode, defa
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Data de Emissão</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.data_emissao && "text-muted-foreground")} disabled={isViewMode}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.data_emissao ? format(formData.data_emissao, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={formData.data_emissao} onSelect={(d) => setFormData({ ...formData, data_emissao: d })} locale={ptBR} />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePickerField
+                    value={formData.data_emissao ? format(formData.data_emissao, "yyyy-MM-dd") : ""}
+                    onChange={(iso) => setFormData({ ...formData, data_emissao: iso ? parseISO(iso) : undefined })}
+                    disabled={isViewMode}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-emissao"
+                  />
                 </div>
                 <div className="space-y-2">
                   <Label>Status</Label>
@@ -854,17 +849,13 @@ export function NotaFiscalFormModal({ open, onOpenChange, notaFiscal, mode, defa
                 </div>
                 <div className="space-y-2">
                   <Label>Vencimento</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !formData.vencimento && "text-muted-foreground")} disabled={isViewMode}>
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {formData.vencimento ? format(formData.vencimento, "dd/MM/yyyy", { locale: ptBR }) : "Selecione"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0">
-                      <Calendar mode="single" selected={formData.vencimento} onSelect={(d) => setFormData({ ...formData, vencimento: d })} locale={ptBR} />
-                    </PopoverContent>
-                  </Popover>
+                  <DatePickerField
+                    value={formData.vencimento ? format(formData.vencimento, "yyyy-MM-dd") : ""}
+                    onChange={(iso) => setFormData({ ...formData, vencimento: iso ? parseISO(iso) : undefined })}
+                    disabled={isViewMode}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-vencimento"
+                  />
                 </div>
               </div>
 

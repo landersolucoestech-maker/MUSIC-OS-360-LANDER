@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
+import { MonthPickerField } from "@/shared/ui/month-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -197,12 +198,12 @@ export function FolhaPagamentoFormModal({
 
           <div className="space-y-2">
             <Label>Mês de Referência *</Label>
-            <Input
-              type="month"
+            <MonthPickerField
               value={mesReferencia}
-              onChange={(e) => setMesReferencia(e.target.value)}
+              onChange={setMesReferencia}
               disabled={isViewMode}
-              data-testid="input-mes-referencia"
+              placeholder="Selecione o mês"
+              data-testid="monthpicker-mes-referencia"
             />
           </div>
 

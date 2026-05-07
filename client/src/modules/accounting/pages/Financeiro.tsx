@@ -1,16 +1,13 @@
 import { useCallback, useState, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { Calendar as CalendarComponent } from "@/shared/ui/calendar";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
   Link as LinkIcon, Download, Plus, Search, Settings,
@@ -62,8 +59,8 @@ export default function Financeiro() {
   );
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [startDate, setStartDate] = useState<Date>();
-  const [endDate, setEndDate] = useState<Date>();
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [typeFilter, setTypeFilter] = useState("all-type");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [categoryFilter, setCategoryFilter] = useState("all-category");
@@ -153,19 +150,18 @@ export default function Financeiro() {
         (typeFilter === "despesa" && transacao.tipo === "despesa");
       const matchesStatus = statusFilter === "all-status" || transacao.status.toLowerCase() === statusFilter.toLowerCase();
       const matchesCategory = categoryFilter === "all-category" || transacao.categoria.toLowerCase() === categoryFilter.toLowerCase();
-      const transacaoDate = new Date(transacao.data);
-      const matchesStartDate = !startDate || transacaoDate >= startDate;
-      const matchesEndDate = !endDate || transacaoDate <= endDate;
+      const matchesStartDate = !startDate || transacao.data >= startDate;
+      const matchesEndDate = !endDate || transacao.data <= endDate;
       return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesStartDate && matchesEndDate;
     });
   }, [transacoes, searchTerm, typeFilter, statusFilter, categoryFilter, startDate, endDate]);
 
   const hasActiveFilters =
     searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" ||
-    categoryFilter !== "all-category" || startDate !== undefined || endDate !== undefined;
+    categoryFilter !== "all-category" || startDate !== "" || endDate !== "";
 
   const handleClearFilters = () => {
-    setSearchTerm(""); setStartDate(undefined); setEndDate(undefined);
+    setSearchTerm(""); setStartDate(""); setEndDate("");
     setTypeFilter("all-type"); setStatusFilter("all-status"); setCategoryFilter("all-category");
   };
 
@@ -273,48 +269,20 @@ export default function Financeiro() {
             />
           </div>
           {/* Date pickers */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("h-8 text-xs gap-1.5 min-w-[120px]", !startDate && "text-muted-foreground")}
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                {startDate ? format(startDate, "dd/MM/yyyy", { locale: ptBR }) : "Data início"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={startDate}
-                onSelect={setStartDate}
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                size="sm"
-                className={cn("h-8 text-xs gap-1.5 min-w-[120px]", !endDate && "text-muted-foreground")}
-              >
-                <Calendar className="h-3.5 w-3.5" />
-                {endDate ? format(endDate, "dd/MM/yyyy", { locale: ptBR }) : "Data fim"}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <CalendarComponent
-                mode="single"
-                selected={endDate}
-                onSelect={setEndDate}
-                initialFocus
-                className="p-3 pointer-events-auto"
-              />
-            </PopoverContent>
-          </Popover>
+          <DatePickerField
+            value={startDate}
+            onChange={setStartDate}
+            placeholder="Data início"
+            className="h-8 text-xs w-[150px]"
+            data-testid="datepicker-start-date"
+          />
+          <DatePickerField
+            value={endDate}
+            onChange={setEndDate}
+            placeholder="Data fim"
+            className="h-8 text-xs w-[150px]"
+            data-testid="datepicker-end-date"
+          />
           <Select value={typeFilter} onValueChange={setTypeFilter}>
             <SelectTrigger className="w-[130px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Tipo" />

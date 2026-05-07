@@ -6,13 +6,10 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { FormField, FormTextarea, FieldError } from "@/shared/components/FormField";
-import { Calendar } from "@/shared/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { toast } from "sonner";
-import { CalendarIcon, Clock } from "lucide-react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { cn } from "@/shared/lib/utils";
+import { Clock } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 
 interface EventoFormModalProps {
@@ -264,36 +261,14 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
             {/* Data de Início */}
             <div className="space-y-2">
               <Label>Data de Início *</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.dataInicio && "text-muted-foreground",
-                      errors.dataInicio && "border-destructive"
-                    )}
-                    disabled={isViewMode}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.dataInicio ? (
-                      format(formData.dataInicio, "dd/MM/yyyy", { locale: ptBR })
-                    ) : (
-                      <span>Selecione a data</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.dataInicio}
-                    onSelect={(date) => setFormData({ ...formData, dataInicio: date })}
-                    initialFocus
-                    locale={ptBR}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerField
+                value={formData.dataInicio ? format(formData.dataInicio, "yyyy-MM-dd") : ""}
+                onChange={(iso) => setFormData({ ...formData, dataInicio: iso ? parseISO(iso) : undefined })}
+                disabled={isViewMode}
+                placeholder="Selecione a data"
+                className={errors.dataInicio ? "border-destructive" : ""}
+                data-testid="datepicker-data-inicio"
+              />
               <FieldError field="dataInicio" />
             </div>
 
@@ -315,35 +290,13 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
             {/* Data de Fim */}
             <div className="space-y-2">
               <Label>Data de Fim</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.dataFim && "text-muted-foreground"
-                    )}
-                    disabled={isViewMode}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.dataFim ? (
-                      format(formData.dataFim, "dd/MM/yyyy", { locale: ptBR })
-                    ) : (
-                      <span>Selecione a data (opcional)</span>
-                    )}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <Calendar
-                    mode="single"
-                    selected={formData.dataFim}
-                    onSelect={(date) => setFormData({ ...formData, dataFim: date })}
-                    initialFocus
-                    locale={ptBR}
-                    className="pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
+              <DatePickerField
+                value={formData.dataFim ? format(formData.dataFim, "yyyy-MM-dd") : ""}
+                onChange={(iso) => setFormData({ ...formData, dataFim: iso ? parseISO(iso) : undefined })}
+                disabled={isViewMode}
+                placeholder="Selecione a data (opcional)"
+                data-testid="datepicker-data-fim"
+              />
             </div>
 
             {/* Horário de Fim */}

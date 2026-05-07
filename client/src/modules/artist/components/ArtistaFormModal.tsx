@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
   DialogContent,
@@ -553,13 +554,11 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 </div>
                 <div className="space-y-2">
                   <Label>Data de Nascimento</Label>
-                  <Input
-                    type="text"
-                    placeholder="DD-MM-YYYY"
-                    maxLength={10}
+                  <DatePickerField
                     value={dataNascimento}
-                    onChange={(e) => setDataNascimento(e.target.value)}
-                    data-testid="input-data-nascimento"
+                    onChange={setDataNascimento}
+                    placeholder="Selecione a data"
+                    data-testid="datepicker-data-nascimento"
                   />
                 </div>
               </div>

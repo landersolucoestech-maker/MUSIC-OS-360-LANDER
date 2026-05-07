@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { MonthPickerField } from "@/shared/ui/month-picker-field";
 import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
@@ -707,12 +708,12 @@ export default function RH() {
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                <Input
-                  type="month"
+                <MonthPickerField
                   value={folhaMesFilter}
-                  onChange={(e) => setFolhaMesFilter(e.target.value)}
-                  className="w-[160px]"
-                  data-testid="input-filter-mes-folha"
+                  onChange={setFolhaMesFilter}
+                  placeholder="Filtrar por mês"
+                  className="w-[200px]"
+                  data-testid="monthpicker-filter-mes-folha"
                 />
                 <Select value={folhaStatusFilter} onValueChange={setFolhaStatusFilter}>
                   <SelectTrigger className="w-[130px]" data-testid="select-filter-status-folha">

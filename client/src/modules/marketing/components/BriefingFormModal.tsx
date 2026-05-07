@@ -6,15 +6,12 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
 import { FormField, FormTextarea } from "@/shared/components/FormField";
-import { Calendar } from "@/shared/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Badge } from "@/shared/ui/badge";
 import { toast } from "sonner";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
-import { CalendarIcon, Plus, X, Loader2 } from "lucide-react";
+import { format, parseISO } from "date-fns";
+import { Plus, X, Loader2 } from "lucide-react";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { AIGenerateButton } from "@/shared/components/AIGenerateButton";
-import { cn } from "@/shared/lib/utils";
 
 interface BriefingFormModalProps {
   open: boolean;
@@ -207,32 +204,12 @@ export function BriefingFormModal({ open, onOpenChange, initialData, mode }: Bri
           {/* Linha 3 - Prazo de Entrega */}
           <div className="space-y-2">
             <Label>Prazo de Entrega *</Label>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  className={cn(
-                    "w-full justify-start text-left font-normal",
-                    !formData.prazoEntrega && "text-muted-foreground"
-                  )}
-                >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {formData.prazoEntrega ? (
-                    format(formData.prazoEntrega, "PPP", { locale: ptBR })
-                  ) : (
-                    "Selecione a data"
-                  )}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-0" align="start">
-                <Calendar
-                  mode="single"
-                  selected={formData.prazoEntrega}
-                  onSelect={(date) => setFormData({ ...formData, prazoEntrega: date })}
-                  initialFocus
-                />
-              </PopoverContent>
-            </Popover>
+            <DatePickerField
+              value={formData.prazoEntrega ? format(formData.prazoEntrega, "yyyy-MM-dd") : ""}
+              onChange={(iso) => setFormData({ ...formData, prazoEntrega: iso ? parseISO(iso) : undefined })}
+              placeholder="Selecione a data"
+              data-testid="datepicker-prazo-entrega"
+            />
           </div>
 
           {/* Campos de texto longo */}
