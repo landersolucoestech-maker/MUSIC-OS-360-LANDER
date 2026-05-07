@@ -1,11 +1,18 @@
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/shared/ui/dialog";
+import { useState } from "react";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { VisuallyHidden } from "@radix-ui/react-visually-hidden";
 import { Badge } from "@/shared/ui/badge";
-import { Music, Calendar } from "lucide-react";
+import { Button } from "@/shared/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Card, CardContent } from "@/shared/ui/card";
+import { Progress } from "@/shared/ui/progress";
+import {
+  Music, Calendar, CheckCircle2, XCircle, ExternalLink,
+  FileAudio, Image, Video, FileText, Link2, BookOpen, Package,
+  Clock, AlertTriangle, ChevronRight,
+} from "lucide-react";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { StatusBadge } from "@/shared/components/StatusBadge";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -13,114 +20,291 @@ interface LancamentoViewModalProps {
   lancamento?: any;
 }
 
+const ASSET_DEFS = [
+  { key: "audio_master_url", label: "Áudio Master (WAV/FLAC)", icon: FileAudio, isUrl: true, required: ["single", "ep", "album"] },
+  { key: "capa_url", label: "Capa do Álbum (3000×3000)", icon: Image, isUrl: true, required: ["single", "ep", "album"] },
+  { key: "video_clipe_url", label: "Vídeo Clipe (YouTube URL)", icon: Video, isUrl: true, required: [] },
+  { key: "letra", label: "Letra da Música", icon: BookOpen, isUrl: false, required: [] },
+  { key: "ficha_tecnica", label: "Ficha Técnica", icon: FileText, isUrl: false, required: ["ep", "album"] },
+  { key: "press_release", label: "Press Release", icon: FileText, isUrl: false, required: ["album"] },
+  { key: "epk_url", label: "EPK (Electronic Press Kit)", icon: Link2, isUrl: true, required: ["album"] },
+];
+
+const CRON_DEFS = [
+  { key: "data_gravacao", label: "Gravação" },
+  { key: "data_mix_master", label: "Mix & Master" },
+  { key: "data_entrega_distribuidora", label: "Entrega à Distribuidora" },
+];
+
+function calcAssetsCompletude(lancamento: any) {
+  const tipo = (lancamento?.tipo || "single").toLowerCase();
+  const assets = lancamento?.assets ?? {};
+  const required = ASSET_DEFS.filter(d => d.required.includes(tipo));
+  if (required.length === 0) return { filled: 0, total: 0, pct: 100 };
+  const filled = required.filter(d => {
+    const v = assets[d.key];
+    return v && String(v).trim();
+  }).length;
+  return { filled, total: required.length, pct: Math.round((filled / required.length) * 100) };
+}
+
+function isDatePast(dateStr: string | null | undefined) {
+  if (!dateStr) return false;
+  return new Date(dateStr) < new Date();
+}
+
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
+  const { artistas } = useArtistas();
+  const [activeTab, setActiveTab] = useState("visao-geral");
+
   if (!lancamento) return null;
+
+  const artista = artistas.find(a => a.id === lancamento.artista_id);
+  const assets = lancamento.assets ?? {};
+  const cronograma = lancamento.cronograma ?? {};
+  const { filled, total, pct } = calcAssetsCompletude(lancamento);
+  const tipo = (lancamento.tipo || "single").toLowerCase();
+
+  const tipoBadgeColor = tipo === "single" ? "bg-primary" : tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
+  const tipoLabel = tipo === "single" ? "Single" : tipo === "ep" ? "EP" : "Álbum";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-card border-border">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <Music className="h-5 w-5" />
-            Detalhes do Lançamento
-          </DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-6">
-          {/* Title and Artist */}
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{lancamento.title}</h2>
-            <p className="text-muted-foreground">{lancamento.artist}</p>
-          </div>
-
-          {/* Badges */}
-          <div className="flex gap-2">
-            <Badge className="bg-warning hover:bg-warning text-warning-foreground">
-              {lancamento.type || "Single"}
-            </Badge>
-            <Badge className="bg-blue-500 hover:bg-blue-500 text-white">
-              Em Análise
-            </Badge>
-          </div>
-
-          {/* Info Grid */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-sm text-muted-foreground">Status</p>
-              <p className="font-medium text-foreground">{lancamento.status?.replace("_", " ") || "-"}</p>
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0">
+        <VisuallyHidden><DialogTitle>{lancamento.titulo}</DialogTitle></VisuallyHidden>
+        {/* Header */}
+        <div className="p-6 pb-4 border-b border-border">
+          <div className="flex items-start gap-4">
+            <div className="h-16 w-16 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <Music className="h-8 w-8 text-primary" />
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Data de Lançamento</p>
-              <div className="flex items-center gap-1.5">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{lancamento.releaseDate || "-"}</span>
+            <div className="flex-1 min-w-0">
+              <h2 className="text-xl font-bold truncate">{lancamento.titulo}</h2>
+              <p className="text-muted-foreground text-sm">{artista?.nome_artistico || "Artista não informado"}</p>
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <Badge className={`${tipoBadgeColor} text-white no-default-hover-elevate`}>{tipoLabel}</Badge>
+                <StatusBadge status={lancamento.status} />
+                {lancamento.data_lancamento && (
+                  <span className="text-xs text-muted-foreground flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(lancamento.data_lancamento).toLocaleDateString("pt-BR")}
+                  </span>
+                )}
               </div>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Gênero</p>
-              <p className="font-medium text-foreground">{lancamento.genre || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Idioma</p>
-              <p className="font-medium text-foreground">{lancamento.language || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Gravadora</p>
-              <p className="font-medium text-foreground">{lancamento.label || "-"}</p>
-            </div>
-            <div>
-              <p className="text-sm text-muted-foreground">Copyright</p>
-              <p className="font-medium text-foreground">{lancamento.copyright || "-"}</p>
-            </div>
-          </div>
-
-          {/* Streaming Metrics */}
-          <div>
-            <div className="flex items-center gap-2 mb-4">
-              <svg className="h-4 w-4 text-muted-foreground" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 3v18h18" />
-                <path d="M18 17V9" />
-                <path d="M13 17V5" />
-                <path d="M8 17v-3" />
-              </svg>
-              <span className="text-sm font-medium text-foreground">Métricas de Streaming</span>
-            </div>
-            <div className="grid grid-cols-4 gap-4">
-              {/* Spotify */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-muted/30 rounded-lg">
-                <svg className="h-6 w-6 text-success" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"/>
-                </svg>
-                <span className="text-sm text-muted-foreground">Spotify</span>
-                <span className="text-lg font-bold text-foreground">{lancamento.platforms?.spotify || "-"}</span>
+            {total > 0 && (
+              <div className="text-right shrink-0">
+                <p className="text-xs text-muted-foreground mb-1">Assets</p>
+                <p className={`text-2xl font-bold ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>
+                  {pct}%
+                </p>
+                <p className="text-xs text-muted-foreground">{filled}/{total} completos</p>
               </div>
-              {/* Apple Music */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-muted/30 rounded-lg">
-                <svg className="h-6 w-6 text-pink-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03c.525 0 1.048-.034 1.57-.1.823-.106 1.597-.35 2.296-.81.84-.553 1.472-1.287 1.88-2.208.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.042-1.785-.6-1.943-1.536a1.97 1.97 0 011.562-2.283c.42-.104.853-.148 1.27-.244.187-.043.377-.09.517-.22.112-.104.162-.24.155-.395V9.075c0-.237-.082-.34-.314-.298-.573.1-1.145.21-1.72.315l-3.638.67c-.02.003-.04.01-.08.022v6.62c0 .385-.047.766-.2 1.124-.295.69-.82 1.09-1.547 1.267-.35.085-.71.14-1.065.158-.95.047-1.806-.592-1.97-1.524-.157-.898.423-1.88 1.352-2.18.39-.125.797-.176 1.2-.244.24-.04.484-.09.715-.169.28-.097.415-.29.407-.586l-.007-.343V6.063c0-.458.12-.632.57-.73l5.75-1.12c.65-.127 1.3-.254 1.952-.38.166-.033.338-.052.506-.08.272-.046.39.078.39.35v6.01z"/>
-                </svg>
-                <span className="text-sm text-muted-foreground">Apple Music</span>
-                <span className="text-lg font-bold text-foreground">{lancamento.platforms?.apple || "-"}</span>
-              </div>
-              {/* YouTube */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-muted/30 rounded-lg">
-                <svg className="h-6 w-6 text-muted-foreground" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M23.498 6.186a3.016 3.016 0 00-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 00.502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 002.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 002.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
-                </svg>
-                <span className="text-sm text-muted-foreground">YouTube</span>
-                <span className="text-lg font-bold text-foreground">{lancamento.platforms?.youtube || "-"}</span>
-              </div>
-              {/* Deezer */}
-              <div className="flex flex-col items-center gap-2 p-4 bg-muted/30 rounded-lg">
-                <svg className="h-6 w-6 text-purple-500" viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M18.81 4.16v3.03H24V4.16h-5.19zM6.27 8.38v3.027h5.189V8.38h-5.19zm12.54 0v3.027H24V8.38h-5.19zM6.27 12.594v3.027h5.189v-3.027h-5.19zm6.271 0v3.027h5.19v-3.027h-5.19zm6.27 0v3.027H24v-3.027h-5.19zM0 16.81v3.029h5.19v-3.03H0zm6.27 0v3.029h5.189v-3.03h-5.19zm6.271 0v3.029h5.19v-3.03h-5.19zm6.27 0v3.029H24v-3.03h-5.19z"/>
-                </svg>
-                <span className="text-sm text-muted-foreground">Deezer</span>
-                <span className="text-lg font-bold text-foreground">{lancamento.platforms?.deezer || "-"}</span>
-              </div>
-            </div>
+            )}
           </div>
         </div>
+
+        {/* Tabs */}
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 shrink-0">
+            {[
+              { value: "visao-geral", label: "Visão Geral" },
+              { value: "assets", label: "Assets" },
+              { value: "cronograma", label: "Cronograma" },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                data-testid={`tab-${tab.value}`}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-6 py-3 text-sm font-medium"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <div className="overflow-y-auto flex-1">
+            {/* ── Visão Geral ── */}
+            <TabsContent value="visao-geral" className="p-6 space-y-6 mt-0">
+              <div className="grid grid-cols-2 gap-4">
+                {[
+                  { label: "Distribuidora", value: lancamento.distribuidora },
+                  { label: "ISRC Global", value: lancamento.isrc_global },
+                  { label: "UPC", value: lancamento.upc },
+                  { label: "Plataformas", value: Array.isArray(lancamento.plataformas) ? lancamento.plataformas.join(", ") : null },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                    <p className="text-sm font-medium">{value || "—"}</p>
+                  </div>
+                ))}
+              </div>
+
+              {lancamento.observacoes && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                  <p className="text-sm bg-muted/30 rounded p-3">{lancamento.observacoes}</p>
+                </div>
+              )}
+
+              {lancamento.notas_internas && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Notas Internas</p>
+                  <p className="text-sm bg-muted/30 rounded p-3">{lancamento.notas_internas}</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Assets ── */}
+            <TabsContent value="assets" className="p-6 space-y-4 mt-0" data-testid="tab-content-assets">
+              {total > 0 && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm font-medium">Completude dos assets obrigatórios</span>
+                      <span className={`text-sm font-bold ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>
+                        {filled}/{total} — {pct}%
+                      </span>
+                    </div>
+                    <Progress value={pct} className="h-2" />
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="space-y-3">
+                {ASSET_DEFS.map(def => {
+                  const Icon = def.icon;
+                  const value = assets[def.key];
+                  const hasValue = value && String(value).trim();
+                  const isRequired = def.required.includes(tipo);
+
+                  return (
+                    <div
+                      key={def.key}
+                      data-testid={`asset-row-${def.key}`}
+                      className={`flex items-center gap-3 p-3 rounded-lg border ${hasValue ? "bg-success/5 border-success/20" : isRequired ? "bg-destructive/5 border-destructive/20" : "bg-muted/20 border-border"}`}
+                    >
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${hasValue ? "bg-success/10" : "bg-muted"}`}>
+                        {hasValue ? (
+                          <CheckCircle2 className="h-4 w-4 text-success" />
+                        ) : (
+                          <XCircle className={`h-4 w-4 ${isRequired ? "text-destructive" : "text-muted-foreground"}`} />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="text-sm font-medium truncate">{def.label}</span>
+                          {isRequired && (
+                            <Badge variant="outline" className="text-[9px] h-4 px-1 shrink-0">obrigatório</Badge>
+                          )}
+                        </div>
+                        {hasValue && (
+                          <p className="text-xs text-muted-foreground truncate mt-0.5">
+                            {def.isUrl ? value : String(value).slice(0, 80) + (String(value).length > 80 ? "…" : "")}
+                          </p>
+                        )}
+                      </div>
+                      {hasValue && def.isUrl && (
+                        <a
+                          href={String(value)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid={`link-asset-${def.key}`}
+                          className="shrink-0"
+                        >
+                          <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                            <ExternalLink className="h-3 w-3" />
+                            Abrir
+                          </Button>
+                        </a>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            {/* ── Cronograma ── */}
+            <TabsContent value="cronograma" className="p-6 space-y-4 mt-0" data-testid="tab-content-cronograma">
+              <div className="space-y-3">
+                {/* Etapas de produção */}
+                {CRON_DEFS.map((def, index) => {
+                  const dateStr = cronograma[def.key];
+                  const past = isDatePast(dateStr);
+                  const hasCronDate = !!dateStr;
+                  const isLast = index === CRON_DEFS.length - 1;
+
+                  return (
+                    <div key={def.key} className="relative flex gap-4">
+                      {!isLast && (
+                        <div className="absolute left-4 top-10 w-0.5 h-full bg-border -z-0" />
+                      )}
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 z-10 ${hasCronDate ? (past ? "bg-success" : "bg-primary") : "bg-muted border-2 border-border"}`}>
+                        {hasCronDate ? (
+                          past
+                            ? <CheckCircle2 className="h-4 w-4 text-success-foreground" />
+                            : <Clock className="h-4 w-4 text-primary-foreground" />
+                        ) : (
+                          <div className="h-2 w-2 rounded-full bg-muted-foreground/40" />
+                        )}
+                      </div>
+                      <div className="pb-6 flex-1">
+                        <p className="text-sm font-medium">{def.label}</p>
+                        {hasCronDate ? (
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(dateStr).toLocaleDateString("pt-BR")}
+                            </span>
+                            {past ? (
+                              <Badge className="bg-success text-success-foreground text-[9px] h-4 px-1">Concluído</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] h-4 px-1">Pendente</Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mt-0.5">Data não definida</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Data de lançamento */}
+                {lancamento.data_lancamento && (
+                  <div className="flex gap-4">
+                    <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${isDatePast(lancamento.data_lancamento) ? "bg-success" : "bg-warning"}`}>
+                      <Calendar className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Lançamento Público</p>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(lancamento.data_lancamento).toLocaleDateString("pt-BR")}
+                        </span>
+                        {isDatePast(lancamento.data_lancamento) ? (
+                          <Badge className="bg-success text-success-foreground text-[9px] h-4 px-1">Publicado</Badge>
+                        ) : (
+                          <Badge className="bg-warning text-warning-foreground text-[9px] h-4 px-1">
+                            {Math.ceil((new Date(lancamento.data_lancamento).getTime() - Date.now()) / (1000 * 60 * 60 * 24))} dias
+                          </Badge>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!Object.values(cronograma).some(Boolean) && !lancamento.data_lancamento && (
+                <div className="text-center py-8 text-muted-foreground">
+                  <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
+                  <p className="text-sm">Nenhuma data de cronograma definida</p>
+                  <p className="text-xs mt-1">Edite o lançamento para adicionar datas</p>
+                </div>
+              )}
+            </TabsContent>
+          </div>
+        </Tabs>
       </DialogContent>
     </Dialog>
   );

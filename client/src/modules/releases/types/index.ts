@@ -1,5 +1,21 @@
 // releases module — domain types
 
+export interface LancamentoAssets {
+  audio_master_url?: string | null;
+  capa_url?: string | null;
+  video_clipe_url?: string | null;
+  letra?: string | null;
+  ficha_tecnica?: string | null;
+  press_release?: string | null;
+  epk_url?: string | null;
+}
+
+export interface LancamentoCronograma {
+  data_gravacao?: string | null;
+  data_mix_master?: string | null;
+  data_entrega_distribuidora?: string | null;
+}
+
 export interface Lancamento {
   id: string;
   user_id?: string;
@@ -12,6 +28,11 @@ export interface Lancamento {
   plataformas?: string[] | null;
   fonograma_ids?: string[] | null;
   observacoes?: string | null;
+  isrc_global?: string | null;
+  upc?: string | null;
+  notas_internas?: string | null;
+  assets?: LancamentoAssets | null;
+  cronograma?: LancamentoCronograma | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

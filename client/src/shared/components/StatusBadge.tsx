@@ -79,12 +79,15 @@ const statusStyles: Record<string, string> = {
   onboarding:    "bg-warning/10 text-warning border-warning/20",
 
   // ── Info / Blue
-  confirmed:     "bg-primary/10 text-primary border-primary/20",
-  confirmado:    "bg-primary/10 text-primary border-primary/20",
-  confirmada:    "bg-primary/10 text-primary border-primary/20",
-  proposal:      "bg-primary/10 text-primary border-primary/20",
-  proposta:      "bg-primary/10 text-primary border-primary/20",
-  independente:  "bg-primary/10 text-primary border-primary/20",
+  confirmed:                "bg-primary/10 text-primary border-primary/20",
+  confirmado:               "bg-primary/10 text-primary border-primary/20",
+  confirmada:               "bg-primary/10 text-primary border-primary/20",
+  proposal:                 "bg-primary/10 text-primary border-primary/20",
+  proposta:                 "bg-primary/10 text-primary border-primary/20",
+  independente:             "bg-primary/10 text-primary border-primary/20",
+  aguardando_distribuicao:  "bg-primary/10 text-primary border-primary/20",
+  publicado:                "bg-success/10 text-success border-success/20",
+  planejado:                "bg-muted text-muted-foreground border-border",
 
   // ── Destructive / Red
   cancelled:     "bg-destructive/10 text-destructive border-destructive/20",
@@ -129,6 +132,8 @@ const statusLabels: Record<string, string> = {
   disponivel: "Disponível", em_uso: "Em Uso", emprestado: "Emprestado",
   manutencao: "Em Manutenção", danificado: "Danificado", descartado: "Descartado",
   programado: "Programado", pausada: "Pausada",
+  planejado: "Planejado", publicado: "Publicado",
+  aguardando_distribuicao: "Aguardando Distribuição",
   vigente: "Vigente", assinado: "Assinado", em_vigor: "Em Vigor",
 };
 

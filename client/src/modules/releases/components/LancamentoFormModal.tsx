@@ -314,10 +314,14 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="planejado">Planejado</SelectItem>
+                      <SelectItem value="em_producao">Em Produção</SelectItem>
                       <SelectItem value="analise">Em Análise</SelectItem>
                       <SelectItem value="aprovado">Aprovado</SelectItem>
-                      <SelectItem value="ativo">Ativo</SelectItem>
+                      <SelectItem value="aguardando_distribuicao">Aguardando Distribuição</SelectItem>
+                      <SelectItem value="ativo">Ativo / Publicado</SelectItem>
                       <SelectItem value="programado">Programado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -597,6 +601,157 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
               </CollapsibleContent>
             </Card>
           </Collapsible>
+
+          {/* Assets do Lançamento */}
+          <Card className="bg-muted/30 border-border">
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Music className="h-5 w-5 text-muted-foreground" />
+                <CardTitle className="text-base">Assets do Lançamento</CardTitle>
+              </div>
+              <CardDescription>URLs dos materiais do lançamento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Áudio Master (WAV/FLAC URL)</Label>
+                  <Input
+                    value={formData.assetAudioMasterUrl}
+                    onChange={(e) => setFormData({ ...formData, assetAudioMasterUrl: e.target.value })}
+                    placeholder="https://drive.google.com/..."
+                    disabled={isViewMode}
+                    data-testid="input-asset-audio"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Capa do Álbum (3000×3000 URL)</Label>
+                  <Input
+                    value={formData.assetCapaUrl}
+                    onChange={(e) => setFormData({ ...formData, assetCapaUrl: e.target.value })}
+                    placeholder="https://drive.google.com/..."
+                    disabled={isViewMode}
+                    data-testid="input-asset-capa"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Vídeo Clipe (YouTube URL)</Label>
+                  <Input
+                    value={formData.assetVideoClipeUrl}
+                    onChange={(e) => setFormData({ ...formData, assetVideoClipeUrl: e.target.value })}
+                    placeholder="https://youtube.com/watch?v=..."
+                    disabled={isViewMode}
+                    data-testid="input-asset-video-clipe"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>EPK – Electronic Press Kit (URL)</Label>
+                  <Input
+                    value={formData.assetEpkUrl}
+                    onChange={(e) => setFormData({ ...formData, assetEpkUrl: e.target.value })}
+                    placeholder="https://drive.google.com/..."
+                    disabled={isViewMode}
+                    data-testid="input-asset-epk"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Ficha Técnica</Label>
+                  <Textarea
+                    value={formData.assetFichaTecnica}
+                    onChange={(e) => setFormData({ ...formData, assetFichaTecnica: e.target.value })}
+                    placeholder="Produção: ...\nMixagem: ...\nMasterização: ..."
+                    rows={3}
+                    disabled={isViewMode}
+                    data-testid="input-asset-ficha-tecnica"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Press Release</Label>
+                  <Textarea
+                    value={formData.assetPressRelease}
+                    onChange={(e) => setFormData({ ...formData, assetPressRelease: e.target.value })}
+                    placeholder="Texto do press release..."
+                    rows={3}
+                    disabled={isViewMode}
+                    data-testid="input-asset-press-release"
+                  />
+                </div>
+                <div className="space-y-2 col-span-2">
+                  <Label>Letra da Música</Label>
+                  <Textarea
+                    value={formData.assetLetra}
+                    onChange={(e) => setFormData({ ...formData, assetLetra: e.target.value })}
+                    placeholder="Letra da música..."
+                    rows={4}
+                    disabled={isViewMode}
+                    data-testid="input-asset-letra"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Cronograma de Produção */}
+          <Card className="bg-muted/30 border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Cronograma de Produção</CardTitle>
+              <CardDescription>Datas-chave da produção ao lançamento</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de Gravação</Label>
+                  <Input
+                    type="date"
+                    value={formData.cronGravacao}
+                    onChange={(e) => setFormData({ ...formData, cronGravacao: e.target.value })}
+                    disabled={isViewMode}
+                    data-testid="input-cron-gravacao"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Data de Mix & Master</Label>
+                  <Input
+                    type="date"
+                    value={formData.cronMixMaster}
+                    onChange={(e) => setFormData({ ...formData, cronMixMaster: e.target.value })}
+                    disabled={isViewMode}
+                    data-testid="input-cron-mix-master"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Entrega à Distribuidora</Label>
+                  <Input
+                    type="date"
+                    value={formData.cronEntregaDistribuidora}
+                    onChange={(e) => setFormData({ ...formData, cronEntregaDistribuidora: e.target.value })}
+                    disabled={isViewMode}
+                    data-testid="input-cron-entrega"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>ISRC Global (Singles)</Label>
+                  <Input
+                    value={formData.isrcGlobal}
+                    onChange={(e) => setFormData({ ...formData, isrcGlobal: e.target.value })}
+                    placeholder="BR-XXX-25-00001"
+                    disabled={isViewMode}
+                    data-testid="input-isrc-global"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Notas Internas</Label>
+                  <Textarea
+                    value={formData.notasInternas}
+                    onChange={(e) => setFormData({ ...formData, notasInternas: e.target.value })}
+                    placeholder="Notas para a equipe interna..."
+                    rows={2}
+                    disabled={isViewMode}
+                    data-testid="input-notas-internas"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Distribuição */}
           <Card className="bg-muted/30 border-border">
