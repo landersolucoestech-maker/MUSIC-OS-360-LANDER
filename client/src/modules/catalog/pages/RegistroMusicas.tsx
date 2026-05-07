@@ -1023,8 +1023,8 @@ export default function RegistroMusicas() {
                           <span className="truncate block">{obra.compositores || "-"}</span>
                         </div>
                         <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">ISRC</span>
-                          <span className="truncate block">{obra.isrc || "-"}</span>
+                          <span className="text-muted-foreground text-xs block">Editora</span>
+                          <span className="truncate block">{obra.editora || "-"}</span>
                         </div>
                         <div className="w-20">
                           <span className="text-muted-foreground text-xs block">Gênero</span>
