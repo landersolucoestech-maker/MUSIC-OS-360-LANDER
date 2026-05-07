@@ -554,7 +554,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 <div className="space-y-2">
                   <Label>Data de Nascimento</Label>
                   <Input
-                    type="date"
+                    type="text"
+                    placeholder="DD-MM-YYYY"
+                    maxLength={10}
                     value={dataNascimento}
                     onChange={(e) => setDataNascimento(e.target.value)}
                     data-testid="input-data-nascimento"
