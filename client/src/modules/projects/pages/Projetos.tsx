@@ -421,10 +421,10 @@ export default function Projetos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Status</SelectItem>
-              <SelectItem value="em_andamento">Em Andamento</SelectItem>
-              <SelectItem value="concluido">Concluído</SelectItem>
-              <SelectItem value="planejamento">Planejamento</SelectItem>
               <SelectItem value="cancelado">Cancelado</SelectItem>
+              <SelectItem value="concluido">Concluído</SelectItem>
+              <SelectItem value="em_andamento">Em Andamento</SelectItem>
+              <SelectItem value="planejamento">Planejamento</SelectItem>
             </SelectContent>
           </Select>
           <Select value={artistaFilter} onValueChange={setArtistaFilter}>
@@ -433,7 +433,7 @@ export default function Projetos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Artista</SelectItem>
-              {artistas.map(a => (
+              {[...artistas].sort((a, b) => (a.nome_artistico || "").localeCompare(b.nome_artistico || "", "pt-BR", { sensitivity: "base" })).map(a => (
                 <SelectItem key={a.id} value={a.id}>{a.nome_artistico}</SelectItem>
               ))}
             </SelectContent>
@@ -444,9 +444,9 @@ export default function Projetos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos Tipo de...</SelectItem>
-              <SelectItem value="single">Single</SelectItem>
-              <SelectItem value="ep">EP</SelectItem>
               <SelectItem value="album">Álbum</SelectItem>
+              <SelectItem value="ep">EP</SelectItem>
+              <SelectItem value="single">Single</SelectItem>
               <SelectItem value="turne">Turnê</SelectItem>
             </SelectContent>
           </Select>
