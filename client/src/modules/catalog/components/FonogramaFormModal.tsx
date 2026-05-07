@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X } from "lucide-react";
 import { useObras, type ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert, type FonogramaUpdate } from "@/modules/catalog/hooks/useFonogramas";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
@@ -163,11 +164,88 @@ const formatFileSize = (bytes: number) => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
+// ── Autocomplete: busca por nome_artistico, armazena/exibe nome_civil ──
+interface ArtistNameInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
+  placeholder?: string;
+  disabled?: boolean;
+  className?: string;
+}
+
+function ArtistNameInput({ value, onChange, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
+  const [inputText, setInputText] = useState(value);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setInputText(value); }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const suggestions = inputText.trim()
+    ? artistas.filter(a =>
+        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase()) ||
+        (a.nome_civil ?? "").toLowerCase().includes(inputText.toLowerCase())
+      )
+    : [];
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    onChange(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (a: typeof artistas[number]) => {
+    const display = a.nome_civil || a.nome_artistico;
+    setInputText(display);
+    onChange(display);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className={`relative w-full ${className ?? ""}`}>
+      <Input
+        value={inputText}
+        onChange={handleChange}
+        onFocus={() => inputText.trim() && setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+          {suggestions.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              onMouseDown={() => handleSelect(a)}
+            >
+              <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
+              <span className="text-xs text-muted-foreground">{a.nome_artistico}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: FonogramaFormModalProps) {
   // Obras carregadas via useObras()
   const { obras } = useObras();
   const { addFonograma, updateFonograma } = useFonogramas();
   const { orgId } = useCurrentOrgId();
+  const { artistas } = useArtistas();
 
   // Build initial obra vinculada from form-shape OR DB-shape (snake_case).
   // Em registros que vêm do banco apenas com obra_id, a hidratação completa
@@ -547,11 +625,12 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
             <div className="space-y-2">
               {participacao[categoria].map((p) => (
                 <div key={p.id} className="flex gap-3 items-center">
-                  <Input 
-                    value={p.nome} 
-                    onChange={(e) => updateParticipante(categoria, p.id, 'nome', e.target.value)} 
-                    disabled={isViewMode} 
-                    placeholder="Nome do participante" 
+                  <ArtistNameInput
+                    value={p.nome}
+                    onChange={(val) => updateParticipante(categoria, p.id, 'nome', val)}
+                    artistas={artistas}
+                    placeholder="Nome do participante"
+                    disabled={isViewMode}
                     className="flex-1"
                   />
                   <Input 
