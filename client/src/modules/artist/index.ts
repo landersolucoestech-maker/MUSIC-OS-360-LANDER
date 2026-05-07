@@ -6,5 +6,4 @@ export * from "./components/ArtistaEvolutionCard";
 export * from "./components/ArtistaForm";
 export * from "./components/ArtistaFormModal";
 export * from "./components/ArtistaPlatformMetrics";
-export * from "./components/ArtistaViewModalNew";
 export * from "./components/ArtistaVisao360Modal";
