@@ -209,7 +209,7 @@ export function ContratoViewModal({
             <TabsContent value="versoes" className="p-6 mt-0" data-testid="tab-content-versoes">
               {versoes.length > 0 ? (
                 <div className="space-y-3">
-                  {versoes.map((v: any, index: number) => (
+                  {versoes.map((v, index) => (
                     <div
                       key={index}
                       className="flex items-start gap-3 p-4 bg-muted/20 border border-border rounded-lg"
@@ -291,7 +291,7 @@ export function ContratoViewModal({
                         className="mt-4 gap-1.5 text-xs"
                         onClick={() => {
                           onOpenChange(false);
-                          navigate("/lancamentos");
+                          navigate(`/lancamentos?view=${lancamentoVinculado.id}`);
                         }}
                         data-testid="button-ver-lancamento"
                       >

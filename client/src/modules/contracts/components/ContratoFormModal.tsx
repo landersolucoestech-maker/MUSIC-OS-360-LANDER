@@ -118,9 +118,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const { clientes } = useClientes();
   const { lancamentos } = useLancamentos();
 
-  // Filtrar contatos do CRM por tipo
-  const contatosPF = clientes.filter((c) => c.tipo === "pessoa_fisica");
-  const contatosPJ = clientes.filter((c) => c.tipo === "pessoa_juridica");
+  // Filtrar contatos do CRM por tipo_pessoa (campo canônico dos clientes CRM)
+  // Cliente interface has [key: string]: unknown index signature, so bracket access is valid without cast
+  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
+  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
   const form = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),

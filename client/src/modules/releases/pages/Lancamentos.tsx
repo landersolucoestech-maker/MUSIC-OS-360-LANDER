@@ -1,4 +1,5 @@
-import { useCallback, useState, useMemo, useRef } from "react";
+import { useCallback, useState, useMemo, useRef, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -97,6 +98,18 @@ export default function Lancamentos() {
     lancamentos,
     useCallback((lancamento) => setFormModal({ open: true, mode: "edit", lancamento }), []),
   );
+
+  // Support ?view=<id> to directly open the view modal (e.g., navigated from ContratoViewModal)
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const viewId = searchParams.get("view");
+    if (!viewId || lancamentos.length === 0) return;
+    const target = lancamentos.find((l) => l.id === viewId);
+    if (target) {
+      setViewModal({ open: true, lancamento: target });
+      setSearchParams((prev) => { prev.delete("view"); return prev; }, { replace: true });
+    }
+  }, [searchParams, lancamentos, setSearchParams]);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all-type");
