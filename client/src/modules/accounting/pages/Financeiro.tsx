@@ -1,5 +1,4 @@
 import { useCallback, useState, useMemo, useRef } from "react";
-import { Link } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
@@ -10,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
-  Link as LinkIcon, Download, Plus, Search, Settings,
+  Link as LinkIcon, Download, Plus, Search,
   Calendar, Upload, MoreHorizontal, Eye, Pencil, Trash2, X,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
@@ -197,11 +196,6 @@ export default function Financeiro() {
       actions={
         <>
           <input type="file" ref={ofxInputRef} accept=".ofx" className="hidden" onChange={handleOFXUpload} />
-          <Link to="/financeiro/regras">
-            <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-              <Settings className="h-3.5 w-3.5" /> Regras
-            </Button>
-          </Link>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => ofxInputRef.current?.click()}>
             <Upload className="h-3.5 w-3.5" /> Importar OFX
           </Button>

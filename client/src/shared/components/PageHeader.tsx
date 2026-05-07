@@ -19,35 +19,38 @@ interface PageHeaderProps {
 export function PageHeader({ title, description, actions, className }: PageHeaderProps) {
   return (
     <div className={cn(
-      "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6",
-      className
+      "flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-5",
+      className,
     )}>
       <div className="min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight leading-tight text-foreground">
+        <h1 className="text-lg font-semibold tracking-tight leading-tight text-foreground">
           {title}
         </h1>
         {description && (
-          <p className="text-sm text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+          <p className="text-[12.5px] text-muted-foreground mt-0.5 leading-relaxed">
+            {description}
+          </p>
         )}
       </div>
+
       {actions && (
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-1.5 shrink-0">
           {actions.import && (
-            <Button variant="outline" size="sm" onClick={actions.onImport} className="h-8 text-xs">
-              <Upload className="mr-1.5 h-3.5 w-3.5" />
+            <Button variant="outline" size="sm" onClick={actions.onImport}>
+              <Upload className="h-3.5 w-3.5" />
               Importar
             </Button>
           )}
           {actions.export && (
-            <Button variant="outline" size="sm" onClick={actions.onExport} className="h-8 text-xs">
-              <Download className="mr-1.5 h-3.5 w-3.5" />
+            <Button variant="outline" size="sm" onClick={actions.onExport}>
+              <Download className="h-3.5 w-3.5" />
               Exportar
             </Button>
           )}
           {actions.custom}
           {actions.new && (
-            <Button size="sm" onClick={actions.new.onClick} className="h-8 text-xs">
-              <Plus className="mr-1.5 h-3.5 w-3.5" />
+            <Button size="sm" onClick={actions.new.onClick}>
+              <Plus className="h-3.5 w-3.5" />
               {actions.new.label}
             </Button>
           )}

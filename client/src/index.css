@@ -2,178 +2,198 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MUSIC OS 360 Design System - Enterprise Blue */
+/* MUSIC OS 360 Design System — Enterprise Premium */
 
 @layer base {
   :root {
-    --background: 0 0% 98%;
-    --foreground: 222 47% 11%;
+    /* ── Backgrounds ─────────────────────────────────────────────────────── */
+    --background: 0 0% 99.2%;
+    --foreground: 222 25% 10%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
+    --card-foreground: 222 25% 10%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
+    --popover-foreground: 222 25% 10%;
 
+    /* ── Brand ───────────────────────────────────────────────────────────── */
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 0 0% 100%;
-    --secondary-foreground: 0 0% 0%;
+    /* ── Secondary / Muted ───────────────────────────────────────────────── */
+    --secondary: 220 16% 96%;
+    --secondary-foreground: 222 25% 22%;
 
-    --muted: 220 14% 96%;
-    --muted-foreground: 220 9% 46%;
+    --muted: 220 16% 95.5%;
+    --muted-foreground: 220 9% 48%;
 
-    --accent: 217 30% 94%;
-    --accent-foreground: 222 47% 20%;
+    --accent: 217 26% 93%;
+    --accent-foreground: 222 25% 18%;
 
+    /* ── Semantic ────────────────────────────────────────────────────────── */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    /* ── Borders / Inputs ────────────────────────────────────────────────── */
+    --border: 215 16% 88%;
+    --input: 215 16% 88%;
     --ring: 217 91% 60%;
 
-    --radius: 0.5rem;
+    /* ── Radius ── tight & consistent across modes ───────────────────────── */
+    --radius: 0.375rem;
 
-    --sidebar-background: 0 0% 100%;
-    --sidebar-foreground: 222 47% 11%;
-    --sidebar-primary: 217 91% 60%;
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    --sidebar-background: 0 0% 99.8%;
+    --sidebar-foreground: 222 25% 12%;
+    --sidebar-primary: 217 91% 58%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 94%;
-    --sidebar-accent-foreground: 222 47% 20%;
-    --sidebar-border: 220 13% 91%;
+    --sidebar-accent: 217 22% 93%;
+    --sidebar-accent-foreground: 222 25% 16%;
+    --sidebar-border: 215 16% 91%;
     --sidebar-ring: 217 91% 60%;
 
-    /* Custom colors for MUSIC OS 360 */
-    --success: 142 76% 36%;
+    /* ── Semantic color tokens ────────────────────────────────────────────── */
+    --success: 142 71% 34%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
+    --warning: 38 92% 48%;
     --warning-foreground: 0 0% 100%;
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
-    /* Status colors - semantic tokens */
-    --status-active: 142 76% 36%;
-    --status-pending: 38 92% 50%;
+    /* ── Status ──────────────────────────────────────────────────────────── */
+    --status-active: 142 71% 34%;
+    --status-pending: 38 92% 48%;
     --status-confirmed: 217 91% 60%;
     --status-cancelled: 0 84% 60%;
-    --status-executed: 142 76% 36%;
-    --status-registered: 142 76% 36%;
-    --status-analysis: 38 92% 50%;
+    --status-executed: 142 71% 34%;
+    --status-registered: 142 71% 34%;
+    --status-analysis: 38 92% 48%;
     --status-rejected: 0 84% 60%;
     --status-expired: 0 84% 60%;
-    --status-negotiation: 38 92% 50%;
+    --status-negotiation: 38 92% 48%;
     --status-proposal: 217 91% 60%;
 
-    /* Priority colors */
+    /* ── Priority ────────────────────────────────────────────────────────── */
     --priority-high: 0 84% 60%;
-    --priority-medium: 38 92% 50%;
-    --priority-low: 142 76% 36%;
+    --priority-medium: 38 92% 48%;
+    --priority-low: 142 71% 34%;
 
-    /* Category colors */
+    /* ── Category ────────────────────────────────────────────────────────── */
     --category-show: 271 91% 65%;
     --category-product: 25 95% 53%;
     --category-service: 217 91% 60%;
     --category-audio: 217 91% 60%;
     --category-video: 271 91% 65%;
 
-    /* Surface hierarchy — layered elevation */
+    /* ── Surface hierarchy ───────────────────────────────────────────────── */
     --surface-1: 0 0% 100%;
     --surface-2: 0 0% 99%;
-    --surface-3: 0 0% 97%;
+    --surface-3: 220 16% 97%;
 
-    /* Shadow scale — enterprise: subtle, directional, no color */
+    /* ── Shadow scale — precise, directional, no color contamination ─────── */
     --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.04);
     --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
+
+    /* ── Ring glow for modals/dropdowns ─────────────────────────────────── */
+    --ring-inset: inset 0 0 0 1px rgb(0 0 0 / 0.08);
   }
 
   .dark {
-    --background: 222 47% 4%;
-    --foreground: 0 0% 98%;
+    /* ── Backgrounds ─────────────────────────────────────────────────────── */
+    --background: 222 47% 3.5%;
+    --foreground: 0 0% 95%;
 
-    --card: 222 47% 7%;
-    --card-foreground: 0 0% 98%;
+    --card: 222 44% 6%;
+    --card-foreground: 0 0% 95%;
 
-    --popover: 222 47% 7%;
-    --popover-foreground: 0 0% 98%;
+    --popover: 222 44% 6.5%;
+    --popover-foreground: 0 0% 95%;
 
+    /* ── Brand ───────────────────────────────────────────────────────────── */
     --primary: 217 91% 60%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 222 47% 12%;
-    --secondary-foreground: 0 0% 98%;
+    /* ── Secondary / Muted ───────────────────────────────────────────────── */
+    --secondary: 222 40% 11%;
+    --secondary-foreground: 0 0% 90%;
 
-    --muted: 222 47% 12%;
-    --muted-foreground: 0 0% 60%;
+    --muted: 222 40% 11%;
+    --muted-foreground: 220 10% 56%;
 
-    --accent: 222 47% 18%;
-    --accent-foreground: 0 0% 98%;
+    --accent: 222 40% 14%;
+    --accent-foreground: 0 0% 92%;
 
-    --destructive: 0 62% 30%;
+    /* ── Semantic ────────────────────────────────────────────────────────── */
+    --destructive: 0 62% 48%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 222 47% 14%;
-    --input: 222 47% 14%;
+    /* ── Borders / Inputs ────────────────────────────────────────────────── */
+    --border: 222 38% 13%;
+    --input: 222 38% 13%;
     --ring: 217 91% 60%;
 
-    --sidebar-background: 222 47% 5%;
-    --sidebar-foreground: 0 0% 92%;
+    /* ── Radius — same as light ──────────────────────────────────────────── */
+    --radius: 0.375rem;
+
+    /* ── Sidebar ─────────────────────────────────────────────────────────── */
+    --sidebar-background: 222 47% 4%;
+    --sidebar-foreground: 0 0% 88%;
     --sidebar-primary: 217 91% 60%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 14%;
-    --sidebar-accent-foreground: 0 0% 98%;
-    --sidebar-border: 222 47% 12%;
+    --sidebar-accent: 217 30% 12%;
+    --sidebar-accent-foreground: 0 0% 92%;
+    --sidebar-border: 222 38% 10%;
     --sidebar-ring: 217 91% 60%;
 
-    --success: 142 76% 36%;
+    /* ── Semantic ────────────────────────────────────────────────────────── */
+    --success: 142 71% 38%;
     --success-foreground: 0 0% 100%;
     --warning: 38 92% 50%;
     --warning-foreground: 0 0% 100%;
     --info: 217 91% 60%;
     --info-foreground: 0 0% 100%;
 
-    /* Status colors - semantic tokens */
-    --status-active: 142 76% 36%;
+    /* ── Status ──────────────────────────────────────────────────────────── */
+    --status-active: 142 71% 38%;
     --status-pending: 38 92% 50%;
     --status-confirmed: 217 91% 60%;
-    --status-cancelled: 0 62% 40%;
-    --status-executed: 142 76% 36%;
-    --status-registered: 142 76% 36%;
+    --status-cancelled: 0 62% 48%;
+    --status-executed: 142 71% 38%;
+    --status-registered: 142 71% 38%;
     --status-analysis: 38 92% 50%;
-    --status-rejected: 0 62% 40%;
-    --status-expired: 0 62% 40%;
+    --status-rejected: 0 62% 48%;
+    --status-expired: 0 62% 48%;
     --status-negotiation: 38 92% 50%;
     --status-proposal: 217 91% 60%;
 
-    /* Priority colors */
-    --priority-high: 0 62% 40%;
+    /* ── Priority ────────────────────────────────────────────────────────── */
+    --priority-high: 0 62% 48%;
     --priority-medium: 38 92% 50%;
-    --priority-low: 142 76% 36%;
+    --priority-low: 142 71% 38%;
 
-    /* Category colors */
+    /* ── Category ────────────────────────────────────────────────────────── */
     --category-show: 271 91% 65%;
     --category-product: 25 95% 53%;
     --category-service: 217 91% 60%;
     --category-audio: 217 91% 60%;
     --category-video: 271 91% 65%;
 
-    /* Surface hierarchy — dark mode layering */
-    --surface-1: 222 47% 8%;
-    --surface-2: 222 47% 10%;
-    --surface-3: 222 47% 13%;
+    /* ── Surface hierarchy ───────────────────────────────────────────────── */
+    --surface-1: 222 44% 6%;
+    --surface-2: 222 44% 8%;
+    --surface-3: 222 44% 11%;
 
-    /* Shadow scale — dark mode: stronger, deeper */
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.25);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.25);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.40), 0 2px 4px -2px rgb(0 0 0 / 0.30);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.30);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.50), 0 8px 10px -6px rgb(0 0 0 / 0.35);
+    /* ── Shadow scale — dark: richer blacks ─────────────────────────────── */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.28);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.38), 0 1px 2px -1px rgb(0 0 0 / 0.28);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.42), 0 2px 4px -2px rgb(0 0 0 / 0.32);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.48), 0 4px 6px -4px rgb(0 0 0 / 0.32);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.54), 0 8px 10px -6px rgb(0 0 0 / 0.38);
 
-    --radius: 0.75rem;
+    --ring-inset: inset 0 0 0 1px rgb(255 255 255 / 0.06);
   }
 }
 
@@ -182,90 +202,93 @@
     @apply border-border;
   }
 
+  html {
+    font-size: 14px;
+    -webkit-text-size-adjust: 100%;
+  }
+
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings: "rlig" 1, "calt" 1, "cv02" 1, "cv03" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    line-height: 1.5;
   }
 
-  /* Smooth focus states */
+  /* Precise focus ring — not intrusive */
   *:focus-visible {
-    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+    @apply outline-none ring-2 ring-ring ring-offset-1 ring-offset-background;
+  }
+
+  /* Heading defaults */
+  h1, h2, h3, h4, h5, h6 {
+    letter-spacing: -0.01em;
   }
 }
 
-/* Custom scrollbar */
+/* ── Scrollbar — minimal, invisible until needed ─────────────────────────── */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
-
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--muted-foreground) / 0.3);
-  border-radius: 3px;
+  background: hsl(var(--border));
+  border-radius: 99px;
 }
-
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.5);
+  background: hsl(var(--muted-foreground) / 0.4);
 }
 
-/* Enhanced transitions */
+/* ── Utility classes ─────────────────────────────────────────────────────── */
 @layer utilities {
-  .transition-smooth {
-    @apply transition-all duration-200 ease-out;
-  }
+  /* Transitions */
+  .transition-smooth { @apply transition-all duration-150 ease-out; }
+  .transition-colors-smooth { @apply transition-colors duration-150 ease-out; }
 
-  .transition-colors-smooth {
-    @apply transition-colors duration-200 ease-out;
-  }
+  /* Elevation interactions */
+  .hover-lift { @apply transition-all duration-200 hover:-translate-y-px hover:shadow-md; }
+  .hover-scale { @apply transition-transform duration-150 hover:scale-[1.01]; }
 
-  .hover-lift {
-    @apply transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg;
-  }
-
-  .hover-scale {
-    @apply transition-transform duration-200 hover:scale-[1.02];
-  }
-
-  /* Enterprise card hover — subtle border + shadow, no color glow */
+  /* Enterprise card hover — border brightens + micro-shadow lift */
   .card-interactive {
     @apply transition-[border-color,box-shadow] duration-200
-           hover:border-primary/25 hover:shadow-md;
+           hover:border-border hover:shadow-md cursor-pointer;
   }
 
   /* Gradient text */
   .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent;
+    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
   }
 
-  /* Glass effect */
+  /* Glass surface */
   .glass {
-    @apply bg-background/80 backdrop-blur-sm border border-border/50;
+    @apply bg-background/80 backdrop-blur-md border border-border/60;
   }
 
-  /* Shimmer loading effect */
+  /* Shimmer skeleton */
   .shimmer {
     background: linear-gradient(
       90deg,
       hsl(var(--muted)) 0%,
-      hsl(var(--muted-foreground) / 0.1) 50%,
+      hsl(var(--muted-foreground) / 0.08) 50%,
       hsl(var(--muted)) 100%
     );
     background-size: 200% 100%;
-    animation: shimmer 2s linear infinite;
+    animation: shimmer 1.8s linear infinite;
   }
 
-  /* Stagger animation delays */
-  .stagger-1 { animation-delay: 50ms; }
-  .stagger-2 { animation-delay: 100ms; }
-  .stagger-3 { animation-delay: 150ms; }
-  .stagger-4 { animation-delay: 200ms; }
-  .stagger-5 { animation-delay: 250ms; }
+  /* Stagger delays */
+  .stagger-1 { animation-delay: 40ms; }
+  .stagger-2 { animation-delay: 80ms; }
+  .stagger-3 { animation-delay: 120ms; }
+  .stagger-4 { animation-delay: 160ms; }
+  .stagger-5 { animation-delay: 200ms; }
 
-  /* Enterprise shadow utilities — map to CSS var shadow scale */
+  /* Shadow utilities — use CSS vars directly */
   .shadow-xs  { box-shadow: var(--shadow-xs); }
   .shadow-sm  { box-shadow: var(--shadow-sm); }
   .shadow-md  { box-shadow: var(--shadow-md); }
@@ -278,37 +301,41 @@
   .bg-surface-3 { background-color: hsl(var(--surface-3)); }
 
   /* Row hover — tables, lists */
-  .row-interactive {
-    @apply transition-colors duration-150 hover:bg-muted/50;
+  .row-interactive { @apply transition-colors duration-100 hover:bg-muted/60; }
+
+  /* Icon button */
+  .icon-button {
+    @apply rounded-md transition-colors duration-100
+           hover:bg-muted/70 active:bg-muted;
   }
 
-  /* Icon button hover */
-  .icon-button {
-    @apply rounded-md transition-colors duration-150
-           hover:bg-muted/60 active:bg-muted;
+  /* Numeric / tabular data */
+  .tabular { @apply font-mono tabular-nums; }
+
+  /* Label + value pairs */
+  .label-sm {
+    @apply text-[11px] font-semibold uppercase tracking-widest text-muted-foreground;
   }
 }
 
-/* Focus ring for interactive elements */
+/* ── Component layer ─────────────────────────────────────────────────────── */
 @layer components {
+  /* Focus ring helper */
   .focus-ring {
-    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1;
   }
 
-  /* Status badges with semantic colors */
-  .badge-success {
-    @apply bg-success/10 text-success border-success/20;
-  }
+  /* Status badge classes */
+  .badge-success     { @apply bg-success/10 text-success border-success/20; }
+  .badge-warning     { @apply bg-warning/10 text-warning border-warning/20; }
+  .badge-destructive { @apply bg-destructive/10 text-destructive border-destructive/20; }
+  .badge-info        { @apply bg-info/10 text-info border-info/20; }
 
-  .badge-warning {
-    @apply bg-warning/10 text-warning border-warning/20;
-  }
+  /* Inset divider */
+  .divider { @apply border-t border-border/70 my-4; }
 
-  .badge-destructive {
-    @apply bg-destructive/10 text-destructive border-destructive/20;
-  }
-
-  .badge-info {
-    @apply bg-info/10 text-info border-info/20;
+  /* Muted section label */
+  .section-label {
+    @apply text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70;
   }
 }

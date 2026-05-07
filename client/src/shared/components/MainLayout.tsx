@@ -6,7 +6,6 @@ interface MainLayoutProps {
   title?: string;
   description?: string;
   actions?: React.ReactNode;
-  /** Remove the default page padding — use for full-bleed content */
   noPadding?: boolean;
 }
 
@@ -21,17 +20,22 @@ export function MainLayout({
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
       <div className="flex flex-col flex-1 min-w-0 h-screen overflow-hidden">
-        {/* Topbar */}
+        {/* ── Topbar ─────────────────────────────────────────────────────── */}
         {(title || actions) && (
-          <header className="flex h-14 items-center justify-between gap-4 border-b border-border bg-background/95 backdrop-blur-sm px-6 shrink-0 sticky top-0 z-[200]">
-            <div className="min-w-0">
+          <header className={cn(
+            "flex h-[52px] items-center justify-between gap-4 shrink-0",
+            "border-b border-border/70 px-6",
+            "bg-background/95 backdrop-blur-sm",
+            "sticky top-0 z-[200]",
+          )}>
+            <div className="min-w-0 flex flex-col justify-center">
               {title && (
-                <h1 className="text-base font-semibold tracking-tight text-foreground leading-tight truncate">
+                <h1 className="text-[13.5px] font-semibold tracking-tight text-foreground leading-none">
                   {title}
                 </h1>
               )}
               {description && (
-                <p className="text-xs text-muted-foreground leading-tight truncate mt-0.5">
+                <p className="text-[11.5px] text-muted-foreground leading-none mt-1 truncate">
                   {description}
                 </p>
               )}
@@ -42,10 +46,10 @@ export function MainLayout({
           </header>
         )}
 
-        {/* Content */}
+        {/* ── Content ────────────────────────────────────────────────────── */}
         <main className={cn(
           "flex-1 overflow-y-auto",
-          !noPadding && "px-4 py-6 md:px-6"
+          !noPadding && "px-5 py-5 md:px-6 md:py-6",
         )}>
           {children}
         </main>
