@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useProjetos, type ProjetoInsert, type ProjetoUpdate } from "@/modules/projects/hooks/useProjetos";
 import { useStorage } from "@/modules/integrations/hooks/useStorage";
@@ -92,6 +92,82 @@ function normEnum(v: string | undefined, fallback: string): string {
   const s = (v || fallback).toLowerCase().trim() || fallback;
   // Strip Portuguese accents from boolean-like fields ("não" → "nao")
   return s.normalize("NFD").replace(/[\u0300-\u036f]/g, "") || fallback;
+}
+
+// ── Autocomplete input: busca por nome_artistico, armazena/exibe nome_civil ──
+interface ArtistNameInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: ArtistNameInputProps) {
+  const [inputText, setInputText] = useState(value);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sync when parent resets value (e.g. modal open)
+  useEffect(() => { setInputText(value); }, [value]);
+
+  // Close on outside click
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const suggestions = inputText.trim()
+    ? artistas.filter(a =>
+        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase())
+      )
+    : [];
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    onChange(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (a: typeof artistas[number]) => {
+    const display = a.nome_civil || a.nome_artistico;
+    setInputText(display);
+    onChange(display);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <Input
+        value={inputText}
+        onChange={handleChange}
+        onFocus={() => inputText.trim() && setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete="off"
+      />
+      {open && suggestions.length > 0 && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+          {suggestions.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              onMouseDown={() => handleSelect(a)}
+            >
+              <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
+              <span className="text-xs text-muted-foreground">{a.nome_artistico}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluido }: ProjetoFormModalProps) {
@@ -393,11 +469,12 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         <div className="space-y-2">
           {musica.compositores.map((comp, idx) => (
             <div key={idx} className="flex gap-2">
-              <Input 
-                value={comp} 
-                onChange={(e) => updateItemInMusica(musica.id, 'compositores', idx, e.target.value)} 
-                disabled={isViewMode} 
-                placeholder="Nome do compositor" 
+              <ArtistNameInput
+                value={comp}
+                onChange={(v) => updateItemInMusica(musica.id, 'compositores', idx, v)}
+                artistas={artistas}
+                placeholder="Nome do compositor"
+                disabled={isViewMode}
               />
               {!isViewMode && musica.compositores.length > 1 && (
                 <Button type="button" variant="ghost" size="icon" onClick={() => removeItemFromMusica(musica.id, 'compositores', idx)}>
@@ -422,11 +499,12 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         <div className="space-y-2">
           {musica.interpretes.map((int, idx) => (
             <div key={idx} className="flex gap-2">
-              <Input 
-                value={int} 
-                onChange={(e) => updateItemInMusica(musica.id, 'interpretes', idx, e.target.value)} 
-                disabled={isViewMode} 
-                placeholder="Nome do intérprete" 
+              <ArtistNameInput
+                value={int}
+                onChange={(v) => updateItemInMusica(musica.id, 'interpretes', idx, v)}
+                artistas={artistas}
+                placeholder="Nome do intérprete"
+                disabled={isViewMode}
               />
               {!isViewMode && musica.interpretes.length > 1 && (
                 <Button type="button" variant="ghost" size="icon" onClick={() => removeItemFromMusica(musica.id, 'interpretes', idx)}>
@@ -451,11 +529,12 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         <div className="space-y-2">
           {musica.produtores.map((prod, idx) => (
             <div key={idx} className="flex gap-2">
-              <Input 
-                value={prod} 
-                onChange={(e) => updateItemInMusica(musica.id, 'produtores', idx, e.target.value)} 
-                disabled={isViewMode} 
-                placeholder="Nome do produtor" 
+              <ArtistNameInput
+                value={prod}
+                onChange={(v) => updateItemInMusica(musica.id, 'produtores', idx, v)}
+                artistas={artistas}
+                placeholder="Nome do produtor"
+                disabled={isViewMode}
               />
               {!isViewMode && musica.produtores.length > 1 && (
                 <Button type="button" variant="ghost" size="icon" onClick={() => removeItemFromMusica(musica.id, 'produtores', idx)}>
