@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -13,6 +14,8 @@ import {
 } from "lucide-react";
 import { useAutentique } from "@/modules/integrations/hooks/useAutentique";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
+import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { toast } from "sonner";
@@ -25,7 +28,7 @@ interface Signer {
 interface ContratoViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contrato?: any;
+  contrato?: ContratoWithRelations;
 }
 
 export function ContratoViewModal({
@@ -35,16 +38,17 @@ export function ContratoViewModal({
 }: ContratoViewModalProps) {
   const { createDocument, isCreating } = useAutentique();
   const { lancamentos } = useLancamentos();
+  const navigate = useNavigate();
   const [showSignerForm, setShowSignerForm] = useState(false);
   const [signers, setSigners] = useState<Signer[]>([{ email: "", name: "" }]);
 
   if (!contrato) return null;
 
-  const lancamentoVinculado = contrato.lancamento_id
-    ? lancamentos.find((l: any) => l.id === contrato.lancamento_id)
-    : null;
+  const lancamentoVinculado: LancamentoWithRelations | undefined = contrato.lancamento_id
+    ? lancamentos.find((l) => l.id === contrato.lancamento_id)
+    : undefined;
 
-  const versoes: any[] = Array.isArray(contrato.versoes) ? contrato.versoes : [];
+  const versoes: ContratoVersao[] = Array.isArray(contrato.versoes) ? (contrato.versoes as ContratoVersao[]) : [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -281,6 +285,19 @@ export function ContratoViewModal({
                           </p>
                         </div>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="mt-4 gap-1.5 text-xs"
+                        onClick={() => {
+                          onOpenChange(false);
+                          navigate("/lancamentos");
+                        }}
+                        data-testid="button-ver-lancamento"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                        Ver em Lançamentos
+                      </Button>
                     </div>
                   </CardContent>
                 </Card>

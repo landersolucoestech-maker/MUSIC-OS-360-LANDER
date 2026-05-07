@@ -55,6 +55,7 @@ const contractSchema = z.object({
   responsible_person: z.string().optional(),
   status: z.enum(["pendente", "assinado", "aguardando_assinatura", "expirado", "rescindido", "rascunho"]).default("rascunho"),
   arquivo_url: z.string().optional(),
+  notas_versao: z.string().optional(),
   lancamento_id: z.string().optional(),
   start_date: z.date({ required_error: "Data de início é obrigatória" }),
   end_date: z.date().optional(),
@@ -118,8 +119,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const { lancamentos } = useLancamentos();
 
   // Filtrar contatos do CRM por tipo
-  const contatosPF = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_fisica");
-  const contatosPJ = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");
+  const contatosPF = clientes.filter((c) => c.tipo === "pessoa_fisica");
+  const contatosPJ = clientes.filter((c) => c.tipo === "pessoa_juridica");
 
   const form = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
@@ -672,6 +673,16 @@ export const ContractForm: React.FC<ContractFormProps> = ({
             <p className="text-xs text-muted-foreground">Cole o link público do PDF do contrato (Google Drive, Dropbox, etc.)</p>
           </div>
           <div className="space-y-2">
+            <Label htmlFor="notas_versao">Notas desta versão (opcional)</Label>
+            <Input
+              id="notas_versao"
+              {...form.register("notas_versao")}
+              placeholder="Ex: Alteração de cláusula de exclusividade, versão revisada pelo jurídico..."
+              data-testid="input-notas-versao"
+            />
+            <p className="text-xs text-muted-foreground">Descreva o que mudou nesta versão do documento</p>
+          </div>
+          <div className="space-y-2">
             <Label>Lançamento Vinculado (opcional)</Label>
             <Select
               value={form.watch("lancamento_id") || "none"}
@@ -682,7 +693,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               </SelectTrigger>
               <SelectContent className="bg-background border border-border z-50">
                 <SelectItem value="none">Nenhum</SelectItem>
-                {lancamentos.map((l: any) => (
+                {lancamentos.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     {l.titulo}
                   </SelectItem>
@@ -748,11 +759,13 @@ export const ContractForm: React.FC<ContractFormProps> = ({
 // Modal wrapper component for backwards compatibility
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ScrollArea } from "@/shared/ui/scroll-area";
+import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 
 interface ContratoFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contrato?: any;
+  contrato?: ContratoWithRelations;
   mode?: "create" | "edit";
 }
 
@@ -762,7 +775,71 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
   contrato,
   mode = "create",
 }) => {
-  const handleSubmit = (data: any) => {
+  const { addContrato, updateContrato } = useContratos();
+
+  const handleSubmit = (data: ContractFormData) => {
+    const {
+      title, client_type, service_type, artist_id, status,
+      arquivo_url, notas_versao, lancamento_id,
+      start_date, end_date, fixed_value, royalties_percentage,
+      advance_payment, financial_support, observations,
+    } = data;
+
+    const payload: Record<string, unknown> = {
+      titulo: title,
+      tipo: service_type,
+      status: status || "rascunho",
+      artista_id: client_type === "artista" ? (artist_id || null) : null,
+      arquivo_url: arquivo_url || null,
+      lancamento_id: lancamento_id || null,
+      data_inicio: start_date ? (start_date as Date).toISOString().split("T")[0] : null,
+      data_fim: end_date ? (end_date as Date).toISOString().split("T")[0] : null,
+      valor: fixed_value || null,
+      observacoes: observations || null,
+    };
+
+    if (mode === "edit" && contrato) {
+      // ── Versioning logic ──
+      // Detect arquivo_url change and append new version
+      const prevUrl = contrato.arquivo_url;
+      const newUrl = arquivo_url || null;
+      const urlChanged = newUrl && newUrl !== prevUrl;
+
+      const existingVersions: ContratoVersao[] = Array.isArray(contrato.versoes)
+        ? (contrato.versoes as ContratoVersao[])
+        : [];
+
+      if (urlChanged) {
+        const nextVersionNum = existingVersions.length + 1;
+        const newVersion: ContratoVersao = {
+          versao: `v${nextVersionNum}`,
+          url: newUrl as string,
+          criado_em: new Date().toISOString(),
+          notas: notas_versao || undefined,
+        };
+        payload.versoes = [...existingVersions, newVersion];
+      } else {
+        // Keep existing versions unchanged
+        payload.versoes = existingVersions;
+      }
+
+      updateContrato.mutate({ id: contrato.id, ...payload });
+    } else {
+      // Create: first version if arquivo_url is set
+      if (arquivo_url) {
+        const firstVersion: ContratoVersao = {
+          versao: "v1",
+          url: arquivo_url,
+          criado_em: new Date().toISOString(),
+          notas: notas_versao || undefined,
+        };
+        payload.versoes = [firstVersion];
+      } else {
+        payload.versoes = [];
+      }
+      addContrato.mutate(payload as Parameters<typeof addContrato.mutate>[0]);
+    }
+
     onOpenChange(false);
   };
 
@@ -776,7 +853,7 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
           <ContractForm
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
-            initialData={contrato}
+            initialData={contrato as Record<string, unknown>}
           />
         </ScrollArea>
       </DialogContent>

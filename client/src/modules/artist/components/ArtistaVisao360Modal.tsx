@@ -1593,9 +1593,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <ContratoStatusBadge contratos={[contrato]} />
-                              {(contrato as any).arquivo_url && (
+                              {contrato.arquivo_url && (
                                 <a
-                                  href={(contrato as any).arquivo_url}
+                                  href={contrato.arquivo_url as string}
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   data-testid={`link-contrato-pdf-${contrato.id}`}
