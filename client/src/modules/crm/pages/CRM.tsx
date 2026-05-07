@@ -9,10 +9,11 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
-  Users, Download, Plus, Phone, Mail, Search, Eye, Upload,
-  Pencil, Trash2, MoreHorizontal, UserCheck, UserPlus, FileText, X,
+  Users, Download, Plus, Phone, Mail, Search, Eye,
+  Pencil, Trash2, MoreHorizontal, UserCheck, UserPlus, FileText,
+  X, Building2, Handshake, Package, Upload,
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
@@ -30,7 +31,30 @@ const getXLSX = () => import("xlsx");
 
 type Cliente = Record<string, any>;
 
-// Enterprise tinted temperature/priority badges
+type SegmentoTab = "todos" | "contratante" | "parceiro" | "fornecedor" | "contato";
+
+const SEGMENTO_TABS: { value: SegmentoTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { value: "todos",       label: "Todos",        icon: Users },
+  { value: "contratante", label: "Contratantes", icon: Building2 },
+  { value: "parceiro",    label: "Parceiros",    icon: Handshake },
+  { value: "fornecedor",  label: "Fornecedores", icon: Package },
+  { value: "contato",     label: "Contatos",     icon: UserCheck },
+];
+
+const SEGMENTO_BADGE: Record<string, string> = {
+  contratante: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  parceiro:    "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  fornecedor:  "bg-warning/10 text-warning border-warning/20",
+  contato:     "bg-muted text-muted-foreground border-border",
+};
+
+const SEGMENTO_LABEL: Record<string, string> = {
+  contratante: "Contratante",
+  parceiro:    "Parceiro",
+  fornecedor:  "Fornecedor",
+  contato:     "Contato",
+};
+
 const temperaturaStyle: Record<string, string> = {
   quente: "bg-destructive/10 text-destructive border-destructive/20",
   morno:  "bg-warning/10 text-warning border-warning/20",
@@ -38,10 +62,12 @@ const temperaturaStyle: Record<string, string> = {
 };
 
 export default function CRM() {
-  const { clientes: rawClientes, isLoading: clientesLoading, deleteCliente, addCliente } = useClientes();
+  const { clientes: rawClientes, isLoading: clientesLoading, deleteCliente, addCliente, updateCliente } = useClientes();
   const { contratos } = useContratos();
   const clientes = rawClientes as Cliente[];
   const csvInputRef = useRef<HTMLInputElement>(null);
+
+  const [activeTab, setActiveTab] = useState<SegmentoTab>("todos");
 
   const contratosPorCliente = useMemo(() => {
     const map = new Map<string, Array<{ status?: string | null; data_fim?: string | null }>>();
@@ -55,10 +81,12 @@ export default function CRM() {
   }, [contratos]);
 
   const kpis = useMemo(() => ({
-    total: clientes.length,
-    ativos: clientes.filter((c) => c.status === "ativo").length,
-    leads: clientes.filter((c) => c.status === "lead").length,
+    total:      clientes.length,
+    ativos:     clientes.filter((c) => c.status === "ativo").length,
     comContrato: clientes.filter((c) => contratosPorCliente.has(c.id)).length,
+    contratantes: clientes.filter((c) => c.segmento === "contratante").length,
+    parceiros:    clientes.filter((c) => c.segmento === "parceiro").length,
+    fornecedores: clientes.filter((c) => c.segmento === "fornecedor").length,
   }), [clientes, contratosPorCliente]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -73,37 +101,38 @@ export default function CRM() {
   );
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [tipoPessoaFilter, setTipoPessoaFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
   const filteredClientes = useMemo(() => {
     return clientes.filter((cliente) => {
       const matchesSearch =
         searchTerm === "" ||
-        cliente.nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cliente.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.responsavel?.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchesTipoPessoa = tipoPessoaFilter === "all" || cliente.tipo_pessoa === tipoPessoaFilter;
+        cliente.responsavel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        cliente.empresa?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all" || cliente.status === statusFilter;
-      return matchesSearch && matchesTipoPessoa && matchesStatus;
+      const matchesSegmento =
+        activeTab === "todos" ||
+        cliente.segmento === activeTab ||
+        (activeTab === "contato" && !cliente.segmento);
+      return matchesSearch && matchesStatus && matchesSegmento;
     });
-  }, [clientes, searchTerm, tipoPessoaFilter, statusFilter]);
+  }, [clientes, searchTerm, statusFilter, activeTab]);
 
-  const hasActiveFilters = searchTerm !== "" || tipoPessoaFilter !== "all" || statusFilter !== "all";
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredClientes.length && filteredClientes.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredClientes.map((c: any) => c.id));
-    }
+    if (selectedIds.length === filteredClientes.length && filteredClientes.length > 0) setSelectedIds([]);
+    else setSelectedIds(filteredClientes.map((c: any) => c.id));
   };
   const toggleSelect = (id: string) =>
     setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
     selectedIds.forEach((id) => deleteCliente.mutate(id));
-    toast.success(`${selectedIds.length} contato(s) excluído(s) com sucesso`);
+    toast.success(`${selectedIds.length} contato(s) excluído(s)`);
     setSelectedIds([]);
   };
 
@@ -114,32 +143,30 @@ export default function CRM() {
     }
   };
 
-  const clearFilters = () => {
-    setSearchTerm("");
-    setTipoPessoaFilter("all");
-    setStatusFilter("all");
+  const handleSetSegmento = (id: string, segmento: string) => {
+    updateCliente.mutate({ id, segmento } as any, {
+      onSuccess: () => toast.success(`Segmento atualizado para "${SEGMENTO_LABEL[segmento] ?? segmento}"`),
+    });
   };
+
+  const clearFilters = () => { setSearchTerm(""); setStatusFilter("all"); };
 
   const getInitials = (nome: string) =>
     nome.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase();
 
   const handleExcelExport = async () => {
-    if (filteredClientes.length === 0) {
-      toast.error("Nenhum cliente para exportar");
-      return;
-    }
+    if (filteredClientes.length === 0) { toast.error("Nenhum cliente para exportar"); return; }
     const exportData = filteredClientes.map((c) => ({
-      nome: c.nome, tipo: c.tipo || "", email: c.email || "",
-      telefone: c.telefone || "", cpf: c.cpf || "", cnpj: c.cnpj || "",
-      endereco: c.endereco || "", cidade: c.cidade || "", estado: c.estado || "",
-      cep: c.cep || "", status: c.status || "", observacoes: c.observacoes || "",
+      nome: c.nome, segmento: c.segmento || "", tipo: c.tipo || "", email: c.email || "",
+      telefone: c.telefone || "", cnpj: c.cnpj || "", cpf: c.cpf || "",
+      cidade: c.cidade || "", estado: c.estado || "", status: c.status || "",
     }));
     const XLSX = await getXLSX();
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "CRM");
-    XLSX.writeFile(workbook, `clientes_${new Date().toISOString().split("T")[0]}.xlsx`);
-    toast.success(`${filteredClientes.length} cliente(s) exportado(s) com sucesso!`);
+    XLSX.writeFile(workbook, `crm_${new Date().toISOString().split("T")[0]}.xlsx`);
+    toast.success(`${filteredClientes.length} contato(s) exportado(s)!`);
   };
 
   const handleExcelUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -154,103 +181,88 @@ export default function CRM() {
       if (data.length === 0) { toast.error("Arquivo Excel vazio"); return; }
       let importados = 0;
       for (const row of data) {
-        const nome = row.nome || row.Nome || row.NOME || row.name || row.Name;
+        const nome = row.nome || row.Nome || row.NOME;
         if (!nome) continue;
         await addCliente.mutateAsync({
           nome,
-          tipo: row.tipo || row.Tipo || null,
-          email: row.email || row.Email || row.EMAIL || null,
-          telefone: row.telefone || row.Telefone || row.TELEFONE || null,
-          cpf: row.cpf || row.CPF || null,
-          cnpj: row.cnpj || row.CNPJ || null,
-          cep: row.cep || row.CEP || null,
-          status: row.status || row.Status || "lead",
+          segmento: row.segmento || row.Segmento || null,
+          email: row.email || row.Email || null,
+          telefone: row.telefone || row.Telefone || null,
           cidade: row.cidade || row.Cidade || null,
-          estado: row.estado || row.Estado || row.uf || row.UF || null,
-          endereco: row.endereco || row.Endereço || row.Endereco || null,
-          observacoes: row.observacoes || row.Observações || row.Observacoes || null,
+          estado: row.estado || row.Estado || null,
+          status: row.status || row.Status || "lead",
+          observacoes: row.observacoes || row.Observações || null,
         });
         importados++;
       }
-      toast.success(`${importados} cliente(s) importado(s) com sucesso!`);
-    } catch {
-      toast.error("Erro ao importar Excel");
-    }
+      toast.success(`${importados} contato(s) importado(s)!`);
+    } catch { toast.error("Erro ao importar Excel"); }
     if (csvInputRef.current) csvInputRef.current.value = "";
+  };
+
+  const tabCount = (tab: SegmentoTab) => {
+    if (tab === "todos") return clientes.length;
+    if (tab === "contato") return clientes.filter(c => !c.segmento).length;
+    return clientes.filter(c => c.segmento === tab).length;
   };
 
   return (
     <MainLayout
       title="CRM"
-      description="Gestão de relacionamento com clientes"
+      description="Gestão de relacionamento comercial"
       actions={
         <>
-          <input
-            type="file"
-            ref={csvInputRef}
-            accept=".xlsx,.xls"
-            onChange={handleExcelUpload}
-            className="hidden"
-          />
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            data-testid="button-importar-crm"
-            onClick={() => csvInputRef.current?.click()}
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Importar
+          <input type="file" ref={csvInputRef} accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => csvInputRef.current?.click()} data-testid="button-importar-crm">
+            <Upload className="h-3.5 w-3.5" /> Importar
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            data-testid="button-exportar-crm"
-            onClick={handleExcelExport}
-          >
-            <Download className="h-3.5 w-3.5" />
-            Exportar
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExcelExport} data-testid="button-exportar-crm">
+            <Download className="h-3.5 w-3.5" /> Exportar
           </Button>
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            data-testid="button-novo-contato"
-            onClick={() => setFormModal({ open: true, mode: "create" })}
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Novo Contato
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
+            <Plus className="h-3.5 w-3.5" /> Novo Contato
           </Button>
         </>
       }
     >
       <div className="space-y-6">
-        {/* ── KPI Stats ── */}
+
+        {/* ── KPI Cards ── */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Total de Contatos"
-            value={clientesLoading ? "—" : kpis.total}
-            icon={Users}
-            accent="primary"
-          />
-          <MetricCard
-            title="Clientes Ativos"
-            value={clientesLoading ? "—" : kpis.ativos}
-            icon={UserCheck}
-            accent="success"
-          />
-          <MetricCard
-            title="Leads"
-            value={clientesLoading ? "—" : kpis.leads}
-            icon={UserPlus}
-            accent="warning"
-          />
-          <MetricCard
-            title="Com Contrato"
-            value={clientesLoading ? "—" : kpis.comContrato}
-            icon={FileText}
-            accent="primary"
-          />
+          <MetricCard title="Total" value={clientesLoading ? "—" : kpis.total} icon={Users} accent="primary" />
+          <MetricCard title="Contratantes" value={clientesLoading ? "—" : kpis.contratantes} icon={Building2} accent="primary" />
+          <MetricCard title="Parceiros" value={clientesLoading ? "—" : kpis.parceiros} icon={Handshake} accent="success" />
+          <MetricCard title="Fornecedores" value={clientesLoading ? "—" : kpis.fornecedores} icon={Package} accent="warning" />
+        </div>
+
+        {/* ── Segmento Tabs ── */}
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-border" data-testid="crm-tabs">
+          {SEGMENTO_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.value;
+            return (
+              <button
+                key={tab.value}
+                onClick={() => { setActiveTab(tab.value); setSelectedIds([]); }}
+                data-testid={`tab-${tab.value}`}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors shrink-0",
+                  isActive
+                    ? "border-primary text-primary"
+                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
+                )}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+                <span className={cn(
+                  "text-[10px] font-mono px-1.5 py-0 rounded-full min-w-[18px] text-center",
+                  isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
+                )}>
+                  {tabCount(tab.value)}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* ── Filter Bar ── */}
@@ -265,44 +277,26 @@ export default function CRM() {
               data-testid="input-search-crm"
             />
           </div>
-          <Select value={tipoPessoaFilter} onValueChange={setTipoPessoaFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border" data-testid="select-tipo-pessoa">
-              <SelectValue placeholder="Tipo Pessoa" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os Tipos</SelectItem>
-              <SelectItem value="pessoa_fisica">Pessoa Física</SelectItem>
-              <SelectItem value="pessoa_juridica">Pessoa Jurídica</SelectItem>
-            </SelectContent>
-          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os Status</SelectItem>
-              <SelectItem value="lead">Lead</SelectItem>
               <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="lead">Lead</SelectItem>
+              <SelectItem value="prospect">Prospect</SelectItem>
               <SelectItem value="inativo">Inativo</SelectItem>
             </SelectContent>
           </Select>
           {hasActiveFilters && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs gap-1.5 text-muted-foreground"
-              onClick={clearFilters}
-              data-testid="button-clear-filters"
-            >
-              <X className="h-3 w-3" />
-              Limpar
+            <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={clearFilters}>
+              <X className="h-3 w-3" /> Limpar
             </Button>
           )}
-          {hasActiveFilters && (
-            <span className="text-xs text-muted-foreground ml-auto">
-              {filteredClientes.length} de {clientes.length} contatos
-            </span>
-          )}
+          <span className="text-xs text-muted-foreground ml-auto">
+            {filteredClientes.length} de {clientes.length} contatos
+          </span>
         </div>
 
         {/* ── Contacts List ── */}
@@ -311,15 +305,21 @@ export default function CRM() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle className="text-sm font-semibold">
-                  Lista de Contatos
+                  {SEGMENTO_TABS.find(t => t.value === activeTab)?.label ?? "Lista"}
                   <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredClientes.length})</span>
                 </CardTitle>
-                <CardDescription className="text-xs mt-0.5">Todos os contatos e prospects em acompanhamento</CardDescription>
+                <CardDescription className="text-xs mt-0.5">
+                  {activeTab === "todos"       && "Todos os contatos e empresas cadastradas"}
+                  {activeTab === "contratante" && "Empresas e pessoas que contratam shows e serviços"}
+                  {activeTab === "parceiro"    && "Gravadoras, distribuidoras e parceiros estratégicos"}
+                  {activeTab === "fornecedor"  && "Fornecedores de serviços e plataformas"}
+                  {activeTab === "contato"     && "Contatos sem segmento definido"}
+                </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {/* Bulk selection bar */}
+            {/* Bulk selection */}
             {clientes.length > 0 && (
               <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
                 <Checkbox
@@ -328,20 +328,11 @@ export default function CRM() {
                   data-testid="checkbox-select-all"
                 />
                 <span className="text-xs text-muted-foreground flex-1">
-                  {selectedIds.length > 0
-                    ? `${selectedIds.length} selecionado(s)`
-                    : "Selecionar todos"}
+                  {selectedIds.length > 0 ? `${selectedIds.length} selecionado(s)` : "Selecionar todos"}
                 </span>
                 {selectedIds.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="h-7 text-xs gap-1.5"
-                    onClick={handleBulkDelete}
-                    data-testid="button-bulk-delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
+                  <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
                   </Button>
                 )}
               </div>
@@ -349,19 +340,13 @@ export default function CRM() {
 
             {clientesLoading ? (
               <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <ListItemSkeleton key={i} />
-                ))}
+                {Array.from({ length: 5 }).map((_, i) => <ListItemSkeleton key={i} />)}
               </div>
             ) : filteredClientes.length === 0 ? (
               <EmptyState
                 icon={Users}
-                title={hasActiveFilters ? "Nenhum resultado" : "Nenhum contato cadastrado"}
-                description={
-                  hasActiveFilters
-                    ? "Nenhum contato corresponde aos filtros aplicados."
-                    : "Adicione seu primeiro cliente ou prospect."
-                }
+                title={hasActiveFilters ? "Nenhum resultado" : `Nenhum ${SEGMENTO_TABS.find(t => t.value === activeTab)?.label.toLowerCase() || "contato"} cadastrado`}
+                description={hasActiveFilters ? "Ajuste os filtros ou limpe a busca." : "Adicione o primeiro contato nesta categoria."}
                 actionLabel={hasActiveFilters ? undefined : "Novo Contato"}
                 onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
               />
@@ -370,7 +355,6 @@ export default function CRM() {
                 {filteredClientes.map((cliente) => {
                   const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
                   const situacao = getContratoSituacao(clienteContratos);
-
                   return (
                     <div
                       key={cliente.id}
@@ -390,40 +374,30 @@ export default function CRM() {
                         </AvatarFallback>
                       </Avatar>
 
-                      {/* Name + badges */}
-                      <div className="min-w-0 w-36 shrink-0">
-                        <h3
-                          className="font-medium text-sm leading-tight truncate"
-                          data-testid={`text-nome-${cliente.id}`}
-                        >
+                      <div className="min-w-0 w-44 shrink-0">
+                        <h3 className="font-medium text-sm leading-tight truncate" data-testid={`text-nome-${cliente.id}`}>
                           {cliente.nome}
                         </h3>
                         <div className="flex items-center gap-1 flex-wrap mt-1">
                           <StatusBadge status={cliente.status || "lead"} />
+                          {cliente.segmento && (
+                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", SEGMENTO_BADGE[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
+                              {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
+                            </Badge>
+                          )}
                           {cliente.temperatura && (
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "text-[10px] px-1.5 py-0 h-4 border",
-                                temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border"
-                              )}
-                            >
+                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border")}>
                               {cliente.temperatura}
                             </Badge>
                           )}
-                          <ContratoStatusBadge
-                            situacao={situacao}
-                            data-testid={`badge-contrato-${cliente.id}`}
-                          />
+                          <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
                         </div>
                       </div>
 
-                      {/* Contact info */}
                       <div className="flex items-center gap-4 flex-1 min-w-0 text-xs text-muted-foreground">
                         {cliente.telefone && (
                           <span className="flex items-center gap-1 shrink-0">
-                            <Phone className="h-3 w-3" />
-                            {cliente.telefone}
+                            <Phone className="h-3 w-3" /> {cliente.telefone}
                           </span>
                         )}
                         {cliente.email && (
@@ -434,56 +408,47 @@ export default function CRM() {
                         )}
                       </div>
 
-                      {/* Meta info */}
                       <div className="hidden lg:flex items-center gap-6 text-xs shrink-0">
-                        {cliente.empresa && (
-                          <div>
-                            <p className="text-muted-foreground mb-0.5">Empresa</p>
-                            <p className="font-medium text-foreground truncate max-w-[100px]">{cliente.empresa}</p>
-                          </div>
-                        )}
                         {cliente.cidade && (
                           <div>
                             <p className="text-muted-foreground mb-0.5">Cidade</p>
-                            <p className="font-medium text-foreground">{cliente.cidade}/{cliente.estado}</p>
+                            <p className="font-medium">{cliente.cidade}/{cliente.estado}</p>
+                          </div>
+                        )}
+                        {clienteContratos.length > 0 && (
+                          <div>
+                            <p className="text-muted-foreground mb-0.5">Contratos</p>
+                            <p className="font-medium">{clienteContratos.length}</p>
                           </div>
                         )}
                       </div>
 
-                      {/* Actions */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-7 w-7 p-0 shrink-0"
-                            data-testid={`button-menu-${cliente.id}`}
-                          >
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" data-testid={`button-menu-${cliente.id}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            data-testid={`button-ver-${cliente.id}`}
-                            onClick={() => setViewModal({ open: true, cliente })}
-                          >
-                            <Eye className="h-3.5 w-3.5 mr-2" />
-                            Ver
+                          <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
+                            <Eye className="h-3.5 w-3.5 mr-2" /> Ver
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            data-testid={`button-editar-${cliente.id}`}
-                            onClick={() => setFormModal({ open: true, mode: "edit", cliente })}
-                          >
-                            <Pencil className="h-3.5 w-3.5 mr-2" />
-                            Editar
+                          <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                           </DropdownMenuItem>
-                          <DropdownMenuItem
-                            data-testid={`button-excluir-${cliente.id}`}
-                            className="text-destructive focus:text-destructive"
-                            onClick={() => setDeleteModal({ open: true, cliente })}
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Excluir
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
+                            <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
+                            <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
+                            <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -510,8 +475,8 @@ export default function CRM() {
       <DeleteConfirmModal
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
-        title="Excluir Cliente"
-        description="Tem certeza que deseja excluir este cliente? Esta ação não pode ser desfeita."
+        title="Excluir Contato"
+        description="Tem certeza? Esta ação não pode ser desfeita."
         onConfirm={handleDelete}
       />
     </MainLayout>

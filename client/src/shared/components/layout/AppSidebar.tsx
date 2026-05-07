@@ -101,7 +101,14 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Agenda",       href: "/agenda",    icon: Calendar },
   { title: "Inventário",   href: "/inventario",icon: Package },
   { title: "MusicChat",    href: "/chat",      icon: MessageCircle },
-  { title: "CRM",          href: "/crm",       icon: Contact },
+  {
+    title: "CRM",
+    icon: Contact,
+    children: [
+      { title: "Contatos",        href: "/crm",        icon: Users },
+      { title: "Funil Comercial", href: "/crm/funil",  icon: TrendingUp },
+    ],
+  },
   { title: "Leads",        href: "/leads",     icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh",    icon: Briefcase },
   {

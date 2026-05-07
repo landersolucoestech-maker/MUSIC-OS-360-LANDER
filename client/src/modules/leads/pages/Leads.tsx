@@ -8,15 +8,17 @@ import { Badge } from "@/shared/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   UserPlus, Search, Loader2, Upload, Download, Plus, MoreHorizontal,
-  Eye, Pencil, Trash2,
+  Eye, Pencil, Trash2, LayoutList, Columns3,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { LeadFormModal } from "../components/LeadFormModal";
 import { LeadViewModal } from "../components/LeadViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { LeadsKanban } from "../components/LeadsKanban";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { cn } from "@/shared/lib/utils";
 import {
   useLeads,
   STATUS_LEAD_OPTIONS,
@@ -25,6 +27,8 @@ import {
   STATUS_LABELS,
   ORIGEM_LABELS,
 } from "../hooks/useLeads";
+
+type View = "table" | "kanban";
 
 const leadColumns: CSVColumn[] = [
   { key: "nome_contratante", label: "Nome" },
@@ -52,6 +56,7 @@ const leadColumns: CSVColumn[] = [
   { key: "capacidade_publico", label: "Capacidade Público" },
   { key: "orcamento_estimado", label: "Orçamento (R$)" },
   { key: "valor_estimado_cache", label: "Cachê (R$)" },
+  { key: "data_proximo_contato", label: "Próximo Contato" },
   { key: "tags", label: "Tags", transform: (r) => Array.isArray(r.tags) ? r.tags.join(", ") : (r.tags || "") },
   { key: "descricao_demanda", label: "Descrição da Demanda" },
   { key: "observacoes", label: "Observações" },
@@ -77,7 +82,8 @@ const PRIORIDADE_BADGE: Record<string, string> = {
 };
 
 export default function Leads() {
-  const { leads, isLoading, error, deleteLead, addLead, refetch } = useLeads();
+  const { leads, isLoading, error, deleteLead, addLead, updateLead, refetch } = useLeads();
+  const [view, setView] = useState<View>("table");
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; lead?: any }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; lead?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; lead?: any }>({ open: false });
@@ -85,6 +91,7 @@ export default function Leads() {
   const [searchTerm, setSearchTerm] = useState("");
   const [origemFilter, setOrigemFilter] = useState("all");
   const [prioridadeFilter, setPrioridadeFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const handleExport = () => exportToCSV(leads, leadColumns, "leads");
   const handleImport = () => importCSV(async (data) => {
@@ -96,43 +103,24 @@ export default function Leads() {
       if (!nome_contratante || !emailVal) { ignorados++; continue; }
       try {
         const tagsRaw = row["Tags"] || row["tags"] || null;
-        const leadData: any = {
+        await addLead.mutateAsync({
           nome_contratante,
           sobrenome: row["Sobrenome"] || row["sobrenome"] || null,
           nome_empresa: row["Empresa"] || row["nome_empresa"] || null,
-          cargo: row["Cargo/Função"] || row["Cargo"] || row["cargo"] || null,
+          cargo: row["Cargo/Função"] || row["cargo"] || null,
           email: emailVal,
           telefone: row["Telefone"] || row["telefone"] || null,
-          instagram: row["Instagram"] || row["instagram"] || null,
-          website: row["Website"] || row["website"] || null,
-          tipo_lead: row["Tipo de Lead"] || row["tipo_lead"] || null,
           status_lead: row["Status"] || row["status_lead"] || "novo",
           prioridade: row["Prioridade"] || row["prioridade"] || "media",
-          probabilidade_fechamento: row["Probabilidade (%)"] || row["probabilidade_fechamento"] ? Number(row["Probabilidade (%)"] || row["probabilidade_fechamento"]) : null,
           origem_lead: row["Origem"] || row["origem_lead"] || "outro",
-          campanha_marketing: row["Campanha"] || row["campanha_marketing"] || null,
-          responsavel: row["Responsável"] || row["responsavel"] || null,
-          artista_interesse: row["Artista"] || row["artista_interesse"] || null,
-          genero_musical: row["Gênero Musical"] || row["genero_musical"] || null,
-          tipo_evento: row["Tipo Evento"] || row["tipo_evento"] || null,
-          data_evento: row["Data Evento"] || row["data_evento"] || null,
-          cidade_evento: row["Cidade Evento"] || row["cidade_evento"] || null,
-          estado_evento: row["Estado Evento"] || row["estado_evento"] || null,
-          nome_local_evento: row["Local Evento"] || row["nome_local_evento"] || null,
-          capacidade_publico: row["Capacidade Público"] || row["capacidade_publico"] ? Number(row["Capacidade Público"] || row["capacidade_publico"]) : null,
-          orcamento_estimado: row["Orçamento (R$)"] || row["Orçamento"] || row["orcamento_estimado"] ? Number(row["Orçamento (R$)"] || row["Orçamento"] || row["orcamento_estimado"]) : null,
-          valor_estimado_cache: row["Cachê (R$)"] || row["Cachê"] || row["valor_estimado_cache"] ? Number(row["Cachê (R$)"] || row["Cachê"] || row["valor_estimado_cache"]) : null,
           tags: tagsRaw ? tagsRaw.split(",").map((t: string) => t.trim()).filter(Boolean) : null,
-          descricao_demanda: row["Descrição da Demanda"] || row["descricao_demanda"] || null,
-          observacoes: row["Observações"] || row["observacoes"] || null,
-        };
-        await addLead.mutateAsync(leadData);
+        } as any);
         importados++;
       } catch { ignorados++; }
     }
     if (importados > 0) toast.success(`${importados} lead(s) importado(s)${ignorados > 0 ? `, ${ignorados} ignorado(s)` : ""}`);
-    else toast.error("Nenhum lead válido encontrado. Campos obrigatórios: Nome, Email.");
-  }, ["Nome", "Email", "Status"]);
+    else toast.error("Nenhum lead válido. Campos obrigatórios: Nome, Email.");
+  }, ["Nome", "Email"]);
 
   const filteredLeads = useMemo(() => {
     return leads.filter((lead) => {
@@ -141,45 +129,47 @@ export default function Leads() {
         lead.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.artista_interesse?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         lead.cidade_evento?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.nome_empresa?.toLowerCase().includes(searchTerm.toLowerCase());
+        (lead.nome_empresa as string)?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesOrigem = origemFilter === "all" || lead.origem_lead === origemFilter;
       const matchesPrioridade = prioridadeFilter === "all" || lead.prioridade === prioridadeFilter;
-      return matchesSearch && matchesOrigem && matchesPrioridade;
+      const matchesStatus = statusFilter === "all" || lead.status_lead === statusFilter;
+      return matchesSearch && matchesOrigem && matchesPrioridade && matchesStatus;
     });
-  }, [leads, searchTerm, origemFilter, prioridadeFilter]);
+  }, [leads, searchTerm, origemFilter, prioridadeFilter, statusFilter]);
 
   const pipelineCounts = useMemo(() => {
     const counts: Record<string, number> = {};
     STATUS_LEAD_OPTIONS.forEach(s => { counts[s.value] = 0; });
-    leads.forEach(l => { counts[l.status_lead] = (counts[l.status_lead] || 0) + 1; });
+    leads.forEach(l => { counts[l.status_lead ?? "novo"] = (counts[l.status_lead ?? "novo"] || 0) + 1; });
     return counts;
   }, [leads]);
 
   const toggleSelectAll = () => {
-    if (selectedIds.length === filteredLeads.length && filteredLeads.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredLeads.map((l: any) => l.id));
-    }
+    if (selectedIds.length === filteredLeads.length && filteredLeads.length > 0) setSelectedIds([]);
+    else setSelectedIds(filteredLeads.map((l: any) => l.id));
   };
   const toggleSelect = (id: string) => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
     selectedIds.forEach(id => deleteLead.mutate(id));
-    toast.success(`${selectedIds.length} lead(s) excluído(s) com sucesso`);
+    toast.success(`${selectedIds.length} lead(s) excluído(s)`);
     setSelectedIds([]);
   };
 
   const handleDelete = () => {
-    if (deleteModal.lead) {
-      deleteLead.mutate(deleteModal.lead.id);
-      setDeleteModal({ open: false });
-    }
+    if (deleteModal.lead) { deleteLead.mutate(deleteModal.lead.id); setDeleteModal({ open: false }); }
+  };
+
+  const handleMoveStage = async (lead: any, newStatus: string) => {
+    try {
+      await updateLead.mutateAsync({ id: lead.id, data: { status_lead: newStatus } as any });
+      toast.success(`Lead movido para "${STATUS_LABELS[newStatus] ?? newStatus}"`);
+    } catch { toast.error("Erro ao mover lead"); }
   };
 
   if (isLoading) {
     return (
-      <MainLayout>
+      <MainLayout title="Leads" description="Captação e gestão de leads">
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
@@ -189,16 +179,11 @@ export default function Leads() {
 
   if (error) {
     return (
-      <MainLayout>
+      <MainLayout title="Leads" description="Captação e gestão de leads">
         <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-destructive" data-testid="text-error-title">Erro ao carregar leads</h2>
-            <p className="text-muted-foreground max-w-md" data-testid="text-error-message">
-              Não foi possível carregar os dados de leads. Verifique se a tabela foi criada no banco de dados.
-            </p>
-          </div>
-          <Button variant="outline" onClick={() => refetch()} className="gap-2" data-testid="button-retry">
-            <Loader2 className="h-4 w-4" />Tentar novamente
+          <h2 className="text-xl font-semibold text-destructive">Erro ao carregar leads</h2>
+          <Button variant="outline" onClick={() => refetch()} className="gap-2">
+            <Loader2 className="h-4 w-4" /> Tentar novamente
           </Button>
         </div>
       </MainLayout>
@@ -206,31 +191,56 @@ export default function Leads() {
   }
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="font-bold tracking-tight text-[18px]" data-testid="text-page-title">Leads</h1>
-            <p className="text-muted-foreground">Captação e gestão de leads de booking & eventos</p>
+    <MainLayout
+      title="Leads"
+      description="Captação e gestão de leads comerciais"
+      actions={
+        <>
+          {/* View toggle */}
+          <div className="flex rounded-md overflow-hidden border border-border">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-8 px-3 rounded-none text-xs gap-1.5", view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              onClick={() => setView("table")}
+              data-testid="btn-view-table"
+            >
+              <LayoutList className="h-3.5 w-3.5" /> Lista
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn("h-8 px-3 rounded-none text-xs gap-1.5", view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
+              onClick={() => setView("kanban")}
+              data-testid="btn-view-kanban"
+            >
+              <Columns3 className="h-3.5 w-3.5" /> Kanban
+            </Button>
           </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleImport} data-testid="button-import-leads">
-              <Upload className="h-4 w-4" />Importar
-            </Button>
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleExport} data-testid="button-export-leads">
-              <Download className="h-4 w-4" />Exportar
-            </Button>
-            <Button size="sm" className="gap-2" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-lead">
-              <Plus className="h-4 w-4" />Novo Lead
-            </Button>
-          </div>
-        </div>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-leads">
+            <Upload className="h-3.5 w-3.5" /> Importar
+          </Button>
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-leads">
+            <Download className="h-3.5 w-3.5" /> Exportar
+          </Button>
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-lead">
+            <Plus className="h-3.5 w-3.5" /> Novo Lead
+          </Button>
+        </>
+      }
+    >
+      <div className="space-y-5">
 
+        {/* ── Pipeline KPIs ── */}
         <div className="flex gap-2 overflow-x-auto pb-1">
           {STATUS_LEAD_OPTIONS.map((status) => (
             <Card
               key={status.value}
-              className="cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all flex-1 min-w-0"
+              className={cn(
+                "cursor-pointer hover:ring-2 hover:ring-primary/40 transition-all flex-1 min-w-0",
+                statusFilter === status.value && "ring-2 ring-primary"
+              )}
+              onClick={() => setStatusFilter(prev => prev === status.value ? "all" : status.value)}
               data-testid={`kpi-${status.value}`}
             >
               <CardContent className="p-2 text-center">
@@ -242,153 +252,183 @@ export default function Leads() {
           ))}
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* ── Filters ── */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center flex-wrap">
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email, artista, cidade, empresa..."
+              placeholder="Buscar por nome, email, artista, empresa..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9"
+              className="pl-9 h-8 text-sm bg-card border-border"
               data-testid="input-search-leads"
             />
           </div>
-          <div className="flex gap-2">
-            <Select value={origemFilter} onValueChange={setOrigemFilter}>
-              <SelectTrigger className="w-[140px]" data-testid="select-filter-origem">
-                <SelectValue placeholder="Origem" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas Origens</SelectItem>
-                {ORIGEM_LEAD_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
-              <SelectTrigger className="w-[140px]" data-testid="select-filter-prioridade">
-                <SelectValue placeholder="Prioridade" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas</SelectItem>
-                {PRIORIDADE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border" data-testid="select-filter-status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Status</SelectItem>
+              {STATUS_LEAD_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={origemFilter} onValueChange={setOrigemFilter}>
+            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-filter-origem">
+              <SelectValue placeholder="Origem" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas Origens</SelectItem>
+              {ORIGEM_LEAD_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={prioridadeFilter} onValueChange={setPrioridadeFilter}>
+            <SelectTrigger className="w-[130px] h-8 text-sm bg-card border-border" data-testid="select-filter-prioridade">
+              <SelectValue placeholder="Prioridade" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {PRIORIDADE_OPTIONS.map(opt => (
+                <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <span className="text-xs text-muted-foreground ml-auto">{filteredLeads.length} de {leads.length} leads</span>
         </div>
 
-        {leads.length === 0 ? (
-          <EmptyState
-            icon={UserPlus}
-            title="Nenhum lead encontrado"
-            description="Comece adicionando seu primeiro lead ou importe de um CSV."
-          />
-        ) : (
-          <>
-          {selectedIds.length > 0 && (
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-sm text-muted-foreground">{selectedIds.length} lead(s) selecionado(s)</span>
-              <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                <Trash2 className="h-3.5 w-3.5" />
-                Excluir ({selectedIds.length})
-              </Button>
-            </div>
-          )}
-          <div className="rounded-md border" data-testid="leads-table">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <div
-                      className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.length === filteredLeads.length && filteredLeads.length > 0 ? 'bg-primary' : ''}`}
-                      onClick={toggleSelectAll}
-                      data-testid="checkbox-select-all"
-                    >
-                      {selectedIds.length === filteredLeads.length && filteredLeads.length > 0 && <div className="w-2 h-2 bg-white rounded-full" />}
-                    </div>
-                  </TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Telefone</TableHead>
-                  <TableHead>Artista de interesse</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Prioridade</TableHead>
-                  <TableHead className="text-right">Probabilidade</TableHead>
-                  <TableHead>Origem</TableHead>
-                  <TableHead className="w-[60px] text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredLeads.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
-                      Nenhum lead encontrado com os filtros atuais.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  filteredLeads.map((lead) => (
-                    <TableRow
-                      key={lead.id}
-                      className="cursor-pointer"
-                      onClick={() => setViewModal({ open: true, lead })}
-                      data-testid={`row-lead-${lead.id}`}
-                    >
-                      <TableCell onClick={(e) => e.stopPropagation()}>
+        {/* ── KANBAN VIEW ── */}
+        {view === "kanban" && (
+          leads.length === 0 ? (
+            <EmptyState icon={UserPlus} title="Nenhum lead encontrado" description="Comece adicionando seu primeiro lead." />
+          ) : (
+            <LeadsKanban
+              leads={filteredLeads}
+              onView={(lead) => setViewModal({ open: true, lead })}
+              onEdit={(lead) => setFormModal({ open: true, mode: "edit", lead })}
+              onMoveStage={handleMoveStage}
+            />
+          )
+        )}
+
+        {/* ── TABLE VIEW ── */}
+        {view === "table" && (
+          leads.length === 0 ? (
+            <EmptyState icon={UserPlus} title="Nenhum lead encontrado" description="Comece adicionando seu primeiro lead ou importe de um CSV." />
+          ) : (
+            <>
+              {selectedIds.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground">{selectedIds.length} lead(s) selecionado(s)</span>
+                  <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
+                  </Button>
+                </div>
+              )}
+              <div className="rounded-md border" data-testid="leads-table">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-10">
                         <div
-                          className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(lead.id) ? 'bg-primary' : ''}`}
-                          onClick={() => toggleSelect(lead.id)}
-                          data-testid={`checkbox-lead-${lead.id}`}
+                          className={cn("w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer", selectedIds.length === filteredLeads.length && filteredLeads.length > 0 ? "bg-primary" : "")}
+                          onClick={toggleSelectAll}
+                          data-testid="checkbox-select-all"
                         >
-                          {selectedIds.includes(lead.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                          {selectedIds.length === filteredLeads.length && filteredLeads.length > 0 && <div className="w-2 h-2 bg-white rounded-full" />}
                         </div>
-                      </TableCell>
-                      <TableCell className="font-medium max-w-[200px] truncate">
-                        {lead.nome_contratante || <span className="text-muted-foreground italic">(sem nome)</span>}
-                      </TableCell>
-                      <TableCell className="max-w-[200px] truncate text-muted-foreground">{lead.email || "—"}</TableCell>
-                      <TableCell className="text-muted-foreground">{lead.telefone || "—"}</TableCell>
-                      <TableCell className="max-w-[180px] truncate">{lead.artista_interesse || "—"}</TableCell>
-                      <TableCell>
-                        <Badge className={`text-xs text-white ${STATUS_COLORS[lead.status_lead] || "bg-secondary"}`}>
-                          {STATUS_LABELS[lead.status_lead] || lead.status_lead}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className={`text-xs ${PRIORIDADE_BADGE[lead.prioridade] || ""}`}>
-                          {lead.prioridade === "alta" ? "Alta" : lead.prioridade === "media" ? "Média" : "Baixa"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right font-semibold">{lead.probabilidade_fechamento ?? 0}%</TableCell>
-                      <TableCell className="text-muted-foreground">{ORIGEM_LABELS[lead.origem_lead] || lead.origem_lead || "—"}</TableCell>
-                      <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-actions-${lead.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewModal({ open: true, lead })} data-testid={`button-view-${lead.id}`}>
-                              <Eye className="mr-2 h-4 w-4" />Visualizar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", lead })} data-testid={`button-edit-${lead.id}`}>
-                              <Pencil className="mr-2 h-4 w-4" />Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem className="text-destructive" onClick={() => setDeleteModal({ open: true, lead })} data-testid={`button-delete-${lead.id}`}>
-                              <Trash2 className="mr-2 h-4 w-4" />Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+                      </TableHead>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Empresa</TableHead>
+                      <TableHead>Artista</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Prioridade</TableHead>
+                      <TableHead className="text-right">Prob.</TableHead>
+                      <TableHead>Próx. Contato</TableHead>
+                      <TableHead>Origem</TableHead>
+                      <TableHead className="w-[60px] text-right">Ações</TableHead>
                     </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-          </>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredLeads.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={10} className="text-center text-muted-foreground py-8">
+                          Nenhum lead com os filtros atuais.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredLeads.map((lead) => {
+                        const overdue = lead.data_proximo_contato && new Date(lead.data_proximo_contato as string) < new Date();
+                        return (
+                          <TableRow
+                            key={lead.id}
+                            className="cursor-pointer"
+                            onClick={() => setViewModal({ open: true, lead })}
+                            data-testid={`row-lead-${lead.id}`}
+                          >
+                            <TableCell onClick={(e) => e.stopPropagation()}>
+                              <div
+                                className={cn("w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer", selectedIds.includes(lead.id) ? "bg-primary" : "")}
+                                onClick={() => toggleSelect(lead.id)}
+                                data-testid={`checkbox-lead-${lead.id}`}
+                              >
+                                {selectedIds.includes(lead.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium max-w-[180px] truncate">
+                              {lead.nome_contratante || <span className="text-muted-foreground italic">(sem nome)</span>}
+                            </TableCell>
+                            <TableCell className="max-w-[140px] truncate text-muted-foreground">{(lead.nome_empresa as string) || "—"}</TableCell>
+                            <TableCell className="max-w-[160px] truncate">{lead.artista_interesse || "—"}</TableCell>
+                            <TableCell>
+                              <Badge className={`text-xs text-white ${STATUS_COLORS[lead.status_lead ?? ""] || "bg-secondary"}`}>
+                                {STATUS_LABELS[lead.status_lead ?? ""] || lead.status_lead}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-xs ${PRIORIDADE_BADGE[lead.prioridade ?? ""] || ""}`}>
+                                {lead.prioridade === "alta" ? "Alta" : lead.prioridade === "media" ? "Média" : "Baixa"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right font-mono text-sm">{lead.probabilidade_fechamento ?? 0}%</TableCell>
+                            <TableCell className={cn("text-sm", overdue ? "text-destructive font-medium" : "text-muted-foreground")}>
+                              {lead.data_proximo_contato
+                                ? new Date(lead.data_proximo_contato as string).toLocaleDateString("pt-BR")
+                                : "—"}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground text-sm">{ORIGEM_LABELS[lead.origem_lead ?? ""] || lead.origem_lead || "—"}</TableCell>
+                            <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" data-testid={`button-actions-${lead.id}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem onClick={() => setViewModal({ open: true, lead })} data-testid={`button-view-${lead.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> Visualizar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", lead })} data-testid={`button-edit-${lead.id}`}>
+                                    <Pencil className="mr-2 h-4 w-4" /> Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem className="text-destructive" onClick={() => setDeleteModal({ open: true, lead })} data-testid={`button-delete-${lead.id}`}>
+                                    <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )
         )}
       </div>
 
@@ -398,22 +438,19 @@ export default function Leads() {
         mode={formModal.mode}
         lead={formModal.lead}
       />
-
       <LeadViewModal
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ ...viewModal, open })}
         lead={viewModal.lead}
         onEdit={(lead) => setFormModal({ open: true, mode: "edit", lead })}
       />
-
       <DeleteConfirmModal
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}
         onConfirm={handleDelete}
         title="Excluir Lead"
-        description={`Tem certeza que deseja excluir o lead "${deleteModal.lead?.nome_contratante}"? Esta ação não pode ser desfeita.`}
+        description={`Tem certeza que deseja excluir "${deleteModal.lead?.nome_contratante}"?`}
       />
-
     </MainLayout>
   );
 }
