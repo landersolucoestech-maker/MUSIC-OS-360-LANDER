@@ -689,15 +689,41 @@ export function ObraFormModal({
                               const matched = generosMusicais.find(g => norm(g) === norm(generoRaw));
                               setGeneroMusical(matched ? matched.toLowerCase() : generoRaw.toLowerCase());
                             }
-                            if (pArtistaNomeDisplay && participantes.length === 0) {
-                              setParticipantes([{
+                            // Resolve artista via artistas array (joins not available in mock mode)
+                            const artistaId = p.artista_id as string | null | undefined;
+                            const artistaFound = artistas.find((a: any) => a.id === artistaId);
+                            const artistaNomeResolved = artistaFound?.nome_artistico || artistaFound?.nome || pArtistaNomeDisplay;
+                            // Parse descricao JSON for composers/producers from project songs
+                            let autoParticipantes: Participante[] = [];
+                            try {
+                              const musicas = JSON.parse(p.descricao as string || "[]");
+                              if (Array.isArray(musicas) && musicas.length > 0) {
+                                const seen = new Set<string>();
+                                const compositoresArr: string[] = musicas
+                                  .flatMap((m: any) => m.compositores || [])
+                                  .filter((nome: string) => { const k = nome.trim(); return k && !seen.has(k) && seen.add(k); });
+                                autoParticipantes = compositoresArr.map((nome: string) => ({
+                                  id: crypto.randomUUID(),
+                                  nome: nome.trim(),
+                                  classeFuncao: "compositor/autor",
+                                  link: "",
+                                  percentual: "",
+                                }));
+                              }
+                            } catch {}
+                            // Fallback: use resolved artista name as single compositor
+                            if (autoParticipantes.length === 0 && artistaNomeResolved) {
+                              autoParticipantes = [{
                                 id: crypto.randomUUID(),
-                                nome: pArtistaNomeDisplay,
-                                classeFuncao: "compositor",
+                                nome: artistaNomeResolved,
+                                classeFuncao: "compositor/autor",
                                 link: "",
                                 percentual: "100",
-                                artista_id: (p.artista_id as string | null | undefined) ?? undefined,
-                              }]);
+                                artista_id: artistaId ?? undefined,
+                              }];
+                            }
+                            if (autoParticipantes.length > 0 && participantes.length === 0) {
+                              setParticipantes(autoParticipantes);
                             }
                             setBuscaProjeto("");
                             setBuscaProjetoOpen(false);
