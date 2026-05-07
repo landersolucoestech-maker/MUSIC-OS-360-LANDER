@@ -18,7 +18,6 @@ import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
-import { useMetrics } from "@/shared/hooks/useMetrics";
 import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
@@ -455,10 +454,9 @@ export default function Operacional() {
   const { lancamentos, isLoading: loadingLancamentos } = useLancamentos();
   const { contratos, isLoading: loadingContratos } = useContratos();
   const { obras, isLoading: loadingObras } = useObras();
-  const { financeiroMetrics, isLoading: loadingMetrics } = useMetrics();
   const { transacoes, isLoading: loadingTransacoes } = useTransacoes();
 
-  const isLoading = loadingArtistas || loadingLancamentos || loadingContratos || loadingObras || loadingMetrics || loadingTransacoes;
+  const isLoading = loadingArtistas || loadingLancamentos || loadingContratos || loadingObras || loadingTransacoes;
 
   const [lancamentoModal, setLancamentoModal] = useState<{ open: boolean; lancamento?: LancamentoWithRelations }>({ open: false });
   const [contratoModal, setContratoModal] = useState<{ open: boolean; contrato?: ContratoWithRelations }>({ open: false });
