@@ -4,9 +4,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/shared/ui/dialog";
-import { Separator } from "@/shared/ui/separator";
-import { Badge } from "@/shared/ui/badge";
-import { User } from "lucide-react";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import type { Artista } from "@/modules/artist/hooks/useArtistas";
 
 interface ParticipanteViewModalProps {
@@ -15,27 +15,10 @@ interface ParticipanteViewModalProps {
   artista: Artista | null;
 }
 
-function InfoField({ label, value }: { label: string; value?: string | null }) {
-  return (
-    <div>
-      <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
-      <p className="text-sm font-medium text-foreground">{value || "—"}</p>
-    </div>
-  );
-}
-
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
-      {children}
-    </p>
-  );
-}
-
 const formatDateBR = (d?: string | null) => {
-  if (!d) return null;
+  if (!d) return "";
   try {
-    const date = new Date(d);
+    const date = new Date(d + "T12:00:00");
     if (Number.isNaN(date.getTime())) return d;
     return date.toLocaleDateString("pt-BR");
   } catch {
@@ -50,83 +33,110 @@ export function ParticipanteViewModal({
 }: ParticipanteViewModalProps) {
   if (!artista) return null;
 
-  const nome = artista.nome_civil || artista.nome || artista.nome_artistico;
-  const pseudonimo = artista.nome_artistico;
-  const tipoPessoa = artista.tipo_pessoa;
-  const cpfCnpj = artista.cpf_cnpj;
+  const nomeCivil = artista.nome_civil || artista.nome || artista.nome_artistico || "";
+  const pseudonimo = artista.nome_artistico || "";
+  const tipoPessoa = (artista.tipo_pessoa as string | null | undefined) ?? "";
+  const genero = (artista as Record<string, unknown>).genero as string | null | undefined;
+  const generoVal = genero ?? "";
   const dataNascimento = formatDateBR(artista.data_nascimento);
-  const email = artista.email;
-  const telefone = artista.telefone;
-  const especialidades = Array.isArray(artista.especialidades)
-    ? artista.especialidades.filter(Boolean).join(", ")
-    : null;
-  const generoMusical = artista.genero_musical;
-  const website = artista.website;
+  const cpfCnpj = artista.cpf_cnpj || "";
+  const cae = ((artista as Record<string, unknown>).cae as string | null | undefined) ?? "";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg bg-card border-border">
+      <DialogContent className="max-w-md bg-card border-border" data-testid="modal-participante-view">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <User className="h-5 w-5 text-primary" />
+          <DialogTitle className="text-sm font-semibold text-foreground">
             Visualizar Participante
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-5">
-          {/* Avatar + nome */}
-          <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border">
-            <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center shrink-0">
-              <User className="h-5 w-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-foreground truncate">{nome}</p>
-              {pseudonimo && pseudonimo !== nome && (
-                <p className="text-xs text-muted-foreground truncate">
-                  {pseudonimo}
-                </p>
-              )}
-            </div>
-            {tipoPessoa && (
-              <Badge variant="outline" className="text-xs shrink-0">
-                {tipoPessoa}
-              </Badge>
-            )}
+        <div className="space-y-4">
+          {/* Nome */}
+          <div className="space-y-1">
+            <Label className="text-xs text-foreground">
+              Nome <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              value={nomeCivil}
+              readOnly
+              className="bg-muted/30 text-sm"
+              data-testid="input-participante-nome"
+            />
           </div>
 
-          <Separator />
-
-          {/* Dados de Identificação */}
-          <div>
-            <SectionTitle>Identificação</SectionTitle>
-            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-              <InfoField label="Nome *" value={nome} />
-              <InfoField label="Pseudônimo" value={pseudonimo !== nome ? pseudonimo : null} />
-              <InfoField label="Tipo de Pessoa" value={tipoPessoa} />
-              <InfoField label="Data de Nascimento" value={dataNascimento} />
-              <InfoField label="CPF / CNPJ" value={cpfCnpj} />
-              {especialidades && (
-                <InfoField label="Especialidades" value={especialidades} />
-              )}
-              {generoMusical && (
-                <InfoField label="Gênero Musical" value={generoMusical} />
-              )}
+          {/* Row: Pseudônimo | Tipo de Pessoa | Gênero */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Pseudônimo</Label>
+              <Input
+                value={pseudonimo}
+                readOnly
+                className="bg-muted/30 text-sm"
+                data-testid="input-participante-pseudonimo"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Tipo de Pessoa</Label>
+              <Select value={tipoPessoa} disabled>
+                <SelectTrigger className="bg-muted/30 text-sm h-9" data-testid="select-participante-tipo-pessoa">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Física">Física</SelectItem>
+                  <SelectItem value="Jurídica">Jurídica</SelectItem>
+                  <SelectItem value="fisica">Física</SelectItem>
+                  <SelectItem value="juridica">Jurídica</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Gênero</Label>
+              <Select value={generoVal} disabled>
+                <SelectTrigger className="bg-muted/30 text-sm h-9" data-testid="select-participante-genero">
+                  <SelectValue placeholder="—" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Masculino">Masculino</SelectItem>
+                  <SelectItem value="Feminino">Feminino</SelectItem>
+                  <SelectItem value="Outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
 
-          {(email || telefone || website) && (
-            <>
-              <Separator />
-              <div>
-                <SectionTitle>Contato</SectionTitle>
-                <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                  {email && <InfoField label="E-mail" value={email} />}
-                  {telefone && <InfoField label="Telefone" value={telefone} />}
-                  {website && <InfoField label="Website" value={website} />}
-                </div>
-              </div>
-            </>
-          )}
+          {/* Row: Data de Nascimento | CPF/CNPJ | CAE */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">Data de Nascimento</Label>
+              <Input
+                value={dataNascimento}
+                readOnly
+                className="bg-muted/30 text-sm"
+                data-testid="input-participante-data-nascimento"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">CPF / CNPJ</Label>
+              <Input
+                value={cpfCnpj}
+                readOnly
+                className="bg-muted/30 text-sm"
+                data-testid="input-participante-cpf-cnpj"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs text-muted-foreground">CAE</Label>
+              <Input
+                value={cae}
+                readOnly
+                className="bg-muted/30 text-sm"
+                data-testid="input-participante-cae"
+              />
+            </div>
+          </div>
+
+          <p className="text-[10px] text-muted-foreground">* Campo obrigatório</p>
         </div>
       </DialogContent>
     </Dialog>
