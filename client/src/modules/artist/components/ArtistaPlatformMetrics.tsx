@@ -221,7 +221,7 @@ export function ArtistaPlatformMetrics({
         {/* Instagram */}
         <div
           className="rounded-lg p-3"
-          style={{ background: "linear-gradient(135deg, #833AB4 0%, #FD1D1D 50%, #F77737 100%)" }}
+          style={{ background: "linear-gradient(135deg, hsl(271 91% 52%) 0%, hsl(271 91% 38%) 100%)" }}
         >
           <div className="flex items-center gap-1.5 mb-1">
             <SiInstagram className="h-4 w-4 text-white" />
@@ -236,7 +236,7 @@ export function ArtistaPlatformMetrics({
         </div>
 
         {/* TikTok */}
-        <div className="bg-black rounded-lg p-3">
+        <div className="rounded-lg p-3" style={{ background: "linear-gradient(135deg, hsl(222 47% 16%) 0%, hsl(222 47% 10%) 100%)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <SiTiktok className="h-4 w-4 text-white" />
             <span className="text-xs text-white font-medium">TikTok</span>
@@ -250,7 +250,7 @@ export function ArtistaPlatformMetrics({
         </div>
 
         {/* Spotify */}
-        <div className="bg-[#1DB954] rounded-lg p-3 lg:col-span-2">
+        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(142 76% 28%) 0%, hsl(142 76% 20%) 100%)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <SiSpotify className="h-4 w-4 text-white" />
             <span className="text-xs text-white font-medium">Spotify</span>
@@ -333,7 +333,7 @@ export function ArtistaPlatformMetrics({
         </div>
 
         {/* YouTube */}
-        <div className="bg-[#FF0000] rounded-lg p-3 lg:col-span-2">
+        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 38%) 100%)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <SiYoutube className="h-4 w-4 text-white" />
             <span className="text-xs text-white font-medium">YouTube</span>
@@ -426,10 +426,7 @@ export function ArtistaPlatformMetrics({
             Não depende de credenciais por org, então o tile só pede a URL. */}
         <div
           className="rounded-lg p-3 lg:col-span-2"
-          style={{
-            background:
-              "linear-gradient(135deg, #00C7F2 0%, #A238FF 50%, #FF1898 100%)",
-          }}
+          style={{ background: "linear-gradient(135deg, hsl(217 91% 38%) 0%, hsl(222 47% 22%) 100%)" }}
         >
           <div className="flex items-center gap-1.5 mb-1">
             <Headphones className="h-4 w-4 text-white" />
@@ -520,9 +517,7 @@ export function ArtistaPlatformMetrics({
             - Sem JWT: iTunes Lookup API pública — mostra albumCount + último lançamento. */}
         <div
           className="rounded-lg p-3 lg:col-span-2"
-          style={{
-            background: "linear-gradient(135deg, #FA243C 0%, #FB5C74 100%)",
-          }}
+          style={{ background: "linear-gradient(135deg, hsl(38 92% 44%) 0%, hsl(25 95% 40%) 100%)" }}
         >
           <div className="flex items-center gap-1.5 mb-1">
             <SiApplemusic className="h-4 w-4 text-white" />
@@ -618,7 +613,7 @@ export function ArtistaPlatformMetrics({
         {/* SoundCloud — usa edge function pública `soundcloud-metrics`
             (Task #359). Lê a contagem de seguidores e faixas direto do
             HTML público do perfil (sem necessidade de OAuth). */}
-        <div className="bg-[#FF5500] rounded-lg p-3 lg:col-span-2">
+        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(38 92% 38%) 0%, hsl(25 95% 32%) 100%)" }}>
           <div className="flex items-center gap-1.5 mb-1">
             <SiSoundcloud className="h-4 w-4 text-white" />
             <span className="text-xs text-white font-medium">SoundCloud</span>
