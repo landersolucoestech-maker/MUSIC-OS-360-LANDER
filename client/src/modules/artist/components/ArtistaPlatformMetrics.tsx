@@ -217,43 +217,43 @@ export function ArtistaPlatformMetrics({
           Atualizar
         </Button>
       </div>
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
         {/* Instagram */}
         <div
-          className="rounded-lg p-3"
+          className="rounded-lg p-2"
           style={{ background: "linear-gradient(135deg, hsl(271 91% 52%) 0%, hsl(271 91% 38%) 100%)" }}
         >
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiInstagram className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">Instagram</span>
+          <div className="flex items-center gap-1 mb-1">
+            <SiInstagram className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">Instagram</span>
           </div>
           <>
-            <p className="text-lg font-bold text-white" data-testid={`metric-instagram-${artistaId}`}>
+            <p className="text-sm font-bold text-white" data-testid={`metric-instagram-${artistaId}`}>
               {instagramUrl && instagramSeguidores != null ? formatCount(instagramSeguidores) : "—"}
             </p>
-            <p className="text-xs text-white/70">Seguidores</p>
+            <p className="text-[10px] text-white/70">Seguidores</p>
           </>
         </div>
 
         {/* TikTok */}
-        <div className="rounded-lg p-3" style={{ background: "linear-gradient(135deg, hsl(222 47% 16%) 0%, hsl(222 47% 10%) 100%)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiTiktok className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">TikTok</span>
+        <div className="rounded-lg p-2" style={{ background: "linear-gradient(135deg, hsl(222 47% 16%) 0%, hsl(222 47% 10%) 100%)" }}>
+          <div className="flex items-center gap-1 mb-1">
+            <SiTiktok className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">TikTok</span>
           </div>
           <>
-            <p className="text-lg font-bold text-white" data-testid={`metric-tiktok-${artistaId}`}>
+            <p className="text-sm font-bold text-white" data-testid={`metric-tiktok-${artistaId}`}>
               {tiktokUrl && tiktokSeguidores != null ? formatCount(tiktokSeguidores) : "—"}
             </p>
-            <p className="text-xs text-white/70">Seguidores</p>
+            <p className="text-[10px] text-white/70">Seguidores</p>
           </>
         </div>
 
         {/* Spotify */}
-        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(142 76% 28%) 0%, hsl(142 76% 20%) 100%)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiSpotify className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">Spotify</span>
+        <div className="rounded-lg p-2" style={{ background: "linear-gradient(135deg, hsl(142 76% 28%) 0%, hsl(142 76% 20%) 100%)" }}>
+          <div className="flex items-center gap-1 mb-1">
+            <SiSpotify className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">Spotify</span>
             {spotifyQuery.error ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -271,32 +271,32 @@ export function ArtistaPlatformMetrics({
           {!spotifyArtistId ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-spotify-${artistaId}`}
               >
                 —
               </p>
-              <p className="text-xs text-white/70">Ouvintes mensais</p>
+              <p className="text-[10px] text-white/70">Ouvintes mensais</p>
             </>
           ) : !spotifyConfigured ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-spotify-${artistaId}`}
               >
                 {spotifyOuvintes != null ? formatCount(spotifyOuvintes) : "—"}
               </p>
-              <p className="text-xs text-white/70">Ouvintes mensais</p>
+              <p className="text-[10px] text-white/70">Ouvintes mensais</p>
             </>
           ) : spotifyQuery.isLoading ? (
             <>
               <p
-                className="text-lg font-bold text-white animate-pulse"
+                className="text-sm font-bold text-white animate-pulse"
                 data-testid={`metric-spotify-${artistaId}`}
               >
                 ···
               </p>
-              <p className="text-xs text-white/70">Carregando…</p>
+              <p className="text-[10px] text-white/70">Carregando…</p>
             </>
           ) : spotifyQuery.error ? (
             <>
@@ -311,12 +311,12 @@ export function ArtistaPlatformMetrics({
           ) : (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-spotify-${artistaId}`}
               >
                 {formatCount(spotifyFollowers)}
               </p>
-              <p className="text-xs text-white/70">
+              <p className="text-[10px] text-white/70">
                 Seguidores
                 {typeof spotifyQuery.data?.popularity === "number"
                   ? ` · Pop ${spotifyQuery.data.popularity}`
@@ -333,10 +333,10 @@ export function ArtistaPlatformMetrics({
         </div>
 
         {/* YouTube */}
-        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 38%) 100%)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiYoutube className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">YouTube</span>
+        <div className="rounded-lg p-2" style={{ background: "linear-gradient(135deg, hsl(217 91% 50%) 0%, hsl(217 91% 38%) 100%)" }}>
+          <div className="flex items-center gap-1 mb-1">
+            <SiYoutube className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">YouTube</span>
             {youtubeQuery.error ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -354,32 +354,32 @@ export function ArtistaPlatformMetrics({
           {!youtubeChannelId ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-youtube-${artistaId}`}
               >
                 —
               </p>
-              <p className="text-xs text-white/70">Inscritos</p>
+              <p className="text-[10px] text-white/70">Inscritos</p>
             </>
           ) : !youtubeConfigured ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-youtube-${artistaId}`}
               >
                 {youtubeInscritos != null ? formatCount(youtubeInscritos) : "—"}
               </p>
-              <p className="text-xs text-white/70">Inscritos</p>
+              <p className="text-[10px] text-white/70">Inscritos</p>
             </>
           ) : youtubeQuery.isLoading ? (
             <>
               <p
-                className="text-lg font-bold text-white animate-pulse"
+                className="text-sm font-bold text-white animate-pulse"
                 data-testid={`metric-youtube-${artistaId}`}
               >
                 ···
               </p>
-              <p className="text-xs text-white/70">Carregando…</p>
+              <p className="text-[10px] text-white/70">Carregando…</p>
             </>
           ) : youtubeQuery.error ? (
             <>
@@ -399,17 +399,17 @@ export function ArtistaPlatformMetrics({
               >
                 Não encontrado
               </p>
-              <p className="text-xs text-white/70">Verifique a URL do canal</p>
+              <p className="text-[10px] text-white/70">Verifique a URL do canal</p>
             </>
           ) : (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-youtube-${artistaId}`}
               >
                 {hiddenSubscribers ? "Oculto" : formatCount(subscriberCount)}
               </p>
-              <p className="text-xs text-white/70">
+              <p className="text-[10px] text-white/70">
                 Inscritos · {formatCount(youtubeChannel.statistics?.viewCount)} views
               </p>
               <PlatformMiniTrend
@@ -425,12 +425,12 @@ export function ArtistaPlatformMetrics({
         {/* Deezer — usa a edge function pública `deezer-metrics` (Task #354).
             Não depende de credenciais por org, então o tile só pede a URL. */}
         <div
-          className="rounded-lg p-3 lg:col-span-2"
+          className="rounded-lg p-2"
           style={{ background: "linear-gradient(135deg, hsl(217 91% 38%) 0%, hsl(222 47% 22%) 100%)" }}
         >
-          <div className="flex items-center gap-1.5 mb-1">
-            <Headphones className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">Deezer</span>
+          <div className="flex items-center gap-1 mb-1">
+            <Headphones className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">Deezer</span>
             {deezerQuery.error ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -448,32 +448,32 @@ export function ArtistaPlatformMetrics({
           {!deezerUrl ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-deezer-${artistaId}`}
               >
                 —
               </p>
-              <p className="text-xs text-white/70">Fãs</p>
+              <p className="text-[10px] text-white/70">Fãs</p>
             </>
           ) : !deezerArtistId ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-deezer-${artistaId}`}
               >
                 {deezerFas != null ? formatCount(deezerFas) : "—"}
               </p>
-              <p className="text-xs text-white/70">Fãs</p>
+              <p className="text-[10px] text-white/70">Fãs</p>
             </>
           ) : deezerQuery.isLoading ? (
             <>
               <p
-                className="text-lg font-bold text-white animate-pulse"
+                className="text-sm font-bold text-white animate-pulse"
                 data-testid={`metric-deezer-${artistaId}`}
               >
                 ···
               </p>
-              <p className="text-xs text-white/70">Carregando…</p>
+              <p className="text-[10px] text-white/70">Carregando…</p>
             </>
           ) : deezerQuery.error ? (
             <>
@@ -488,12 +488,12 @@ export function ArtistaPlatformMetrics({
           ) : (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-deezer-${artistaId}`}
               >
                 {formatCount(deezerFans)}
               </p>
-              <p className="text-xs text-white/70">
+              <p className="text-[10px] text-white/70">
                 Fãs
                 {typeof deezerQuery.data?.nb_album === "number"
                   ? ` · ${deezerQuery.data.nb_album} álbuns`
@@ -516,12 +516,12 @@ export function ArtistaPlatformMetrics({
               mantém o fallback de álbuns (Apple Music Catalog API pública não expõe listeners).
             - Sem JWT: iTunes Lookup API pública — mostra albumCount + último lançamento. */}
         <div
-          className="rounded-lg p-3 lg:col-span-2"
+          className="rounded-lg p-2"
           style={{ background: "linear-gradient(135deg, hsl(38 92% 44%) 0%, hsl(25 95% 40%) 100%)" }}
         >
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiApplemusic className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">Apple Music</span>
+          <div className="flex items-center gap-1 mb-1">
+            <SiApplemusic className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">Apple Music</span>
             {appleMusicQuery.error ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -541,32 +541,32 @@ export function ArtistaPlatformMetrics({
           {!appleMusicUrlTrimmed ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-apple-music-${artistaId}`}
               >
                 —
               </p>
-              <p className="text-xs text-white/70">Catálogos</p>
+              <p className="text-[10px] text-white/70">Catálogos</p>
             </>
           ) : !appleMusicArtistId ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-apple-music-${artistaId}`}
               >
                 {appleMusicAlbuns != null ? formatCount(appleMusicAlbuns) : "—"}
               </p>
-              <p className="text-xs text-white/70">Catálogos</p>
+              <p className="text-[10px] text-white/70">Catálogos</p>
             </>
           ) : appleMusicQuery.isLoading ? (
             <>
               <p
-                className="text-lg font-bold text-white animate-pulse"
+                className="text-sm font-bold text-white animate-pulse"
                 data-testid={`metric-apple-music-${artistaId}`}
               >
                 ···
               </p>
-              <p className="text-xs text-white/70">Carregando…</p>
+              <p className="text-[10px] text-white/70">Carregando…</p>
             </>
           ) : appleMusicQuery.error ? (
             <>
@@ -583,7 +583,7 @@ export function ArtistaPlatformMetrics({
           ) : (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-apple-music-${artistaId}`}
               >
                 {appleMusicMonthlyListeners !== null
@@ -613,10 +613,10 @@ export function ArtistaPlatformMetrics({
         {/* SoundCloud — usa edge function pública `soundcloud-metrics`
             (Task #359). Lê a contagem de seguidores e faixas direto do
             HTML público do perfil (sem necessidade de OAuth). */}
-        <div className="rounded-lg p-3 lg:col-span-2" style={{ background: "linear-gradient(135deg, hsl(38 92% 38%) 0%, hsl(25 95% 32%) 100%)" }}>
-          <div className="flex items-center gap-1.5 mb-1">
-            <SiSoundcloud className="h-4 w-4 text-white" />
-            <span className="text-xs text-white font-medium">SoundCloud</span>
+        <div className="rounded-lg p-2" style={{ background: "linear-gradient(135deg, hsl(38 92% 38%) 0%, hsl(25 95% 32%) 100%)" }}>
+          <div className="flex items-center gap-1 mb-1">
+            <SiSoundcloud className="h-3 w-3 text-white" />
+            <span className="text-[10px] text-white font-medium">SoundCloud</span>
             {soundcloudQuery.error ? (
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -636,32 +636,32 @@ export function ArtistaPlatformMetrics({
           {!soundcloudUrlTrimmed ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-soundcloud-${artistaId}`}
               >
                 —
               </p>
-              <p className="text-xs text-white/70">Seguidores</p>
+              <p className="text-[10px] text-white/70">Seguidores</p>
             </>
           ) : !soundcloudHandle ? (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-soundcloud-${artistaId}`}
               >
                 {soundcloudSeguidores != null ? formatCount(soundcloudSeguidores) : "—"}
               </p>
-              <p className="text-xs text-white/70">Seguidores</p>
+              <p className="text-[10px] text-white/70">Seguidores</p>
             </>
           ) : soundcloudQuery.isLoading ? (
             <>
               <p
-                className="text-lg font-bold text-white animate-pulse"
+                className="text-sm font-bold text-white animate-pulse"
                 data-testid={`metric-soundcloud-${artistaId}`}
               >
                 ···
               </p>
-              <p className="text-xs text-white/70">Carregando…</p>
+              <p className="text-[10px] text-white/70">Carregando…</p>
             </>
           ) : soundcloudQuery.error ? (
             <>
@@ -678,12 +678,12 @@ export function ArtistaPlatformMetrics({
           ) : (
             <>
               <p
-                className="text-lg font-bold text-white"
+                className="text-sm font-bold text-white"
                 data-testid={`metric-soundcloud-${artistaId}`}
               >
                 {formatCount(soundcloudFollowers)}
               </p>
-              <p className="text-xs text-white/70">
+              <p className="text-[10px] text-white/70">
                 Seguidores
                 {typeof soundcloudTracks === "number"
                   ? ` · ${soundcloudTracks} faixas`
