@@ -26,15 +26,31 @@ interface Platform {
   icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   color: string;
   bg: string;
+  brandStyle?: React.CSSProperties;
 }
 
 const PLATFORMS: Platform[] = [
-  { id: "overview",   label: "Visão Geral",  icon: BarChart2,    color: "text-primary",    bg: "bg-primary/10" },
-  { id: "youtube",    label: "YouTube",      icon: SiYoutube,    color: "text-[#FF0000]",  bg: "bg-[#FF0000]/10" },
-  { id: "tiktok",     label: "TikTok",       icon: SiTiktok,     color: "text-[#010101] dark:text-white", bg: "bg-foreground/10" },
-  { id: "instagram",  label: "Instagram",    icon: SiInstagram,  color: "text-[#E1306C]",  bg: "bg-[#E1306C]/10" },
-  { id: "meta",       label: "Meta Ads",     icon: SiMeta,       color: "text-[#0082FB]",  bg: "bg-[#0082FB]/10" },
-  { id: "google",     label: "Google Ads",   icon: SiGoogleads,  color: "text-[#4285F4]",  bg: "bg-[#4285F4]/10" },
+  { id: "overview",  label: "Visão Geral", icon: BarChart2,   color: "text-primary",   bg: "bg-primary/10" },
+  {
+    id: "youtube",   label: "YouTube",     icon: SiYoutube,   color: "text-[#FF0000]", bg: "bg-[#FF0000]/10",
+    brandStyle: { background: "#FF0000" },
+  },
+  {
+    id: "tiktok",    label: "TikTok",      icon: SiTiktok,    color: "text-white",     bg: "bg-foreground/10",
+    brandStyle: { background: "linear-gradient(135deg, #010101 0%, #2d2d2d 100%)" },
+  },
+  {
+    id: "instagram", label: "Instagram",   icon: SiInstagram, color: "text-[#E1306C]", bg: "bg-[#E1306C]/10",
+    brandStyle: { background: "linear-gradient(135deg, #833AB4 0%, #FD1D1D 50%, #FCB045 100%)" },
+  },
+  {
+    id: "meta",      label: "Meta Ads",    icon: SiMeta,      color: "text-[#0082FB]", bg: "bg-[#0082FB]/10",
+    brandStyle: { background: "linear-gradient(135deg, #1877F2 0%, #0082FB 100%)" },
+  },
+  {
+    id: "google",    label: "Google Ads",  icon: SiGoogleads, color: "text-[#4285F4]", bg: "bg-[#4285F4]/10",
+    brandStyle: { background: "linear-gradient(135deg, #4285F4 0%, #34A853 100%)" },
+  },
 ];
 
 // ─── Mini bar chart ───────────────────────────────────────────────────────────
@@ -150,19 +166,22 @@ function OverviewPanel() {
         {summaries.map(({ p, metrics }) => {
           const Icon = p.icon;
           return (
-            <Card key={p.id} className="border-border">
-              <CardHeader className="pb-3 pt-4 px-4">
+            <Card key={p.id} className="border-border overflow-hidden">
+              {/* Brand color header */}
+              <div
+                className="px-4 py-3 flex items-center justify-between gap-2"
+                style={p.brandStyle ?? { background: "hsl(var(--primary)/0.15)" }}
+              >
                 <div className="flex items-center gap-2">
-                  <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center shrink-0", p.bg)}>
-                    <Icon className={cn("h-4 w-4", p.color)} />
-                  </div>
-                  <div>
-                    <CardTitle className="text-sm font-semibold">{p.label}</CardTitle>
-                    <Badge variant="outline" className="text-[9px] mt-0.5 px-1 py-0">Simulado</Badge>
-                  </div>
+                  <Icon className="h-4 w-4 text-white drop-shadow-sm" />
+                  <CardTitle className="text-sm font-semibold text-white drop-shadow-sm">{p.label}</CardTitle>
                 </div>
-              </CardHeader>
-              <CardContent className="px-4 pb-4 grid grid-cols-3 gap-3">
+                <Badge className="text-[9px] px-1.5 py-0 bg-black/20 text-white border-white/20 border">
+                  Simulado
+                </Badge>
+              </div>
+              {/* Metrics */}
+              <CardContent className="px-4 pb-4 pt-3 grid grid-cols-3 gap-3">
                 {metrics.map(m => (
                   <div key={m.label}>
                     <p className="text-[9px] text-muted-foreground uppercase tracking-wider">{m.label}</p>

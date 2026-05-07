@@ -328,6 +328,7 @@ export default function Dashboard() {
             value={formatCurrency(receitaMensal)}
             icon={DollarSign}
             accent="success"
+            sub={<span>{receitaMensal === 1 ? "receita" : "receita"} atual</span>}
           />
           <StatCard
             label="Eventos do Mês"
