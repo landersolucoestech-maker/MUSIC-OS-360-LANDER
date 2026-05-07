@@ -997,38 +997,6 @@ export default function RegistroMusicas() {
                       </div>
 
                       <div className="hidden md:flex items-center gap-4 text-sm flex-1">
-                        <div className="w-32">
-                          <span className="text-muted-foreground text-xs block">Artista</span>
-                          {obra.artistas?.nome_artistico ? (
-                            <Link
-                              to={`/artistas/${obra.artista_id}/editar`}
-                              className="truncate block"
-                              onClick={(e) => e.stopPropagation()}
-                              data-testid={`link-artista-${obra.id}`}
-                            >
-                              <Badge variant="outline" className="text-xs font-normal cursor-pointer hover:bg-muted truncate max-w-full">
-                                {obra.artistas.nome_artistico}
-                              </Badge>
-                            </Link>
-                          ) : (
-                            <span className="truncate block text-muted-foreground">-</span>
-                          )}
-                        </div>
-                        <div className="w-32">
-                          <span className="text-muted-foreground text-xs block">Projeto</span>
-                          {obra.projetos?.titulo ? (
-                            <Link
-                              to={`/projetos?projeto=${obra.projetos?.id ?? obra.projeto_id}`}
-                              className="truncate block text-primary hover:underline"
-                              onClick={(e) => e.stopPropagation()}
-                              data-testid={`link-projeto-${obra.id}`}
-                            >
-                              <span className="truncate block">{obra.projetos.titulo}</span>
-                            </Link>
-                          ) : (
-                            <span className="truncate block text-muted-foreground">-</span>
-                          )}
-                        </div>
                         <div className="w-24">
                           <span className="text-muted-foreground text-xs block">Cód. ABRAMUS</span>
                           <span className="truncate block">{obra.cod_abramus || "-"}</span>
