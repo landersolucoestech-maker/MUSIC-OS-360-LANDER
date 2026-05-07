@@ -778,9 +778,28 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                                   .map((s: string) => s.trim())
                                   .filter(Boolean)
                                   .map((nome: string) => ({ id: crypto.randomUUID(), nome, percentual: "" }));
-                                const artistaNome = fullObra.artistas?.nome_artistico as string | undefined;
+                                // Resolve artista for interprete:
+                                // 1) DB join (non-mock), 2) artista_id lookup, 3) compositor name match
+                                const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                                let artistaNome = fullObra.artistas?.nome_artistico as string | undefined;
+                                let artistaId = fullObra.artistas?.id as string | undefined;
+                                if (!artistaNome && (fullObra.artista_id as string | null | undefined)) {
+                                  const byId = artistas.find((a: Artista) => a.id === (fullObra.artista_id as string));
+                                  if (byId) { artistaNome = byId.nome_artistico; artistaId = byId.id; }
+                                }
+                                if (!artistaNome && compositoresStr) {
+                                  const firstComp = compositoresStr.split(",")[0]?.trim();
+                                  if (firstComp) {
+                                    const byName = artistas.find((a: Artista) =>
+                                      norm(a.nome_artistico || "") === norm(firstComp) ||
+                                      norm((a as any).nome_civil || "") === norm(firstComp) ||
+                                      norm((a as any).nome || "") === norm(firstComp)
+                                    );
+                                    if (byName) { artistaNome = byName.nome_artistico; artistaId = byName.id; }
+                                  }
+                                }
                                 const interpretes: Participante[] = artistaNome
-                                  ? [{ id: crypto.randomUUID(), nome: artistaNome, percentual: "", artista_id: fullObra.artistas?.id as string | undefined }]
+                                  ? [{ id: crypto.randomUUID(), nome: artistaNome, percentual: "", artista_id: artistaId }]
                                   : [];
                                 setParticipacao(prev => ({
                                   ...prev,
