@@ -457,7 +457,7 @@ export default function Projetos() {
             <SelectContent>
               <SelectItem value="all">Todos Gênero</SelectItem>
               {generos.map(g => (
-                <SelectItem key={g} value={g.toLowerCase()}>{g}</SelectItem>
+                <SelectItem key={g} value={g.toLowerCase()}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
