@@ -4,8 +4,17 @@ import { Button } from "@/shared/ui/button";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { FileText, Download, Printer, Mail, Send, Loader2, Plus, Trash2 } from "lucide-react";
+import { Badge } from "@/shared/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Card, CardContent } from "@/shared/ui/card";
+import {
+  FileText, ExternalLink, Send, Loader2, Plus, Trash2,
+  History, Music, Clock, AlertCircle, Info,
+} from "lucide-react";
 import { useAutentique } from "@/modules/integrations/hooks/useAutentique";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { StatusBadge } from "@/shared/components/StatusBadge";
+import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { toast } from "sonner";
 
 interface Signer {
@@ -22,276 +31,345 @@ interface ContratoViewModalProps {
 export function ContratoViewModal({
   open,
   onOpenChange,
-  contrato
+  contrato,
 }: ContratoViewModalProps) {
-  const { createDocument, fileToBase64, isCreating } = useAutentique();
+  const { createDocument, isCreating } = useAutentique();
+  const { lancamentos } = useLancamentos();
   const [showSignerForm, setShowSignerForm] = useState(false);
   const [signers, setSigners] = useState<Signer[]>([{ email: "", name: "" }]);
 
   if (!contrato) return null;
 
-  const handleDownload = () => {
-    toast.info("Funcionalidade de download em desenvolvimento");
-  };
+  const lancamentoVinculado = contrato.lancamento_id
+    ? lancamentos.find((l: any) => l.id === contrato.lancamento_id)
+    : null;
 
-  const handlePrint = () => {
-    window.print();
-  };
+  const versoes: any[] = Array.isArray(contrato.versoes) ? contrato.versoes : [];
 
-  const handleEmail = () => {
-    toast.info("Funcionalidade de e-mail em desenvolvimento");
-  };
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const in30Days = new Date(today);
+  in30Days.setDate(in30Days.getDate() + 30);
+  const dataFim = contrato.data_fim ? new Date(contrato.data_fim) : null;
+  const expirando = dataFim && dataFim >= today && dataFim <= in30Days;
+  const diasRestantes = dataFim
+    ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+    : null;
 
-  const handleAddSigner = () => {
-    setSigners([...signers, { email: "", name: "" }]);
-  };
-
+  const handleAddSigner = () => setSigners([...signers, { email: "", name: "" }]);
   const handleRemoveSigner = (index: number) => {
-    if (signers.length > 1) {
-      setSigners(signers.filter((_, i) => i !== index));
-    }
+    if (signers.length > 1) setSigners(signers.filter((_, i) => i !== index));
   };
-
   const handleSignerChange = (index: number, field: keyof Signer, value: string) => {
-    const newSigners = [...signers];
-    newSigners[index][field] = value;
-    setSigners(newSigners);
+    const updated = [...signers];
+    updated[index][field] = value;
+    setSigners(updated);
   };
 
   const handleAutentique = async () => {
-    // Validar signatários
-    const validSigners = signers.filter(s => s.email && s.name);
+    const validSigners = signers.filter((s) => s.email && s.name);
     if (validSigners.length === 0) {
       toast.error("Adicione pelo menos um signatário com nome e email");
       return;
     }
-
-    // Gerar conteúdo HTML do contrato
-    const contratoHtml = generateContratoHtml();
-    
-    // Converter HTML para base64 (simulando PDF por enquanto)
-    const base64Content = btoa(unescape(encodeURIComponent(contratoHtml)));
-
+    const html = `<html><body><h1>${contrato.titulo || "Contrato"}</h1></body></html>`;
+    const base64Content = btoa(unescape(encodeURIComponent(html)));
     try {
       await createDocument.mutateAsync({
-        name: contrato.titulo || "Contrato de Agenciamento",
+        name: contrato.titulo || "Contrato",
         content: base64Content,
-        signers: validSigners.map(s => ({
-          email: s.email,
-          name: s.name,
-          action: 'SIGN' as const
-        })),
-        message: `Você foi convidado a assinar o contrato: ${contrato.titulo || "Contrato de Agenciamento"}`
+        signers: validSigners.map((s) => ({ email: s.email, name: s.name, action: "SIGN" as const })),
+        message: `Você foi convidado a assinar: ${contrato.titulo}`,
       });
-      
       setShowSignerForm(false);
       setSigners([{ email: "", name: "" }]);
-    } catch (error) {
-      // Error handled by hook
-    }
+    } catch {}
   };
-
-  const generateContratoHtml = () => {
-    const nomeContratante = contrato.artistas?.nome_artistico || contrato.artist || "Não informado";
-    return `
-      <html>
-        <body style="font-family: Arial, sans-serif; padding: 40px;">
-          <h1 style="text-align: center;">CONTRATO DE AGENCIAMENTO, REPRESENTAÇÃO E EXCLUSIVIDADE</h1>
-          <p><strong>REPRESENTANTE:</strong> MusicOS Produtora, pessoa jurídica de direito privado, inscrita no CNPJ nº 50.056.858/0001-46...</p>
-          <p><strong>ARTISTA:</strong> ${nomeContratante}</p>
-          <p>Data: ${new Date().toLocaleDateString('pt-BR')}</p>
-        </body>
-      </html>
-    `;
-  };
-
-  const nomeContratante = contrato.artistas?.nome_artistico || contrato.artist || contrato.contratante || "Não informado";
-  const cpfCnpj = contrato.cpfCnpj || "000.000.000-00";
-  const endereco = contrato.endereco || "Endereço não informado";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0 bg-card border-border overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-0">
-          <DialogTitle className="flex items-center gap-2 text-foreground">
-            <FileText className="h-5 w-5 text-primary" />
-            Prévia do Contrato
-          </DialogTitle>
-        </DialogHeader>
-
-        <ScrollArea className="flex-1 max-h-[calc(90vh-180px)]">
-          <div className="p-6">
-            {/* Formulário de Signatários */}
-            {showSignerForm && (
-              <div className="mb-6 p-4 border border-border rounded-lg bg-muted/30">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <Send className="h-4 w-4" />
-                  Adicionar Signatários
-                </h3>
-                <div className="space-y-3">
-                  {signers.map((signer, index) => (
-                    <div key={index} className="flex gap-3 items-end">
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Nome</Label>
-                        <Input
-                          placeholder="Nome completo"
-                          value={signer.name}
-                          onChange={(e) => handleSignerChange(index, "name", e.target.value)}
-                        />
-                      </div>
-                      <div className="flex-1 space-y-1">
-                        <Label className="text-xs">Email</Label>
-                        <Input
-                          type="email"
-                          placeholder="email@exemplo.com"
-                          value={signer.email}
-                          onChange={(e) => handleSignerChange(index, "email", e.target.value)}
-                        />
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveSigner(index)}
-                        disabled={signers.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-                <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" onClick={handleAddSigner}>
-                    <Plus className="h-4 w-4 mr-1" />
-                    Adicionar Signatário
-                  </Button>
-                  <Button 
-                    size="sm" 
-                    onClick={handleAutentique}
-                    disabled={isCreating}
-                    className="bg-success hover:bg-success/90"
-                  >
-                    {isCreating ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-1 animate-spin" />
-                        Enviando...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="h-4 w-4 mr-1" />
-                        Enviar para Assinatura
-                      </>
-                    )}
-                  </Button>
-                  <Button variant="ghost" size="sm" onClick={() => setShowSignerForm(false)}>
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Documento do Contrato */}
-            <div className="bg-white rounded-lg shadow-lg overflow-hidden border border-gray-200">
-              {/* Header decorativo */}
-              <div className="relative h-48 bg-gradient-to-r from-black via-black to-red-900 overflow-hidden">
-                <svg className="absolute bottom-0 left-0 right-0 w-full" viewBox="0 0 1200 120" preserveAspectRatio="none" style={{ height: '100px' }}>
-                  <path d="M0,0 C150,90 350,90 600,45 C850,0 1050,60 1200,30 L1200,120 L0,120 Z" fill="#dc2626" opacity="0.8" />
-                  <path d="M0,30 C200,90 400,60 600,60 C800,60 1000,90 1200,45 L1200,120 L0,120 Z" fill="#b91c1c" opacity="0.6" />
-                </svg>
-              </div>
-
-              {/* Conteúdo do contrato */}
-              <div className="p-8 space-y-6 text-gray-900">
-                <div className="text-center">
-                  <h1 className="text-xl font-bold uppercase tracking-wide">
-                    CONTRATO DE AGENCIAMENTO, REPRESENTAÇÃO E EXCLUSIVIDADE
-                  </h1>
-                </div>
-
-                <div className="text-justify leading-relaxed">
-                  <p>
-                    <strong>REPRESENTANTE:</strong> MusicOS 360 Produções Artísticas LTDA, pessoa jurídica de direito privado, 
-                    inscrita no CNPJ nº 50.056.858/0001-46, com sede na Rua A, nº 58, Bairro Vila Império, 
-                    Governador Valadares/MG, CEP 35050-560, representada por Admin MusicOS 360, 
-                    brasileiro, solteiro, empresário, portador do RG 0000000 e CPF 000.000.000-00, 
-                    doravante denominada simplesmente <strong>REPRESENTANTE</strong>.
-                  </p>
-                </div>
-
-                <div className="text-justify leading-relaxed">
-                  <p>
-                    <strong>ARTISTA:</strong> {nomeContratante}, pessoa física, portador(a) do 
-                    CPF/CNPJ nº {cpfCnpj}, residente e domiciliado(a) em {endereco}, 
-                    doravante denominado(a) simplesmente <strong>ARTISTA</strong>.
-                  </p>
-                </div>
-
-                <div className="text-justify leading-relaxed">
-                  <p>
-                    <strong>CONSIDERANDO</strong> que o REPRESENTANTE atua no ramo de agenciamento artístico, 
-                    produção musical e gestão de carreiras;
-                  </p>
-                  <p className="mt-2">
-                    <strong>CONSIDERANDO</strong> que o ARTISTA deseja ser representado profissionalmente 
-                    para desenvolvimento de sua carreira artística;
-                  </p>
-                  <p className="mt-2">
-                    As partes acima identificadas têm, entre si, justo e acertado o presente Contrato de 
-                    Agenciamento, Representação e Exclusividade, que se regerá pelas cláusulas seguintes 
-                    e pelas condições descritas no presente.
-                  </p>
-                </div>
-
-                <div className="text-justify leading-relaxed">
-                  <h3 className="font-bold mb-2">CLÁUSULA PRIMEIRA - DO OBJETO</h3>
-                  <p>
-                    1.1. O presente contrato tem por objeto a prestação de serviços de agenciamento, 
-                    representação e exclusividade do ARTISTA pelo REPRESENTANTE, para fins de 
-                    desenvolvimento de carreira artística, incluindo, mas não se limitando a: 
-                    negociação de shows, eventos, participações em mídias, contratos publicitários, 
-                    licenciamento de imagem e voz, produção musical e gestão de carreira.
-                  </p>
-                </div>
-
-                <div className="text-justify leading-relaxed">
-                  <h3 className="font-bold mb-2">CLÁUSULA SEGUNDA - DA EXCLUSIVIDADE</h3>
-                  <p>
-                    2.1. O ARTISTA concede ao REPRESENTANTE exclusividade total na representação 
-                    de sua carreira artística durante toda a vigência deste contrato, ficando vedado 
-                    ao ARTISTA firmar qualquer tipo de acordo, contrato ou compromisso profissional 
-                    sem a prévia e expressa autorização do REPRESENTANTE.
-                  </p>
-                </div>
-
-                <div className="text-center text-gray-500 py-4">
-                  <p className="text-sm italic">[Continuação das cláusulas contratuais...]</p>
-                </div>
+      <DialogContent className="max-w-3xl max-h-[90vh] p-0 flex flex-col">
+        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-border">
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+              <FileText className="h-5 w-5 text-primary" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <DialogTitle className="text-base font-semibold leading-tight truncate">
+                {contrato.titulo}
+              </DialogTitle>
+              <div className="flex items-center gap-2 mt-1 flex-wrap">
+                <StatusBadge status={contrato.status} />
+                {expirando && (
+                  <Badge className="bg-warning/10 text-warning border-warning/20 text-[11px] border gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    Expira em {diasRestantes}d
+                  </Badge>
+                )}
+                {contrato.exclusivo && (
+                  <Badge variant="outline" className="text-[11px]">Exclusivo</Badge>
+                )}
               </div>
             </div>
           </div>
-        </ScrollArea>
+        </DialogHeader>
 
-        <DialogFooter className="px-6 py-4 border-t border-border gap-2 flex-wrap">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="gap-2">
+        <Tabs defaultValue="informacoes" className="flex flex-col flex-1 overflow-hidden">
+          <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 shrink-0">
+            {[
+              { value: "informacoes", label: "Informações" },
+              { value: "arquivo", label: "Arquivo" },
+              { value: "versoes", label: `Versões${versoes.length > 0 ? ` (${versoes.length})` : ""}` },
+              { value: "lancamento", label: "Lançamento" },
+            ].map((tab) => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                data-testid={`tab-contrato-${tab.value}`}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-5 py-3 text-sm font-medium"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+
+          <ScrollArea className="flex-1">
+            {/* ── Informações ── */}
+            <TabsContent value="informacoes" className="p-6 space-y-5 mt-0">
+              <div className="grid grid-cols-2 gap-x-6 gap-y-4">
+                {[
+                  { label: "Artista / Cliente", value: contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—" },
+                  { label: "Tipo", value: contrato.tipo || "—" },
+                  { label: "Início", value: formatDate(contrato.data_inicio) || "—" },
+                  { label: "Término", value: formatDate(contrato.data_fim) || "Indeterminado" },
+                  { label: "Valor", value: contrato.valor != null ? formatCurrency(contrato.valor) : "—" },
+                  { label: "Assinado em", value: formatDate(contrato.assinado_em) || "—" },
+                ].map(({ label, value }) => (
+                  <div key={label}>
+                    <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
+                    <p className="text-sm font-medium">{value}</p>
+                  </div>
+                ))}
+              </div>
+
+              {contrato.observacoes && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-1">Observações</p>
+                  <p className="text-sm bg-muted/30 rounded-lg p-3">{contrato.observacoes}</p>
+                </div>
+              )}
+
+              {contrato.autentique_doc_id && (
+                <div className="flex items-center gap-2 p-3 bg-success/5 border border-success/20 rounded-lg">
+                  <Info className="h-4 w-4 text-success shrink-0" />
+                  <p className="text-xs text-success">
+                    Documento enviado via Autentique — ID:{" "}
+                    <span className="font-mono">{contrato.autentique_doc_id}</span>
+                  </p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Arquivo ── */}
+            <TabsContent value="arquivo" className="p-6 mt-0" data-testid="tab-content-arquivo">
+              {contrato.arquivo_url ? (
+                <Card className="bg-muted/20">
+                  <CardContent className="p-8 flex flex-col items-center gap-5 text-center">
+                    <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
+                      <FileText className="h-8 w-8 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold text-sm mb-1">{contrato.titulo}</p>
+                      <p className="text-xs text-muted-foreground font-mono break-all max-w-sm mx-auto">
+                        {contrato.arquivo_url}
+                      </p>
+                    </div>
+                    <Button asChild className="gap-2" data-testid="button-open-arquivo">
+                      <a href={contrato.arquivo_url} target="_blank" rel="noopener noreferrer">
+                        <ExternalLink className="h-4 w-4" />
+                        Abrir PDF
+                      </a>
+                    </Button>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <FileText className="h-12 w-12 mb-3 text-muted-foreground/30" />
+                  <p className="text-sm font-medium">Nenhum arquivo vinculado</p>
+                  <p className="text-xs mt-1">Edite o contrato para adicionar a URL do PDF</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Versões ── */}
+            <TabsContent value="versoes" className="p-6 mt-0" data-testid="tab-content-versoes">
+              {versoes.length > 0 ? (
+                <div className="space-y-3">
+                  {versoes.map((v: any, index: number) => (
+                    <div
+                      key={index}
+                      className="flex items-start gap-3 p-4 bg-muted/20 border border-border rounded-lg"
+                      data-testid={`versao-row-${index}`}
+                    >
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                        <History className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5">
+                          <span className="font-medium text-sm">{v.versao}</span>
+                          {index === versoes.length - 1 && (
+                            <Badge className="bg-success/10 text-success border border-success/20 text-[9px] h-4 px-1">
+                              Atual
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {v.criado_em ? new Date(v.criado_em).toLocaleDateString("pt-BR") : "—"}
+                        </p>
+                        {v.notas && (
+                          <p className="text-xs text-muted-foreground">{v.notas}</p>
+                        )}
+                      </div>
+                      {v.url && (
+                        <Button variant="outline" size="sm" className="h-7 text-xs gap-1 shrink-0" asChild>
+                          <a href={v.url} target="_blank" rel="noopener noreferrer">
+                            <ExternalLink className="h-3 w-3" />
+                            Abrir
+                          </a>
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <History className="h-12 w-12 mb-3 text-muted-foreground/30" />
+                  <p className="text-sm font-medium">Sem histórico de versões</p>
+                  <p className="text-xs mt-1">As versões do documento aparecerão aqui</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Lançamento ── */}
+            <TabsContent value="lancamento" className="p-6 mt-0" data-testid="tab-content-lancamento">
+              {lancamentoVinculado ? (
+                <Card className="bg-muted/20">
+                  <CardContent className="p-5 flex items-start gap-4">
+                    <div className="h-12 w-12 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Music className="h-6 w-6 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-sm truncate">{lancamentoVinculado.titulo}</p>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        <Badge variant="outline" className="text-[10px] capitalize">
+                          {lancamentoVinculado.tipo || "—"}
+                        </Badge>
+                        <StatusBadge status={lancamentoVinculado.status} />
+                      </div>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Distribuidora</p>
+                          <p className="text-xs font-medium">{lancamentoVinculado.distribuidora || "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] text-muted-foreground">Data de lançamento</p>
+                          <p className="text-xs font-medium">
+                            {lancamentoVinculado.data_lancamento
+                              ? new Date(lancamentoVinculado.data_lancamento).toLocaleDateString("pt-BR")
+                              : "—"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Music className="h-12 w-12 mb-3 text-muted-foreground/30" />
+                  <p className="text-sm font-medium">Sem lançamento vinculado</p>
+                  <p className="text-xs mt-1">Edite o contrato para vincular um lançamento</p>
+                </div>
+              )}
+            </TabsContent>
+          </ScrollArea>
+        </Tabs>
+
+        {/* Formulário de Signatários inline */}
+        {showSignerForm && (
+          <div className="px-6 py-4 border-t border-border shrink-0 bg-muted/20 space-y-3">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Send className="h-4 w-4" />
+              Signatários
+            </h3>
+            <div className="space-y-2">
+              {signers.map((signer, index) => (
+                <div key={index} className="flex gap-2 items-end">
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Nome</Label>
+                    <Input
+                      placeholder="Nome completo"
+                      value={signer.name}
+                      onChange={(e) => handleSignerChange(index, "name", e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <div className="flex-1 space-y-1">
+                    <Label className="text-xs">Email</Label>
+                    <Input
+                      type="email"
+                      placeholder="email@exemplo.com"
+                      value={signer.email}
+                      onChange={(e) => handleSignerChange(index, "email", e.target.value)}
+                      className="h-8 text-sm"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => handleRemoveSigner(index)}
+                    disabled={signers.length === 1}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAddSigner}>
+                <Plus className="h-3 w-3 mr-1" />
+                Signatário
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={handleAutentique}
+                disabled={isCreating}
+              >
+                {isCreating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                {isCreating ? "Enviando..." : "Enviar"}
+              </Button>
+              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowSignerForm(false)}>
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="px-6 py-3 border-t border-border gap-2 flex-wrap shrink-0">
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          <Button variant="outline" onClick={handlePrint} className="gap-2">
-            <Printer className="h-4 w-4" />
-            Imprimir
-          </Button>
-          <Button variant="outline" onClick={handleDownload} className="gap-2">
-            <Download className="h-4 w-4" />
-            Baixar PDF
-          </Button>
-          <Button variant="outline" onClick={handleEmail} className="gap-2">
-            <Mail className="h-4 w-4" />
-            E-mail
-          </Button>
-          <Button 
-            onClick={() => setShowSignerForm(true)} 
-            className="gap-2 bg-primary hover:bg-primary/90 text-white"
-            disabled={showSignerForm}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 opacity-50 cursor-not-allowed"
+            disabled
+            title="Integração Autentique em breve"
+            data-testid="button-autentique-disabled"
           >
-            <Send className="h-4 w-4" />
+            <Send className="h-3.5 w-3.5" />
             Enviar para Assinatura
           </Button>
         </DialogFooter>

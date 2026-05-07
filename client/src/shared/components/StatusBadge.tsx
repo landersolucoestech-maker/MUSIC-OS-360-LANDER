@@ -86,6 +86,7 @@ const statusStyles: Record<string, string> = {
   proposta:                 "bg-primary/10 text-primary border-primary/20",
   independente:             "bg-primary/10 text-primary border-primary/20",
   aguardando_distribuicao:  "bg-primary/10 text-primary border-primary/20",
+  aguardando_assinatura:    "bg-primary/10 text-primary border-primary/20",
   publicado:                "bg-success/10 text-success border-success/20",
   planejado:                "bg-muted text-muted-foreground border-border",
 
@@ -101,6 +102,8 @@ const statusStyles: Record<string, string> = {
   expirada:      "bg-destructive/10 text-destructive border-destructive/20",
   vencido:       "bg-destructive/10 text-destructive border-destructive/20",
   vencida:       "bg-destructive/10 text-destructive border-destructive/20",
+  rescindido:    "bg-destructive/10 text-destructive border-destructive/20",
+  rescindida:    "bg-destructive/10 text-destructive border-destructive/20",
   inativo:       "bg-destructive/10 text-destructive border-destructive/20",
   atrasada:      "bg-destructive/10 text-destructive border-destructive/20",
   danificado:    "bg-destructive/10 text-destructive border-destructive/20",
@@ -134,6 +137,8 @@ const statusLabels: Record<string, string> = {
   programado: "Programado", pausada: "Pausada",
   planejado: "Planejado", publicado: "Publicado",
   aguardando_distribuicao: "Aguardando Distribuição",
+  aguardando_assinatura: "Aguardando Assinatura",
+  rescindido: "Rescindido", rescindida: "Rescindida",
   vigente: "Vigente", assinado: "Assinado", em_vigor: "Em Vigor",
 };
 

@@ -17,6 +17,7 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/shared/lib/utils";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 
 interface ContractTemplate {
   id: string;
@@ -52,7 +53,9 @@ const contractSchema = z.object({
   project_id: z.string().optional(),
   contractor_contact: z.string().optional(),
   responsible_person: z.string().optional(),
-  status: z.enum(["pendente", "assinado", "expirado", "rescindido", "rascunho"]).default("rascunho"),
+  status: z.enum(["pendente", "assinado", "aguardando_assinatura", "expirado", "rescindido", "rascunho"]).default("rascunho"),
+  arquivo_url: z.string().optional(),
+  lancamento_id: z.string().optional(),
   start_date: z.date({ required_error: "Data de início é obrigatória" }),
   end_date: z.date().optional(),
   registry_office: z.boolean().optional(),
@@ -112,6 +115,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
   const [documentos, setDocumentos] = useState<UploadedFile[]>([]);
   const { clientes } = useClientes();
+  const { lancamentos } = useLancamentos();
 
   // Filtrar contatos do CRM por tipo
   const contatosPF = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_fisica");
@@ -200,11 +204,12 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   };
 
   const statusLabels = {
+    rascunho: "Rascunho",
     pendente: "Pendente",
+    aguardando_assinatura: "Aguardando Assinatura",
     assinado: "Assinado",
     expirado: "Expirado",
     rescindido: "Rescindido",
-    rascunho: "Rascunho",
   };
 
   return (
@@ -647,6 +652,43 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   />
                 </div>
               )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Arquivo e Vínculos</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="arquivo_url">URL do Arquivo (PDF)</Label>
+            <Input
+              id="arquivo_url"
+              {...form.register("arquivo_url")}
+              placeholder="https://drive.google.com/file/d/... ou link do PDF"
+              data-testid="input-arquivo-url"
+            />
+            <p className="text-xs text-muted-foreground">Cole o link público do PDF do contrato (Google Drive, Dropbox, etc.)</p>
+          </div>
+          <div className="space-y-2">
+            <Label>Lançamento Vinculado (opcional)</Label>
+            <Select
+              value={form.watch("lancamento_id") || "none"}
+              onValueChange={(value) => form.setValue("lancamento_id", value === "none" ? undefined : value)}
+            >
+              <SelectTrigger data-testid="select-lancamento-id">
+                <SelectValue placeholder="Selecionar lançamento" />
+              </SelectTrigger>
+              <SelectContent className="bg-background border border-border z-50">
+                <SelectItem value="none">Nenhum</SelectItem>
+                {lancamentos.map((l: any) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.titulo}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>

@@ -1559,22 +1559,57 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                   <h3 className="font-semibold mb-4">Contratos ({contratosReais.length})</h3>
                   {contratosReais.length > 0 ? (
                     <div className="space-y-3">
-                      {contratosReais.map((contrato) => (
-                        <div key={contrato.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                          <div>
-                            <p className="font-medium">{contrato.titulo}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {contrato.data_inicio ? new Date(contrato.data_inicio).toLocaleDateString("pt-BR") : "—"}
-                              {" → "}
-                              {contrato.data_fim ? new Date(contrato.data_fim).toLocaleDateString("pt-BR") : "Indeterminado"}
-                            </p>
-                            {contrato.valor != null && (
-                              <p className="text-xs text-muted-foreground">Valor: {formatCurrency(contrato.valor)}</p>
-                            )}
+                      {contratosReais.map((contrato) => {
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const in30Days = new Date(today);
+                        in30Days.setDate(in30Days.getDate() + 30);
+                        const dataFim = contrato.data_fim ? new Date(contrato.data_fim) : null;
+                        const expirando = dataFim && dataFim >= today && dataFim <= in30Days;
+                        const diasRestantes = dataFim
+                          ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+                          : null;
+
+                        return (
+                          <div key={contrato.id} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg gap-3">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-sm truncate">{contrato.titulo}</p>
+                                {expirando && (
+                                  <span className="inline-flex items-center gap-0.5 text-[10px] text-warning border border-warning/20 bg-warning/10 rounded px-1 py-0.5 shrink-0">
+                                    <AlertTriangle className="h-2.5 w-2.5" />
+                                    {diasRestantes}d
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                {contrato.data_inicio ? new Date(contrato.data_inicio).toLocaleDateString("pt-BR") : "—"}
+                                {" → "}
+                                {contrato.data_fim ? new Date(contrato.data_fim).toLocaleDateString("pt-BR") : "Indeterminado"}
+                              </p>
+                              {contrato.valor != null && (
+                                <p className="text-xs text-muted-foreground">Valor: {formatCurrency(contrato.valor)}</p>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 shrink-0">
+                              <ContratoStatusBadge contratos={[contrato]} />
+                              {(contrato as any).arquivo_url && (
+                                <a
+                                  href={(contrato as any).arquivo_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  data-testid={`link-contrato-pdf-${contrato.id}`}
+                                >
+                                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                                    <ExternalLink className="h-3 w-3" />
+                                    PDF
+                                  </Button>
+                                </a>
+                              )}
+                            </div>
                           </div>
-                          <ContratoStatusBadge contratos={[contrato]} />
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="text-center py-8 text-muted-foreground">

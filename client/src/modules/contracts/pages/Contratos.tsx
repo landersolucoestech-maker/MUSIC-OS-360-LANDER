@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   FileText, Clock, CheckCircle, Upload, Download, Plus, Search,
   FileStack, Loader2, MoreHorizontal, Eye, Pencil, Trash2, X, DollarSign,
+  AlertCircle, PenLine,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
@@ -145,6 +146,7 @@ export default function Contratos() {
     const end = c.data_fim ? new Date(c.data_fim) : null;
     return end && end >= today && end <= in30Days;
   }).length;
+  const aguardandoAssinatura = contratos.filter((c) => c.status === "aguardando_assinatura").length;
   const assinadosEsteAno = contratos.filter((c) => {
     const start = c.data_inicio ? new Date(c.data_inicio) : null;
     return start && start.getFullYear() === currentYear;
@@ -188,7 +190,7 @@ export default function Contratos() {
     >
       <div className="space-y-6">
         {/* ── KPI Stats ── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <MetricCard
             title="Contratos Vigentes"
             value={contratosAtivos}
@@ -202,6 +204,13 @@ export default function Contratos() {
             description="precisam renovação"
             icon={Clock}
             accent={contratosVencendo > 0 ? "warning" : "primary"}
+          />
+          <MetricCard
+            title="Aguardando Assinatura"
+            value={aguardandoAssinatura}
+            description="pendentes de assinar"
+            icon={PenLine}
+            accent={aguardandoAssinatura > 0 ? "warning" : "primary"}
           />
           <MetricCard
             title="Assinados este ano"
@@ -243,14 +252,18 @@ export default function Contratos() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all-status">Todos os status</SelectItem>
-              <SelectItem value="ativo">Ativo</SelectItem>
-              <SelectItem value="vencendo">Vencendo</SelectItem>
+              <SelectItem value="assinado">Assinado</SelectItem>
+              <SelectItem value="vigente">Vigente</SelectItem>
+              <SelectItem value="aguardando_assinatura">Aguardando Assinatura</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="rascunho">Rascunho</SelectItem>
               <SelectItem value="expirado">Expirado</SelectItem>
+              <SelectItem value="rescindido">Rescindido</SelectItem>
             </SelectContent>
           </Select>
           {hasActiveFilters && (
@@ -338,6 +351,18 @@ export default function Contratos() {
 
                     {/* Status */}
                     <StatusBadge status={contrato.status} />
+                    {(() => {
+                      const end = contrato.data_fim ? new Date(contrato.data_fim) : null;
+                      if (!end) return null;
+                      const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+                      if (diff < 0 || diff > 30) return null;
+                      return (
+                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-warning border border-warning/20 bg-warning/10 rounded-sm px-1.5 py-0.5 font-medium">
+                          <AlertCircle className="h-3 w-3" />
+                          {diff}d
+                        </span>
+                      );
+                    })()}
 
                     {/* Period + Value */}
                     <div className="hidden lg:flex items-center gap-8 text-xs shrink-0">

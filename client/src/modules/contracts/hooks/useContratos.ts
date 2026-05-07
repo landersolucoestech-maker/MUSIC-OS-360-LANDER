@@ -1,6 +1,13 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 
+export interface ContratoVersao {
+  versao: string;
+  url: string;
+  criado_em: string;
+  notas?: string;
+}
+
 export interface Contrato {
   id: string;
   user_id?: string;
@@ -9,6 +16,7 @@ export interface Contrato {
   status?: string | null;
   artista_id?: string | null;
   cliente_id?: string | null;
+  lancamento_id?: string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
   valor?: number | null;
@@ -16,6 +24,9 @@ export interface Contrato {
   observacoes?: string | null;
   template_id?: string | null;
   assinado_em?: string | null;
+  arquivo_url?: string | null;
+  autentique_doc_id?: string | null;
+  versoes?: ContratoVersao[];
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

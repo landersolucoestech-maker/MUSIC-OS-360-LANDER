@@ -12,7 +12,9 @@ import {
   Clock, AlertTriangle, ChevronRight,
 } from "lucide-react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -55,11 +57,13 @@ function isDatePast(dateStr: string | null | undefined) {
 
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
   const { artistas } = useArtistas();
+  const { contratos } = useContratos();
   const [activeTab, setActiveTab] = useState("visao-geral");
 
   if (!lancamento) return null;
 
   const artista = artistas.find(a => a.id === lancamento.artista_id);
+  const contratosVinculados = contratos.filter((c) => c.lancamento_id === lancamento.id);
   const assets = lancamento.assets ?? {};
   const cronograma = lancamento.cronograma ?? {};
   const { filled, total, pct } = calcAssetsCompletude(lancamento);
@@ -111,6 +115,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
               { value: "visao-geral", label: "Visão Geral" },
               { value: "assets", label: "Assets" },
               { value: "cronograma", label: "Cronograma" },
+              { value: "contratos", label: `Contratos${contratosVinculados.length > 0 ? ` (${contratosVinculados.length})` : ""}` },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
@@ -300,6 +305,59 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                   <AlertTriangle className="h-10 w-10 mx-auto mb-3 text-muted-foreground/30" />
                   <p className="text-sm">Nenhuma data de cronograma definida</p>
                   <p className="text-xs mt-1">Edite o lançamento para adicionar datas</p>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* ── Contratos ── */}
+            <TabsContent value="contratos" className="p-6 space-y-3 mt-0" data-testid="tab-content-contratos">
+              {contratosVinculados.length > 0 ? (
+                <div className="space-y-3">
+                  {contratosVinculados.map((contrato) => (
+                    <div
+                      key={contrato.id}
+                      className="flex items-start gap-3 p-4 bg-muted/20 border border-border rounded-lg"
+                      data-testid={`row-contrato-lanc-${contrato.id}`}
+                    >
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <FileText className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{contrato.titulo}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <StatusBadge status={contrato.status} />
+                          {contrato.data_inicio && (
+                            <span className="text-xs text-muted-foreground">
+                              {new Date(contrato.data_inicio).toLocaleDateString("pt-BR")}
+                              {contrato.data_fim && ` → ${new Date(contrato.data_fim).toLocaleDateString("pt-BR")}`}
+                            </span>
+                          )}
+                        </div>
+                        {contrato.valor != null && (
+                          <p className="text-xs text-muted-foreground mt-0.5">{formatCurrency(contrato.valor)}</p>
+                        )}
+                      </div>
+                      {contrato.arquivo_url && (
+                        <a
+                          href={contrato.arquivo_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          data-testid={`link-contrato-arquivo-${contrato.id}`}
+                        >
+                          <button className="h-7 px-2 text-xs border border-border rounded flex items-center gap-1 hover:bg-muted transition-colors">
+                            <ExternalLink className="h-3 w-3" />
+                            PDF
+                          </button>
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                  <FileText className="h-10 w-10 mb-3 text-muted-foreground/30" />
+                  <p className="text-sm">Nenhum contrato vinculado</p>
+                  <p className="text-xs mt-1">Vincule um contrato a este lançamento pelo módulo Contratos</p>
                 </div>
               )}
             </TabsContent>
