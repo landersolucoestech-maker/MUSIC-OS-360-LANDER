@@ -543,10 +543,6 @@ export default function Projetos() {
                               <span className="text-muted-foreground text-xs block">Gênero</span>
                               <span className="truncate block capitalize" data-testid={`text-genero-${project.id}`}>{info.genero || "-"}</span>
                             </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Instrumental</span>
-                              <span className="truncate block" data-testid={`text-instrumental-${project.id}`}>{info.instrumental === "sim" ? "Sim" : info.instrumental === "nao" ? "Não" : "-"}</span>
-                            </div>
                           </>
                         );
                       })()}
