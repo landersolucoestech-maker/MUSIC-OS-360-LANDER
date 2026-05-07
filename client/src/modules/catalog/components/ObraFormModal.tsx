@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -42,6 +42,7 @@ import {
   useProjetos,
   type ProjetoWithRelations,
 } from "@/modules/projects/hooks/useProjetos";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
@@ -64,6 +65,82 @@ import {
   obraToFormFields,
   formToObraPayload,
 } from "@/modules/catalog/mappers";
+
+// ── Autocomplete: busca por nome_artistico, armazena/exibe nome_civil ──
+interface ArtistNameInputProps {
+  value: string;
+  onChange: (val: string) => void;
+  artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: ArtistNameInputProps) {
+  const [inputText, setInputText] = useState(value);
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setInputText(value); }, [value]);
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const suggestions = inputText.trim()
+    ? artistas.filter(a =>
+        a.nome_artistico.toLowerCase().includes(inputText.toLowerCase()) ||
+        (a.nome_civil ?? "").toLowerCase().includes(inputText.toLowerCase())
+      )
+    : [];
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setInputText(e.target.value);
+    onChange(e.target.value);
+    setOpen(true);
+  };
+
+  const handleSelect = (a: typeof artistas[number]) => {
+    const display = a.nome_civil || a.nome_artistico;
+    setInputText(display);
+    onChange(display);
+    setOpen(false);
+  };
+
+  return (
+    <div ref={containerRef} className="relative w-full">
+      <Input
+        value={inputText}
+        onChange={handleChange}
+        onFocus={() => inputText.trim() && setOpen(true)}
+        placeholder={placeholder}
+        disabled={disabled}
+        autoComplete="off"
+        className="min-w-0"
+      />
+      {open && suggestions.length > 0 && !disabled && (
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+          {suggestions.map(a => (
+            <button
+              key={a.id}
+              type="button"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              onMouseDown={() => handleSelect(a)}
+            >
+              <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
+              <span className="text-xs text-muted-foreground">{a.nome_artistico}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const ObraTipoBadge = ({
   tipo,
@@ -195,6 +272,7 @@ export function ObraFormModal({
   const { addObra, updateObra } = useObras();
   const { orgId } = useCurrentOrgId();
   const { addContrato } = useContratos();
+  const { artistas } = useArtistas();
 
   // Resolução do tipo da obra. Em criação vem do seletor (prop). Em
   // edição/visualização vem do próprio registro. Default = referencia.
@@ -1071,14 +1149,6 @@ export function ObraFormModal({
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={isViewMode}
-                  >
-                    <Search className="w-4 h-4 mr-1" /> Buscar participante
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
                     onClick={addParticipante}
                     disabled={isViewMode}
                   >
@@ -1095,14 +1165,12 @@ export function ObraFormModal({
                       >
                         <div className="col-span-4 space-y-1">
                           <Label className="text-xs">Nome *</Label>
-                          <Input
+                          <ArtistNameInput
                             value={p.nome}
-                            onChange={(e) =>
-                              updateParticipante(p.id, "nome", e.target.value)
-                            }
-                            disabled={isViewMode}
+                            onChange={(val) => updateParticipante(p.id, "nome", val)}
+                            artistas={artistas}
                             placeholder="Nome do participante"
-                            className="min-w-0"
+                            disabled={isViewMode}
                           />
                         </div>
                         <div className="col-span-3 space-y-1">

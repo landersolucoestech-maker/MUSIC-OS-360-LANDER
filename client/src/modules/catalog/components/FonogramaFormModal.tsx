@@ -337,6 +337,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
   // Lista de obras registradas filtrada pelo termo digitado (busca local
   // continua respondendo instantaneamente em memória) — limitada a 20.
   const LOCAL_RESULTS_LIMIT = 20;
+  const collatorFono = new Intl.Collator("pt-BR", { sensitivity: "base" });
   const obrasRegistradasFiltradasFull: ObraVinculada[] = obras
     .filter((o: ObraWithRelations) => o.status === "registrado" || o.status === "analise")
     .filter((o: ObraWithRelations) => {
@@ -355,7 +356,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
       genero: o.genero ?? "",
       compositores: compositoresToString(o.compositores),
       status: o.status ?? "",
-    }));
+    }))
+    .sort((a, b) => collatorFono.compare(a.title, b.title));
   const obrasRegistradasTotal = obrasRegistradasFiltradasFull.length;
   const obrasRegistradasFiltradas: ObraVinculada[] =
     obrasRegistradasFiltradasFull.slice(0, LOCAL_RESULTS_LIMIT);
