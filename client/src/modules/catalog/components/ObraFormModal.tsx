@@ -37,12 +37,14 @@ import {
   Trash2,
   X,
   Briefcase,
+  Eye,
 } from "lucide-react";
 import {
   useProjetos,
   type ProjetoWithRelations,
 } from "@/modules/projects/hooks/useProjetos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
+import { ParticipanteViewModal } from "@/modules/catalog/components/ParticipanteViewModal";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
@@ -70,12 +72,14 @@ import {
 interface ArtistNameInputProps {
   value: string;
   onChange: (val: string) => void;
+  onSelect?: (a: { id: string; nome_artistico: string; nome_civil?: string | null }) => void;
   artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
   placeholder?: string;
   disabled?: boolean;
+  className?: string;
 }
 
-function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -109,6 +113,7 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
     const display = a.nome_civil || a.nome_artistico;
     setInputText(display);
     onChange(display);
+    onSelect?.(a);
     setOpen(false);
   };
 
@@ -192,6 +197,7 @@ interface Participante {
   classeFuncao: string;
   link: string;
   percentual: string;
+  artista_id?: string;
 }
 
 interface IAElement {
@@ -317,6 +323,7 @@ export function ObraFormModal({
   const [referenciasConexas, setReferenciasConexas] = useState<string[]>(() => obraReferenciasConexas(obra));
   const [letraCompleta, setLetraCompleta] = useState(() => obraLetraCompleta(obra));
   const [aceitaTermos, setAceitaTermos] = useState(false);
+  const [viewArtista, setViewArtista] = useState<Artista | null>(null);
 
   // Sync state whenever the modal opens or the obra record changes
   useEffect(() => {
@@ -1168,6 +1175,7 @@ export function ObraFormModal({
                           <ArtistNameInput
                             value={p.nome}
                             onChange={(val) => updateParticipante(p.id, "nome", val)}
+                            onSelect={(a) => updateParticipante(p.id, "artista_id", a.id)}
                             artistas={artistas}
                             placeholder="Nome do participante"
                             disabled={isViewMode}
@@ -1223,11 +1231,26 @@ export function ObraFormModal({
                             className="min-w-0"
                           />
                         </div>
-                        <div className="col-span-1 flex items-end justify-center">
+                        <div className="col-span-1 flex items-end gap-0.5 justify-end">
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                            title="Visualizar participante"
+                            disabled={!p.nome}
+                            onClick={() => {
+                              const found = artistas.find(a => a.id === p.artista_id || (a.nome_civil || a.nome_artistico) === p.nome);
+                              if (found) setViewArtista(found as Artista);
+                            }}
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
                             onClick={() => removeParticipante(p.id)}
                             disabled={isViewMode}
                           >
@@ -1428,6 +1451,11 @@ export function ObraFormModal({
           </DialogFooter>
         </form>
       </DialogContent>
+      <ParticipanteViewModal
+        open={viewArtista !== null}
+        onOpenChange={(o) => { if (!o) setViewArtista(null); }}
+        artista={viewArtista}
+      />
     </Dialog>
   );
 }

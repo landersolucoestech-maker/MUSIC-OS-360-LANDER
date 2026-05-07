@@ -11,10 +11,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { toast } from "sonner";
-import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X } from "lucide-react";
+import { Plus, Search, ChevronDown, Trash2, Upload, FileAudio, Music, X, Eye } from "lucide-react";
 import { useObras, type ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert, type FonogramaUpdate } from "@/modules/catalog/hooks/useFonogramas";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
+import { ParticipanteViewModal } from "@/modules/catalog/components/ParticipanteViewModal";
 import { useCurrentOrgId } from "@/shared/hooks/useCurrentOrgId";
 import { useDebounce } from "@/shared/hooks/useDebounce";
 import { AbramusSearchRow } from "@/modules/catalog/components/AbramusSearchRow";
@@ -133,6 +134,7 @@ interface Participante {
   id: string;
   nome: string;
   percentual: string;
+  artista_id?: string;
 }
 
 interface ParticipacaoCategoria {
@@ -168,13 +170,14 @@ const formatFileSize = (bytes: number) => {
 interface ArtistNameInputProps {
   value: string;
   onChange: (val: string) => void;
+  onSelect?: (a: { id: string; nome_artistico: string; nome_civil?: string | null }) => void;
   artistas: Array<{ id: string; nome_artistico: string; nome_civil?: string | null }>;
   placeholder?: string;
   disabled?: boolean;
   className?: string;
 }
 
-function ArtistNameInput({ value, onChange, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -208,6 +211,7 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled, cla
     const display = a.nome_civil || a.nome_artistico;
     setInputText(display);
     onChange(display);
+    onSelect?.(a);
     setOpen(false);
   };
 
@@ -246,6 +250,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
   const { addFonograma, updateFonograma } = useFonogramas();
   const { orgId } = useCurrentOrgId();
   const { artistas } = useArtistas();
+  const [viewArtista, setViewArtista] = useState<Artista | null>(null);
 
   // Build initial obra vinculada from form-shape OR DB-shape (snake_case).
   // Em registros que vêm do banco apenas com obra_id, a hidratação completa
@@ -628,6 +633,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                   <ArtistNameInput
                     value={p.nome}
                     onChange={(val) => updateParticipante(categoria, p.id, 'nome', val)}
+                    onSelect={(a) => updateParticipante(categoria, p.id, 'artista_id', a.id)}
                     artistas={artistas}
                     placeholder="Nome do participante"
                     disabled={isViewMode}
@@ -641,6 +647,20 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                     type="number"
                     className="w-20"
                   />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-foreground"
+                    title="Visualizar participante"
+                    disabled={!p.nome}
+                    onClick={() => {
+                      const found = artistas.find(a => a.id === p.artista_id || (a.nome_civil || a.nome_artistico) === p.nome);
+                      if (found) setViewArtista(found as Artista);
+                    }}
+                  >
+                    <Eye className="w-4 h-4" />
+                  </Button>
                   <Button type="button" variant="ghost" size="icon" onClick={() => removeParticipante(categoria, p.id)} disabled={isViewMode}>
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -1096,6 +1116,11 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
           </DialogFooter>
         </form>
       </DialogContent>
+      <ParticipanteViewModal
+        open={viewArtista !== null}
+        onOpenChange={(o) => { if (!o) setViewArtista(null); }}
+        artista={viewArtista}
+      />
     </Dialog>
   );
 }
