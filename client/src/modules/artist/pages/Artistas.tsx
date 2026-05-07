@@ -519,19 +519,6 @@ export default function Artistas() {
                                 </div>
                               </div>
 
-                              {/* Show stats */}
-                              <div className="flex items-center gap-5">
-                                {[
-                                  { label: "Shows", value: totalShows },
-                                  { label: "Agendados", value: agendados },
-                                  { label: "Realizados", value: realizados },
-                                ].map(({ label, value }) => (
-                                  <div key={label} className="text-center">
-                                    <p className="text-base font-mono font-semibold text-foreground leading-none">{value}</p>
-                                    <p className="text-[10px] text-muted-foreground mt-0.5">{label}</p>
-                                  </div>
-                                ))}
-                              </div>
                             </div>
 
                             {/* Col 3: Profile type + Actions */}
