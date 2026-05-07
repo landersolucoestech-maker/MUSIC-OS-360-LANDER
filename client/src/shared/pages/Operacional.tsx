@@ -19,6 +19,7 @@ import type { ContratoWithRelations } from "@/modules/contracts/hooks/useContrat
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import type { ObraWithRelations } from "@/modules/catalog/hooks/useObras";
 import { useMetrics } from "@/shared/hooks/useMetrics";
+import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
@@ -455,8 +456,9 @@ export default function Operacional() {
   const { contratos, isLoading: loadingContratos } = useContratos();
   const { obras, isLoading: loadingObras } = useObras();
   const { financeiroMetrics, isLoading: loadingMetrics } = useMetrics();
+  const { transacoes, isLoading: loadingTransacoes } = useTransacoes();
 
-  const isLoading = loadingArtistas || loadingLancamentos || loadingContratos || loadingObras || loadingMetrics;
+  const isLoading = loadingArtistas || loadingLancamentos || loadingContratos || loadingObras || loadingMetrics || loadingTransacoes;
 
   const [lancamentoModal, setLancamentoModal] = useState<{ open: boolean; lancamento?: LancamentoWithRelations }>({ open: false });
   const [contratoModal, setContratoModal] = useState<{ open: boolean; contrato?: ContratoWithRelations }>({ open: false });
@@ -486,6 +488,41 @@ export default function Operacional() {
     () => contratos.filter(c => ACTIVE_STATUSES.has(c.status ?? "")).length,
     [contratos],
   );
+
+  const receitaDoMes = useMemo(() => {
+    const inicio = startOfMonth(new Date());
+    const fim = endOfMonth(new Date());
+    return transacoes
+      .filter(t => {
+        if (t.tipo !== "receita" || t.status !== "pago") return false;
+        if (!t.data) return false;
+        try {
+          const d = parseISO(t.data);
+          return d >= inicio && d <= fim;
+        } catch {
+          return false;
+        }
+      })
+      .reduce((acc, t) => acc + t.valor, 0);
+  }, [transacoes]);
+
+  const margemDoMes = useMemo(() => {
+    const inicio = startOfMonth(new Date());
+    const fim = endOfMonth(new Date());
+    const despesas = transacoes
+      .filter(t => {
+        if (t.tipo !== "despesa" || t.status !== "pago") return false;
+        if (!t.data) return false;
+        try {
+          const d = parseISO(t.data);
+          return d >= inicio && d <= fim;
+        } catch {
+          return false;
+        }
+      })
+      .reduce((acc, t) => acc + t.valor, 0);
+    return receitaDoMes > 0 ? Math.round(((receitaDoMes - despesas) / receitaDoMes) * 100) : 0;
+  }, [transacoes, receitaDoMes]);
 
   if (isLoading) return <OperacionalSkeleton />;
 
@@ -530,8 +567,8 @@ export default function Operacional() {
           />
           <KpiCard
             title="Receita do Mês"
-            value={formatCurrency(financeiroMetrics.receitasPagas)}
-            description={`Margem ${financeiroMetrics.margem}%`}
+            value={formatCurrency(receitaDoMes)}
+            description={`Margem ${margemDoMes}%`}
             icon={DollarSign}
             accent="success"
             href="/financeiro"
