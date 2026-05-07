@@ -1,0 +1,124 @@
+import { Badge } from "@/shared/ui/badge";
+import { cn } from "@/shared/lib/utils";
+import { differenceInDays, parseISO } from "date-fns";
+import type { MockRow } from "@/shared/types/database";
+
+export type ContratoSituacao = "ativo" | "vencendo" | "sem_contrato" | "em_negociacao";
+
+type ContratoLike = MockRow & {
+  status?: string | null;
+  data_fim?: string | null;
+};
+
+const ATIVO_STATUSES = new Set(["ativo", "assinado", "vigente"]);
+const NEGOCIACAO_STATUSES = new Set(["em_negociacao", "negociacao", "rascunho", "em_analise"]);
+
+export function getContratoSituacao(contratos: ContratoLike[] | undefined | null): ContratoSituacao {
+  if (!contratos || contratos.length === 0) return "sem_contrato";
+
+  const hoje = new Date();
+  let temAtivo = false;
+  let temVencendo = false;
+  let temNegociacao = false;
+
+  for (const c of contratos) {
+    const status = (c.status || "").toLowerCase();
+
+    if (NEGOCIACAO_STATUSES.has(status)) {
+      temNegociacao = true;
+      continue;
+    }
+
+    if (status === "vencendo") {
+      temVencendo = true;
+      temAtivo = true;
+      continue;
+    }
+
+    if (!ATIVO_STATUSES.has(status)) continue;
+
+    temAtivo = true;
+
+    if (c.data_fim) {
+      try {
+        const dias = differenceInDays(parseISO(c.data_fim), hoje);
+        if (dias >= 0 && dias <= 30) temVencendo = true;
+      } catch {
+        /* ignore parse errors */
+      }
+    }
+  }
+
+  if (temVencendo) return "vencendo";
+  if (temAtivo) return "ativo";
+  if (temNegociacao) return "em_negociacao";
+  return "sem_contrato";
+}
+
+function getDiasVencendo(contratos: ContratoLike[] | undefined | null): number | null {
+  if (!contratos) return null;
+  const hoje = new Date();
+  let menor: number | null = null;
+  for (const c of contratos) {
+    const status = (c.status || "").toLowerCase();
+    if (!ATIVO_STATUSES.has(status) && status !== "vencendo") continue;
+    if (!c.data_fim) continue;
+    try {
+      const dias = differenceInDays(parseISO(c.data_fim), hoje);
+      if (dias >= 0 && dias <= 30) {
+        if (menor === null || dias < menor) menor = dias;
+      }
+    } catch { /* ignore */ }
+  }
+  return menor;
+}
+
+interface ContratoStatusBadgeProps {
+  contratos?: ContratoLike[] | null;
+  situacao?: ContratoSituacao;
+  className?: string;
+  "data-testid"?: string;
+}
+
+export function ContratoStatusBadge({
+  contratos,
+  situacao,
+  className,
+  ...rest
+}: ContratoStatusBadgeProps) {
+  const resolved = situacao ?? getContratoSituacao(contratos);
+
+  let label: string;
+  let badgeClass: string;
+
+  switch (resolved) {
+    case "ativo":
+      label = "Contrato ativo";
+      badgeClass = "bg-success hover:bg-success text-success-foreground";
+      break;
+    case "vencendo": {
+      const dias = contratos ? getDiasVencendo(contratos) : null;
+      label = dias !== null ? `Contrato vencendo em ${dias} dia${dias === 1 ? "" : "s"}` : "Contrato vencendo";
+      badgeClass = "bg-orange-500 hover:bg-orange-500 text-white";
+      break;
+    }
+    case "em_negociacao":
+      label = "Em negociação";
+      badgeClass = "bg-yellow-600 hover:bg-yellow-600 text-white";
+      break;
+    case "sem_contrato":
+    default:
+      label = "Sem contrato ativo";
+      badgeClass = "bg-primary hover:bg-primary text-primary-foreground";
+      break;
+  }
+
+  return (
+    <Badge
+      className={cn(badgeClass, "text-[10px] py-0 px-2", className)}
+      data-testid={rest["data-testid"]}
+    >
+      {label}
+    </Badge>
+  );
+}

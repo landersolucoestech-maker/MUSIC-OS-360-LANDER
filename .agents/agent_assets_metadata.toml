@@ -1,0 +1,20 @@
+uploads = []
+generated = []
+
+[[outputs]]
+id = "Uocsn9Zpb3mm5611zfO8-"
+uri = "file://LANDER_360_Sistema_Completo.xlsx"
+type = "table"
+title = "LANDER 360 - Documentação Completa do Sistema"
+
+[[outputs]]
+id = "gW_kL6a24s3TK4ei-Sb_f"
+uri = "file://BLUEPRINT.md"
+type = "text"
+title = "LANDER 360 — Blueprint Técnico Completo"
+
+[[outputs]]
+id = "FT7wUw5eSFSrR6agZeH72"
+uri = "file://LANDER360_BLUEPRINT.md"
+type = "text"
+title = "LANDER 360 — Blueprint Técnico Completo"

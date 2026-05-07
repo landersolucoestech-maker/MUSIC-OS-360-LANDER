@@ -1,0 +1,77 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint (eslint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npm run lint
+
+  test:
+    name: Testes (vitest + cobertura)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout do código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Rodar testes com cobertura
+        # Falha automaticamente quando os thresholds definidos em
+        # `vitest.config.ts` (ex.: abramus-sync 70/70/70/60) não são atingidos.
+        run: npm run test:coverage
+
+      - name: Publicar relatório de cobertura como artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 14
+
+      - name: Resumo de cobertura no job
+        if: always()
+        run: |
+          if [ -f coverage/coverage-summary.json ]; then
+            echo "## Resumo de cobertura" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            node -e "
+              const s = require('./coverage/coverage-summary.json');
+              const cwd = process.cwd();
+              const rows = Object.entries(s).map(([k, v]) => {
+                const name = k === 'total' ? '**total**' : k.replace(cwd + '/', '');
+                return '| ' + name + ' | ' + v.lines.pct + '% | ' + v.statements.pct + '% | ' + v.functions.pct + '% | ' + v.branches.pct + '% |';
+              }).join('\n');
+              const fs = require('fs');
+              fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY,
+                '| Arquivo | Linhas | Statements | Funções | Branches |\n' +
+                '|---|---|---|---|---|\n' + rows + '\n');
+            "
+          else
+            echo "_coverage-summary.json não encontrado — pulando resumo._" >> "$GITHUB_STEP_SUMMARY"
+          fi

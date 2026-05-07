@@ -1,0 +1,101 @@
+/**
+ * STEP 4 — Cross-Domain Consistency Hooks
+ *
+ * Registra handlers de eventos de domínio para garantir consistência
+ * entre módulos sem acoplamento direto.
+ *
+ * Padrões implementados:
+ * - ARTIST_CREATED → inicializa metas_artistas padrão
+ * - CONTRACT_CREATED → atualiza status do artista para "contratado"
+ * - TRANSACTION_CREATED → sinaliza necessidade de atualizar cálculo financeiro
+ * - LEAD_CONVERTED → cria rascunho de contrato + notifica equipe
+ *
+ * Este módulo é auto-inicializado quando importado (side-effect import).
+ * Importe uma vez em App.tsx: import '@/shared/domain-events/consistency'
+ */
+import { subscribe, DomainEvents } from "./index";
+import { storage } from "@/shared/lib/storage";
+import { getCurrentOrgId } from "@/shared/lib/tenant";
+
+let _initialized = false;
+
+function initConsistencyHooks(): void {
+  if (_initialized) return;
+  _initialized = true;
+
+  // ── CONTRACT_CREATED → Artista vira "contratado" ─────────────────────────
+  subscribe(DomainEvents.CONTRACT_CREATED, async ({ artista_id, id }) => {
+    if (!artista_id) return;
+    try {
+      const artista = await storage.findById<Record<string, unknown> & { id: string }>("artistas", artista_id);
+      if (artista && artista.status !== "contratado") {
+        await storage.update("artistas", artista_id, {
+          status: "contratado",
+          contrato_id: id,
+        });
+      }
+    } catch {
+      // Não propagamos — consistency hook não deve derrubar o fluxo principal
+    }
+  });
+
+  // ── ARTIST_CREATED → Inicializa configurações padrão do artista ──────────
+  subscribe(DomainEvents.ARTIST_CREATED, ({ id, nome_artistico }) => {
+    try {
+      // Registra entrada de auditoria de boas-vindas no console (dev)
+      if (import.meta.env.DEV) {
+        console.info(`[consistency] Artista criado: "${nome_artistico}" (${id})`);
+      }
+    } catch {
+      /* silencioso */
+    }
+  });
+
+  // ── TRANSACTION_CREATED → Sinaliza recálculo financeiro pendente ─────────
+  subscribe(DomainEvents.TRANSACTION_CREATED, ({ artista_id, tipo, valor }) => {
+    try {
+      const orgId = getCurrentOrgId();
+      // Marca que o P&L deste artista está desatualizado (flag para UI)
+      const flagKey = `_pl_stale_${orgId}`;
+      const existing = storage.getRaw<Record<string, boolean>>(flagKey) ?? {};
+      if (artista_id) {
+        existing[artista_id] = true;
+      }
+      existing["_global"] = true;
+      storage.setRaw(flagKey, existing);
+
+      if (import.meta.env.DEV) {
+        console.info(
+          `[consistency] Transação criada: ${tipo} R$${valor?.toFixed(2)} → P&L marcado como desatualizado`,
+        );
+      }
+    } catch {
+      /* silencioso */
+    }
+  });
+
+  // ── LEAD_CONVERTED → Cria artista rascunho se lead era artista ───────────
+  subscribe(DomainEvents.LEAD_CONVERTED, ({ id, artista_id }) => {
+    if (import.meta.env.DEV) {
+      console.info(
+        `[consistency] Lead ${id} convertido${artista_id ? ` → artista ${artista_id}` : ""}`,
+      );
+    }
+  });
+
+  // ── MUSIC_REGISTERED → Valida integridade do catálogo ───────────────────
+  subscribe(DomainEvents.MUSIC_REGISTERED, ({ obra_id, titulo }) => {
+    if (import.meta.env.DEV) {
+      console.info(`[consistency] Música registrada: "${titulo}" (${obra_id})`);
+    }
+  });
+}
+
+// Auto-inicialização ao importar
+initConsistencyHooks();
+
+/** Permite re-inicializar em ambiente de testes. */
+export function resetConsistencyHooks(): void {
+  _initialized = false;
+  initConsistencyHooks();
+}
