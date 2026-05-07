@@ -26,6 +26,7 @@ import {
   MapPin,
   Image
 } from "lucide-react";
+import { AIGenerateButton } from "@/shared/components/AIGenerateButton";
 
 interface CampanhaFormModalProps {
   open: boolean;
@@ -405,7 +406,29 @@ export const CampanhaFormModal = ({ open, onOpenChange, initialData, mode }: Cam
 
               {/* Descrição */}
               <div className="space-y-2">
-                <Label htmlFor="observacoes">Descrição</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="observacoes">Descrição / Copy</Label>
+                  <AIGenerateButton
+                    type="copy"
+                    label="Gerar Copy IA"
+                    size="xs"
+                    variant="ghost"
+                    prompt={
+                      nome
+                        ? `Crie um copy persuasivo para a campanha de marketing "${nome}". ` +
+                          (objetivo ? `Objetivo: ${objetivo}. ` : "") +
+                          (plataformasSelecionadas.length > 0
+                            ? `Plataformas: ${plataformasSelecionadas.join(", ")}. `
+                            : "") +
+                          `Budget: R$ ${orcamentoDiario}/dia por ${duracao} dias. ` +
+                          `Inclua: proposta de valor, chamada para ação e diferenciais da campanha. ` +
+                          `Tom: engajante e direto. Voltado para o mercado musical brasileiro.`
+                        : ""
+                    }
+                    disabled={!nome}
+                    onResult={(content) => setObservacoes(content)}
+                  />
+                </div>
                 <Textarea
                   id="observacoes"
                   value={observacoes}

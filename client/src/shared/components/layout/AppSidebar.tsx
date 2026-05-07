@@ -108,6 +108,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Leads",        href: "/leads",     icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh",    icon: Briefcase },
   { title: "Analytics",        href: "/analytics", icon: Activity },
+  { title: "IA Assistente",    href: "/ai",         icon: Sparkles },
   {
     title: "Marketing",
     icon: Megaphone,

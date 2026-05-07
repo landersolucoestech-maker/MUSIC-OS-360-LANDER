@@ -8,6 +8,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
+import { AIGenerateButton } from "@/shared/components/AIGenerateButton";
 
 export type TipoArtista =
   | "artista_solo"
@@ -212,9 +213,27 @@ export function ArtistaForm({ values, onChange, errors = {} }: ArtistaFormProps)
       </div>
 
       <div className="space-y-2">
-        <Label>Observações</Label>
+        <div className="flex items-center justify-between">
+          <Label>Observações / Bio</Label>
+          <AIGenerateButton
+            type="bio"
+            label="Gerar Bio IA"
+            size="xs"
+            variant="ghost"
+            prompt={
+              values.nome_artistico
+                ? `Escreva uma bio artística profissional e envolvente para ${values.nome_artistico}` +
+                  (values.genero_musical ? `, artista de ${values.genero_musical}` : "") +
+                  (values.tipo ? `, ${values.tipo}` : "") +
+                  `. Máximo 3 parágrafos curtos. Tom: autêntico e inspirador. Sem asteriscos.`
+                : ""
+            }
+            disabled={!values.nome_artistico}
+            onResult={(content) => onChange("observacoes", content)}
+          />
+        </div>
         <Textarea
-          placeholder="Notas adicionais sobre o artista..."
+          placeholder="Notas adicionais sobre o artista ou bio..."
           rows={3}
           value={values.observacoes}
           onChange={(e) => onChange("observacoes", e.target.value)}

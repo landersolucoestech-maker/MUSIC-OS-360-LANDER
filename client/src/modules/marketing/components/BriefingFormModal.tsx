@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Plus, X, Loader2 } from "lucide-react";
+import { AIGenerateButton } from "@/shared/components/AIGenerateButton";
 import { cn } from "@/shared/lib/utils";
 
 interface BriefingFormModalProps {
@@ -260,7 +261,26 @@ export function BriefingFormModal({ open, onOpenChange, initialData, mode }: Bri
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="descricao">Descrição Detalhada</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="descricao">Descrição Detalhada</Label>
+              <AIGenerateButton
+                type="briefing"
+                label="Gerar com IA"
+                size="xs"
+                variant="ghost"
+                prompt={
+                  formData.titulo || formData.objetivo
+                    ? `Crie uma descrição detalhada de briefing de marketing para o projeto "${formData.titulo || "sem título"}". ` +
+                      (formData.objetivo ? `Objetivo: ${formData.objetivo}. ` : "") +
+                      (formData.publicoAlvo ? `Público-alvo: ${formData.publicoAlvo}. ` : "") +
+                      `Inclua: contexto do projeto, diretrizes criativas, entregáveis esperados e critérios de sucesso. ` +
+                      `Seja detalhado e profissional. Voltado para o mercado musical brasileiro.`
+                    : ""
+                }
+                disabled={!formData.titulo && !formData.objetivo}
+                onResult={(content) => setFormData(f => ({ ...f, descricao: content }))}
+              />
+            </div>
             <Textarea
               id="descricao"
               value={formData.descricao}
