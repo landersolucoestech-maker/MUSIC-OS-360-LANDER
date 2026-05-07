@@ -242,12 +242,12 @@ function ContratosCriticos({
   onOpen: (c: ContratoWithRelations) => void;
 }) {
   const criticos = useMemo(() => {
-    const hoje = new Date();
     return contratos.filter(c => {
       if (c.status === "aguardando_assinatura") return true;
       if (!ACTIVE_STATUSES.has(c.status ?? "")) return false;
       const days = daysUntil(c.data_fim);
-      return days !== null && days >= 0 && days <= 30;
+      // Include vencidos (days < 0) AND expiring within 30 days
+      return days !== null && days <= 30;
     }).sort((a, b) => {
       if (a.status === "aguardando_assinatura" && b.status !== "aguardando_assinatura") return 1;
       if (b.status === "aguardando_assinatura" && a.status !== "aguardando_assinatura") return -1;
@@ -267,16 +267,19 @@ function ContratosCriticos({
           criticos.map(c => {
             const days = daysUntil(c.data_fim);
             const isAguardando = c.status === "aguardando_assinatura";
+            const isVencido = days !== null && days < 0;
             const isExpiring7 = days !== null && days <= 7 && days >= 0;
             const artista = c.artistas?.nome_artistico ?? c.clientes?.nome ?? "—";
             return (
-              <button
+            <button
                 key={c.id}
                 onClick={() => onOpen(c)}
                 data-testid={`contrato-row-${c.id}`}
                 className={cn(
                   "w-full text-left p-3 rounded-lg border transition-colors hover:bg-accent/50 cursor-pointer",
-                  isExpiring7 ? "border-destructive/40 bg-destructive/5" : "border-warning/40 bg-warning/5",
+                  isVencido || isExpiring7
+                    ? "border-destructive/40 bg-destructive/5"
+                    : "border-warning/40 bg-warning/5",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -288,8 +291,9 @@ function ContratosCriticos({
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">{artista}</p>
                     <div className="flex items-center gap-2 mt-2 flex-wrap">
                       {isAguardando && <AlertPill variant="amber" label="Aguardando assinatura" />}
-                      {!isAguardando && isExpiring7 && <AlertPill variant="red" label={`${days}d p/ vencer`} />}
-                      {!isAguardando && !isExpiring7 && days !== null && (
+                      {!isAguardando && isVencido && <AlertPill variant="red" label={`Vencido há ${Math.abs(days!)}d`} />}
+                      {!isAguardando && !isVencido && isExpiring7 && <AlertPill variant="red" label={`${days}d p/ vencer`} />}
+                      {!isAguardando && !isVencido && !isExpiring7 && days !== null && (
                         <AlertPill variant="amber" label={`${days}d p/ vencer`} />
                       )}
                     </div>
@@ -401,7 +405,15 @@ function CatalogoPendente({ obras }: { obras: ObraWithRelations[] }) {
               >
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{o.titulo}</p>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">{artista}</p>
+                  <div className="flex items-center gap-2 mt-0.5 text-xs text-muted-foreground">
+                    <span className="truncate">{artista}</span>
+                    {o.created_at && (
+                      <span className="flex items-center gap-1 shrink-0">
+                        <Clock className="h-3 w-3" />
+                        {formatDate(o.created_at)}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   {o.tipo && (
