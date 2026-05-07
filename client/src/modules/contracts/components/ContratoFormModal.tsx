@@ -53,7 +53,7 @@ const contractSchema = z.object({
   project_id: z.string().optional(),
   contractor_contact: z.string().optional(),
   responsible_person: z.string().optional(),
-  status: z.enum(["pendente", "assinado", "aguardando_assinatura", "expirado", "rescindido", "rascunho"]).default("rascunho"),
+  status: z.enum(["pendente", "assinado", "aguardando_assinatura", "ativo", "vigente", "expirado", "rescindido", "cancelado", "rascunho"]).default("rascunho"),
   arquivo_url: z.string().optional(),
   notas_versao: z.string().optional(),
   lancamento_id: z.string().optional(),
@@ -210,8 +210,11 @@ export const ContractForm: React.FC<ContractFormProps> = ({
     pendente: "Pendente",
     aguardando_assinatura: "Aguardando Assinatura",
     assinado: "Assinado",
+    ativo: "Ativo",
+    vigente: "Vigente",
     expirado: "Expirado",
     rescindido: "Rescindido",
+    cancelado: "Cancelado",
   };
 
   return (
@@ -757,6 +760,26 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   );
 };
 
+// ── Mapper: ContratoWithRelations → ContractFormData (for pre-filling edit form) ──
+function contratoToFormData(c: import("@/modules/contracts/hooks/useContratos").ContratoWithRelations): Partial<ContractFormData> {
+  const status = c.status as ContractFormData["status"] | undefined;
+  const serviceType = c.tipo as ContractFormData["service_type"] | undefined;
+  const clientType: ContractFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
+  return {
+    title: c.titulo ?? "",
+    service_type: serviceType,
+    client_type: clientType,
+    artist_id: c.artista_id ?? undefined,
+    status: status ?? "rascunho",
+    arquivo_url: c.arquivo_url ?? undefined,
+    lancamento_id: c.lancamento_id ?? undefined,
+    start_date: c.data_inicio ? new Date(c.data_inicio) : undefined,
+    end_date: c.data_fim ? new Date(c.data_fim) : undefined,
+    fixed_value: c.valor ?? undefined,
+    observations: c.observacoes ?? undefined,
+  };
+}
+
 // Modal wrapper component for backwards compatibility
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -786,13 +809,17 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
       advance_payment, financial_support, observations,
     } = data;
 
+    // In edit mode, fall back to existing contrato values to prevent accidental clearing
+    const resolvedArquivoUrl = arquivo_url || (mode === "edit" && contrato ? (contrato.arquivo_url ?? null) : null);
+    const resolvedLancamentoId = lancamento_id || (mode === "edit" && contrato ? (contrato.lancamento_id ?? null) : null);
+
     const payload: Record<string, unknown> = {
       titulo: title,
       tipo: service_type,
       status: status || "rascunho",
       artista_id: client_type === "artista" ? (artist_id || null) : null,
-      arquivo_url: arquivo_url || null,
-      lancamento_id: lancamento_id || null,
+      arquivo_url: resolvedArquivoUrl,
+      lancamento_id: resolvedLancamentoId,
       data_inicio: start_date ? (start_date as Date).toISOString().split("T")[0] : null,
       data_fim: end_date ? (end_date as Date).toISOString().split("T")[0] : null,
       valor: fixed_value || null,
@@ -854,7 +881,7 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
           <ContractForm
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
-            initialData={contrato as Record<string, unknown>}
+            initialData={contrato ? contratoToFormData(contrato) : undefined}
           />
         </ScrollArea>
       </DialogContent>

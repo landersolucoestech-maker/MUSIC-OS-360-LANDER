@@ -259,11 +259,13 @@ export default function Contratos() {
               <SelectItem value="all-status">Todos os status</SelectItem>
               <SelectItem value="assinado">Assinado</SelectItem>
               <SelectItem value="vigente">Vigente</SelectItem>
+              <SelectItem value="ativo">Ativo</SelectItem>
               <SelectItem value="aguardando_assinatura">Aguardando Assinatura</SelectItem>
               <SelectItem value="pendente">Pendente</SelectItem>
               <SelectItem value="rascunho">Rascunho</SelectItem>
               <SelectItem value="expirado">Expirado</SelectItem>
               <SelectItem value="rescindido">Rescindido</SelectItem>
+              <SelectItem value="cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
           {hasActiveFilters && (
