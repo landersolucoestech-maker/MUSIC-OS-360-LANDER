@@ -226,19 +226,31 @@ export function ObraViewModal({
                         key={p.id}
                         className="flex items-center gap-3 py-1.5 border-b border-border/50 last:border-b-0 text-sm"
                       >
-                        <span className="flex-1 font-medium text-foreground">
-                          {p.nome || "—"}
-                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-medium text-foreground block">
+                            {p.nome || "—"}
+                          </span>
+                          {p.link && (
+                            <a
+                              href={p.link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs text-primary hover:underline truncate block"
+                            >
+                              {p.link}
+                            </a>
+                          )}
+                        </div>
                         {p.classeFuncao && (
                           <Badge
                             variant="outline"
-                            className="text-xs font-normal"
+                            className="text-xs font-normal shrink-0"
                           >
                             {p.classeFuncao}
                           </Badge>
                         )}
                         {p.percentual && (
-                          <span className="text-muted-foreground w-12 text-right">
+                          <span className="text-muted-foreground w-12 text-right shrink-0">
                             {p.percentual}%
                           </span>
                         )}

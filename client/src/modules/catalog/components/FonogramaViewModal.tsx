@@ -50,6 +50,10 @@ interface ArquivoAudioView {
 }
 
 export interface FonogramaViewData {
+  // Identity
+  titulo?: string | null;
+  gravadora?: string | null;
+  observacoes?: string | null;
   // ABRAMUS / ECAD codes
   codAbramus?: string | null;
   cod_abramus?: string | null;
@@ -251,6 +255,10 @@ export function FonogramaViewModal({
 
   const obraTitulo = obraVinculada?.title || obraVinculada?.titulo || "";
 
+  const fonogramaTitulo = pickStr(fonograma.titulo);
+  const gravadora = pickStr(fonograma.gravadora);
+  const observacoes = pickStr(fonograma.observacoes);
+
   const codAbramus = pickStr(fonograma.codAbramus, fonograma.cod_abramus);
   const codEcad = pickStr(fonograma.codEcad, fonograma.cod_ecad);
   const agregadora = pickStr(fonograma.agregadora);
@@ -412,8 +420,13 @@ export function FonogramaViewModal({
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-bold text-foreground">
-                  {obraTitulo || "Fonograma sem obra vinculada"}
+                  {fonogramaTitulo || obraTitulo || "Fonograma sem título"}
                 </h2>
+                {fonogramaTitulo && obraTitulo && fonogramaTitulo !== obraTitulo && (
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    Obra: {obraTitulo}
+                  </p>
+                )}
                 <p className="text-sm text-muted-foreground capitalize mt-0.5">
                   Fonograma
                 </p>
@@ -471,6 +484,7 @@ export function FonogramaViewModal({
                 <InfoField label="Duração" value={duracaoDisplay} />
                 <InfoField label="Classificação" value={classificacao} />
                 <InfoField label="Agregadora" value={agregadora} />
+                <InfoField label="Gravadora" value={gravadora} />
               </div>
             </div>
 
@@ -556,6 +570,20 @@ export function FonogramaViewModal({
                 )}
               </div>
             </div>
+
+            {observacoes && (
+              <>
+                <Separator />
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                    Observações
+                  </p>
+                  <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                    {observacoes}
+                  </p>
+                </div>
+              </>
+            )}
 
             {arquivoAudio && (
               <>
