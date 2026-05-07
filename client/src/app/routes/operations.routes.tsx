@@ -11,12 +11,10 @@ const Agenda = lazy(() => import("@/modules/events/pages/Agenda"));
 const Inventario = lazy(() => import("@/modules/inventory/pages/Inventario"));
 const RH = lazy(() => import("@/modules/rh/pages/RH"));
 const MusicChat = lazy(() => import("@/shared/pages/MusicChat"));
-const Operacional = lazy(() => import("@/shared/pages/Operacional"));
 
 export function operationsRoutes(P: SuspenseRouteComponent) {
   return (
     <>
-      <Route path="/operacional" element={<P><Operacional /></P>} />
       <Route path="/projetos" element={<P><Projetos /></P>} />
       <Route path="/agenda" element={<P><Agenda /></P>} />
       <Route path="/inventario" element={<P><Inventario /></P>} />

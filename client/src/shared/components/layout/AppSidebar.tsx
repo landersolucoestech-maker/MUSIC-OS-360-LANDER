@@ -68,7 +68,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { title: "Dashboard",    href: "/",           icon: LayoutDashboard },
-  { title: "Operacional",  href: "/operacional", icon: Activity },
   { title: "Artistas",     href: "/artistas",  icon: Users },
   { title: "Projetos",     href: "/projetos",  icon: FolderKanban },
   {
@@ -95,9 +94,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     children: [
       { title: "Transações",           href: "/financeiro",                  icon: DollarSign },
-      { title: "Fluxo de Caixa",       href: "/financeiro/fluxo",            icon: TrendingUp },
-      { title: "Conciliação",          href: "/financeiro/conciliacao",      icon: CheckCircle2 },
-      { title: "Relatórios",           href: "/financeiro/relatorios",       icon: BarChart },
       { title: "Contabilidade",        href: "/contabilidade",               icon: Calculator },
       { title: "Nota Fiscal",          href: "/nota-fiscal",                 icon: Receipt },
     ],
