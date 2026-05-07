@@ -92,6 +92,8 @@ interface FonogramaFormModalProps {
   onOpenChange: (open: boolean) => void;
   fonograma?: FonogramaFormInput | null;
   mode: "create" | "edit" | "view";
+  /** Chamado após salvar com sucesso — usado para abrir modal de contrato pré-preenchido */
+  onSaved?: (info: { titulo: string; observacoes: string }) => void;
 }
 
 const pickStr = (...values: Array<unknown>): string => {
@@ -246,7 +248,7 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
   );
 }
 
-export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: FonogramaFormModalProps) {
+export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSaved }: FonogramaFormModalProps) {
   // Obras carregadas via useObras()
   const { obras } = useObras();
   const { addFonograma, updateFonograma } = useFonogramas();
@@ -598,7 +600,19 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
           { duration: 6000 }
         );
       }
+
+      const tituloSalvo = (titulo && titulo.trim()) || obraVinculada?.title || "Sem título";
       onOpenChange(false);
+
+      // Abre modal de contrato pré-preenchido após fechar o modal de fonograma
+      onSaved?.({
+        titulo: `Contrato de Fonograma – ${tituloSalvo}`,
+        observacoes: [
+          `Fonograma: ${tituloSalvo}`,
+          obraVinculada?.title ? `Obra vinculada: ${obraVinculada.title}` : null,
+          obraVinculada?.compositores ? `Compositores: ${obraVinculada.compositores}` : null,
+        ].filter(Boolean).join("\n"),
+      });
     } catch (err) {
       // toast já é exibido pelo hook
     } finally {

@@ -15,6 +15,7 @@ import { ObraTipoSelectorModal, type TipoObra } from "@/modules/catalog/componen
 import { FonogramaFormModal } from "@/modules/catalog/components/FonogramaFormModal";
 import { FonogramaViewModal } from "@/modules/catalog/components/FonogramaViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { toast } from "sonner";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -117,6 +118,7 @@ export default function RegistroMusicas() {
   });
   const [fonogramaViewModal, setFonogramaViewModal] = useState<{ open: boolean; fonograma?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; item?: any; type?: string }>({ open: false, item: undefined, type: undefined });
+  const [contratoModal, setContratoModal] = useState<{ open: boolean; prefill?: { titulo: string; observacoes: string } }>({ open: false });
 
   const isLoading = loadingObras || loadingFonogramas;
 
@@ -1114,6 +1116,7 @@ export default function RegistroMusicas() {
         mode={obraModal.mode}
         obra={obraModal.obra}
         tipoObra={obraModal.tipoObra}
+        onSaved={(info) => setContratoModal({ open: true, prefill: info })}
       />
       <ObraViewModal 
         open={obraViewModal.open} 
@@ -1125,6 +1128,7 @@ export default function RegistroMusicas() {
         onOpenChange={(open) => setFonogramaModal({ ...fonogramaModal, open })} 
         mode={fonogramaModal.mode}
         fonograma={fonogramaModal.fonograma}
+        onSaved={(info) => setContratoModal({ open: true, prefill: info })}
       />
       <FonogramaViewModal 
         open={fonogramaViewModal.open} 
@@ -1137,6 +1141,12 @@ export default function RegistroMusicas() {
         onConfirm={handleDelete}
         title={deleteModal.type === "fonograma" ? "Excluir Fonograma" : "Excluir Obra"}
         description={`Tem certeza que deseja excluir ${deleteModal.type === "fonograma" ? "este fonograma" : "esta obra"}? Esta ação não pode ser desfeita.`}
+      />
+      <ContratoFormModal
+        open={contratoModal.open}
+        onOpenChange={(open) => setContratoModal({ ...contratoModal, open })}
+        mode="create"
+        prefill={contratoModal.prefill}
       />
 
       <Dialog open={bulkObraModal} onOpenChange={(open) => { setBulkObraModal(open); if (!open) setSelectedObraIdForBulk(""); }}>

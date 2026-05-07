@@ -737,6 +737,7 @@ interface ContratoFormModalProps {
   onOpenChange: (open: boolean) => void;
   contrato?: ContratoWithRelations;
   mode?: "create" | "edit";
+  prefill?: { titulo: string; observacoes: string };
 }
 
 export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
@@ -744,6 +745,7 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
   onOpenChange,
   contrato,
   mode = "create",
+  prefill,
 }) => {
   const { addContrato, updateContrato } = useContratos();
 
@@ -829,7 +831,13 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
           <ContractForm
             onSubmit={handleSubmit}
             onCancel={() => onOpenChange(false)}
-            initialData={contrato ? contratoToFormData(contrato) : undefined}
+            initialData={
+              contrato
+                ? contratoToFormData(contrato)
+                : prefill
+                  ? { title: prefill.titulo, observations: prefill.observacoes }
+                  : undefined
+            }
           />
         </ScrollArea>
       </DialogContent>

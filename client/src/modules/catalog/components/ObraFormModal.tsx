@@ -189,6 +189,8 @@ interface ObraFormModalProps {
    * derivado do registro `obra.tipo_obra`.
    */
   tipoObra?: TipoObra;
+  /** Chamado após salvar com sucesso — usado para abrir modal de contrato pré-preenchido */
+  onSaved?: (info: { titulo: string; observacoes: string }) => void;
 }
 
 interface Participante {
@@ -273,6 +275,7 @@ export function ObraFormModal({
   obra,
   mode,
   tipoObra: tipoObraProp,
+  onSaved,
 }: ObraFormModalProps) {
   const { projetos } = useProjetos();
   const { addObra, updateObra } = useObras();
@@ -542,37 +545,32 @@ export function ObraFormModal({
         await updateObra.mutateAsync({ id: obra.id, ...payload });
       } else {
         await addObra.mutateAsync(payload as any);
-
-        if (isAutoral) {
-          const dataHoje = new Date().toISOString().split("T")[0];
-          const linhasParticipantes = participantes
-            .filter((p) => p.nome || p.classeFuncao)
-            .map((p) => {
-              const partes = [p.nome, p.classeFuncao, p.percentual ? `${p.percentual}%` : ""].filter(Boolean);
-              return partes.join(" – ");
-            });
-
-          const obsLinhas = [
-            `Obra: ${tituloObra}`,
-            iswc ? `ISWC: ${iswc}` : null,
-            `Data de criação: ${dataHoje}`,
-            linhasParticipantes.length > 0 ? "" : null,
-            linhasParticipantes.length > 0 ? "Participantes:" : null,
-            ...linhasParticipantes,
-          ].filter((l) => l !== null);
-
-          await addContrato.mutateAsync({
-            titulo: `Cessão de Obras – ${tituloObra}`,
-            tipo: "cessao",
-            status: "rascunho",
-            data_inicio: dataHoje,
-            observacoes: obsLinhas.join("\n"),
-          } as any);
-
-          toast.success("Contrato de Cessão de Obras gerado automaticamente.");
-        }
       }
+
       onOpenChange(false);
+
+      // Abre modal de contrato pré-preenchido após fechar o modal de obra
+      const dataHoje = new Date().toISOString().split("T")[0];
+      const linhasParticipantes = participantes
+        .filter((p) => p.nome || p.classeFuncao)
+        .map((p) => {
+          const partes = [p.nome, p.classeFuncao, p.percentual ? `${p.percentual}%` : ""].filter(Boolean);
+          return partes.join(" – ");
+        });
+      const obsLinhas: string[] = [
+        `Obra: ${tituloObra}`,
+        iswc ? `ISWC: ${iswc}` : null,
+        generoMusical ? `Gênero: ${generoMusical}` : null,
+        `Data: ${dataHoje}`,
+        linhasParticipantes.length > 0 ? "" : null,
+        linhasParticipantes.length > 0 ? "Participantes:" : null,
+        ...linhasParticipantes,
+      ].filter((l): l is string => l !== null);
+
+      onSaved?.({
+        titulo: `Cessão de Obras – ${tituloObra}`,
+        observacoes: obsLinhas.join("\n"),
+      });
     } catch {
       // Erros já são exibidos via toast pelo hook useDataQuery.
     }
