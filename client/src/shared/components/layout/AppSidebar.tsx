@@ -42,6 +42,7 @@ import {
   Building2,
   ChevronsUpDown,
   CheckCircle2,
+  Activity,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -65,7 +66,8 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard",    href: "/",          icon: LayoutDashboard },
+  { title: "Dashboard",    href: "/",           icon: LayoutDashboard },
+  { title: "Operacional",  href: "/operacional", icon: Activity },
   { title: "Artistas",     href: "/artistas",  icon: Users },
   { title: "Projetos",     href: "/projetos",  icon: FolderKanban },
   {
