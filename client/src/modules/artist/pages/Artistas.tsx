@@ -98,6 +98,7 @@ export default function Artistas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
   const [generoFilter, setGeneroFilter] = useState<string>("todos");
+  const [perfilFilter, setPerfilFilter] = useState<string>("todos");
 
   const [createModal, setCreateModal] = useState(false);
   const [editModal, setEditModal] = useState<{ open: boolean; artista?: Artista }>({ open: false });
@@ -117,6 +118,13 @@ export default function Artistas() {
     return ([...new Set(generos)] as string[]).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [todosArtistas]);
 
+  const PERFIL_LABELS: Record<string, string> = {
+    independente: "Independente",
+    gravadora: "Gravadora",
+    editora: "Editora",
+    com_empresario: "Com Empresário",
+  };
+
   const artistasFiltrados = useMemo(() => {
     return todosArtistas.filter((artista) => {
       const matchesSearch =
@@ -135,9 +143,11 @@ export default function Artistas() {
         (statusFilter === "parceiro" && !isExclusivo) ||
         (statusFilter === "onboarding" && artista.status === "onboarding");
       const matchesGenero = generoFilter === "todos" || artista.genero_musical === generoFilter;
-      return matchesSearch && matchesStatus && matchesGenero;
+      const tp = (artista.tipo_perfil as string | null | undefined) || "independente";
+      const matchesPerfil = perfilFilter === "todos" || tp === perfilFilter;
+      return matchesSearch && matchesStatus && matchesGenero && matchesPerfil;
     }).sort((a, b) => a.nome_artistico.localeCompare(b.nome_artistico, "pt-BR", { sensitivity: "base" }));
-  }, [todosArtistas, searchTerm, statusFilter, generoFilter, contratosPorArtista]);
+  }, [todosArtistas, searchTerm, statusFilter, generoFilter, perfilFilter, contratosPorArtista]);
 
   const handleDelete = () => {
     if (deleteModal.artista) {
@@ -198,10 +208,11 @@ export default function Artistas() {
   const clearFilters = () => {
     setSearchTerm("");
     setStatusFilter("todos");
+    setPerfilFilter("todos");
     setGeneroFilter("todos");
   };
 
-  const hasActiveFilters = searchTerm !== "" || statusFilter !== "todos" || generoFilter !== "todos";
+  const hasActiveFilters = searchTerm !== "" || statusFilter !== "todos" || generoFilter !== "todos" || perfilFilter !== "todos";
 
   const getInitials = (nome: string) =>
     nome.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase();
@@ -353,6 +364,17 @@ export default function Artistas() {
               <SelectItem value="todos">Todos Gêneros</SelectItem>
               {generosUnicos.map((g) => (
                 <SelectItem key={g} value={g}>{g}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={perfilFilter} onValueChange={setPerfilFilter}>
+            <SelectTrigger className="w-[170px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Todos os Perfis" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos os Perfis</SelectItem>
+              {Object.entries(PERFIL_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
               ))}
             </SelectContent>
           </Select>
