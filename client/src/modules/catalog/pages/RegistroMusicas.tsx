@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -56,6 +56,7 @@ const statusObraLabel = (s: string): string => {
 
 
 export default function RegistroMusicas() {
+  const navigate = useNavigate();
   const { obras, isLoading: loadingObras, deleteObra, addObra } = useObras();
   const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, addFonograma, updateFonograma, bulkUpdateObraId } = useFonogramas();
   const { projetos: allProjetos } = useProjetos();
@@ -903,6 +904,14 @@ export default function RegistroMusicas() {
                               <Pencil className="h-4 w-4 mr-2" />
                               Editar
                             </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={fonograma.status === "analise"}
+                              title={fonograma.status === "analise" ? "Fonograma em análise — aguarde a conclusão antes de criar um lançamento" : undefined}
+                              onClick={() => navigate("/lancamentos")}
+                            >
+                              <Upload className="h-4 w-4 mr-2" />
+                              Fazer Lançamento
+                            </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => setDeleteModal({ open: true, item: fonograma, type: "fonograma" })}
                               className="text-destructive"
@@ -1039,6 +1048,17 @@ export default function RegistroMusicas() {
                             <DropdownMenuItem onClick={() => setObraModal({ open: true, mode: "edit", obra })}>
                               <Pencil className="h-4 w-4 mr-2" />
                               Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              disabled={obra.status === "analise"}
+                              title={obra.status === "analise" ? "Obra em análise — aguarde a conclusão antes de registrar um fonograma" : undefined}
+                              onClick={() => {
+                                setActiveTab("fonogramas");
+                                setFonogramaModal({ open: true, mode: "create", fonograma: { obra_id: obra.id } });
+                              }}
+                            >
+                              <Disc className="h-4 w-4 mr-2" />
+                              Registrar Fonograma
                             </DropdownMenuItem>
                             <DropdownMenuItem 
                               onClick={() => setDeleteModal({ open: true, item: obra, type: "obra" })}
