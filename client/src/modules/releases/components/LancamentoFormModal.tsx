@@ -1,4 +1,6 @@
 import { useState, useEffect } from "react";
+import { format, parseISO, isValid } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -7,8 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
+import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
+import { Calendar } from "@/shared/ui/calendar";
 import { toast } from "sonner";
-import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
+import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2, CalendarIcon } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -31,6 +35,57 @@ const FieldError = ({ error }: { error?: string }) => {
     </p>
   );
 };
+
+// DatePickerField — replaces native <input type="date"> with system-themed Calendar
+function DatePickerField({
+  value,
+  onChange,
+  disabled,
+  placeholder = "Selecione uma data",
+}: {
+  value: string;
+  onChange: (iso: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const parsed = value ? parseISO(value) : undefined;
+  const selected = parsed && isValid(parsed) ? parsed : undefined;
+  return (
+    <Popover open={open && !disabled} onOpenChange={disabled ? undefined : setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          disabled={disabled}
+          className="w-full justify-start text-left font-normal bg-background border-border text-sm h-9"
+          data-testid="datepicker-trigger"
+        >
+          <CalendarIcon className="mr-2 h-4 w-4 text-muted-foreground shrink-0" />
+          {selected ? (
+            <span>{format(selected, "dd/MM/yyyy", { locale: ptBR })}</span>
+          ) : (
+            <span className="text-muted-foreground">{placeholder}</span>
+          )}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={selected}
+          onSelect={(date) => {
+            if (date) {
+              onChange(format(date, "yyyy-MM-dd"));
+              setOpen(false);
+            }
+          }}
+          initialFocus
+          locale={ptBR}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 interface Faixa {
   id: number;
@@ -134,12 +189,16 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
     const projeto = projetos.find((p: any) => p.id === projetoId);
     if (!projeto) { setFormData(prev => ({ ...prev, projetoSeed: projetoId })); return; }
     const seed = projetoToLancamentoSeed(projeto as any);
+    // Fallback: if project has no genre, use the linked artista's genero_musical
+    const rawGenero = seed.genero?.trim()
+      || artistas.find((a: any) => a.id === (projeto as any).artista_id)?.genero_musical
+      || "";
     setFormData(prev => ({
       ...prev,
       projetoSeed: projetoId,
       titulo:     !prev.titulo.trim()     ? seed.titulo     ?? "" : prev.titulo,
       artista_id: !prev.artista_id.trim() ? seed.artista_id ?? "" : prev.artista_id,
-      genero:     !prev.genero.trim()     ? matchGenero(seed.genero ?? "") : prev.genero,
+      genero:     !prev.genero.trim()     ? matchGenero(rawGenero) : prev.genero,
       tipo:       !prev.tipo.trim()       ? seed.tipo ?? "" : prev.tipo,
     }));
     if ((projeto as any).descricao) {
@@ -420,9 +479,11 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                       <SelectValue placeholder="Selecione o gênero" />
                     </SelectTrigger>
                     <SelectContent>
-                      {GENERO_OPTS.map(g => (
-                        <SelectItem key={g} value={g}>{GENERO_LABELS[g] ?? g}</SelectItem>
-                      ))}
+                      {[...GENERO_OPTS]
+                        .sort((a, b) => (GENERO_LABELS[a] ?? a).localeCompare(GENERO_LABELS[b] ?? b, "pt-BR"))
+                        .map(g => (
+                          <SelectItem key={g} value={g}>{GENERO_LABELS[g] ?? g}</SelectItem>
+                        ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -441,12 +502,11 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                 </div>
                 <div className="space-y-2">
                   <Label>Data de Lançamento</Label>
-                  <Input
-                    type="date"
+                  <DatePickerField
                     value={formData.dataLancamento}
-                    onChange={(e) => setFormData({ ...formData, dataLancamento: e.target.value })}
-                    placeholder="DD/MM/AAAA"
+                    onChange={(iso) => setFormData({ ...formData, dataLancamento: iso })}
                     disabled={isViewMode}
+                    placeholder="Selecione a data de lançamento"
                   />
                 </div>
                 <div className="space-y-2">
