@@ -18,9 +18,11 @@ interface ParticipanteViewModalProps {
 const formatDateBR = (d?: string | null) => {
   if (!d) return "";
   try {
-    const date = new Date(d + "T12:00:00");
-    if (Number.isNaN(date.getTime())) return d;
-    return date.toLocaleDateString("pt-BR");
+    // Pega só a parte YYYY-MM-DD para evitar problemas de timezone
+    const datePart = d.split("T")[0];
+    const [year, month, day] = datePart.split("-");
+    if (!year || !month || !day) return d;
+    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
   } catch {
     return d;
   }
