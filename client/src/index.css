@@ -77,6 +77,18 @@
     --category-service: 217 91% 60%;
     --category-audio: 217 91% 60%;
     --category-video: 271 91% 65%;
+
+    /* Surface hierarchy — layered elevation */
+    --surface-1: 0 0% 100%;
+    --surface-2: 0 0% 99%;
+    --surface-3: 0 0% 97%;
+
+    /* Shadow scale — enterprise: subtle, directional, no color */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
   }
 
   .dark {
@@ -149,6 +161,18 @@
     --category-audio: 217 91% 60%;
     --category-video: 271 91% 65%;
 
+    /* Surface hierarchy — dark mode layering */
+    --surface-1: 222 47% 8%;
+    --surface-2: 222 47% 10%;
+    --surface-3: 222 47% 13%;
+
+    /* Shadow scale — dark mode: stronger, deeper */
+    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.25);
+    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.35), 0 1px 2px -1px rgb(0 0 0 / 0.25);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.40), 0 2px 4px -2px rgb(0 0 0 / 0.30);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.45), 0 4px 6px -4px rgb(0 0 0 / 0.30);
+    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.50), 0 8px 10px -6px rgb(0 0 0 / 0.35);
+
     --radius: 0.75rem;
   }
 }
@@ -206,13 +230,10 @@
     @apply transition-transform duration-200 hover:scale-[1.02];
   }
 
-  .hover-glow {
-    @apply transition-shadow duration-200 hover:shadow-[0_0_20px_hsl(217_91%_60%/0.3)];
-  }
-
-  /* Card hover effects */
+  /* Enterprise card hover — subtle border + shadow, no color glow */
   .card-interactive {
-    @apply transition-all duration-200 hover:border-primary/30 hover:shadow-md;
+    @apply transition-[border-color,box-shadow] duration-200
+           hover:border-primary/25 hover:shadow-md;
   }
 
   /* Gradient text */
@@ -243,6 +264,29 @@
   .stagger-3 { animation-delay: 150ms; }
   .stagger-4 { animation-delay: 200ms; }
   .stagger-5 { animation-delay: 250ms; }
+
+  /* Enterprise shadow utilities — map to CSS var shadow scale */
+  .shadow-xs  { box-shadow: var(--shadow-xs); }
+  .shadow-sm  { box-shadow: var(--shadow-sm); }
+  .shadow-md  { box-shadow: var(--shadow-md); }
+  .shadow-lg  { box-shadow: var(--shadow-lg); }
+  .shadow-xl  { box-shadow: var(--shadow-xl); }
+
+  /* Surface utilities */
+  .bg-surface-1 { background-color: hsl(var(--surface-1)); }
+  .bg-surface-2 { background-color: hsl(var(--surface-2)); }
+  .bg-surface-3 { background-color: hsl(var(--surface-3)); }
+
+  /* Row hover — tables, lists */
+  .row-interactive {
+    @apply transition-colors duration-150 hover:bg-muted/50;
+  }
+
+  /* Icon button hover */
+  .icon-button {
+    @apply rounded-md transition-colors duration-150
+           hover:bg-muted/60 active:bg-muted;
+  }
 }
 
 /* Focus ring for interactive elements */

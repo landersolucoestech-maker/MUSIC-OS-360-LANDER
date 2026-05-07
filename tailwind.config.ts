@@ -93,7 +93,23 @@ export default {
                                 service: 'hsl(var(--category-service))',
                                 audio: 'hsl(var(--category-audio))',
                                 video: 'hsl(var(--category-video))'
+                        },
+                        surface: {
+                                '1': 'hsl(var(--surface-1))',
+                                '2': 'hsl(var(--surface-2))',
+                                '3': 'hsl(var(--surface-3))',
                         }
+                },
+                boxShadow: {
+                        xs:  'var(--shadow-xs)',
+                        sm:  'var(--shadow-sm)',
+                        md:  'var(--shadow-md)',
+                        lg:  'var(--shadow-lg)',
+                        xl:  'var(--shadow-xl)',
+                        'elevation-1': 'var(--shadow-sm)',
+                        'elevation-2': 'var(--shadow-md)',
+                        'elevation-3': 'var(--shadow-lg)',
+                        'elevation-4': 'var(--shadow-xl)',
                 },
                 borderRadius: {
                         lg: 'var(--radius)',
