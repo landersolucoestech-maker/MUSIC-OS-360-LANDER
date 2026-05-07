@@ -465,7 +465,6 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
             >
               Perfil
             </TabsTrigger>
-            
             <TabsTrigger
               value="relacionamentos"
               className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
