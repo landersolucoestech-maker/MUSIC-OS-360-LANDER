@@ -34,7 +34,7 @@ import { DataTable } from "@/shared/components/DataTable";
 import { Badge } from "@/shared/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { parseTipoOperacao, type TipoOperacaoNF } from "@/shared/lib/nota-fiscal-tipo";
+import { parseTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
 
 type TipoFilter = "all" | TipoOperacaoNF;
 

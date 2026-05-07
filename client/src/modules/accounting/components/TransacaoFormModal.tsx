@@ -44,7 +44,7 @@ import {
   receitasMusicaisComArtistaEProjeto,
   servicosReceitaComArtistaEProjeto,
   servicosReceitaComArtista,
-} from "@/shared/lib/transacao-constants";
+} from "@/modules/accounting/lib/transacao-constants";
 import { transacaoToFormFields } from "@/modules/accounting/mappers";
 
 interface TransacaoFormModalProps {

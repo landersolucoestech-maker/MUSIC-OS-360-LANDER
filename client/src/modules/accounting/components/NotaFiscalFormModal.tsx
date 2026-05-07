@@ -19,7 +19,7 @@ import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings"
 import { useStorage } from "@/modules/integrations/hooks/useStorage";
 import { Badge } from "@/shared/ui/badge";
 import { isValidCpfCnpj, isValidCEP, isValidEmail, formatCpfCnpj, formatCEP, onlyDigits } from "@/shared/lib/br-validators";
-import { parseTipoOperacao, serializeTipoOperacao, type TipoOperacaoNF } from "@/shared/lib/nota-fiscal-tipo";
+import { parseTipoOperacao, serializeTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
 
 interface NotaFiscalFormModalProps {
   open: boolean;

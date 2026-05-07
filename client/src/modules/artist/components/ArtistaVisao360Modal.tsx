@@ -63,7 +63,7 @@ import {
   Link2,
 } from "lucide-react";
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
-import { PlatformMiniTrend } from "@/shared/components/PlatformMiniTrend";
+import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
 import { useSpotifyEvolution } from "@/modules/integrations/hooks/useSpotify";
 import { useYouTubeEvolution } from "@/modules/integrations/hooks/useYouTube";

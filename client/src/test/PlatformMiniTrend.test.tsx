@@ -9,7 +9,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 
-import { PlatformMiniTrend } from "@/shared/components/PlatformMiniTrend";
+import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
 
 function point(date: string, followers: number | null): MetricEvolutionPoint {

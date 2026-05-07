@@ -17,7 +17,7 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { X, Plus, Save } from "lucide-react";
-import { TemplateContrato } from "@/shared/lib/template-contrato-types";
+import { TemplateContrato } from "@/modules/contracts/lib/template-contrato-types";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";

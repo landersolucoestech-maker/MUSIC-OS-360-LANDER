@@ -4,7 +4,7 @@ import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Separator } from "@/shared/ui/separator";
 import { Printer, Download, Copy } from "lucide-react";
-import { TemplateContrato } from "@/shared/lib/template-contrato-types";
+import { TemplateContrato } from "@/modules/contracts/lib/template-contrato-types";
 import { toast } from "sonner";
 interface TemplateContratoViewModalProps {
   open: boolean;

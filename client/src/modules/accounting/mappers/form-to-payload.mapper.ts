@@ -3,7 +3,7 @@
  * Form field values → DB/API payload. Source of truth for Transacao persistence.
  */
 
-import type { TransacaoFormData } from "@/shared/lib/transacao-constants";
+import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
 
 export function formToTransacaoPayload(f: TransacaoFormData): Record<string, unknown> {
   const str = (v: string): string | null => v.trim() || null;

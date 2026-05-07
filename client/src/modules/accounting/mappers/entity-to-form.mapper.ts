@@ -3,8 +3,8 @@
  * Entity → form field values. Source of truth for Transacao hydration.
  */
 
-import { initialFormData } from "@/shared/lib/transacao-constants";
-import type { TransacaoFormData } from "@/shared/lib/transacao-constants";
+import { initialFormData } from "@/modules/accounting/lib/transacao-constants";
+import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
 
 export function transacaoToFormFields(t: Record<string, unknown> | null | undefined): TransacaoFormData {
   if (!t) return { ...initialFormData };

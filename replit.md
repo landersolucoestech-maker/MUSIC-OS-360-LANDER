@@ -12,9 +12,27 @@ MUSIC OS 360 is an enterprise music management SaaS that centralizes every aspec
 
 ## Where things live
 - `client/src/modules/` — domain modules: `artist`, `catalog`, `contracts`, `crm`, `events`, `accounting`, `inventory`, `leads`, `licensing`, `marketing`, `monitoring`, `projects`, `releases`, `rh`, `settings`
-- `client/src/shared/` — shared hooks, components, lib, data (MOCK_DATA)
+- `client/src/shared/` — shared layer (cross-domain only):
+  - `shared/ui/` — shadcn/Radix UI primitives
+  - `shared/components/` — genuinely cross-domain components (MainLayout, PageHeader, ContratoStatusBadge, AIGenerateButton, FinanceChart, DataTable, etc.)
+  - `shared/infrastructure/` — app-level infra: ErrorBoundary, ErrorFallback, RouteErrorBoundary, RealtimeLayer, AdminRoute + `index.ts` barrel
+  - `shared/layouts/` — barrel re-exporting MainLayout + PageHeader (`index.ts`)
+  - `shared/providers/` — barrel re-exporting AuthProvider, TenantProvider, hooks (`index.ts`)
+  - `shared/config/` — barrel re-exporting queryClient, CACHE_TIMES (`index.ts`)
+  - `shared/hooks/` — cross-domain React hooks
+  - `shared/lib/` — cross-domain utilities (utils.ts, normalize.ts, tenant-isolation.ts, etc.)
+  - `shared/design-system/` — design tokens and patterns
+  - `shared/types/` — shared TypeScript types
+  - `shared/data/mockData.ts` — standalone mock data
 - `client/src/app/routes/` — modular route factories (one file per domain group)
 - `client/src/shared/data/mockData.ts` — standalone mock data (localStorage key: `musicos360_mock_data`)
+- **Module-owned lib files** (domain-specific, NOT in shared):
+  - `modules/accounting/lib/nota-fiscal-tipo.ts` — NF tipo operação helpers
+  - `modules/accounting/lib/transacao-constants.ts` — transaction form constants/types
+  - `modules/contracts/lib/template-contrato-types.ts` — TemplateContrato interface
+  - `modules/crm/lib/contato-types.ts` — contact categories and subcategories
+  - `modules/artist/components/PlatformMiniTrend.tsx` — sparkline badge (artist/monitoring only)
+  - `modules/settings/components/IntegrationStatusBadges.tsx` — integration status UI
 
 ## Architecture decisions
 - Frontend operates in **standalone mode** (MOCK_DATA + localStorage) — no backend dependency

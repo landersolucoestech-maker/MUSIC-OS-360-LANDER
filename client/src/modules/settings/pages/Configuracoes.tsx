@@ -42,7 +42,7 @@ import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique"
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
-} from "@/shared/components/IntegrationStatusBadges";
+} from "@/modules/settings/components/IntegrationStatusBadges";
 import {
   AlertDialog,
   AlertDialogAction,

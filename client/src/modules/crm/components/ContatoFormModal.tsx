@@ -28,7 +28,7 @@ import {
   SUBCATEGORIAS_POR_CATEGORIA,
   Contato,
   CategoriaContato,
-} from "@/shared/lib/contato-types";
+} from "@/modules/crm/lib/contato-types";
 
 // FieldError component padronizado
 const FieldError = ({ error }: { error?: string }) => {

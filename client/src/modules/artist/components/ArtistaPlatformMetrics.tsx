@@ -43,7 +43,7 @@ import {
   useSoundCloudEvolution,
   useSoundCloudUser,
 } from "@/modules/integrations/hooks/useSoundCloud";
-import { PlatformMiniTrend } from "@/shared/components/PlatformMiniTrend";
+import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 
 interface ArtistaPlatformMetricsProps {
   artistaId: string;
