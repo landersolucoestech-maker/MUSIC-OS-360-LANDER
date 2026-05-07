@@ -709,6 +709,18 @@ export default function RegistroMusicas() {
               </SelectContent>
             </Select>
           )}
+          {activeTab === "fonogramas" && (
+            <Select value={obraVinculadaFilter} onValueChange={setObraVinculadaFilter} data-testid="select-filter-obra-vinculada">
+              <SelectTrigger className="w-[200px] bg-card border-border" data-testid="trigger-filter-obra-vinculada">
+                <SelectValue placeholder="Todas as Obras" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-obras">Todas as Obras</SelectItem>
+                <SelectItem value="sem-obra">Sem obra vinculada</SelectItem>
+                <SelectItem value="com-obra">Com obra vinculada</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-[160px] bg-card border-border">
               <SelectValue placeholder="Todos Status" />
@@ -733,18 +745,6 @@ export default function RegistroMusicas() {
               ))}
             </SelectContent>
           </Select>
-          {activeTab === "fonogramas" && (
-            <Select value={obraVinculadaFilter} onValueChange={setObraVinculadaFilter} data-testid="select-filter-obra-vinculada">
-              <SelectTrigger className="w-[200px] bg-card border-border" data-testid="trigger-filter-obra-vinculada">
-                <SelectValue placeholder="Todas as Obras" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all-obras">Todas as Obras</SelectItem>
-                <SelectItem value="sem-obra">Sem obra vinculada</SelectItem>
-                <SelectItem value="com-obra">Com obra vinculada</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
           {(searchTerm !== "" || statusFilter !== "all-status" || genreFilter !== "all-genre" || projetoFilter !== "all-projetos" || obraVinculadaFilter !== "all-obras") && (
             <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all-status"); setGenreFilter("all-genre"); setProjetoFilter("all-projetos"); setObraVinculadaFilter("all-obras"); }} data-testid="button-limpar-filtros">
               Limpar
