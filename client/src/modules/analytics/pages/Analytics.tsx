@@ -30,26 +30,26 @@ interface Platform {
 }
 
 const PLATFORMS: Platform[] = [
-  { id: "overview",  label: "Visão Geral", icon: BarChart2,   color: "text-primary",   bg: "bg-primary/10" },
+  { id: "overview",  label: "Visão Geral", icon: BarChart2,   color: "text-primary",            bg: "bg-primary/10" },
   {
-    id: "youtube",   label: "YouTube",     icon: SiYoutube,   color: "text-[#FF0000]", bg: "bg-[#FF0000]/10",
-    brandStyle: { background: "#FF0000" },
+    id: "youtube",   label: "YouTube",     icon: SiYoutube,   color: "text-primary",            bg: "bg-primary/10",
+    brandStyle: { background: "linear-gradient(135deg, hsl(217 91% 52%) 0%, hsl(217 91% 40%) 100%)" },
   },
   {
-    id: "tiktok",    label: "TikTok",      icon: SiTiktok,    color: "text-white",     bg: "bg-foreground/10",
-    brandStyle: { background: "linear-gradient(135deg, #010101 0%, #2d2d2d 100%)" },
+    id: "tiktok",    label: "TikTok",      icon: SiTiktok,    color: "text-[hsl(271,91%,65%)]", bg: "bg-[hsl(271,91%,65%)]/10",
+    brandStyle: { background: "linear-gradient(135deg, hsl(271 91% 55%) 0%, hsl(271 91% 40%) 100%)" },
   },
   {
-    id: "instagram", label: "Instagram",   icon: SiInstagram, color: "text-[#E1306C]", bg: "bg-[#E1306C]/10",
-    brandStyle: { background: "linear-gradient(135deg, #833AB4 0%, #FD1D1D 50%, #FCB045 100%)" },
+    id: "instagram", label: "Instagram",   icon: SiInstagram, color: "text-warning",            bg: "bg-warning/10",
+    brandStyle: { background: "linear-gradient(135deg, hsl(38 92% 44%) 0%, hsl(25 95% 46%) 100%)" },
   },
   {
-    id: "meta",      label: "Meta Ads",    icon: SiMeta,      color: "text-[#0082FB]", bg: "bg-[#0082FB]/10",
-    brandStyle: { background: "linear-gradient(135deg, #1877F2 0%, #0082FB 100%)" },
+    id: "meta",      label: "Meta Ads",    icon: SiMeta,      color: "text-primary",            bg: "bg-primary/10",
+    brandStyle: { background: "linear-gradient(135deg, hsl(222 47% 28%) 0%, hsl(217 91% 35%) 100%)" },
   },
   {
-    id: "google",    label: "Google Ads",  icon: SiGoogleads, color: "text-[#4285F4]", bg: "bg-[#4285F4]/10",
-    brandStyle: { background: "linear-gradient(135deg, #4285F4 0%, #34A853 100%)" },
+    id: "google",    label: "Google Ads",  icon: SiGoogleads, color: "text-success",            bg: "bg-success/10",
+    brandStyle: { background: "linear-gradient(135deg, hsl(142 76% 30%) 0%, hsl(142 76% 22%) 100%)" },
   },
 ];
 
