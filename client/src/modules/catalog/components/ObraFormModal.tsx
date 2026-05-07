@@ -683,7 +683,12 @@ export function ObraFormModal({
                             });
                             // Auto-fill fields from project registration
                             if (!tituloObra && p.titulo) setTituloObra(p.titulo as string);
-                            if (p.genero) setGeneroMusical((p.genero as string).toLowerCase());
+                            if (p.genero) {
+                              const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                              const generoRaw = p.genero as string;
+                              const matched = generosMusicais.find(g => norm(g) === norm(generoRaw));
+                              setGeneroMusical(matched ? matched.toLowerCase() : generoRaw.toLowerCase());
+                            }
                             if (pArtistaNomeDisplay && participantes.length === 0) {
                               setParticipantes([{
                                 id: crypto.randomUUID(),

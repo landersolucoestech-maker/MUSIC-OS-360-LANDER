@@ -755,9 +755,39 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                           obrasRegistradasFiltradas.map((obra) => {
                             const selectObra = () => {
                               setObraVinculada(obra);
-                              // Auto-fill fields from obra/project registration
+                              // Auto-fill título if blank
                               if (!titulo && obra.title) setTitulo(obra.title);
-                              if (obra.genero) setGeneroMusical(obra.genero.toLowerCase());
+                              // Normalize genre: match against Select options (accent+case insensitive)
+                              if (obra.genero) {
+                                const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+                                const matched = generosMusicais.find(g => norm(g) === norm(obra.genero));
+                                setGeneroMusical(matched ? matched.toLowerCase() : obra.genero.toLowerCase());
+                              }
+                              // Fill participação from full obra data
+                              const fullObra = obras.find((o: ObraWithRelations) => o.id === obra.id);
+                              if (fullObra) {
+                                const compositoresStr = Array.isArray(fullObra.compositores)
+                                  ? (fullObra.compositores as string[]).join(", ")
+                                  : typeof fullObra.compositores === "string"
+                                  ? fullObra.compositores
+                                  : typeof fullObra.compositor === "string"
+                                  ? fullObra.compositor
+                                  : "";
+                                const produtores: Participante[] = compositoresStr
+                                  .split(",")
+                                  .map((s: string) => s.trim())
+                                  .filter(Boolean)
+                                  .map((nome: string) => ({ id: crypto.randomUUID(), nome, percentual: "" }));
+                                const artistaNome = fullObra.artistas?.nome_artistico as string | undefined;
+                                const interpretes: Participante[] = artistaNome
+                                  ? [{ id: crypto.randomUUID(), nome: artistaNome, percentual: "", artista_id: fullObra.artistas?.id as string | undefined }]
+                                  : [];
+                                setParticipacao(prev => ({
+                                  ...prev,
+                                  produtorFonografico: prev.produtorFonografico.length === 0 ? produtores : prev.produtorFonografico,
+                                  interprete: prev.interprete.length === 0 ? interpretes : prev.interprete,
+                                }));
+                              }
                               setBuscaObra("");
                               setBuscaOpen(false);
                               toast.success(`Obra "${obra.title}" vinculada! Campos preenchidos automaticamente.`);
