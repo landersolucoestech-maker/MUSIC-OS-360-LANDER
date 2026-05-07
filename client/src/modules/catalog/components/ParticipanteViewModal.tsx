@@ -22,7 +22,7 @@ const formatDateBR = (d?: string | null) => {
     const datePart = d.split("T")[0];
     const [year, month, day] = datePart.split("-");
     if (!year || !month || !day) return d;
-    return `${day.padStart(2, "0")}/${month.padStart(2, "0")}/${year}`;
+    return `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
   } catch {
     return d;
   }
