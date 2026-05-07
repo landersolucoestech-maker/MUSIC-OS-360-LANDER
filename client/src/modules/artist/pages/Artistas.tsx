@@ -529,7 +529,7 @@ export default function Artistas() {
                                   if (tp === "com_empresario") {
                                     return (
                                       <>
-                                        <p className="font-medium text-foreground">Com Empresário</p>
+                                        <p className="font-medium text-foreground"><span className="text-muted-foreground font-normal">Artista:</span> Com Empresário</p>
                                         {artista.empresario_nome && (
                                           <p className="text-muted-foreground">{artista.empresario_nome}</p>
                                         )}
@@ -546,7 +546,7 @@ export default function Artistas() {
                                     const label = tp === "gravadora" ? "Gravadora" : "Editora";
                                     return (
                                       <>
-                                        <p className="font-medium text-foreground">{label}</p>
+                                        <p className="font-medium text-foreground"><span className="text-muted-foreground font-normal">Artista:</span> {label}</p>
                                         {artista.gravadora_nome && (
                                           <p className="text-muted-foreground">{artista.gravadora_nome}</p>
                                         )}
@@ -559,7 +559,7 @@ export default function Artistas() {
                                       </>
                                     );
                                   }
-                                  return <p className="font-medium text-foreground">Independente</p>;
+                                  return <p className="font-medium text-foreground"><span className="text-muted-foreground font-normal">Artista:</span> Independente</p>;
                                 })()}
                               </div>
 
