@@ -695,17 +695,6 @@ export default function RegistroMusicas() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border">
-              <SelectValue placeholder="Todos Status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all-status">Todos Status</SelectItem>
-              <SelectItem value="pendente">Pendente</SelectItem>
-              <SelectItem value="analise">Em Análise</SelectItem>
-              <SelectItem value="registrado">Registrado</SelectItem>
-            </SelectContent>
-          </Select>
           {activeTab === "obras" && projetosDisponiveis.length > 0 && (
             <Select value={projetoFilter} onValueChange={setProjetoFilter}>
               <SelectTrigger className="w-[180px] bg-card border-border" data-testid="select-filter-projeto">
@@ -720,6 +709,17 @@ export default function RegistroMusicas() {
               </SelectContent>
             </Select>
           )}
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[160px] bg-card border-border">
+              <SelectValue placeholder="Todos Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-status">Todos Status</SelectItem>
+              <SelectItem value="pendente">Pendente</SelectItem>
+              <SelectItem value="analise">Em Análise</SelectItem>
+              <SelectItem value="registrado">Registrado</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={genreFilter} onValueChange={setGenreFilter}>
             <SelectTrigger className="w-[160px] bg-card border-border">
               <SelectValue placeholder="Todos Gêneros" />
