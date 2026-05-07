@@ -773,7 +773,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                                   : typeof fullObra.compositor === "string"
                                   ? fullObra.compositor
                                   : "";
-                                const produtores: Participante[] = compositoresStr
+                                const musicosArr: Participante[] = compositoresStr
                                   .split(",")
                                   .map((s: string) => s.trim())
                                   .filter(Boolean)
@@ -784,8 +784,9 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                                   : [];
                                 setParticipacao(prev => ({
                                   ...prev,
-                                  produtorFonografico: prev.produtorFonografico.length === 0 ? produtores : prev.produtorFonografico,
+                                  // produtorFonografico: leave blank for manual fill
                                   interprete: prev.interprete.length === 0 ? interpretes : prev.interprete,
+                                  musicoAcompanhante: prev.musicoAcompanhante.length === 0 ? musicosArr : prev.musicoAcompanhante,
                                 }));
                               }
                               setBuscaObra("");
