@@ -681,10 +681,23 @@ export function ObraFormModal({
                               nome: pNomeDisplay,
                               artistaNome: pArtistaNomeDisplay || null,
                             });
+                            // Auto-fill fields from project registration
+                            if (!tituloObra && p.titulo) setTituloObra(p.titulo as string);
+                            if (p.genero) setGeneroMusical((p.genero as string).toLowerCase());
+                            if (pArtistaNomeDisplay && participantes.length === 0) {
+                              setParticipantes([{
+                                id: crypto.randomUUID(),
+                                nome: pArtistaNomeDisplay,
+                                classeFuncao: "compositor",
+                                link: "",
+                                percentual: "100",
+                                artista_id: (p.artista_id as string | null | undefined) ?? undefined,
+                              }]);
+                            }
                             setBuscaProjeto("");
                             setBuscaProjetoOpen(false);
                             toast.success(
-                              `Projeto "${pNomeDisplay}" vinculado!`,
+                              `Projeto "${pNomeDisplay}" vinculado! Campos preenchidos automaticamente.`,
                             );
                           };
                           return (

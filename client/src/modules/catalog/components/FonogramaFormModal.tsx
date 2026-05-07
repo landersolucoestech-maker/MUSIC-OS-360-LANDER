@@ -755,9 +755,12 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode }: Fono
                           obrasRegistradasFiltradas.map((obra) => {
                             const selectObra = () => {
                               setObraVinculada(obra);
+                              // Auto-fill fields from obra/project registration
+                              if (!titulo && obra.title) setTitulo(obra.title);
+                              if (obra.genero) setGeneroMusical(obra.genero.toLowerCase());
                               setBuscaObra("");
                               setBuscaOpen(false);
-                              toast.success(`Obra "${obra.title}" vinculada!`);
+                              toast.success(`Obra "${obra.title}" vinculada! Campos preenchidos automaticamente.`);
                             };
                             return (
                               <div
