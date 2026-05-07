@@ -8,10 +8,23 @@ export function formatCurrency(value: number | null | undefined): string {
   }).format(value);
 }
 
+function toDate(date: unknown): Date | null {
+  if (!date) return null;
+  if (date instanceof Date) return isNaN(date.getTime()) ? null : date;
+  if (typeof date === "string") {
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof date === "number") {
+    const d = new Date(date);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
 export function formatDate(date: string | Date | null | undefined): string {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "-";
+  const d = toDate(date);
+  if (!d) return "-";
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -20,9 +33,8 @@ export function formatDate(date: string | Date | null | undefined): string {
 }
 
 export function formatDateTime(date: string | Date | null | undefined): string {
-  if (!date) return "-";
-  const d = typeof date === "string" ? new Date(date) : date;
-  if (isNaN(d.getTime())) return "-";
+  const d = toDate(date);
+  if (!d) return "-";
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",

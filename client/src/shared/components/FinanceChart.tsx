@@ -2,9 +2,38 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { useTransacoes } from "@/modules/financeiro/hooks/useTransacoes";
-import { format, parseISO, startOfMonth, subMonths } from "date-fns";
+import { format, startOfMonth, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { formatCurrency } from "@/shared/lib/format-utils";
+
+function safeParseDate(val: unknown): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === "string") {
+    const d = new Date(val);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+}
+
+const CustomTooltip = ({ active, payload, label }: any) => {
+  if (active && payload && payload.length) {
+    return (
+      <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+        <p className="font-medium text-foreground mb-2">{label}</p>
+        {payload.map((entry: any) => (
+          <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
+            {entry.name === "receitas" && "Receitas: "}
+            {entry.name === "despesas" && "Despesas: "}
+            {entry.name === "lucro" && "Lucro: "}
+            {formatCurrency(entry.value)}
+          </p>
+        ))}
+      </div>
+    );
+  }
+  return null;
+};
 
 export function FinanceChart() {
   const { transacoes } = useTransacoes();
@@ -12,8 +41,7 @@ export function FinanceChart() {
   const chartData = useMemo(() => {
     const hoje = new Date();
     const meses: { month: Date; label: string }[] = [];
-    
-    // Get last 6 months
+
     for (let i = 5; i >= 0; i--) {
       const month = startOfMonth(subMonths(hoje, i));
       meses.push({
@@ -24,7 +52,8 @@ export function FinanceChart() {
 
     return meses.map(({ month, label }) => {
       const mesTransacoes = transacoes.filter(t => {
-        const dataTransacao = parseISO(t.data);
+        const dataTransacao = safeParseDate(t.data);
+        if (!dataTransacao) return false;
         return (
           dataTransacao.getMonth() === month.getMonth() &&
           dataTransacao.getFullYear() === month.getFullYear()
@@ -33,11 +62,11 @@ export function FinanceChart() {
 
       const receitas = mesTransacoes
         .filter(t => t.tipo === "receita")
-        .reduce((acc, t) => acc + t.valor, 0);
+        .reduce((acc, t) => acc + (t.valor || 0), 0);
 
       const despesas = mesTransacoes
         .filter(t => t.tipo === "despesa")
-        .reduce((acc, t) => acc + t.valor, 0);
+        .reduce((acc, t) => acc + (t.valor || 0), 0);
 
       return {
         name: label.charAt(0).toUpperCase() + label.slice(1),
@@ -47,25 +76,6 @@ export function FinanceChart() {
       };
     });
   }, [transacoes]);
-
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-          <p className="font-medium text-foreground mb-2">{label}</p>
-          {payload.map((entry: any) => (
-            <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
-              {entry.name === "receitas" && "Receitas: "}
-              {entry.name === "despesas" && "Despesas: "}
-              {entry.name === "lucro" && "Lucro: "}
-              {formatCurrency(entry.value)}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   return (
     <Card>
@@ -92,20 +102,20 @@ export function FinanceChart() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-              <XAxis 
-                dataKey="name" 
+              <XAxis
+                dataKey="name"
                 className="text-xs fill-muted-foreground"
                 tickLine={false}
                 axisLine={false}
               />
-              <YAxis 
+              <YAxis
                 className="text-xs fill-muted-foreground"
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(value) => `R$${(value / 1000).toFixed(0)}k`}
               />
               <Tooltip content={<CustomTooltip />} />
-              <Legend 
+              <Legend
                 wrapperStyle={{ paddingTop: "20px" }}
                 formatter={(value) => (
                   <span className="text-sm text-muted-foreground capitalize">{value}</span>
