@@ -71,6 +71,19 @@ import {
   useDeezerEvolution,
 } from "@/modules/integrations/hooks/useDeezer";
 
+const formatDateDMY = (d?: string | null): string => {
+  if (!d) return "Não informado";
+  if (/^\d{2}-\d{2}-\d{4}$/.test(d)) return d;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(d)) return d.replace(/\//g, "-");
+  const datePart = d.split("T")[0];
+  const parts = datePart.split("-");
+  if (parts.length === 3 && parts[0].length === 4) {
+    const [year, month, day] = parts;
+    return `${day.padStart(2, "0")}-${month.padStart(2, "0")}-${year}`;
+  }
+  return d;
+};
+
 const estagiosCarreira = [
   { nivel: 1, nome: "Iniciante", descricao: "Começando a carreira musical" },
   { nivel: 2, nome: "Emergente", descricao: "Construindo uma base de fãs" },
@@ -1062,7 +1075,7 @@ export function ArtistaVisao360Modal({
                         Data de Nascimento
                       </p>
                       <p className="text-sm font-medium">
-                        {artista.data_nascimento || "Não informado"}
+                        {formatDateDMY(artista.data_nascimento as string | null)}
                       </p>
                     </div>
                     <div>
