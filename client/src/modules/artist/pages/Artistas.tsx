@@ -385,7 +385,7 @@ export default function Artistas() {
             <SelectContent>
               <SelectItem value="todos">Todos Gêneros</SelectItem>
               {generosUnicos.map((g) => (
-                <SelectItem key={g} value={g}>{g}</SelectItem>
+                <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>
               ))}
             </SelectContent>
           </Select>
