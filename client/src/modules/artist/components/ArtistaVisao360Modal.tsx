@@ -165,6 +165,8 @@ const getHistoricoIcon = (tipo: string) => {
       return <DollarSign className="h-4 w-4" />;
     case "exclusao":
       return <Trash2 className="h-4 w-4" />;
+    case "status":
+      return <Zap className="h-4 w-4" />;
     default:
       return <Calendar className="h-4 w-4" />;
   }
@@ -184,6 +186,8 @@ const getHistoricoBadge = (tipo: string) => {
       return <Badge className="bg-emerald-600">Financeiro</Badge>;
     case "exclusao":
       return <Badge variant="destructive">Exclusão</Badge>;
+    case "status":
+      return <Badge className="bg-primary">Status</Badge>;
     default:
       return <Badge variant="secondary">Outro</Badge>;
   }
@@ -278,6 +282,18 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
   transacoesArtista.slice(0, 3).forEach((t) => {
     if (t.created_at) historicoReal.push({ id: `txn-${t.id}`, tipo: "financeiro", descricao: t.descricao, data: t.created_at, usuario: "Financeiro" });
   });
+  // Status-change events derivados do status atual do artista
+  const STATUS_LABELS: Record<string, string> = {
+    contratado: "Artista contratado",
+    em_negociacao: "Negociação iniciada",
+    onboarding: "Artista em processo de onboarding",
+    inativo: "Artista inativado",
+    suspenso: "Artista suspenso",
+  };
+  if (artista?.status && artista.status !== "contratado" && artista.updated_at) {
+    const label = STATUS_LABELS[artista.status] ?? `Status alterado para: ${artista.status}`;
+    historicoReal.push({ id: `status-${artista.status}`, tipo: "status", descricao: label, data: artista.updated_at, usuario: "Admin" });
+  }
   historicoReal.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
 
   // Tendência da evolução (Task #361): chips de "↑/↓/—" nos cards de
@@ -388,28 +404,47 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
-        {/* Header */}
-        <div className="p-6 pb-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shrink-0">
-                {artista.nome_artistico?.[0] || "A"}
-              </div>
-              <div>
-                <h2 className="text-xl font-bold">{artista.nome_artistico}</h2>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant="outline" className="bg-muted">
-                    {artista.genero_musical || "Não informado"}
-                  </Badge>
-                  {(() => {
-                    const ATIVO_S = new Set(["ativo", "assinado", "vigente", "vencendo"]);
-                    const isExclusivo = contratosReais.some(
-                      c => c.exclusivo === true && ATIVO_S.has((c.status || "").toLowerCase())
-                    );
-                    return isExclusivo
-                      ? <Badge className="bg-success hover:bg-success text-success-foreground">Artista exclusivo</Badge>
-                      : <Badge className="bg-primary hover:bg-primary text-primary-foreground">Artista parceiro</Badge>;
-                  })()}
+        {/* Header com Banner */}
+        <div className="border-b border-border">
+          {artista.banner_url && (
+            <div className="relative h-28 overflow-hidden">
+              <img
+                src={artista.banner_url}
+                alt="Banner do artista"
+                className="w-full h-full object-cover"
+                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
+            </div>
+          )}
+          <div className="p-6 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4">
+                <div className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}>
+                  {artista.foto_url ? (
+                    <img src={artista.foto_url} alt={artista.nome_artistico} className="w-full h-full rounded-full object-cover" />
+                  ) : (
+                    artista.nome_artistico?.[0] || "A"
+                  )}
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold">{artista.nome_artistico}</h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="bg-muted">
+                      {artista.genero_musical || "Não informado"}
+                    </Badge>
+                    {artista.status === "onboarding" ? (
+                      <Badge className="bg-warning text-warning-foreground">Onboarding</Badge>
+                    ) : (() => {
+                      const ATIVO_S = new Set(["ativo", "assinado", "vigente", "vencendo"]);
+                      const isExclusivo = contratosReais.some(
+                        c => c.exclusivo === true && ATIVO_S.has((c.status || "").toLowerCase())
+                      );
+                      return isExclusivo
+                        ? <Badge className="bg-success hover:bg-success text-success-foreground">Artista exclusivo</Badge>
+                        : <Badge className="bg-primary hover:bg-primary text-primary-foreground">Artista parceiro</Badge>;
+                    })()}
+                  </div>
                 </div>
               </div>
             </div>
@@ -1178,14 +1213,14 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
               </Card>
 
               {/* Links de documentos legados */}
-              {((artista as any).documentos_pessoais_url || (artista as any).presskit_url) && (
+              {(artista.documentos_pessoais_url || artista.presskit_url) && (
                 <Card className="bg-muted/30">
                   <CardContent className="p-4">
                     <h3 className="font-semibold mb-3">Arquivos Rápidos</h3>
                     <div className="space-y-2">
-                      {(artista as any).documentos_pessoais_url && (
+                      {artista.documentos_pessoais_url && (
                         <a
-                          href={(artista as any).documentos_pessoais_url}
+                          href={artista.documentos_pessoais_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded text-sm text-primary"
@@ -1195,9 +1230,9 @@ export function ArtistaVisao360Modal({ open, onOpenChange, artista }: ArtistaVis
                           <ExternalLink className="h-3 w-3 ml-auto" />
                         </a>
                       )}
-                      {(artista as any).presskit_url && (
+                      {artista.presskit_url && (
                         <a
-                          href={(artista as any).presskit_url}
+                          href={artista.presskit_url}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="flex items-center gap-2 p-2 hover:bg-muted/50 rounded text-sm text-primary"

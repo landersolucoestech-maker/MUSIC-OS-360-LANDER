@@ -139,6 +139,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [distribuidorasEmails, setDistribuidorasEmails] = useState<Record<string, string>>({});
 
   // ── 7. Mídias ─────────────────────────────────────────────────
+  const [bannerUrl, setBannerUrl] = useState("");
   const [galeriaUrls, setGaleriaUrls] = useState<string[]>([]);
   const [galeriaInput, setGaleriaInput] = useState("");
   const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
@@ -185,6 +186,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setDistribuidorasSelecionadas({}); setDistribuidorasEmails({});
     setContratoSelecionadoId("");
     setNotasInternas("");
+    setBannerUrl("");
     setGaleriaUrls([]); setGaleriaInput(""); setVideoApresentacaoUrl("");
     setManagerNome(""); setManagerContato(""); setProdutorExecutivo("");
     setAgenciaBooking(""); setLabelParceira("");
@@ -262,6 +264,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       }
       setContratoSelecionadoId(f.contratoId);
       // Perfil 360
+      setBannerUrl(typeof artista.banner_url === "string" ? artista.banner_url : "");
       setGaleriaUrls(Array.isArray(artista.galeria_urls) ? artista.galeria_urls : []);
       setVideoApresentacaoUrl(typeof artista.video_apresentacao_url === "string" ? artista.video_apresentacao_url : "");
       setManagerNome(typeof artista.manager_nome === "string" ? artista.manager_nome : "");
@@ -380,6 +383,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       });
 
       const extraFields = {
+        banner_url: bannerUrl.trim() || null,
         galeria_urls: galeriaUrls.length > 0 ? galeriaUrls : null,
         video_apresentacao_url: videoApresentacaoUrl.trim() || null,
         manager_nome: managerNome.trim() || null,
@@ -900,6 +904,27 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 <h3 className="text-lg font-semibold">Mídia</h3>
               </div>
               <Separator />
+
+              {/* Banner / Capa */}
+              <div className="space-y-2">
+                <Label>Banner / Capa (URL da imagem)</Label>
+                <Input
+                  placeholder="https://exemplo.com/banner-artista.jpg"
+                  value={bannerUrl}
+                  onChange={(e) => setBannerUrl(e.target.value)}
+                  data-testid="input-banner-url"
+                />
+                {bannerUrl && (
+                  <div className="mt-2 rounded-lg overflow-hidden h-24 bg-muted border border-border">
+                    <img
+                      src={bannerUrl}
+                      alt="Preview do banner"
+                      className="w-full h-full object-cover"
+                      onError={(e) => { (e.currentTarget as HTMLImageElement).style.opacity = "0.3"; }}
+                    />
+                  </div>
+                )}
+              </div>
 
               {/* Galeria de fotos */}
               <div className="space-y-2">

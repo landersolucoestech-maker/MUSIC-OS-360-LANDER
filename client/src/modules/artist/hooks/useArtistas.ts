@@ -72,6 +72,7 @@ export interface Artista {
   // notas internas (separado de observacoes/biografia)
   notas_internas?: string | null;
   // ── Campos Perfil 360 ─────────────────────────────────────────
+  banner_url?: string | null;
   galeria_urls?: string[] | null;
   video_apresentacao_url?: string | null;
   manager_nome?: string | null;
