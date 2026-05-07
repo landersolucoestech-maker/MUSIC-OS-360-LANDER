@@ -12,10 +12,13 @@ import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, Extern
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import {
   lancamentoToFormFields,
   emptyLancamentoFormFields,
   formToLancamentoPayload,
+  projetoToLancamentoSeed,
 } from "@/modules/releases/mappers";
 
 // FieldError component padronizado
@@ -48,12 +51,30 @@ interface LancamentoFormModalProps {
   mode: "create" | "edit" | "view";
 }
 
+// ── Genre normalization helpers ────────────────────────────────────────────
+const GENERO_OPTS = ["funk","pop","rock","sertanejo","trap","rap/hip-hop","pagode","forró","mpb","eletrônica","gospel","reggaeton","r&b","outro"];
+const normStr = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+const matchGenero = (raw: string) => {
+  if (!raw) return "";
+  const n = normStr(raw);
+  return GENERO_OPTS.find(g => normStr(g) === n) ?? raw.toLowerCase();
+};
+const splitNames = (s: string | null | undefined): string[] => {
+  if (!s) return [""];
+  const parts = s.split(",").map(x => x.trim()).filter(Boolean);
+  return parts.length > 0 ? parts : [""];
+};
+
 export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: LancamentoFormModalProps) {
   const { addLancamento, updateLancamento } = useLancamentos();
   const { projetos } = useProjetos();
   const { artistas } = useArtistas();
+  const { obras } = useObras();
+  const { fonogramas } = useFonogramas();
 
   const [formData, setFormData] = useState(emptyLancamentoFormFields);
+  const [selectedObraId, setSelectedObraId] = useState("");
+  const [selectedFonogramaId, setSelectedFonogramaId] = useState("");
 
   const [faixas, setFaixas] = useState<Faixa[]>([
     {
@@ -76,10 +97,101 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
   const [distribuicaoOpen, setDistribuicaoOpen] = useState(true);
   const [distribuidoraConectada, setDistribuidoraConectada] = useState(false);
 
+  // ── Auto-fill handlers ───────────────────────────────────────────────────
+
+  const handleSelectProjeto = (projetoId: string) => {
+    const projeto = projetos.find((p: any) => p.id === projetoId);
+    if (!projeto) { setFormData(prev => ({ ...prev, projetoSeed: projetoId })); return; }
+    const seed = projetoToLancamentoSeed(projeto as any);
+    setFormData(prev => ({
+      ...prev,
+      projetoSeed: projetoId,
+      titulo:     !prev.titulo.trim()     ? seed.titulo     ?? "" : prev.titulo,
+      artista_id: !prev.artista_id.trim() ? seed.artista_id ?? "" : prev.artista_id,
+      genero:     !prev.genero.trim()     ? matchGenero(seed.genero ?? "") : prev.genero,
+      tipo:       !prev.tipo.trim()       ? seed.tipo ?? "" : prev.tipo,
+    }));
+    if ((projeto as any).descricao) {
+      try {
+        const musicas = JSON.parse((projeto as any).descricao) as Array<{
+          nome?: string; compositores?: string[]; interpretes?: string[];
+          produtores?: string[]; isrc?: string; letra?: string;
+        }>;
+        if (musicas.length > 0) {
+          const artistaNome = (projeto as any).artista_id
+            ? artistas.find((a: any) => a.id === (projeto as any).artista_id)?.nome_artistico ?? ""
+            : "";
+          setFaixas(musicas.map((m, i) => ({
+            id: i + 1,
+            titulo: m.nome ?? "",
+            artista: artistaNome,
+            isrc: m.isrc ?? "",
+            compositores: m.compositores?.length ? m.compositores : [""],
+            interpretes:  m.interpretes?.length  ? m.interpretes  : [""],
+            produtores:   m.produtores?.length   ? m.produtores   : [""],
+            arquivoAudio: null,
+            letra: m.letra ?? "",
+          })));
+        }
+      } catch { /* invalid JSON */ }
+    }
+  };
+
+  const handleSelectObra = (obraId: string) => {
+    setSelectedObraId(obraId);
+    const obra = obras.find((o: any) => o.id === obraId);
+    if (!obra) return;
+    const compArr = splitNames(
+      Array.isArray(obra.compositores) ? (obra.compositores as string[]).join(", ")
+      : typeof obra.compositores === "string" ? obra.compositores
+      : (obra as any).compositor ?? ""
+    );
+    setFormData(prev => ({
+      ...prev,
+      titulo:     !prev.titulo.trim()     ? (obra as any).titulo ?? "" : prev.titulo,
+      genero:     !prev.genero.trim()     ? matchGenero((obra as any).genero ?? "") : prev.genero,
+      isrcGlobal: !prev.isrcGlobal.trim() ? (obra as any).isrc   ?? "" : prev.isrcGlobal,
+    }));
+    setFaixas(prev => prev.map((f, i) => i !== 0 ? f : {
+      ...f,
+      titulo:       !f.titulo.trim() ? (obra as any).titulo ?? "" : f.titulo,
+      isrc:         !f.isrc.trim()   ? (obra as any).isrc   ?? "" : f.isrc,
+      compositores: f.compositores.join("").trim() === "" ? compArr : f.compositores,
+    }));
+  };
+
+  const handleSelectFonograma = (fonogramaId: string) => {
+    setSelectedFonogramaId(fonogramaId);
+    const fono = fonogramas.find((f: any) => f.id === fonogramaId);
+    if (!fono) return;
+    const compArr  = splitNames((fono as any).compositores);
+    const interpArr = splitNames((fono as any).interpretes);
+    const prodArr  = splitNames((fono as any).produtores);
+    setFormData(prev => ({
+      ...prev,
+      artista_id:  !prev.artista_id.trim()  ? (fono as any).artista_id ?? "" : prev.artista_id,
+      gravadora:   !prev.gravadora.trim()   ? (fono as any).gravadora  ?? "" : prev.gravadora,
+      isrcGlobal:  !prev.isrcGlobal.trim()  ? (fono as any).isrc       ?? "" : prev.isrcGlobal,
+    }));
+    setFaixas(prev => prev.map((f, i) => i !== 0 ? f : {
+      ...f,
+      titulo:       !f.titulo.trim() ? (fono as any).titulo ?? "" : f.titulo,
+      isrc:         !f.isrc.trim()   ? (fono as any).isrc   ?? "" : f.isrc,
+      artista:      !f.artista.trim()
+        ? artistas.find((a: any) => a.id === (fono as any).artista_id)?.nome_artistico ?? f.artista
+        : f.artista,
+      compositores: f.compositores.join("").trim() === "" ? compArr  : f.compositores,
+      interpretes:  f.interpretes.join("").trim()  === "" ? interpArr : f.interpretes,
+      produtores:   f.produtores.join("").trim()   === "" ? prodArr  : f.produtores,
+    }));
+  };
+
   // Hydrate form from entity whenever modal opens or lancamento changes.
   useEffect(() => {
     if (!open) return;
     setFormData(lancamentoToFormFields(lancamento ?? null));
+    setSelectedObraId((lancamento as any)?.obra_id ?? "");
+    setSelectedFonogramaId((lancamento as any)?.fonograma_id ?? "");
     if (!lancamento) {
       setFaixas([{
         id: 1, titulo: "", artista: "", isrc: "",
@@ -182,21 +294,22 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Projeto Base */}
+          {/* Vinculações */}
           <Card className="bg-muted/30 border-border">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
                 <Folder className="h-5 w-5 text-muted-foreground" />
-                <CardTitle className="text-base">Projeto Base</CardTitle>
+                <CardTitle className="text-base">Vinculações</CardTitle>
               </div>
-              <CardDescription>Selecione um projeto para pré-carregar informações</CardDescription>
+              <CardDescription>Selecione projeto, obra e/ou fonograma para pré-carregar informações automaticamente</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+              {/* Projeto */}
               <div className="space-y-2">
-                <Label>Projeto (Opcional)</Label>
-                <Select value={formData.projetoSeed} onValueChange={(v) => setFormData({ ...formData, projetoSeed: v })} disabled={isViewMode}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um projeto" />
+                <Label>Projeto</Label>
+                <Select value={formData.projetoSeed} onValueChange={handleSelectProjeto} disabled={isViewMode}>
+                  <SelectTrigger data-testid="select-projeto-seed">
+                    <SelectValue placeholder="Selecione um projeto (preenche faixas e artista)" />
                   </SelectTrigger>
                   <SelectContent>
                     {projetos.length === 0 ? (
@@ -208,6 +321,53 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                     ))}
                   </SelectContent>
                 </Select>
+                {formData.projetoSeed && (
+                  <p className="text-xs text-muted-foreground">Faixas, artista e gênero preenchidos a partir do projeto.</p>
+                )}
+              </div>
+
+              {/* Obra */}
+              <div className="space-y-2">
+                <Label>Obra Musical</Label>
+                <Select value={selectedObraId} onValueChange={handleSelectObra} disabled={isViewMode}>
+                  <SelectTrigger data-testid="select-obra-vinculada">
+                    <SelectValue placeholder="Selecione uma obra (preenche título, gênero, ISRC)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {obras.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Nenhuma obra cadastrada</div>
+                    ) : obras.map((o: any) => (
+                      <SelectItem key={o.id} value={o.id}>
+                        {o.titulo} {o.compositor ? `— ${o.compositor}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedObraId && (
+                  <p className="text-xs text-muted-foreground">Título, gênero, ISRC e compositores da faixa 1 preenchidos.</p>
+                )}
+              </div>
+
+              {/* Fonograma */}
+              <div className="space-y-2">
+                <Label>Fonograma</Label>
+                <Select value={selectedFonogramaId} onValueChange={handleSelectFonograma} disabled={isViewMode}>
+                  <SelectTrigger data-testid="select-fonograma-vinculado">
+                    <SelectValue placeholder="Selecione um fonograma (preenche artista, gravadora, créditos)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {fonogramas.length === 0 ? (
+                      <div className="p-2 text-sm text-muted-foreground">Nenhum fonograma cadastrado</div>
+                    ) : fonogramas.map((f: any) => (
+                      <SelectItem key={f.id} value={f.id}>
+                        {f.titulo} {f.isrc ? `· ${f.isrc}` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedFonogramaId && (
+                  <p className="text-xs text-muted-foreground">Artista, gravadora, ISRC e créditos da faixa 1 preenchidos.</p>
+                )}
               </div>
             </CardContent>
           </Card>
