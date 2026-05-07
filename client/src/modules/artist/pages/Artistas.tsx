@@ -119,6 +119,23 @@ export default function Artistas() {
     return ([...new Set(generos)] as string[]).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [todosArtistas]);
 
+  const kpiArtistas = useMemo(() => {
+    const exclusivos = todosArtistas.filter((a) => {
+      const cs = contratosPorArtista.get(a.id);
+      return cs?.some((c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())) ?? false;
+    }).length;
+    const parceiros = todosArtistas.filter((a) => {
+      const cs = contratosPorArtista.get(a.id);
+      const isExclusivo = cs?.some((c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())) ?? false;
+      return !isExclusivo && (a as any).status !== "onboarding";
+    }).length;
+    const independentes = todosArtistas.filter((a) => {
+      const tp = ((a as any).tipo_perfil as string | null | undefined) || "independente";
+      return tp === "independente";
+    }).length;
+    return { exclusivos, parceiros, independentes };
+  }, [todosArtistas, contratosPorArtista, ATIVO_STATUSES_VINCULO]);
+
   const PERFIL_LABELS: Record<string, string> = {
     independente: "Independente",
     gravadora: "Gravadora",
@@ -297,40 +314,33 @@ export default function Artistas() {
     >
       <div className="space-y-6">
         {/* ── KPI Stats ── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
             title="Total de Artistas"
-            value={metricas.totalArtistas}
+            value={todosArtistas.length}
             description="no casting"
             icon={Users}
             accent="primary"
           />
           <MetricCard
-            title="Total de Shows"
-            value={metricas.totalShows}
-            description="shows vendidos"
-            icon={Music}
+            title="Artistas Exclusivos"
+            value={kpiArtistas.exclusivos}
+            description="contrato exclusivo ativo"
+            icon={Sparkles}
             accent="primary"
           />
           <MetricCard
-            title="Shows Agendados"
-            value={metricas.showsAgendados}
-            description="pendentes/confirmados"
-            icon={Calendar}
+            title="Artistas Parceiros"
+            value={kpiArtistas.parceiros}
+            description="vínculo não exclusivo"
+            icon={Music}
             accent="warning"
           />
           <MetricCard
-            title="Shows Realizados"
-            value={metricas.showsRealizados}
-            description="executados"
+            title="Independentes"
+            value={kpiArtistas.independentes}
+            description="sem gravadora/editora"
             icon={CheckCircle}
-            accent="success"
-          />
-          <MetricCard
-            title="Receita em Shows"
-            value={formatCurrency(metricas.receitaTotal)}
-            description="total vendido"
-            icon={DollarSign}
             accent="success"
           />
         </div>
