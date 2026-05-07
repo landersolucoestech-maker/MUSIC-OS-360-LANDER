@@ -367,17 +367,6 @@ export default function Artistas() {
               <SelectItem value="onboarding">Em Onboarding</SelectItem>
             </SelectContent>
           </Select>
-          <Select value={generoFilter} onValueChange={setGeneroFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
-              <SelectValue placeholder="Todos Gêneros" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Gêneros</SelectItem>
-              {generosUnicos.map((g) => (
-                <SelectItem key={g} value={g}>{g}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
           <Select value={perfilFilter} onValueChange={setPerfilFilter}>
             <SelectTrigger className="w-[170px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos os Perfis" />
@@ -386,6 +375,17 @@ export default function Artistas() {
               <SelectItem value="todos">Todos os Perfis</SelectItem>
               {Object.entries(PERFIL_LABELS).map(([value, label]) => (
                 <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={generoFilter} onValueChange={setGeneroFilter}>
+            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
+              <SelectValue placeholder="Todos Gêneros" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="todos">Todos Gêneros</SelectItem>
+              {generosUnicos.map((g) => (
+                <SelectItem key={g} value={g}>{g}</SelectItem>
               ))}
             </SelectContent>
           </Select>
