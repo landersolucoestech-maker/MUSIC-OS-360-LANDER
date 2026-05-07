@@ -142,6 +142,20 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   // ── Contrato vinculado ─────────────────────────────────────────
   const [contratoSelecionadoId, setContratoSelecionadoId] = useState("");
 
+  // ── 7. Perfil 360 ──────────────────────────────────────────────
+  const [bannerUrl, setBannerUrl] = useState("");
+  const [galeriaUrls, setGaleriaUrls] = useState<string[]>([]);
+  const [galeriaInput, setGaleriaInput] = useState("");
+  const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
+  const [managerNome, setManagerNome] = useState("");
+  const [managerContato, setManagerContato] = useState("");
+  const [produtorExecutivo, setProdutorExecutivo] = useState("");
+  const [agenciaBooking, setAgenciaBooking] = useState("");
+  const [labelParceira, setLabelParceira] = useState("");
+  const [documentosList, setDocumentosList] = useState<{ nome: string; url: string }[]>([]);
+  const [docNomeInput, setDocNomeInput] = useState("");
+  const [docUrlInput, setDocUrlInput] = useState("");
+
   const contatosCRM = clientes.filter((c) => c.tipo_pessoa === "pessoa_fisica" || c.tipo_pessoa === "pessoa_juridica");
   const gravadorasCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");
   const pessoasFisicasCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_fisica");
