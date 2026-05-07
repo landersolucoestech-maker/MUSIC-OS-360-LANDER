@@ -94,6 +94,9 @@ const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     children: [
       { title: "Transações",           href: "/financeiro",                  icon: DollarSign },
+      { title: "Fluxo de Caixa",       href: "/financeiro/fluxo",            icon: TrendingUp },
+      { title: "Conciliação",          href: "/financeiro/conciliacao",      icon: CheckCircle2 },
+      { title: "Relatórios",           href: "/financeiro/relatorios",       icon: BarChart },
       { title: "Contabilidade",        href: "/contabilidade",               icon: Calculator },
       { title: "Nota Fiscal",          href: "/nota-fiscal",                 icon: Receipt },
     ],
@@ -101,14 +104,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Agenda",       href: "/agenda",    icon: Calendar },
   { title: "Inventário",   href: "/inventario",icon: Package },
   { title: "MusicChat",    href: "/chat",      icon: MessageCircle },
-  {
-    title: "CRM",
-    icon: Contact,
-    children: [
-      { title: "Contatos",        href: "/crm",        icon: Users },
-      { title: "Funil Comercial", href: "/crm/funil",  icon: TrendingUp },
-    ],
-  },
+  { title: "CRM",          href: "/crm",       icon: Contact },
   { title: "Leads",        href: "/leads",     icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh",    icon: Briefcase },
   {
