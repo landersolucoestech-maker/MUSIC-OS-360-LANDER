@@ -53,11 +53,29 @@ interface LancamentoFormModalProps {
 
 // ── Genre normalization helpers ────────────────────────────────────────────
 const GENERO_OPTS = ["funk","pop","rock","sertanejo","trap","rap/hip-hop","pagode","forró","mpb","eletrônica","gospel","reggaeton","r&b","outro"];
+const GENERO_LABELS: Record<string, string> = {
+  "funk": "Funk", "pop": "Pop", "rock": "Rock", "sertanejo": "Sertanejo",
+  "trap": "Trap", "rap/hip-hop": "Rap / Hip-Hop", "pagode": "Pagode",
+  "forró": "Forró", "mpb": "MPB", "eletrônica": "Eletrônica",
+  "gospel": "Gospel", "reggaeton": "Reggaeton", "r&b": "R&B", "outro": "Outro",
+};
+// Aliases: raw normalized → canonical GENERO_OPTS value
+const GENERO_ALIASES: Record<string, string> = {
+  "eletronico": "eletrônica", "electronico": "eletrônica", "electronica": "eletrônica",
+  "hip hop": "rap/hip-hop", "hip-hop": "rap/hip-hop", "rap": "rap/hip-hop",
+  "bossa nova": "mpb", "mpb/bossa nova": "mpb", "mpb / bossa nova": "mpb",
+  "forro": "forró",
+};
 const normStr = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-const matchGenero = (raw: string) => {
+const matchGenero = (raw: string): string => {
   if (!raw) return "";
   const n = normStr(raw);
-  return GENERO_OPTS.find(g => normStr(g) === n) ?? raw.toLowerCase();
+  const exact = GENERO_OPTS.find(g => normStr(g) === n);
+  if (exact) return exact;
+  if (GENERO_ALIASES[n]) return GENERO_ALIASES[n];
+  const partial = GENERO_OPTS.find(g => n.startsWith(normStr(g)) || normStr(g).startsWith(n));
+  if (partial) return partial;
+  return raw.toLowerCase();
 };
 const splitNames = (s: string | null | undefined): string[] => {
   if (!s) return [""];
@@ -398,15 +416,13 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                 <div className="space-y-2">
                   <Label>Gênero *</Label>
                   <Select value={formData.genero} onValueChange={(v) => setFormData({ ...formData, genero: v })} disabled={isViewMode}>
-                    <SelectTrigger>
+                    <SelectTrigger data-testid="select-genero">
                       <SelectValue placeholder="Selecione o gênero" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="funk">Funk</SelectItem>
-                      <SelectItem value="trap">Trap</SelectItem>
-                      <SelectItem value="pop">Pop</SelectItem>
-                      <SelectItem value="sertanejo">Sertanejo</SelectItem>
-                      <SelectItem value="rock">Rock</SelectItem>
+                      {GENERO_OPTS.map(g => (
+                        <SelectItem key={g} value={g}>{GENERO_LABELS[g] ?? g}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
