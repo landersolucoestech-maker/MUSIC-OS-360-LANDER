@@ -1,0 +1,604 @@
+FASE 0A — LIMPEZA TÉCNICA E ESTABILIZAÇÃO ESTRUTURAL
+OBJETIVO
+
+NÃO criar novas funcionalidades.
+NÃO adicionar novos módulos.
+NÃO expandir o sistema.
+O objetivo desta fase é executar uma limpeza técnica profunda no projeto atual para remover dívida estrutural acumulada e preparar a base para as próximas refatorações.
+Esta fase deve acontecer SOZINHA.
+
+NÃO executar tarefas de outras fases em paralelo.
+
+EXECUTAR
+1. VARREDURA COMPLETA DO PROJETO
+
+Analisar:
+
+componentes;
+hooks;
+stores;
+providers;
+contexts;
+serviços;
+páginas;
+layouts;
+imports;
+dependências;
+mocks;
+assets;
+utilitários;
+estruturas duplicadas.
+
+2. REMOVER CÓDIGO MORTO
+
+Remover:
+
+componentes não utilizados;
+páginas abandonadas;
+hooks sem uso;
+stores antigas;
+contexts obsoletos;
+mocks desnecessários;
+providers inúteis;
+adapters antigos;
+estilos mortos;
+rotas quebradas.
+
+3. LIMPAR IMPORTS E DEPENDÊNCIAS
+
+Remover:
+
+imports não utilizados;
+dependências sem uso;
+bibliotecas duplicadas;
+aliases inconsistentes.
+
+Padronizar:
+
+paths;
+aliases;
+organização de imports.
+
+4. CORRIGIR TIPAGEM
+
+Corrigir:
+
+any desnecessário;
+tipos quebrados;
+warnings TypeScript;
+inconsistências Zod;
+validações incompletas.
+
+5. REDUZIR COMPLEXIDADE PREMATURA
+
+Identificar estruturas exageradamente complexas para o estágio atual.
+
+Simplificar:
+
+abstrações excessivas;
+wrappers desnecessários;
+providers desnecessários;
+layers sem propósito real.
+
+6. IDENTIFICAR OVERENGINEERING
+
+Reduzir:
+
+complexidade artificial;
+arquitetura exagerada;
+sistemas prematuros;
+estruturas que ainda não possuem uso real.
+
+NÃO IMPLEMENTAR NESTA FASE
+
+NÃO:
+
+criar telas novas;
+criar dashboards;
+expandir IA;
+criar integrações;
+mexer em backend;
+adicionar analytics;
+criar automações.
+
+RESULTADO ESPERADO
+
+Ao finalizar:
+
+o projeto deve estar limpo;
+mais leve;
+previsível;
+organizado;
+preparado para refatoração arquitetural.
+
+FASE 0B — REFATORAÇÃO DA ARQUITETURA FRONTEND
+OBJETIVO
+
+Executar refatoração arquitetural profunda do frontend existente.
+
+O objetivo NÃO é apenas reorganizar pastas.
+
+O objetivo é transformar o projeto em uma arquitetura enterprise modular escalável.
+
+Executar SOMENTE esta fase.
+
+NÃO misturar com design system ou novas features.
+
+EXECUTAR
+REORGANIZAR COMPLETAMENTE
+pastas;
+módulos;
+layouts;
+components;
+providers;
+hooks;
+rotas;
+stores;
+contexts;
+services;
+entities;
+DTOs;
+mappers;
+repositories;
+schemas;
+validators;
+types;
+assets;
+constants;
+utils;
+adapters;
+factories;
+permissions;
+middlewares;
+cache;
+feature flags.
+
+ORGANIZAÇÃO POR DOMÍNIO
+
+A estrutura NÃO deve mais ser organizada apenas por:
+
+tipo de arquivo;
+páginas;
+componentes genéricos.
+
+Ela deve ser organizada por:
+
+domínio;
+bounded context;
+contexto operacional.
+
+ESTRUTURA ESPERADA
+/modules
+/auth
+/artists
+/catalog
+/releases
+/contracts
+/accounting
+/crm
+/marketing
+/analytics
+/settings
+/onboarding
+
+CADA MÓDULO DEVE POSSUIR
+/components
+/hooks
+/services
+/store
+/repositories
+/entities
+/dtos
+/mappers
+/schemas
+/validators
+/adapters
+/permissions
+/utils
+/types
+/constants
+
+REFATORAR INTEGRATIONS
+
+Eliminar:
+
+/integrations gigante
+
+Mover integrações para dentro dos próprios domínios.
+
+Exemplo:
+
+/catalog/adapters
+/contracts/adapters
+/analytics/adapters
+
+REFATORAR SHARED
+
+Evitar:
+
+/shared dumping ground
+
+Separar:
+
+/shared/ui
+/shared/layouts
+/shared/providers
+/shared/config
+/shared/infrastructure
+/shared/hooks
+/shared/utils
+
+PREPARAR MULTI-TENANT
+
+Preparar:
+
+TenantContext;
+tenant-aware architecture;
+tenant configs;
+tenant permissions;
+feature flags por tenant.
+
+Mesmo sem backend.
+
+PREPARAR RBAC
+
+Estruturar:
+
+roles;
+guards;
+permissions;
+access policies.
+
+RESULTADO ESPERADO
+
+Arquitetura:
+
+desacoplada;
+modular;
+escalável;
+previsível;
+enterprise-ready.
+
+FASE 0C — CONSOLIDAÇÃO DO DESIGN SYSTEM
+OBJETIVO
+
+Transformar visualmente o sistema em um SaaS enterprise premium.
+
+Executar SOMENTE design system e UX.
+
+NÃO criar novas features.
+
+EXECUTAR
+CONSOLIDAR TOKENS VISUAIS
+
+Padronizar:
+
+tipografia;
+spacing;
+grids;
+radius;
+shadows;
+animações;
+cores;
+estados;
+feedback visual.
+
+REFATORAR COMPONENTES
+
+Padronizar:
+
+botões;
+inputs;
+selects;
+tabelas;
+modais;
+drawers;
+tabs;
+dropdowns;
+badges;
+formulários;
+toasts.
+
+REFATORAR LAYOUT
+
+Refazer:
+
+sidebar;
+header;
+navegação;
+dashboards;
+formulários;
+tabelas;
+containers;
+estados vazios.
+
+SIDEBAR MULTI-TENANT
+
+Exibir:
+
+MUSIC OS 360
+ERP OPERACIONAL MUSICAL
+
+Tenant Atual
+Gravadora Exemplo Ltda
+
+O tenant deve:
+
+permanecer sempre visível;
+parecer enterprise;
+reforçar contexto multiempresa.
+
+REFERÊNCIAS VISUAIS
+
+Seguir:
+
+Linear;
+Stripe;
+Notion;
+Vercel;
+Framer;
+Arc.
+
+NÃO PERMITIR
+
+O sistema NÃO pode parecer:
+
+template gratuito;
+painel administrativo comum;
+dashboard genérico.
+
+RESULTADO ESPERADO
+
+Sistema:
+
+premium;
+consistente;
+moderno;
+corporativo;
+enterprise.
+
+FASE 0D — CONSOLIDAÇÃO OPERACIONAL DO CORE
+OBJETIVO
+
+Parar de expandir módulos prematuramente.
+
+Consolidar os pilares principais do sistema.
+
+CONSOLIDAR
+Artists
+cadastro;
+mídia;
+redes sociais;
+uploads;
+relacionamentos.
+Catalog
+obras;
+fonogramas;
+ISRC;
+ISWC;
+metadata;
+participações.
+
+SEM integração real ainda.
+
+Releases
+singles;
+EPs;
+álbuns;
+assets;
+cronograma;
+status.
+Onboarding
+
+Transformar onboarding em:
+
+pipeline operacional;
+entrada oficial de artistas;
+central documental;
+central de assets.
+Contracts
+
+Transformar contratos em:
+
+núcleo operacional;
+versionamento;
+timeline;
+rastreabilidade;
+templates;
+histórico;
+status.
+NÃO IMPLEMENTAR
+
+NÃO implementar:
+
+IA avançada;
+automações;
+integrações reais;
+analytics complexos.
+RESULTADO ESPERADO
+
+Sistema operacional utilizável e consistente.
+
+FASE 0E — REFATORAÇÃO DO ACCOUNTING
+OBJETIVO
+
+Corrigir completamente o conceito do módulo financeiro.
+
+REMOVER
+royalties;
+splits automáticos;
+engine financeira;
+distribuição financeira;
+recoupment;
+centro de custo complexo;
+automações financeiras;
+analytics financeiros exagerados.
+TRANSFORMAR EM
+
+Accounting operacional simples.
+
+IMPLEMENTAR
+entradas;
+saídas;
+categorias;
+anexos;
+OFX;
+conciliação manual;
+histórico.
+SHARES
+
+Shares devem ser:
+
+apenas documentais;
+administrativos;
+organizacionais.
+
+SEM:
+
+cálculos;
+pagamentos;
+distribuição automática.
+RESULTADO ESPERADO
+
+Accounting alinhado à visão real do produto.
+
+FASE 1 — CRM + COMERCIAL
+IMPLEMENTAR
+leads;
+
+pipeline;
+follow-up;
+agenda;
+parceiros;
+contratantes;
+fornecedores.
+
+NÃO IMPLEMENTAR
+automação massiva;
+disparos automáticos;
+CRM enterprise complexo ainda.
+
+FASE 2 — ANALYTICS & MONITORAMENTO
+IMPLEMENTAR
+
+Analytics:
+
+artistas;
+campanhas;
+plataformas;
+crescimento;
+catálogo.
+IMPORTANTE
+
+Somente:
+
+leitura;
+dashboards;
+métricas.
+
+SEM:
+
+distribuição;
+automações;
+upload automático.
+
+FASE 3 — BACKEND ENTERPRISE
+IMPLEMENTAR
+NestJS;
+PostgreSQL;
+Prisma;
+JWT;
+RBAC;
+Redis;
+queues;
+APIs reais;
+tenant isolation.
+RESULTADO
+
+Sistema enterprise real.
+
+FASE 4 — INTEGRAÇÕES OFICIAIS
+
+IMPLEMENTAR
+Abramus;
+Ecad;
+Meta Ads
+Resend;
+Autentique;
+ONErpm;
+Distrok;
+Symphonic;
+SoundOn;
+MusicPro;
+Somvibe;
+Google;
+TikTok;
+SoundCloud;
+Youtube;
+Deezer;
+Apple Music;
+Spotify;
+Instagram;
+DSP analytics.
+IMPORTANTE
+
+SEM:
+
+distribuição direta;
+royalties automáticos.
+
+FASE 5 — OBSERVABILIDADE & STORAGE
+IMPLEMENTAR
+logs;
+auditoria;
+LGPD;
+tracing;
+Cloudflare R2;
+uploads resilientes;
+versionamento;
+thumbnails;
+controle de acesso.
+
+FASE 6 — ENGINE DE WORKFLOWS
+IMPLEMENTAR
+onboarding workflows;
+contratos;
+aprovações;
+notificações;
+filas operacionais.
+IMPORTANTE
+
+SEM:
+
+automação financeira;
+engine de royalties.
+
+FASE 7 — IA CRIATIVA
+IMPLEMENTAR
+Melhorias.
+
+NÃO IMPLEMENTAR
+IA autônoma;
+decisões automáticas;
+automações críticas.
+
+FASE 8 — ECOSSISTEMA ENTERPRISE
+
+VISÃO FINAL
+
+O MUSIC OS 360 deve se tornar:
+
+ERP operacional musical;
+CRM artístico;
+central contratual;
+hub de onboarding;
+catálogo inteligente;
+analytics center;
+plataforma operacional multiempresa.
+
+SEM:
+
+engine de royalties;
+distribuição direta;
+automação financeira;
+contabilidade automatizada.

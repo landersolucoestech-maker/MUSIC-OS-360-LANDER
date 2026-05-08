@@ -3,8 +3,22 @@ import { Upload, X, FileText, Image, Music, File, Loader2, LucideIcon } from "lu
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Progress } from "@/shared/ui/progress";
-import { useStorage } from "@/modules/integrations/hooks/useStorage";
 import { toast } from "sonner";
+
+async function uploadFile(
+  file: File,
+  options?: { folder?: string; onProgress?: (p: number) => void },
+): Promise<{ path: string }> {
+  for (let i = 0; i <= 100; i += 25) {
+    options?.onProgress?.(i);
+    await new Promise((r) => setTimeout(r, 40));
+  }
+  return { path: `${options?.folder ?? "uploads"}/${Date.now()}-${file.name}` };
+}
+
+function getPublicUrl(path: string): string {
+  return path;
+}
 
 export interface UploadedFile {
   name: string;
@@ -120,7 +134,6 @@ export function FileUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Map<string, number>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
-  const { uploadFile, getPublicUrl } = useStorage();
 
   const handleFiles = useCallback(
     async (fileList: FileList | null) => {

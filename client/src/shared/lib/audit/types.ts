@@ -2,71 +2,55 @@ export type AuditSeverity = "obrigatorio" | "recomendado";
 
 export type AuditModuleId =
   | "artistas"
-  | "clientes"
+  | "catalog"
   | "contratos"
+  | "crm"
+  | "eventos"
+  | "accounting"
+  | "inventory"
+  | "leads"
+  | "licensing"
+  | "marketing"
+  | "monitoring"
+  | "projects"
   | "lancamentos"
-  | "fonogramas"
-  | "obras"
-  | "notas_fiscais"
-  | "transacoes"
-  | "campanhas"
-  | "conteudos";
-
-export interface AuditModuleInfo {
-  id: AuditModuleId;
-  label: string;
-}
+  | "rh";
 
 export interface AuditIssue {
   id: string;
   module: AuditModuleId;
-  module_label: string;
+  severity: AuditSeverity;
   entity_type: string;
-  entity_id: string;
   entity_label: string;
   missing_fields: string[];
-  severity: AuditSeverity;
   fix_path: string;
-}
-
-export interface AuditModuleSummary {
-  module: AuditModuleId;
-  module_label: string;
-  total: number;
-  obrigatorio: number;
-  recomendado: number;
 }
 
 export interface AuditSummary {
   total_issues: number;
   obrigatorio: number;
   recomendado: number;
-  by_module: AuditModuleSummary[];
 }
 
 export interface AuditResult {
-  generated_at: string;
-  summary: AuditSummary;
   issues: AuditIssue[];
+  summary: AuditSummary;
+  generated_at: string;
 }
 
-export const AUDIT_MODULES: AuditModuleInfo[] = [
+export const AUDIT_MODULES: { id: AuditModuleId; label: string }[] = [
   { id: "artistas", label: "Artistas" },
-  { id: "clientes", label: "CRM / Clientes" },
+  { id: "catalog", label: "Catálogo" },
   { id: "contratos", label: "Contratos" },
+  { id: "crm", label: "CRM" },
+  { id: "eventos", label: "Eventos" },
+  { id: "accounting", label: "Accounting" },
+  { id: "inventory", label: "Inventário" },
+  { id: "leads", label: "Leads" },
+  { id: "licensing", label: "Licenciamento" },
+  { id: "marketing", label: "Marketing" },
+  { id: "monitoring", label: "Monitoramento" },
+  { id: "projects", label: "Projetos" },
   { id: "lancamentos", label: "Lançamentos" },
-  { id: "fonogramas", label: "Catálogo / Fonogramas" },
-  { id: "obras", label: "Catálogo / Obras" },
-  { id: "notas_fiscais", label: "Financeiro / Notas Fiscais" },
-  { id: "transacoes", label: "Financeiro / Transações" },
-  { id: "campanhas", label: "Marketing / Campanhas" },
-  { id: "conteudos", label: "Marketing / Calendário de Conteúdo" },
+  { id: "rh", label: "RH" },
 ];
-
-export const MODULE_LABEL: Record<AuditModuleId, string> = AUDIT_MODULES.reduce(
-  (acc, m) => {
-    acc[m.id] = m.label;
-    return acc;
-  },
-  {} as Record<AuditModuleId, string>,
-);

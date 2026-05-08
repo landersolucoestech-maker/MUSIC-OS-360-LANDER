@@ -12,38 +12,35 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/ui/tooltip";
-import {
-  SpotifyDataError,
-  useSpotifyArtist,
-  useSpotifyEvolution,
-  useSpotifyStatus,
-} from "@/modules/integrations/hooks/useSpotify";
-import {
-  YouTubeDataError,
-  useYouTubeChannel,
-  useYouTubeEvolution,
-  useYouTubeStatus,
-} from "@/modules/integrations/hooks/useYouTube";
-import {
-  DeezerDataError,
-  extractDeezerArtistIdFromUrl,
-  useDeezerArtist,
-  useDeezerEvolution,
-} from "@/modules/integrations/hooks/useDeezer";
-import {
-  AppleMusicDataError,
-  extractAppleMusicArtistIdFromUrl,
-  useAppleMusicArtist,
-  useAppleMusicEvolution,
-  useAppleMusicStatus,
-} from "@/modules/integrations/hooks/useAppleMusic";
-import {
-  SoundCloudDataError,
-  extractSoundCloudHandleFromUrl,
-  useSoundCloudEvolution,
-  useSoundCloudUser,
-} from "@/modules/integrations/hooks/useSoundCloud";
 import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
+
+interface PlatformDataError { status: number; message?: string }
+type SpotifyDataError = PlatformDataError;
+type YouTubeDataError = PlatformDataError;
+type DeezerDataError = PlatformDataError;
+type AppleMusicDataError = PlatformDataError;
+type SoundCloudDataError = PlatformDataError;
+
+const stubStatus = () => ({ data: null as null, isLoading: false, isFetching: false });
+const stubQuery = () => ({ data: null as null, isLoading: false, isFetching: false, error: null as null });
+const stubEvolution = () => ({ data: [] as { date: string; followers?: number | null }[], isLoading: false });
+
+const useSpotifyStatus = stubStatus;
+const useYouTubeStatus = stubStatus;
+const useAppleMusicStatus = stubStatus;
+const useSpotifyArtist = (_id: string | null) => stubQuery();
+const useYouTubeChannel = (_id: string | null) => stubQuery();
+const useDeezerArtist = (_url: string | null) => stubQuery();
+const useAppleMusicArtist = (_url: string | null) => stubQuery();
+const useSoundCloudUser = (_url: string | null) => stubQuery();
+const useSpotifyEvolution = (_id: string | null, _days: number) => stubEvolution();
+const useYouTubeEvolution = (_id: string | null, _days: number) => stubEvolution();
+const useDeezerEvolution = (_id: string | null, _days: number) => stubEvolution();
+const useAppleMusicEvolution = (_id: string | null, _days: number) => stubEvolution();
+const useSoundCloudEvolution = (_id: string | null, _days: number) => stubEvolution();
+const extractDeezerArtistIdFromUrl = (_url: string | null | undefined): string | null => null;
+const extractAppleMusicArtistIdFromUrl = (_url: string | null | undefined): string | null => null;
+const extractSoundCloudHandleFromUrl = (_url: string | null | undefined): string | null => null;
 
 interface ArtistaPlatformMetricsProps {
   artistaId: string;

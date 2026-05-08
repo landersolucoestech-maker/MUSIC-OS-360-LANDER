@@ -29,7 +29,7 @@ import {
   computeEvolutionSummary,
   type EvolutionSummary,
 } from "@/modules/artist/components/ArtistaEvolutionCard";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
 function point(date: string, followers: number | null): MetricEvolutionPoint {
   return { captured_at: date, followers, popularity: null, views: null };

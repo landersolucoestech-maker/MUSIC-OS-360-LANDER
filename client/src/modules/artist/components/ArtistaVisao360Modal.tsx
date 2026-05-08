@@ -65,12 +65,6 @@ import {
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
 import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
-import { useSpotifyEvolution } from "@/modules/integrations/hooks/useSpotify";
-import { useYouTubeEvolution } from "@/modules/integrations/hooks/useYouTube";
-import {
-  extractDeezerArtistIdFromUrl,
-  useDeezerEvolution,
-} from "@/modules/integrations/hooks/useDeezer";
 
 const formatDateDMY = (d?: string | null): string => {
   if (!d) return "Não informado";
@@ -451,22 +445,6 @@ export function ArtistaVisao360Modal({
   // (`record_artista_metric_snapshot`) já consumidos pela aba "Evolução".
   // Os hooks só disparam a query quando o artista tem ID configurado para
   // a plataforma — assim evita chamadas inúteis para perfis não vinculados.
-  const spotifyArtistId: string | null = artista?.spotify_artist_id ?? null;
-  const youtubeChannelId: string | null = artista?.youtube_channel_id ?? null;
-  const deezerUrl: string | null = artista?.deezer_url ?? null;
-  const deezerArtistId = extractDeezerArtistIdFromUrl(deezerUrl);
-  const spotifyEvolution = useSpotifyEvolution(
-    spotifyArtistId ? artistaId : null,
-    30,
-  );
-  const youtubeEvolution = useYouTubeEvolution(
-    youtubeChannelId ? artistaId : null,
-    30,
-  );
-  const deezerEvolution = useDeezerEvolution(
-    deezerArtistId ? artistaId : null,
-    30,
-  );
 
   const [metaForm, setMetaForm] = useState({
     titulo: "",

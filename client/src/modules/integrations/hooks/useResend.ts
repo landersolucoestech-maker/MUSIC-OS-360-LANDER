@@ -1,48 +1,47 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
-import {
-  DisabledIntegrationError,
-  INTEGRATION_DISABLED_CODE,
-} from "@/shared/lib/disabled-integration";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
-/** Stubs do Resend — integração desligada (sem backend). */
-
-export interface ResendStatus {
+interface ResendStatus {
   connected: boolean;
-  status?: string;
-  has_api_key?: boolean;
-  from_address?: string | null;
-  last_error?: string | null;
-  last_sync_at?: string | null;
-  has_global_fallback?: boolean;
-}
-
-function fail(): never {
-  throw new DisabledIntegrationError("Resend");
+  has_api_key: boolean;
+  has_global_fallback: boolean;
+  from_address?: string;
+  last_sync_at?: string;
+  last_error?: string;
+  status?: "ok" | "error";
 }
 
 export function useResendStatus() {
   return useQuery<ResendStatus>({
-    queryKey: ["resend", "status"] as const,
+    queryKey: ["resend", "status"],
     queryFn: async () => ({
       connected: false,
-      status: INTEGRATION_DISABLED_CODE,
-      last_error: "Integração Resend desativada — backend não configurado.",
+      has_api_key: false,
+      has_global_fallback: false,
     }),
     staleTime: Infinity,
   });
 }
 
 export function useResendSaveCredentials() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async (_input: { api_key: string; from_address?: string }) => fail(),
-    onError: (err: Error) => toast.error(err.message),
+    mutationFn: async (_payload: { api_key: string; from_address?: string }) => {
+      throw new Error("Integração Resend não disponível no modo demo.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["resend", "status"] });
+    },
   });
 }
 
 export function useResendDeleteCredentials() {
+  const qc = useQueryClient();
   return useMutation({
-    mutationFn: async () => fail(),
-    onError: (err: Error) => toast.error(err.message),
+    mutationFn: async () => {
+      throw new Error("Integração Resend não disponível no modo demo.");
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["resend", "status"] });
+    },
   });
 }

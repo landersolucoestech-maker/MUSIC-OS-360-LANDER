@@ -17,22 +17,16 @@ import {
   type EvolutionSummary,
   type TrendDirection,
 } from "@/modules/artist/components/ArtistaEvolutionCard";
-import { useSpotifyEvolution } from "@/modules/integrations/hooks/useSpotify";
-import { useYouTubeEvolution } from "@/modules/integrations/hooks/useYouTube";
-import {
-  extractDeezerArtistIdFromUrl,
-  useDeezerEvolution,
-} from "@/modules/integrations/hooks/useDeezer";
-import {
-  useSoundCloudEvolution,
-  extractSoundCloudHandleFromUrl,
-} from "@/modules/integrations/hooks/useSoundCloud";
-import {
-  useAppleMusicEvolution,
-  extractAppleMusicArtistIdFromUrl,
-} from "@/modules/integrations/hooks/useAppleMusic";
 import { useQuery } from "@tanstack/react-query";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+
+export interface MetricEvolutionPoint {
+  date: string;
+  followers?: number | null;
+  streams?: number | null;
+  views?: number | null;
+  plays?: number | null;
+  listeners?: number | null;
+}
 
 interface ArtistaEvolucaoSectionProps {
   artista: any;
@@ -166,11 +160,11 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
   const instagramHandle: string | null = artista?.instagram ?? null;
   const tiktokHandle: string | null = artista?.tiktok ?? null;
 
-  const spotifyQ = useSpotifyEvolution(artistaId, 30);
-  const youtubeQ = useYouTubeEvolution(artistaId, 30);
-  const deezerQ = useDeezerEvolution(artistaId, 30);
-  const soundcloudQ = useSoundCloudEvolution(artistaId, 30);
-  const appleMusicQ = useAppleMusicEvolution(artistaId, 30);
+  const spotifyQ = useStubEvolution(artistaId, "spotify");
+  const youtubeQ = useStubEvolution(artistaId, "youtube");
+  const deezerQ = useStubEvolution(artistaId, "deezer");
+  const soundcloudQ = useStubEvolution(artistaId, "soundcloud");
+  const appleMusicQ = useStubEvolution(artistaId, "apple_music");
   const instagramQ = useStubEvolution(artistaId, "instagram");
   const tiktokQ = useStubEvolution(artistaId, "tiktok");
 
@@ -223,21 +217,21 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
       label: "Deezer",
       summary: deezerSummary,
       isLoading: deezerQ.isLoading,
-      isMissingConfig: !extractDeezerArtistIdFromUrl(deezerUrl),
+      isMissingConfig: !deezerUrl,
     },
     {
       key: "soundcloud",
       label: "SoundCloud",
       summary: soundcloudSummary,
       isLoading: soundcloudQ.isLoading,
-      isMissingConfig: !extractSoundCloudHandleFromUrl(soundcloudUrl),
+      isMissingConfig: !soundcloudUrl,
     },
     {
       key: "apple_music",
       label: "Apple Music",
       summary: appleMusicSummary,
       isLoading: appleMusicQ.isLoading,
-      isMissingConfig: !extractAppleMusicArtistIdFromUrl(appleMusicUrl),
+      isMissingConfig: !appleMusicUrl,
     },
     {
       key: "instagram",
@@ -404,7 +398,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
           Icon={Headphones}
           accent="#A238FF"
           isLoading={deezerQ.isLoading}
-          isMissingConfig={!extractDeezerArtistIdFromUrl(deezerUrl)}
+          isMissingConfig={!deezerUrl}
           missingConfigLabel="Sem perfil do Deezer cadastrado para este artista."
           errorMessage={deezerQ.error ? (deezerQ.error as Error).message : null}
           points={deezerQ.data}
@@ -418,7 +412,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
           Icon={SiSoundcloud as any}
           accent="#FF5500"
           isLoading={soundcloudQ.isLoading}
-          isMissingConfig={!extractSoundCloudHandleFromUrl(soundcloudUrl)}
+          isMissingConfig={!soundcloudUrl}
           missingConfigLabel="Sem perfil do SoundCloud cadastrado para este artista."
           errorMessage={soundcloudQ.error ? (soundcloudQ.error as Error).message : null}
           points={soundcloudQ.data}
@@ -432,7 +426,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
           Icon={SiApplemusic as any}
           accent="#FC3C44"
           isLoading={appleMusicQ.isLoading}
-          isMissingConfig={!extractAppleMusicArtistIdFromUrl(appleMusicUrl)}
+          isMissingConfig={!appleMusicUrl}
           missingConfigLabel="Sem perfil do Apple Music cadastrado para este artista."
           errorMessage={appleMusicQ.error ? (appleMusicQ.error as Error).message : null}
           points={appleMusicQ.data}

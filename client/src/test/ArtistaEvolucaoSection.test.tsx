@@ -13,7 +13,7 @@
 //   * artistaId null → mensagem de erro
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
 // Estabiliza o ResponsiveContainer dentro dos cards.
 vi.mock("recharts", async () => {
@@ -30,29 +30,17 @@ const spotifyMock = vi.fn();
 const youtubeMock = vi.fn();
 const deezerMock = vi.fn();
 
-vi.mock("@/modules/integrations/hooks/useSpotify", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useSpotify");
-  return {
-    ...actual,
-    useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useSpotify", () => ({
+  useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
+}));
 
-vi.mock("@/modules/integrations/hooks/useYouTube", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useYouTube");
-  return {
-    ...actual,
-    useYouTubeEvolution: (...args: any[]) => youtubeMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useYouTube", () => ({
+  useYouTubeEvolution: (...args: any[]) => youtubeMock(...args),
+}));
 
-vi.mock("@/modules/integrations/hooks/useDeezer", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useDeezer");
-  return {
-    ...actual,
-    useDeezerEvolution: (...args: any[]) => deezerMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useDeezer", () => ({
+  useDeezerEvolution: (...args: any[]) => deezerMock(...args),
+}));
 
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
 

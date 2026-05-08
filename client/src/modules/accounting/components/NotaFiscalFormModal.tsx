@@ -16,7 +16,6 @@ import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
-import { useStorage } from "@/modules/integrations/hooks/useStorage";
 import { Badge } from "@/shared/ui/badge";
 import { isValidCpfCnpj, isValidCEP, isValidEmail, formatCpfCnpj, formatCEP, onlyDigits } from "@/shared/lib/br-validators";
 import { parseTipoOperacao, serializeTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
@@ -83,7 +82,9 @@ export function NotaFiscalFormModal({ open, onOpenChange, notaFiscal, mode, defa
   const { addNotaFiscal, updateNotaFiscal } = useNotasFiscais();
   const { clientes } = useClientes();
   const { companySettings } = useCompanySettings();
-  const { uploadFile, uploading, getPublicUrl } = useStorage();
+  const uploading = false;
+  const uploadFile = async (_file: File, _opts?: Record<string, unknown>): Promise<{ path: string } | null> => null;
+  const getPublicUrl = (_path: string): string => "";
 
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
   const [tipoOperacao, setTipoOperacao] = useState<TipoOperacaoNF>(defaultTipoOperacao ?? "saida");

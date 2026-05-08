@@ -14,7 +14,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "react";
 import { render, screen, within, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
 // Estabiliza o ResponsiveContainer do recharts (usado por outras seções
 // do modal) para evitar avisos sobre dimensões zero no jsdom.
@@ -53,29 +53,17 @@ const spotifyMock = vi.fn();
 const youtubeMock = vi.fn();
 const deezerMock = vi.fn();
 
-vi.mock("@/modules/integrations/hooks/useSpotify", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useSpotify");
-  return {
-    ...actual,
-    useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useSpotify", () => ({
+  useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
+}));
 
-vi.mock("@/modules/integrations/hooks/useYouTube", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useYouTube");
-  return {
-    ...actual,
-    useYouTubeEvolution: (...args: any[]) => youtubeMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useYouTube", () => ({
+  useYouTubeEvolution: (...args: any[]) => youtubeMock(...args),
+}));
 
-vi.mock("@/modules/integrations/hooks/useDeezer", async () => {
-  const actual: any = await vi.importActual("@/modules/integrations/hooks/useDeezer");
-  return {
-    ...actual,
-    useDeezerEvolution: (...args: any[]) => deezerMock(...args),
-  };
-});
+vi.mock("@/modules/integrations/hooks/useDeezer", () => ({
+  useDeezerEvolution: (...args: any[]) => deezerMock(...args),
+}));
 
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 

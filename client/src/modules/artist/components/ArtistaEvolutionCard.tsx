@@ -14,7 +14,7 @@ import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from "lucide-rea
 import { Card, CardContent } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+interface MetricEvolutionPoint { date: string; value?: number; streams?: number; followers?: number; saves?: number; [key: string]: unknown; }
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
 

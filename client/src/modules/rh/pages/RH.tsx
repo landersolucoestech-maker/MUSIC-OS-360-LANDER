@@ -71,8 +71,6 @@ import {
 } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import type { DocumentoFuncionario } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import { Label } from "@/shared/ui/label";
-import { useStorage } from "@/modules/integrations/hooks/useStorage";
-
 const funcionarioColumns: CSVColumn[] = [
   { key: "nome_completo", label: "Nome Completo" },
   { key: "cpf", label: "CPF" },
@@ -236,8 +234,6 @@ export default function RH() {
     addDocumento,
     deleteDocumento,
   } = useDocumentosFuncionario(docFuncionarioId || undefined);
-
-  const { getPublicUrl } = useStorage();
 
   const kpiCounts = useMemo(() => {
     const counts = {

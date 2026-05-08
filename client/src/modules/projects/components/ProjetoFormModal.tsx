@@ -1,7 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useProjetos, type ProjetoInsert, type ProjetoUpdate } from "@/modules/projects/hooks/useProjetos";
-import { useStorage } from "@/modules/integrations/hooks/useStorage";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -173,7 +172,7 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
 export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluido }: ProjetoFormModalProps) {
   const { artistas, isLoading: artistasLoading } = useArtistas();
   const { addProjeto, updateProjeto } = useProjetos();
-  const { uploadFile } = useStorage();
+  const uploadFile = async (_file: File): Promise<{ url: string } | null> => null;
 
   // Initialize state from projeto when the component mounts fresh (key-based remount ensures fresh mount per project).
   const [tipoLancamento, setTipoLancamento] = useState(() => normTipo(projeto?.tipo));

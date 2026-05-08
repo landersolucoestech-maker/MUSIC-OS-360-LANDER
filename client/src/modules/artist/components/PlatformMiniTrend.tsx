@@ -5,7 +5,7 @@ import {
   computeEvolutionSummary,
   type TrendDirection,
 } from "@/modules/artist";
-import type { MetricEvolutionPoint } from "@/modules/integrations/hooks/useSpotify";
+interface MetricEvolutionPoint { date: string; value?: number; [key: string]: unknown; }
 
 interface PlatformMiniTrendProps {
   points: MetricEvolutionPoint[] | undefined;
