@@ -9,13 +9,17 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_TENANTS } from "../data/mockAdmin";
+import { MOCK_TENANTS, MOCK_SUBSCRIPTIONS } from "../data/mockAdmin";
 import type { AdminTenant, TenantStatus, PlanTier } from "../types";
 import {
-  Building2, Search, Users, HardDrive, DollarSign,
+  Building2, Search, Users, DollarSign,
   MoreHorizontal, Eye, Power, PowerOff, ArrowUpCircle,
-  RefreshCw, ExternalLink, Calendar,
+  RefreshCw, ExternalLink, Calendar, CreditCard, Pencil, Trash2,
 } from "lucide-react";
 
 const STATUS_STYLE: Record<TenantStatus, string> = {
@@ -58,6 +62,11 @@ function StorageBar({ used, limit }: { used: number; limit: number }) {
     </div>
   );
 }
+
+const CYCLE_LABEL: Record<string, string> = { monthly: "Mensal", annual: "Anual" };
+
+/* index subscriptions by tenant_id for O(1) lookup */
+const subByTenant = Object.fromEntries(MOCK_SUBSCRIPTIONS.map(s => [s.tenant_id, s]));
 
 export default function AdminClients() {
   const [tenants, setTenants] = useState(MOCK_TENANTS);
@@ -159,79 +168,127 @@ export default function AdminClients() {
           <table className="w-full">
             <thead>
               <tr className="border-b border-white/[0.06]">
-                {["Tenant", "Plano", "Status", "Usuários", "Storage", "MRR", "Desde", "Ações"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider">
+                {["Tenant", "Plano", "Status", "Usuários", "Storage", "MRR", "Ciclo", "Próxima Cobrança", "Método", "Desde", ""].map((h, i) => (
+                  <th key={i} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider whitespace-nowrap">
                     {h}
                   </th>
                 ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/[0.04]">
-              {filtered.map((t) => (
-                <tr key={t.id} className="group hover:bg-white/[0.02] transition-colors" data-testid={`tenant-${t.id}`}>
-                  <td className="px-4 py-3.5">
-                    <div>
-                      <p className="text-[13px] font-medium text-white">{t.name}</p>
-                      <p className="text-[11px] text-white/35 mt-0.5">{t.owner_email}</p>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className={cn("text-[12px] font-semibold capitalize", PLAN_COLOR[t.plan])}>
-                      {t.plan}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <Badge variant="outline" className={cn("text-[10.5px] border", STATUS_STYLE[t.status])}>
-                      {STATUS_LABEL[t.status]}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1.5">
-                      <Users className="h-3.5 w-3.5 text-white/25" />
-                      <span className="text-[12.5px] text-white/60">{t.users_count}</span>
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <StorageBar used={t.storage_used_mb} limit={t.storage_limit_mb} />
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <span className="text-[13px] font-semibold text-white/80">
-                      {t.mrr > 0 ? fmtBRL(t.mrr) : <span className="text-white/25">—</span>}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 text-[11px] text-white/35">
-                      <Calendar className="h-3 w-3" />
-                      {fmtDate(t.created_at)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3.5">
-                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        className="p-1.5 rounded-lg hover:bg-white/10 text-white/40 hover:text-white transition-colors"
-                        onClick={() => setSelected(t)}
-                        title="Ver detalhes"
-                        data-testid={`view-${t.id}`}
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        className={cn(
-                          "p-1.5 rounded-lg hover:bg-white/10 transition-colors",
-                          t.status === "active"
-                            ? "text-yellow-400/60 hover:text-yellow-400"
-                            : "text-emerald-400/60 hover:text-emerald-400",
-                        )}
-                        onClick={() => toggleStatus(t.id)}
-                        title={t.status === "active" ? "Suspender" : "Ativar"}
-                        data-testid={`toggle-${t.id}`}
-                      >
-                        {t.status === "active" ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {filtered.map((t) => {
+                const sub = subByTenant[t.id];
+                return (
+                  <tr key={t.id} className="group hover:bg-white/[0.02] transition-colors" data-testid={`tenant-${t.id}`}>
+                    <td className="px-4 py-3.5">
+                      <div>
+                        <p className="text-[13px] font-medium text-white">{t.name}</p>
+                        <p className="text-[11px] text-white/35 mt-0.5">{t.owner_email}</p>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className={cn("text-[12px] font-semibold capitalize", PLAN_COLOR[t.plan])}>
+                        {t.plan}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <Badge variant="outline" className={cn("text-[10.5px] border", STATUS_STYLE[t.status])}>
+                        {STATUS_LABEL[t.status]}
+                      </Badge>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <div className="flex items-center gap-1.5">
+                        <Users className="h-3.5 w-3.5 text-white/25" />
+                        <span className="text-[12.5px] text-white/60">{t.users_count}</span>
+                      </div>
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <StorageBar used={t.storage_used_mb} limit={t.storage_limit_mb} />
+                    </td>
+                    <td className="px-4 py-3.5">
+                      <span className="text-[13px] font-semibold text-white/80">
+                        {t.mrr > 0 ? fmtBRL(t.mrr) : <span className="text-white/25">—</span>}
+                      </span>
+                    </td>
+                    {/* Ciclo */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <span className="text-[12px] text-white/50">
+                        {sub ? CYCLE_LABEL[sub.billing_cycle] ?? sub.billing_cycle : <span className="text-white/20">—</span>}
+                      </span>
+                    </td>
+                    {/* Próxima Cobrança */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {sub?.next_payment_at ? (
+                        <div className="flex items-center gap-1 text-[11.5px] text-white/45">
+                          <Calendar className="h-3 w-3 shrink-0" />
+                          {fmtDate(sub.next_payment_at)}
+                        </div>
+                      ) : (
+                        <span className="text-[12px] text-white/20">—</span>
+                      )}
+                    </td>
+                    {/* Método */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {sub?.payment_method && sub.payment_method !== "—" ? (
+                        <div className="flex items-center gap-1.5 text-[11.5px] text-white/45">
+                          <CreditCard className="h-3 w-3 shrink-0 text-white/25" />
+                          <span className="truncate max-w-[130px]">{sub.payment_method}</span>
+                        </div>
+                      ) : (
+                        <span className="text-[12px] text-white/20">—</span>
+                      )}
+                    </td>
+                    {/* Desde */}
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      <div className="flex items-center gap-1 text-[11px] text-white/35">
+                        <Calendar className="h-3 w-3" />
+                        {fmtDate(t.created_at)}
+                      </div>
+                    </td>
+                    {/* Ações — dropdown */}
+                    <td className="px-4 py-3.5">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                            data-testid={`actions-${t.id}`}
+                          >
+                            <MoreHorizontal className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent
+                          align="end"
+                          className="w-40 bg-[hsl(222_47%_6%)] border-white/[0.08] text-white/80"
+                        >
+                          <DropdownMenuItem
+                            className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+                            onClick={() => setSelected(t)}
+                            data-testid={`view-${t.id}`}
+                          >
+                            <Eye className="h-3.5 w-3.5 text-blue-400" />
+                            Ver
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+                            data-testid={`edit-${t.id}`}
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-white/40" />
+                            Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-white/[0.06]" />
+                          <DropdownMenuItem
+                            className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
+                            data-testid={`delete-${t.id}`}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
