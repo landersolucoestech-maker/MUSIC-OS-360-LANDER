@@ -233,31 +233,41 @@ export default function ArtistaSignupPublic() {
   const validateStep1 = (): boolean => {
     const e: Record<string, string> = {};
     if (!form.nome_artistico.trim()) e.nome_artistico = "Obrigatório";
+    if (!form.nome_civil.trim()) e.nome_civil = "Obrigatório";
     if (form.tipo_perfil.length === 0) e.tipo_perfil = "Selecione ao menos um tipo de perfil";
+    if (!form.genero) e.genero = "Obrigatório";
+    if (!form.genero_musical) e.genero_musical = "Obrigatório";
     if (!form.email.trim()) e.email = "Obrigatório";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "E-mail inválido";
     if (!form.telefone.trim()) e.telefone = "Obrigatório";
+    if (!form.cpf_cnpj.trim()) e.cpf_cnpj = "Obrigatório";
+    if (!form.data_nascimento) e.data_nascimento = "Obrigatório";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = (): boolean => {
     const e: Record<string, string> = {};
-    const urlFields: (keyof Omit<FormData, "tipo_perfil">)[] = ["youtube", "spotify", "apple_music", "deezer", "soundcloud", "presskit_url"];
+    if (!form.instagram.trim()) e.instagram = "Obrigatório";
+    if (!form.tiktok.trim()) e.tiktok = "Obrigatório";
+    const urlFields: (keyof Omit<FormData, "tipo_perfil">)[] = ["spotify", "youtube", "apple_music", "deezer", "soundcloud", "presskit_url"];
     urlFields.forEach((f) => {
       const v = (form[f] as string).trim();
-      if (v && !/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
+      if (!v) { e[f] = "Obrigatório"; return; }
+      if (!/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
         if (/[\s/]/.test(v) || v.includes("://")) {
           e[f] = "URL deve começar com https://";
         }
       }
     });
+    if (!distribuidoras[0]?.distribuidora) e.distribuidora_0 = "Obrigatório";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep3 = (): boolean => {
     const e: Record<string, string> = {};
+    if (!form.bio.trim()) e.bio = "Obrigatório";
     if (form.foto_url.trim() && !/^https?:\/\/.+/.test(form.foto_url.trim())) {
       e.foto_url = "URL inválida — deve começar com https://";
     }
@@ -509,13 +519,15 @@ export default function ArtistaSignupPublic() {
                 {errors.nome_artistico && <p className="text-xs text-destructive">{errors.nome_artistico}</p>}
               </div>
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">Nome Civil</Label>
+                <Label className="text-sm">Nome Civil <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="Nome completo (documentos)"
                   value={form.nome_civil}
                   onChange={(e) => set("nome_civil", e.target.value)}
                   data-testid="input-nome-civil"
+                  className={errors.nome_civil ? "border-destructive" : ""}
                 />
+                {errors.nome_civil && <p className="text-xs text-destructive">{errors.nome_civil}</p>}
               </div>
             </div>
 
@@ -551,9 +563,9 @@ export default function ArtistaSignupPublic() {
             {/* Gênero + Gênero Musical */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">Gênero</Label>
+                <Label className="text-sm">Gênero <span className="text-destructive">*</span></Label>
                 <Select value={form.genero} onValueChange={(v) => set("genero", v)}>
-                  <SelectTrigger data-testid="select-genero">
+                  <SelectTrigger data-testid="select-genero" className={errors.genero ? "border-destructive" : ""}>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -561,17 +573,19 @@ export default function ArtistaSignupPublic() {
                     <SelectItem value="Feminino">Feminino</SelectItem>
                   </SelectContent>
                 </Select>
+                {errors.genero && <p className="text-xs text-destructive">{errors.genero}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm">Gênero Musical</Label>
+                <Label className="text-sm">Gênero Musical <span className="text-destructive">*</span></Label>
                 <Select value={form.genero_musical} onValueChange={(v) => set("genero_musical", v)}>
-                  <SelectTrigger data-testid="select-genero-musical">
+                  <SelectTrigger data-testid="select-genero-musical" className={errors.genero_musical ? "border-destructive" : ""}>
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
                     {GENEROS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {errors.genero_musical && <p className="text-xs text-destructive">{errors.genero_musical}</p>}
               </div>
             </div>
 
@@ -602,25 +616,28 @@ export default function ArtistaSignupPublic() {
             {/* CPF + Data de Nascimento */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">CPF</Label>
+                <Label className="text-sm">CPF <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="000.000.000-00"
                   value={form.cpf_cnpj} onChange={(e) => set("cpf_cnpj", e.target.value)}
                   data-testid="input-cpf-cnpj"
+                  className={errors.cpf_cnpj ? "border-destructive" : ""}
                 />
+                {errors.cpf_cnpj && <p className="text-xs text-destructive">{errors.cpf_cnpj}</p>}
               </div>
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-sm flex items-center gap-1.5">
                   <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                  Data de Nascimento
+                  Data de Nascimento <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   type="date"
                   value={form.data_nascimento}
                   onChange={(e) => set("data_nascimento", e.target.value)}
                   data-testid="input-data-nascimento"
-                  className="block"
+                  className={errors.data_nascimento ? "border-destructive block" : "block"}
                 />
+                {errors.data_nascimento && <p className="text-xs text-destructive">{errors.data_nascimento}</p>}
               </div>
             </div>
           </div>
@@ -631,30 +648,34 @@ export default function ArtistaSignupPublic() {
           <div className="space-y-5">
             <div>
               <h2 className="font-semibold text-base">Links e Redes Sociais</h2>
-              <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
+              <p className="text-sm text-muted-foreground">Preencha todos os campos abaixo</p>
             </div>
 
             {/* Linha 1 — Instagram | TikTok */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
+                  <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram <span className="text-destructive">*</span>
                 </Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground shrink-0">@</span>
                   <Input placeholder="usuario" value={form.instagram}
-                    onChange={(e) => set("instagram", e.target.value)} data-testid="input-instagram" />
+                    onChange={(e) => set("instagram", e.target.value)} data-testid="input-instagram"
+                    className={errors.instagram ? "border-destructive" : ""} />
                 </div>
+                {errors.instagram && <p className="text-xs text-destructive">{errors.instagram}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiTiktok className="h-3.5 w-3.5" /> TikTok
+                  <SiTiktok className="h-3.5 w-3.5" /> TikTok <span className="text-destructive">*</span>
                 </Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground shrink-0">@</span>
                   <Input placeholder="usuario" value={form.tiktok}
-                    onChange={(e) => set("tiktok", e.target.value)} data-testid="input-tiktok" />
+                    onChange={(e) => set("tiktok", e.target.value)} data-testid="input-tiktok"
+                    className={errors.tiktok ? "border-destructive" : ""} />
                 </div>
+                {errors.tiktok && <p className="text-xs text-destructive">{errors.tiktok}</p>}
               </div>
             </div>
 
@@ -662,7 +683,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
+                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   placeholder="https://open.spotify.com/artist/..."
@@ -674,7 +695,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
+                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   placeholder="https://youtube.com/@seucanal"
@@ -690,7 +711,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music
+                  <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music <span className="text-destructive">*</span>
                 </Label>
                 <Input placeholder="https://music.apple.com/..."
                   value={form.apple_music} onChange={(e) => set("apple_music", e.target.value)}
@@ -701,7 +722,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer
+                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer <span className="text-destructive">*</span>
                 </Label>
                 <Input placeholder="https://www.deezer.com/artist/..."
                   value={form.deezer} onChange={(e) => set("deezer", e.target.value)}
@@ -716,7 +737,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
+                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud <span className="text-destructive">*</span>
                 </Label>
                 <Input placeholder="https://soundcloud.com/..."
                   value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
@@ -727,7 +748,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
+                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   placeholder="https://drive.google.com/... ou Notion, Dropbox..."
@@ -755,12 +776,12 @@ export default function ArtistaSignupPublic() {
                 {distribuidoras.map((entry, idx) => (
                   <div key={idx} className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-1.5">
-                      {idx === 0 && <Label className="text-sm">Distribuidora</Label>}
+                      {idx === 0 && <Label className="text-sm">Distribuidora <span className="text-destructive">*</span></Label>}
                       <Select
                         value={entry.distribuidora}
                         onValueChange={(v) => setDistribuidoraField(idx, "distribuidora", v)}
                       >
-                        <SelectTrigger data-testid={`select-distribuidora-${idx}`}>
+                        <SelectTrigger data-testid={`select-distribuidora-${idx}`} className={idx === 0 && errors.distribuidora_0 ? "border-destructive" : ""}>
                           <SelectValue placeholder="Selecione" />
                         </SelectTrigger>
                         <SelectContent>
@@ -769,6 +790,7 @@ export default function ArtistaSignupPublic() {
                           ))}
                         </SelectContent>
                       </Select>
+                      {idx === 0 && errors.distribuidora_0 && <p className="text-xs text-destructive">{errors.distribuidora_0}</p>}
                     </div>
                     <div className="flex items-end gap-2">
                       <div className="space-y-1.5 flex-1">
@@ -843,12 +865,14 @@ export default function ArtistaSignupPublic() {
 
             {/* Biografia */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Biografia / Proposta Artística</Label>
+              <Label className="text-sm">Biografia / Proposta Artística <span className="text-destructive">*</span></Label>
               <Textarea
                 placeholder="Trajetória, estilo, influências e o que te diferencia. Seja direto e autêntico."
                 rows={5} value={form.bio}
                 onChange={(e) => set("bio", e.target.value)} data-testid="textarea-bio"
+                className={errors.bio ? "border-destructive" : ""}
               />
+              {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
               <p className="text-xs text-muted-foreground">{form.bio.length} caracteres</p>
             </div>
 
