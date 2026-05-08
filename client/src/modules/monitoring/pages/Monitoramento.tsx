@@ -14,11 +14,11 @@ const getStatusBadge = (status: string) => {
   const s = status?.toLowerCase();
   switch (s) {
     case "confirmado":
-    case "recebido":   return <Badge className="bg-success capitalize">{status}</Badge>;
+    case "recebido":   return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
     case "pendente":   return <Badge className="bg-warning text-warning-foreground capitalize">{status}</Badge>;
     case "nao_reportado":
     case "não reportado": return <Badge className="bg-destructive">Não Reportado</Badge>;
-    case "processado": return <Badge className="bg-success capitalize">{status}</Badge>;
+    case "processado": return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
     default:           return <Badge variant="secondary" className="capitalize">{status?.replace(/_/g, " ")}</Badge>;
   }
 };
