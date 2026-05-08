@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { formatDate } from "@/shared/lib/format-utils";
+import { ECADViewModal } from "@/modules/monitoring/components/ECADViewModal";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -33,6 +34,8 @@ const fmtBRL = (n: number) =>
 export default function Monitoramento() {
   const [activeTab, setActiveTab] = useState("deteccao");
   const [search, setSearch] = useState("");
+  const [ecadModalOpen, setEcadModalOpen] = useState(false);
+  const [selectedPeriodo, setSelectedPeriodo] = useState<any>(null);
 
   const { deteccoes, isLoading: loadingDet } = useDeteccoes();
   const { obras, isLoading: loadingObras } = useObras();
@@ -235,7 +238,7 @@ export default function Monitoramento() {
                       </div>
                       <div className="flex items-center gap-3">
                         {getStatusBadge(periodo.status ?? "")}
-                        <Button variant="outline" size="sm">Ver Detalhes</Button>
+                        <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>Ver Detalhes</Button>
                       </div>
                     </CardContent>
                   </Card>
@@ -263,6 +266,12 @@ export default function Monitoramento() {
           </Card>
         )}
       </div>
+
+      <ECADViewModal
+        open={ecadModalOpen}
+        onOpenChange={setEcadModalOpen}
+        periodo={selectedPeriodo}
+      />
     </MainLayout>
   );
 }
