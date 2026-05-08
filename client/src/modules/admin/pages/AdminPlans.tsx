@@ -7,27 +7,49 @@ import { Label } from "@/shared/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/shared/ui/dialog";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
 import { MOCK_PLANS } from "../data/mockAdmin";
 import type { AdminPlan } from "../types";
 import {
   Tag, Users, HardDrive, DollarSign, Check,
-  Pencil, Plus, X, Save,
+  Plus, X, Save, MoreHorizontal, Eye, Pencil, Trash2,
+  AlertTriangle,
 } from "lucide-react";
 
 function fmtBRL(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
 
-/* ── Edit Dialog ── */
-interface EditDialogProps {
-  plan: AdminPlan;
-  onSave: (updated: AdminPlan) => void;
+const EMPTY_PLAN: Omit<AdminPlan, "id"> = {
+  name: "",
+  tier: "starter",
+  price_monthly: 0,
+  price_annual: 0,
+  max_users: 5,
+  max_artists: 50,
+  max_storage_gb: 10,
+  features: [],
+  active_subscribers: 0,
+  mrr: 0,
+  color: "#3B82F6",
+};
+
+/* ─────────────── Form / Create / Edit Dialog ─────────────── */
+interface FormDialogProps {
+  plan: AdminPlan | null;   // null = criar
+  onSave: (plan: AdminPlan) => void;
   onClose: () => void;
 }
 
-function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
-  const [form, setForm] = useState<AdminPlan>({ ...plan });
+function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
+  const isNew = !plan;
+  const [form, setForm] = useState<AdminPlan>(
+    plan ? { ...plan } : { id: `plan-${Date.now()}`, ...EMPTY_PLAN }
+  );
   const [newFeature, setNewFeature] = useState("");
 
   function field(key: keyof AdminPlan, value: string | number) {
@@ -45,25 +67,31 @@ function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
     setForm(prev => ({ ...prev, features: prev.features.filter((_, i) => i !== idx) }));
   }
 
+  const canSave = form.name.trim().length > 0;
+
   return (
     <Dialog open onOpenChange={onClose}>
       <DialogContent className="sm:max-w-lg bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white">
-            <div className="h-2.5 w-2.5 rounded-full" style={{ background: form.color }} />
-            Editar Plano — {form.name}
+          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+            {isNew ? (
+              <><Plus className="h-4 w-4 text-blue-400" /> Novo Plano</>
+            ) : (
+              <><div className="h-2.5 w-2.5 rounded-full" style={{ background: form.color }} /> Editar — {form.name}</>
+            )}
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4 py-1">
+        <div className="space-y-4 py-1 max-h-[60vh] overflow-y-auto pr-1">
           {/* Nome + Cor */}
           <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Nome do Plano</Label>
+              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Nome do Plano *</Label>
               <Input
                 value={form.name}
                 onChange={e => field("name", e.target.value)}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                placeholder="Ex: Growth Plus"
+                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-blue-500/50"
                 data-testid="input-plan-name"
               />
             </div>
@@ -143,7 +171,10 @@ function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
           {/* Features */}
           <div className="space-y-2">
             <Label className="text-[11px] text-white/40 uppercase tracking-wider">Funcionalidades</Label>
-            <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
+              {form.features.length === 0 && (
+                <p className="text-[11.5px] text-white/20 italic">Nenhuma funcionalidade adicionada.</p>
+              )}
               {form.features.map((f, idx) => (
                 <div key={idx} className="flex items-center gap-2 group/feat">
                   <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: form.color }} />
@@ -160,7 +191,7 @@ function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
             </div>
             <div className="flex gap-2 pt-1">
               <Input
-                placeholder="Nova funcionalidade..."
+                placeholder="Nova funcionalidade... (Enter para adicionar)"
                 value={newFeature}
                 onChange={e => setNewFeature(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addFeature()}
@@ -191,12 +222,13 @@ function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
           </Button>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5"
+            disabled={!canSave}
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5 disabled:opacity-40"
             onClick={() => onSave(form)}
             data-testid="btn-save-plan"
           >
             <Save className="h-3.5 w-3.5" />
-            Salvar alterações
+            {isNew ? "Criar plano" : "Salvar alterações"}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -204,92 +236,307 @@ function EditPlanDialog({ plan, onSave, onClose }: EditDialogProps) {
   );
 }
 
-/* ── Main page ── */
+/* ─────────────── View Dialog ─────────────── */
+function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+            <div className="h-2.5 w-2.5 rounded-full" style={{ background: plan.color }} />
+            {plan.name}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 pt-1">
+          {/* Preço */}
+          <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-4">
+            <p className="text-2xl font-bold text-white">
+              {fmtBRL(plan.price_monthly)}
+              <span className="text-[12px] font-normal text-white/30">/mês</span>
+            </p>
+            <p className="text-[11.5px] text-white/35 mt-0.5">ou {fmtBRL(plan.price_annual)}/ano</p>
+          </div>
+
+          {/* KPIs */}
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { label: "Assinantes", value: plan.active_subscribers },
+              { label: "MRR", value: fmtBRL(plan.mrr) },
+              { label: "Máx. Usuários", value: plan.max_users === 999 ? "Ilimitado" : plan.max_users },
+              { label: "Máx. Artistas", value: plan.max_artists === 999 ? "Ilimitados" : plan.max_artists },
+              { label: "Storage", value: plan.max_storage_gb === 1000 ? "1 TB" : `${plan.max_storage_gb} GB` },
+            ].map(({ label, value }) => (
+              <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
+                <p className="text-[10.5px] text-white/30 mb-1">{label}</p>
+                <p className="text-[13px] font-semibold text-white/75">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Features */}
+          <div className="space-y-2">
+            <p className="text-[11px] text-white/30 uppercase tracking-wider">Funcionalidades</p>
+            <div className="space-y-1.5">
+              {plan.features.map(f => (
+                <div key={f} className="flex items-center gap-2">
+                  <Check className="h-3.5 w-3.5 shrink-0" style={{ color: plan.color }} />
+                  <span className="text-[12px] text-white/55">{f}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="pt-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 text-white/50 hover:text-white text-xs"
+            onClick={onClose}
+          >
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─────────────── Delete Confirm Dialog ─────────────── */
+function DeletePlanDialog({ plan, onConfirm, onClose }: { plan: AdminPlan; onConfirm: () => void; onClose: () => void }) {
+  return (
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-sm bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+            <AlertTriangle className="h-4 w-4 text-red-400" />
+            Excluir Plano
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="py-2 space-y-3">
+          <p className="text-[13px] text-white/60">
+            Tem certeza que deseja excluir o plano{" "}
+            <span className="font-semibold text-white">{plan.name}</span>?
+          </p>
+          {plan.active_subscribers > 0 && (
+            <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
+              <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
+              <p className="text-[11.5px] text-red-300">
+                Este plano possui <strong>{plan.active_subscribers} assinante(s)</strong> ativo(s).
+                Excluí-lo pode afetar esses clientes.
+              </p>
+            </div>
+          )}
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="border-white/10 text-white/50 hover:text-white text-xs"
+            onClick={onClose}
+          >
+            Cancelar
+          </Button>
+          <Button
+            size="sm"
+            className="bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5"
+            onClick={onConfirm}
+            data-testid="btn-confirm-delete"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Excluir plano
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─────────────── Plan Card ─────────────── */
+interface PlanCardProps {
+  plan: AdminPlan;
+  onView: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
+  return (
+    <div
+      className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-4 group/card relative"
+      data-testid={`plan-${plan.id}`}
+    >
+      {/* Dropdown */}
+      <div className="absolute top-4 right-4">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-white/10 text-white/30 hover:text-white"
+              data-testid={`actions-plan-${plan.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            align="end"
+            className="w-40 bg-[hsl(222_47%_6%)] border-white/[0.08] text-white/80"
+          >
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+              onClick={onView}
+              data-testid={`view-plan-${plan.id}`}
+            >
+              <Eye className="h-3.5 w-3.5 text-blue-400" />
+              Ver
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+              onClick={onEdit}
+              data-testid={`edit-plan-${plan.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5 text-white/40" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-white/[0.06]" />
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
+              onClick={onDelete}
+              data-testid={`delete-plan-${plan.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      {/* Header */}
+      <div className="flex items-center gap-2 pr-8">
+        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: plan.color }} />
+        <span className="text-[14px] font-bold text-white">{plan.name}</span>
+        <Badge variant="outline" className="ml-auto text-[10px] border-white/10 text-white/40">
+          {plan.active_subscribers} clientes
+        </Badge>
+      </div>
+
+      {/* Preço */}
+      <div>
+        <p className="text-2xl font-bold text-white">
+          {fmtBRL(plan.price_monthly)}
+          <span className="text-[12px] font-normal text-white/30">/mês</span>
+        </p>
+        <p className="text-[11px] text-white/30 mt-0.5">
+          ou {fmtBRL(plan.price_annual)}/ano
+        </p>
+      </div>
+
+      {/* Limites */}
+      <div className="space-y-2 border-t border-white/[0.06] pt-3">
+        {[
+          { icon: Users,      label: `${plan.max_users === 999 ? "Ilimitado" : plan.max_users} usuários` },
+          { icon: Tag,        label: `${plan.max_artists === 999 ? "Ilimitados" : plan.max_artists} artistas` },
+          { icon: HardDrive,  label: `${plan.max_storage_gb === 1000 ? "1 TB" : `${plan.max_storage_gb} GB`} storage` },
+          { icon: DollarSign, label: `MRR: ${fmtBRL(plan.mrr)}` },
+        ].map(({ icon: Icon, label }) => (
+          <div key={label} className="flex items-center gap-2">
+            <Icon className="h-3 w-3 text-white/20 shrink-0" />
+            <span className="text-[11.5px] text-white/50">{label}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Features */}
+      <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+        {plan.features.map((f) => (
+          <div key={f} className="flex items-start gap-2">
+            <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: plan.color }} />
+            <span className="text-[11.5px] text-white/50">{f}</span>
+          </div>
+        ))}
+        {plan.features.length === 0 && (
+          <p className="text-[11px] text-white/20 italic">Sem funcionalidades</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ─────────────── Main Page ─────────────── */
+type ModalMode = "view" | "edit" | "create" | "delete" | null;
+
 export default function AdminPlans() {
   const [plans, setPlans] = useState<AdminPlan[]>(MOCK_PLANS);
-  const [editing, setEditing] = useState<AdminPlan | null>(null);
+  const [active, setActive] = useState<AdminPlan | null>(null);
+  const [mode, setMode] = useState<ModalMode>(null);
+
+  function open(plan: AdminPlan, m: ModalMode) { setActive(plan); setMode(m); }
+  function close() { setActive(null); setMode(null); }
 
   function handleSave(updated: AdminPlan) {
-    setPlans(prev => prev.map(p => p.id === updated.id ? updated : p));
-    setEditing(null);
+    setPlans(prev =>
+      prev.some(p => p.id === updated.id)
+        ? prev.map(p => p.id === updated.id ? updated : p)
+        : [...prev, updated]
+    );
+    close();
+  }
+
+  function handleDelete() {
+    if (!active) return;
+    setPlans(prev => prev.filter(p => p.id !== active.id));
+    close();
   }
 
   return (
     <AdminLayout>
       <div className="p-6 space-y-6 animate-fade-in">
-        <div>
-          <h1 className="text-xl font-bold text-white">Planos</h1>
-          <p className="text-[12.5px] text-white/40 mt-0.5">Gerenciamento de planos e preços</p>
+
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-white">Planos</h1>
+            <p className="text-[12.5px] text-white/40 mt-0.5">Gerenciamento de planos e preços</p>
+          </div>
+          <Button
+            size="sm"
+            className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5"
+            onClick={() => setMode("create")}
+            data-testid="btn-new-plan"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Novo Plano
+          </Button>
         </div>
 
+        {/* Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {plans.map((plan) => (
-            <div
+            <PlanCard
               key={plan.id}
-              className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-4 group/card relative"
-              data-testid={`plan-${plan.id}`}
-            >
-              {/* Edit button */}
-              <button
-                onClick={() => setEditing(plan)}
-                className="absolute top-4 right-4 p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-white/10 text-white/30 hover:text-white"
-                data-testid={`edit-plan-${plan.id}`}
-                title="Editar plano"
-              >
-                <Pencil className="h-3.5 w-3.5" />
-              </button>
-
-              <div className="flex items-center gap-2 pr-8">
-                <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: plan.color }} />
-                <span className="text-[14px] font-bold text-white">{plan.name}</span>
-                <Badge variant="outline" className="ml-auto text-[10px] border-white/10 text-white/40">
-                  {plan.active_subscribers} clientes
-                </Badge>
-              </div>
-
-              <div>
-                <p className="text-2xl font-bold text-white">
-                  {fmtBRL(plan.price_monthly)}
-                  <span className="text-[12px] font-normal text-white/30">/mês</span>
-                </p>
-                <p className="text-[11px] text-white/30 mt-0.5">
-                  ou {fmtBRL(plan.price_annual)}/ano
-                </p>
-              </div>
-
-              <div className="space-y-2 border-t border-white/[0.06] pt-3">
-                {[
-                  { icon: Users,      label: `${plan.max_users === 999 ? "Ilimitado" : plan.max_users} usuários` },
-                  { icon: Tag,        label: `${plan.max_artists === 999 ? "Ilimitados" : plan.max_artists} artistas` },
-                  { icon: HardDrive,  label: `${plan.max_storage_gb === 1000 ? "1 TB" : `${plan.max_storage_gb} GB`} storage` },
-                  { icon: DollarSign, label: `MRR: ${fmtBRL(plan.mrr)}` },
-                ].map(({ icon: Icon, label }) => (
-                  <div key={label} className="flex items-center gap-2">
-                    <Icon className="h-3 w-3 text-white/20 shrink-0" />
-                    <span className="text-[11.5px] text-white/50">{label}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
-                {plan.features.map((f) => (
-                  <div key={f} className="flex items-start gap-2">
-                    <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: plan.color }} />
-                    <span className="text-[11.5px] text-white/50">{f}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
+              plan={plan}
+              onView={() => open(plan, "view")}
+              onEdit={() => open(plan, "edit")}
+              onDelete={() => open(plan, "delete")}
+            />
           ))}
         </div>
       </div>
 
-      {editing && (
-        <EditPlanDialog
-          plan={editing}
-          onSave={handleSave}
-          onClose={() => setEditing(null)}
-        />
+      {/* Modals */}
+      {mode === "create" && (
+        <PlanFormDialog plan={null} onSave={handleSave} onClose={close} />
+      )}
+      {mode === "edit" && active && (
+        <PlanFormDialog plan={active} onSave={handleSave} onClose={close} />
+      )}
+      {mode === "view" && active && (
+        <ViewPlanDialog plan={active} onClose={close} />
+      )}
+      {mode === "delete" && active && (
+        <DeletePlanDialog plan={active} onConfirm={handleDelete} onClose={close} />
       )}
     </AdminLayout>
   );
