@@ -1,0 +1,521 @@
+REFATORAR COMPLETAMENTE A PÁGINA “MÉTRICAS & PERFORMANCE” PARA UM PADRÃO ENTERPRISE ANALYTICS PREMIUM, ELIMINANDO O VISUAL POLUÍDO, EXCESSO DE CARDS, MICRO-WIDGETS E ESTRUTURA FRAGMENTADA.
+
+OBJETIVO:
+Transformar o módulo atual em um dashboard analítico moderno, limpo, corporativo e altamente hierárquico, inspirado em:
+
+* Spotify for Artists
+* Stripe Dashboard
+* Linear
+* Notion Analytics
+* Vercel Analytics
+
+O sistema NÃO deve parecer:
+
+* template admin genérico;
+* dashboard crypto;
+* painel gamer;
+* coleção de widgets;
+* UI experimental.
+
+======================================================================
+DIRETRIZES GERAIS
+=================
+
+A página atual possui:
+
+* excesso de mini cards;
+* excesso de grids;
+* muitas caixas competindo visualmente;
+* informações repetidas;
+* muitas métricas simultâneas;
+* profundidade visual desorganizada;
+* excesso de text-xs;
+* excesso de uppercase;
+* excesso de badges;
+* muitos elementos pequenos;
+* múltiplos blocos sem hierarquia.
+
+A nova estrutura deve priorizar:
+
+* hierarquia visual;
+* respiro;
+* leitura rápida;
+* contexto;
+* foco;
+* densidade equilibrada;
+* visual enterprise;
+* consistência visual;
+* profundidade analítica.
+
+======================================================================
+REMOVER COMPLETAMENTE
+=====================
+
+REMOVER:
+
+* mini bar charts pequenos;
+* grids com dezenas de cards;
+* excesso de borders;
+* excesso de gradientes;
+* badges “Simulado” espalhados;
+* excesso de ícones;
+* uppercase exagerado;
+* excesso de text-[10px];
+* cards internos repetitivos;
+* múltiplos níveis de widgets;
+* visual “monitoramento hacker”;
+* blocos compactados;
+* excesso de brilho/neon;
+* visual fragmentado.
+
+REMOVER PRINCIPALMENTE:
+
+* MiniBarChart
+* grids sm:grid-cols-4 internos
+* overview com múltiplos cards de plataformas
+* cards pequenos repetitivos
+* estrutura baseada em dezenas de micro widgets
+
+======================================================================
+NOVA ESTRUTURA OBRIGATÓRIA
+==========================
+
+A página deve seguir EXATAMENTE esta hierarquia:
+
+1. HEADER EXECUTIVO
+2. KPIs PRINCIPAIS
+3. PERFORMANCE ANALÍTICA
+4. TOP CONTEÚDOS
+5. PERFORMANCE DE CAMPANHAS
+6. EXPORTAÇÃO
+
+======================================================================
+
+1. HEADER EXECUTIVO
+   ======================================================================
+
+Criar um header grande e sofisticado.
+
+Estrutura:
+
+* título;
+* descrição;
+* filtros;
+* ações.
+
+LAYOUT:
+
+Desktop:
+
+* esquerda → título + descrição
+* direita → filtros + exportação
+
+Mobile:
+
+* tudo empilhado.
+
+EXEMPLO:
+
+“Métricas & Performance”
+“Monitoramento consolidado de plataformas, campanhas e audiência digital”
+
+Adicionar:
+
+* filtro de período;
+* filtro de artista;
+* botão exportar.
+
+NÃO usar:
+
+* bordas exageradas;
+* glow;
+* elementos muito pequenos.
+
+======================================================================
+2. KPIs PRINCIPAIS
+==================
+
+REFATORAR COMPLETAMENTE os KPI cards.
+
+Atualmente:
+
+* muito altos;
+* excesso de texto;
+* aparência fragmentada.
+
+NOVO PADRÃO:
+
+* cards horizontais;
+* mais baixos;
+* mais largos;
+* visual premium;
+* menos conteúdo.
+
+Cada KPI deve conter:
+
+* label;
+* valor principal;
+* pequena variação percentual;
+* mini indicador simples.
+
+REMOVER:
+
+* subtítulos longos;
+* excesso de padding;
+* bordas fortes;
+* muitas cores.
+
+GRID:
+
+* 2 colunas mobile
+* 3 tablet
+* 6 desktop
+
+Visual:
+
+* fundo sólido;
+* sombra suave;
+* border discreta;
+* radius grande;
+* hover leve.
+
+======================================================================
+3. PERFORMANCE ANALÍTICA (ÁREA PRINCIPAL)
+=========================================
+
+ESSA DEVE SER A PRINCIPAL ÁREA DA PÁGINA.
+
+Substituir totalmente a estrutura atual de:
+
+* mini cards;
+* grids internos;
+* múltiplas caixas.
+
+NOVO LAYOUT OBRIGATÓRIO:
+
+┌──────────────────────────────┬─────────────────┐
+│                              │                 │
+│     GRÁFICO PRINCIPAL        │  RESUMO LATERAL │
+│                              │                 │
+│                              │                 │
+└──────────────────────────────┴─────────────────┘
+
+======================================================================
+GRÁFICO PRINCIPAL
+=================
+
+Criar um gráfico grande e centralizado.
+
+Mostrar:
+
+* evolução mensal;
+* crescimento;
+* comparação;
+* performance consolidada.
+
+Plataformas:
+
+* YouTube
+* TikTok
+* Instagram
+* Meta Ads
+* Google Ads
+
+O gráfico deve ser:
+
+* limpo;
+* elegante;
+* moderno;
+* sem excesso de informação.
+
+NÃO usar:
+
+* mini gráficos;
+* barras pequenas;
+* widgets repetitivos.
+
+======================================================================
+SIDEBAR ANALÍTICA
+=================
+
+Ao lado do gráfico principal criar uma sidebar fixa.
+
+Mostrar:
+
+* plataforma selecionada;
+* inscritos;
+* alcance;
+* engajamento;
+* CTR;
+* receita estimada;
+* top conteúdo.
+
+Estrutura:
+
+* informações empilhadas;
+* sem mini cards;
+* sem grids internos.
+
+======================================================================
+PLATFORM SWITCHER
+=================
+
+Manter tabs/plataformas:
+
+* Visão Geral
+* YouTube
+* TikTok
+* Instagram
+* Meta Ads
+* Google Ads
+
+PORÉM:
+
+* mais minimalistas;
+* mais limpas;
+* menos coloridas;
+* sem excesso de destaque.
+
+A troca de plataforma NÃO pode alterar drasticamente o layout.
+
+O layout deve permanecer consistente.
+
+======================================================================
+4. TOP CONTEÚDOS
+================
+
+PRESERVAR ESTA SEÇÃO.
+
+Mas transformar em:
+
+* tabela premium;
+* layout profissional;
+* visual de streaming analytics.
+
+REMOVER:
+
+* barras horizontais;
+* visual técnico antigo;
+* listas simples.
+
+NOVO LAYOUT:
+
+Thumbnail | Conteúdo | Plataforma | Views | Engajamento | Crescimento
+
+Adicionar:
+
+* thumbnail fake/mock;
+* hover elegante;
+* linha limpa;
+* melhor espaçamento.
+
+Visual inspirado em:
+
+* Spotify for Artists
+* YouTube Studio
+
+======================================================================
+5. PERFORMANCE DE CAMPANHAS
+===========================
+
+Separar totalmente da performance social.
+
+Criar área própria.
+
+Mostrar:
+
+* campanhas;
+* investimento;
+* alcance;
+* CTR;
+* conversão;
+* ROI.
+
+Caso vazio:
+mostrar estado vazio elegante e centralizado.
+
+NÃO usar:
+
+* caixas pequenas;
+* blocos compactos;
+* ícones exagerados.
+
+======================================================================
+6. EXPORTAÇÃO
+=============
+
+REFATORAR COMPLETAMENTE.
+
+REMOVER:
+
+* múltiplos botões iguais.
+
+CRIAR:
+
+* botão principal;
+* dropdown menu.
+
+Estrutura:
+
+Exportar Relatório
+↓
+
+* PDF
+* XLSX
+* CSV
+
+Visual enterprise.
+
+======================================================================
+IDENTIDADE VISUAL
+=================
+
+USAR:
+
+* visual dark premium;
+* contraste suave;
+* fundos sólidos;
+* profundidade elegante.
+
+FUNDO:
+Substituir preto puro.
+
+Usar:
+
+* #0B0F17
+* #101826
+* #121926
+
+======================================================================
+CORES
+=====
+
+Escolher UMA cor principal.
+
+Preferência:
+
+* azul enterprise;
+  OU
+* vermelho musical premium.
+
+NÃO misturar:
+
+* verde;
+* vermelho;
+* azul;
+* amarelo;
+* glow neon.
+
+======================================================================
+CARDS
+=====
+
+PADRÃO:
+
+background:
+rgba(18,25,38,.92)
+
+border:
+1px solid rgba(255,255,255,.06)
+
+border-radius:
+16px
+
+hover:
+suave.
+
+======================================================================
+TIPOGRAFIA
+==========
+
+REDUZIR drasticamente:
+
+* text-[10px]
+* text-[9px]
+* uppercase excessivo
+
+Priorizar:
+
+* text-sm
+* text-base
+* font-medium
+* font-semibold
+
+Melhorar:
+
+* legibilidade;
+* respiro;
+* leitura rápida.
+
+======================================================================
+ESPAÇAMENTO
+===========
+
+Aumentar:
+
+* padding;
+* gaps;
+* margens;
+* respiro vertical.
+
+A página deve parecer:
+
+* sofisticada;
+* organizada;
+* respirável.
+
+======================================================================
+RESPONSIVIDADE
+==============
+
+Garantir:
+
+* mobile premium;
+* tablet organizado;
+* desktop widescreen elegante.
+
+Evitar:
+
+* colapso visual;
+* grids quebrados;
+* excesso de elementos por linha.
+
+======================================================================
+ARQUITETURA OBRIGATÓRIA
+=======================
+
+A página NÃO deve mais ser:
+
+* baseada em widgets;
+* baseada em dezenas de cards;
+* baseada em micro componentes repetitivos.
+
+A nova arquitetura deve ser:
+
+* analítica;
+* contextual;
+* modular;
+* hierárquica;
+* enterprise.
+
+======================================================================
+RESULTADO FINAL ESPERADO
+========================
+
+A sensação final deve ser:
+
+“plataforma SaaS musical enterprise moderna”
+
+e NÃO:
+
+“template admin cheio de cards”.
+
+O dashboard deve parecer:
+
+* premium;
+* profissional;
+* organizado;
+* limpo;
+* moderno;
+* corporativo;
+* altamente utilizável.
