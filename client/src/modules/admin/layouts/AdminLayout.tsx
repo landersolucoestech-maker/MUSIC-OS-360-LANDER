@@ -20,7 +20,6 @@ const NAV_ITEMS = [
   { label: "Dashboard",       href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Clientes",        href: "/admin/clients",   icon: Building2 },
   { label: "Planos",          href: "/admin/plans",     icon: Tag },
-  { label: "Analytics",       href: "/admin/analytics", icon: BarChart3 },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
   { label: "Suporte",         href: "/admin/support",   icon: HeadphonesIcon },
   { label: "Configurações",   href: "/admin/configuracoes", icon: Settings },

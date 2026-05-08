@@ -9,7 +9,6 @@ const Landing             = lazy(() => import("@/shared/pages/Landing"));
 const AdminDashboard      = lazy(() => import("@/modules/admin/pages/AdminDashboard"));
 const AdminClients        = lazy(() => import("@/modules/admin/pages/AdminClients"));
 const AdminPlans          = lazy(() => import("@/modules/admin/pages/AdminPlans"));
-const AdminAnalytics      = lazy(() => import("@/modules/admin/pages/AdminAnalytics"));
 const AdminAudit          = lazy(() => import("@/modules/admin/pages/AdminAudit"));
 const AdminSupport        = lazy(() => import("@/modules/admin/pages/AdminSupport"));
 const AdminSettings       = lazy(() => import("@/modules/admin/pages/AdminSettings"));
@@ -28,7 +27,7 @@ export function adminRoutes(S: SuspenseRouteComponent, P: SuspenseRouteComponent
       <Route path="/admin/subscriptions"  element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/revenue"        element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/plans"          element={<P><AdminPlans /></P>} />
-      <Route path="/admin/analytics"      element={<P><AdminAnalytics /></P>} />
+      <Route path="/admin/analytics"      element={<Navigate to="/admin/dashboard" replace />} />
       <Route path="/admin/audit"          element={<P><AdminAudit /></P>} />
       <Route path="/admin/support"        element={<P><AdminSupport /></P>} />
 
