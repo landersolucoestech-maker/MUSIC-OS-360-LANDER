@@ -13,7 +13,7 @@ export function artistRoutes(P: SuspenseRouteComponent) {
     <>
       <Route path="/artistas" element={<P><Artistas /></P>} />
       <Route path="/artistas/novo" element={<P><ArtistaCadastro /></P>} />
-      <Route path="/artistas/:id/editar" element={<P><Artistas /></P>} />
+      <Route path="/artistas/:id/editar" element={<P><ArtistaCadastro /></P>} />
     </>
   );
 }

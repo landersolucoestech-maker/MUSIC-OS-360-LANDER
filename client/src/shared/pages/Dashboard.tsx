@@ -7,12 +7,16 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Users, FileText, DollarSign, Calendar, ArrowRight,
   Music, TrendingUp, BarChart3, AlertTriangle, Activity,
-  UserCheck, Radio, Shield,
+  UserCheck, Radio, Shield, Disc3, Clock, UserCog, Rocket,
+  CheckCircle2, Package, ExternalLink,
 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { parseISO, differenceInDays, isAfter } from "date-fns";
 import { useMetrics } from "@/shared/hooks/useMetrics";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
 import { FinanceChart } from "@/shared/components/FinanceChart";
@@ -118,6 +122,22 @@ function SectionHeader({
   );
 }
 
+// ─── Pipeline status config ───────────────────────────────────────────────────
+
+const PIPELINE_STATUS: {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  color: string;
+  bg: string;
+  border: string;
+}[] = [
+  { key: "planejado",               label: "Planejado",              icon: Clock,          color: "text-muted-foreground", bg: "bg-muted/60",          border: "border-border" },
+  { key: "em_producao",             label: "Em Produção",            icon: Package,        color: "text-warning",          bg: "bg-warning/10",        border: "border-warning/20" },
+  { key: "aguardando_distribuicao", label: "Aguard. Distribuição",   icon: Rocket,         color: "text-primary",          bg: "bg-primary/10",        border: "border-primary/20" },
+  { key: "ativo",                   label: "Ativo",                  icon: CheckCircle2,   color: "text-success",          bg: "bg-success/10",        border: "border-success/20" },
+];
+
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
 export default function Dashboard() {
@@ -125,6 +145,8 @@ export default function Dashboard() {
   const { dashboardMetrics, artistasMetrics, isLoading } = useMetrics();
   const { eventos } = useEventos();
   const { contratos } = useContratos();
+  const { lancamentos } = useLancamentos();
+  const { artistas } = useArtistas();
 
   // ── Activity state ──────────────────────────────────────────────────────────
   const [activities, setActivities] = useState<ActivityItem[]>([]);
@@ -276,6 +298,9 @@ export default function Dashboard() {
     dashboardMetrics;
 
   const today = new Date().toISOString().split("T")[0];
+  const todayDate = new Date();
+  todayDate.setHours(0, 0, 0, 0);
+
   const eventosHoje = eventos.filter((e) => e.data_inicio === today);
 
   const artistasComEventos = artistasDestaque.map((a) => ({
@@ -285,6 +310,46 @@ export default function Dashboard() {
     shows: a.shows,
     receita: a.receita,
   }));
+
+  // ── Pipeline de releases ─────────────────────────────────────────────────────
+  const pipelineStats = PIPELINE_STATUS.map((s) => ({
+    ...s,
+    count: lancamentos.filter((l) => l.status === s.key).length,
+  }));
+
+  // ── Próximos lançamentos (upcoming releases) ─────────────────────────────────
+  const proximosLancamentos = lancamentos
+    .filter((l) => {
+      if (!l.data_lancamento) return false;
+      try {
+        return isAfter(parseISO(l.data_lancamento), todayDate);
+      } catch {
+        return false;
+      }
+    })
+    .sort((a, b) => {
+      const da = a.data_lancamento ? parseISO(a.data_lancamento).getTime() : 0;
+      const db = b.data_lancamento ? parseISO(b.data_lancamento).getTime() : 0;
+      return da - db;
+    })
+    .slice(0, 6);
+
+  // ── Artistas em onboarding ───────────────────────────────────────────────────
+  const artistasOnboarding = artistas.filter(
+    (a) => a.status === "onboarding" || a.status_cadastro === "onboarding",
+  ).slice(0, 6);
+
+  // ── Contratos ativos com detalhe ─────────────────────────────────────────────
+  const contratosAtivosDetalhe = contratos
+    .filter((c) => c.status === "ativo" || c.status === "vencendo")
+    .sort((a, b) => {
+      // vencendo first, then by data_fim ascending
+      if (a.status === "vencendo" && b.status !== "vencendo") return -1;
+      if (b.status === "vencendo" && a.status !== "vencendo") return 1;
+      if (a.data_fim && b.data_fim) return a.data_fim.localeCompare(b.data_fim);
+      return 0;
+    })
+    .slice(0, 6);
 
   if (isLoading) return <DashboardSkeleton />;
 
@@ -328,7 +393,7 @@ export default function Dashboard() {
             value={formatCurrency(receitaMensal)}
             icon={DollarSign}
             accent="success"
-            sub={<span>{receitaMensal === 1 ? "receita" : "receita"} atual</span>}
+            sub={<span>receita atual consolidada</span>}
           />
           <StatCard
             label="Eventos do Mês"
@@ -467,6 +532,288 @@ export default function Dashboard() {
 
         {/* ── Finance Chart ── */}
         <FinanceChart />
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            OPERAÇÕES EM ANDAMENTO — 4 painéis operacionais
+        ══════════════════════════════════════════════════════════════════════ */}
+
+        {/* ── Pipeline de Releases ── */}
+        <div>
+          <SectionHeader
+            title="Pipeline de Releases"
+            description="Distribuição dos lançamentos por etapa de produção"
+            action={{ label: "Gerenciar", href: "/lancamentos" }}
+          />
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {pipelineStats.map((s) => (
+              <Link key={s.key} to="/lancamentos" data-testid={`pipeline-card-${s.key}`}>
+                <Card className="group hover:shadow-md transition-all duration-200 cursor-pointer hover:border-primary/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className={cn("rounded-md p-1.5 border", s.bg, s.border)}>
+                        <s.icon className={cn("h-3.5 w-3.5", s.color)} />
+                      </div>
+                      <span className={cn("text-2xl font-mono font-bold", s.color)}>
+                        {s.count}
+                      </span>
+                    </div>
+                    <p className="text-xs font-medium text-muted-foreground leading-tight">{s.label}</p>
+                    <p className="text-[10px] text-muted-foreground/60 mt-0.5">
+                      {s.count === 1 ? "lançamento" : "lançamentos"}
+                    </p>
+                  </CardContent>
+                </Card>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        {/* ── 2-col grid: Próximos Lançamentos + Onboarding Pendente ── */}
+        <div className="grid gap-6 lg:grid-cols-2">
+
+          {/* Próximos Lançamentos */}
+          <Card data-testid="card-proximos-lancamentos">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-md bg-primary/10 border border-primary/20 p-1.5">
+                    <Disc3 className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Próximos Lançamentos</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Releases com data futura confirmada
+                    </CardDescription>
+                  </div>
+                </div>
+                {proximosLancamentos.length > 0 && (
+                  <Badge variant="secondary" className="font-mono text-xs">
+                    {proximosLancamentos.length}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {proximosLancamentos.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="rounded-xl bg-muted/60 border border-border p-4 mb-3">
+                    <Disc3 className="h-6 w-6 text-muted-foreground" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Nenhum lançamento agendado</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Planeje o próximo release</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {proximosLancamentos.map((l) => {
+                    const diasRestantes = l.data_lancamento
+                      ? differenceInDays(parseISO(l.data_lancamento), todayDate)
+                      : null;
+                    const artista = l.artistas?.nome_artistico ?? "—";
+                    const tipoLabel = l.tipo === "album" ? "Álbum" : l.tipo === "ep" ? "EP" : "Single";
+                    return (
+                      <div key={l.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0" data-testid={`lancamento-item-${l.id}`}>
+                        <div className={cn(
+                          "w-10 h-10 rounded-lg border flex flex-col items-center justify-center shrink-0 text-center",
+                          (diasRestantes !== null && diasRestantes <= 7)
+                            ? "bg-warning/10 border-warning/20"
+                            : "bg-primary/10 border-primary/20",
+                        )}>
+                          <span className={cn(
+                            "text-xs font-mono font-bold leading-none",
+                            (diasRestantes !== null && diasRestantes <= 7) ? "text-warning" : "text-primary",
+                          )}>
+                            {diasRestantes !== null ? diasRestantes : "–"}
+                          </span>
+                          <span className="text-[8px] text-muted-foreground leading-none mt-0.5">dias</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium leading-tight truncate">{l.titulo}</p>
+                          <div className="flex items-center gap-2 mt-0.5">
+                            <span className="text-xs text-muted-foreground truncate">{artista}</span>
+                            <Badge variant="outline" className="text-[10px] px-1 py-0 border-border shrink-0">
+                              {tipoLabel}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs font-mono text-muted-foreground">
+                            {l.data_lancamento
+                              ? new Date(l.data_lancamento + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })
+                              : "—"}
+                          </p>
+                          <p className="text-[10px] text-muted-foreground/60">{l.distribuidora ?? "—"}</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+              <Link to="/lancamentos" className="mt-3 block">
+                <Button variant="outline" size="sm" className="w-full h-7 text-xs">
+                  Ver Todos os Lançamentos
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
+          {/* Onboarding Pendente */}
+          <Card data-testid="card-onboarding-pendente">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="rounded-md bg-warning/10 border border-warning/20 p-1.5">
+                    <UserCog className="h-3.5 w-3.5 text-warning" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-sm font-semibold">Onboarding Pendente</CardTitle>
+                    <CardDescription className="text-xs mt-0.5">
+                      Artistas com cadastro em andamento
+                    </CardDescription>
+                  </div>
+                </div>
+                {artistasOnboarding.length > 0 && (
+                  <Badge className="font-mono text-xs bg-warning/20 text-warning border-warning/30 hover:bg-warning/20">
+                    {artistasOnboarding.length}
+                  </Badge>
+                )}
+              </div>
+            </CardHeader>
+            <CardContent className="pt-0">
+              {artistasOnboarding.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center">
+                  <div className="rounded-xl bg-success/10 border border-success/20 p-4 mb-3">
+                    <CheckCircle2 className="h-6 w-6 text-success" />
+                  </div>
+                  <p className="text-sm font-medium text-muted-foreground">Nenhum onboarding pendente</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">Todos os artistas estão com cadastro completo</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border/60">
+                  {artistasOnboarding.map((artista) => (
+                    <div key={artista.id} className="flex items-center gap-3 py-2.5 first:pt-0 last:pb-0" data-testid={`onboarding-item-${artista.id}`}>
+                      <div className="w-8 h-8 rounded-full bg-warning/10 border border-warning/20 flex items-center justify-center shrink-0">
+                        <span className="text-xs font-semibold text-warning">
+                          {artista.nome_artistico.charAt(0).toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight truncate">{artista.nome_artistico}</p>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">
+                          {artista.genero_musical || artista.tipo || "—"}
+                        </p>
+                      </div>
+                      <Link to={`/artistas/${artista.id}`}>
+                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 text-muted-foreground hover:text-foreground">
+                          <ExternalLink className="h-3.5 w-3.5" />
+                        </Button>
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Link to="/artistas" className="mt-3 block">
+                <Button variant="outline" size="sm" className="w-full h-7 text-xs">
+                  Gerenciar Artistas
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* ── Contratos Ativos — Painel Detalhe ── */}
+        <div>
+          <SectionHeader
+            title="Contratos Ativos"
+            description="Contratos vigentes e próximos ao vencimento"
+            action={{ label: "Ver todos", href: "/contratos" }}
+          />
+          {contratosAtivosDetalhe.length === 0 ? (
+            <Card>
+              <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                <div className="rounded-xl bg-muted/60 border border-border p-4 mb-3">
+                  <FileText className="h-6 w-6 text-muted-foreground" />
+                </div>
+                <p className="text-sm font-medium text-muted-foreground">Nenhum contrato ativo</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">Os contratos ativos e próximos ao vencimento aparecerão aqui</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {contratosAtivosDetalhe.map((contrato) => {
+                const artistaNome = contrato.artistas?.nome_artistico as string | undefined;
+                const isVencendo = contrato.status === "vencendo";
+                const diasParaVencer = contrato.data_fim
+                  ? differenceInDays(parseISO(contrato.data_fim), todayDate)
+                  : null;
+                return (
+                  <Card
+                    key={contrato.id}
+                    className={cn(
+                      "group hover:shadow-md transition-all duration-200",
+                      isVencendo && "border-warning/40",
+                    )}
+                    data-testid={`contrato-card-${contrato.id}`}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between gap-2 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-tight truncate">{contrato.titulo}</p>
+                          {artistaNome && (
+                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{artistaNome}</p>
+                          )}
+                        </div>
+                        <Badge
+                          variant={isVencendo ? "outline" : "secondary"}
+                          className={cn(
+                            "text-[10px] px-1.5 py-0 shrink-0",
+                            isVencendo && "border-warning/40 text-warning bg-warning/10",
+                          )}
+                        >
+                          {isVencendo ? "Vencendo" : "Ativo"}
+                        </Badge>
+                      </div>
+                      <div className="space-y-1.5">
+                        {contrato.tipo && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Tipo</span>
+                            <span className="text-xs font-medium">{contrato.tipo}</span>
+                          </div>
+                        )}
+                        {contrato.valor != null && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Valor</span>
+                            <span className="text-xs font-mono font-semibold">{formatCurrency(contrato.valor)}</span>
+                          </div>
+                        )}
+                        {contrato.data_fim && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-muted-foreground">Vencimento</span>
+                            <span className={cn(
+                              "text-xs font-mono",
+                              isVencendo ? "text-warning font-semibold" : "text-muted-foreground",
+                            )}>
+                              {diasParaVencer !== null
+                                ? `${diasParaVencer}d — ${new Date(contrato.data_fim + "T00:00:00").toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "2-digit" })}`
+                                : new Date(contrato.data_fim + "T00:00:00").toLocaleDateString("pt-BR")}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                      {isVencendo && diasParaVencer !== null && (
+                        <div className="mt-3 pt-2 border-t border-warning/20 flex items-center gap-1.5">
+                          <AlertTriangle className="h-3 w-3 text-warning shrink-0" />
+                          <span className="text-[10px] text-warning font-medium">
+                            Vence em {diasParaVencer} {diasParaVencer === 1 ? "dia" : "dias"} — requer renovação
+                          </span>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </div>
 
         {/* ── Artistas em Destaque ── */}
         <div>

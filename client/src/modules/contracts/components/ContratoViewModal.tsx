@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Badge } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent } from "@/shared/ui/card";
 import {
   FileText, ExternalLink, Send, History, Music, Clock, AlertCircle, Info, User,
+  Loader2, Plus, Trash2,
 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
@@ -27,6 +31,23 @@ export function ContratoViewModal({
 }: ContratoViewModalProps) {
   const { lancamentos } = useLancamentos();
   const navigate = useNavigate();
+
+  const [showSignerForm, setShowSignerForm] = useState(false);
+  const [signers, setSigners] = useState([{ name: "", email: "" }]);
+  const [isCreating, setIsCreating] = useState(false);
+
+  const handleAddSigner = () => setSigners((prev) => [...prev, { name: "", email: "" }]);
+  const handleRemoveSigner = (index: number) =>
+    setSigners((prev) => prev.filter((_, i) => i !== index));
+  const handleSignerChange = (index: number, field: "name" | "email", value: string) =>
+    setSigners((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
+  const handleAutentique = async () => {
+    setIsCreating(true);
+    await new Promise((r) => setTimeout(r, 1200));
+    setIsCreating(false);
+    setShowSignerForm(false);
+    setSigners([{ name: "", email: "" }]);
+  };
 
   if (!contrato) return null;
 
