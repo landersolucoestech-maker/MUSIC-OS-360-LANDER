@@ -23,11 +23,7 @@ const NAV_ITEMS = [
   { label: "Planos",          href: "/admin/plans",     icon: Tag },
   { label: "Receita",         href: "/admin/revenue",   icon: DollarSign },
   { label: "Analytics",       href: "/admin/analytics", icon: BarChart3 },
-  { label: "Segurança",       href: "/admin/security",  icon: Shield },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
-  { label: "Integrações",     href: "/admin/integrations", icon: Zap },
-  { label: "Sistema",         href: "/admin/system",    icon: Server },
-  { label: "Notificações",    href: "/admin/notifications", icon: Bell },
   { label: "Support Hub",     href: "/admin/support",   icon: HeadphonesIcon },
   { label: "Configurações",   href: "/admin/settings",  icon: Settings },
 ];
