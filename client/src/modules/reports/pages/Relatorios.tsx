@@ -3,13 +3,14 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
 import {
   LayoutDashboard, Upload, Download, Activity,
-  DollarSign, CheckCircle2, XCircle,
+  DollarSign, CheckCircle2,
   AlertTriangle, BarChart2, TrendingUp, Users, Eye, Play, Heart,
-  MousePointer, Zap, ThumbsUp, MessageCircle, Share2, Search,
-  ArrowUpFromLine, ArrowDownToLine,
+  MousePointer, Zap, ThumbsUp, MessageCircle, Share2,
+  Music, FileText, Radio, Scale, Trash2, Truck, Share, FileSignature,
+  ArrowLeftRight, Calculator, Receipt, Calendar, Package,
+  Contact, UserPlus, Briefcase, Megaphone,
 } from "lucide-react";
 import { SiYoutube, SiMeta, SiGoogleads, SiInstagram, SiTiktok } from "react-icons/si";
 import { cn } from "@/shared/lib/utils";
@@ -28,14 +29,44 @@ import {
   fmtNum, type MonthlyPoint,
 } from "@/modules/analytics/data/mockAnalytics";
 import { formatCurrency } from "@/shared/lib/format-utils";
-import type { ImportJob, ExportJob } from "../types";
 
 type TabId = "visao-geral" | "transferencias" | "analytics";
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "visao-geral",    label: "Visão Geral",            icon: LayoutDashboard },
-  { id: "transferencias", label: "Importações & Exportações", icon: Activity },
-  { id: "analytics",     label: "Analytics Social",        icon: BarChart2 },
+  { id: "visao-geral",    label: "Visão Geral",               icon: LayoutDashboard },
+  { id: "transferencias", label: "Importações & Exportações",  icon: Activity },
+  { id: "analytics",     label: "Analytics Social",           icon: BarChart2 },
+];
+
+// ─── Module list for transfers tab ────────────────────────────────────────────
+interface ModuleEntry {
+  id: string;
+  label: string;
+  sub: string;
+  icon: React.ComponentType<{ className?: string }>;
+  category: string;
+}
+
+const MODULE_LIST: ModuleEntry[] = [
+  { id: "artistas",       label: "Artistas",             sub: "Perfis, contratos, histórico",          icon: Users,          category: "Artistas" },
+  { id: "projetos",       label: "Projetos",             sub: "Álbuns, EPs, singles, timelines",       icon: FileText,       category: "Produção" },
+  { id: "obras",          label: "Registro de Obras",    sub: "Obras musicais, compositores, ISWC",    icon: Music,          category: "Catálogo" },
+  { id: "fonogramas",     label: "Registro de Fonogramas", sub: "Fonogramas, ISRC, masters",          icon: Radio,          category: "Catálogo" },
+  { id: "monitoramento",  label: "Monitoramento",        sub: "ECAD, execuções, relatórios",           icon: Activity,       category: "Direitos" },
+  { id: "licenciamento",  label: "Licenciamento",        sub: "Licenças, sincronias, autorizações",    icon: Scale,          category: "Direitos" },
+  { id: "takedowns",      label: "Takedowns",            sub: "Solicitações, plataformas, status",     icon: Trash2,         category: "Direitos" },
+  { id: "distribuicao",   label: "Distribuição",         sub: "Plataformas digitais, DSPs, releases",  icon: Truck,          category: "Lançamentos" },
+  { id: "gestao-shares",  label: "Gestão de Shares",     sub: "Participações, splits, percentuais",    icon: Share,          category: "Lançamentos" },
+  { id: "contratos",      label: "Contratos",            sub: "Templates, assinaturas, vencimentos",   icon: FileSignature,  category: "Jurídico" },
+  { id: "transacoes",     label: "Transações",           sub: "Receitas, despesas, OFX, conciliação",  icon: ArrowLeftRight, category: "Financeiro" },
+  { id: "contabilidade",  label: "Contabilidade",        sub: "P&L, fluxo de caixa, recoupment",      icon: Calculator,     category: "Financeiro" },
+  { id: "nota-fiscal",    label: "Nota Fiscal",          sub: "Emissão, NFS-e, NF-e, histórico",      icon: Receipt,        category: "Financeiro" },
+  { id: "agenda",         label: "Agenda",               sub: "Shows, eventos, compromissos",          icon: Calendar,       category: "Operações" },
+  { id: "inventario",     label: "Inventário",           sub: "Equipamentos, patrimônio, controle",    icon: Package,        category: "Operações" },
+  { id: "crm",            label: "CRM",                  sub: "Contatos, clientes, relacionamento",    icon: Contact,        category: "Comercial" },
+  { id: "leads",          label: "Leads",                sub: "Pipeline, Kanban, oportunidades",       icon: UserPlus,       category: "Comercial" },
+  { id: "rh",             label: "Recursos Humanos",     sub: "Funcionários, folha, férias, docs",     icon: Briefcase,      category: "Operações" },
+  { id: "marketing",      label: "Marketing",            sub: "Campanhas · Calendário · Briefings · Tarefas · IA Criativa", icon: Megaphone, category: "Marketing" },
 ];
 
 const STATUS_IMPORT: Record<string, { label: string; cls: string }> = {
@@ -165,159 +196,63 @@ function OverviewTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void;
   );
 }
 
-// ─── Unified Transfers Tab (Importações + Exportações) ─────────────────────────
-type UnifiedEntry =
-  | { kind: "import"; data: ImportJob }
-  | { kind: "export"; data: ExportJob };
-
+// ─── Importações & Exportações Tab — lista de módulos ─────────────────────────
 function TransferenciasTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void; onOpenExport: () => void }) {
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<"all" | "import" | "export">("all");
-
-  const entries: UnifiedEntry[] = [
-    ...MOCK_IMPORT_JOBS.map(j => ({ kind: "import" as const, data: j })),
-    ...MOCK_EXPORT_JOBS.map(j => ({ kind: "export" as const, data: j })),
-  ].sort((a, b) => {
-    const aDate = a.data.completedAt ?? a.data.createdAt;
-    const bDate = b.data.completedAt ?? b.data.createdAt;
-    return new Date(bDate).getTime() - new Date(aDate).getTime();
-  });
-
-  const filtered = entries.filter(e => {
-    if (typeFilter === "import" && e.kind !== "import") return false;
-    if (typeFilter === "export" && e.kind !== "export") return false;
-    const term = search.toLowerCase();
-    if (!term) return true;
-    return e.data.filename.toLowerCase().includes(term) || e.data.module.toLowerCase().includes(term);
-  });
+  // Group modules by category for visual separation
+  const categories = Array.from(new Set(MODULE_LIST.map(m => m.category)));
 
   return (
-    <div className="space-y-4">
-      {/* Toolbar */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar por arquivo ou módulo..."
-            className="pl-9 h-8 text-xs"
-            data-testid="input-search-transfers"
-          />
-        </div>
-        <div className="flex gap-1">
-          {(["all", "import", "export"] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setTypeFilter(f)}
-              className={cn(
-                "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
-                typeFilter === f
-                  ? "bg-primary text-primary-foreground border-primary"
-                  : "bg-card text-muted-foreground border-border hover:text-foreground"
-              )}
-              data-testid={`filter-type-${f}`}
-            >
-              {f === "all" ? "Todos" : f === "import" ? "Importações" : "Exportações"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Table */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider w-8"></th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Arquivo</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Módulo</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Formato</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Registros</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Data</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground uppercase tracking-wider">Ação</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            {filtered.length === 0 && (
-              <tr>
-                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
-                  Nenhum registro encontrado.
-                </td>
-              </tr>
-            )}
-            {filtered.map(entry => {
-              if (entry.kind === "import") {
-                const j = entry.data as ImportJob;
-                const sc = STATUS_IMPORT[j.status] ?? STATUS_IMPORT.idle;
+    <div className="space-y-3">
+      {categories.map(cat => {
+        const modules = MODULE_LIST.filter(m => m.category === cat);
+        return (
+          <div key={cat} className="rounded-lg border border-border overflow-hidden">
+            <div className="px-4 py-2 bg-muted/40 border-b border-border">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{cat}</p>
+            </div>
+            <div className="divide-y divide-border/50">
+              {modules.map(mod => {
+                const Icon = mod.icon;
                 return (
-                  <tr key={`imp-${j.id}`} className="hover:bg-muted/20 transition-colors" data-testid={`row-import-${j.id}`}>
-                    <td className="px-4 py-3">
-                      <div className="p-1 rounded bg-primary/10 w-fit">
-                        <ArrowUpFromLine className="h-3 w-3 text-primary" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-medium max-w-[180px] truncate">{j.filename}</td>
-                    <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
-                    <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
-                    <td className="px-4 py-3 font-mono">
-                      {j.processedRows}/{j.totalRows}
-                      {j.errorCount > 0 && (
-                        <span className="ml-1.5 text-destructive flex items-center gap-0.5 inline-flex">
-                          <XCircle className="h-3 w-3" />{j.errorCount}
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
-                    <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
-                    <td className="px-4 py-3 text-right">
+                  <div
+                    key={mod.id}
+                    className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
+                    data-testid={`module-row-${mod.id}`}
+                  >
+                    <div className="p-1.5 rounded-md bg-muted shrink-0">
+                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">{mod.label}</p>
+                      <p className="text-[10px] text-muted-foreground truncate">{mod.sub}</p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs gap-1"
                         onClick={onOpenImport}
-                        data-testid={`btn-import-${j.id}`}
+                        data-testid={`btn-import-${mod.id}`}
                       >
                         <Upload className="h-3 w-3" /> Importar
                       </Button>
-                    </td>
-                  </tr>
-                );
-              } else {
-                const j = entry.data as ExportJob;
-                const sc = STATUS_EXPORT[j.status] ?? STATUS_EXPORT.done;
-                return (
-                  <tr key={`exp-${j.id}`} className="hover:bg-muted/20 transition-colors" data-testid={`row-export-${j.id}`}>
-                    <td className="px-4 py-3">
-                      <div className="p-1 rounded bg-success/10 w-fit">
-                        <ArrowDownToLine className="h-3 w-3 text-success" />
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 font-medium max-w-[180px] truncate">{j.filename}</td>
-                    <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
-                    <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
-                    <td className="px-4 py-3 font-mono">{j.totalRows || "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
-                    <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
-                    <td className="px-4 py-3 text-right">
                       <Button
                         size="sm"
                         variant="outline"
                         className="h-7 text-xs gap-1"
                         onClick={onOpenExport}
-                        data-testid={`btn-export-${j.id}`}
+                        data-testid={`btn-export-${mod.id}`}
                       >
                         <Download className="h-3 w-3" /> Exportar
                       </Button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 );
-              }
-            })}
-          </tbody>
-        </table>
-      </div>
+              })}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -475,6 +410,7 @@ export default function Relatorios() {
       subtitle="Central de relatórios, importações, exportações e analytics social"
     >
       <div className="space-y-6">
+        {/* Page header */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
@@ -495,18 +431,20 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <div className="flex gap-1 flex-wrap border-b border-border pb-0">
+        {/* Tabs — pill style, no underline */}
+        <div className="flex gap-1 flex-wrap">
           {TABS.map(t => {
             const Icon = t.icon;
+            const active = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
-                  tab === t.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
+                  "flex items-center gap-1.5 px-4 py-2 rounded-md text-xs font-medium transition-all whitespace-nowrap",
+                  active
+                    ? "bg-primary text-primary-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                 )}
                 data-testid={`tab-${t.id}`}
               >
@@ -516,6 +454,7 @@ export default function Relatorios() {
           })}
         </div>
 
+        {/* Tab content */}
         {tab === "visao-geral"    && <OverviewTab onOpenImport={() => setImportOpen(true)} onOpenExport={() => setExportOpen(true)} />}
         {tab === "transferencias" && <TransferenciasTab onOpenImport={() => setImportOpen(true)} onOpenExport={() => setExportOpen(true)} />}
         {tab === "analytics"      && <AnalyticsSocialTab />}
