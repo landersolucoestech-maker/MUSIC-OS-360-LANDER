@@ -1129,32 +1129,6 @@ export default function Configuracoes() {
                 <Separator />
 
                 <div className="space-y-4">
-                  <h4 className="font-medium">Cor de Destaque</h4>
-                  <div className="flex gap-3">
-                    {[
-                      /* intentional: color-picker swatch showing the red option in a palette chooser */
-                      { name: "red", label: "Vermelho", color: "bg-red-600" },
-                      { name: "blue", label: "Azul", color: "bg-blue-600" },
-                      { name: "green", label: "Verde", color: "bg-green-600" },
-                      { name: "purple", label: "Roxo", color: "bg-purple-600" },
-                      { name: "orange", label: "Laranja", color: "bg-orange-600" },
-                      { name: "pink", label: "Rosa", color: "bg-pink-600" },
-                    ].map((cor) => (
-                      <button
-                        key={cor.name}
-                        onClick={() => setUserSettings({ ...userSettings, accent_color: cor.name })}
-                        className={`w-10 h-10 rounded-full ${cor.color} ring-2 ring-offset-2 ring-offset-background ${
-                          userSettings.accent_color === cor.name ? "ring-current" : "ring-transparent hover:ring-muted-foreground"
-                        }`}
-                        title={cor.label}
-                      />
-                    ))}
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
                   <h4 className="font-medium">Layout</h4>
                   <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
                     <div>
