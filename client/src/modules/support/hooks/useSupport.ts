@@ -36,7 +36,8 @@ export function useTickets() {
   const [tickets, setTickets] = useState<SupportTicket[]>(() => {
     const stored = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
     if (stored.length > 0) return stored;
-    const seeded = MOCK_TICKETS.filter((t) => t.tenant_id === "tenant-001");
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded = MOCK_TICKETS.map((t) => ({ ...t, tenant_id: tenantId }));
     save(lsKey("support_tickets", tenantId), seeded);
     return seeded;
   });
@@ -90,7 +91,11 @@ export function useTicketMessages(ticketId: string) {
   const [allMessages, setAllMessages] = useState<Record<string, SupportMessage[]>>(() => {
     const stored = load<Record<string, SupportMessage[]>>(lsKey("support_messages", tenantId), {});
     if (Object.keys(stored).length > 0) return stored;
-    const seeded = MOCK_MESSAGES as Record<string, SupportMessage[]>;
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded: Record<string, SupportMessage[]> = {};
+    for (const [key, msgs] of Object.entries(MOCK_MESSAGES)) {
+      seeded[key] = msgs.map((m) => ({ ...m, tenant_id: tenantId }));
+    }
     save(lsKey("support_messages", tenantId), seeded);
     return seeded;
   });
@@ -101,6 +106,7 @@ export function useTicketMessages(ticketId: string) {
     (text: string, role: "user" | "support" = "support") => {
       const next: SupportMessage = {
         id: `msg-${Date.now()}`,
+        tenant_id: tenantId,
         ticket_id: ticketId,
         sender_id: role === "support" ? "support-000" : "user-000",
         sender_name: role === "support" ? "Equipe de Suporte" : "Você",
@@ -130,7 +136,8 @@ export function useChatRooms() {
   const [rooms, setRooms] = useState<ChatRoom[]>(() => {
     const stored = load<ChatRoom[]>(lsKey("support_chats", tenantId), []);
     if (stored.length > 0) return stored;
-    const seeded = MOCK_CHAT_ROOMS.filter((r) => r.tenant_id === "tenant-001");
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded = MOCK_CHAT_ROOMS.map((r) => ({ ...r, tenant_id: tenantId }));
     save(lsKey("support_chats", tenantId), seeded);
     return seeded;
   });
@@ -157,7 +164,11 @@ export function useChatMessages(roomId: string) {
   const [allMessages, setAllMessages] = useState<Record<string, ChatMessage[]>>(() => {
     const stored = load<Record<string, ChatMessage[]>>(lsKey("support_chat_messages", tenantId), {});
     if (Object.keys(stored).length > 0) return stored;
-    const seeded = MOCK_CHAT_MESSAGES as Record<string, ChatMessage[]>;
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded: Record<string, ChatMessage[]> = {};
+    for (const [key, msgs] of Object.entries(MOCK_CHAT_MESSAGES)) {
+      seeded[key] = msgs.map((m) => ({ ...m, tenant_id: tenantId }));
+    }
     save(lsKey("support_chat_messages", tenantId), seeded);
     return seeded;
   });
@@ -168,6 +179,7 @@ export function useChatMessages(roomId: string) {
     (text: string, senderRole: "user" | "support" = "support") => {
       const next: ChatMessage = {
         id: `cm-${Date.now()}`,
+        tenant_id: tenantId,
         room_id: roomId,
         sender: senderRole,
         sender_name: senderRole === "support" ? "Suporte MUSIC OS 360" : "Cliente",
@@ -196,7 +208,8 @@ export function useKnowledgeArticles() {
   const [articles, setArticles] = useState<KnowledgeArticle[]>(() => {
     const stored = load<KnowledgeArticle[]>(lsKey("support_knowledge", tenantId), []);
     if (stored.length > 0) return stored;
-    const seeded = MOCK_KNOWLEDGE_ARTICLES.filter((a) => a.tenant_id === "tenant-001");
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded = MOCK_KNOWLEDGE_ARTICLES.map((a) => ({ ...a, tenant_id: tenantId }));
     save(lsKey("support_knowledge", tenantId), seeded);
     return seeded;
   });
@@ -221,7 +234,8 @@ export function useRequests() {
   const [requests, setRequests] = useState<SupportRequest[]>(() => {
     const stored = load<SupportRequest[]>(lsKey("support_requests", tenantId), []);
     if (stored.length > 0) return stored;
-    const seeded = MOCK_REQUESTS.filter((r) => r.tenant_id === "tenant-001");
+    // Seed from mock, remapping tenant_id to the current tenant
+    const seeded = MOCK_REQUESTS.map((r) => ({ ...r, tenant_id: tenantId }));
     save(lsKey("support_requests", tenantId), seeded);
     return seeded;
   });

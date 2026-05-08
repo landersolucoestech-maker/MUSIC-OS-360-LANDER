@@ -34,6 +34,7 @@ export interface SupportTicket {
 
 export interface SupportMessage {
   id: string;
+  tenant_id: string;
   ticket_id: string;
   sender_id: string;
   sender_name: string;
@@ -60,6 +61,7 @@ export interface ChatRoom {
 
 export interface ChatMessage {
   id: string;
+  tenant_id: string;
   room_id: string;
   sender: "user" | "support";
   sender_name: string;

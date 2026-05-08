@@ -83,19 +83,19 @@ export const MOCK_TICKETS: SupportTicket[] = [
 export const MOCK_MESSAGES: Record<string, SupportMessage[]> = {
   "tkt-001": [
     {
-      id: "msg-001", ticket_id: "tkt-001", sender_id: "user-001",
+      id: "msg-001", tenant_id: TENANT_ID, ticket_id: "tkt-001", sender_id: "user-001",
       sender_name: "Ana Beatriz Santos", sender_role: "user",
       message: "Olá! Estou tentando importar meu arquivo OFX e recebo o erro 422. Já tentei 3 vezes. O arquivo está no formato correto pois funcionou no mês passado.",
       internal_note: false, created_at: "2026-05-08T09:15:00Z",
     },
     {
-      id: "msg-002", ticket_id: "tkt-001", sender_id: "support-001",
+      id: "msg-002", tenant_id: TENANT_ID, ticket_id: "tkt-001", sender_id: "support-001",
       sender_name: "Suporte MUSIC OS 360", sender_role: "support",
       message: "Olá Ana! Recebi seu ticket. Pode nos enviar o arquivo OFX para análise? Enquanto isso, vou verificar se houve alguma mudança na validação do parser.",
       internal_note: false, created_at: "2026-05-08T10:30:00Z",
     },
     {
-      id: "msg-003", ticket_id: "tkt-001", sender_id: "support-001",
+      id: "msg-003", tenant_id: TENANT_ID, ticket_id: "tkt-001", sender_id: "support-001",
       sender_name: "Suporte MUSIC OS 360", sender_role: "support",
       message: "Nota interna: verificar se o limite de 2MB está causando o erro. Testar com arquivo menor.",
       internal_note: true, created_at: "2026-05-08T10:35:00Z",
@@ -103,13 +103,13 @@ export const MOCK_MESSAGES: Record<string, SupportMessage[]> = {
   ],
   "tkt-002": [
     {
-      id: "msg-004", ticket_id: "tkt-002", sender_id: "user-002",
+      id: "msg-004", tenant_id: TENANT_ID, ticket_id: "tkt-002", sender_id: "user-002",
       sender_name: "DJ Marcus Flow", sender_role: "user",
       message: "Os gráficos do Spotify mostram dados de 3 dias atrás mesmo após sincronizar. YouTube também não atualiza.",
       internal_note: false, created_at: "2026-05-07T14:22:00Z",
     },
     {
-      id: "msg-005", ticket_id: "tkt-002", sender_id: "support-002",
+      id: "msg-005", tenant_id: TENANT_ID, ticket_id: "tkt-002", sender_id: "support-002",
       sender_name: "Time de Analytics", sender_role: "support",
       message: "Identificamos o problema! Há um delay de cache de 24h no pipeline de dados. Estamos ajustando o TTL. Deve normalizar nas próximas 2 horas.",
       internal_note: false, created_at: "2026-05-08T08:00:00Z",
@@ -151,25 +151,25 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
 export const MOCK_CHAT_MESSAGES: Record<string, ChatMessage[]> = {
   "room-001": [
     {
-      id: "cm-001", room_id: "room-001", sender: "user",
+      id: "cm-001", tenant_id: TENANT_ID, room_id: "room-001", sender: "user",
       sender_name: "Carlos Eduardo",
       message: "Olá, boa tarde! Preciso de ajuda com a importação de royalties do DistroKid.",
       created_at: "2026-05-08T10:30:00Z", type: "text",
     },
     {
-      id: "cm-002", room_id: "room-001", sender: "support",
+      id: "cm-002", tenant_id: TENANT_ID, room_id: "room-001", sender: "support",
       sender_name: "Suporte MUSIC OS 360",
       message: "Olá Carlos! Fico feliz em ajudar. Qual formato de arquivo você está tentando importar?",
       created_at: "2026-05-08T10:32:00Z", type: "text",
     },
     {
-      id: "cm-003", room_id: "room-001", sender: "user",
+      id: "cm-003", tenant_id: TENANT_ID, room_id: "room-001", sender: "user",
       sender_name: "Carlos Eduardo",
       message: "Estou tentando importar um CSV do DistroKid mas o sistema não reconhece o formato.",
       created_at: "2026-05-08T10:40:00Z", type: "text",
     },
     {
-      id: "cm-004", room_id: "room-001", sender: "user",
+      id: "cm-004", tenant_id: TENANT_ID, room_id: "room-001", sender: "user",
       sender_name: "Carlos Eduardo",
       message: "Preciso de ajuda com a importação de royalties",
       created_at: "2026-05-08T10:45:00Z", type: "text",

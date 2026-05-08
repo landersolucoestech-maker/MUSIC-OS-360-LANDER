@@ -26,7 +26,7 @@ import {
   Plus, Search, Ticket,
   Clock, AlertCircle, CheckCircle2,
   Send, User, Shield, Tag, Calendar, ExternalLink,
-  ChevronDown,
+  ChevronDown, UserCheck, CalendarClock, Filter,
 } from "lucide-react";
 
 /* ── colours ── */
@@ -44,6 +44,8 @@ const PRIORITY_DOT: Record<TicketPriority, string> = {
   low:      "bg-green-500",
 };
 
+const ASSIGNEES = ["Lucas Mendes", "Fernanda Silva", "Rafael Costa", "Ana Beatriz", "Thiago Alves"];
+
 function formatDate(iso: string) {
   return new Date(iso).toLocaleString("pt-BR", {
     day: "2-digit", month: "short", year: "numeric",
@@ -55,13 +57,23 @@ function formatShort(iso: string) {
     day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit",
   });
 }
+function toDatetimeLocal(iso: string) {
+  return iso ? iso.slice(0, 16) : "";
+}
 
-/* ── Drawer panel ── */
-function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () => void }) {
-  const { updateTicket }   = useTickets();
+/* ── Drawer panel — receives updateTicket from parent so both share the same state ── */
+interface DrawerProps {
+  ticket: SupportTicket;
+  onClose: () => void;
+  onUpdate: (id: string, changes: Partial<SupportTicket>) => void;
+}
+
+function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
   const { messages, addMessage } = useTicketMessages(ticket.id);
-  const [reply, setReply]  = useState("");
-  const bottomRef          = useRef<HTMLDivElement>(null);
+  const [reply, setReply]        = useState("");
+  const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline));
+  const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");
+  const bottomRef                = useRef<HTMLDivElement>(null);
 
   function handleSend() {
     if (!reply.trim()) return;
@@ -70,26 +82,42 @@ function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () 
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: "smooth" }), 100);
   }
 
+  function applyAssignee(val: string) {
+    setEditAssignee(val);
+    onUpdate(ticket.id, { assigned_to: val || undefined });
+  }
+
+  function applySLA(val: string) {
+    setEditSLA(val);
+    if (val) onUpdate(ticket.id, { sla_deadline: new Date(val).toISOString() });
+  }
+
   return (
     <Sheet open onOpenChange={onClose}>
-      <SheetContent side="right" className="w-[520px] sm:w-[580px] p-0 flex flex-col bg-card border-l border-border/60">
+      <SheetContent
+        side="right"
+        className="w-full sm:w-[75vw] lg:w-[68vw] max-w-4xl p-0 flex flex-col bg-card border-l border-border/60"
+      >
         {/* Header */}
-        <SheetHeader className="px-5 pt-5 pb-3 border-b border-border/60 shrink-0">
+        <SheetHeader className="px-6 pt-5 pb-3 border-b border-border/60 shrink-0">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
             <span className="font-mono">{ticket.ticket_number}</span>
             <span>·</span>
             <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
               {TICKET_STATUS_LABELS[ticket.status]}
             </Badge>
+            <Badge variant="outline" className="text-[9.5px] h-4 px-1.5 border border-border/60 text-muted-foreground ml-1">
+              {TICKET_CATEGORY_LABELS[ticket.category]}
+            </Badge>
           </div>
-          <SheetTitle className="text-[14px] font-semibold text-left leading-snug">
+          <SheetTitle className="text-[15px] font-semibold text-left leading-snug">
             {ticket.subject}
           </SheetTitle>
 
-          {/* Controls row */}
+          {/* Controls — status, priority, resolve, open full */}
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <Select value={ticket.status} onValueChange={(v) => updateTicket(ticket.id, { status: v as TicketStatus })}>
-              <SelectTrigger className="h-7 text-xs w-36" data-testid="select-drawer-status">
+            <Select value={ticket.status} onValueChange={(v) => onUpdate(ticket.id, { status: v as TicketStatus })}>
+              <SelectTrigger className="h-7 text-xs w-38" data-testid="select-drawer-status">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -98,7 +126,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () 
                 ))}
               </SelectContent>
             </Select>
-            <Select value={ticket.priority} onValueChange={(v) => updateTicket(ticket.id, { priority: v as TicketPriority })}>
+            <Select value={ticket.priority} onValueChange={(v) => onUpdate(ticket.id, { priority: v as TicketPriority })}>
               <SelectTrigger className="h-7 text-xs w-32" data-testid="select-drawer-priority">
                 <SelectValue />
               </SelectTrigger>
@@ -113,7 +141,7 @@ function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () 
                 size="sm"
                 variant="outline"
                 className="h-7 text-xs gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                onClick={() => updateTicket(ticket.id, { status: "resolved" })}
+                onClick={() => onUpdate(ticket.id, { status: "resolved" })}
                 data-testid="button-drawer-resolve"
               >
                 <CheckCircle2 className="h-3 w-3" /> Resolver
@@ -127,99 +155,163 @@ function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () 
           </div>
         </SheetHeader>
 
-        {/* Description */}
-        <div className="px-5 py-3 border-b border-border/60 shrink-0">
-          <p className="text-[12px] text-muted-foreground leading-relaxed">{ticket.description}</p>
-          <div className="flex flex-wrap gap-3 mt-2 text-[10.5px] text-muted-foreground">
-            <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.created_by}</span>
-            <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category]}</span>
-            <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatShort(ticket.created_at)}</span>
-            {ticket.assigned_to && (
-              <span className="flex items-center gap-1"><Shield className="h-3 w-3" />{ticket.assigned_to}</span>
+        <div className="flex flex-1 overflow-hidden">
+          {/* Left — thread */}
+          <div className="flex-1 flex flex-col overflow-hidden border-r border-border/60">
+            {/* Description */}
+            <div className="px-5 py-3 border-b border-border/60 shrink-0">
+              <p className="text-[12.5px] text-muted-foreground leading-relaxed">{ticket.description}</p>
+              <div className="flex flex-wrap gap-3 mt-2 text-[10.5px] text-muted-foreground">
+                <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.created_by}</span>
+                <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category]}</span>
+                <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatShort(ticket.created_at)}</span>
+              </div>
+            </div>
+
+            {/* Thread messages */}
+            <ScrollArea className="flex-1 px-5 py-3">
+              {messages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-32 text-center">
+                  <p className="text-[12.5px] text-muted-foreground">Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((msg) => {
+                    const isSupport = msg.sender_role === "support";
+                    return (
+                      <div
+                        key={msg.id}
+                        className={cn(
+                          "rounded-xl border p-3",
+                          isSupport
+                            ? "border-primary/20 bg-primary/5 ml-6"
+                            : "border-border/60 bg-muted/30 mr-6",
+                        )}
+                        data-testid={`drawer-msg-${msg.id}`}
+                      >
+                        <div className="flex items-center justify-between mb-1.5">
+                          <div className="flex items-center gap-1.5">
+                            {isSupport
+                              ? <Shield className="h-3 w-3 text-primary" />
+                              : <User className="h-3 w-3 text-muted-foreground" />
+                            }
+                            <span className="text-[11.5px] font-semibold text-foreground">{msg.sender_name}</span>
+                            {isSupport && (
+                              <Badge variant="outline" className="text-[8.5px] h-3.5 px-1 border-primary/30 text-primary">
+                                Suporte
+                              </Badge>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">{formatShort(msg.created_at)}</span>
+                        </div>
+                        <p className="text-[12px] text-foreground/90 leading-relaxed whitespace-pre-wrap">
+                          {msg.message}
+                        </p>
+                      </div>
+                    );
+                  })}
+                  <div ref={bottomRef} />
+                </div>
+              )}
+            </ScrollArea>
+
+            {/* Reply box */}
+            {ticket.status !== "closed" && (
+              <div className="px-5 py-3 border-t border-border/60 shrink-0">
+                <Textarea
+                  placeholder="Escreva uma resposta..."
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  rows={3}
+                  className="text-sm resize-none mb-2"
+                  data-testid="textarea-drawer-reply"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); handleSend(); }
+                  }}
+                />
+                <div className="flex items-center justify-between">
+                  <span className="text-[10.5px] text-muted-foreground">Ctrl+Enter para enviar</span>
+                  <Button
+                    size="sm"
+                    className="gap-1.5 text-xs"
+                    onClick={handleSend}
+                    disabled={!reply.trim()}
+                    data-testid="button-drawer-send"
+                  >
+                    <Send className="h-3 w-3" /> Enviar
+                  </Button>
+                </div>
+              </div>
             )}
-            {ticket.sla_deadline && (
-              <span className="flex items-center gap-1 text-orange-400">
-                <Clock className="h-3 w-3" /> SLA {formatShort(ticket.sla_deadline)}
-              </span>
-            )}
+          </div>
+
+          {/* Right — management panel */}
+          <div className="w-56 shrink-0 flex flex-col gap-5 px-4 py-4 overflow-y-auto">
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Responsável</p>
+              <Select value={editAssignee} onValueChange={applyAssignee}>
+                <SelectTrigger className="h-8 text-xs" data-testid="select-drawer-assignee">
+                  <UserCheck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue placeholder="Sem responsável" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="" className="text-xs">Sem responsável</SelectItem>
+                  {ASSIGNEES.map((a) => (
+                    <SelectItem key={a} value={a} className="text-xs">{a}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">SLA Deadline</p>
+              <div className="relative">
+                <CalendarClock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+                <input
+                  type="datetime-local"
+                  className="w-full pl-8 pr-2 py-1.5 h-8 text-xs rounded-md border border-border/60 bg-background text-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+                  value={editSLA}
+                  onChange={(e) => applySLA(e.target.value)}
+                  data-testid="input-drawer-sla"
+                />
+              </div>
+              {ticket.sla_deadline && (
+                <p className={cn(
+                  "text-[10.5px] mt-1.5 flex items-center gap-1",
+                  new Date(ticket.sla_deadline) < new Date() ? "text-red-400" : "text-muted-foreground",
+                )}>
+                  <Clock className="h-3 w-3" />
+                  {formatShort(ticket.sla_deadline)}
+                </p>
+              )}
+            </div>
+
+            <div>
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Detalhes</p>
+              <div className="space-y-2 text-[11px] text-muted-foreground">
+                <div className="flex items-center gap-1.5">
+                  <Shield className="h-3 w-3" />
+                  <span className="font-medium text-foreground">Criado por:</span>
+                </div>
+                <p className="pl-4">{ticket.created_by}</p>
+                <div className="flex items-center gap-1.5">
+                  <Calendar className="h-3 w-3" />
+                  <span className="font-medium text-foreground">Atualizado:</span>
+                </div>
+                <p className="pl-4">{formatShort(ticket.updated_at)}</p>
+                {ticket.closed_at && (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3 w-3 text-green-400" />
+                      <span className="font-medium text-foreground">Fechado:</span>
+                    </div>
+                    <p className="pl-4">{formatShort(ticket.closed_at)}</p>
+                  </>
+                )}
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Thread */}
-        <ScrollArea className="flex-1 px-5 py-3">
-          {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-32 text-center">
-              <p className="text-[12.5px] text-muted-foreground">Nenhuma mensagem ainda</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {messages.map((msg) => {
-                const isSupport = msg.sender_role === "support";
-                return (
-                  <div
-                    key={msg.id}
-                    className={cn(
-                      "rounded-xl border p-3",
-                      isSupport
-                        ? "border-primary/20 bg-primary/5 ml-4"
-                        : "border-border/60 bg-muted/30 mr-4",
-                    )}
-                    data-testid={`drawer-msg-${msg.id}`}
-                  >
-                    <div className="flex items-center justify-between mb-1.5">
-                      <div className="flex items-center gap-1.5">
-                        {isSupport
-                          ? <Shield className="h-3 w-3 text-primary" />
-                          : <User className="h-3 w-3 text-muted-foreground" />
-                        }
-                        <span className="text-[11.5px] font-semibold text-foreground">{msg.sender_name}</span>
-                        {isSupport && (
-                          <Badge variant="outline" className="text-[8.5px] h-3.5 px-1 border-primary/30 text-primary">
-                            Suporte
-                          </Badge>
-                        )}
-                      </div>
-                      <span className="text-[10px] text-muted-foreground">{formatShort(msg.created_at)}</span>
-                    </div>
-                    <p className="text-[12px] text-foreground/90 leading-relaxed whitespace-pre-wrap">
-                      {msg.message}
-                    </p>
-                  </div>
-                );
-              })}
-              <div ref={bottomRef} />
-            </div>
-          )}
-        </ScrollArea>
-
-        {/* Reply */}
-        {ticket.status !== "closed" && (
-          <div className="px-5 py-3 border-t border-border/60 shrink-0">
-            <Textarea
-              placeholder="Escreva uma resposta..."
-              value={reply}
-              onChange={(e) => setReply(e.target.value)}
-              rows={3}
-              className="text-sm resize-none mb-2"
-              data-testid="textarea-drawer-reply"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && e.ctrlKey) { e.preventDefault(); handleSend(); }
-              }}
-            />
-            <div className="flex items-center justify-between">
-              <span className="text-[10.5px] text-muted-foreground">Ctrl+Enter para enviar</span>
-              <Button
-                size="sm"
-                className="gap-1.5 text-xs"
-                onClick={handleSend}
-                disabled={!reply.trim()}
-                data-testid="button-drawer-send"
-              >
-                <Send className="h-3 w-3" /> Enviar
-              </Button>
-            </div>
-          </div>
-        )}
       </SheetContent>
     </Sheet>
   );
@@ -229,30 +321,41 @@ function TicketDrawer({ ticket, onClose }: { ticket: SupportTicket; onClose: () 
 const PAGE_SIZE = 8;
 
 export default function SupportTickets() {
-  const { tickets, addTicket } = useTickets();
-  const [search, setSearch]           = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [priorityFilter, setPriorityFilter] = useState<string>("all");
-  const [showModal, setShowModal]     = useState(false);
-  const [activeTicket, setActiveTicket] = useState<SupportTicket | null>(null);
-  const [page, setPage]               = useState(1);
+  const { tickets, addTicket, updateTicket } = useTickets();
+  const [search, setSearch]                   = useState("");
+  const [statusFilter, setStatusFilter]       = useState<string>("all");
+  const [priorityFilter, setPriorityFilter]   = useState<string>("all");
+  const [categoryFilter, setCategoryFilter]   = useState<string>("all");
+  const [showModal, setShowModal]             = useState(false);
+  const [activeTicket, setActiveTicket]       = useState<SupportTicket | null>(null);
+  const [page, setPage]                       = useState(1);
 
   const [form, setForm] = useState({
     subject: "", description: "", category: "outro" as TicketCategory, priority: "medium" as TicketPriority,
   });
 
+  /* When updateTicket is called from drawer, also sync the activeTicket state */
+  const handleUpdate = useCallback((id: string, changes: Partial<SupportTicket>) => {
+    updateTicket(id, changes);
+    setActiveTicket((prev) =>
+      prev && prev.id === id
+        ? { ...prev, ...changes, updated_at: new Date().toISOString() }
+        : prev
+    );
+  }, [updateTicket]);
+
   const filtered = tickets.filter((t) => {
-    if (statusFilter !== "all" && t.status !== statusFilter) return false;
+    if (statusFilter   !== "all" && t.status   !== statusFilter)   return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
+    if (categoryFilter !== "all" && t.category !== categoryFilter) return false;
     if (search && !t.subject.toLowerCase().includes(search.toLowerCase())
       && !t.ticket_number.toLowerCase().includes(search.toLowerCase())) return false;
     return true;
   });
 
-  const visible   = filtered.slice(0, page * PAGE_SIZE);
-  const hasMore   = visible.length < filtered.length;
-
-  const loadMore  = useCallback(() => setPage((p) => p + 1), []);
+  const visible  = filtered.slice(0, page * PAGE_SIZE);
+  const hasMore  = visible.length < filtered.length;
+  const loadMore = useCallback(() => setPage((p) => p + 1), []);
 
   function handleCreate() {
     if (!form.subject.trim()) return;
@@ -274,44 +377,65 @@ export default function SupportTickets() {
       <div className="space-y-5 animate-fade-in">
 
         {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar por assunto ou número..."
-              className="pl-8 h-8 text-xs"
-              value={search}
-              onChange={(e) => { setSearch(e.target.value); setPage(1); }}
-              data-testid="input-search-tickets"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por assunto ou número..."
+                className="pl-8 h-8 text-xs"
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+                data-testid="input-search-tickets"
+              />
+            </div>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-40" data-testid="select-status-filter"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os status</SelectItem>
+                {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(1); }}>
+              <SelectTrigger className="h-8 text-xs w-40" data-testid="select-priority-filter"><SelectValue placeholder="Prioridade" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as prioridades</SelectItem>
+                {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-40" data-testid="select-status-filter"><SelectValue placeholder="Status" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os status</SelectItem>
-              {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={priorityFilter} onValueChange={(v) => { setPriorityFilter(v); setPage(1); }}>
-            <SelectTrigger className="h-8 text-xs w-40" data-testid="select-priority-filter"><SelectValue placeholder="Prioridade" /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as prioridades</SelectItem>
-              {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([k, v]) => (
-                <SelectItem key={k} value={k}>{v}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {/* Category filter row */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+            {[["all", "Todas as categorias"], ...Object.entries(TICKET_CATEGORY_LABELS)].map(([k, v]) => (
+              <button
+                key={k}
+                onClick={() => { setCategoryFilter(k); setPage(1); }}
+                className={cn(
+                  "px-2.5 py-0.5 rounded-full text-[11px] border transition-colors",
+                  categoryFilter === k
+                    ? "bg-primary text-primary-foreground border-primary"
+                    : "border-border/60 text-muted-foreground hover:text-foreground hover:border-border",
+                )}
+                data-testid={`category-filter-${k}`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-4 gap-3">
           {[
-            { label: "Abertos",    count: tickets.filter(t => t.status === "open").length,       icon: Ticket,       color: "text-blue-400" },
-            { label: "Andamento",  count: tickets.filter(t => t.status === "in_progress").length, icon: Clock,        color: "text-yellow-400" },
-            { label: "Aguardando", count: tickets.filter(t => t.status === "waiting_customer").length, icon: AlertCircle, color: "text-orange-400" },
-            { label: "Resolvidos", count: tickets.filter(t => t.status === "resolved").length,    icon: CheckCircle2, color: "text-green-400" },
+            { label: "Abertos",    count: tickets.filter(t => t.status === "open").length,            icon: Ticket,       color: "text-blue-400" },
+            { label: "Andamento",  count: tickets.filter(t => t.status === "in_progress").length,     icon: Clock,        color: "text-yellow-400" },
+            { label: "Aguardando", count: tickets.filter(t => t.status === "waiting_customer").length, icon: AlertCircle,  color: "text-orange-400" },
+            { label: "Resolvidos", count: tickets.filter(t => t.status === "resolved").length,         icon: CheckCircle2, color: "text-green-400" },
           ].map(({ label, count, icon: Icon, color }) => (
             <div key={label} className="rounded-xl border border-border/60 bg-card p-3 text-center">
               <Icon className={cn("h-4 w-4 mx-auto mb-1", color)} />
@@ -348,12 +472,17 @@ export default function SupportTickets() {
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
                           {TICKET_PRIORITY_LABELS[ticket.priority]}
                         </Badge>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
+                          {TICKET_CATEGORY_LABELS[ticket.category]}
+                        </Badge>
                       </div>
                       <p className="text-[13px] font-medium text-foreground truncate group-hover:text-primary transition-colors">
                         {ticket.subject}
                       </p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {TICKET_CATEGORY_LABELS[ticket.category]} · {ticket.created_by} · {formatDate(ticket.updated_at)}
+                        {ticket.created_by}
+                        {ticket.assigned_to && <> · <UserCheck className="h-3 w-3 inline mr-0.5" />{ticket.assigned_to}</>}
+                        {" · "}{formatDate(ticket.updated_at)}
                       </p>
                     </div>
                     <ChevronDown className="h-4 w-4 text-muted-foreground/30 -rotate-90 group-hover:text-primary transition-colors shrink-0" />
@@ -361,7 +490,6 @@ export default function SupportTickets() {
                 ))}
               </div>
 
-              {/* Infinite scroll — load more */}
               {hasMore && (
                 <div className="px-5 py-4 border-t border-border/60 text-center">
                   <Button
@@ -386,9 +514,13 @@ export default function SupportTickets() {
         </div>
       </div>
 
-      {/* Drawer */}
+      {/* Drawer — passes updateTicket from THIS component's hook instance */}
       {activeTicket && (
-        <TicketDrawer ticket={activeTicket} onClose={() => setActiveTicket(null)} />
+        <TicketDrawer
+          ticket={activeTicket}
+          onClose={() => setActiveTicket(null)}
+          onUpdate={handleUpdate}
+        />
       )}
 
       {/* Create modal */}
