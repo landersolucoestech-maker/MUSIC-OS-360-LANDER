@@ -72,7 +72,7 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
             const status = STATUS_CONFIG[exec.status];
             const { date, time } = fmtDateTime(exec.data_hora);
             return (
-              <tr key={exec.id} className="hover:bg-muted/30 transition-colors group">
+              <tr key={exec.id} data-testid={`row-exec-${exec.id}`} className="hover:bg-muted/30 transition-colors group">
                 <td className="py-3 px-4">
                   <div>
                     <p className="font-semibold text-foreground leading-tight">{exec.obra_titulo}</p>
@@ -113,6 +113,7 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
                   <Button
                     variant="ghost"
                     size="sm"
+                    data-testid={`btn-detail-${exec.id}`}
                     className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
                     onClick={() => onViewDetail?.(exec)}
                   >
