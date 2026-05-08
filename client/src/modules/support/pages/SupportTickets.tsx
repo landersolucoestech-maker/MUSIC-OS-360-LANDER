@@ -80,9 +80,7 @@ export default function SupportTickets() {
       description: form.description,
       category: form.category,
       priority: form.priority,
-      status: "open",
       created_by: "Usuário Atual",
-      assignee: undefined,
     });
     setShowModal(false);
     setForm({ subject: "", description: "", category: "outro", priority: "medium" });
