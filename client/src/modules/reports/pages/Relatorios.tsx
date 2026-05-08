@@ -410,27 +410,6 @@ export default function Relatorios() {
       subtitle="Central de relatórios, importações, exportações e analytics social"
     >
       <div className="space-y-6">
-        {/* Page header */}
-        <div className="flex items-start justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-              <BarChart2 className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold text-foreground">Relatórios</h2>
-              <p className="text-xs text-muted-foreground">Central Operacional · Importar · Exportar · Analytics</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={() => setImportOpen(true)} data-testid="header-btn-import">
-              <Upload className="h-3.5 w-3.5 mr-1.5" /> Importar
-            </Button>
-            <Button size="sm" onClick={() => setExportOpen(true)} data-testid="header-btn-export">
-              <Download className="h-3.5 w-3.5 mr-1.5" /> Exportar
-            </Button>
-          </div>
-        </div>
-
         {/* Tabs — pill style, no underline */}
         <div className="flex gap-1 flex-wrap">
           {TABS.map(t => {
