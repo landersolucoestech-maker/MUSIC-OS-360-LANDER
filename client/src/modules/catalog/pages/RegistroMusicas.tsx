@@ -100,6 +100,7 @@ export default function RegistroMusicas() {
   const [genreFilter, setGenreFilter] = useState("all-genre");
   const [projetoFilter, setProjetoFilter] = useState("all-projetos");
   const [obraVinculadaFilter, setObraVinculadaFilter] = useState("all-obras");
+  const [ecadFilter, setEcadFilter] = useState("all-ecad");
   const [bulkObraModal, setBulkObraModal] = useState(false);
   const [selectedObraIdForBulk, setSelectedObraIdForBulk] = useState<string>("");
   const [obraModal, setObraModal] = useState<{ open: boolean; mode: "create" | "edit"; obra?: any; tipoObra?: TipoObra }>({
@@ -330,10 +331,13 @@ export default function RegistroMusicas() {
         obra.genero?.toLowerCase() === genreFilter.toLowerCase();
       const matchesProjeto = projetoFilter === "all-projetos" ||
         (projetoFilter === "no-projeto" ? !obra.projeto_id : obra.projeto_id === projetoFilter);
-      return matchesSearch && matchesStatus && matchesGenre && matchesProjeto;
+      const ecadCode = (obra.cod_ecad ?? "").toString().trim();
+      const matchesEcad = ecadFilter === "all-ecad" ||
+        (ecadFilter === "com-ecad" ? ecadCode !== "" : ecadCode === "");
+      return matchesSearch && matchesStatus && matchesGenre && matchesProjeto && matchesEcad;
     })
     .sort((a: any, b: any) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
-  [obras, searchTerm, statusFilter, genreFilter, projetoFilter, collator]);
+  [obras, searchTerm, statusFilter, genreFilter, projetoFilter, ecadFilter, collator]);
 
   // Distinct projetos available for the project filter:
   // include every project (even those without obras yet) plus any project ids
@@ -381,6 +385,8 @@ export default function RegistroMusicas() {
   
   const total = activeTab === "fonogramas" ? fonogramas.length : obras.length;
   const taxaAprovacao = total > 0 ? Math.round((registrados / total) * 100) : 0;
+
+  const obrasSemEcad = (obras as any[]).filter((o: any) => (o.cod_ecad ?? "").toString().trim() === "").length;
 
   const handleExport = () => {
     if (activeTab === "fonogramas") {
@@ -686,6 +692,21 @@ export default function RegistroMusicas() {
           </Card>
         </div>
 
+        {activeTab === "obras" && obrasSemEcad > 0 && (
+          <div
+            className="flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm cursor-pointer hover:bg-warning/20 transition-colors"
+            onClick={() => setEcadFilter("sem-ecad")}
+            data-testid="banner-obras-sem-ecad"
+          >
+            <Badge variant="outline" className="border-warning text-warning font-mono text-xs shrink-0" data-testid="badge-obras-sem-ecad-count">
+              {obrasSemEcad}
+            </Badge>
+            <span className="text-foreground">
+              {obrasSemEcad === 1 ? "obra sem código ECAD" : "obras sem código ECAD"} — clique para filtrar e regularizar o registro.
+            </span>
+          </div>
+        )}
+
         {/* Search and Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
@@ -708,6 +729,18 @@ export default function RegistroMusicas() {
                 {projetosDisponiveis.map(p => (
                   <SelectItem key={p.id} value={p.id}>{p.titulo}</SelectItem>
                 ))}
+              </SelectContent>
+            </Select>
+          )}
+          {activeTab === "obras" && (
+            <Select value={ecadFilter} onValueChange={setEcadFilter} data-testid="select-filter-ecad">
+              <SelectTrigger className="w-[160px] bg-card border-border" data-testid="trigger-filter-ecad">
+                <SelectValue placeholder="Todos ECAD" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-ecad">Todos ECAD</SelectItem>
+                <SelectItem value="com-ecad">Com ECAD</SelectItem>
+                <SelectItem value="sem-ecad">Sem ECAD</SelectItem>
               </SelectContent>
             </Select>
           )}
@@ -747,8 +780,8 @@ export default function RegistroMusicas() {
               ))}
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || statusFilter !== "all-status" || genreFilter !== "all-genre" || projetoFilter !== "all-projetos" || obraVinculadaFilter !== "all-obras") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all-status"); setGenreFilter("all-genre"); setProjetoFilter("all-projetos"); setObraVinculadaFilter("all-obras"); }} data-testid="button-limpar-filtros">
+          {(searchTerm !== "" || statusFilter !== "all-status" || genreFilter !== "all-genre" || projetoFilter !== "all-projetos" || obraVinculadaFilter !== "all-obras" || ecadFilter !== "all-ecad") && (
+            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all-status"); setGenreFilter("all-genre"); setProjetoFilter("all-projetos"); setObraVinculadaFilter("all-obras"); setEcadFilter("all-ecad"); }} data-testid="button-limpar-filtros">
               Limpar
             </Button>
           )}
