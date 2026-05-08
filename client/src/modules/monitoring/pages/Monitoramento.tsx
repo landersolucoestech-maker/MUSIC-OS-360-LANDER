@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { formatDate } from "@/shared/lib/format-utils";
 import { ECADViewModal } from "@/modules/monitoring/components/ECADViewModal";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, Music } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
+import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, Music, X } from "lucide-react";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
 import { useObras } from "@/modules/catalog/hooks/useObras";
@@ -36,6 +37,25 @@ export default function Monitoramento() {
   const [search, setSearch] = useState("");
   const [ecadModalOpen, setEcadModalOpen] = useState(false);
   const [selectedPeriodo, setSelectedPeriodo] = useState<any>(null);
+  const [importModalOpen, setImportModalOpen] = useState(false);
+  const [importFile, setImportFile] = useState<File | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importDone, setImportDone] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleImport = () => {
+    if (!importFile) return;
+    setImporting(true);
+    setTimeout(() => {
+      setImporting(false);
+      setImportDone(true);
+      setTimeout(() => {
+        setImportDone(false);
+        setImportFile(null);
+        setImportModalOpen(false);
+      }, 1500);
+    }, 1800);
+  };
 
   const { deteccoes, isLoading: loadingDet } = useDeteccoes();
   const { obras, isLoading: loadingObras } = useObras();
@@ -216,7 +236,7 @@ export default function Monitoramento() {
                 <CardTitle className="text-lg">Conciliação ECAD</CardTitle>
                 <CardDescription>Relatórios de royalties por período</CardDescription>
               </div>
-              <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90">
+              <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
                 <Upload className="h-4 w-4" />Importar Relatório ECAD
               </Button>
             </CardHeader>
@@ -272,6 +292,68 @@ export default function Monitoramento() {
         onOpenChange={setEcadModalOpen}
         periodo={selectedPeriodo}
       />
+
+      <Dialog open={importModalOpen} onOpenChange={(v) => { if (!importing) { setImportModalOpen(v); if (!v) { setImportFile(null); setImportDone(false); } } }}>
+        <DialogContent className="max-w-md bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5 text-primary" />
+              Importar Relatório ECAD
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Selecione um arquivo CSV ou XLSX exportado do portal ECAD para importar o relatório de royalties.
+            </p>
+            <div
+              className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {importFile ? (
+                <>
+                  <FileText className="h-8 w-8 text-primary" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">{importFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{(importFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive gap-1" onClick={(e) => { e.stopPropagation(); setImportFile(null); }}>
+                    <X className="h-3 w-3" />Remover
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">Clique para selecionar</p>
+                    <p className="text-xs text-muted-foreground">CSV, XLSX — máx. 10 MB</p>
+                  </div>
+                </>
+              )}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,.xlsx,.xls"
+              className="hidden"
+              onChange={(e) => setImportFile(e.target.files?.[0] ?? null)}
+            />
+            {importDone && (
+              <div className="flex items-center gap-2 text-sm text-success">
+                <CheckCircle className="h-4 w-4" />
+                Relatório importado com sucesso!
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setImportModalOpen(false); setImportFile(null); }} disabled={importing}>
+              Cancelar
+            </Button>
+            <Button onClick={handleImport} disabled={!importFile || importing || importDone} className="gap-2 bg-primary hover:bg-primary/90">
+              {importing ? <><RefreshCw className="h-4 w-4 animate-spin" />Importando...</> : <><Upload className="h-4 w-4" />Importar</>}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }
