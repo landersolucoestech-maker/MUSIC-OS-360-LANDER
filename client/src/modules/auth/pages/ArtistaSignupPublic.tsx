@@ -419,14 +419,18 @@ export default function ArtistaSignupPublic() {
       <div className="bg-primary/5 border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-3">
           <div className="flex justify-center mb-3">
-            <div className="rounded-xl bg-primary/10 border border-primary/20 p-3">
-              <Music2 className="h-8 w-8 text-primary" />
+            <div className="rounded-xl bg-primary/10 border border-primary/20 w-16 h-16 flex items-center justify-center">
+              <span className="text-primary font-bold text-xl tracking-tight">
+                {orgInfo.name
+                  .split(/\s+/)
+                  .filter(Boolean)
+                  .slice(0, 2)
+                  .map((w) => w[0].toUpperCase())
+                  .join("")}
+              </span>
             </div>
           </div>
           <div>
-            <Badge variant="outline" className="text-xs font-mono mb-2 border-primary/40 text-primary">
-              {orgInfo.slug}
-            </Badge>
             <h1 className="text-2xl font-bold">{orgInfo.name}</h1>
             <div className="text-muted-foreground text-sm mt-2 space-y-2 max-w-lg mx-auto text-center">
               <p className="font-medium text-foreground">Cadastro de Artista</p>
