@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -462,13 +462,12 @@ export default function Auth() {
                     Esqueci minha senha
                   </button>
                   <div>
-                    <button
-                      type="button"
-                      onClick={() => setMode("signup")}
+                    <Link
+                      to="/register"
                       className="text-primary hover:text-primary/80 text-sm font-medium"
                     >
                       Criar nova conta
-                    </button>
+                    </Link>
                   </div>
                 </>
               )}

@@ -10,6 +10,7 @@ import { Route } from "react-router-dom";
 import type { SuspenseRouteComponent } from "./types";
 
 const Auth = lazy(() => import("@/modules/auth/pages/Auth"));
+const Register = lazy(() => import("@/modules/auth/pages/Register"));
 const ArtistaSignupPublic = lazy(() => import("@/modules/auth/pages/ArtistaSignupPublic"));
 const LeadCapture = lazy(() => import("@/modules/leads/pages/LeadCapture"));
 const NotFound = lazy(() => import("@/shared/pages/NotFound"));
@@ -18,6 +19,7 @@ export function publicRoutes(S: SuspenseRouteComponent) {
   return (
     <>
       <Route path="/auth" element={<S><Auth /></S>} />
+      <Route path="/register" element={<S><Register /></S>} />
       <Route path="/captar" element={<S><LeadCapture /></S>} />
       <Route path="/signup/artista" element={<S><ArtistaSignupPublic /></S>} />
       <Route path="/signup/artista/:orgSlug" element={<S><ArtistaSignupPublic /></S>} />
