@@ -151,7 +151,12 @@ const NAV_ITEMS: NavItem[] = [
     title: "Support Hub",
     icon: HeadphonesIcon,
     children: [
-      { title: "Dashboard", href: "/support", icon: LayoutDashboard },
+      { title: "Dashboard",          href: "/support",           icon: LayoutDashboard },
+      { title: "Tickets",            href: "/support/tickets",   icon: Ticket },
+      { title: "Chat ao Vivo",       href: "/support/chat",      icon: MessagesSquare },
+      { title: "Base de Conhecimento", href: "/support/knowledge", icon: BookOpen },
+      { title: "Status do Sistema",  href: "/support/status",    icon: Activity },
+      { title: "Solicitações",       href: "/support/requests",  icon: Inbox },
     ],
   },
 ];

@@ -5,7 +5,10 @@ import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { useChatRooms, useChatMessages } from "../hooks/useSupport";
-import { Send, MessagesSquare, User, Shield, Circle } from "lucide-react";
+import {
+  Send, MessagesSquare, User, Shield, Circle,
+  Smile, Paperclip, X, FileText,
+} from "lucide-react";
 
 const AGENT_REPLIES = [
   "Certo, estou verificando isso para você.",
@@ -16,24 +19,40 @@ const AGENT_REPLIES = [
   "Isso foi resolvido em nossa última atualização. Verifique a versão.",
 ];
 
+const EMOJI_LIST = [
+  "😀","😊","😂","🙌","👍","❤️","🎉","🔥",
+  "✅","⚠️","🚀","💡","🎵","🎸","🎤","🎹",
+  "📁","📎","🗂️","📋","✏️","📝","🔍","💬",
+];
+
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+type AttachedFile = { name: string; size: string; type: string };
+
 function ChatWindow({ roomId }: { roomId: string }) {
   const { messages, sendMessage } = useChatMessages(roomId);
-  const [text, setText] = useState("");
-  const [typing, setTyping] = useState(false);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const [text, setText]               = useState("");
+  const [typing, setTyping]           = useState(false);
+  const [showEmoji, setShowEmoji]     = useState(false);
+  const [attached, setAttached]       = useState<AttachedFile | null>(null);
+  const bottomRef                     = useRef<HTMLDivElement>(null);
+  const fileInputRef                  = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
   function handleSend() {
-    if (!text.trim()) return;
-    sendMessage(text.trim(), "support");
+    if (!text.trim() && !attached) return;
+    const content = attached
+      ? `${text.trim() ? text.trim() + "\n" : ""}📎 ${attached.name} (${attached.size})`
+      : text.trim();
+    sendMessage(content, "support");
     setText("");
+    setAttached(null);
+    setShowEmoji(false);
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
@@ -48,8 +67,23 @@ function ChatWindow({ roomId }: { roomId: string }) {
     }
   }
 
+  function handleEmojiPick(emoji: string) {
+    setText((prev) => prev + emoji);
+    setShowEmoji(false);
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const kb = file.size / 1024;
+    const size = kb < 1024 ? `${kb.toFixed(0)} KB` : `${(kb / 1024).toFixed(1)} MB`;
+    setAttached({ name: file.name, size, type: file.type });
+    e.target.value = "";
+  }
+
   return (
     <div className="flex flex-col h-full">
+      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -81,7 +115,7 @@ function ChatWindow({ roomId }: { roomId: string }) {
                   ? "bg-primary text-primary-foreground rounded-br-sm"
                   : "bg-muted text-foreground rounded-bl-sm",
               )}>
-                <p className="text-[12.5px] leading-relaxed">{msg.message}</p>
+                <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                 <p className={cn(
                   "text-[10px] mt-0.5",
                   isMe ? "text-primary-foreground/60 text-right" : "text-muted-foreground",
@@ -112,20 +146,87 @@ function ChatWindow({ roomId }: { roomId: string }) {
         )}
         <div ref={bottomRef} />
       </div>
-      <div className="border-t border-border/60 p-3 flex gap-2">
+
+      {/* Attached file preview */}
+      {attached && (
+        <div className="px-3 pb-1 flex items-center gap-2">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 text-[11.5px] text-foreground flex-1 min-w-0">
+            <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="truncate font-medium">{attached.name}</span>
+            <span className="text-muted-foreground shrink-0">{attached.size}</span>
+          </div>
+          <button
+            onClick={() => setAttached(null)}
+            className="text-muted-foreground hover:text-foreground"
+            data-testid="button-remove-attachment"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      )}
+
+      {/* Emoji picker */}
+      {showEmoji && (
+        <div className="px-3 pb-2">
+          <div className="rounded-xl border border-border/60 bg-card p-2 grid grid-cols-8 gap-1">
+            {EMOJI_LIST.map((emoji) => (
+              <button
+                key={emoji}
+                className="flex items-center justify-center h-8 w-8 rounded-lg hover:bg-muted text-base transition-colors"
+                onClick={() => handleEmojiPick(emoji)}
+                data-testid={`emoji-${emoji}`}
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Input toolbar */}
+      <div className="border-t border-border/60 p-3 flex gap-2 items-center">
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          className="hidden"
+          onChange={handleFileChange}
+          data-testid="input-file-upload"
+          accept="image/*,.pdf,.doc,.docx,.txt,.zip"
+        />
+        <button
+          onClick={() => setShowEmoji((v) => !v)}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors shrink-0",
+            showEmoji ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted",
+          )}
+          data-testid="button-emoji-picker"
+        >
+          <Smile className="h-4 w-4" />
+        </button>
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className={cn(
+            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors shrink-0",
+            attached ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground hover:bg-muted",
+          )}
+          data-testid="button-attach-file"
+        >
+          <Paperclip className="h-4 w-4" />
+        </button>
         <Input
           placeholder="Digite uma mensagem..."
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={handleKey}
-          className="text-sm h-9"
+          className="text-sm h-9 flex-1"
           data-testid="input-chat-message"
         />
         <Button
           size="sm"
           className="h-9 w-9 p-0 shrink-0"
           onClick={handleSend}
-          disabled={!text.trim()}
+          disabled={!text.trim() && !attached}
           data-testid="button-send-chat"
         >
           <Send className="h-3.5 w-3.5" />

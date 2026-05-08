@@ -41,6 +41,22 @@ function ArticleCard({ article, onClick }: { article: KnowledgeArticle; onClick:
   );
 }
 
+function renderMarkdown(md: string): string {
+  return md
+    .replace(/^### (.+)$/gm, '<h3 class="text-[13px] font-bold text-foreground mt-4 mb-1">$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2 class="text-[14px] font-bold text-foreground mt-5 mb-1.5">$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-foreground mt-5 mb-2">$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
+    .replace(/`(.+?)`/g, '<code class="font-mono text-[11.5px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">$1</code>')
+    .replace(/^- (.+)$/gm, '<li class="flex gap-2 text-[12.5px] text-foreground/80 leading-relaxed"><span class="text-primary mt-1">•</span><span>$1</span></li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="flex gap-2 text-[12.5px] text-foreground/80 leading-relaxed"><span class="text-primary font-mono text-[11px] mt-0.5">$1.</span><span>$2</span></li>')
+    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-primary/40 pl-3 text-[12.5px] text-muted-foreground italic my-2">$1</blockquote>')
+    .replace(/^---$/gm, '<hr class="border-border/60 my-3" />')
+    .replace(/\n\n/g, '</p><p class="text-[12.5px] text-foreground/80 leading-relaxed">')
+    .replace(/\n/g, '<br />');
+}
+
 function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
@@ -55,11 +71,12 @@ function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose
         </DialogHeader>
         <div className="mt-2 space-y-4">
           <p className="text-[13px] text-muted-foreground leading-relaxed">{article.summary}</p>
-          <div className="rounded-xl border border-border/60 bg-muted/30 p-4">
-            <p className="text-[13px] text-foreground/80 leading-relaxed whitespace-pre-wrap">
-              {article.content}
-            </p>
-          </div>
+          <div
+            className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-1 prose-support"
+            dangerouslySetInnerHTML={{
+              __html: `<p class="text-[12.5px] text-foreground/80 leading-relaxed">${renderMarkdown(article.content)}</p>`,
+            }}
+          />
           <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60 pt-3">
             <span>Atualizado em {formatDate(article.updated_at)}</span>
             <div className="flex items-center gap-3">
