@@ -90,7 +90,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Music,
     children: [
       { title: "Obras & Fonogramas", href: "/registro-musicas", icon: Music },
-      { title: "Rights Monitoring", href: "/rights-monitoring", icon: Radio },
+      { title: "Monitoramento", href: "/rights-monitoring", icon: Radio },
       { title: "Licenciamento", href: "/licenciamento", icon: Shield },
       { title: "Takedowns", href: "/takedowns", icon: AlertTriangle },
     ],
