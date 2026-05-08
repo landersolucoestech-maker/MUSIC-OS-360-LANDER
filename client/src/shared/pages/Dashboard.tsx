@@ -19,7 +19,6 @@ import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
-import { FinanceChart } from "@/shared/components/FinanceChart";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { useWsEvent } from "@/shared/hooks/useWsEvent";
 import { cn } from "@/shared/lib/utils";
@@ -473,9 +472,6 @@ export default function Dashboard() {
             </CardContent>
           </Card>
         </div>
-
-        {/* ── Finance Chart ── */}
-        <FinanceChart />
 
         {/* ── Artistas em Destaque ── */}
         <div>
