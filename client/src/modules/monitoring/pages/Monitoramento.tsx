@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { formatDate } from "@/shared/lib/format-utils";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -179,7 +180,7 @@ export default function Monitoramento() {
                       <div className="hidden lg:flex items-center gap-6 text-sm">
                         <div>
                           <span className="text-muted-foreground text-xs block">Período</span>
-                          <p className="font-medium">{det.periodo}</p>
+                          <p className="font-medium">{det.periodo ? formatDate(det.periodo + "-01") : "-"}</p>
                         </div>
                         <div>
                           <span className="text-muted-foreground text-xs block">Execuções</span>
