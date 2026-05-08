@@ -61,7 +61,7 @@ export default function Relatorios() {
   return (
     <MainLayout
       title="Relatórios"
-      subtitle="Central de importações e exportações por módulo"
+      description="Central de importações e exportações por módulo"
     >
       <div className="space-y-4">
         {/* KPI cards */}
