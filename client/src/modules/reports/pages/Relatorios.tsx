@@ -3,22 +3,21 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import {
-  LayoutDashboard, Upload, Download, ClipboardList, Activity,
-  DollarSign, FileText, Music, Truck, CheckCircle2, XCircle,
+  LayoutDashboard, Upload, Download, Activity,
+  DollarSign, CheckCircle2, XCircle,
   AlertTriangle, BarChart2, TrendingUp, Users, Eye, Play, Heart,
-  MousePointer, Zap, ThumbsUp, MessageCircle, Share2,
+  MousePointer, Zap, ThumbsUp, MessageCircle, Share2, Search,
+  ArrowUpFromLine, ArrowDownToLine,
 } from "lucide-react";
 import { SiYoutube, SiMeta, SiGoogleads, SiInstagram, SiTiktok } from "react-icons/si";
 import { cn } from "@/shared/lib/utils";
 import { ImportEngine } from "../components/ImportEngine";
 import { ExportEngine } from "../components/ExportEngine";
-import { AuditLogPanel } from "../components/AuditLogPanel";
-import { ReportsToolbar } from "../components/ReportsToolbar";
 import {
   MOCK_IMPORT_JOBS,
   MOCK_EXPORT_JOBS,
-  MOCK_AUDIT_LOG,
   REPORT_OVERVIEW_KPIS,
 } from "../services/mock-data";
 import {
@@ -31,33 +30,24 @@ import {
 import { formatCurrency } from "@/shared/lib/format-utils";
 import type { ImportJob, ExportJob } from "../types";
 
-type TabId =
-  | "visao-geral"
-  | "importacoes"
-  | "exportacoes"
-  | "auditoria"
-  | "logs"
-  | "analytics";
+type TabId = "visao-geral" | "transferencias" | "analytics";
 
 const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "visao-geral",  label: "Visão Geral",   icon: LayoutDashboard },
-  { id: "importacoes",  label: "Importações",   icon: Upload },
-  { id: "exportacoes",  label: "Exportações",   icon: Download },
-  { id: "auditoria",   label: "Auditoria",      icon: ClipboardList },
-  { id: "logs",         label: "Logs",          icon: Activity },
-  { id: "analytics",   label: "Analytics Social", icon: BarChart2 },
+  { id: "visao-geral",    label: "Visão Geral",            icon: LayoutDashboard },
+  { id: "transferencias", label: "Importações & Exportações", icon: Activity },
+  { id: "analytics",     label: "Analytics Social",        icon: BarChart2 },
 ];
 
 const STATUS_IMPORT: Record<string, { label: string; cls: string }> = {
-  done:        { label: "Concluído", cls: "bg-success/15 text-success border-success/30" },
-  error:       { label: "Erro",      cls: "bg-destructive/15 text-destructive border-destructive/30" },
-  importing:   { label: "Em andamento", cls: "bg-primary/15 text-primary border-primary/30" },
-  idle:        { label: "Aguardando",   cls: "bg-muted text-muted-foreground border-border" },
+  done:      { label: "Concluído",    cls: "bg-success/15 text-success border-success/30" },
+  error:     { label: "Erro",         cls: "bg-destructive/15 text-destructive border-destructive/30" },
+  importing: { label: "Em andamento", cls: "bg-primary/15 text-primary border-primary/30" },
+  idle:      { label: "Aguardando",   cls: "bg-muted text-muted-foreground border-border" },
 };
 const STATUS_EXPORT: Record<string, { label: string; cls: string }> = {
-  done:        { label: "Concluído", cls: "bg-success/15 text-success border-success/30" },
-  error:       { label: "Erro",      cls: "bg-destructive/15 text-destructive border-destructive/30" },
-  generating:  { label: "Gerando",   cls: "bg-primary/15 text-primary border-primary/30" },
+  done:      { label: "Concluído", cls: "bg-success/15 text-success border-success/30" },
+  error:     { label: "Erro",      cls: "bg-destructive/15 text-destructive border-destructive/30" },
+  generating:{ label: "Gerando",   cls: "bg-primary/15 text-primary border-primary/30" },
 };
 
 function formatDate(iso: string) {
@@ -65,7 +55,7 @@ function formatDate(iso: string) {
   return `${d.toLocaleDateString("pt-BR")} ${d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`;
 }
 
-// ─── Mini bar chart (reutilizado do Analytics) ────────────────────────────────
+// ─── Mini bar chart ────────────────────────────────────────────────────────────
 function MiniBarChart({ data, color }: { data: MonthlyPoint[]; color: string }) {
   const max = Math.max(1, ...data.map(d => d.value));
   return (
@@ -92,15 +82,15 @@ function KPI({ label, value, icon: Icon, sub }: { label: string; value: string; 
   );
 }
 
-// ─── Overview Tab ─────────────────────────────────────────────────────────────
+// ─── Overview Tab ──────────────────────────────────────────────────────────────
 function OverviewTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void; onOpenExport: () => void }) {
   const kpis = [
-    { label: "Importações",       value: String(REPORT_OVERVIEW_KPIS.totalImports),         icon: Upload,        color: "text-primary",     bg: "bg-primary/10" },
-    { label: "Exportações",       value: String(REPORT_OVERVIEW_KPIS.totalExports),         icon: Download,      color: "text-success",     bg: "bg-success/10" },
-    { label: "Erros de importação", value: String(REPORT_OVERVIEW_KPIS.importErrors),       icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
-    { label: "Taxa de sucesso",   value: `${REPORT_OVERVIEW_KPIS.successRate}%`,            icon: CheckCircle2,  color: "text-success",     bg: "bg-success/10" },
-    { label: "Registros importados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsImported), icon: Upload,   color: "text-primary",     bg: "bg-primary/10" },
-    { label: "Registros exportados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsExported), icon: Download, color: "text-success",     bg: "bg-success/10" },
+    { label: "Importações",          value: String(REPORT_OVERVIEW_KPIS.totalImports),          icon: Upload,        color: "text-primary",     bg: "bg-primary/10" },
+    { label: "Exportações",          value: String(REPORT_OVERVIEW_KPIS.totalExports),          icon: Download,      color: "text-success",     bg: "bg-success/10" },
+    { label: "Erros de importação",  value: String(REPORT_OVERVIEW_KPIS.importErrors),          icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
+    { label: "Taxa de sucesso",      value: `${REPORT_OVERVIEW_KPIS.successRate}%`,             icon: CheckCircle2,  color: "text-success",     bg: "bg-success/10" },
+    { label: "Registros importados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsImported),  icon: Upload,        color: "text-primary",     bg: "bg-primary/10" },
+    { label: "Registros exportados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsExported),  icon: Download,      color: "text-success",     bg: "bg-success/10" },
   ];
 
   return (
@@ -175,54 +165,155 @@ function OverviewTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void;
   );
 }
 
-// ─── Importações Tab ──────────────────────────────────────────────────────────
-function ImportacoesTab({ onOpenImport }: { onOpenImport: () => void }) {
-  const [search, setSearch] = useState("");
-  const [jobs] = useState<ImportJob[]>(MOCK_IMPORT_JOBS);
+// ─── Unified Transfers Tab (Importações + Exportações) ─────────────────────────
+type UnifiedEntry =
+  | { kind: "import"; data: ImportJob }
+  | { kind: "export"; data: ExportJob };
 
-  const filtered = jobs.filter(j =>
-    !search || j.filename.toLowerCase().includes(search.toLowerCase()) || j.module.toLowerCase().includes(search.toLowerCase())
-  );
+function TransferenciasTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void; onOpenExport: () => void }) {
+  const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"all" | "import" | "export">("all");
+
+  const entries: UnifiedEntry[] = [
+    ...MOCK_IMPORT_JOBS.map(j => ({ kind: "import" as const, data: j })),
+    ...MOCK_EXPORT_JOBS.map(j => ({ kind: "export" as const, data: j })),
+  ].sort((a, b) => {
+    const aDate = a.data.completedAt ?? a.data.createdAt;
+    const bDate = b.data.completedAt ?? b.data.createdAt;
+    return new Date(bDate).getTime() - new Date(aDate).getTime();
+  });
+
+  const filtered = entries.filter(e => {
+    if (typeFilter === "import" && e.kind !== "import") return false;
+    if (typeFilter === "export" && e.kind !== "export") return false;
+    const term = search.toLowerCase();
+    if (!term) return true;
+    return e.data.filename.toLowerCase().includes(term) || e.data.module.toLowerCase().includes(term);
+  });
 
   return (
     <div className="space-y-4">
-      <ReportsToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar por arquivo ou módulo..."
-        onImport={onOpenImport}
-      />
+      {/* Toolbar */}
+      <div className="flex items-center gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Buscar por arquivo ou módulo..."
+            className="pl-9 h-8 text-xs"
+            data-testid="input-search-transfers"
+          />
+        </div>
+        <div className="flex gap-1">
+          {(["all", "import", "export"] as const).map(f => (
+            <button
+              key={f}
+              onClick={() => setTypeFilter(f)}
+              className={cn(
+                "px-3 py-1.5 rounded-md text-xs font-medium transition-all border",
+                typeFilter === f
+                  ? "bg-primary text-primary-foreground border-primary"
+                  : "bg-card text-muted-foreground border-border hover:text-foreground"
+              )}
+              data-testid={`filter-type-${f}`}
+            >
+              {f === "all" ? "Todos" : f === "import" ? "Importações" : "Exportações"}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Table */}
       <div className="rounded-lg border border-border overflow-hidden">
         <table className="w-full text-xs">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
+              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider w-8"></th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Arquivo</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Módulo</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Formato</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Registros</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Erros</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Data</th>
               <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Status</th>
+              <th className="px-4 py-2.5 text-right font-medium text-muted-foreground uppercase tracking-wider">Ação</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-border/50">
-            {filtered.map(j => {
-              const sc = STATUS_IMPORT[j.status] ?? STATUS_IMPORT.idle;
-              return (
-                <tr key={j.id} className="hover:bg-muted/20 transition-colors" data-testid={`import-row-${j.id}`}>
-                  <td className="px-4 py-3 font-medium max-w-[200px] truncate">{j.filename}</td>
-                  <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
-                  <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
-                  <td className="px-4 py-3 font-mono">{j.processedRows}/{j.totalRows}</td>
-                  <td className="px-4 py-3">
-                    {j.errorCount > 0
-                      ? <span className="flex items-center gap-1 text-destructive"><XCircle className="h-3 w-3" />{j.errorCount}</span>
-                      : <span className="flex items-center gap-1 text-success"><CheckCircle2 className="h-3 w-3" />0</span>}
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
-                  <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
-                </tr>
-              );
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
+                  Nenhum registro encontrado.
+                </td>
+              </tr>
+            )}
+            {filtered.map(entry => {
+              if (entry.kind === "import") {
+                const j = entry.data as ImportJob;
+                const sc = STATUS_IMPORT[j.status] ?? STATUS_IMPORT.idle;
+                return (
+                  <tr key={`imp-${j.id}`} className="hover:bg-muted/20 transition-colors" data-testid={`row-import-${j.id}`}>
+                    <td className="px-4 py-3">
+                      <div className="p-1 rounded bg-primary/10 w-fit">
+                        <ArrowUpFromLine className="h-3 w-3 text-primary" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-medium max-w-[180px] truncate">{j.filename}</td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
+                    <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
+                    <td className="px-4 py-3 font-mono">
+                      {j.processedRows}/{j.totalRows}
+                      {j.errorCount > 0 && (
+                        <span className="ml-1.5 text-destructive flex items-center gap-0.5 inline-flex">
+                          <XCircle className="h-3 w-3" />{j.errorCount}
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
+                    <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={onOpenImport}
+                        data-testid={`btn-import-${j.id}`}
+                      >
+                        <Upload className="h-3 w-3" /> Importar
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              } else {
+                const j = entry.data as ExportJob;
+                const sc = STATUS_EXPORT[j.status] ?? STATUS_EXPORT.done;
+                return (
+                  <tr key={`exp-${j.id}`} className="hover:bg-muted/20 transition-colors" data-testid={`row-export-${j.id}`}>
+                    <td className="px-4 py-3">
+                      <div className="p-1 rounded bg-success/10 w-fit">
+                        <ArrowDownToLine className="h-3 w-3 text-success" />
+                      </div>
+                    </td>
+                    <td className="px-4 py-3 font-medium max-w-[180px] truncate">{j.filename}</td>
+                    <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
+                    <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
+                    <td className="px-4 py-3 font-mono">{j.totalRows || "—"}</td>
+                    <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
+                    <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
+                    <td className="px-4 py-3 text-right">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 text-xs gap-1"
+                        onClick={onOpenExport}
+                        data-testid={`btn-export-${j.id}`}
+                      >
+                        <Download className="h-3 w-3" /> Exportar
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              }
             })}
           </tbody>
         </table>
@@ -231,95 +322,7 @@ function ImportacoesTab({ onOpenImport }: { onOpenImport: () => void }) {
   );
 }
 
-// ─── Exportações Tab ──────────────────────────────────────────────────────────
-function ExportacoesTab({ onOpenExport }: { onOpenExport: () => void }) {
-  const [search, setSearch] = useState("");
-  const [jobs] = useState<ExportJob[]>(MOCK_EXPORT_JOBS);
-
-  const filtered = jobs.filter(j =>
-    !search || j.filename.toLowerCase().includes(search.toLowerCase()) || j.module.toLowerCase().includes(search.toLowerCase())
-  );
-
-  return (
-    <div className="space-y-4">
-      <ReportsToolbar
-        search={search}
-        onSearchChange={setSearch}
-        searchPlaceholder="Buscar por arquivo ou módulo..."
-        onExport={onOpenExport}
-      />
-      <div className="rounded-lg border border-border overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Arquivo</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Módulo</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Formato</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Registros</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Data</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
-            {filtered.map(j => {
-              const sc = STATUS_EXPORT[j.status] ?? STATUS_EXPORT.done;
-              return (
-                <tr key={j.id} className="hover:bg-muted/20 transition-colors" data-testid={`export-row-${j.id}`}>
-                  <td className="px-4 py-3 font-medium max-w-[220px] truncate">{j.filename}</td>
-                  <td className="px-4 py-3"><Badge variant="outline" className="text-[10px]">{j.module}</Badge></td>
-                  <td className="px-4 py-3 font-mono uppercase">{j.format}</td>
-                  <td className="px-4 py-3 font-mono">{j.totalRows || "—"}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{j.completedAt ? formatDate(j.completedAt) : "—"}</td>
-                  <td className="px-4 py-3"><Badge className={cn("text-[10px] border", sc.cls)}>{sc.label}</Badge></td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// ─── Logs Tab ─────────────────────────────────────────────────────────────────
-function LogsTab() {
-  const logs = [
-    { ts: "2026-05-08T09:15:43Z", level: "INFO",  msg: "[import] imp-001: 142 registros importados em Catálogo (CSV)", module: "reports" },
-    { ts: "2026-05-08T10:00:08Z", level: "INFO",  msg: "[export] exp-001: Catálogo exportado em XLSX (142 registros)", module: "reports" },
-    { ts: "2026-05-07T14:22:18Z", level: "ERROR", msg: "[import] imp-002: 7 erros na importação de Artistas — campos inválidos", module: "reports" },
-    { ts: "2026-05-07T16:45:22Z", level: "INFO",  msg: "[export] exp-002: Relatório financeiro exportado em PDF", module: "reports" },
-    { ts: "2026-05-07T11:30:00Z", level: "WARN",  msg: "[contract] CT-0045: cláusula 3 atualizada por Admin", module: "contratos" },
-    { ts: "2026-05-06T11:00:29Z", level: "INFO",  msg: "[import] imp-003: 22 contratos importados via CSV", module: "reports" },
-    { ts: "2026-05-06T10:15:00Z", level: "WARN",  msg: "[catalog] 3 obras removidas do catálogo por Admin", module: "catalog" },
-    { ts: "2026-05-01T08:31:02Z", level: "INFO",  msg: "[import] imp-004: 318 transações OFX importadas em Financeiro", module: "reports" },
-  ];
-
-  const LEVEL_COLORS: Record<string, string> = {
-    INFO:  "text-success",
-    WARN:  "text-warning",
-    ERROR: "text-destructive",
-  };
-
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden font-mono text-xs">
-      <div className="px-4 py-2 border-b border-border bg-muted/50 flex items-center gap-2">
-        <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-muted-foreground font-medium">System Logs — {logs.length} entradas</span>
-      </div>
-      <div className="divide-y divide-border/30">
-        {logs.map((l, i) => (
-          <div key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors" data-testid={`log-row-${i}`}>
-            <span className="text-muted-foreground whitespace-nowrap shrink-0">{new Date(l.ts).toLocaleString("pt-BR")}</span>
-            <span className={cn("font-bold w-12 shrink-0", LEVEL_COLORS[l.level] ?? "text-muted-foreground")}>{l.level}</span>
-            <span className="text-foreground break-all">{l.msg}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Analytics Social Tab (mantido do módulo original) ────────────────────────
+// ─── Analytics Social Tab ──────────────────────────────────────────────────────
 type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "meta" | "google";
 interface Platform { id: PlatformId; label: string; icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>; color: string; bg: string; brandStyle?: React.CSSProperties; }
 const PLATFORMS: Platform[] = [
@@ -460,7 +463,7 @@ function AnalyticsSocialTab() {
   );
 }
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+// ─── Main Page ─────────────────────────────────────────────────────────────────
 export default function Relatorios() {
   const [tab, setTab] = useState<TabId>("visao-geral");
   const [importOpen, setImportOpen] = useState(false);
@@ -469,7 +472,7 @@ export default function Relatorios() {
   return (
     <MainLayout
       title="Relatórios"
-      subtitle="Central de relatórios, importações, exportações e auditoria operacional"
+      subtitle="Central de relatórios, importações, exportações e analytics social"
     >
       <div className="space-y-6">
         <div className="flex items-start justify-between gap-4">
@@ -479,7 +482,7 @@ export default function Relatorios() {
             </div>
             <div>
               <h2 className="text-base font-semibold text-foreground">Relatórios</h2>
-              <p className="text-xs text-muted-foreground">Central Operacional · Importar · Exportar · Auditoria</p>
+              <p className="text-xs text-muted-foreground">Central Operacional · Importar · Exportar · Analytics</p>
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -513,12 +516,9 @@ export default function Relatorios() {
           })}
         </div>
 
-        {tab === "visao-geral"  && <OverviewTab onOpenImport={() => setImportOpen(true)} onOpenExport={() => setExportOpen(true)} />}
-        {tab === "importacoes"  && <ImportacoesTab onOpenImport={() => setImportOpen(true)} />}
-        {tab === "exportacoes"  && <ExportacoesTab onOpenExport={() => setExportOpen(true)} />}
-        {tab === "auditoria"    && <AuditLogPanel entries={MOCK_AUDIT_LOG} />}
-        {tab === "logs"         && <LogsTab />}
-        {tab === "analytics"    && <AnalyticsSocialTab />}
+        {tab === "visao-geral"    && <OverviewTab onOpenImport={() => setImportOpen(true)} onOpenExport={() => setExportOpen(true)} />}
+        {tab === "transferencias" && <TransferenciasTab onOpenImport={() => setImportOpen(true)} onOpenExport={() => setExportOpen(true)} />}
+        {tab === "analytics"      && <AnalyticsSocialTab />}
       </div>
 
       <ImportEngine open={importOpen} onClose={() => setImportOpen(false)} />
