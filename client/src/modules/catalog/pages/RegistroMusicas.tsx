@@ -721,34 +721,6 @@ export default function RegistroMusicas() {
           </Card>
         </div>
 
-        {activeTab === "obras" && obrasSemEcad > 0 && (
-          <div
-            className="flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm cursor-pointer hover:bg-warning/20 transition-colors"
-            onClick={() => setEcadFilter("sem-ecad")}
-            data-testid="banner-obras-sem-ecad"
-          >
-            <Badge variant="outline" className="border-warning text-warning font-mono text-xs shrink-0" data-testid="badge-obras-sem-ecad-count">
-              {obrasSemEcad}
-            </Badge>
-            <span className="text-foreground">
-              {obrasSemEcad === 1 ? "obra sem código ECAD" : "obras sem código ECAD"} — clique para filtrar e regularizar o registro.
-            </span>
-          </div>
-        )}
-        {activeTab === "fonogramas" && fonogramasSemEcad > 0 && (
-          <div
-            className="flex items-center gap-3 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3 text-sm cursor-pointer hover:bg-warning/20 transition-colors"
-            onClick={() => setFonogramaEcadFilter("sem-ecad")}
-            data-testid="banner-fonogramas-sem-ecad"
-          >
-            <Badge variant="outline" className="border-warning text-warning font-mono text-xs shrink-0" data-testid="badge-fonogramas-sem-ecad-count">
-              {fonogramasSemEcad}
-            </Badge>
-            <span className="text-foreground">
-              {fonogramasSemEcad === 1 ? "fonograma sem código ECAD" : "fonogramas sem código ECAD"} — clique para filtrar e regularizar o registro.
-            </span>
-          </div>
-        )}
 
         {/* Search and Filters */}
         <div className="flex items-center gap-4">
