@@ -15,7 +15,7 @@ const getStatusBadge = (status: string) => {
   switch (s) {
     case "confirmado":
     case "recebido":   return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
-    case "pendente":   return <Badge className="bg-warning text-warning-foreground capitalize">{status}</Badge>;
+    case "pendente":   return <Badge className="bg-warning capitalize text-[#000000]">{status}</Badge>;
     case "nao_reportado":
     case "não reportado": return <Badge className="bg-destructive">Não Reportado</Badge>;
     case "processado": return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
