@@ -953,7 +953,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Código ECAD</span>
-                <Input value={codEcad} onChange={(e) => setCodEcad(e.target.value)} disabled={isViewMode} placeholder="Código ECAD" className="h-9 px-2 text-sm min-w-0" />
+                <Input value={codEcad} onChange={(e) => setCodEcad(e.target.value)} disabled={isViewMode} placeholder="Código ECAD" className="h-9 px-2 text-sm min-w-0" data-testid="input-cod-ecad" />
               </div>
               <div className="col-span-3">
                 <span className="text-xs text-muted-foreground mb-1 block">Agregadora</span>

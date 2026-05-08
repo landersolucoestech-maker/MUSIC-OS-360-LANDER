@@ -867,9 +867,24 @@ export default function RegistroMusicas() {
                           <span className="text-muted-foreground text-xs block">Cód. ABRAMUS</span>
                           <span className="truncate block">{fonograma.cod_abramus || "-"}</span>
                         </div>
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Cód. ECAD</span>
-                          <span className="truncate block">{fonograma.cod_ecad || "-"}</span>
+                        <div className="w-32">
+                          <span className="text-muted-foreground text-xs block mb-1">Cód. ECAD</span>
+                          {fonograma.cod_ecad ? (
+                            <Badge
+                              className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono"
+                              data-testid={`badge-ecad-registrado-${fonograma.id}`}
+                            >
+                              {fonograma.cod_ecad}
+                            </Badge>
+                          ) : (
+                            <Badge
+                              variant="outline"
+                              className="text-xs text-muted-foreground border-border"
+                              data-testid={`badge-ecad-missing-${fonograma.id}`}
+                            >
+                              Sem ECAD
+                            </Badge>
+                          )}
                         </div>
                         <div className="w-28">
                           <span className="text-muted-foreground text-xs block">ISRC</span>
