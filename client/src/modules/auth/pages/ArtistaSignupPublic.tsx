@@ -10,7 +10,7 @@ import { Separator } from "@/shared/ui/separator";
 import {
   Loader2, CheckCircle2, Music2, ChevronRight, ChevronLeft,
   Link2, Image, FileText, User, Star, Shield, Zap, AlertCircle,
-  Instagram, Youtube, CalendarDays, Package,
+  Instagram, Youtube, CalendarDays, Package, Plus, Trash2,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { createArtistUseCase, DuplicateArtistaError } from "@/modules/artist/application/createArtist.usecase";
@@ -57,6 +57,11 @@ const DISTRIBUIDORAS = [
 type Step = 1 | 2 | 3;
 type SlugState = "checking" | "valid" | "invalid";
 
+interface DistribuidoraEntry {
+  distribuidora: string;
+  email: string;
+}
+
 interface OrgInfo {
   name: string;
   slug: string;
@@ -80,8 +85,6 @@ interface FormData {
   deezer: string;
   soundcloud: string;
   presskit_url: string;
-  distribuidora: string;
-  distribuidora_email: string;
   bio: string;
   foto_url: string;
   notas_label: string;
@@ -92,9 +95,10 @@ const EMPTY: FormData = {
   genero_musical: "", email: "", telefone: "", cpf_cnpj: "", data_nascimento: "",
   instagram: "", tiktok: "", youtube: "", spotify: "",
   apple_music: "", deezer: "", soundcloud: "", presskit_url: "",
-  distribuidora: "", distribuidora_email: "",
   bio: "", foto_url: "", notas_label: "",
 };
+
+const EMPTY_DISTRIBUIDORA: DistribuidoraEntry = { distribuidora: "", email: "" };
 
 const STEPS = [
   { num: 1 as Step, label: "Dados Básicos", icon: User },
@@ -174,6 +178,7 @@ export default function ArtistaSignupPublic() {
 
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY);
+  const [distribuidoras, setDistribuidoras] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -189,6 +194,22 @@ export default function ArtistaSignupPublic() {
   const set = (field: keyof Omit<FormData, "tipo_perfil">, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
     if (errors[field]) setErrors((p) => { const e = { ...p }; delete e[field]; return e; });
+  };
+
+  const setDistribuidoraField = (idx: number, field: keyof DistribuidoraEntry, value: string) => {
+    setDistribuidoras((prev) => {
+      const next = [...prev];
+      next[idx] = { ...next[idx], [field]: value };
+      return next;
+    });
+  };
+
+  const addDistribuidora = () => {
+    setDistribuidoras((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
+  };
+
+  const removeDistribuidora = (idx: number) => {
+    setDistribuidoras((prev) => prev.filter((_, i) => i !== idx));
   };
 
   const toggleTipoPerfil = (opt: string) => {
@@ -265,8 +286,13 @@ export default function ArtistaSignupPublic() {
     const extrasNotas: string[] = [];
     if (form.data_nascimento) extrasNotas.push(`Data de Nascimento: ${form.data_nascimento}`);
     if (form.genero) extrasNotas.push(`Gênero: ${form.genero}`);
-    if (form.distribuidora) extrasNotas.push(`Distribuidora: ${form.distribuidora}`);
-    if (form.distribuidora_email) extrasNotas.push(`E-mail distribuidora: ${form.distribuidora_email}`);
+    distribuidoras.forEach((entry, idx) => {
+      if (entry.distribuidora) {
+        const label = distribuidoras.length > 1 ? `Distribuidora ${idx + 1}` : "Distribuidora";
+        extrasNotas.push(`${label}: ${entry.distribuidora}`);
+        if (entry.email) extrasNotas.push(`E-mail distribuidora${distribuidoras.length > 1 ? ` ${idx + 1}` : ""}: ${entry.email}`);
+      }
+    });
 
     const notasInternas = [
       form.notas_label.trim(),
@@ -713,33 +739,67 @@ export default function ArtistaSignupPublic() {
                 <h3 className="text-sm font-semibold">Distribuidoras</h3>
               </div>
               <p className="text-xs text-muted-foreground -mt-2">
-                Informe se já distribui sua música digitalmente
+                Informe se já distribui sua música digitalmente. Você pode adicionar mais de uma.
               </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Distribuidora</Label>
-                  <Select value={form.distribuidora} onValueChange={(v) => set("distribuidora", v)}>
-                    <SelectTrigger data-testid="select-distribuidora">
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DISTRIBUIDORAS.map((d) => (
-                        <SelectItem key={d} value={d}>{d}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-sm">E-mail de share / acesso</Label>
-                  <Input
-                    type="email"
-                    placeholder="email@distribuidora.com"
-                    value={form.distribuidora_email}
-                    onChange={(e) => set("distribuidora_email", e.target.value)}
-                    data-testid="input-distribuidora-email"
-                  />
-                </div>
+
+              <div className="space-y-3">
+                {distribuidoras.map((entry, idx) => (
+                  <div key={idx} className="grid grid-cols-2 gap-3 items-end">
+                    <div className="space-y-1.5">
+                      {idx === 0 && <Label className="text-sm">Distribuidora</Label>}
+                      <Select
+                        value={entry.distribuidora}
+                        onValueChange={(v) => setDistribuidoraField(idx, "distribuidora", v)}
+                      >
+                        <SelectTrigger data-testid={`select-distribuidora-${idx}`}>
+                          <SelectValue placeholder="Selecione" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {DISTRIBUIDORAS.map((d) => (
+                            <SelectItem key={d} value={d}>{d}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="flex items-end gap-2">
+                      <div className="space-y-1.5 flex-1">
+                        {idx === 0 && <Label className="text-sm">E-mail de share / acesso</Label>}
+                        <Input
+                          type="email"
+                          placeholder="email@distribuidora.com"
+                          value={entry.email}
+                          onChange={(e) => setDistribuidoraField(idx, "email", e.target.value)}
+                          data-testid={`input-distribuidora-email-${idx}`}
+                        />
+                      </div>
+                      {idx > 0 && (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeDistribuidora(idx)}
+                          data-testid={`button-remove-distribuidora-${idx}`}
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
               </div>
+
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addDistribuidora}
+                data-testid="button-add-distribuidora"
+                className="gap-1.5 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar outra distribuidora
+              </Button>
             </div>
           </div>
         )}
