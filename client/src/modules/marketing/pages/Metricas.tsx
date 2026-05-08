@@ -321,11 +321,7 @@ export default function MarketingMetricas() {
               <Link2 className="h-4 w-4" />
               Marketing Avançado
             </TabsTrigger>
-            <TabsTrigger value="analytics-social" className="flex items-center gap-2">
-              <BarChart2 className="h-4 w-4" />
-              Analytics Social
-            </TabsTrigger>
-          </TabsList>
+            </TabsList>
 
           {/* ── Métricas ── */}
           <TabsContent value="metricas" className="mt-6 space-y-6">
@@ -408,6 +404,8 @@ export default function MarketingMetricas() {
                 </CardContent>
               </Card>
             </div>
+
+            <AnalyticsSocialContent />
           </TabsContent>
 
           {/* ── Marketing Avançado ── */}
@@ -417,11 +415,6 @@ export default function MarketingMetricas() {
                 <p className="text-muted-foreground">Métricas avançadas de marketing em desenvolvimento.</p>
               </CardContent>
             </Card>
-          </TabsContent>
-
-          {/* ── Analytics Social ── */}
-          <TabsContent value="analytics-social" className="mt-6">
-            <AnalyticsSocialContent />
           </TabsContent>
         </Tabs>
       </div>
