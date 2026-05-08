@@ -34,6 +34,7 @@ export interface CreateArtistaInput {
   email?: string;
   telefone?: string;
   cpf_cnpj?: string;
+  data_nascimento?: string;
   foto_url?: string;
   observacoes?: string;
   org_slug?: string;
@@ -43,11 +44,24 @@ export interface CreateArtistaInput {
   tiktok?: string;
   youtube_channel_id?: string;
   spotify_artist_id?: string;
+  deezer_url?: string;
   soundcloud_url?: string;
   apple_music_url?: string;
   // docs e links extras
   presskit_url?: string;
   notas_internas?: string;
+  // vínculo com empresário
+  empresario_nome?: string;
+  empresario_telefone?: string;
+  empresario_email?: string;
+  // vínculo com gravadora / editora
+  gravadora_nome?: string;
+  gravadora_responsavel_nome?: string;
+  gravadora_responsavel_telefone?: string;
+  gravadora_responsavel_email?: string;
+  // distribuidoras
+  distribuidoras_selecionadas?: Record<string, boolean>;
+  distribuidoras_emails?: Record<string, string>;
   [key: string]: unknown;
 }
 
@@ -94,6 +108,7 @@ export async function createArtistUseCase(
     email: input.email?.trim() || null,
     telefone: input.telefone?.trim() || null,
     cpf_cnpj: input.cpf_cnpj?.trim() || null,
+    data_nascimento: input.data_nascimento?.trim() || null,
     foto_url: input.foto_url?.trim() || null,
     observacoes: observacoes || null,
     org_slug: input.org_slug ?? null,
@@ -102,11 +117,24 @@ export async function createArtistUseCase(
     tiktok: input.tiktok?.trim() || null,
     youtube_channel_id: input.youtube_channel_id?.trim() || null,
     spotify_artist_id: input.spotify_artist_id?.trim() || null,
+    deezer_url: input.deezer_url?.trim() || null,
     soundcloud_url: input.soundcloud_url?.trim() || null,
     apple_music_url: input.apple_music_url?.trim() || null,
     // docs
     presskit_url: input.presskit_url?.trim() || null,
     notas_internas: input.notas_internas?.trim() || null,
+    // vínculo empresário
+    empresario_nome: input.empresario_nome?.trim() || null,
+    empresario_telefone: input.empresario_telefone?.trim() || null,
+    empresario_email: input.empresario_email?.trim() || null,
+    // vínculo gravadora / editora
+    gravadora_nome: input.gravadora_nome?.trim() || null,
+    gravadora_responsavel_nome: input.gravadora_responsavel_nome?.trim() || null,
+    gravadora_responsavel_telefone: input.gravadora_responsavel_telefone?.trim() || null,
+    gravadora_responsavel_email: input.gravadora_responsavel_email?.trim() || null,
+    // distribuidoras
+    distribuidoras_selecionadas: input.distribuidoras_selecionadas ?? null,
+    distribuidoras_emails: input.distribuidoras_emails ?? null,
   } as ArtistaInsert);
 
   // 6. Persistir via service

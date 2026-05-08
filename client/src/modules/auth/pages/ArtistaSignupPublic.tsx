@@ -314,44 +314,40 @@ export default function ArtistaSignupPublic() {
     if (!validateStep3()) return;
     setIsSubmitting(true);
 
-    const redesExtras: string[] = [];
     const spotifyId = extractSpotifyArtistId(form.spotify);
     const youtubeId = extractYouTubeChannelId(form.youtube);
-    if (form.spotify.trim() && !spotifyId) redesExtras.push(`Spotify: ${form.spotify.trim()}`);
-    if (form.youtube.trim() && !youtubeId) redesExtras.push(`YouTube: ${form.youtube.trim()}`);
-    if (form.deezer.trim()) redesExtras.push(`Deezer: ${form.deezer.trim()}`);
 
-    const extrasNotas: string[] = [];
-    if (form.data_nascimento) extrasNotas.push(`Data de Nascimento: ${form.data_nascimento}`);
-    if (form.genero) extrasNotas.push(`Gênero: ${form.genero}`);
-    if (form.vinculo) extrasNotas.push(`Vínculo: ${form.vinculo}`);
-    if (form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo)) {
-      if (form.vinculo_empresa_nome.trim()) extrasNotas.push(`Empresa/Responsável: ${form.vinculo_empresa_nome.trim()}`);
-      if (form.vinculo_empresa_contato.trim()) extrasNotas.push(`Contato: ${form.vinculo_empresa_contato.trim()}`);
-      if (form.vinculo_empresa_telefone.trim()) extrasNotas.push(`Tel. empresa: ${form.vinculo_empresa_telefone.trim()}`);
-      if (form.vinculo_empresa_email.trim()) extrasNotas.push(`E-mail empresa: ${form.vinculo_empresa_email.trim()}`);
-      if (form.vinculo_empresa_email_share.trim()) extrasNotas.push(`E-mail de contato: ${form.vinculo_empresa_email_share.trim()}`);
-    }
+    // ── Notas internas: informações sem campo dedicado ─────────────────────────
+    const notasLinhas: string[] = [];
+    if (form.notas_label.trim()) notasLinhas.push(form.notas_label.trim());
+    if (form.genero) notasLinhas.push(`Gênero: ${form.genero}`);
+    if (form.vinculo) notasLinhas.push(`Vínculo: ${form.vinculo}`);
+    // Spotify/YouTube URL completa quando não é um ID extraível
+    if (form.spotify.trim() && !spotifyId) notasLinhas.push(`Spotify (URL): ${form.spotify.trim()}`);
+    if (form.youtube.trim() && !youtubeId) notasLinhas.push(`YouTube (URL): ${form.youtube.trim()}`);
+    // Share emails (distribuidora × gravadora/editora/empresário)
     if (VINCULO_COM_EMPRESA.has(form.vinculo)) {
-      emailsShareGravadora.filter((e) => e.email.trim() || e.distribuidora).forEach((e, idx) => {
-        const prefix = `Share ${form.vinculo} ${idx + 1}`;
-        if (e.distribuidora) extrasNotas.push(`${prefix} — Distribuidora: ${e.distribuidora}`);
-        if (e.email.trim()) extrasNotas.push(`${prefix} — E-mail: ${e.email.trim()}`);
+      emailsShareGravadora.filter((e) => e.email.trim() || e.distribuidora).forEach((e, i) => {
+        const prefix = `Share ${form.vinculo} ${i + 1}`;
+        if (e.distribuidora) notasLinhas.push(`${prefix} — Distribuidora: ${e.distribuidora}`);
+        if (e.email.trim()) notasLinhas.push(`${prefix} — E-mail: ${e.email.trim()}`);
       });
     }
-    distribuidoras.forEach((entry, idx) => {
+    const notasInternas = notasLinhas.filter(Boolean).join("\n");
+
+    // ── Distribuidoras → campos dedicados ─────────────────────────────────────
+    const distribuidorasSelecionadas: Record<string, boolean> = {};
+    const distribuidorasEmails: Record<string, string> = {};
+    distribuidoras.forEach((entry) => {
       if (entry.distribuidora) {
-        const label = distribuidoras.length > 1 ? `Distribuidora ${idx + 1}` : "Distribuidora";
-        extrasNotas.push(`${label}: ${entry.distribuidora}`);
-        if (entry.email) extrasNotas.push(`E-mail distribuidora${distribuidoras.length > 1 ? ` ${idx + 1}` : ""}: ${entry.email}`);
+        distribuidorasSelecionadas[entry.distribuidora] = true;
+        if (entry.email) distribuidorasEmails[entry.distribuidora] = entry.email;
       }
     });
 
-    const notasInternas = [
-      form.notas_label.trim(),
-      ...redesExtras,
-      ...extrasNotas,
-    ].filter(Boolean).join("\n");
+    // ── Mapeamento de vínculo para campos dedicados ────────────────────────────
+    const isEmpresario = form.vinculo === "Com Empresário";
+    const isGravadoraEditora = VINCULO_COM_NOME_EMPRESA.has(form.vinculo);
 
     try {
       const result = await createArtistUseCase({
@@ -363,16 +359,32 @@ export default function ArtistaSignupPublic() {
         email: form.email,
         telefone: form.telefone,
         cpf_cnpj: form.cpf_cnpj,
-        foto_url: form.foto_url,
-        observacoes: form.bio,
+        data_nascimento: form.data_nascimento || undefined,
+        foto_url: form.foto_url || undefined,
+        observacoes: form.bio || undefined,
         org_slug: orgSlug,
+        // redes sociais
         instagram: form.instagram.trim().replace(/^@/, "") || undefined,
         tiktok: form.tiktok.trim().replace(/^@/, "") || undefined,
         spotify_artist_id: spotifyId ?? undefined,
         youtube_channel_id: youtubeId ?? undefined,
+        deezer_url: form.deezer.trim() || undefined,
         apple_music_url: form.apple_music.trim() || undefined,
         soundcloud_url: form.soundcloud.trim() || undefined,
         presskit_url: form.presskit_url.trim() || undefined,
+        // vínculo empresário
+        empresario_nome: isEmpresario ? (form.vinculo_empresa_contato.trim() || undefined) : undefined,
+        empresario_telefone: isEmpresario ? (form.vinculo_empresa_telefone.trim() || undefined) : undefined,
+        empresario_email: isEmpresario ? (form.vinculo_empresa_email.trim() || undefined) : undefined,
+        // vínculo gravadora / editora
+        gravadora_nome: isGravadoraEditora ? (form.vinculo_empresa_nome.trim() || undefined) : undefined,
+        gravadora_responsavel_nome: isGravadoraEditora ? (form.vinculo_empresa_contato.trim() || undefined) : undefined,
+        gravadora_responsavel_telefone: isGravadoraEditora ? (form.vinculo_empresa_telefone.trim() || undefined) : undefined,
+        gravadora_responsavel_email: isGravadoraEditora ? (form.vinculo_empresa_email.trim() || undefined) : undefined,
+        // distribuidoras
+        distribuidoras_selecionadas: Object.keys(distribuidorasSelecionadas).length ? distribuidorasSelecionadas : undefined,
+        distribuidoras_emails: Object.keys(distribuidorasEmails).length ? distribuidorasEmails : undefined,
+        // notas residuais
         notas_internas: notasInternas || undefined,
       });
       const alphanumeric = result.id.replace(/[^a-zA-Z0-9]/g, "");
