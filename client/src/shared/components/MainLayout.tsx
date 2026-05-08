@@ -20,7 +20,6 @@ import {
 import {
   Bell,
   HelpCircle,
-  Search,
   ChevronDown,
   User,
   Settings,
@@ -201,7 +200,6 @@ export function MainLayout({
   actions,
   noPadding = false,
 }: MainLayoutProps) {
-  const [search, setSearch] = useState("");
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -215,8 +213,8 @@ export function MainLayout({
           "bg-background/95 backdrop-blur-sm",
           "sticky top-0 z-[200]",
         )}>
-          {/* Left: page title/description (when provided) or actions */}
-          <div className="flex-1 min-w-0 flex items-center gap-3">
+          {/* Left: page title/description */}
+          <div className="flex-1 min-w-0 flex items-center">
             {(title || description) ? (
               <div className="min-w-0 flex flex-col justify-center">
                 {title && (
@@ -231,31 +229,17 @@ export function MainLayout({
                 )}
               </div>
             ) : null}
-            {actions && (
-              <div className="flex items-center gap-2 shrink-0">{actions}</div>
-            )}
           </div>
 
-          {/* Center: search */}
-          <div className="relative hidden md:flex items-center w-[260px] xl:w-[320px]">
-            <Search className="absolute left-2.5 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
-            <input
-              data-testid="input-topbar-search"
-              type="text"
-              placeholder="Buscar no sistema..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className={cn(
-                "w-full rounded-md border border-border/60 bg-muted/40 pl-8 pr-3 py-1.5",
-                "text-[12.5px] text-foreground placeholder:text-muted-foreground/50",
-                "focus:outline-none focus:ring-1 focus:ring-primary/40 focus:border-primary/40",
-                "transition-colors duration-150",
-              )}
-            />
-          </div>
-
-          {/* Right: notifications + help + user */}
+          {/* Right: actions + notifications + help + user */}
           <div className="flex items-center gap-1 shrink-0">
+            {actions && (
+              <>
+                <div className="flex items-center gap-2 mr-2">{actions}</div>
+                <div className="w-px h-5 bg-border/60 mx-1" />
+              </>
+            )}
+
             <NotificationsPopover />
 
             <Button
