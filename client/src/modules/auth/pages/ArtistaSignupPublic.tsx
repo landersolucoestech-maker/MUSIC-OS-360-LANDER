@@ -599,14 +599,14 @@ export default function ArtistaSignupPublic() {
               <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
             </div>
 
-            {/* Instagram + TikTok */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Linha 1 — Instagram | TikTok */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
                 </Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">@</span>
+                  <span className="text-sm text-muted-foreground shrink-0">@</span>
                   <Input placeholder="usuario" value={form.instagram}
                     onChange={(e) => set("instagram", e.target.value)} data-testid="input-instagram" />
                 </div>
@@ -616,44 +616,43 @@ export default function ArtistaSignupPublic() {
                   <SiTiktok className="h-3.5 w-3.5" /> TikTok
                 </Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground">@</span>
+                  <span className="text-sm text-muted-foreground shrink-0">@</span>
                   <Input placeholder="usuario" value={form.tiktok}
                     onChange={(e) => set("tiktok", e.target.value)} data-testid="input-tiktok" />
                 </div>
               </div>
             </div>
 
-            {/* YouTube */}
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
-              </Label>
-              <Input
-                placeholder="https://youtube.com/@seucanal"
-                value={form.youtube} onChange={(e) => set("youtube", e.target.value)}
-                data-testid="input-youtube"
-                className={errors.youtube ? "border-destructive" : ""}
-              />
-              {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
+            {/* Linha 2 — Spotify | YouTube */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
+                </Label>
+                <Input
+                  placeholder="https://open.spotify.com/artist/..."
+                  value={form.spotify} onChange={(e) => set("spotify", e.target.value)}
+                  data-testid="input-spotify"
+                  className={errors.spotify ? "border-destructive" : ""}
+                />
+                {errors.spotify && <p className="text-xs text-destructive">{errors.spotify}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
+                </Label>
+                <Input
+                  placeholder="https://youtube.com/@seucanal"
+                  value={form.youtube} onChange={(e) => set("youtube", e.target.value)}
+                  data-testid="input-youtube"
+                  className={errors.youtube ? "border-destructive" : ""}
+                />
+                {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
+              </div>
             </div>
 
-            {/* Spotify */}
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
-              </Label>
-              <Input
-                placeholder="https://open.spotify.com/artist/... ou ID do artista"
-                value={form.spotify} onChange={(e) => set("spotify", e.target.value)}
-                data-testid="input-spotify"
-                className={errors.spotify ? "border-destructive" : ""}
-              />
-              {errors.spotify && <p className="text-xs text-destructive">{errors.spotify}</p>}
-              <p className="text-xs text-muted-foreground">Cole o link da sua página no Spotify</p>
-            </div>
-
-            {/* Apple Music + Deezer */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Linha 3 — Apple Music | Deezer */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music
@@ -678,31 +677,31 @@ export default function ArtistaSignupPublic() {
               </div>
             </div>
 
-            {/* SoundCloud */}
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
-              </Label>
-              <Input placeholder="https://soundcloud.com/..."
-                value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
-                data-testid="input-soundcloud"
-                className={errors.soundcloud ? "border-destructive" : ""}
-              />
-              {errors.soundcloud && <p className="text-xs text-destructive">{errors.soundcloud}</p>}
-            </div>
-
-            {/* Link do Presskit */}
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
-              </Label>
-              <Input
-                placeholder="https://drive.google.com/... ou Notion, Dropbox, site..."
-                value={form.presskit_url} onChange={(e) => set("presskit_url", e.target.value)}
-                data-testid="input-presskit"
-                className={errors.presskit_url ? "border-destructive" : ""}
-              />
-              {errors.presskit_url && <p className="text-xs text-destructive">{errors.presskit_url}</p>}
+            {/* Linha 4 — SoundCloud | Link do Presskit */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
+                </Label>
+                <Input placeholder="https://soundcloud.com/..."
+                  value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
+                  data-testid="input-soundcloud"
+                  className={errors.soundcloud ? "border-destructive" : ""}
+                />
+                {errors.soundcloud && <p className="text-xs text-destructive">{errors.soundcloud}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
+                </Label>
+                <Input
+                  placeholder="https://drive.google.com/... ou Notion, Dropbox..."
+                  value={form.presskit_url} onChange={(e) => set("presskit_url", e.target.value)}
+                  data-testid="input-presskit"
+                  className={errors.presskit_url ? "border-destructive" : ""}
+                />
+                {errors.presskit_url && <p className="text-xs text-destructive">{errors.presskit_url}</p>}
+              </div>
             </div>
 
             <Separator />
