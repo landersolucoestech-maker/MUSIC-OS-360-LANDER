@@ -139,6 +139,11 @@ export interface YouTubeArtistMetrics {
   videosPublicados: number;
   watchHoursMes: number;
   viewsMes: number;
+  impressoesMes: number;
+  cliquesMes: number;
+  ctr: number;   // %
+  vtr: number;   // %
+  investimentoMes: number;
   topVideos: { titulo: string; views: number; duracao: string }[];
   evolution: MonthlyPoint[]; // views mensais
 }
@@ -153,6 +158,11 @@ export const YOUTUBE_MOCK: YouTubeArtistMetrics[] = [
     videosPublicados: 47,
     watchHoursMes: 38_200,
     viewsMes: 620_000,
+    impressoesMes: 1_840_000,
+    cliquesMes: 22_100,
+    ctr: 1.20,
+    vtr: 38.4,
+    investimentoMes: 4_200,
     topVideos: [
       { titulo: "Noite de Luz (Clipe Oficial)", views: 3_200_000, duracao: "3:55" },
       { titulo: "Verão Infinito (Lyric Video)", views: 1_800_000, duracao: "3:30" },
@@ -178,6 +188,11 @@ export const YOUTUBE_MOCK: YouTubeArtistMetrics[] = [
     videosPublicados: 124,
     watchHoursMes: 92_000,
     viewsMes: 1_840_000,
+    impressoesMes: 4_200_000,
+    cliquesMes: 58_800,
+    ctr: 1.40,
+    vtr: 42.1,
+    investimentoMes: 9_800,
     topVideos: [
       { titulo: "Beira do Rio (Forró Pé de Serra)", views: 9_800_000, duracao: "4:20" },
       { titulo: "Chuva de Verão - Ao Vivo Recife 2024", views: 4_200_000, duracao: "6:10" },
@@ -203,6 +218,11 @@ export const YOUTUBE_MOCK: YouTubeArtistMetrics[] = [
     videosPublicados: 38,
     watchHoursMes: 18_600,
     viewsMes: 290_000,
+    impressoesMes: 820_000,
+    cliquesMes: 9_840,
+    ctr: 1.20,
+    vtr: 35.8,
+    investimentoMes: 2_100,
     topVideos: [
       { titulo: "Drop Zone (Set Completo)", views: 1_900_000, duracao: "58:00" },
       { titulo: "Frequência 440 (Visualizer)", views: 780_000, duracao: "5:30" },
@@ -228,6 +248,11 @@ export const YOUTUBE_MOCK: YouTubeArtistMetrics[] = [
     videosPublicados: 86,
     watchHoursMes: 154_000,
     viewsMes: 2_960_000,
+    impressoesMes: 7_400_000,
+    cliquesMes: 111_000,
+    ctr: 1.50,
+    vtr: 44.8,
+    investimentoMes: 18_600,
     topVideos: [
       { titulo: "Saudade de Mim (Clipe Oficial)", views: 14_200_000, duracao: "4:05" },
       { titulo: "Longe de Você (Ao Vivo Arena)", views: 7_800_000, duracao: "5:20" },
@@ -642,6 +667,10 @@ export interface InstagramArtistMetrics {
   alcanceMes: number;
   impressoesMes: number;
   engagementRate: number; // %
+  cliquesMes: number;
+  ctr: number;   // %
+  investimentoMes: number;
+  conversoesMes: number;
   topPosts: { descricao: string; tipo: "foto" | "reel" | "carrossel"; curtidas: number; comentarios: number; alcance: number }[];
   evolution: MonthlyPoint[]; // followers
 }
@@ -657,6 +686,10 @@ export const INSTAGRAM_MOCK: InstagramArtistMetrics[] = [
     alcanceMes: 1_840_000,
     impressoesMes: 2_620_000,
     engagementRate: 4.82,
+    cliquesMes: 31_440,
+    ctr: 1.20,
+    investimentoMes: 3_800,
+    conversoesMes: 420,
     topPosts: [
       { descricao: "Bastidores do clipe Noite de Luz 🌙✨", tipo: "reel", curtidas: 48_200, comentarios: 1_840, alcance: 380_000 },
       { descricao: "Show no Lollapalooza — obrigada SP! 💛", tipo: "foto", curtidas: 32_100, comentarios: 920, alcance: 220_000 },
@@ -681,6 +714,10 @@ export const INSTAGRAM_MOCK: InstagramArtistMetrics[] = [
     alcanceMes: 2_100_000,
     impressoesMes: 3_400_000,
     engagementRate: 3.14,
+    cliquesMes: 40_800,
+    ctr: 1.20,
+    investimentoMes: 5_200,
+    conversoesMes: 680,
     topPosts: [
       { descricao: "São João chegou! Festa em Recife 🎉", tipo: "reel", curtidas: 62_000, comentarios: 2_400, alcance: 490_000 },
       { descricao: "Novo clipe Beira do Rio 🌊", tipo: "carrossel", curtidas: 41_200, comentarios: 1_600, alcance: 320_000 },
@@ -705,6 +742,10 @@ export const INSTAGRAM_MOCK: InstagramArtistMetrics[] = [
     alcanceMes: 680_000,
     impressoesMes: 1_100_000,
     engagementRate: 6.21,
+    cliquesMes: 13_200,
+    ctr: 1.20,
+    investimentoMes: 1_800,
+    conversoesMes: 210,
     topPosts: [
       { descricao: "Set completo no Club Madame SP 🎧🔥", tipo: "reel", curtidas: 18_400, comentarios: 940, alcance: 142_000 },
       { descricao: "Frequência 440 — disponível em todas as plataformas 🎵", tipo: "carrossel", curtidas: 12_800, comentarios: 620, alcance: 98_000 },
@@ -729,6 +770,10 @@ export const INSTAGRAM_MOCK: InstagramArtistMetrics[] = [
     alcanceMes: 4_200_000,
     impressoesMes: 6_800_000,
     engagementRate: 5.48,
+    cliquesMes: 81_600,
+    ctr: 1.20,
+    investimentoMes: 12_400,
+    conversoesMes: 1_840,
     topPosts: [
       { descricao: "SAUDADE DE MIM — clipe completo no YouTube! 💔🎬", tipo: "reel", curtidas: 124_000, comentarios: 4_800, alcance: 890_000 },
       { descricao: "Arena Goiânia lotada! Amor demais 💛", tipo: "carrossel", curtidas: 88_200, comentarios: 3_200, alcance: 620_000 },
@@ -763,6 +808,10 @@ export interface TikTokArtistMetrics {
   videosMes: number;
   viewsMes: number;
   engagementRate: number;
+  impressoesMes: number;
+  cliquesMes: number;
+  ctr: number;   // %
+  playsMes: number;
   topVideos: { descricao: string; views: number; curtidas: number; comentarios: number; compartilhamentos: number }[];
   evolution: MonthlyPoint[];
 }
@@ -777,6 +826,10 @@ export const TIKTOK_MOCK: TikTokArtistMetrics[] = [
     videosMes: 18,
     viewsMes: 6_400_000,
     engagementRate: 7.82,
+    impressoesMes: 12_800_000,
+    cliquesMes: 128_000,
+    ctr: 1.00,
+    playsMes: 6_400_000,
     topVideos: [
       { descricao: "Noite de Luz — versão acústica 🌙", views: 1_840_000, curtidas: 248_000, comentarios: 8_400, compartilhamentos: 32_000 },
       { descricao: "Bastidores do clipe no RJ 🎬", views: 980_000, curtidas: 124_000, comentarios: 4_200, compartilhamentos: 18_600 },
@@ -800,6 +853,10 @@ export const TIKTOK_MOCK: TikTokArtistMetrics[] = [
     videosMes: 12,
     viewsMes: 3_800_000,
     engagementRate: 6.14,
+    impressoesMes: 7_600_000,
+    cliquesMes: 76_000,
+    ctr: 1.00,
+    playsMes: 3_800_000,
     topVideos: [
       { descricao: "Forró pé de serra ao vivo 🎸", views: 1_200_000, curtidas: 168_000, comentarios: 6_200, compartilhamentos: 28_400 },
       { descricao: "Beira do Rio — clipe completo 🌊", views: 840_000, curtidas: 112_000, comentarios: 3_600, compartilhamentos: 19_800 },
@@ -823,6 +880,10 @@ export const TIKTOK_MOCK: TikTokArtistMetrics[] = [
     videosMes: 24,
     viewsMes: 4_200_000,
     engagementRate: 9.48,
+    impressoesMes: 8_400_000,
+    cliquesMes: 100_800,
+    ctr: 1.20,
+    playsMes: 4_200_000,
     topVideos: [
       { descricao: "Transição épica no Club Madame 🎧🔥", views: 1_600_000, curtidas: 248_000, comentarios: 9_800, compartilhamentos: 42_000 },
       { descricao: "Frequência 440 — preview exclusivo", views: 980_000, curtidas: 148_000, comentarios: 4_200, compartilhamentos: 22_000 },

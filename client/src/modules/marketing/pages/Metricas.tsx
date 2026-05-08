@@ -239,11 +239,16 @@ function SidebarMetrics({
   if (platform === "youtube") return (
     <div className="space-y-1">
       <ArtistPills items={YOUTUBE_MOCK} sel={ytSel} setSel={setYtSel} color="#FF0000" />
-      <Row label="Inscritos"     value={fmtNum(YOUTUBE_MOCK[ytSel].subscribers)} />
-      <Row label="Views/mês"     value={fmtNum(YOUTUBE_MOCK[ytSel].viewsMes)} />
-      <Row label="Watch hours"   value={fmtNum(YOUTUBE_MOCK[ytSel].watchHoursMes)} />
+      <Row label="Inscritos"        value={fmtNum(YOUTUBE_MOCK[ytSel].subscribers)} />
+      <Row label="Views/mês"        value={fmtNum(YOUTUBE_MOCK[ytSel].viewsMes)} />
+      <Row label="Watch hours"      value={fmtNum(YOUTUBE_MOCK[ytSel].watchHoursMes)} />
       <Row label="Vídeos publicados" value={String(YOUTUBE_MOCK[ytSel].videosPublicados)} />
-      <Row label="Melhor vídeo"  value={YOUTUBE_MOCK[ytSel].topVideos[0]?.titulo.slice(0, 22) + "…"} />
+      <Row label="Impressões"       value={fmtNum(YOUTUBE_MOCK[ytSel].impressoesMes)} />
+      <Row label="Cliques"          value={fmtNum(YOUTUBE_MOCK[ytSel].cliquesMes)} />
+      <Row label="CTR"              value={`${YOUTUBE_MOCK[ytSel].ctr}%`} />
+      <Row label="VTR"              value={`${YOUTUBE_MOCK[ytSel].vtr}%`} />
+      <Row label="Melhor vídeo"     value={YOUTUBE_MOCK[ytSel].topVideos[0]?.titulo.slice(0, 22) + "…"} />
+      <Row label="Investimento"     value={formatCurrency(YOUTUBE_MOCK[ytSel].investimentoMes)} />
     </div>
   );
 
@@ -254,6 +259,10 @@ function SidebarMetrics({
       <Row label="Views/mês"     value={fmtNum(TIKTOK_MOCK[ttSel].viewsMes)} />
       <Row label="Vídeos/mês"    value={String(TIKTOK_MOCK[ttSel].videosMes)} />
       <Row label="Engajamento"   value={`${TIKTOK_MOCK[ttSel].engagementRate}%`} />
+      <Row label="Impressões"    value={fmtNum(TIKTOK_MOCK[ttSel].impressoesMes)} />
+      <Row label="Cliques"       value={fmtNum(TIKTOK_MOCK[ttSel].cliquesMes)} />
+      <Row label="CTR"           value={`${TIKTOK_MOCK[ttSel].ctr}%`} />
+      <Row label="Plays"         value={fmtNum(TIKTOK_MOCK[ttSel].playsMes)} />
       <Row label="Melhor vídeo"  value={TIKTOK_MOCK[ttSel].topVideos[0]?.descricao.slice(0, 22) + "…"} />
     </div>
   );
@@ -265,6 +274,12 @@ function SidebarMetrics({
       <Row label="Alcance/mês"  value={fmtNum(INSTAGRAM_MOCK[igSel].alcanceMes)} />
       <Row label="Reels/mês"    value={String(INSTAGRAM_MOCK[igSel].reelsMes)} />
       <Row label="Engajamento"  value={`${INSTAGRAM_MOCK[igSel].engagementRate}%`} />
+      <Row label="Impressões"   value={fmtNum(INSTAGRAM_MOCK[igSel].impressoesMes)} />
+      <Row label="Alcance"      value={fmtNum(INSTAGRAM_MOCK[igSel].alcanceMes)} />
+      <Row label="Cliques"      value={fmtNum(INSTAGRAM_MOCK[igSel].cliquesMes)} />
+      <Row label="CTR"          value={`${INSTAGRAM_MOCK[igSel].ctr}%`} />
+      <Row label="Investimento" value={formatCurrency(INSTAGRAM_MOCK[igSel].investimentoMes)} />
+      <Row label="Conversões"   value={fmtNum(INSTAGRAM_MOCK[igSel].conversoesMes)} />
     </div>
   );
 
