@@ -23,8 +23,21 @@ export interface CatalogObra {
   duracao: string;
 }
 
+export interface CatalogArtista {
+  id: string;
+  nome_artistico: string;
+}
+
 export function getCatalogObras(): CatalogObra[] {
   return (MOCK_DATA.obras as CatalogObra[]) ?? [];
+}
+
+export function getCatalogArtistas(): CatalogArtista[] {
+  const raw = (MOCK_DATA.artistas ?? []) as Array<{ id: string; nome_artistico?: string }>;
+  return raw
+    .filter(a => a.nome_artistico)
+    .map(a => ({ id: a.id, nome_artistico: a.nome_artistico! }))
+    .sort((a, b) => a.nome_artistico.localeCompare(b.nome_artistico, "pt-BR"));
 }
 
 export function buildIsrcIndex(obras: CatalogObra[]): Map<string, CatalogObra> {

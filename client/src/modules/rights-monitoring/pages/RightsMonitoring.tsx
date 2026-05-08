@@ -4,9 +4,10 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   Shield, Radio, Search, RefreshCw, Upload, FileText,
-  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock
+  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock, Download, X
 } from "lucide-react";
 import { RightsKPICards } from "../components/RightsKPICards";
 import { ExecucoesTable } from "../components/ExecucoesTable";
@@ -22,7 +23,7 @@ import {
   MOCK_ECAD_IMPORTS,
   MOCK_ECAD_PERIODOS,
 } from "../services/mock-data";
-import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs } from "../services/catalog-lookup";
+import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs, getCatalogArtistas } from "../services/catalog-lookup";
 import type { RightsExecution } from "../types";
 
 type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria" | "importacoes";
@@ -39,10 +40,38 @@ const STATUS_ECAD: Record<string, { label: string; className: string }> = {
   erro:       { label: "Erro",       className: "bg-destructive/15 text-destructive border-destructive/30" },
 };
 
+function exportToCsv(rows: RightsExecution[], filename = "execucoes.csv") {
+  const headers = ["ID", "Obra", "Artista", "ISRC", "Origem", "Tipo", "Data/Hora", "Match ECAD", "Valor Estimado (BRL)", "Status"];
+  const fmtBRLPlain = (n: number) => n.toFixed(2).replace(".", ",");
+  const lines = rows.map(e => [
+    e.id,
+    `"${e.obra_titulo.replace(/"/g, '""')}"`,
+    `"${e.artista.replace(/"/g, '""')}"`,
+    e.isrc,
+    `"${e.origem.replace(/"/g, '""')}"`,
+    e.tipo_execucao,
+    e.data_hora,
+    e.match_ecad ? "Sim" : "Não",
+    fmtBRLPlain(e.valor_estimado),
+    e.status,
+  ].join(";"));
+  const csv = [headers.join(";"), ...lines].join("\n");
+  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 export default function RightsMonitoring() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const [artistaFilter, setArtistFilter] = useState("all");
   const [importModalOpen, setImportModalOpen] = useState(false);
   const [selectedExec, setSelectedExec] = useState<RightsExecution | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
@@ -86,26 +115,53 @@ export default function RightsMonitoring() {
     [isrcIndex],
   );
 
+  // Catalog artistas for dropdown — sourced from catalog, rebuilt when catalog is synced
+  const artistaOptions = useMemo(() => getCatalogArtistas(), [catalogRevision]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const hasActiveFilters = search.trim() !== "" || dateFrom !== "" || dateTo !== "" || artistaFilter !== "all";
+
+  function clearFilters() {
+    setSearch("");
+    setDateFrom("");
+    setDateTo("");
+    setArtistFilter("all");
+  }
+
   const filtered = useMemo(() => {
-    if (!search.trim()) return execucoes;
-    const q = search.toLowerCase();
-    return execucoes.filter(e =>
-      e.obra_titulo.toLowerCase().includes(q) ||
-      e.artista.toLowerCase().includes(q) ||
-      e.origem.toLowerCase().includes(q) ||
-      e.isrc.toLowerCase().includes(q)
-    );
-  }, [execucoes, search]);
+    return execucoes.filter(e => {
+      if (artistaFilter !== "all" && e.artista !== artistaFilter) return false;
+      if (dateFrom) {
+        const execDate = e.data_hora.split("T")[0];
+        if (execDate < dateFrom) return false;
+      }
+      if (dateTo) {
+        const execDate = e.data_hora.split("T")[0];
+        if (execDate > dateTo) return false;
+      }
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const match =
+          e.obra_titulo.toLowerCase().includes(q) ||
+          e.artista.toLowerCase().includes(q) ||
+          e.origem.toLowerCase().includes(q) ||
+          e.isrc.toLowerCase().includes(q);
+        if (!match) return false;
+      }
+      return true;
+    });
+  }, [execucoes, search, dateFrom, dateTo, artistaFilter]);
 
-  const confirmados   = execucoes.filter(e => e.status === "confirmado").length;
-  const naoReportados = execucoes.filter(e => e.status === "nao_reportado").length;
-  const divergencias  = execucoes.filter(e => e.status === "divergencia").length;
+  const confirmados   = filtered.filter(e => e.status === "confirmado").length;
+  const naoReportados = filtered.filter(e => e.status === "nao_reportado").length;
+  const divergencias  = filtered.filter(e => e.status === "divergencia").length;
 
-  // Match rate: fraction of unique ISRCs that have a catalog obra with cod_ecad
+  // All unique ISRCs (unfiltered) — needed for orphan detection and valorRecebido
   const uniqueIsrcs = useMemo(() => [...new Set(execucoes.map(e => e.isrc))], [execucoes]);
-  const matchRate = computeEcadMatchRate(uniqueIsrcs, isrcIndex);
+  // Match rate reflects the filtered scope so it stays consistent with the other KPIs
+  const filteredUniqueIsrcs = useMemo(() => [...new Set(filtered.map(e => e.isrc))], [filtered]);
+  const matchRate = computeEcadMatchRate(filteredUniqueIsrcs, isrcIndex);
 
-  const valorEstimado = execucoes.reduce((s, e) => s + e.valor_estimado, 0);
+  const valorEstimado = filtered.reduce((s, e) => s + e.valor_estimado, 0);
   const valorRecebido = MOCK_ECAD_PERIODOS.filter(p => p.status === "recebido").reduce((s, p) => s + p.valor_total, 0);
 
   // Build dynamic divergências for orphan ISRCs (no obra in catalog)
@@ -181,7 +237,7 @@ export default function RightsMonitoring() {
 
         {/* KPI Cards */}
         <RightsKPICards
-          total={execucoes.length}
+          total={filtered.length}
           confirmados={confirmados}
           naoReportados={naoReportados}
           divergencias={divergencias}
@@ -216,31 +272,93 @@ export default function RightsMonitoring() {
         {/* ── Overview ── */}
         {activeTab === "overview" && (
           <Card className="border-border/60">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div>
-                <CardTitle className="text-sm font-semibold">Execuções Públicas Detectadas</CardTitle>
-                <CardDescription className="text-xs">
-                  Rádio · TV · Shows · Eventos · Web Rádios · Casas Noturnas
-                  {orphanIsrcs.length > 0 && (
-                    <span className="ml-2 text-destructive font-medium">
-                      · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
-                    </span>
-                  )}
-                </CardDescription>
+            <CardHeader className="pb-3 space-y-3">
+              <div className="flex flex-row items-start justify-between gap-3">
+                <div>
+                  <CardTitle className="text-sm font-semibold">Execuções Públicas Detectadas</CardTitle>
+                  <CardDescription className="text-xs">
+                    Rádio · TV · Shows · Eventos · Web Rádios · Casas Noturnas
+                    {orphanIsrcs.length > 0 && (
+                      <span className="ml-2 text-destructive font-medium">
+                        · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1.5 h-8 text-xs"
+                    data-testid="button-exportar-csv"
+                    onClick={() => exportToCsv(filtered, `execucoes_${new Date().toISOString().split("T")[0]}.csv`)}
+                    disabled={filtered.length === 0}
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                    Exportar CSV
+                    {filtered.length > 0 && <span className="text-muted-foreground">({filtered.length})</span>}
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
+
+              {/* Filter row */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="relative flex-1 min-w-[200px]">
                   <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     placeholder="Buscar música, artista, origem, ISRC..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="pl-8 w-72 h-8 text-sm bg-background"
+                    className="pl-8 h-8 text-sm bg-background"
+                    data-testid="input-search-execucoes"
                   />
                 </div>
-                <Button variant="outline" size="icon" className="h-8 w-8">
-                  <RefreshCw className="h-3.5 w-3.5" />
-                </Button>
+
+                <Select value={artistaFilter} onValueChange={setArtistFilter}>
+                  <SelectTrigger className="h-8 text-xs w-44" data-testid="select-artista-filter">
+                    <SelectValue placeholder="Todos os artistas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os artistas</SelectItem>
+                    {artistaOptions.map(a => (
+                      <SelectItem key={a.id} value={a.nome_artistico}>{a.nome_artistico}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <div className="flex items-center gap-1">
+                  <Input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    className="h-8 text-xs w-36 bg-background"
+                    data-testid="input-date-from"
+                    title="Data inicial"
+                  />
+                  <span className="text-muted-foreground text-xs px-1">até</span>
+                  <Input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    className="h-8 text-xs w-36 bg-background"
+                    data-testid="input-date-to"
+                    title="Data final"
+                    min={dateFrom || undefined}
+                  />
+                </div>
+
+                {hasActiveFilters && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={clearFilters}
+                    data-testid="button-clear-filters"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                    Limpar
+                  </Button>
+                )}
               </div>
             </CardHeader>
             <CardContent className="p-0">
