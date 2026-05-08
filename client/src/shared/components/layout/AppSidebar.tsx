@@ -108,13 +108,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     children: [
       { title: "Transações", href: "/accounting", icon: DollarSign },
-      { title: "Fluxo de Caixa", href: "/accounting/fluxo", icon: TrendingUp },
-      {
-        title: "Conciliação",
-        href: "/accounting/conciliacao",
-        icon: CheckCircle2,
-      },
-      { title: "Relatórios", href: "/accounting/relatorios", icon: BarChart },
       {
         title: "Contabilidade",
         href: "/accounting/contabilidade",
