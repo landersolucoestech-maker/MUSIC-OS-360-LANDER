@@ -852,6 +852,10 @@ export default function ArtistaSignupPublic() {
                   { label: "Tipo de Perfil", value: form.tipo_perfil.length > 0 ? form.tipo_perfil.join(", ") : null },
                   { label: "Telefone / WhatsApp", value: form.telefone },
                   { label: "E-mail", value: form.email },
+                  ...(() => {
+                    const filled = distribuidoras.map((d) => d.distribuidora).filter(Boolean);
+                    return filled.length > 0 ? [{ label: "Distribuidoras", value: filled.join(", ") }] : [];
+                  })(),
                 ].map(({ label, value }) => (
                   <div key={label} className="flex gap-2">
                     <span className="text-muted-foreground w-36 shrink-0 text-xs">{label}</span>
