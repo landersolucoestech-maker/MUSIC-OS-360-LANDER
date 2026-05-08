@@ -231,8 +231,15 @@ export function MainLayout({
             ) : null}
           </div>
 
-          {/* Right: notifications + help + user + actions */}
+          {/* Right: actions + notifications + help + user */}
           <div className="flex items-center gap-1 shrink-0">
+            {actions && (
+              <>
+                <div className="flex items-center gap-2 mr-2">{actions}</div>
+                <div className="w-px h-5 bg-border/60 mx-1" />
+              </>
+            )}
+
             <NotificationsPopover />
 
             <Button
@@ -248,13 +255,6 @@ export function MainLayout({
             <div className="w-px h-5 bg-border/60 mx-1" />
 
             <TopbarUserMenu />
-
-            {actions && (
-              <>
-                <div className="w-px h-5 bg-border/60 mx-1" />
-                <div className="flex items-center gap-2">{actions}</div>
-              </>
-            )}
           </div>
         </header>
 
