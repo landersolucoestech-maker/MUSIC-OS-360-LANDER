@@ -274,29 +274,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* Receita × Crescimento */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
-          <h2 className="text-[13px] font-semibold text-white mb-5">Receita × Crescimento</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <AreaChart data={GROWTH_DATA}>
-              <defs>
-                <linearGradient id="mrrAlt" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.25} />
-                  <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid stroke="rgba(255,255,255,0.04)" />
-              <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis yAxisId="left"  tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<ChartTooltip />} />
-              <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }} />
-              <Area  yAxisId="left"  type="monotone" dataKey="mrr"     name="MRR (R$)" stroke="#3B82F6" strokeWidth={2} fill="url(#mrrAlt)" dot={false} />
-              <Line  yAxisId="right" type="monotone" dataKey="tenants" name="Tenants"  stroke="#F59E0B" strokeWidth={2} dot={false} strokeDasharray="4 3" />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-
         {/* Bottom row */}
         <div className="grid lg:grid-cols-[1fr_340px] gap-5">
 
