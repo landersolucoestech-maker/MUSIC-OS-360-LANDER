@@ -213,12 +213,6 @@ export default function CRM() {
       actions={
         <>
           <input type="file" ref={csvInputRef} accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => csvInputRef.current?.click()} data-testid="button-importar-crm">
-            <Upload className="h-3.5 w-3.5" /> Importar
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExcelExport} data-testid="button-exportar-crm">
-            <Download className="h-3.5 w-3.5" /> Exportar
-          </Button>
           <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
             <Plus className="h-3.5 w-3.5" /> Novo Contato
           </Button>

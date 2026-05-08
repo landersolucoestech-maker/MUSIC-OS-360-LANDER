@@ -222,12 +222,6 @@ export default function Agenda() {
         className="hidden"
         data-testid="input-excel-import"
       />
-      <Button variant="outline" size="sm" className="gap-2" onClick={() => excelInputRef.current?.click()} data-testid="button-import-excel">
-        <Upload className="h-4 w-4" />Importar
-      </Button>
-      <Button variant="outline" size="sm" className="gap-2" onClick={handleExcelExport} data-testid="button-export-excel">
-        <Download className="h-4 w-4" />Exportar
-      </Button>
       <Button size="sm" className="gap-2 bg-primary" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-event">
         <Plus className="h-4 w-4" />Novo Evento
       </Button>

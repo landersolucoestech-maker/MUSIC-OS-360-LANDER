@@ -213,14 +213,6 @@ export default function Lancamentos() {
 
   const headerActions = (
     <>
-      <Button variant="outline" size="sm" className="gap-2" onClick={handleImport}>
-        <Upload className="h-4 w-4" />
-        Importar
-      </Button>
-      <Button variant="outline" size="sm" className="gap-2" onClick={handleExport}>
-        <Download className="h-4 w-4" />
-        Exportar
-      </Button>
       <Button size="sm" className="gap-2 bg-primary" data-testid="button-novo-lancamento" onClick={() => setFormModal({ open: true, mode: "create" })}>
         <Plus className="h-4 w-4" />
         Novo Lançamento

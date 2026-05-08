@@ -281,26 +281,6 @@ export default function Artistas() {
             data-testid="input-import-excel"
           />
           <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => excelInputRef.current?.click()}
-            data-testid="button-importar-excel"
-          >
-            <Upload className="h-3.5 w-3.5" />
-            Importar
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={handleExcelExport}
-            data-testid="button-exportar-excel"
-          >
-            <Download className="h-3.5 w-3.5" />
-            Exportar
-          </Button>
-          <Button
             size="sm"
             className="h-8 text-xs gap-1.5"
             onClick={() => setCreateModal(true)}

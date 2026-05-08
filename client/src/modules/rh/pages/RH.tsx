@@ -428,22 +428,6 @@ export default function RH() {
       description="Gestão de funcionários, folha de pagamento, férias e documentos"
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2"
-            onClick={
-              activeTab === "funcionarios" ? handleExportFuncionarios
-                : activeTab === "folha" ? handleExportFolha
-                : activeTab === "ferias" ? handleExportFerias
-                : handleExportDocumentos
-            }
-            disabled={activeTab === "documentos" && !docFuncionarioId}
-            data-testid="button-export-header"
-          >
-            <Download className="h-4 w-4" />
-            Exportar
-          </Button>
           {activeTab !== "documentos" && (
             <Button
               size="sm"

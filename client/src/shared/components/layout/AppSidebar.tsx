@@ -123,7 +123,7 @@ const NAV_ITEMS: NavItem[] = [
   { title: "CRM", href: "/crm", icon: Contact },
   { title: "Leads", href: "/leads", icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh", icon: Briefcase },
-  { title: "Analytics", href: "/analytics", icon: Activity },
+  { title: "Relatórios", href: "/relatorios", icon: Activity },
   {
     title: "Marketing",
     icon: Megaphone,

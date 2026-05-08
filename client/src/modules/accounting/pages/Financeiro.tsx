@@ -196,12 +196,6 @@ export default function Financeiro() {
       actions={
         <>
           <input type="file" ref={ofxInputRef} accept=".ofx" className="hidden" onChange={handleOFXUpload} />
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => ofxInputRef.current?.click()}>
-            <Upload className="h-3.5 w-3.5" /> Importar OFX
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5" /> Exportar
-          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
             <LinkIcon className="h-3.5 w-3.5" /> Integração Bancária
           </Button>

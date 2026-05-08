@@ -217,12 +217,6 @@ export default function Leads() {
               <Columns3 className="h-3.5 w-3.5" /> Kanban
             </Button>
           </div>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport} data-testid="button-import-leads">
-            <Upload className="h-3.5 w-3.5" /> Importar
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport} data-testid="button-export-leads">
-            <Download className="h-3.5 w-3.5" /> Exportar
-          </Button>
           <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-lead">
             <Plus className="h-3.5 w-3.5" /> Novo Lead
           </Button>

@@ -24,7 +24,7 @@ import { marketingRoutes } from "@/app/routes/marketing.routes";
 import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
-import { analyticsRoutes } from "@/app/routes/analytics.routes";
+import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
 
 const Dashboard = lazy(() => import("@/shared/pages/Dashboard"));
@@ -82,7 +82,7 @@ const App = () => (
                 {settingsRoutes(ProtectedRoute)}
                 {operationsRoutes(ProtectedRoute)}
                 {adminRoutes(SuspenseRoute, SuperAdminRoute)}
-                {analyticsRoutes(ProtectedRoute)}
+                {reportsRoutes(ProtectedRoute)}
                 {supportRoutes(ProtectedRoute)}
               </Routes>
             </BrowserRouter>

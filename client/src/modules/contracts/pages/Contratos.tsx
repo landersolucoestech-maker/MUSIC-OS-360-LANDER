@@ -169,14 +169,6 @@ export default function Contratos() {
       description="Gerencie contratos e documentação legal"
       actions={
         <>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleImport}>
-            <Upload className="h-3.5 w-3.5" />
-            Importar
-          </Button>
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExport}>
-            <Download className="h-3.5 w-3.5" />
-            Exportar
-          </Button>
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => navigate("/contratos/templates")}>
             <FileStack className="h-3.5 w-3.5" />
             Templates
