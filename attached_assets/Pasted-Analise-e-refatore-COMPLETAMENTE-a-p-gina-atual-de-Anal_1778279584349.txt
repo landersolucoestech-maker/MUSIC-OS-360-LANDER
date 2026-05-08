@@ -1,0 +1,485 @@
+Analise e refatore COMPLETAMENTE a página atual de Analytics/Métricas do sistema MUSIC OS 360 transformando-a em um módulo enterprise profissional de inteligência musical, preservando os dados importantes já existentes (Top Vídeos, métricas por plataforma, KPIs, campanhas, comparativos etc), porém reorganizando toda a arquitetura visual, estrutural e funcional da interface.
+
+O objetivo NÃO é apenas “melhorar o design”.
+O objetivo é corrigir:
+- hierarquia visual;
+- UX;
+- organização estrutural;
+- densidade visual;
+- agrupamento lógico;
+- legibilidade;
+- consistência enterprise;
+- escalabilidade do frontend.
+
+==================================================================
+OBJETIVO FINAL
+==================================================================
+
+Transformar a página atual em um painel profissional de:
+
+"Métricas & Performance"
+
+com aparência:
+- enterprise SaaS;
+- distribuição digital premium;
+- analytics corporativo musical;
+- moderno;
+- limpo;
+- organizado;
+- escalável.
+
+A interface NÃO deve parecer:
+- dashboard gamer;
+- template crypto;
+- painel hacking;
+- interface neon exagerada;
+- painel experimental.
+
+==================================================================
+ALTERAR NOMENCLATURA
+==================================================================
+
+Substituir completamente:
+- Analytics
+- Analytics Social
+
+Por:
+- Métricas & Performance
+
+Subtítulo:
+"Visão consolidada de plataformas, campanhas e desempenho digital"
+
+==================================================================
+REGRAS GERAIS OBRIGATÓRIAS
+==================================================================
+
+EXECUTE EM ETAPAS.
+NÃO EXECUTE TUDO EM PARALELO.
+
+PROIBIDO:
+- criar código duplicado;
+- criar componentes redundantes;
+- quebrar imports;
+- criar estilos inline desnecessários;
+- criar múltiplos padrões visuais;
+- misturar cores sem padrão;
+- manter elementos mortos;
+- manter componentes não utilizados;
+- criar lógica mock desorganizada;
+- manter widgets vazios.
+
+ANTES de alterar:
+1. rastrear componentes existentes;
+2. identificar dependências;
+3. identificar dados reais já utilizados;
+4. mapear gráficos;
+5. mapear tabs;
+6. mapear cards;
+7. mapear APIs/hooks/context/store.
+
+==================================================================
+NOVA ESTRUTURA OBRIGATÓRIA
+==================================================================
+
+A página deve seguir EXATAMENTE esta hierarquia:
+
+1. HEADER OPERACIONAL
+2. KPIs PRINCIPAIS
+3. PERFORMANCE POR PLATAFORMA
+4. TOP CONTEÚDOS
+5. PERFORMANCE DE CAMPANHAS
+6. EXPORTAÇÃO & RELATÓRIOS
+
+==================================================================
+1. HEADER OPERACIONAL
+==================================================================
+
+Criar um topo profissional e limpo.
+
+Estrutura:
+
+[TÍTULO]
+[META INFORMAÇÃO]
+[FILTROS]
+[AÇÕES]
+
+Layout:
+
+------------------------------------------------
+Métricas & Performance
+Visão consolidada de plataformas e campanhas
+
+[Período]
+[Artista]
+[Plataforma]
+[Campanha]
+                    [Exportar Relatório]
+------------------------------------------------
+
+Requisitos:
+- remover excesso de brilho;
+- remover ícones inúteis;
+- remover elementos duplicados;
+- aumentar respiro visual;
+- alinhamento horizontal;
+- spacing consistente;
+- responsividade real.
+
+==================================================================
+2. KPIs PRINCIPAIS
+==================================================================
+
+Transformar os cards atuais em KPIs enterprise.
+
+KPIs obrigatórios:
+- Alcance Total
+- Engajamento
+- Seguidores
+- Streams
+- ROI Médio
+- Conversão
+
+Cada card deve conter:
+- label;
+- valor principal;
+- variação percentual;
+- indicador visual;
+- mini gráfico/sparkline;
+- comparação temporal.
+
+Visual obrigatório:
+- altura padronizada;
+- mesma largura;
+- grid responsivo;
+- bordas suaves;
+- sem glow exagerado;
+- hover discreto;
+- padding consistente.
+
+PROIBIDO:
+- cards desalinhados;
+- textos pequenos;
+- espaçamento irregular;
+- brilho neon;
+- borda verde aleatória.
+
+==================================================================
+3. PERFORMANCE POR PLATAFORMA
+==================================================================
+
+Esta deve se tornar a PRINCIPAL seção da página.
+
+Criar layout:
+70% gráfico principal
+30% resumo contextual
+
+------------------------------------------------
+|                                              |
+|      GRÁFICO PRINCIPAL                       |
+|                                              |
+|----------------------------------------------|
+| YouTube | Spotify | TikTok | Instagram ... |
+------------------------------------------------
+
+Ao selecionar uma plataforma:
+- atualizar gráfico;
+- atualizar resumo lateral;
+- atualizar métricas contextuais.
+
+==================================================================
+GRÁFICO PRINCIPAL
+==================================================================
+
+Implementar:
+- gráfico moderno;
+- animações suaves;
+- loading skeleton;
+- estados vazios reais;
+- comparação temporal.
+
+Tipos suportados:
+- line chart;
+- area chart;
+- bar chart.
+
+Métricas:
+- views;
+- alcance;
+- streams;
+- retenção;
+- watch time;
+- engajamento;
+- CTR.
+
+==================================================================
+RESUMO LATERAL
+==================================================================
+
+Criar painel lateral contextual.
+
+Exemplo:
+
+YouTube
+- Inscritos
+- Views/mês
+- Watch Hours
+- CTR
+- Receita estimada
+- Melhor vídeo
+- Crescimento
+
+Spotify
+- Ouvintes mensais
+- Streams
+- Saves
+- Playlist reach
+- Receita estimada
+
+TikTok
+- Views
+- Compartilhamentos
+- Taxa viral
+- Crescimento
+
+==================================================================
+4. TOP CONTEÚDOS
+==================================================================
+
+PRESERVAR a ideia dos Top Vídeos.
+
+REFORMULAR completamente o visual.
+
+Transformar em seção premium.
+
+Estrutura:
+------------------------------------------------
+Top Conteúdos
+Conteúdos com melhor desempenho consolidado
+------------------------------------------------
+
+Exibir:
+- thumbnail;
+- título;
+- plataforma;
+- views;
+- engajamento;
+- crescimento;
+- receita estimada;
+- trend/status.
+
+Permitir:
+- filtro por plataforma;
+- ordenação;
+- período.
+
+==================================================================
+LAYOUT DOS TOP CONTEÚDOS
+==================================================================
+
+Usar:
+- tabela híbrida enterprise;
+OU
+- cards horizontais premium.
+
+PROIBIDO:
+- listas simples;
+- textos minúsculos;
+- excesso de vermelho;
+- barras desproporcionais.
+
+==================================================================
+5. PERFORMANCE DE CAMPANHAS
+==================================================================
+
+Separar COMPLETAMENTE campanhas de métricas sociais.
+
+Campanhas NÃO podem mais ficar misturadas no mesmo bloco visual das métricas orgânicas.
+
+Criar seção própria:
+
+------------------------------------------------
+Performance de Campanhas
+------------------------------------------------
+
+Tabela:
+- Campanha
+- Plataforma
+- Investimento
+- Alcance
+- CTR
+- Conversão
+- ROI
+- Status
+- Data
+
+Adicionar:
+- filtros;
+- exportação;
+- paginação;
+- estado vazio elegante;
+- indicadores de desempenho.
+
+==================================================================
+6. EXPORTAÇÃO & RELATÓRIOS
+==================================================================
+
+Adicionar área final:
+- exportar PDF;
+- exportar XLSX;
+- exportar CSV;
+- gerar relatório consolidado.
+
+==================================================================
+IDENTIDADE VISUAL OBRIGATÓRIA
+==================================================================
+
+SUBSTITUIR COMPLETAMENTE:
+- preto puro;
+- glow exagerado;
+- verde aleatório;
+- excesso de neon.
+
+==================================================================
+PALETA OBRIGATÓRIA
+==================================================================
+
+Background:
+#0B0F17
+#101826
+#121926
+
+Cards:
+rgba(18,25,38,.92)
+
+Borders:
+rgba(255,255,255,.06)
+
+Texto principal:
+#FFFFFF
+
+Texto secundário:
+rgba(255,255,255,.65)
+
+Accent principal:
+ESCOLHER APENAS UMA COR.
+
+Sugestão:
+- azul elétrico;
+OU
+- vermelho premium musical.
+
+NÃO misturar múltiplas cores de destaque.
+
+==================================================================
+TIPOGRAFIA
+==================================================================
+
+Melhorar completamente:
+- hierarquia;
+- contraste;
+- peso;
+- spacing;
+- legibilidade.
+
+Usar:
+- títulos fortes;
+- subtítulos suaves;
+- labels pequenos consistentes.
+
+==================================================================
+RESPONSIVIDADE
+==================================================================
+
+A página deve funcionar:
+- desktop;
+- notebook;
+- tablet;
+- mobile.
+
+Corrigir:
+- overflow;
+- grids quebrados;
+- tabelas cortadas;
+- cards desalinhados.
+
+==================================================================
+ESTADOS OBRIGATÓRIOS
+==================================================================
+
+Implementar:
+- loading skeleton;
+- estado vazio;
+- estado sem integração;
+- estado de erro;
+- estado sem campanhas;
+- estado sem dados.
+
+PROIBIDO:
+"Carregando métricas..." perdido no meio da tela.
+
+==================================================================
+LIMPEZA TÉCNICA OBRIGATÓRIA
+==================================================================
+
+Antes de finalizar:
+
+- remover componentes mortos;
+- remover estilos não utilizados;
+- remover imports mortos;
+- remover lógica antiga;
+- remover tabs inúteis;
+- remover wrappers desnecessários;
+- remover duplicações;
+- remover mocks antigos;
+- remover estados não utilizados.
+
+==================================================================
+ARQUITETURA OBRIGATÓRIA
+==================================================================
+
+Separar corretamente:
+- components;
+- charts;
+- cards;
+- tables;
+- hooks;
+- services;
+- types;
+- constants.
+
+Criar componentes reutilizáveis:
+- KPI cards;
+- chart wrappers;
+- platform tabs;
+- empty states;
+- export actions;
+- campaign tables.
+
+==================================================================
+RESULTADO FINAL ESPERADO
+==================================================================
+
+A página final deve parecer:
+- um produto SaaS premium;
+- profissional;
+- corporativo;
+- limpo;
+- organizado;
+- escalável;
+- moderno;
+- pronto para produção enterprise.
+
+A interface final deve transmitir:
+- inteligência musical;
+- analytics profissional;
+- performance digital;
+- gestão corporativa musical.
+
+Executar com prioridade máxima em:
+1. organização visual;
+2. hierarquia;
+3. UX;
+4. consistência;
+5. responsividade;
+6. limpeza estrutural;
+7. reutilização correta dos componentes.
