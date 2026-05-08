@@ -99,6 +99,7 @@ interface FormData {
 
 const VINCULO_OPTIONS = ["Independente", "Com Empresário", "Gravadora", "Editora"] as const;
 const VINCULO_COM_EMPRESA = new Set(["Com Empresário", "Gravadora", "Editora"]);
+const VINCULO_COM_NOME_EMPRESA = new Set(["Gravadora", "Editora"]);
 
 const EMPTY: FormData = {
   nome_artistico: "", nome_civil: "", tipo_perfil: [], genero: "",
@@ -255,7 +256,7 @@ export default function ArtistaSignupPublic() {
     if (!form.data_nascimento) e.data_nascimento = "Obrigatório";
     if (!form.vinculo) e.vinculo = "Obrigatório";
     if (form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo)) {
-      if (!form.vinculo_empresa_nome.trim()) e.vinculo_empresa_nome = "Obrigatório";
+      if (VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && !form.vinculo_empresa_nome.trim()) e.vinculo_empresa_nome = "Obrigatório";
       if (!form.vinculo_empresa_contato.trim()) e.vinculo_empresa_contato = "Obrigatório";
       if (!form.vinculo_empresa_telefone.trim()) e.vinculo_empresa_telefone = "Obrigatório";
       if (!form.vinculo_empresa_email.trim()) e.vinculo_empresa_email = "Obrigatório";
@@ -688,18 +689,20 @@ export default function ArtistaSignupPublic() {
                   Dados do {form.vinculo}
                 </p>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Nome da empresa / responsável <span className="text-destructive">*</span></Label>
-                    <Input
-                      placeholder="Razão social ou nome"
-                      value={form.vinculo_empresa_nome}
-                      onChange={(e) => set("vinculo_empresa_nome", e.target.value)}
-                      data-testid="input-vinculo-empresa-nome"
-                      className={errors.vinculo_empresa_nome ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_nome && <p className="text-xs text-destructive">{errors.vinculo_empresa_nome}</p>}
-                  </div>
+                <div className={`grid grid-cols-1 gap-4 ${VINCULO_COM_NOME_EMPRESA.has(form.vinculo) ? "sm:grid-cols-2" : ""}`}>
+                  {VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && (
+                    <div className="space-y-1.5">
+                      <Label className="text-sm">Nome da empresa <span className="text-destructive">*</span></Label>
+                      <Input
+                        placeholder="Razão social ou nome"
+                        value={form.vinculo_empresa_nome}
+                        onChange={(e) => set("vinculo_empresa_nome", e.target.value)}
+                        data-testid="input-vinculo-empresa-nome"
+                        className={errors.vinculo_empresa_nome ? "border-destructive" : ""}
+                      />
+                      {errors.vinculo_empresa_nome && <p className="text-xs text-destructive">{errors.vinculo_empresa_nome}</p>}
+                    </div>
+                  )}
                   <div className="space-y-1.5">
                     <Label className="text-sm">Nome do contato <span className="text-destructive">*</span></Label>
                     <Input
