@@ -1,290 +1,303 @@
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { useTickets } from "../hooks/useSupport";
-import { MOCK_SYSTEM_SERVICES } from "../data/mockSupport";
 import {
-  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
-} from "recharts";
-import {
-  Ticket, CheckCircle2, Clock, AlertTriangle, Activity,
-  TrendingUp, ChevronRight, Plus, BookOpen, MessagesSquare,
-  Inbox, Server, Zap,
+  Plus, BookOpen, Ticket, Search, ChevronDown, ChevronRight,
 } from "lucide-react";
 import type { TicketStatus, TicketPriority } from "../types";
 
-/* ── helpers ── */
-const PRIORITY_DOT: Record<TicketPriority, string> = {
-  critical: "bg-red-500",
-  high:     "bg-orange-400",
-  medium:   "bg-yellow-400",
-  low:      "bg-green-500",
-};
+/* ── status helpers ── */
 const STATUS_COLOR: Record<TicketStatus, string> = {
-  open:             "bg-blue-500/10 text-blue-400 border-blue-500/30",
-  in_progress:      "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
-  waiting_customer: "bg-orange-500/10 text-orange-400 border-orange-500/30",
-  resolved:         "bg-green-500/10 text-green-400 border-green-500/30",
+  open:             "bg-blue-500/15 text-blue-400 border-blue-500/30",
+  in_progress:      "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
+  waiting_customer: "bg-orange-500/15 text-orange-400 border-orange-500/30",
+  resolved:         "bg-green-500/15 text-green-400 border-green-500/30",
   closed:           "bg-muted text-muted-foreground border-border",
 };
 const STATUS_LABEL: Record<TicketStatus, string> = {
   open: "Aberto", in_progress: "Em Andamento",
   waiting_customer: "Aguardando", resolved: "Resolvido", closed: "Fechado",
 };
+const PRIORITY_LABEL: Record<TicketPriority, string> = {
+  critical: "CRÍTICA", high: "ALTA", medium: "MÉDIA", low: "BAIXA",
+};
+const PRIORITY_COLOR: Record<TicketPriority, string> = {
+  critical: "text-red-500", high: "text-red-400", medium: "text-yellow-400", low: "text-green-400",
+};
 
-function formatRelative(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}m atrás`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h atrás`;
-  return `${Math.floor(hrs / 24)}d atrás`;
-}
+/* ── static FAQ data ── */
+const FAQ_ITEMS = [
+  {
+    id: "faq-1",
+    question: "Como fazer login no sistema?",
+    category: "Acesso",
+    answer: "Vá até a tela de login e informe seu e-mail e senha cadastrados. Caso tenha esquecido a senha, clique em 'Esqueci minha senha' para receber o link de redefinição no seu e-mail.",
+  },
+  {
+    id: "faq-2",
+    question: "Como criar um novo artista?",
+    category: "Artistas",
+    answer: "Acesse o menu 'Artistas' e clique no botão 'Novo Artista'. Preencha todos os campos obrigatórios e clique em 'Salvar'.",
+  },
+  {
+    id: "faq-3",
+    question: "Como gerar relatórios?",
+    category: "Relatórios",
+    answer: "No módulo Financeiro, acesse 'Relatórios'. Selecione o período e os filtros desejados, depois clique em 'Gerar Relatório' para exportar em PDF ou Excel.",
+  },
+  {
+    id: "faq-4",
+    question: "Como registrar uma nova música?",
+    category: "Músicas",
+    answer: "Acesse o Catálogo → 'Obras & Fonogramas' e clique em 'Novo Registro'. Preencha título, artistas, ISRC e demais metadados e salve.",
+  },
+  {
+    id: "faq-5",
+    question: "Como importar arquivo OFX?",
+    category: "Financeiro",
+    answer: "No módulo Financeiro → Conciliação, clique em 'Importar OFX', selecione o arquivo do seu banco (máximo 5MB) e aguarde o processamento automático.",
+  },
+  {
+    id: "faq-6",
+    question: "Como adicionar um novo usuário?",
+    category: "Usuários",
+    answer: "Acesse Configurações → Usuários e clique em 'Convidar Usuário'. Informe o e-mail e o perfil de acesso desejado. O convite será enviado automaticamente.",
+  },
+];
 
-/* ticket volume trend — last 7 days */
-const TREND_DATA = (() => {
-  const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
-  return days.map((day, i) => ({
-    day,
-    abertos:   3 + Math.floor(Math.sin(i) * 2 + Math.random() * 3),
-    resolvidos: 2 + Math.floor(Math.cos(i) * 1.5 + Math.random() * 2),
-  }));
-})();
-
-/* quick-action card */
-function QuickCard({
-  icon: Icon, label, desc, href, iconBg,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string; desc: string; href: string; iconBg: string;
-}) {
-  return (
-    <Link
-      to={href}
-      className={cn(
-        "flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3",
-        "hover:border-primary/30 hover:bg-primary/[0.02] transition-all group",
-      )}
-      data-testid={`quick-${label}`}
-    >
-      <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl shrink-0", iconBg)}>
-        <Icon className="h-4 w-4" />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[12.5px] font-semibold text-foreground group-hover:text-primary transition-colors">
-          {label}
-        </p>
-        <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
-      </div>
-      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
-    </Link>
-  );
-}
-
-/* KPI card */
-function KpiCard({
-  icon: Icon, label, value, sub, iconBg, iconColor, trend,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string; value: string | number; sub?: string;
-  iconBg: string; iconColor: string; trend?: { up: boolean; val: string };
-}) {
-  return (
-    <div className="rounded-2xl border border-border/60 bg-card p-5">
-      <div className="flex items-start justify-between mb-3">
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", iconBg)}>
-          <Icon className={cn("h-4 w-4", iconColor)} />
-        </div>
-        {trend && (
-          <span className={cn("text-[11px] font-medium", trend.up ? "text-green-400" : "text-red-400")}>
-            {trend.up ? "↑" : "↓"} {trend.val}
-          </span>
-        )}
-      </div>
-      <p className="text-2xl font-bold text-foreground tabular-nums">{value}</p>
-      <p className="text-[12px] font-medium text-foreground/70 mt-0.5">{label}</p>
-      {sub && <p className="text-[10.5px] text-muted-foreground mt-0.5">{sub}</p>}
-    </div>
-  );
-}
+/* ── tab type ── */
+type TabKey = "all" | "open" | "waiting" | "closed";
 
 export default function SupportDashboard() {
-  const { tickets, addTicket } = useTickets();
-  const [showNew, setShowNew] = useState(false);
-  const [newForm, setNewForm] = useState({ subject: "", priority: "medium" as TicketPriority, description: "" });
+  const { tickets } = useTickets();
+  const [faqOpen, setFaqOpen] = useState<string | null>(null);
+  const [search, setSearch] = useState("");
+  const [tab, setTab] = useState<TabKey>("all");
 
-  const open       = tickets.filter(t => t.status === "open").length;
-  const inProgress = tickets.filter(t => t.status === "in_progress").length;
-  const waiting    = tickets.filter(t => t.status === "waiting_customer").length;
-  const resolved7d = useMemo(() => {
-    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
-    return tickets.filter(t => t.status === "resolved" && new Date(t.updated_at).getTime() > cutoff).length;
-  }, [tickets]);
+  /* ticket counts */
+  const openCount    = tickets.filter(t => t.status === "open").length;
+  const waitingCount = tickets.filter(t => t.status === "waiting_customer").length;
+  const closedCount  = tickets.filter(t => ["resolved", "closed"].includes(t.status)).length;
 
-  const avgSLA = "94.2%";
-  const avgResp = "2h 18m";
+  /* filter tickets by tab */
+  const filteredTickets = tickets.filter(t => {
+    if (tab === "open")    return t.status === "open";
+    if (tab === "waiting") return t.status === "waiting_customer";
+    if (tab === "closed")  return t.status === "resolved" || t.status === "closed";
+    return true;
+  }).slice(0, 6);
 
-  const systemOk = MOCK_SYSTEM_SERVICES.filter(s => s.status === "operational").length;
-  const systemTotal = MOCK_SYSTEM_SERVICES.length;
-
-  const recentActivity = useMemo(
-    () => [...tickets].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 6),
-    [tickets]
+  /* filter FAQ */
+  const filteredFaq = FAQ_ITEMS.filter(f =>
+    f.question.toLowerCase().includes(search.toLowerCase()) ||
+    f.category.toLowerCase().includes(search.toLowerCase())
   );
 
-  function handleCreate() {
-    if (!newForm.subject.trim()) return;
-    addTicket({ subject: newForm.subject, description: newForm.description, category: "outro", priority: newForm.priority, created_by: "Você" });
-    setShowNew(false);
-    setNewForm({ subject: "", priority: "medium", description: "" });
-  }
+  const TABS: { key: TabKey; label: string; count: number }[] = [
+    { key: "all",     label: "Todos",      count: tickets.length },
+    { key: "open",    label: "Aberto",     count: openCount },
+    { key: "waiting", label: "Aguardando", count: waitingCount },
+    { key: "closed",  label: "Fechado",    count: closedCount },
+  ];
 
   return (
     <MainLayout
       title="Central de Suporte"
       description="Como podemos ajudar hoje?"
-      actions={
-        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowNew(true)} data-testid="button-novo-ticket">
-          <Plus className="h-3.5 w-3.5" /> Novo Ticket
-        </Button>
-      }
     >
       <div className="space-y-6 animate-fade-in">
 
-        {/* ── KPI Row ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
-          <KpiCard icon={Ticket}       label="Abertos"        value={open}          sub={`${inProgress} em andamento`} iconBg="bg-blue-500/10"   iconColor="text-blue-400"   trend={{ up: false, val: "3" }} />
-          <KpiCard icon={CheckCircle2} label="Resolvidos 7d"  value={resolved7d}    sub="últimos 7 dias"               iconBg="bg-green-500/10"  iconColor="text-green-400"  trend={{ up: true,  val: "12%" }} />
-          <KpiCard icon={Clock}        label="SLA Cumprido"   value={avgSLA}        sub="média geral"                  iconBg="bg-primary/10"    iconColor="text-primary"    trend={{ up: true,  val: "2%" }} />
-          <KpiCard icon={Zap}          label="Tempo Resposta" value={avgResp}       sub="média primária"               iconBg="bg-yellow-500/10" iconColor="text-yellow-400" trend={{ up: true,  val: "8%" }} />
-          <KpiCard icon={AlertTriangle}label="Aguardando"     value={waiting}       sub="resposta do cliente"          iconBg="bg-orange-500/10" iconColor="text-orange-400" />
-          <KpiCard icon={Server}       label="Sistema"        value={`${systemOk}/${systemTotal}`} sub="serviços ok" iconBg="bg-emerald-500/10" iconColor="text-emerald-400" trend={{ up: true,  val: "99.7%" }} />
+        {/* ── 3 Quick-action cards ── */}
+        <div className="grid grid-cols-3 gap-4">
+          <Link
+            to="/support/tickets/new"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group"
+            data-testid="quick-novo-ticket"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-green-500/10 group-hover:bg-green-500/20 transition-colors">
+              <Plus className="h-7 w-7 text-green-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-[14px] font-semibold text-foreground">Novo Ticket</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Precisa de ajuda? Abra um novo ticket de suporte</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/support/knowledge"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group"
+            data-testid="quick-knowledge"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 group-hover:bg-primary/20 transition-colors">
+              <BookOpen className="h-7 w-7 text-primary" />
+            </div>
+            <div className="text-center">
+              <p className="text-[14px] font-semibold text-foreground">Base de Conhecimento</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">Encontre respostas rápidas nas perguntas frequentes</p>
+            </div>
+          </Link>
+
+          <Link
+            to="/support/tickets"
+            className="flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8 hover:border-primary/40 hover:bg-primary/[0.02] transition-all group"
+            data-testid="quick-meus-tickets"
+          >
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-orange-500/10 group-hover:bg-orange-500/20 transition-colors">
+              <Ticket className="h-7 w-7 text-orange-400" />
+            </div>
+            <div className="text-center">
+              <p className="text-[14px] font-semibold text-foreground">Meus Tickets</p>
+              <p className="text-[12px] text-muted-foreground mt-0.5">
+                {tickets.length} ticket{tickets.length !== 1 ? "s" : ""}
+                {openCount > 0 ? ` · ${openCount} aberto${openCount !== 1 ? "s" : ""}` : ""}
+              </p>
+            </div>
+          </Link>
         </div>
 
-        {/* ── Main 2-col ── */}
-        <div className="grid lg:grid-cols-[1fr_340px] gap-5">
+        {/* ── 2-col layout ── */}
+        <div className="grid lg:grid-cols-[1fr_380px] gap-5">
 
-          {/* Trend chart */}
+          {/* Left — Base de Conhecimento accordion */}
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-2">
-              <div>
-                <p className="text-[13px] font-semibold text-foreground">Volume de Tickets</p>
-                <p className="text-[11px] text-muted-foreground">Últimos 7 dias</p>
-              </div>
-              <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary inline-block" /> Abertos</span>
-                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Resolvidos</span>
-              </div>
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
+              <BookOpen className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[13px] font-semibold text-foreground">Base de Conhecimento</span>
             </div>
-            <ResponsiveContainer width="100%" height={180}>
-              <AreaChart data={TREND_DATA} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="gradOpen" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="gradRes" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor="#22C55E" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }}
-                  labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+
+            {/* Search */}
+            <div className="px-5 pt-4 pb-3">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <input
+                  className="w-full rounded-xl border border-border/60 bg-muted/40 pl-9 pr-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+                  placeholder="Buscar na base de conhecimento..."
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  data-testid="input-faq-search"
                 />
-                <Area type="monotone" dataKey="abertos"   stroke="#3B82F6" fill="url(#gradOpen)" strokeWidth={2} dot={false} />
-                <Area type="monotone" dataKey="resolvidos" stroke="#22C55E" fill="url(#gradRes)"  strokeWidth={2} dot={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </div>
-
-          {/* Quick actions */}
-          <div className="space-y-3">
-            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Acesso Rápido</p>
-            <QuickCard icon={Ticket}        label="Meus Tickets"        desc={`${tickets.length} ticket(s) · ${open} aberto(s)`}  href="/support/tickets"  iconBg="bg-blue-500/10 text-blue-400" />
-            <QuickCard icon={MessagesSquare} label="Chat ao Vivo"        desc="Atendimento em tempo real"                            href="/support/chat"      iconBg="bg-green-500/10 text-green-400" />
-            <QuickCard icon={BookOpen}      label="Base de Conhecimento" desc="Artigos e guias de uso"                               href="/support/knowledge" iconBg="bg-primary/10 text-primary" />
-            <QuickCard icon={Activity}      label="Status do Sistema"    desc={`${systemOk} de ${systemTotal} serviços operacionais`} href="/support/status"   iconBg="bg-emerald-500/10 text-emerald-400" />
-            <QuickCard icon={Inbox}         label="Solicitações"         desc="Features e melhorias"                                 href="/support/requests" iconBg="bg-purple-500/10 text-purple-400" />
-          </div>
-        </div>
-
-        {/* ── Activity feed ── */}
-        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-          <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[13px] font-semibold text-foreground">Atividade Recente</span>
+              </div>
             </div>
-            <Link to="/support/tickets" className="text-[11.5px] text-primary hover:underline flex items-center gap-0.5">
-              Ver todos <ChevronRight className="h-3 w-3" />
-            </Link>
-          </div>
-          <div className="divide-y divide-border/60">
-            {recentActivity.map((ticket) => (
+
+            {/* FAQ accordion */}
+            <div className="px-5 pb-4 space-y-2">
+              {filteredFaq.length === 0 && (
+                <p className="text-[12px] text-muted-foreground text-center py-6">Nenhum resultado encontrado.</p>
+              )}
+              {filteredFaq.map(faq => (
+                <div key={faq.id} className="rounded-xl border border-border/60 overflow-hidden">
+                  <button
+                    className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
+                    onClick={() => setFaqOpen(faqOpen === faq.id ? null : faq.id)}
+                    data-testid={`faq-toggle-${faq.id}`}
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground shrink-0">
+                        {faq.category}
+                      </span>
+                      <span className="text-[13px] font-medium text-foreground truncate">{faq.question}</span>
+                    </div>
+                    {faqOpen === faq.id
+                      ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                      : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                    }
+                  </button>
+                  {faqOpen === faq.id && (
+                    <div className="px-4 pb-4 pt-1 text-[12.5px] text-muted-foreground leading-relaxed border-t border-border/60 bg-muted/10">
+                      {faq.answer}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="px-5 pb-4">
               <Link
-                key={ticket.id}
-                to={`/support/tickets/${ticket.id}`}
-                className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors group"
-                data-testid={`activity-${ticket.id}`}
+                to="/support/knowledge"
+                className="text-[12px] text-primary hover:underline flex items-center gap-1"
               >
-                <div className={cn("h-2 w-2 rounded-full shrink-0", PRIORITY_DOT[ticket.priority])} />
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <span className="text-[10.5px] font-mono text-muted-foreground/60">{ticket.ticket_number}</span>
-                    <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
-                      {STATUS_LABEL[ticket.status]}
-                    </Badge>
+                Ver todos os artigos <ChevronRight className="h-3 w-3" />
+              </Link>
+            </div>
+          </div>
+
+          {/* Right — Meus Tickets */}
+          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden flex flex-col">
+            <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
+              <Ticket className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[13px] font-semibold text-foreground">Meus Tickets</span>
+            </div>
+
+            {/* Tabs */}
+            <div className="flex border-b border-border/60 px-4 pt-2 gap-1">
+              {TABS.map(t => (
+                <button
+                  key={t.key}
+                  onClick={() => setTab(t.key)}
+                  className={cn(
+                    "pb-2 px-3 text-[12px] font-medium border-b-2 transition-colors",
+                    tab === t.key
+                      ? "border-primary text-primary"
+                      : "border-transparent text-muted-foreground hover:text-foreground",
+                  )}
+                  data-testid={`tab-tickets-${t.key}`}
+                >
+                  {t.label}
+                  <span className={cn(
+                    "ml-1.5 text-[10px] px-1.5 py-0.5 rounded-full",
+                    tab === t.key ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground",
+                  )}>
+                    {t.count}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Ticket list */}
+            <div className="flex-1 divide-y divide-border/60 overflow-y-auto max-h-[420px]">
+              {filteredTickets.length === 0 && (
+                <p className="text-[12px] text-muted-foreground text-center py-10">Nenhum ticket encontrado.</p>
+              )}
+              {filteredTickets.map(ticket => (
+                <Link
+                  key={ticket.id}
+                  to={`/support/tickets/${ticket.id}`}
+                  className="flex flex-col gap-1 px-5 py-3.5 hover:bg-muted/30 transition-colors group"
+                  data-testid={`ticket-row-${ticket.id}`}
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-[10.5px] font-mono text-muted-foreground/60 shrink-0">{ticket.ticket_number}</span>
+                      <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border shrink-0", STATUS_COLOR[ticket.status])}>
+                        {STATUS_LABEL[ticket.status]}
+                      </Badge>
+                    </div>
+                    <span className={cn("text-[10px] font-bold shrink-0", PRIORITY_COLOR[ticket.priority])}>
+                      {PRIORITY_LABEL[ticket.priority]}
+                    </span>
                   </div>
                   <p className="text-[12.5px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
                     {ticket.subject}
                   </p>
-                </div>
-                <span className="text-[10.5px] text-muted-foreground/50 shrink-0">{formatRelative(ticket.updated_at)}</span>
+                  <p className="text-[11px] text-muted-foreground truncate">{ticket.description}</p>
+                </Link>
+              ))}
+            </div>
+
+            <div className="px-5 py-3 border-t border-border/60">
+              <Link
+                to="/support/tickets"
+                className="text-[12px] text-primary hover:underline flex items-center gap-1"
+              >
+                Ver todos os tickets <ChevronRight className="h-3 w-3" />
               </Link>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      {/* ── New ticket mini-modal ── */}
-      {showNew && (
-        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowNew(false)}>
-          <div
-            className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <p className="text-[14px] font-semibold text-foreground">Novo Ticket de Suporte</p>
-            <input
-              className="w-full rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
-              placeholder="Assunto *"
-              value={newForm.subject}
-              onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })}
-              data-testid="input-quick-ticket-subject"
-            />
-            <textarea
-              className="w-full rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 resize-none"
-              placeholder="Descreva o problema..."
-              rows={3}
-              value={newForm.description}
-              onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
-              data-testid="textarea-quick-ticket-desc"
-            />
-            <div className="flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowNew(false)}>Cancelar</Button>
-              <Button size="sm" onClick={handleCreate} disabled={!newForm.subject.trim()} data-testid="button-quick-ticket-submit">
-                Criar Ticket
-              </Button>
             </div>
           </div>
         </div>
-      )}
+      </div>
     </MainLayout>
   );
 }
