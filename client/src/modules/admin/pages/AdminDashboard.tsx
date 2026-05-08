@@ -213,22 +213,6 @@ export default function AdminDashboard() {
 
         {/* ── Analytics Charts ── */}
         <div className="grid lg:grid-cols-2 gap-5">
-          {/* Crescimento de Tenants & Usuários */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
-            <h2 className="text-[13px] font-semibold text-white mb-5">Crescimento de Tenants & Usuários</h2>
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart data={GROWTH_DATA}>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" />
-                <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend iconType="circle" iconSize={6} wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }} />
-                <Line type="monotone" dataKey="tenants" name="Tenants"  stroke="#3B82F6" strokeWidth={2} dot={false} />
-                <Line type="monotone" dataKey="users"   name="Usuários" stroke="#10B981" strokeWidth={2} dot={false} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-
           {/* Distribuição por Plano */}
           <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
             <h2 className="text-[13px] font-semibold text-white mb-4">Distribuição por Plano</h2>
