@@ -11,7 +11,7 @@ import { Separator } from "@/shared/ui/separator";
 import {
   Loader2, CheckCircle2, Music2, ChevronRight, ChevronLeft,
   Link2, Image, FileText, User, Star, Shield, Zap, AlertCircle,
-  Instagram, Youtube, CalendarDays, Package, Plus, Trash2,
+  Instagram, Youtube, CalendarDays, Package, Plus, Trash2, Mail,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { createArtistUseCase, DuplicateArtistaError } from "@/modules/artist/application/createArtist.usecase";
@@ -196,6 +196,7 @@ export default function ArtistaSignupPublic() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY);
   const [distribuidoras, setDistribuidoras] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
+  const [emailsShareGravadora, setEmailsShareGravadora] = useState<string[]>([""]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -220,6 +221,12 @@ export default function ArtistaSignupPublic() {
       return next;
     });
   };
+
+  const addEmailShareGravadora = () => setEmailsShareGravadora((p) => [...p, ""]);
+  const removeEmailShareGravadora = (idx: number) =>
+    setEmailsShareGravadora((p) => p.filter((_, i) => i !== idx));
+  const updateEmailShareGravadora = (idx: number, val: string) =>
+    setEmailsShareGravadora((p) => p.map((v, i) => (i === idx ? val : v)));
 
   const addDistribuidora = () => {
     setDistribuidoras((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
@@ -324,7 +331,13 @@ export default function ArtistaSignupPublic() {
       if (form.vinculo_empresa_contato.trim()) extrasNotas.push(`Contato: ${form.vinculo_empresa_contato.trim()}`);
       if (form.vinculo_empresa_telefone.trim()) extrasNotas.push(`Tel. empresa: ${form.vinculo_empresa_telefone.trim()}`);
       if (form.vinculo_empresa_email.trim()) extrasNotas.push(`E-mail empresa: ${form.vinculo_empresa_email.trim()}`);
-      if (form.vinculo_empresa_email_share.trim()) extrasNotas.push(`E-mail share: ${form.vinculo_empresa_email_share.trim()}`);
+      if (form.vinculo_empresa_email_share.trim()) extrasNotas.push(`E-mail de contato: ${form.vinculo_empresa_email_share.trim()}`);
+    }
+    if (VINCULO_COM_NOME_EMPRESA.has(form.vinculo)) {
+      const validShareEmails = emailsShareGravadora.filter((e) => e.trim());
+      validShareEmails.forEach((e, idx) => {
+        extrasNotas.push(`E-mail share ${form.vinculo} ${idx + 1}: ${e.trim()}`);
+      });
     }
     distribuidoras.forEach((entry, idx) => {
       if (entry.distribuidora) {
@@ -742,10 +755,10 @@ export default function ArtistaSignupPublic() {
                     {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-sm">E-mail de Share <span className="text-destructive">*</span></Label>
+                    <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
                     <Input
                       type="email"
-                      placeholder="share@empresa.com"
+                      placeholder="contato2@empresa.com"
                       value={form.vinculo_empresa_email_share}
                       onChange={(e) => set("vinculo_empresa_email_share", e.target.value)}
                       data-testid="input-vinculo-empresa-email-share"
@@ -948,6 +961,65 @@ export default function ArtistaSignupPublic() {
                 Adicionar outra distribuidora
               </Button>
             </div>
+
+            {/* E-mails de Share da Gravadora/Editora — aparece quando vinculo é Gravadora/Editora e ao menos uma distribuidora selecionada */}
+            {VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && distribuidoras.some((d) => d.distribuidora) && (
+              <>
+                <Separator />
+                <div className="space-y-4">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">E-mails de Share — {form.vinculo}</h3>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Informe os e-mails de share da {form.vinculo.toLowerCase()} responsáveis pelo recebimento de direitos. Você pode adicionar múltiplos responsáveis.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {emailsShareGravadora.map((email, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <div className="flex-1 space-y-1">
+                          {idx === 0 && <Label className="text-xs text-muted-foreground">E-mail de share</Label>}
+                          <Input
+                            type="email"
+                            placeholder={`ex: ${idx === 0 ? "financeiro" : idx === 1 ? "distribuidora" : "manager"}@${form.vinculo === "Gravadora" ? "gravadora" : "editora"}.com`}
+                            value={email}
+                            onChange={(e) => updateEmailShareGravadora(idx, e.target.value)}
+                            data-testid={`input-share-gravadora-${idx}`}
+                          />
+                        </div>
+                        {emailsShareGravadora.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeEmailShareGravadora(idx)}
+                            data-testid={`button-remove-share-gravadora-${idx}`}
+                            className={`text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 ${idx === 0 ? "mt-5" : ""}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addEmailShareGravadora}
+                    data-testid="button-add-share-gravadora"
+                    className="gap-1.5 text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Adicionar outro e-mail de share
+                  </Button>
+                </div>
+              </>
+            )}
           </div>
         )}
 
