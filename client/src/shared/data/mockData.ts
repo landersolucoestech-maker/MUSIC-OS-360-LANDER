@@ -375,7 +375,27 @@ function buildSeedData(): Record<string, unknown[]> {
 
   vendas: [],
   catalogo: [],
-  company_settings: [],
+  company_settings: [
+    {
+      id: "cs-001",
+      user_id: UID,
+      org_id: OID,
+      company_name: "LANDER RECORDS Produções Artísticas LTDA",
+      fantasy_name: "LANDER RECORDS",
+      cnpj: "12.345.678/0001-99",
+      inscricao_estadual: "123.456.789.000",
+      inscricao_municipal: "12345678",
+      logradouro: "Av. Paulista",
+      numero: "1000",
+      complemento: "12º andar",
+      cep: "01310-100",
+      cidade: "São Paulo",
+      estado: "SP",
+      banco: "Itaú Unibanco",
+      agencia: "0001",
+      conta: "12345-6",
+    },
+  ],
   fechamentos_contabeis: [],
   profiles: [],
   user_settings: [],
@@ -463,7 +483,7 @@ function loadMockData(): Record<string, unknown[]> {
       const merged: Record<string, unknown[]> = { ...seed };
       for (const key of Object.keys(seed)) {
         const val = parsed[key];
-        if (Array.isArray(val)) {
+        if (Array.isArray(val) && (val.length > 0 || seed[key].length === 0)) {
           merged[key] = val;
         }
       }
@@ -496,8 +516,8 @@ export const MOCK_COMPANY_SETTINGS = {
   id: "cs-001",
   user_id: UID,
   org_id: OID,
-  company_name: "MusicOS 360 Produções Artísticas LTDA",
-  fantasy_name: "MUSIC OS 360",
+  company_name: "LANDER RECORDS Produções Artísticas LTDA",
+  fantasy_name: "LANDER RECORDS",
   cnpj: "12.345.678/0001-99",
   inscricao_estadual: "123.456.789.000",
   inscricao_municipal: "12345678",

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { MOCK_COMPANY_SETTINGS } from "@/shared/data/mockData";
 import { useParams } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -121,7 +122,11 @@ function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
 
   try {
     const rawData = localStorage.getItem("musicos360_mock_data");
-    let orgName = "MUSIC OS 360";
+    const seedName =
+      MOCK_COMPANY_SETTINGS.fantasy_name ||
+      MOCK_COMPANY_SETTINGS.company_name ||
+      "MUSIC OS 360";
+    let orgName = seedName;
     if (rawData) {
       const data = JSON.parse(rawData) as Record<string, unknown>;
       const cs = data.company_settings;
@@ -132,7 +137,7 @@ function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
         orgName =
           (settings.fantasy_name as string) ||
           (settings.company_name as string) ||
-          orgName;
+          seedName;
       }
     }
 
