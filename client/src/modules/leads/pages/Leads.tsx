@@ -8,14 +8,14 @@ import { Badge } from "@/shared/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   UserPlus, Search, Loader2, Upload, Download, Plus, MoreHorizontal,
-  Eye, Pencil, Trash2, LayoutList, Columns3,
+  Eye, Pencil, Trash2,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { LeadFormModal } from "../components/LeadFormModal";
 import { LeadViewModal } from "../components/LeadViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { LeadsKanban } from "../components/LeadsKanban";
+
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { cn } from "@/shared/lib/utils";
@@ -27,8 +27,6 @@ import {
   STATUS_LABELS,
   ORIGEM_LABELS,
 } from "../hooks/useLeads";
-
-type View = "table" | "kanban";
 
 const leadColumns: CSVColumn[] = [
   { key: "nome_contratante", label: "Nome" },
@@ -82,8 +80,7 @@ const PRIORIDADE_BADGE: Record<string, string> = {
 };
 
 export default function Leads() {
-  const { leads, isLoading, error, deleteLead, addLead, updateLead, refetch } = useLeads();
-  const [view, setView] = useState<View>("table");
+  const { leads, isLoading, error, deleteLead, addLead, refetch } = useLeads();
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; lead?: any }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; lead?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; lead?: any }>({ open: false });
@@ -160,13 +157,6 @@ export default function Leads() {
     if (deleteModal.lead) { deleteLead.mutate(deleteModal.lead.id); setDeleteModal({ open: false }); }
   };
 
-  const handleMoveStage = async (lead: any, newStatus: string) => {
-    try {
-      await updateLead.mutateAsync({ id: lead.id, data: { status_lead: newStatus } as any });
-      toast.success(`Lead movido para "${STATUS_LABELS[newStatus] ?? newStatus}"`);
-    } catch { toast.error("Erro ao mover lead"); }
-  };
-
   if (isLoading) {
     return (
       <MainLayout title="Leads" description="Captação e gestão de leads">
@@ -195,32 +185,9 @@ export default function Leads() {
       title="Leads"
       description="Captação e gestão de leads comerciais"
       actions={
-        <>
-          {/* View toggle */}
-          <div className="flex rounded-md overflow-hidden border border-border">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn("h-8 px-3 rounded-none text-xs gap-1.5", view === "table" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
-              onClick={() => setView("table")}
-              data-testid="btn-view-table"
-            >
-              <LayoutList className="h-3.5 w-3.5" /> Lista
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn("h-8 px-3 rounded-none text-xs gap-1.5", view === "kanban" ? "bg-primary text-primary-foreground" : "text-muted-foreground")}
-              onClick={() => setView("kanban")}
-              data-testid="btn-view-kanban"
-            >
-              <Columns3 className="h-3.5 w-3.5" /> Kanban
-            </Button>
-          </div>
-          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-lead">
-            <Plus className="h-3.5 w-3.5" /> Novo Lead
-          </Button>
-        </>
+        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-lead">
+          <Plus className="h-3.5 w-3.5" /> Novo Lead
+        </Button>
       }
     >
       <div className="space-y-5">
@@ -294,22 +261,8 @@ export default function Leads() {
           <span className="text-xs text-muted-foreground ml-auto">{filteredLeads.length} de {leads.length} leads</span>
         </div>
 
-        {/* ── KANBAN VIEW ── */}
-        {view === "kanban" && (
-          leads.length === 0 ? (
-            <EmptyState icon={UserPlus} title="Nenhum lead encontrado" description="Comece adicionando seu primeiro lead." />
-          ) : (
-            <LeadsKanban
-              leads={filteredLeads}
-              onView={(lead) => setViewModal({ open: true, lead })}
-              onEdit={(lead) => setFormModal({ open: true, mode: "edit", lead })}
-              onMoveStage={handleMoveStage}
-            />
-          )
-        )}
-
         {/* ── TABLE VIEW ── */}
-        {view === "table" && (
+        {(
           leads.length === 0 ? (
             <EmptyState icon={UserPlus} title="Nenhum lead encontrado" description="Comece adicionando seu primeiro lead ou importe de um CSV." />
           ) : (
