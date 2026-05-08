@@ -435,7 +435,14 @@ function buildContentItems(): Record<ContentFilter, ContentItem[]> {
     icon: SiSpotify, color: "#1DB954",
   }));
 
-  const all = [...yt, ...tt, ...ig, ...google, ...spotify].sort((a, b) => b.metric - a.metric);
+  // Visão Geral: top 2 de cada plataforma para garantir representação de todas
+  const all = [
+    ...yt.slice(0, 2),
+    ...tt.slice(0, 2),
+    ...ig.slice(0, 2),
+    ...google.slice(0, 2),
+    ...spotify.slice(0, 2),
+  ];
 
   return { todos: all, youtube: yt, tiktok: tt, instagram: ig, google, spotify };
 }
