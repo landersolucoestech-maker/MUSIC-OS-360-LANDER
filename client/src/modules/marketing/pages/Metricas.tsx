@@ -184,18 +184,39 @@ function SidebarMetrics({
     </div>
   );
 
-  if (platform === "overview") return (
-    <div className="space-y-1">
-      <p className="text-xs text-muted-foreground font-medium mb-3 uppercase tracking-wider">Resumo Consolidado</p>
-      <Row label="Views YouTube/mês" value={fmtNum(YOUTUBE_TOTALS.totalViewsMes)} />
-      <Row label="Inscritos YouTube"  value={fmtNum(YOUTUBE_TOTALS.totalSubscribers)} />
-      <Row label="Views TikTok/mês"   value={fmtNum(TIKTOK_TOTALS.totalViewsMes)} />
-      <Row label="Seguidores TikTok"  value={fmtNum(TIKTOK_TOTALS.totalFollowers)} />
-      <Row label="Alcance Instagram"  value={fmtNum(INSTAGRAM_TOTALS.totalAlcanceMes)} />
-      <Row label="Impressões Meta"    value={fmtNum(META_ADS_MOCK.mes.impressoes)} />
-      <Row label="Impressões Google"  value={fmtNum(GOOGLE_ADS_MOCK.mes.impressoes)} />
-    </div>
-  );
+  if (platform === "overview") {
+    const audienciaTotal     = YOUTUBE_TOTALS.totalSubscribers + TIKTOK_TOTALS.totalFollowers + INSTAGRAM_TOTALS.totalFollowers;
+    const viewsTotaisMes     = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes;
+    const engMedio           = ((TIKTOK_TOTALS.avgEngagement + INSTAGRAM_TOTALS.avgEngagement) / 2).toFixed(1);
+    const alcanceTotal       = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes + INSTAGRAM_TOTALS.totalAlcanceMes;
+    const impressoesTotais   = META_ADS_MOCK.mes.impressoes + GOOGLE_ADS_MOCK.mes.impressoes;
+    const cliquesTotais      = META_ADS_MOCK.mes.cliques + GOOGLE_ADS_MOCK.mes.cliques;
+    const ctrMedio           = ((META_ADS_MOCK.mes.ctr + GOOGLE_ADS_MOCK.mes.ctr) / 2).toFixed(2);
+    const conversaosTotal    = (META_ADS_MOCK.mes.resultados || 0) + (GOOGLE_ADS_MOCK.mes.conversoes || 0);
+    const investimentoTotal  = META_ADS_MOCK.mes.spend + GOOGLE_ADS_MOCK.mes.spend;
+
+    const allContent = [
+      ...YOUTUBE_MOCK.flatMap(a => a.topVideos.map(v => ({ titulo: v.titulo, views: v.views }))),
+      ...TIKTOK_MOCK.flatMap(a => a.topVideos.map(v => ({ titulo: v.descricao, views: v.views }))),
+    ];
+    const melhorConteudo = allContent.sort((a, b) => b.views - a.views)[0]?.titulo ?? "—";
+
+    return (
+      <div className="space-y-1">
+        <p className="text-xs text-muted-foreground font-medium mb-3 uppercase tracking-wider">Resumo Consolidado</p>
+        <Row label="Audiência Total"         value={fmtNum(audienciaTotal)} />
+        <Row label="Views Totais/Mês"        value={fmtNum(viewsTotaisMes)} />
+        <Row label="Engajamento Médio"       value={`${engMedio}%`} />
+        <Row label="Alcance Total"           value={fmtNum(alcanceTotal)} />
+        <Row label="Impressões Totais Ads"   value={fmtNum(impressoesTotais)} />
+        <Row label="Cliques Totais"          value={fmtNum(cliquesTotais)} />
+        <Row label="CTR Médio"               value={`${ctrMedio}%`} />
+        <Row label="Conversões Totais"       value={fmtNum(conversaosTotal)} />
+        <Row label="Investimento Total"      value={formatCurrency(investimentoTotal)} />
+        <Row label="Melhor Conteúdo"         value={melhorConteudo.length > 20 ? melhorConteudo.slice(0, 20) + "…" : melhorConteudo} />
+      </div>
+    );
+  }
 
   if (platform === "youtube") return (
     <div className="space-y-1">
