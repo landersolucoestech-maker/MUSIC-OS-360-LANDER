@@ -549,10 +549,10 @@ export const MOCK_USER = {
   id: UID,
   email: "admin@musicos360.com",
   app_metadata: {},
-  user_metadata: { full_name: "Admin MusicOS 360", role: "tenant_owner" },
+  user_metadata: { full_name: "Admin MusicOS 360", role: "super_admin" },
   aud: "authenticated",
   created_at: NOW,
-  role: "tenant_owner",
+  role: "super_admin",
 } as unknown;
 
 export const MOCK_SESSION = {

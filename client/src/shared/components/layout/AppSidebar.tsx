@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/app/providers/AuthContext";
 import { useTenant, PLAN_LABEL } from "@/app/providers/TenantContext";
 import { useIsAdmin } from "@/shared/hooks/useIsAdmin";
+import { useCurrentRole } from "@/shared/hooks/useHasRole";
 import {
   LayoutDashboard,
   Users,
@@ -159,16 +160,20 @@ export function AppSidebar() {
   const { user, signOut } = useAuth();
   const { tenant } = useTenant();
   const { isAdmin } = useIsAdmin();
+  const currentRole = useCurrentRole();
+  const isSuperAdmin = currentRole === "super_admin";
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const location = useLocation();
 
   const adminItems: NavItem[] = useMemo(
-    () =>
-      isAdmin
-        ? [{ title: "Auditoria", href: "/auditoria", icon: ClipboardCheck }]
-        : [],
-    [isAdmin],
+    () => {
+      const items: NavItem[] = [];
+      if (isAdmin) items.push({ title: "Auditoria", href: "/auditoria", icon: ClipboardCheck });
+      if (isSuperAdmin) items.push({ title: "Painel Admin", href: "/admin/dashboard", icon: Shield });
+      return items;
+    },
+    [isAdmin, isSuperAdmin],
   );
 
   const userFullName = (user?.user_metadata?.full_name as string) || "Usuário";
