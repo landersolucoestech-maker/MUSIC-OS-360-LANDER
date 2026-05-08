@@ -6,28 +6,53 @@ import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
+import { Separator } from "@/shared/ui/separator";
 import {
   Loader2, CheckCircle2, Music2, ChevronRight, ChevronLeft,
   Link2, Image, FileText, User, Star, Shield, Zap, AlertCircle,
-  Instagram, Youtube,
+  Instagram, Youtube, CalendarDays, Package,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { createArtistUseCase, DuplicateArtistaError } from "@/modules/artist/application/createArtist.usecase";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
-const GENEROS = [
-  "Funk", "Forró", "Sertanejo", "Pop", "Rock", "MPB", "Eletrônica",
-  "Hip Hop", "R&B", "Axé", "Pagode", "Gospel", "Reggae", "Jazz", "Outro",
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+const TIPO_PERFIL_OPTIONS = [
+  "DJ",
+  "DJ/Produtor",
+  "Compositor/Autor",
+  "Intérprete",
+  "Produtor",
 ];
 
-const TIPOS = [
-  { value: "artista_solo", label: "Artista Solo" },
-  { value: "banda", label: "Banda" },
-  { value: "dupla", label: "Dupla" },
-  { value: "trio", label: "Trio" },
-  { value: "grupo", label: "Grupo" },
-  { value: "DJ", label: "DJ / Producer" },
+const GENEROS = [
+  "Afrobeat", "Axé", "Blues", "Bolero", "Bossa Nova",
+  "Country", "Drill", "EDM", "Eletrônica", "Flamenco",
+  "Forró", "Funk", "Gospel", "Hip Hop", "House",
+  "Jazz", "K-Pop", "Lo-fi", "Maracatu", "Metal",
+  "MPB", "Pagode", "Pisadinha", "Pop", "Pop Rock",
+  "R&B", "Reggae", "Reggaeton", "Rock", "Samba",
+  "Sertanejo", "Sertanejo Universitário", "Soul", "Techno", "Trap",
+  "Zouk", "Outro",
+];
+
+const DISTRIBUIDORAS = [
+  "Believe",
+  "CD Baby",
+  "DistroKid",
+  "Ingrooves",
+  "Kontor",
+  "ONErpm",
+  "Orchard",
+  "Sony Music",
+  "Stem",
+  "Symphonic",
+  "TuneCore",
+  "UMG",
+  "Warner Music",
+  "Outro",
 ];
 
 type Step = 1 | 2 | 3;
@@ -41,28 +66,34 @@ interface OrgInfo {
 interface FormData {
   nome_artistico: string;
   nome_civil: string;
-  tipo: string;
+  tipo_perfil: string[];
+  genero: string;
   genero_musical: string;
   email: string;
   telefone: string;
   cpf_cnpj: string;
+  data_nascimento: string;
   instagram: string;
   tiktok: string;
   youtube: string;
   spotify: string;
   apple_music: string;
+  deezer: string;
   soundcloud: string;
   presskit_url: string;
+  distribuidora: string;
+  distribuidora_email: string;
   bio: string;
   foto_url: string;
   notas_label: string;
 }
 
 const EMPTY: FormData = {
-  nome_artistico: "", nome_civil: "", tipo: "", genero_musical: "",
-  email: "", telefone: "", cpf_cnpj: "",
+  nome_artistico: "", nome_civil: "", tipo_perfil: [], genero: "",
+  genero_musical: "", email: "", telefone: "", cpf_cnpj: "", data_nascimento: "",
   instagram: "", tiktok: "", youtube: "", spotify: "",
-  apple_music: "", soundcloud: "", presskit_url: "",
+  apple_music: "", deezer: "", soundcloud: "", presskit_url: "",
+  distribuidora: "", distribuidora_email: "",
   bio: "", foto_url: "", notas_label: "",
 };
 
@@ -74,7 +105,6 @@ const STEPS = [
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
-/** Slugs de demonstração válidos para instalação fresh / ambiente de desenvolvimento. */
 const DEMO_SLUGS = new Set([
   "minha-gravadora",
   "gravadora-exemplo",
@@ -87,7 +117,6 @@ function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
   const defaultInfo: OrgInfo = { name: "MUSIC OS 360", slug };
 
   try {
-    // 1. Read company name from stored MOCK_DATA (for branding)
     const rawData = localStorage.getItem("musicos360_mock_data");
     let orgName = "MUSIC OS 360";
     if (rawData) {
@@ -104,52 +133,36 @@ function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
       }
     }
 
-    // 2. Check if any configured org slug in localStorage matches
     const allKeys = Object.keys(localStorage);
     const slugKeys = allKeys.filter((k) => k.startsWith("musicos360_org_slug:"));
     const slugMatch = slugKeys.some((k) => localStorage.getItem(k) === slug);
 
-    if (slugMatch) {
-      return { valid: true, info: { name: orgName, slug } };
-    }
+    if (slugMatch) return { valid: true, info: { name: orgName, slug } };
+    if (DEMO_SLUGS.has(slug.toLowerCase())) return { valid: true, info: { name: orgName, slug } };
 
-    // 3. Allow well-known demo slugs so the app works out of the box
-    //    for fresh installs where the admin hasn't configured a slug yet.
-    if (DEMO_SLUGS.has(slug.toLowerCase())) {
-      return { valid: true, info: { name: orgName, slug } };
-    }
-
-    // 4. Slug not found → invalid
     return { valid: false, info: defaultInfo };
   } catch {
-    // On any parsing error, fall back to valid with defaults
     return { valid: true, info: defaultInfo };
   }
 }
 
 function extractSpotifyArtistId(input: string): string | null {
   if (!input.trim()) return null;
-  // Extract ID from https://open.spotify.com/artist/{ID}?si=...
   const match = input.match(/spotify\.com\/artist\/([a-zA-Z0-9]+)/);
   if (match) return match[1];
-  // If it looks like a plain ID (no slashes, no dots), use as-is
   if (/^[a-zA-Z0-9]+$/.test(input.trim())) return input.trim();
-  return null; // URL format we can't parse → skip ID field, fall to redes_sociais
+  return null;
 }
 
 function extractYouTubeChannelId(input: string): string | null {
   if (!input.trim()) return null;
-  // @handle → https://youtube.com/@handle
   const handleMatch = input.match(/youtube\.com\/@([^/?&\s]+)/);
   if (handleMatch) return `@${handleMatch[1]}`;
-  // Channel ID → https://youtube.com/channel/UCxxxxxx
   const channelMatch = input.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
   if (channelMatch) return channelMatch[1];
-  // Plain @handle (user typed without URL)
   if (/^@[a-zA-Z0-9_.]+$/.test(input.trim())) return input.trim();
-  // Plain channel ID
   if (/^UC[a-zA-Z0-9_-]+$/.test(input.trim())) return input.trim();
-  return null; // Full URL we can't parse → skip ID field, fall to redes_sociais
+  return null;
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -162,30 +175,40 @@ export default function ArtistaSignupPublic() {
 
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY);
-  const [errors, setErrors] = useState<Partial<Record<keyof FormData, string>>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [protocol, setProtocol] = useState("");
 
   useEffect(() => {
-    if (!orgSlug) {
-      setSlugState("invalid");
-      return;
-    }
+    if (!orgSlug) { setSlugState("invalid"); return; }
     const result = resolveOrg(orgSlug);
     setOrgInfo(result.info);
     setSlugState(result.valid ? "valid" : "invalid");
   }, [orgSlug]);
 
-  const set = (field: keyof FormData, value: string) => {
+  const set = (field: keyof Omit<FormData, "tipo_perfil">, value: string) => {
     setForm((p) => ({ ...p, [field]: value }));
     if (errors[field]) setErrors((p) => { const e = { ...p }; delete e[field]; return e; });
   };
 
+  const toggleTipoPerfil = (opt: string) => {
+    setForm((p) => {
+      const exists = p.tipo_perfil.includes(opt);
+      return {
+        ...p,
+        tipo_perfil: exists
+          ? p.tipo_perfil.filter((v) => v !== opt)
+          : [...p.tipo_perfil, opt],
+      };
+    });
+    if (errors.tipo_perfil) setErrors((p) => { const e = { ...p }; delete e.tipo_perfil; return e; });
+  };
+
   const validateStep1 = (): boolean => {
-    const e: Partial<Record<keyof FormData, string>> = {};
+    const e: Record<string, string> = {};
     if (!form.nome_artistico.trim()) e.nome_artistico = "Obrigatório";
-    if (!form.tipo) e.tipo = "Obrigatório";
+    if (form.tipo_perfil.length === 0) e.tipo_perfil = "Selecione ao menos um tipo de perfil";
     if (!form.email.trim()) e.email = "Obrigatório";
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "E-mail inválido";
     if (!form.telefone.trim()) e.telefone = "Obrigatório";
@@ -194,12 +217,11 @@ export default function ArtistaSignupPublic() {
   };
 
   const validateStep2 = (): boolean => {
-    const e: Partial<Record<keyof FormData, string>> = {};
-    const urlFields: (keyof FormData)[] = ["youtube", "spotify", "apple_music", "soundcloud", "presskit_url"];
+    const e: Record<string, string> = {};
+    const urlFields: (keyof Omit<FormData, "tipo_perfil">)[] = ["youtube", "spotify", "apple_music", "deezer", "soundcloud", "presskit_url"];
     urlFields.forEach((f) => {
       const v = (form[f] as string).trim();
       if (v && !/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
-        // Allow @handles and plain IDs without flagging them
         if (/[\s/]/.test(v) || v.includes("://")) {
           e[f] = "URL deve começar com https://";
         }
@@ -210,7 +232,7 @@ export default function ArtistaSignupPublic() {
   };
 
   const validateStep3 = (): boolean => {
-    const e: Partial<Record<keyof FormData, string>> = {};
+    const e: Record<string, string> = {};
     if (form.foto_url.trim() && !/^https?:\/\/.+/.test(form.foto_url.trim())) {
       e.foto_url = "URL inválida — deve começar com https://";
     }
@@ -234,18 +256,30 @@ export default function ArtistaSignupPublic() {
     if (!validateStep3()) return;
     setIsSubmitting(true);
 
-    // Build redes_sociais text for platforms we can't map to individual fields
     const redesExtras: string[] = [];
     const spotifyId = extractSpotifyArtistId(form.spotify);
     const youtubeId = extractYouTubeChannelId(form.youtube);
     if (form.spotify.trim() && !spotifyId) redesExtras.push(`Spotify: ${form.spotify.trim()}`);
     if (form.youtube.trim() && !youtubeId) redesExtras.push(`YouTube: ${form.youtube.trim()}`);
+    if (form.deezer.trim()) redesExtras.push(`Deezer: ${form.deezer.trim()}`);
+
+    const extrasNotas: string[] = [];
+    if (form.data_nascimento) extrasNotas.push(`Data de Nascimento: ${form.data_nascimento}`);
+    if (form.genero) extrasNotas.push(`Gênero: ${form.genero}`);
+    if (form.distribuidora) extrasNotas.push(`Distribuidora: ${form.distribuidora}`);
+    if (form.distribuidora_email) extrasNotas.push(`E-mail distribuidora: ${form.distribuidora_email}`);
+
+    const notasInternas = [
+      form.notas_label.trim(),
+      ...redesExtras,
+      ...extrasNotas,
+    ].filter(Boolean).join("\n");
 
     try {
       const result = await createArtistUseCase({
         nome_artistico: form.nome_artistico,
         nome_civil: form.nome_civil,
-        tipo: form.tipo,
+        tipo: form.tipo_perfil.join(", "),
         status: "onboarding",
         genero_musical: form.genero_musical,
         email: form.email,
@@ -254,17 +288,14 @@ export default function ArtistaSignupPublic() {
         foto_url: form.foto_url,
         observacoes: form.bio,
         org_slug: orgSlug,
-        // Social handles (not URLs)
         instagram: form.instagram.trim().replace(/^@/, "") || undefined,
         tiktok: form.tiktok.trim().replace(/^@/, "") || undefined,
-        // Platform IDs properly extracted
         spotify_artist_id: spotifyId ?? undefined,
         youtube_channel_id: youtubeId ?? undefined,
         apple_music_url: form.apple_music.trim() || undefined,
         soundcloud_url: form.soundcloud.trim() || undefined,
-        // Docs
         presskit_url: form.presskit_url.trim() || undefined,
-        notas_internas: [form.notas_label.trim(), ...redesExtras].filter(Boolean).join("\n") || undefined,
+        notas_internas: notasInternas || undefined,
       });
       const alphanumeric = result.id.replace(/[^a-zA-Z0-9]/g, "");
       setProtocol(alphanumeric.slice(-8).toUpperCase());
@@ -415,7 +446,7 @@ export default function ArtistaSignupPublic() {
           ))}
         </div>
 
-        {/* Step 1 — Dados Básicos */}
+        {/* ── Step 1 — Dados Básicos ─────────────────────────────────────────── */}
         {step === 1 && (
           <div className="space-y-5">
             <div>
@@ -423,6 +454,7 @@ export default function ArtistaSignupPublic() {
               <p className="text-sm text-muted-foreground">Informações essenciais sobre você</p>
             </div>
 
+            {/* Nome Artístico + Nome Civil */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-sm">Nome Artístico <span className="text-destructive">*</span></Label>
@@ -446,23 +478,53 @@ export default function ArtistaSignupPublic() {
               </div>
             </div>
 
+            {/* Tipo de Perfil — multi-select toggles */}
+            <div className="space-y-2">
+              <Label className="text-sm">
+                Tipo de Perfil <span className="text-destructive">*</span>
+              </Label>
+              <div className="flex flex-wrap gap-2" data-testid="group-tipo-perfil">
+                {TIPO_PERFIL_OPTIONS.map((opt) => {
+                  const selected = form.tipo_perfil.includes(opt);
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => toggleTipoPerfil(opt)}
+                      data-testid={`toggle-tipo-${opt.toLowerCase().replace(/\//g, "-").replace(/\s/g, "-")}`}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-sm font-medium border transition-all",
+                        selected
+                          ? "bg-primary text-primary-foreground border-primary"
+                          : "bg-transparent text-foreground border-border hover:border-primary/60 hover:text-primary"
+                      )}
+                    >
+                      {opt}
+                    </button>
+                  );
+                })}
+              </div>
+              {errors.tipo_perfil && <p className="text-xs text-destructive">{errors.tipo_perfil}</p>}
+            </div>
+
+            {/* Gênero + Gênero Musical */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">Tipo <span className="text-destructive">*</span></Label>
-                <Select value={form.tipo} onValueChange={(v) => set("tipo", v)}>
-                  <SelectTrigger data-testid="select-tipo" className={errors.tipo ? "border-destructive" : ""}>
+                <Label className="text-sm">Gênero</Label>
+                <Select value={form.genero} onValueChange={(v) => set("genero", v)}>
+                  <SelectTrigger data-testid="select-genero">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {TIPOS.map((t) => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
+                    <SelectItem value="Masculino">Masculino</SelectItem>
+                    <SelectItem value="Feminino">Feminino</SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.tipo && <p className="text-xs text-destructive">{errors.tipo}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm">Gênero Musical</Label>
                 <Select value={form.genero_musical} onValueChange={(v) => set("genero_musical", v)}>
-                  <SelectTrigger data-testid="select-genero">
+                  <SelectTrigger data-testid="select-genero-musical">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -472,6 +534,7 @@ export default function ArtistaSignupPublic() {
               </div>
             </div>
 
+            {/* E-mail + Telefone */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-sm">E-mail <span className="text-destructive">*</span></Label>
@@ -495,18 +558,34 @@ export default function ArtistaSignupPublic() {
               </div>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm">CPF / CNPJ</Label>
-              <Input
-                placeholder="000.000.000-00"
-                value={form.cpf_cnpj} onChange={(e) => set("cpf_cnpj", e.target.value)}
-                data-testid="input-cpf-cnpj"
-              />
+            {/* CPF + Data de Nascimento */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm">CPF</Label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={form.cpf_cnpj} onChange={(e) => set("cpf_cnpj", e.target.value)}
+                  data-testid="input-cpf-cnpj"
+                />
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+                  Data de Nascimento
+                </Label>
+                <Input
+                  type="date"
+                  value={form.data_nascimento}
+                  onChange={(e) => set("data_nascimento", e.target.value)}
+                  data-testid="input-data-nascimento"
+                  className="block"
+                />
+              </div>
             </div>
           </div>
         )}
 
-        {/* Step 2 — Links e Redes */}
+        {/* ── Step 2 — Links e Redes ────────────────────────────────────────── */}
         {step === 2 && (
           <div className="space-y-5">
             <div>
@@ -514,6 +593,7 @@ export default function ArtistaSignupPublic() {
               <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
             </div>
 
+            {/* Instagram + TikTok */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
@@ -537,6 +617,21 @@ export default function ArtistaSignupPublic() {
               </div>
             </div>
 
+            {/* YouTube */}
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
+              </Label>
+              <Input
+                placeholder="https://youtube.com/@seucanal"
+                value={form.youtube} onChange={(e) => set("youtube", e.target.value)}
+                data-testid="input-youtube"
+                className={errors.youtube ? "border-destructive" : ""}
+              />
+              {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
+            </div>
+
+            {/* Spotify */}
             <div className="space-y-1.5">
               <Label className="text-sm flex items-center gap-1.5">
                 <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
@@ -551,19 +646,7 @@ export default function ArtistaSignupPublic() {
               <p className="text-xs text-muted-foreground">Cole o link da sua página no Spotify</p>
             </div>
 
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
-              </Label>
-              <Input
-                placeholder="https://youtube.com/@seucanal"
-                value={form.youtube} onChange={(e) => set("youtube", e.target.value)}
-                data-testid="input-youtube"
-                className={errors.youtube ? "border-destructive" : ""}
-              />
-              {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
-            </div>
-
+            {/* Apple Music + Deezer */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
@@ -578,17 +661,31 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
+                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer
                 </Label>
-                <Input placeholder="https://soundcloud.com/..."
-                  value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
-                  data-testid="input-soundcloud"
-                  className={errors.soundcloud ? "border-destructive" : ""}
+                <Input placeholder="https://www.deezer.com/artist/..."
+                  value={form.deezer} onChange={(e) => set("deezer", e.target.value)}
+                  data-testid="input-deezer"
+                  className={errors.deezer ? "border-destructive" : ""}
                 />
-                {errors.soundcloud && <p className="text-xs text-destructive">{errors.soundcloud}</p>}
+                {errors.deezer && <p className="text-xs text-destructive">{errors.deezer}</p>}
               </div>
             </div>
 
+            {/* SoundCloud */}
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
+              </Label>
+              <Input placeholder="https://soundcloud.com/..."
+                value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
+                data-testid="input-soundcloud"
+                className={errors.soundcloud ? "border-destructive" : ""}
+              />
+              {errors.soundcloud && <p className="text-xs text-destructive">{errors.soundcloud}</p>}
+            </div>
+
+            {/* Link do Presskit */}
             <div className="space-y-1.5">
               <Label className="text-sm flex items-center gap-1.5">
                 <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
@@ -601,10 +698,48 @@ export default function ArtistaSignupPublic() {
               />
               {errors.presskit_url && <p className="text-xs text-destructive">{errors.presskit_url}</p>}
             </div>
+
+            <Separator />
+
+            {/* Distribuidoras */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <Package className="h-4 w-4 text-muted-foreground" />
+                <h3 className="text-sm font-semibold">Distribuidoras</h3>
+              </div>
+              <p className="text-xs text-muted-foreground -mt-2">
+                Informe se já distribui sua música digitalmente
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Distribuidora</Label>
+                  <Select value={form.distribuidora} onValueChange={(v) => set("distribuidora", v)}>
+                    <SelectTrigger data-testid="select-distribuidora">
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DISTRIBUIDORAS.map((d) => (
+                        <SelectItem key={d} value={d}>{d}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">E-mail de share / acesso</Label>
+                  <Input
+                    type="email"
+                    placeholder="email@distribuidora.com"
+                    value={form.distribuidora_email}
+                    onChange={(e) => set("distribuidora_email", e.target.value)}
+                    data-testid="input-distribuidora-email"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* Step 3 — Bio e Contexto */}
+        {/* ── Step 3 — Bio e Contexto ───────────────────────────────────────── */}
         {step === 3 && (
           <div className="space-y-5">
             <div>
@@ -612,6 +747,27 @@ export default function ArtistaSignupPublic() {
               <p className="text-sm text-muted-foreground">Conte um pouco mais sobre você e sua proposta</p>
             </div>
 
+            {/* Resumo do artista */}
+            <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
+              <p className="text-xs font-semibold uppercase tracking-widest text-primary">Resumo do Cadastro</p>
+              <div className="text-sm space-y-1.5">
+                {[
+                  { label: "Nome do Artista", value: form.nome_artistico },
+                  { label: "Tipo de Perfil", value: form.tipo_perfil.length > 0 ? form.tipo_perfil.join(", ") : null },
+                  { label: "Telefone / WhatsApp", value: form.telefone },
+                  { label: "E-mail", value: form.email },
+                ].map(({ label, value }) => (
+                  <div key={label} className="flex gap-2">
+                    <span className="text-muted-foreground w-36 shrink-0 text-xs">{label}</span>
+                    <span className={cn("font-medium truncate text-xs", value ? "" : "text-muted-foreground italic")}>
+                      {value || "—"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Biografia */}
             <div className="space-y-1.5">
               <Label className="text-sm">Biografia / Proposta Artística</Label>
               <Textarea
@@ -622,6 +778,7 @@ export default function ArtistaSignupPublic() {
               <p className="text-xs text-muted-foreground">{form.bio.length} caracteres</p>
             </div>
 
+            {/* Foto de Perfil */}
             <div className="space-y-1.5">
               <Label className="text-sm flex items-center gap-1.5">
                 <Image className="h-3.5 w-3.5 text-primary" /> Foto de Perfil (URL)
@@ -643,6 +800,7 @@ export default function ArtistaSignupPublic() {
               )}
             </div>
 
+            {/* Mensagem para a gravadora */}
             <div className="space-y-1.5">
               <Label className="text-sm">Mensagem para a gravadora</Label>
               <Textarea
@@ -650,24 +808,6 @@ export default function ArtistaSignupPublic() {
                 rows={3} value={form.notas_label}
                 onChange={(e) => set("notas_label", e.target.value)} data-testid="textarea-notas"
               />
-            </div>
-
-            {/* Summary */}
-            <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2">
-              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Resumo</p>
-              <div className="text-sm space-y-1">
-                {[
-                  { label: "Artista", value: form.nome_artistico },
-                  { label: "Tipo", value: TIPOS.find((t) => t.value === form.tipo)?.label },
-                  { label: "Gênero", value: form.genero_musical },
-                  { label: "E-mail", value: form.email },
-                ].map(({ label, value }) => value ? (
-                  <div key={label} className="flex gap-2">
-                    <span className="text-muted-foreground w-24 shrink-0">{label}</span>
-                    <span className="font-medium truncate">{value}</span>
-                  </div>
-                ) : null)}
-              </div>
             </div>
           </div>
         )}
