@@ -211,29 +211,6 @@ export default function AdminDashboard() {
           </div>
         </div>
 
-        {/* ── Analytics KPIs ── */}
-        <div>
-          <h2 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-white/30" /> Analytics de Engajamento
-          </h2>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            {[
-              { label: "DAU / MAU",      value: `${(MOCK_KPIS.dau / MOCK_KPIS.mau * 100).toFixed(1)}%`, icon: Activity,   color: "text-blue-400",    bg: "bg-blue-500/10" },
-              { label: "Sessões / Dia",  value: MOCK_KPIS.sessions_today.toLocaleString("pt-BR"),         icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-              { label: "NPS Score",      value: MOCK_KPIS.nps_score.toString(),                           icon: BarChart3,  color: "text-cyan-400",    bg: "bg-cyan-500/10" },
-              { label: "Tenants Ativos", value: MOCK_KPIS.active_tenants.toString(),                      icon: Building2,  color: "text-white/50",    bg: "bg-white/5" },
-            ].map(({ label, value, icon: Icon, color, bg }) => (
-              <div key={label} className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-4">
-                <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
-                  <Icon className={cn("h-4 w-4", color)} />
-                </div>
-                <p className="text-xl font-bold text-white">{value}</p>
-                <p className="text-[11px] text-white/35 mt-0.5">{label}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* ── Analytics Charts ── */}
         <div className="grid lg:grid-cols-2 gap-5">
           {/* Crescimento de Tenants & Usuários */}
