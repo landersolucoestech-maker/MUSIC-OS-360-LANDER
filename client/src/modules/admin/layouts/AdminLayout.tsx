@@ -25,7 +25,7 @@ const NAV_ITEMS = [
   { label: "Analytics",       href: "/admin/analytics", icon: BarChart3 },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
   { label: "Support Hub",     href: "/admin/support",   icon: HeadphonesIcon },
-  { label: "Configurações",   href: "/admin/settings",  icon: Settings },
+  { label: "Configurações",   href: "/admin/configuracoes", icon: Settings },
 ];
 
 const SEVERITY_ICON = {
