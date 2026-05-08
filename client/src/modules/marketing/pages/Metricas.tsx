@@ -15,13 +15,14 @@ import {
   LayoutGrid, FileDown, FileSpreadsheet, FileText,
   Play, ThumbsUp, MessageCircle, Share2, Zap,
 } from "lucide-react";
-import { SiYoutube, SiMeta, SiGoogleads, SiInstagram, SiTiktok } from "react-icons/si";
+import { SiYoutube, SiMeta, SiGoogleads, SiInstagram, SiTiktok, SiSpotify } from "react-icons/si";
 import { cn } from "@/shared/lib/utils";
 import {
   YOUTUBE_MOCK, YOUTUBE_TOTALS,
   META_ADS_MOCK, GOOGLE_ADS_MOCK,
   INSTAGRAM_MOCK, INSTAGRAM_TOTALS,
   TIKTOK_MOCK, TIKTOK_TOTALS,
+  SPOTIFY_ADS_MOCK,
   fmtNum, type MonthlyPoint,
 } from "@/modules/analytics/data/mockAnalytics";
 import { formatCurrency } from "@/shared/lib/format-utils";
@@ -353,7 +354,7 @@ function PerformanceAnalitica() {
 }
 
 // ─── Top conteúdos ─────────────────────────────────────────────────────────────
-type ContentFilter = "todos" | "youtube" | "tiktok" | "instagram" | "meta" | "google";
+type ContentFilter = "todos" | "youtube" | "tiktok" | "instagram" | "meta" | "google" | "spotify";
 
 interface ContentItem {
   titulo: string;
@@ -366,12 +367,13 @@ interface ContentItem {
 }
 
 const FILTER_OPTIONS: { id: ContentFilter; label: string }[] = [
-  { id: "todos",     label: "Todos"      },
-  { id: "youtube",   label: "YouTube"    },
-  { id: "tiktok",    label: "TikTok"     },
-  { id: "instagram", label: "Instagram"  },
-  { id: "meta",      label: "Meta Ads"   },
-  { id: "google",    label: "Google Ads" },
+  { id: "todos",     label: "Todos"        },
+  { id: "youtube",   label: "YouTube"      },
+  { id: "tiktok",    label: "TikTok"       },
+  { id: "instagram", label: "Instagram"    },
+  { id: "meta",      label: "Meta Ads"     },
+  { id: "google",    label: "Google Ads"   },
+  { id: "spotify",   label: "Spotify Ads"  },
 ];
 
 function buildContentItems(): Record<ContentFilter, ContentItem[]> {
@@ -411,9 +413,15 @@ function buildContentItems(): Record<ContentFilter, ContentItem[]> {
     icon: SiGoogleads, color: "#34A853",
   }));
 
-  const all = [...yt, ...tt, ...ig, ...meta, ...google].sort((a, b) => b.metric - a.metric);
+  const spotify: ContentItem[] = SPOTIFY_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "Spotify Ads", plataforma: "Spotify Ads",
+    metric: c.streams, metricLabel: "streams",
+    icon: SiSpotify, color: "#1DB954",
+  }));
 
-  return { todos: all, youtube: yt, tiktok: tt, instagram: ig, meta, google };
+  const all = [...yt, ...tt, ...ig, ...meta, ...google, ...spotify].sort((a, b) => b.metric - a.metric);
+
+  return { todos: all, youtube: yt, tiktok: tt, instagram: ig, meta, google, spotify };
 }
 
 function TopConteudos() {

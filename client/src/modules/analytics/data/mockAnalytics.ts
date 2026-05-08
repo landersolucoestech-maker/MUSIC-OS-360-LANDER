@@ -716,6 +716,37 @@ export const TIKTOK_TOTALS = {
   artistasAtivos: TIKTOK_MOCK.length,
 };
 
+// ─── Spotify Ads ─────────────────────────────────────────────────────────────
+
+export interface SpotifyAdsCampaign {
+  nome: string;
+  tipo: "Podcast" | "Music" | "Branded" | "Playlist";
+  impressoes: number;
+  cliques: number;
+  ctr: number;
+  spend: number;
+  streams: number;
+  status: "ativa" | "pausada";
+}
+
+export const SPOTIFY_ADS_MOCK = {
+  mes: { impressoes: 1_820_000, cliques: 54_600, ctr: 3.0, spend: 28_400, streams: 41_200 },
+  evolution: [
+    { mes: "Dez", value: 820_000 },
+    { mes: "Jan", value: 980_000 },
+    { mes: "Fev", value: 1_140_000 },
+    { mes: "Mar", value: 1_380_000 },
+    { mes: "Abr", value: 1_620_000 },
+    { mes: "Mai", value: 1_820_000 },
+  ],
+  campanhas: [
+    { nome: "Ana Beatriz Santos — Lançamento Saudade de Mim", tipo: "Music",   impressoes: 680_000, cliques: 22_400, ctr: 3.29, spend: 10_800, streams: 18_200, status: "ativa"   },
+    { nome: "Vitória Lunar — EP Lunar Playlist Pitch",        tipo: "Playlist", impressoes: 520_000, cliques: 16_800, ctr: 3.23, spend: 8_400,  streams: 12_600, status: "ativa"   },
+    { nome: "Grupo Raiz Nordestina — Podcast Cultura BR",     tipo: "Podcast",  impressoes: 380_000, cliques: 10_200, ctr: 2.68, spend: 6_200,  streams: 7_400,  status: "ativa"   },
+    { nome: "DJ Marcus Flow — Branded Audio BPM",             tipo: "Branded",  impressoes: 240_000, cliques: 5_200,  ctr: 2.17, spend: 3_000,  streams: 3_000,  status: "pausada" },
+  ] as SpotifyAdsCampaign[],
+};
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 export function fmtNum(n: number): string {
