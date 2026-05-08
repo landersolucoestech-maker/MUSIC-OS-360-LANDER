@@ -317,7 +317,7 @@ export function AppSidebar() {
           {!collapsed && (
             <div className="min-w-0">
               <p className="text-[12.5px] font-bold leading-none tracking-tight text-sidebar-foreground">
-                MUSIC OS 360
+                MUSIC OS <span className="text-primary">360</span>
               </p>
               <p className="text-[9px] font-medium text-sidebar-foreground/40 uppercase tracking-[0.09em] leading-none mt-[3px]">
                 ERP OPERACIONAL MUSICAL
