@@ -19,12 +19,10 @@ import {
 const NAV_ITEMS = [
   { label: "Dashboard",       href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Clientes",        href: "/admin/clients",   icon: Building2 },
-  { label: "Assinaturas",     href: "/admin/subscriptions", icon: CreditCard },
   { label: "Planos",          href: "/admin/plans",     icon: Tag },
-  { label: "Receita",         href: "/admin/revenue",   icon: DollarSign },
   { label: "Analytics",       href: "/admin/analytics", icon: BarChart3 },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
-  { label: "Support Hub",     href: "/admin/support",   icon: HeadphonesIcon },
+  { label: "Suporte",         href: "/admin/support",   icon: HeadphonesIcon },
   { label: "Configurações",   href: "/admin/configuracoes", icon: Settings },
 ];
 
