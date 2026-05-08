@@ -1,4 +1,4 @@
-import type { RightsExecution, BroadcastDetection, CueSheet, Setlist, EcadImport, EcadPeriodo } from "../types";
+import type { RightsExecution, BroadcastDetection, CueSheet, Setlist, EcadImport, EcadPeriodo, ExecucaoTimelineEvent, EcadHistoricoISRC } from "../types";
 
 export const MOCK_EXECUCOES_PUBLICAS: RightsExecution[] = [
   { id: "re-001", obra_titulo: "Noite de Luz", artista: "Vitória Lunar", isrc: "BRMSC2500001", origem: "Rádio Globo FM", tipo_execucao: "radio_fm", data_hora: "2026-05-08T14:32:00", match_ecad: true, valor_estimado: 18.50, status: "confirmado" },
@@ -65,3 +65,98 @@ export const MOCK_ECAD_PERIODOS: EcadPeriodo[] = [
   { id: "ecad-003", periodo: "2025-Q3", valor_total: 9870.50, status: "recebido", data_referencia: "2025-09-30", observacoes: "Royalties de execução pública Q3/2025" },
   { id: "ecad-004", periodo: "2026-Q2", valor_total: 0, status: "pendente", data_referencia: "2026-06-30", observacoes: "Aguardando apuração" },
 ];
+
+/**
+ * Timeline keyed by ISRC (work identity), NOT execution ID.
+ * This ensures that clicking detail on any execution of the same work
+ * always shows the same unified, complete history.
+ */
+export const MOCK_TIMELINE_BY_ISRC: Record<string, ExecucaoTimelineEvent[]> = {
+  // BRMSC2500001 — "Noite de Luz" (Vitória Lunar) — appears as re-001 and re-009
+  "BRMSC2500001": [
+    { id: "tl-isrc1-1",  data_hora: "2026-05-08T15:00:00", tipo: "envio_ecad",        descricao: "Execução reportada ao ECAD automaticamente",              usuario: "Sistema" },
+    { id: "tl-isrc1-2",  data_hora: "2026-05-08T14:45:00", tipo: "confirmacao_ecad",  descricao: "Match confirmado com base ECAD",                          detalhe: "ISRC BRMSC2500001 encontrado no catálogo ECAD", origem: "ECAD API" },
+    { id: "tl-isrc1-3",  data_hora: "2026-05-08T14:32:00", tipo: "deteccao",          descricao: "Detecção automática via fingerprinting",                  detalhe: "Rádio Globo FM · FM 98.1 · duração 3:42", origem: "SoundScan API" },
+    { id: "tl-isrc1-4",  data_hora: "2026-05-04T08:15:00", tipo: "confirmacao_ecad",  descricao: "Match confirmado com base ECAD",                          origem: "ECAD API" },
+    { id: "tl-isrc1-5",  data_hora: "2026-05-04T08:00:00", tipo: "deteccao",          descricao: "Detecção automática via fingerprinting",                  detalhe: "Rádio Transamérica · FM 100.1 · duração 3:42", origem: "SoundScan API" },
+    { id: "tl-isrc1-6",  data_hora: "2026-04-20T11:00:00", tipo: "arrecadacao",       descricao: "Arrecadação ECAD Q1/2026 creditada",                      valor: 215.40, detalhe: "Total de 34 execuções no período", origem: "ECAD" },
+    { id: "tl-isrc1-7",  data_hora: "2026-03-15T09:00:00", tipo: "deteccao",          descricao: "Detecção automática via fingerprinting",                  detalhe: "Rádio Globo FM · FM 98.1 · duração 3:42", origem: "SoundScan API" },
+    { id: "tl-isrc1-8",  data_hora: "2026-01-10T14:00:00", tipo: "vinculo_catalogo",  descricao: "Obra vinculada ao catálogo interno",                      detalhe: "Obra ID: OBR-2025-0042", usuario: "Ana Carvalho" },
+  ],
+  // BRMSC2500002 — "Beira do Rio" (Grupo Raiz Nordestina)
+  "BRMSC2500002": [
+    { id: "tl-isrc2-1", data_hora: "2026-05-08T21:20:00", tipo: "confirmacao_ecad", descricao: "Match confirmado com base ECAD",                         origem: "ECAD API" },
+    { id: "tl-isrc2-2", data_hora: "2026-05-08T21:05:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "TV Globo · Canal 4 · duração 4:15", origem: "ContentID" },
+    { id: "tl-isrc2-3", data_hora: "2026-04-20T11:00:00", tipo: "arrecadacao",      descricao: "Arrecadação ECAD Q1/2026 creditada",                     valor: 987.20, detalhe: "Total de 28 execuções no período", origem: "ECAD" },
+    { id: "tl-isrc2-4", data_hora: "2026-03-22T18:30:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "TV Globo · Canal 4 · novela", origem: "ContentID" },
+  ],
+  // BRMSC2500003 — "Frequência 440" (DJ Marcus Flow)
+  "BRMSC2500003": [
+    { id: "tl-isrc3-1", data_hora: "2026-05-08T09:00:00", tipo: "envio_ecad",       descricao: "Notificação de divergência enviada ao ECAD",              usuario: "Sistema" },
+    { id: "tl-isrc3-2", data_hora: "2026-05-07T23:30:00", tipo: "divergencia_aberta",descricao: "Divergência detectada: ISRC não encontrado na base ECAD",detalhe: "ISRC BRMSC2500003 retornou 0 registros", origem: "ECAD API" },
+    { id: "tl-isrc3-3", data_hora: "2026-05-07T23:15:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "Multishow · Cabo 34 · duração 5:30", origem: "ContentID" },
+  ],
+  // BRMSC2500004 — "Amor de Interior" (Ana Beatriz Santos) — appears as re-004 and re-010
+  "BRMSC2500004": [
+    { id: "tl-isrc4-1", data_hora: "2026-05-07T10:35:00", tipo: "confirmacao_ecad", descricao: "Match confirmado com base ECAD",                         origem: "ECAD API" },
+    { id: "tl-isrc4-2", data_hora: "2026-05-07T10:20:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "Rádio Nacional AM · AM 980 · duração 3:10", origem: "SoundScan API" },
+    { id: "tl-isrc4-3", data_hora: "2026-05-03T15:45:00", tipo: "confirmacao_ecad", descricao: "Match confirmado com base ECAD",                         origem: "ECAD API" },
+    { id: "tl-isrc4-4", data_hora: "2026-05-03T15:30:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "TV Cultura · Canal 2 · duração 3:10", origem: "ContentID" },
+    { id: "tl-isrc4-5", data_hora: "2026-04-20T11:00:00", tipo: "arrecadacao",      descricao: "Arrecadação ECAD Q1/2026 creditada",                     valor: 312.80, detalhe: "Total de 41 execuções no período", origem: "ECAD" },
+  ],
+  // BRMSC2500005 — "Suíte Brasileira nº 1" (Trio Bossa Moderna)
+  "BRMSC2500005": [
+    { id: "tl-isrc5-1", data_hora: "2026-05-06T23:30:00", tipo: "envio_ecad",       descricao: "Setlist enviado ao ECAD para processamento",              usuario: "Carlos Mendes" },
+    { id: "tl-isrc5-2", data_hora: "2026-05-06T22:00:00", tipo: "deteccao",         descricao: "Setlist registrado — Show Ao Vivo",                      detalhe: "Show Ao Vivo — São Paulo · Auditório Ibirapuera", origem: "Setlist Manual" },
+  ],
+  // BRMSC2500006 — "Cidade Mágica" (Vitória Lunar)
+  "BRMSC2500006": [
+    { id: "tl-isrc6-1", data_hora: "2026-05-06T17:00:00", tipo: "divergencia_aberta",descricao: "Sem match ECAD — web rádio não cadastrada",              detalhe: "Web Rádio Samba Brasil não consta no cadastro ECAD", origem: "ECAD API" },
+    { id: "tl-isrc6-2", data_hora: "2026-05-06T16:45:00", tipo: "deteccao",         descricao: "Detecção automática via fingerprinting",                 detalhe: "Web Rádio Samba Brasil · Online · duração 3:25", origem: "SoundScan API" },
+  ],
+  // BRMSC2500007 — "Xote da Saudade" (Grupo Raiz Nordestina)
+  "BRMSC2500007": [
+    { id: "tl-isrc7-1", data_hora: "2026-05-06T09:00:00", tipo: "envio_ecad",       descricao: "Setlist enviado ao ECAD para processamento",              usuario: "Carlos Mendes" },
+    { id: "tl-isrc7-2", data_hora: "2026-05-05T23:55:00", tipo: "deteccao",         descricao: "Setlist registrado — Casa Noturna",                      detalhe: "Casa Noturna Via Music · São Paulo", origem: "Setlist Manual" },
+  ],
+  // BRMSC2500008 — "Trap do Norte" (Pedro Breaks)
+  "BRMSC2500008": [
+    { id: "tl-isrc8-1", data_hora: "2026-05-04T20:30:00", tipo: "deteccao",         descricao: "Setlist registrado — Evento",                            detalhe: "Festival Rec Beat · Recife, PE", origem: "Setlist Manual" },
+  ],
+};
+
+export const MOCK_ECAD_HISTORICO_ISRC: Record<string, EcadHistoricoISRC[]> = {
+  "BRMSC2500001": [
+    { id: "eh-001-1", isrc: "BRMSC2500001", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 34, valor_arrecadado: 215.40, status: "recebido", distribuidora: "ECAD", observacoes: "34 execuções em rádio FM" },
+    { id: "eh-001-2", isrc: "BRMSC2500001", periodo: "2025-Q4", data_referencia: "2025-12-31", total_execucoes: 28, valor_arrecadado: 178.20, status: "recebido", distribuidora: "ECAD", observacoes: "28 execuções em rádio e TV" },
+    { id: "eh-001-3", isrc: "BRMSC2500001", periodo: "2025-Q3", data_referencia: "2025-09-30", total_execucoes: 19, valor_arrecadado: 124.60, status: "recebido", distribuidora: "ECAD" },
+    { id: "eh-001-4", isrc: "BRMSC2500001", periodo: "2026-Q2", data_referencia: "2026-06-30", total_execucoes: 0, valor_arrecadado: 0, status: "pendente", observacoes: "Aguardando apuração" },
+  ],
+  "BRMSC2500002": [
+    { id: "eh-002-1", isrc: "BRMSC2500002", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 28, valor_arrecadado: 987.20, status: "recebido", distribuidora: "ECAD", observacoes: "Execuções em TV aberta — alto valor unitário" },
+    { id: "eh-002-2", isrc: "BRMSC2500002", periodo: "2025-Q4", data_referencia: "2025-12-31", total_execucoes: 22, valor_arrecadado: 756.80, status: "recebido", distribuidora: "ECAD" },
+    { id: "eh-002-3", isrc: "BRMSC2500002", periodo: "2026-Q2", data_referencia: "2026-06-30", total_execucoes: 0, valor_arrecadado: 0, status: "pendente" },
+  ],
+  "BRMSC2500003": [
+    { id: "eh-003-1", isrc: "BRMSC2500003", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 0, valor_arrecadado: 0, status: "divergencia", observacoes: "ISRC não encontrado na base ECAD — aguardando regularização" },
+    { id: "eh-003-2", isrc: "BRMSC2500003", periodo: "2025-Q4", data_referencia: "2025-12-31", total_execucoes: 0, valor_arrecadado: 0, status: "divergencia", observacoes: "Sem registro ECAD" },
+  ],
+  "BRMSC2500004": [
+    { id: "eh-004-1", isrc: "BRMSC2500004", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 41, valor_arrecadado: 312.80, status: "recebido", distribuidora: "ECAD", observacoes: "Execuções em rádio AM e TV" },
+    { id: "eh-004-2", isrc: "BRMSC2500004", periodo: "2025-Q4", data_referencia: "2025-12-31", total_execucoes: 35, valor_arrecadado: 267.50, status: "recebido", distribuidora: "ECAD" },
+    { id: "eh-004-3", isrc: "BRMSC2500004", periodo: "2025-Q3", data_referencia: "2025-09-30", total_execucoes: 27, valor_arrecadado: 210.30, status: "recebido", distribuidora: "ECAD" },
+    { id: "eh-004-4", isrc: "BRMSC2500004", periodo: "2026-Q2", data_referencia: "2026-06-30", total_execucoes: 0, valor_arrecadado: 0, status: "pendente" },
+  ],
+  "BRMSC2500005": [
+    { id: "eh-005-1", isrc: "BRMSC2500005", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 3, valor_arrecadado: 1680.00, status: "pendente", observacoes: "Setlist show ao vivo em processamento ECAD" },
+  ],
+  "BRMSC2500006": [
+    { id: "eh-006-1", isrc: "BRMSC2500006", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 0, valor_arrecadado: 0, status: "divergencia", observacoes: "Web rádio não cadastrada no ECAD" },
+  ],
+  "BRMSC2500007": [
+    { id: "eh-007-1", isrc: "BRMSC2500007", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 1, valor_arrecadado: 32.00, status: "pendente", observacoes: "Casa noturna — aguardando confirmação" },
+  ],
+  "BRMSC2500008": [
+    { id: "eh-008-1", isrc: "BRMSC2500008", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 0, valor_arrecadado: 0, status: "divergencia", observacoes: "Obra não reportada ao ECAD" },
+  ],
+};

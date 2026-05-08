@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
@@ -37,6 +38,7 @@ const STATUS_ECAD: Record<string, { label: string; className: string }> = {
 };
 
 export default function RightsMonitoring() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
@@ -155,7 +157,10 @@ export default function RightsMonitoring() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <ExecucoesTable execucoes={filtered} />
+              <ExecucoesTable
+                execucoes={filtered}
+                onViewDetail={(exec) => navigate(`/rights-monitoring/execucao/${exec.id}`)}
+              />
             </CardContent>
           </Card>
         )}

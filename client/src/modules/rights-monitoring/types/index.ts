@@ -102,3 +102,35 @@ export interface EcadPeriodo {
   data_referencia: string;
   observacoes?: string;
 }
+
+export type TimelineEventType =
+  | "deteccao"
+  | "confirmacao_ecad"
+  | "divergencia_aberta"
+  | "divergencia_resolvida"
+  | "envio_ecad"
+  | "arrecadacao"
+  | "vinculo_catalogo";
+
+export interface ExecucaoTimelineEvent {
+  id: string;
+  data_hora: string;
+  tipo: TimelineEventType;
+  descricao: string;
+  detalhe?: string;
+  valor?: number;
+  origem?: string;
+  usuario?: string;
+}
+
+export interface EcadHistoricoISRC {
+  id: string;
+  isrc: string;
+  periodo: string;
+  data_referencia: string;
+  total_execucoes: number;
+  valor_arrecadado: number;
+  status: "recebido" | "pendente" | "divergencia";
+  distribuidora?: string;
+  observacoes?: string;
+}
