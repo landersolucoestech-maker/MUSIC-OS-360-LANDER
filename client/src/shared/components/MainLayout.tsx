@@ -263,15 +263,17 @@ export function MainLayout({
 
             <NotificationsPopover />
 
-            <Button
-              variant="ghost"
-              size="icon"
-              data-testid="button-topbar-help"
-              className="h-8 w-8 text-muted-foreground hover:text-foreground"
-              title="Ajuda"
-            >
-              <HelpCircle className="h-4 w-4" />
-            </Button>
+            <Link to="/suporte">
+              <Button
+                variant="ghost"
+                size="icon"
+                data-testid="button-topbar-help"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                title="Suporte"
+              >
+                <HelpCircle className="h-4 w-4" />
+              </Button>
+            </Link>
 
             <div className="w-px h-5 bg-border/60 mx-1" />
 
