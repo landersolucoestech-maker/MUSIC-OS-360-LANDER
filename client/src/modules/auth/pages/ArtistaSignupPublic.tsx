@@ -196,7 +196,7 @@ export default function ArtistaSignupPublic() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY);
   const [distribuidoras, setDistribuidoras] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
-  const [emailsShareGravadora, setEmailsShareGravadora] = useState<string[]>([""]);
+  const [emailsShareGravadora, setEmailsShareGravadora] = useState<{ distribuidora: string; email: string }[]>([{ distribuidora: "", email: "" }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -222,11 +222,12 @@ export default function ArtistaSignupPublic() {
     });
   };
 
-  const addEmailShareGravadora = () => setEmailsShareGravadora((p) => [...p, ""]);
+  const addEmailShareGravadora = () =>
+    setEmailsShareGravadora((p) => [...p, { distribuidora: "", email: "" }]);
   const removeEmailShareGravadora = (idx: number) =>
     setEmailsShareGravadora((p) => p.filter((_, i) => i !== idx));
-  const updateEmailShareGravadora = (idx: number, val: string) =>
-    setEmailsShareGravadora((p) => p.map((v, i) => (i === idx ? val : v)));
+  const updateEmailShareGravadora = (idx: number, field: "distribuidora" | "email", val: string) =>
+    setEmailsShareGravadora((p) => p.map((v, i) => (i === idx ? { ...v, [field]: val } : v)));
 
   const addDistribuidora = () => {
     setDistribuidoras((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
@@ -331,10 +332,11 @@ export default function ArtistaSignupPublic() {
       if (form.vinculo_empresa_email.trim()) extrasNotas.push(`E-mail empresa: ${form.vinculo_empresa_email.trim()}`);
       if (form.vinculo_empresa_email_share.trim()) extrasNotas.push(`E-mail de contato: ${form.vinculo_empresa_email_share.trim()}`);
     }
-    if (VINCULO_COM_NOME_EMPRESA.has(form.vinculo)) {
-      const validShareEmails = emailsShareGravadora.filter((e) => e.trim());
-      validShareEmails.forEach((e, idx) => {
-        extrasNotas.push(`E-mail share ${form.vinculo} ${idx + 1}: ${e.trim()}`);
+    if (VINCULO_COM_EMPRESA.has(form.vinculo)) {
+      emailsShareGravadora.filter((e) => e.email.trim() || e.distribuidora).forEach((e, idx) => {
+        const prefix = `Share ${form.vinculo} ${idx + 1}`;
+        if (e.distribuidora) extrasNotas.push(`${prefix} — Distribuidora: ${e.distribuidora}`);
+        if (e.email.trim()) extrasNotas.push(`${prefix} — E-mail: ${e.email.trim()}`);
       });
     }
     distribuidoras.forEach((entry, idx) => {
@@ -963,15 +965,33 @@ export default function ArtistaSignupPublic() {
                   </div>
 
                   <div className="space-y-2.5">
-                    {emailsShareGravadora.map((email, idx) => (
+                    {idx === 0 && (
+                      <div className="grid grid-cols-2 gap-3">
+                        <Label className="text-xs text-muted-foreground">Distribuidora</Label>
+                        <Label className="text-xs text-muted-foreground">E-mail de share</Label>
+                      </div>
+                    )}
+                    {emailsShareGravadora.map((entry, idx) => (
                       <div key={idx} className="flex items-center gap-2">
-                        <div className="flex-1 space-y-1">
-                          {idx === 0 && <Label className="text-xs text-muted-foreground">E-mail de share</Label>}
+                        <div className="grid grid-cols-2 gap-3 flex-1">
+                          <Select
+                            value={entry.distribuidora}
+                            onValueChange={(v) => updateEmailShareGravadora(idx, "distribuidora", v)}
+                          >
+                            <SelectTrigger data-testid={`select-share-distribuidora-${idx}`}>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {DISTRIBUIDORAS.map((d) => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                           <Input
                             type="email"
-                            placeholder={`ex: ${idx === 0 ? "financeiro" : idx === 1 ? "distribuidora" : "manager"}@${form.vinculo === "Gravadora" ? "gravadora" : "editora"}.com`}
-                            value={email}
-                            onChange={(e) => updateEmailShareGravadora(idx, e.target.value)}
+                            placeholder="email@empresa.com"
+                            value={entry.email}
+                            onChange={(e) => updateEmailShareGravadora(idx, "email", e.target.value)}
                             data-testid={`input-share-gravadora-${idx}`}
                           />
                         </div>
@@ -982,7 +1002,7 @@ export default function ArtistaSignupPublic() {
                             size="icon"
                             onClick={() => removeEmailShareGravadora(idx)}
                             data-testid={`button-remove-share-gravadora-${idx}`}
-                            className={`text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0 ${idx === 0 ? "mt-5" : ""}`}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
