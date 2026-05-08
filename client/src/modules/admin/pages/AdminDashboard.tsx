@@ -185,30 +185,6 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
 
-          {/* MRR Breakdown */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
-            <div className="flex items-center justify-between mb-5">
-              <div>
-                <h2 className="text-[13px] font-semibold text-white">Breakdown MRR</h2>
-                <p className="text-[11px] text-white/40 mt-0.5">Novo, expansão e churn</p>
-              </div>
-            </div>
-            <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={MOCK_REVENUE.slice(-4)} barSize={10} barGap={4}>
-                <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
-                <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
-                <Tooltip content={<ChartTooltip />} />
-                <Legend
-                  iconType="circle" iconSize={6}
-                  wrapperStyle={{ fontSize: 11, color: "rgba(255,255,255,0.5)" }}
-                />
-                <Bar dataKey="new_mrr"       name="Novo"     fill="#3B82F6" radius={[3,3,0,0]} />
-                <Bar dataKey="expansion_mrr" name="Expansão" fill="#10B981" radius={[3,3,0,0]} />
-                <Bar dataKey="churned_mrr"   name="Churn"    fill="#EF4444" radius={[3,3,0,0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
         </div>
 
         {/* ── Analytics Charts ── */}
