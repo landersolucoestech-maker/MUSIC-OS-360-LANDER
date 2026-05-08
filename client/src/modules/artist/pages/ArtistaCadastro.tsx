@@ -801,34 +801,12 @@ export default function ArtistaCadastro() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Spotify</Label>
-                    <Input placeholder="https://open.spotify.com/artist/..." value={spotify} onChange={(e) => setSpotify(e.target.value)} data-testid="input-spotify" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Ouvintes Mensais Spotify</Label>
-                    <Input placeholder="ex: 450000" value={spotifyOuvintes} onChange={(e) => setSpotifyOuvintes(e.target.value)} data-testid="input-spotify-ouvintes" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
                     <Label>Instagram</Label>
                     <Input placeholder="https://instagram.com/@perfil" value={instagram} onChange={(e) => setInstagram(e.target.value)} data-testid="input-instagram" />
                   </div>
                   <div className="space-y-2">
                     <Label>Seguidores Instagram</Label>
                     <Input placeholder="ex: 150000" value={instagramSeguidores} onChange={(e) => setInstagramSeguidores(e.target.value)} data-testid="input-instagram-seguidores" />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>YouTube</Label>
-                    <Input placeholder="https://youtube.com/channel/UC..." value={youtube} onChange={(e) => setYoutube(e.target.value)} data-testid="input-youtube" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Inscritos YouTube</Label>
-                    <Input placeholder="ex: 80000" value={youtubeInscritos} onChange={(e) => setYoutubeInscritos(e.target.value)} data-testid="input-youtube-inscritos" />
                   </div>
                 </div>
 
@@ -845,12 +823,34 @@ export default function ArtistaCadastro() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>SoundCloud</Label>
-                    <Input placeholder="https://soundcloud.com/perfil" value={soundcloud} onChange={(e) => setSoundcloud(e.target.value)} data-testid="input-soundcloud" />
+                    <Label>Spotify</Label>
+                    <Input placeholder="https://open.spotify.com/artist/..." value={spotify} onChange={(e) => setSpotify(e.target.value)} data-testid="input-spotify" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Seguidores SoundCloud</Label>
-                    <Input placeholder="ex: 12000" value={soundcloudSeguidores} onChange={(e) => setSoundcloudSeguidores(e.target.value)} data-testid="input-soundcloud-seguidores" />
+                    <Label>Ouvintes Mensais Spotify</Label>
+                    <Input placeholder="ex: 450000" value={spotifyOuvintes} onChange={(e) => setSpotifyOuvintes(e.target.value)} data-testid="input-spotify-ouvintes" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>YouTube</Label>
+                    <Input placeholder="https://youtube.com/channel/UC..." value={youtube} onChange={(e) => setYoutube(e.target.value)} data-testid="input-youtube" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Inscritos YouTube</Label>
+                    <Input placeholder="ex: 80000" value={youtubeInscritos} onChange={(e) => setYoutubeInscritos(e.target.value)} data-testid="input-youtube-inscritos" />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Apple Music</Label>
+                    <Input placeholder="https://music.apple.com/artist/..." value={appleMusic} onChange={(e) => setAppleMusic(e.target.value)} data-testid="input-apple-music" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Álbuns Apple Music</Label>
+                    <Input placeholder="ex: 3" value={appleMusicAlbuns} onChange={(e) => setAppleMusicAlbuns(e.target.value)} data-testid="input-apple-albuns" />
                   </div>
                 </div>
 
@@ -867,12 +867,12 @@ export default function ArtistaCadastro() {
 
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Apple Music</Label>
-                    <Input placeholder="https://music.apple.com/artist/..." value={appleMusic} onChange={(e) => setAppleMusic(e.target.value)} data-testid="input-apple-music" />
+                    <Label>SoundCloud</Label>
+                    <Input placeholder="https://soundcloud.com/perfil" value={soundcloud} onChange={(e) => setSoundcloud(e.target.value)} data-testid="input-soundcloud" />
                   </div>
                   <div className="space-y-2">
-                    <Label>Álbuns Apple Music</Label>
-                    <Input placeholder="ex: 3" value={appleMusicAlbuns} onChange={(e) => setAppleMusicAlbuns(e.target.value)} data-testid="input-apple-albuns" />
+                    <Label>Seguidores SoundCloud</Label>
+                    <Input placeholder="ex: 12000" value={soundcloudSeguidores} onChange={(e) => setSoundcloudSeguidores(e.target.value)} data-testid="input-soundcloud-seguidores" />
                   </div>
                 </div>
 
