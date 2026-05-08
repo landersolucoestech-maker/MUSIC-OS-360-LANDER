@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import DOMPurify from "dompurify";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import {
@@ -78,7 +79,10 @@ function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose
           <div
             className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-1"
             dangerouslySetInnerHTML={{
-              __html: `<p class="text-[12.5px] text-foreground/80 leading-relaxed">${renderMarkdown(article.content)}</p>`,
+              __html: DOMPurify.sanitize(
+                `<p class="text-[12.5px] text-foreground/80 leading-relaxed">${renderMarkdown(article.content)}</p>`,
+                { USE_PROFILES: { html: true } }
+              ),
             }}
           />
           <div className="flex items-center justify-between text-[11px] text-muted-foreground border-t border-border/60 pt-3">
