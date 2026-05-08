@@ -727,29 +727,30 @@ export default function ArtistaSignupPublic() {
                   </div>
                 </div>
 
-                <div className="space-y-1.5">
-                  <Label className="text-sm">Telefone / WhatsApp <span className="text-destructive">*</span></Label>
-                  <Input
-                    placeholder="(11) 99999-9999"
-                    value={form.vinculo_empresa_telefone}
-                    onChange={(e) => set("vinculo_empresa_telefone", e.target.value)}
-                    data-testid="input-vinculo-empresa-telefone"
-                    className={errors.vinculo_empresa_telefone ? "border-destructive" : ""}
-                  />
-                  {errors.vinculo_empresa_telefone && <p className="text-xs text-destructive">{errors.vinculo_empresa_telefone}</p>}
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
-                  <Input
-                    type="email"
-                    placeholder="contato@empresa.com"
-                    value={form.vinculo_empresa_email}
-                    onChange={(e) => set("vinculo_empresa_email", e.target.value)}
-                    data-testid="input-vinculo-empresa-email"
-                    className={errors.vinculo_empresa_email ? "border-destructive" : ""}
-                  />
-                  {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Telefone / WhatsApp <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="(11) 99999-9999"
+                      value={form.vinculo_empresa_telefone}
+                      onChange={(e) => set("vinculo_empresa_telefone", e.target.value)}
+                      data-testid="input-vinculo-empresa-telefone"
+                      className={errors.vinculo_empresa_telefone ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_telefone && <p className="text-xs text-destructive">{errors.vinculo_empresa_telefone}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
+                    <Input
+                      type="email"
+                      placeholder="contato@empresa.com"
+                      value={form.vinculo_empresa_email}
+                      onChange={(e) => set("vinculo_empresa_email", e.target.value)}
+                      data-testid="input-vinculo-empresa-email"
+                      className={errors.vinculo_empresa_email ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
+                  </div>
                 </div>
               </div>
             )}
