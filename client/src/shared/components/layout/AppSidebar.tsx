@@ -340,7 +340,6 @@ export function AppSidebar() {
 
         {!collapsed && (
           <div className="flex items-center gap-0.5 shrink-0">
-            <ThemeToggle data-testid="button-theme-toggle" />
             <Button
               variant="ghost"
               size="icon"
