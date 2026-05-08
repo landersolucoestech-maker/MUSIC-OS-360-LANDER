@@ -1,0 +1,302 @@
+Reestruture completamente o módulo atual “Monitoramento” do MUSIC OS 360 para separar corretamente:
+
+1. EXECUÇÃO PÚBLICA / ECAD
+2. DSP ANALYTICS / STREAMING
+
+IMPORTANTE:
+Hoje o sistema está misturando plataformas DSP (Spotify, Apple Music, YouTube Music, Beatport) dentro de “Detecções de Execução”, o que está conceitualmente errado.
+
+Streaming NÃO é execução pública ECAD.
+
+O objetivo desta refatoração é transformar o sistema em uma arquitetura enterprise profissional, separando:
+- monitoramento de execução pública;
+- analytics de streaming digital.
+
+==================================================
+FASE 1 — REESTRUTURAR ARQUITETURA DOS MÓDULOS
+==================================================
+
+REMOVER do módulo atual “Monitoramento”:
+- Spotify
+- Apple Music
+- YouTube Music
+- Beatport
+- qualquer dado de streaming
+- qualquer métrica DSP
+
+CRIAR DOIS MÓDULOS SEPARADOS:
+
+1. “Rights Monitoring”
+ou
+“Monitoramento ECAD”
+
+2. “DSP Analytics”
+
+Manter visual consistente com o restante do sistema.
+
+==================================================
+FASE 2 — NOVO MÓDULO: RIGHTS MONITORING
+==================================================
+
+Este módulo deve representar:
+- monitoramento de execução pública;
+- auditoria ECAD;
+- rádio;
+- TV;
+- shows;
+- web rádios;
+- cue sheets;
+- setlists;
+- divergências de arrecadação.
+
+CRIAR DASHBOARD COM:
+
+KPIs:
+- Execuções Detectadas
+- Execuções Confirmadas
+- Não Reportadas
+- Divergências
+- Match Rate
+- Valor Estimado
+- Valor Recebido
+- Diferença Financeira
+
+==================================================
+TABELA PRINCIPAL
+==================================================
+
+Título:
+“Execuções Públicas Detectadas”
+
+Colunas:
+- Música
+- Artista
+- Origem
+- Tipo de Execução
+- Data/Hora
+- ISRC
+- Match ECAD
+- Valor Estimado
+- Status
+
+Exemplos reais:
+- Rádio FM
+- TV Globo
+- Multishow
+- Show ao Vivo
+- Web Rádio
+- Casa Noturna
+- Evento
+
+STATUS:
+- Confirmado
+- Pendente
+- Divergência
+- Não Reportado
+
+==================================================
+CRIAR ABAS INTERNAS
+==================================================
+
+1. Rádio & TV
+2. Shows & Setlists
+3. Cue Sheets
+4. Divergências
+5. Auditoria
+6. Importação ECAD
+
+==================================================
+IMPORTAÇÃO ECAD
+==================================================
+
+Criar modal profissional de importação:
+
+Aceitar:
+- .xlsx
+- .xls
+- .csv
+- .exp
+
+Funcionalidades:
+- drag and drop
+- validação do arquivo
+- preview dos dados
+- status de processamento
+- parsing automático
+- identificação de:
+  - ISRC
+  - obra
+  - intérprete
+  - publisher
+  - período
+  - execução
+  - arrecadação
+
+==================================================
+FASE 3 — CRIAR MÓDULO DSP ANALYTICS
+==================================================
+
+Mover TODO conteúdo relacionado a:
+- Spotify
+- Apple Music
+- TikTok
+- YouTube Music
+- Beatport
+- DSPs
+
+para um novo módulo separado chamado:
+
+“DSP Analytics”
+
+==================================================
+DASHBOARD DSP
+==================================================
+
+KPIs:
+- Streams
+- Revenue
+- Monthly Listeners
+- Saves
+- Playlist Reach
+- Growth
+- Engagement
+- Top Platforms
+
+==================================================
+TABELA DSP
+==================================================
+
+Colunas:
+- Música
+- Plataforma
+- Streams
+- Revenue
+- País
+- Playlist
+- Crescimento
+- Conversão
+
+==================================================
+CRIAR ABAS:
+==================================================
+
+- Streaming
+- Playlists
+- TikTok
+- Audience
+- Revenue
+- Territories
+
+==================================================
+FASE 4 — AJUSTAR MENU LATERAL
+==================================================
+
+Remover módulo antigo “Monitoramento”.
+
+Criar nova organização:
+
+RIGHTS & MONITORING
+- Rights Monitoring
+- Rádio & TV
+- Setlists
+- Cue Sheets
+- Auditoria
+
+DSP ANALYTICS
+- Streaming
+- TikTok Analytics
+- Playlists
+- Audience Analytics
+
+==================================================
+FASE 5 — PADRONIZAÇÃO VISUAL
+==================================================
+
+Melhorar o visual para padrão enterprise.
+
+Problemas atuais:
+- aparência genérica/amadora;
+- cards muito vazios;
+- hierarquia visual fraca;
+- pouca densidade informacional.
+
+Aplicar:
+- layout mais premium;
+- espaçamentos consistentes;
+- tipografia mais forte;
+- melhores estados de status;
+- badges profissionais;
+- tabelas enterprise;
+- melhor contraste;
+- ícones coerentes;
+- melhor organização visual.
+
+REFERÊNCIA:
+plataformas enterprise de:
+- Chartmetric
+- Viberate
+- BMAT
+- Soundcharts
+- Spotify for Artists
+- Stripe Dashboard
+- Linear
+
+==================================================
+FASE 6 — ESTRUTURA TÉCNICA
+==================================================
+
+Separar corretamente:
+
+/modules/rights-monitoring
+/modules/dsp-analytics
+
+Separar:
+- services
+- hooks
+- types
+- components
+- mock data
+- schemas
+- parsers
+
+NÃO deixar lógica misturada.
+
+==================================================
+FASE 7 — TIPAGEM E DOMÍNIO
+==================================================
+
+Criar entidades separadas:
+
+RightsExecution
+BroadcastDetection
+CueSheet
+Setlist
+EcadImport
+DSPStream
+DSPRevenue
+PlatformAnalytics
+
+NÃO reutilizar tipos genéricos errados.
+
+==================================================
+FASE 8 — RESULTADO FINAL
+==================================================
+
+O sistema deve parecer:
+- plataforma enterprise musical real;
+- arquitetura profissional;
+- semanticamente correta;
+- pronta para futura integração:
+  - ACRCloud
+  - BMAT
+  - ECAD
+  - Spotify API
+  - YouTube API
+  - TikTok API
+
+IMPORTANTE:
+Executar TUDO EM ETAPAS.
+NÃO quebrar componentes existentes.
+NÃO alterar funcionalidades globais.
+NÃO criar código mock desorganizado.
+NÃO misturar streaming com execução pública novamente.
