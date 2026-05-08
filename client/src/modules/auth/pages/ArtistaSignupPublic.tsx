@@ -268,8 +268,6 @@ export default function ArtistaSignupPublic() {
       if (!form.vinculo_empresa_telefone.trim()) e.vinculo_empresa_telefone = "Obrigatório";
       if (!form.vinculo_empresa_email.trim()) e.vinculo_empresa_email = "Obrigatório";
       else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vinculo_empresa_email)) e.vinculo_empresa_email = "E-mail inválido";
-      if (!form.vinculo_empresa_email_share.trim()) e.vinculo_empresa_email_share = "Obrigatório";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vinculo_empresa_email_share)) e.vinculo_empresa_email_share = "E-mail inválido";
     }
     setErrors(e);
     return Object.keys(e).length === 0;
@@ -741,31 +739,17 @@ export default function ArtistaSignupPublic() {
                   {errors.vinculo_empresa_telefone && <p className="text-xs text-destructive">{errors.vinculo_empresa_telefone}</p>}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">E-mail <span className="text-destructive">*</span></Label>
-                    <Input
-                      type="email"
-                      placeholder="contato@empresa.com"
-                      value={form.vinculo_empresa_email}
-                      onChange={(e) => set("vinculo_empresa_email", e.target.value)}
-                      data-testid="input-vinculo-empresa-email"
-                      className={errors.vinculo_empresa_email ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
-                    <Input
-                      type="email"
-                      placeholder="contato2@empresa.com"
-                      value={form.vinculo_empresa_email_share}
-                      onChange={(e) => set("vinculo_empresa_email_share", e.target.value)}
-                      data-testid="input-vinculo-empresa-email-share"
-                      className={errors.vinculo_empresa_email_share ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_email_share && <p className="text-xs text-destructive">{errors.vinculo_empresa_email_share}</p>}
-                  </div>
+                <div className="space-y-1.5">
+                  <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
+                  <Input
+                    type="email"
+                    placeholder="contato@empresa.com"
+                    value={form.vinculo_empresa_email}
+                    onChange={(e) => set("vinculo_empresa_email", e.target.value)}
+                    data-testid="input-vinculo-empresa-email"
+                    className={errors.vinculo_empresa_email ? "border-destructive" : ""}
+                  />
+                  {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
                 </div>
               </div>
             )}
@@ -962,8 +946,8 @@ export default function ArtistaSignupPublic() {
               </Button>
             </div>
 
-            {/* E-mails de Share da Gravadora/Editora — aparece quando vinculo é Gravadora/Editora e ao menos uma distribuidora selecionada */}
-            {VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && distribuidoras.some((d) => d.distribuidora) && (
+            {/* E-mails de Share — aparece quando há vínculo com empresa e ao menos uma distribuidora selecionada */}
+            {VINCULO_COM_EMPRESA.has(form.vinculo) && distribuidoras.some((d) => d.distribuidora) && (
               <>
                 <Separator />
                 <div className="space-y-4">
@@ -973,7 +957,7 @@ export default function ArtistaSignupPublic() {
                       <h3 className="text-sm font-semibold">E-mails de Share — {form.vinculo}</h3>
                     </div>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Informe os e-mails de share da {form.vinculo.toLowerCase()} responsáveis pelo recebimento de direitos. Você pode adicionar múltiplos responsáveis.
+                      Informe os e-mails de share responsáveis pelo recebimento de direitos. Você pode adicionar múltiplos responsáveis.
                     </p>
                   </div>
 
