@@ -15,7 +15,7 @@ import {
 } from "@/shared/ui/select";
 import {
   ChevronLeft, Loader2, Save, FileText, PlusCircle,
-  Shield, ExternalLink, Plus, Trash2, Music,
+  Shield, ExternalLink, Plus, Trash2, Music, Package,
 } from "lucide-react";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
@@ -46,14 +46,18 @@ const BANCOS = [
 ];
 
 const DISTRIBUIDORAS = [
-  { id: "onerpm",    label: "ONErpm" },
-  { id: "distrokid", label: "DistroKid" },
-  { id: "30por1",    label: "30 Por 1" },
-  { id: "symphonic", label: "Symphonic" },
-  { id: "somvibe",   label: "Somvibe" },
-  { id: "soundon",   label: "SoundOn" },
-  { id: "musicpro",  label: "MusicPro" },
+  "Believe", "CD Baby", "DistroKid", "Ingrooves", "Kontor", "ONErpm",
+  "Orchard", "Sony Music", "Stem", "Symphonic", "TuneCore", "Warner Music", "Outro",
 ];
+
+const VINCULO_COM_EMPRESA = new Set(["com_empresario", "gravadora", "editora"]);
+
+interface DistribuidoraEntry {
+  distribuidora: string;
+  email: string;
+}
+
+const EMPTY_DISTRIBUIDORA: DistribuidoraEntry = { distribuidora: "", email: "" };
 
 const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(
   ([value, label]) => ({ value, label }),
@@ -165,8 +169,8 @@ export default function ArtistaCadastro() {
   const [gravadoraResponsavelEmail, setGravadoraResponsavelEmail] = useState("");
 
   // ── 6. Distribuidoras ─────────────────────────────────────────────────────
-  const [distribuidorasSelecionadas, setDistribuidorasSelecionadas] = useState<Record<string, boolean>>({});
-  const [distribuidorasEmails, setDistribuidorasEmails] = useState<Record<string, string>>({});
+  const [distribuidorasArtista, setDistribuidorasArtista] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
+  const [distribuidorasEmpresa, setDistribuidorasEmpresa] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
 
   // ── 7. Mídia 360 ──────────────────────────────────────────────────────────
   const [bannerUrl, setBannerUrl] = useState("");
@@ -237,8 +241,17 @@ export default function ArtistaCadastro() {
     setGravadoraResponsavelNome(f.gravadoraResponsavelNome);
     setGravadoraResponsavelTelefone(f.gravadoraResponsavelTelefone);
     setGravadoraResponsavelEmail(f.gravadoraResponsavelEmail);
-    setDistribuidorasSelecionadas(f.distribuidorasSelecionadas);
-    setDistribuidorasEmails(f.distribuidorasEmails);
+    // Converte Records salvos → linhas dinâmicas
+    const artRows = Object.entries(f.distribuidorasSelecionadas)
+      .filter(([, sel]) => sel)
+      .map(([name]) => ({ distribuidora: name, email: f.distribuidorasEmails[name] || "" }));
+    setDistribuidorasArtista(artRows.length > 0 ? artRows : [{ ...EMPTY_DISTRIBUIDORA }]);
+    const empSel = (artistaExistente?.distribuidoras_empresa_selecionadas as Record<string, boolean> | null) ?? {};
+    const empEmails = (artistaExistente?.distribuidoras_empresa_emails as Record<string, string> | null) ?? {};
+    const empRows = Object.entries(empSel)
+      .filter(([, sel]) => sel)
+      .map(([name]) => ({ distribuidora: name, email: empEmails[name] || "" }));
+    setDistribuidorasEmpresa(empRows.length > 0 ? empRows : [{ ...EMPTY_DISTRIBUIDORA }]);
     setDocumentosPessoais(
       f.documentosPessoaisUrl
         ? [{ name: "documento.pdf", size: 0, type: "application/pdf", path: f.documentosPessoaisUrl, url: f.documentosPessoaisUrl }]
@@ -312,6 +325,22 @@ export default function ArtistaCadastro() {
     }
   };
 
+  // ── Distribuidoras — artista ───────────────────────────────────────────────
+  const setDistribuidoraArtistaField = (idx: number, field: keyof DistribuidoraEntry, value: string) =>
+    setDistribuidorasArtista((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  const addDistribuidoraArtista = () =>
+    setDistribuidorasArtista((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
+  const removeDistribuidoraArtista = (idx: number) =>
+    setDistribuidorasArtista((prev) => prev.filter((_, i) => i !== idx));
+
+  // ── Distribuidoras — empresa ───────────────────────────────────────────────
+  const setDistribuidoraEmpresaField = (idx: number, field: keyof DistribuidoraEntry, value: string) =>
+    setDistribuidorasEmpresa((prev) => prev.map((e, i) => i === idx ? { ...e, [field]: value } : e));
+  const addDistribuidoraEmpresa = () =>
+    setDistribuidorasEmpresa((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
+  const removeDistribuidoraEmpresa = (idx: number) =>
+    setDistribuidorasEmpresa((prev) => prev.filter((_, i) => i !== idx));
+
   // ── Submit ────────────────────────────────────────────────────────────────
 
   const handleSubmit = async () => {
@@ -375,8 +404,18 @@ export default function ArtistaCadastro() {
         gravadoraResponsavelNome,
         gravadoraResponsavelTelefone,
         gravadoraResponsavelEmail,
-        distribuidorasSelecionadas,
-        distribuidorasEmails,
+        distribuidorasSelecionadas: Object.fromEntries(
+          distribuidorasArtista.filter((e) => e.distribuidora).map((e) => [e.distribuidora, true]),
+        ),
+        distribuidorasEmails: Object.fromEntries(
+          distribuidorasArtista.filter((e) => e.distribuidora && e.email).map((e) => [e.distribuidora, e.email]),
+        ),
+        distribuidorasEmpresaSelecionadas: Object.fromEntries(
+          distribuidorasEmpresa.filter((e) => e.distribuidora).map((e) => [e.distribuidora, true]),
+        ),
+        distribuidorasEmpresaEmails: Object.fromEntries(
+          distribuidorasEmpresa.filter((e) => e.distribuidora && e.email).map((e) => [e.distribuidora, e.email]),
+        ),
         fotoUrl: imagemArtista[0]?.url || "",
         documentosPessoaisUrl: documentosPessoais[0]?.url || "",
         presskitUrl: presskit[0]?.url || "",
@@ -944,43 +983,153 @@ export default function ArtistaCadastro() {
 
                 <Separator />
 
+                {/* ── 6. Distribuidoras / Agregadoras ─────────────────── */}
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold">Distribuidoras / Agregadoras</h3>
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 rounded-lg border bg-muted/30">
-                    {DISTRIBUIDORAS.map((dist) => (
-                      <div key={dist.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`dist-${dist.id}`}
-                          checked={distribuidorasSelecionadas[dist.id] || false}
-                          onCheckedChange={() =>
-                            setDistribuidorasSelecionadas((prev) => ({ ...prev, [dist.id]: !prev[dist.id] }))
-                          }
-                        />
-                        <Label htmlFor={`dist-${dist.id}`} className="cursor-pointer text-sm">{dist.label}</Label>
+                  <div className="flex items-center gap-2">
+                    <Package className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="text-sm font-semibold">Distribuidoras / Agregadoras do Artista</h3>
+                  </div>
+                  <p className="text-xs text-muted-foreground -mt-2">
+                    Distribuidoras vinculadas diretamente ao artista. Adicione quantas forem necessárias.
+                  </p>
+
+                  <div className="space-y-3">
+                    {distribuidorasArtista.map((entry, idx) => (
+                      <div key={idx} className="grid grid-cols-2 gap-3 items-end">
+                        <div className="space-y-1.5">
+                          {idx === 0 && <Label className="text-sm">Distribuidora</Label>}
+                          <Select
+                            value={entry.distribuidora}
+                            onValueChange={(v) => setDistribuidoraArtistaField(idx, "distribuidora", v)}
+                          >
+                            <SelectTrigger data-testid={`select-dist-artista-${idx}`}>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent className="bg-background border border-border z-50">
+                              {DISTRIBUIDORAS.map((d) => (
+                                <SelectItem key={d} value={d}>{d}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="flex items-end gap-2">
+                          <div className="space-y-1.5 flex-1">
+                            {idx === 0 && <Label className="text-sm">E-mail de share / acesso</Label>}
+                            <Input
+                              type="email"
+                              placeholder="email@distribuidora.com"
+                              value={entry.email}
+                              onChange={(e) => setDistribuidoraArtistaField(idx, "email", e.target.value)}
+                              data-testid={`input-dist-artista-email-${idx}`}
+                            />
+                          </div>
+                          {idx > 0 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeDistribuidoraArtista(idx)}
+                              data-testid={`button-remove-dist-artista-${idx}`}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       </div>
                     ))}
                   </div>
 
-                  {Object.entries(distribuidorasSelecionadas)
-                    .filter(([, sel]) => sel)
-                    .map(([distId]) => {
-                      const dist = DISTRIBUIDORAS.find((d) => d.id === distId);
-                      if (!dist) return null;
-                      return (
-                        <div key={distId} className="space-y-2">
-                          <Label>Email na {dist.label}</Label>
-                          <Input
-                            type="email"
-                            placeholder={`Email cadastrado na ${dist.label}`}
-                            value={distribuidorasEmails[distId] || ""}
-                            onChange={(e) =>
-                              setDistribuidorasEmails((prev) => ({ ...prev, [distId]: e.target.value }))
-                            }
-                          />
-                        </div>
-                      );
-                    })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={addDistribuidoraArtista}
+                    data-testid="button-add-dist-artista"
+                    className="gap-1.5 text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    Adicionar outra distribuidora
+                  </Button>
                 </div>
+
+                {/* ── Distribuidoras da Empresa (condicional) ─────────── */}
+                {VINCULO_COM_EMPRESA.has(tipoPerfil) && (
+                  <>
+                    <Separator />
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <Package className="h-4 w-4 text-muted-foreground" />
+                          <h3 className="text-sm font-semibold">
+                            Distribuidoras / Agregadoras da {tipoPerfil === "com_empresario" ? "Empresa / Empresário" : tipoPerfil === "gravadora" ? "Gravadora" : "Editora"}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Distribuidoras vinculadas à empresa responsável. Podem ser diferentes das do artista.
+                        </p>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pr-9">
+                        <Label className="text-xs text-muted-foreground">Distribuidora</Label>
+                        <Label className="text-xs text-muted-foreground">E-mail de share</Label>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {distribuidorasEmpresa.map((entry, idx) => (
+                          <div key={idx} className="flex items-center gap-2">
+                            <div className="grid grid-cols-2 gap-3 flex-1">
+                              <Select
+                                value={entry.distribuidora}
+                                onValueChange={(v) => setDistribuidoraEmpresaField(idx, "distribuidora", v)}
+                              >
+                                <SelectTrigger data-testid={`select-dist-empresa-${idx}`}>
+                                  <SelectValue placeholder="Selecione" />
+                                </SelectTrigger>
+                                <SelectContent className="bg-background border border-border z-50">
+                                  {DISTRIBUIDORAS.map((d) => (
+                                    <SelectItem key={d} value={d}>{d}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <Input
+                                type="email"
+                                placeholder="email@empresa.com"
+                                value={entry.email}
+                                onChange={(e) => setDistribuidoraEmpresaField(idx, "email", e.target.value)}
+                                data-testid={`input-dist-empresa-email-${idx}`}
+                              />
+                            </div>
+                            {distribuidorasEmpresa.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => removeDistribuidoraEmpresa(idx)}
+                                data-testid={`button-remove-dist-empresa-${idx}`}
+                                className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addDistribuidoraEmpresa}
+                        data-testid="button-add-dist-empresa"
+                        className="gap-1.5 text-xs"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Adicionar distribuidora da empresa
+                      </Button>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 

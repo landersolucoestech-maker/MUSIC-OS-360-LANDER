@@ -353,6 +353,8 @@ export interface ArtistaFormFields {
   gravadoraResponsavelEmail: string;
   distribuidorasSelecionadas: Record<string, boolean>;
   distribuidorasEmails: Record<string, string>;
+  distribuidorasEmpresaSelecionadas: Record<string, boolean>;
+  distribuidorasEmpresaEmails: Record<string, string>;
   fotoUrl: string;
   documentosPessoaisUrl: string;
   presskitUrl: string;
@@ -414,6 +416,8 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
       gravadoraResponsavelEmail: "",
       distribuidorasSelecionadas: {},
       distribuidorasEmails: {},
+      distribuidorasEmpresaSelecionadas: {},
+      distribuidorasEmpresaEmails: {},
       fotoUrl: "",
       documentosPessoaisUrl: "",
       presskitUrl: "",
@@ -476,9 +480,12 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     gravadoraResponsavelNome: str(artista.gravadora_responsavel_nome),
     gravadoraResponsavelTelefone: str(artista.gravadora_responsavel_telefone),
     gravadoraResponsavelEmail: str(artista.gravadora_responsavel_email),
-    // Distribuidoras
+    // Distribuidoras do artista
     distribuidorasSelecionadas: (artista.distribuidoras_selecionadas as Record<string, boolean> | null) ?? {},
     distribuidorasEmails: (artista.distribuidoras_emails as Record<string, string> | null) ?? {},
+    // Distribuidoras da empresa
+    distribuidorasEmpresaSelecionadas: (artista.distribuidoras_empresa_selecionadas as Record<string, boolean> | null) ?? {},
+    distribuidorasEmpresaEmails: (artista.distribuidoras_empresa_emails as Record<string, string> | null) ?? {},
     // Arquivos
     fotoUrl: str(artista.foto_url),
     documentosPessoaisUrl: str((artista as any).documentos_pessoais_url),
@@ -548,9 +555,12 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     gravadora_responsavel_nome: strOrNull(f.gravadoraResponsavelNome),
     gravadora_responsavel_telefone: strOrNull(f.gravadoraResponsavelTelefone),
     gravadora_responsavel_email: strOrNull(f.gravadoraResponsavelEmail),
-    // Distribuidoras
+    // Distribuidoras do artista
     distribuidoras_selecionadas: Object.keys(f.distribuidorasSelecionadas).length > 0 ? f.distribuidorasSelecionadas : null,
     distribuidoras_emails: Object.keys(f.distribuidorasEmails).length > 0 ? f.distribuidorasEmails : null,
+    // Distribuidoras da empresa
+    distribuidoras_empresa_selecionadas: Object.keys(f.distribuidorasEmpresaSelecionadas).length > 0 ? f.distribuidorasEmpresaSelecionadas : null,
+    distribuidoras_empresa_emails: Object.keys(f.distribuidorasEmpresaEmails).length > 0 ? f.distribuidorasEmpresaEmails : null,
     notas_internas: strOrNull(f.notasInternas),
     // Documentos / presskit
     documentos_pessoais_url: strOrNull(f.documentosPessoaisUrl),

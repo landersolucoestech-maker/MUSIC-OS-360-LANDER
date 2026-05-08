@@ -63,9 +63,12 @@ export interface Artista {
   gravadora_responsavel_nome?: string | null;
   gravadora_responsavel_telefone?: string | null;
   gravadora_responsavel_email?: string | null;
-  // distribuidoras
+  // distribuidoras do artista
   distribuidoras_selecionadas?: Record<string, boolean> | null;
   distribuidoras_emails?: Record<string, string> | null;
+  // distribuidoras da empresa (empresário / gravadora / editora)
+  distribuidoras_empresa_selecionadas?: Record<string, boolean> | null;
+  distribuidoras_empresa_emails?: Record<string, string> | null;
   // documentos / presskit
   documentos_pessoais_url?: string | null;
   presskit_url?: string | null;
