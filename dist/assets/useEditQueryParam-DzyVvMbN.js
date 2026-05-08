@@ -1,0 +1,1 @@
+import{m as i,r as o}from"./index-BrUDD1wQ.js";function l(t,r,s){const[n,c]=i(),a=o.useRef(null);o.useEffect(()=>{const e=n.get(t);if(!e||!r||r.length===0||a.current===e)return;const u=r.find(d=>String(d.id)===e);if(!u)return;a.current=e,s(u);const f=new URLSearchParams(n);f.delete(t),c(f,{replace:!0})},[n,r,t,s,c])}export{l as u};

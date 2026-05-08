@@ -17,6 +17,21 @@ export type ExecutionType =
 
 export type ExecutionStatus = "confirmado" | "pendente" | "divergencia" | "nao_reportado";
 
+export interface RightsExecutionCatalogInfo {
+  compositor: string;
+  compositores: string;
+  co_compositores: string | null;
+  editora: string;
+  detentores: string;
+  iswc: string | null;
+  cod_ecad: string | null;
+  cod_abramus: string | null;
+  genero: string;
+  duracao: string;
+  catalog_id: string;
+  catalog_status: string;
+}
+
 export interface RightsExecution {
   id: string;
   obra_titulo: string;
@@ -28,6 +43,8 @@ export interface RightsExecution {
   match_ecad: boolean;
   valor_estimado: number;
   status: ExecutionStatus;
+  /** Populated at runtime from the catalog (obras) via ISRC lookup */
+  obra_catalog?: RightsExecutionCatalogInfo;
 }
 
 export interface BroadcastDetection {

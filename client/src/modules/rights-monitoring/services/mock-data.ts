@@ -11,6 +11,7 @@ export const MOCK_EXECUCOES_PUBLICAS: RightsExecution[] = [
   { id: "re-008", obra_titulo: "Trap do Norte", artista: "Pedro Breaks", isrc: "BRMSC2500008", origem: "Festival Rec Beat", tipo_execucao: "evento", data_hora: "2026-05-04T20:30:00", match_ecad: false, valor_estimado: 210.00, status: "nao_reportado" },
   { id: "re-009", obra_titulo: "Noite de Luz", artista: "Vitória Lunar", isrc: "BRMSC2500001", origem: "Rádio Transamérica", tipo_execucao: "radio_fm", data_hora: "2026-05-04T08:00:00", match_ecad: true, valor_estimado: 18.50, status: "confirmado" },
   { id: "re-010", obra_titulo: "Amor de Interior", artista: "Ana Beatriz Santos", isrc: "BRMSC2500004", origem: "TV Cultura", tipo_execucao: "tv_aberta", data_hora: "2026-05-03T15:30:00", match_ecad: true, valor_estimado: 98.00, status: "confirmado" },
+  { id: "re-011", obra_titulo: "Track Desconhecida", artista: "Artista Desconhecido", isrc: "BRMSC2599998", origem: "Web Rádio Hits Brasil", tipo_execucao: "web_radio", data_hora: "2026-05-02T11:20:00", match_ecad: false, valor_estimado: 3.50, status: "nao_reportado" },
 ];
 
 export const MOCK_BROADCAST_DETECTIONS: BroadcastDetection[] = [

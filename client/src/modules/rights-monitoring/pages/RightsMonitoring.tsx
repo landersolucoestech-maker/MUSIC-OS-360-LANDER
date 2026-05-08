@@ -2,17 +2,18 @@ import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
   Shield, Radio, Search, RefreshCw, Upload, FileText,
-  Mic2, AlertTriangle, FileSearch, ChevronDown, Globe, CheckCircle, Clock
+  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock
 } from "lucide-react";
 import { RightsKPICards } from "../components/RightsKPICards";
 import { ExecucoesTable } from "../components/ExecucoesTable";
 import { DivergenciasPanel, MOCK_DIVERGENCIAS } from "../components/DivergenciasPanel";
+import type { Divergencia } from "../components/DivergenciasPanel";
 import { EcadImportModal } from "../components/EcadImportModal";
+import { ExecucaoDetailModal } from "../components/ExecucaoDetailModal";
 import {
   MOCK_EXECUCOES_PUBLICAS,
   MOCK_BROADCAST_DETECTIONS,
@@ -21,6 +22,7 @@ import {
   MOCK_ECAD_IMPORTS,
   MOCK_ECAD_PERIODOS,
 } from "../services/mock-data";
+import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs } from "../services/catalog-lookup";
 import type { RightsExecution } from "../types";
 
 type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria" | "importacoes";
@@ -42,8 +44,47 @@ export default function RightsMonitoring() {
   const [activeTab, setActiveTab] = useState<Tab>("overview");
   const [search, setSearch] = useState("");
   const [importModalOpen, setImportModalOpen] = useState(false);
+  const [selectedExec, setSelectedExec] = useState<RightsExecution | null>(null);
+  const [detailOpen, setDetailOpen] = useState(false);
+  // Refresh counter — bump to rebuild the ISRC index from catalog on demand
+  const [catalogRevision, setCatalogRevision] = useState(0);
 
-  const execucoes = MOCK_EXECUCOES_PUBLICAS;
+  // Build ISRC → obra index from catalog; rebuilds when catalogRevision changes
+  const isrcIndex = useMemo(() => getIsrcIndex(), [catalogRevision]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSyncCatalog() {
+    setCatalogRevision(r => r + 1);
+  }
+
+  // Enrich executions with catalog obra data via ISRC lookup.
+  // match_ecad is derived from catalog: obra must exist AND have cod_ecad
+  // (aligns per-row Match badge semantics with the KPI match-rate logic).
+  const execucoes: RightsExecution[] = useMemo(() =>
+    MOCK_EXECUCOES_PUBLICAS.map((exec) => {
+      const obra = isrcIndex.get(exec.isrc);
+      if (!obra) return { ...exec, match_ecad: false };
+      const hasEcad = Boolean(obra.cod_ecad);
+      return {
+        ...exec,
+        match_ecad: hasEcad,
+        obra_catalog: {
+          compositor: obra.compositor,
+          compositores: obra.compositores,
+          co_compositores: obra.co_compositores,
+          editora: obra.editora,
+          detentores: obra.detentores,
+          iswc: obra.iswc,
+          cod_ecad: obra.cod_ecad,
+          cod_abramus: obra.cod_abramus,
+          genero: obra.genero,
+          duracao: obra.duracao,
+          catalog_id: obra.id,
+          catalog_status: obra.status,
+        },
+      };
+    }),
+    [isrcIndex],
+  );
 
   const filtered = useMemo(() => {
     if (!search.trim()) return execucoes;
@@ -59,20 +100,59 @@ export default function RightsMonitoring() {
   const confirmados   = execucoes.filter(e => e.status === "confirmado").length;
   const naoReportados = execucoes.filter(e => e.status === "nao_reportado").length;
   const divergencias  = execucoes.filter(e => e.status === "divergencia").length;
-  const pendentes     = execucoes.filter(e => e.status === "pendente").length;
-  const matchRate     = execucoes.length > 0 ? Math.round(((confirmados) / execucoes.length) * 100) : 0;
+
+  // Match rate: fraction of unique ISRCs that have a catalog obra with cod_ecad
+  const uniqueIsrcs = useMemo(() => [...new Set(execucoes.map(e => e.isrc))], [execucoes]);
+  const matchRate = computeEcadMatchRate(uniqueIsrcs, isrcIndex);
+
   const valorEstimado = execucoes.reduce((s, e) => s + e.valor_estimado, 0);
   const valorRecebido = MOCK_ECAD_PERIODOS.filter(p => p.status === "recebido").reduce((s, p) => s + p.valor_total, 0);
+
+  // Build dynamic divergências for orphan ISRCs (no obra in catalog)
+  const orphanIsrcs = useMemo(() => findOrphanIsrcs(uniqueIsrcs, isrcIndex), [uniqueIsrcs, isrcIndex]);
+  const orphanExecs = useMemo(() =>
+    execucoes.filter(e => orphanIsrcs.includes(e.isrc)),
+    [execucoes, orphanIsrcs],
+  );
+
+  const dynamicDivergencias: Divergencia[] = useMemo(() =>
+    orphanExecs.map((exec, i) => ({
+      id: `dyn-orphan-${i}`,
+      tipo: "Execução sem obra cadastrada",
+      descricao: `Execução detectada em "${exec.origem}" mas o ISRC ${exec.isrc} não possui obra correspondente no catálogo interno. Cadastre a obra para habilitar a conciliação ECAD.`,
+      obra: exec.obra_titulo !== "Track Desconhecida" ? exec.obra_titulo : undefined,
+      isrc: exec.isrc,
+      origem: exec.origem,
+      severity: "media" as const,
+      risco_score: 52,
+      data: exec.data_hora.split("T")[0],
+      status: "aberta" as const,
+    })),
+    [orphanExecs],
+  );
+
+  // Merge static + dynamic divergências (remove static div-005 which is now superseded by dynamic)
+  const allDivergencias: Divergencia[] = useMemo(() => {
+    const staticFiltered = MOCK_DIVERGENCIAS.filter(d => d.id !== "div-005");
+    return [...staticFiltered, ...dynamicDivergencias];
+  }, [dynamicDivergencias]);
+
+  const openDivergencias = allDivergencias.filter(d => d.status !== "resolvida");
 
   const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
     { key: "overview",        label: "Overview",        icon: <Shield className="h-4 w-4" /> },
     { key: "radio_tv",        label: "Rádio & TV",      icon: <Radio className="h-4 w-4" />, badge: MOCK_BROADCAST_DETECTIONS.length },
     { key: "shows_setlists",  label: "Shows & Setlists",icon: <Mic2 className="h-4 w-4" />, badge: MOCK_SETLISTS.length },
     { key: "cue_sheets",      label: "Cue Sheets",      icon: <FileText className="h-4 w-4" />, badge: MOCK_CUE_SHEETS.length },
-    { key: "divergencias",    label: "Divergências",    icon: <AlertTriangle className="h-4 w-4" />, badge: MOCK_DIVERGENCIAS.filter(d => d.status !== "resolvida").length },
+    { key: "divergencias",    label: "Divergências",    icon: <AlertTriangle className="h-4 w-4" />, badge: openDivergencias.length },
     { key: "auditoria",       label: "Auditoria",       icon: <FileSearch className="h-4 w-4" /> },
     { key: "importacoes",     label: "Importações ECAD",icon: <Upload className="h-4 w-4" />, badge: MOCK_ECAD_IMPORTS.length },
   ];
+
+  function handleViewDetail(exec: RightsExecution) {
+    setSelectedExec(exec);
+    setDetailOpen(true);
+  }
 
   return (
     <MainLayout title="Rights Monitoring" description="Monitoramento de execução pública, auditoria ECAD e reconciliação de royalties">
@@ -90,7 +170,7 @@ export default function RightsMonitoring() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncCatalog}>
               <RefreshCw className="h-3.5 w-3.5" />Sincronizar
             </Button>
             <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
@@ -139,7 +219,14 @@ export default function RightsMonitoring() {
             <CardHeader className="flex flex-row items-center justify-between pb-3">
               <div>
                 <CardTitle className="text-sm font-semibold">Execuções Públicas Detectadas</CardTitle>
-                <CardDescription className="text-xs">Rádio · TV · Shows · Eventos · Web Rádios · Casas Noturnas</CardDescription>
+                <CardDescription className="text-xs">
+                  Rádio · TV · Shows · Eventos · Web Rádios · Casas Noturnas
+                  {orphanIsrcs.length > 0 && (
+                    <span className="ml-2 text-destructive font-medium">
+                      · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
+                    </span>
+                  )}
+                </CardDescription>
               </div>
               <div className="flex items-center gap-2">
                 <div className="relative">
@@ -157,10 +244,7 @@ export default function RightsMonitoring() {
               </div>
             </CardHeader>
             <CardContent className="p-0">
-              <ExecucoesTable
-                execucoes={filtered}
-                onViewDetail={(exec) => navigate(`/rights-monitoring/execucao/${exec.id}`)}
-              />
+              <ExecucoesTable execucoes={filtered} onViewDetail={handleViewDetail} />
             </CardContent>
           </Card>
         )}
@@ -196,11 +280,17 @@ export default function RightsMonitoring() {
                         nao_reportado: "bg-muted text-muted-foreground border-border",
                       };
                       const dt = new Date(det.data_hora);
+                      const catalogObra = isrcIndex.get(det.isrc);
                       return (
                         <tr key={det.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4">
                             <p className="font-semibold">{det.obra_titulo}</p>
                             <p className="text-xs text-muted-foreground">{det.artista}</p>
+                            {catalogObra && (
+                              <p className="text-xs text-muted-foreground/70 mt-0.5">
+                                {catalogObra.compositor} · {catalogObra.editora}
+                              </p>
+                            )}
                           </td>
                           <td className="py-3 px-4 hidden md:table-cell text-sm">{det.emissora}</td>
                           <td className="py-3 px-4 hidden lg:table-cell text-xs text-muted-foreground">{det.canal}</td>
@@ -211,7 +301,12 @@ export default function RightsMonitoring() {
                             {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
                           </td>
                           <td className="py-3 px-4 hidden xl:table-cell">
-                            <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{det.isrc}</code>
+                            <div>
+                              <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{det.isrc}</code>
+                              {catalogObra?.cod_ecad && (
+                                <p className="text-xs text-muted-foreground mt-0.5">{catalogObra.cod_ecad}</p>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4 text-right hidden md:table-cell text-sm font-medium tabular-nums">{fmtBRL(det.valor_estimado)}</td>
                           <td className="py-3 px-4">
@@ -258,19 +353,28 @@ export default function RightsMonitoring() {
                             <th className="text-left pb-2 font-semibold">Música</th>
                             <th className="text-left pb-2 font-semibold hidden sm:table-cell">Compositor</th>
                             <th className="text-left pb-2 font-semibold hidden md:table-cell">ISRC</th>
+                            <th className="text-left pb-2 font-semibold hidden lg:table-cell">Publisher</th>
                             <th className="text-right pb-2 font-semibold">Duração</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
-                          {sl.musicas.map(m => (
-                            <tr key={m.ordem}>
-                              <td className="py-1.5 pr-3 text-muted-foreground">{m.ordem}</td>
-                              <td className="py-1.5 font-medium">{m.obra_titulo}</td>
-                              <td className="py-1.5 text-muted-foreground hidden sm:table-cell">{m.compositor}</td>
-                              <td className="py-1.5 hidden md:table-cell"><code className="font-mono text-muted-foreground">{m.isrc}</code></td>
-                              <td className="py-1.5 text-right text-muted-foreground">{Math.floor(m.duracao_segundos / 60)}:{String(m.duracao_segundos % 60).padStart(2, "0")}</td>
-                            </tr>
-                          ))}
+                          {sl.musicas.map(m => {
+                            const catalogObra = isrcIndex.get(m.isrc);
+                            return (
+                              <tr key={m.ordem}>
+                                <td className="py-1.5 pr-3 text-muted-foreground">{m.ordem}</td>
+                                <td className="py-1.5 font-medium">{m.obra_titulo}</td>
+                                <td className="py-1.5 text-muted-foreground hidden sm:table-cell">{m.compositor}</td>
+                                <td className="py-1.5 hidden md:table-cell">
+                                  <code className="font-mono text-muted-foreground">{m.isrc}</code>
+                                </td>
+                                <td className="py-1.5 text-muted-foreground hidden lg:table-cell">
+                                  {catalogObra?.editora ?? <span className="text-warning text-xs">Sem publisher</span>}
+                                </td>
+                                <td className="py-1.5 text-right text-muted-foreground">{Math.floor(m.duracao_segundos / 60)}:{String(m.duracao_segundos % 60).padStart(2, "0")}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -310,20 +414,34 @@ export default function RightsMonitoring() {
                             <th className="text-left pb-2 font-semibold">Música</th>
                             <th className="text-left pb-2 font-semibold hidden sm:table-cell">Compositor</th>
                             <th className="text-left pb-2 font-semibold hidden md:table-cell">Publisher</th>
+                            <th className="text-left pb-2 font-semibold hidden lg:table-cell">Cód. ECAD</th>
                             <th className="text-left pb-2 font-semibold">Tipo de Uso</th>
                             <th className="text-right pb-2 font-semibold">Duração</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-border/30">
-                          {cs.obras.map((o, i) => (
-                            <tr key={i}>
-                              <td className="py-1.5 font-medium">{o.obra_titulo}</td>
-                              <td className="py-1.5 text-muted-foreground hidden sm:table-cell">{o.compositor}</td>
-                              <td className="py-1.5 text-muted-foreground hidden md:table-cell">{o.publisher}</td>
-                              <td className="py-1.5"><span className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">{o.tipo_uso.replace("_", " ")}</span></td>
-                              <td className="py-1.5 text-right text-muted-foreground">{Math.floor(o.duracao_segundos / 60)}:{String(o.duracao_segundos % 60).padStart(2, "0")}</td>
-                            </tr>
-                          ))}
+                          {cs.obras.map((o, i) => {
+                            const catalogObra = isrcIndex.get(o.isrc);
+                            return (
+                              <tr key={i}>
+                                <td className="py-1.5 font-medium">{o.obra_titulo}</td>
+                                <td className="py-1.5 text-muted-foreground hidden sm:table-cell">
+                                  {catalogObra?.compositor ?? o.compositor}
+                                </td>
+                                <td className="py-1.5 text-muted-foreground hidden md:table-cell">
+                                  {catalogObra?.editora ?? o.publisher}
+                                </td>
+                                <td className="py-1.5 hidden lg:table-cell">
+                                  {catalogObra?.cod_ecad
+                                    ? <code className="font-mono text-success text-xs">{catalogObra.cod_ecad}</code>
+                                    : <span className="text-warning text-xs">Sem cod_ecad</span>
+                                  }
+                                </td>
+                                <td className="py-1.5"><span className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">{o.tipo_uso.replace("_", " ")}</span></td>
+                                <td className="py-1.5 text-right text-muted-foreground">{Math.floor(o.duracao_segundos / 60)}:{String(o.duracao_segundos % 60).padStart(2, "0")}</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -344,10 +462,15 @@ export default function RightsMonitoring() {
               </CardTitle>
               <CardDescription className="text-xs">
                 Inconsistências detectadas entre execuções monitoradas e relatórios ECAD
+                {orphanIsrcs.length > 0 && (
+                  <span className="ml-1 text-destructive font-medium">
+                    · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DivergenciasPanel divergencias={MOCK_DIVERGENCIAS} />
+              <DivergenciasPanel divergencias={allDivergencias} />
             </CardContent>
           </Card>
         )}
@@ -427,35 +550,31 @@ export default function RightsMonitoring() {
                   </thead>
                   <tbody className="divide-y divide-border/40">
                     {MOCK_ECAD_IMPORTS.map(imp => {
-                      const impStatus: Record<string, string> = {
-                        processado: "bg-success/15 text-success border-success/30",
-                        pendente:   "bg-warning/15 text-warning border-warning/30",
-                        erro:       "bg-destructive/15 text-destructive border-destructive/30",
-                        parcial:    "bg-orange-500/15 text-orange-600 border-orange-400/30",
-                      };
+                      const cfg = STATUS_ECAD[imp.status] ?? { label: imp.status, className: "bg-muted text-muted-foreground border-border" };
                       return (
                         <tr key={imp.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                              <span className="font-medium text-sm truncate max-w-[180px]">{imp.arquivo}</span>
-                            </div>
+                            <p className="font-medium text-sm">{imp.arquivo}</p>
                           </td>
-                          <td className="py-3 px-4 text-sm hidden md:table-cell">{imp.periodo}</td>
+                          <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">{imp.periodo}</td>
                           <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
                             {new Date(imp.data_importacao).toLocaleDateString("pt-BR")}
                           </td>
-                          <td className="py-3 px-4 text-right tabular-nums hidden md:table-cell">{fmtNum(imp.total_execucoes)}</td>
+                          <td className="py-3 px-4 text-right text-sm tabular-nums hidden md:table-cell">
+                            {fmtNum(imp.total_execucoes)}
+                          </td>
                           <td className="py-3 px-4 text-right font-medium tabular-nums">{fmtBRL(imp.valor_total)}</td>
                           <td className="py-3 px-4">
-                            <span className="text-xs">
-                              <span className="text-success font-medium">{imp.linhas_ok}</span>
-                              {imp.linhas_erro > 0 && <span className="text-destructive font-medium"> · {imp.linhas_erro} erro</span>}
-                            </span>
+                            <div className="text-xs">
+                              <span className="text-success">{fmtNum(imp.linhas_ok)} ok</span>
+                              {imp.linhas_erro > 0 && (
+                                <span className="text-destructive ml-1">· {imp.linhas_erro} erro</span>
+                              )}
+                            </div>
                           </td>
                           <td className="py-3 px-4">
-                            <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${impStatus[imp.status] ?? ""}`}>
-                              {imp.status}
+                            <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${cfg.className}`}>
+                              {cfg.label}
                             </span>
                           </td>
                         </tr>
@@ -468,9 +587,15 @@ export default function RightsMonitoring() {
           </Card>
         )}
 
-      </div>
+        {/* Modals */}
+        <EcadImportModal open={importModalOpen} onOpenChange={setImportModalOpen} />
+        <ExecucaoDetailModal
+          exec={selectedExec}
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+        />
 
-      <EcadImportModal open={importModalOpen} onOpenChange={setImportModalOpen} />
+      </div>
     </MainLayout>
   );
 }
