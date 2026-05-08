@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Music, FileText, Clock, CheckCircle, Upload, Download, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, FolderKanban, LinkIcon, Link2 } from "lucide-react";
+import { Music, FileText, Clock, CheckCircle, Upload, Download, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, FolderKanban, LinkIcon, Link2, Hash } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { ObraFormModal, ObraTipoBadge } from "@/modules/catalog/components/ObraFormModal";
@@ -58,7 +58,7 @@ const statusObraLabel = (s: string): string => {
 
 export default function RegistroMusicas() {
   const navigate = useNavigate();
-  const { obras, isLoading: loadingObras, deleteObra, addObra } = useObras();
+  const { obras, isLoading: loadingObras, deleteObra, addObra, bulkUpdateEcad } = useObras();
   const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, addFonograma, updateFonograma, bulkUpdateObraId } = useFonogramas();
   const { projetos: allProjetos } = useProjetos();
   const { artistas: artistasAssinados } = useArtistasAssinados();
@@ -104,6 +104,30 @@ export default function RegistroMusicas() {
   const [fonogramaEcadFilter, setFonogramaEcadFilter] = useState("all-ecad");
   const [bulkObraModal, setBulkObraModal] = useState(false);
   const [selectedObraIdForBulk, setSelectedObraIdForBulk] = useState<string>("");
+  const [bulkEcadModal, setBulkEcadModal] = useState(false);
+  const [bulkEcadCode, setBulkEcadCode] = useState("");
+  const [bulkEcadLoading, setBulkEcadLoading] = useState(false);
+  const handleBulkFillEcad = async () => {
+    if (!bulkEcadCode.trim() || selectedObraIds.length === 0) return;
+    setBulkEcadLoading(true);
+    try {
+      const { succeeded, failed } = await bulkUpdateEcad(selectedObraIds, bulkEcadCode.trim());
+      setBulkEcadModal(false);
+      setBulkEcadCode("");
+      if (failed === 0) {
+        toast.success(`Código ECAD preenchido em ${succeeded} obra(s) com sucesso`);
+      } else if (succeeded === 0) {
+        toast.error(`Falha ao atualizar o código ECAD nas obras selecionadas`);
+      } else {
+        toast.warning(`${succeeded} obra(s) atualizadas, ${failed} falha(s)`);
+      }
+      setSelectedObraIds([]);
+    } catch {
+      toast.error("Erro inesperado ao preencher o código ECAD");
+    } finally {
+      setBulkEcadLoading(false);
+    }
+  };
   const [obraModal, setObraModal] = useState<{ open: boolean; mode: "create" | "edit"; obra?: any; tipoObra?: TipoObra }>({
     open: false,
     mode: "create",
@@ -1040,10 +1064,16 @@ export default function RegistroMusicas() {
                   </button>
                   <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
                   {selectedObraIds.length > 0 && (
-                    <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteObras} data-testid="button-bulk-delete-obras">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Excluir ({selectedObraIds.length})
-                    </Button>
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" className="gap-1 h-7 text-xs bg-primary hover:bg-primary/90 text-white" onClick={() => setBulkEcadModal(true)} data-testid="button-bulk-preencher-ecad">
+                        <Hash className="h-3.5 w-3.5" />
+                        Preencher ECAD ({selectedObraIds.length})
+                      </Button>
+                      <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteObras} data-testid="button-bulk-delete-obras">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir ({selectedObraIds.length})
+                      </Button>
+                    </div>
                   )}
                 </div>
               )}
@@ -1242,6 +1272,41 @@ export default function RegistroMusicas() {
         mode="create"
         prefill={contratoModal.prefill}
       />
+
+      <Dialog open={bulkEcadModal} onOpenChange={(open) => { setBulkEcadModal(open); if (!open) setBulkEcadCode(""); }}>
+        <DialogContent className="sm:max-w-sm" data-testid="dialog-bulk-preencher-ecad">
+          <DialogHeader>
+            <DialogTitle>Preencher código ECAD</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            <p className="text-sm text-muted-foreground">
+              O código informado será aplicado a todas as <span className="font-medium text-foreground">{selectedObraIds.length} obra(s)</span> selecionadas.
+            </p>
+            <Input
+              placeholder="Ex: 1234567"
+              value={bulkEcadCode}
+              onChange={(e) => setBulkEcadCode(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleBulkFillEcad(); }}
+              className="font-mono"
+              data-testid="input-bulk-ecad-code"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setBulkEcadModal(false); setBulkEcadCode(""); }} data-testid="button-cancelar-ecad">
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleBulkFillEcad}
+              disabled={!bulkEcadCode.trim() || bulkEcadLoading}
+              className="gap-2"
+              data-testid="button-confirmar-ecad"
+            >
+              {bulkEcadLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
+              Aplicar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={bulkObraModal} onOpenChange={(open) => { setBulkObraModal(open); if (!open) setSelectedObraIdForBulk(""); }}>
         <DialogContent className="sm:max-w-md" data-testid="dialog-bulk-vincular-obra">
