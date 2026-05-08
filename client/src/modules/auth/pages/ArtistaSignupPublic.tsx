@@ -50,7 +50,6 @@ const DISTRIBUIDORAS = [
   "Stem",
   "Symphonic",
   "TuneCore",
-  "UMG",
   "Warner Music",
   "Outro",
 ];
