@@ -28,7 +28,7 @@ import {
 import { formatCurrency } from "@/shared/lib/format-utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "meta" | "google";
+type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "meta" | "google" | "spotify";
 
 // ─── SVG Area chart ────────────────────────────────────────────────────────────
 function AreaChart({ data, stroke, gradId }: { data: MonthlyPoint[]; stroke: string; gradId: string }) {
@@ -119,12 +119,13 @@ function KpiCard({ label, value, trend, up }: KpiProps) {
 
 // ─── Platform switcher ────────────────────────────────────────────────────────
 const PLATFORMS: { id: PlatformId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "overview",  label: "Visão Geral", icon: BarChart2   },
-  { id: "youtube",   label: "YouTube",     icon: SiYoutube   },
-  { id: "tiktok",    label: "TikTok",      icon: SiTiktok    },
-  { id: "instagram", label: "Instagram",   icon: SiInstagram },
-  { id: "meta",      label: "Meta Ads",    icon: SiMeta      },
-  { id: "google",    label: "Google Ads",  icon: SiGoogleads },
+  { id: "overview",  label: "Visão Geral",  icon: BarChart2   },
+  { id: "youtube",   label: "YouTube",      icon: SiYoutube   },
+  { id: "tiktok",    label: "TikTok",       icon: SiTiktok    },
+  { id: "instagram", label: "Instagram",    icon: SiInstagram },
+  { id: "meta",      label: "Meta Ads",     icon: SiMeta      },
+  { id: "google",    label: "Google Ads",   icon: SiGoogleads },
+  { id: "spotify",   label: "Spotify Ads",  icon: SiSpotify   },
 ];
 
 const CHART_COLOR: Record<PlatformId, string> = {
@@ -134,6 +135,7 @@ const CHART_COLOR: Record<PlatformId, string> = {
   instagram: "#E1306C",
   meta:      "#0082FB",
   google:    "#34A853",
+  spotify:   "#1DB954",
 };
 
 function getEvolution(id: PlatformId, ytSel: number, ttSel: number, igSel: number): MonthlyPoint[] {
@@ -142,6 +144,7 @@ function getEvolution(id: PlatformId, ytSel: number, ttSel: number, igSel: numbe
   if (id === "instagram") return INSTAGRAM_MOCK[igSel]?.evolution ?? [];
   if (id === "meta")      return META_ADS_MOCK.evolution;
   if (id === "google")    return GOOGLE_ADS_MOCK.evolution;
+  if (id === "spotify")   return SPOTIFY_ADS_MOCK.evolution;
   // overview: aggregate yt + tt views
   return YOUTUBE_MOCK[ytSel]?.evolution.map((p, i) => ({
     mes: p.mes,
@@ -273,12 +276,27 @@ function SidebarMetrics({
     </div>
   );
 
+  if (platform === "spotify") return (
+    <div className="space-y-1">
+      <Row label="Impressões"    value={fmtNum(SPOTIFY_ADS_MOCK.mes.impressoes)} />
+      <Row label="Cliques"       value={fmtNum(SPOTIFY_ADS_MOCK.mes.cliques)} />
+      <Row label="CTR"           value={`${SPOTIFY_ADS_MOCK.mes.ctr}%`} />
+      <Row label="Streams"       value={fmtNum(SPOTIFY_ADS_MOCK.mes.streams)} />
+      <Row label="Investimento"  value={formatCurrency(SPOTIFY_ADS_MOCK.mes.spend)} />
+      <Row label="Custo/stream"  value={formatCurrency(SPOTIFY_ADS_MOCK.mes.spend / Math.max(1, SPOTIFY_ADS_MOCK.mes.streams))} />
+    </div>
+  );
+
   return null;
 }
 
 // ─── Performance analítica ────────────────────────────────────────────────────
-function PerformanceAnalitica() {
-  const [platform, setPlatform] = useState<PlatformId>("overview");
+function PerformanceAnalitica({
+  platform, setPlatform,
+}: {
+  platform: PlatformId;
+  setPlatform: (p: PlatformId) => void;
+}) {
   const [ytSel, setYtSel] = useState(0);
   const [ttSel, setTtSel] = useState(0);
   const [igSel, setIgSel] = useState(0);
@@ -294,6 +312,7 @@ function PerformanceAnalitica() {
     instagram: "Crescimento de seguidores — últimos 6 meses",
     meta:      "Impressões mensais — últimos 6 meses",
     google:    "Impressões mensais — últimos 6 meses",
+    spotify:   "Impressões Spotify Ads — últimos 6 meses",
   };
 
   return (
@@ -424,35 +443,32 @@ function buildContentItems(): Record<ContentFilter, ContentItem[]> {
   return { todos: all, youtube: yt, tiktok: tt, instagram: ig, meta, google, spotify };
 }
 
-function TopConteudos() {
-  const [filter, setFilter] = useState<ContentFilter>("todos");
+const PLATFORM_TO_CONTENT: Record<PlatformId, ContentFilter> = {
+  overview:  "todos",
+  youtube:   "youtube",
+  tiktok:    "tiktok",
+  instagram: "instagram",
+  meta:      "meta",
+  google:    "google",
+  spotify:   "spotify",
+};
+
+function TopConteudos({ platform }: { platform: PlatformId }) {
+  const filter: ContentFilter = PLATFORM_TO_CONTENT[platform] ?? "todos";
   const allItems = buildContentItems();
-  const rows = allItems[filter].slice(0, 10);
+  const rows = (allItems[filter] ?? []).slice(0, 10);
+
+  const platformLabel = FILTER_OPTIONS.find(f => f.id === filter)?.label ?? "Todos";
+  const subtitle = filter === "todos"
+    ? "Melhores desempenhos consolidados — todas as plataformas"
+    : `Melhores desempenhos — ${platformLabel}`;
 
   return (
     <Card className="border-border/60">
       <CardContent className="p-5">
-        <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
-          <div>
-            <p className="text-base font-semibold text-foreground">Top Conteúdos</p>
-            <p className="text-sm text-muted-foreground mt-0.5">Melhores desempenhos consolidados por plataforma</p>
-          </div>
-          <div className="flex gap-1 flex-wrap">
-            {FILTER_OPTIONS.map(f => (
-              <button
-                key={f.id}
-                onClick={() => setFilter(f.id)}
-                className={cn(
-                  "px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap",
-                  filter === f.id
-                    ? "bg-foreground/8 text-foreground ring-1 ring-border shadow-sm"
-                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                )}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+        <div className="mb-5">
+          <p className="text-base font-semibold text-foreground">Top Conteúdos</p>
+          <p className="text-sm text-muted-foreground mt-0.5">{subtitle}</p>
         </div>
 
         <div className="space-y-1">
@@ -500,6 +516,8 @@ function TopConteudos() {
 
 // ─── Main page ─────────────────────────────────────────────────────────────────
 export default function MarketingMetricas() {
+  const [platform, setPlatform] = useState<PlatformId>("overview");
+
   const alcanceTotal = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes + INSTAGRAM_TOTALS.totalAlcanceMes;
   const seguidoresTotal = YOUTUBE_TOTALS.totalSubscribers + TIKTOK_TOTALS.totalFollowers + INSTAGRAM_TOTALS.totalFollowers;
   const engMedio = ((TIKTOK_TOTALS.avgEngagement + INSTAGRAM_TOTALS.avgEngagement) / 2).toFixed(1);
@@ -547,12 +565,12 @@ export default function MarketingMetricas() {
             <p className="text-base font-semibold text-foreground">Performance Analítica</p>
             <p className="text-sm text-muted-foreground">Evolução mensal por plataforma</p>
           </div>
-          <PerformanceAnalitica />
+          <PerformanceAnalitica platform={platform} setPlatform={setPlatform} />
         </section>
 
         {/* 3 — Top conteúdos */}
         <section>
-          <TopConteudos />
+          <TopConteudos platform={platform} />
         </section>
 
         {/* 4 — Campanhas */}
