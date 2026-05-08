@@ -198,61 +198,48 @@ function OverviewTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void;
 
 // ─── Importações & Exportações Tab — lista de módulos ─────────────────────────
 function TransferenciasTab({ onOpenImport, onOpenExport }: { onOpenImport: () => void; onOpenExport: () => void }) {
-  // Group modules by category for visual separation
-  const categories = Array.from(new Set(MODULE_LIST.map(m => m.category)));
-
   return (
-    <div className="space-y-3">
-      {categories.map(cat => {
-        const modules = MODULE_LIST.filter(m => m.category === cat);
-        return (
-          <div key={cat} className="rounded-lg border border-border overflow-hidden">
-            <div className="px-4 py-2 bg-muted/40 border-b border-border">
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">{cat}</p>
+    <div className="rounded-lg border border-border overflow-hidden">
+      <div className="divide-y divide-border/50">
+        {MODULE_LIST.map(mod => {
+          const Icon = mod.icon;
+          return (
+            <div
+              key={mod.id}
+              className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
+              data-testid={`module-row-${mod.id}`}
+            >
+              <div className="p-1.5 rounded-md bg-muted shrink-0">
+                <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-xs font-medium text-foreground">{mod.label}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{mod.sub}</p>
+              </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={onOpenImport}
+                  data-testid={`btn-import-${mod.id}`}
+                >
+                  <Upload className="h-3 w-3" /> Importar
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs gap-1"
+                  onClick={onOpenExport}
+                  data-testid={`btn-export-${mod.id}`}
+                >
+                  <Download className="h-3 w-3" /> Exportar
+                </Button>
+              </div>
             </div>
-            <div className="divide-y divide-border/50">
-              {modules.map(mod => {
-                const Icon = mod.icon;
-                return (
-                  <div
-                    key={mod.id}
-                    className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
-                    data-testid={`module-row-${mod.id}`}
-                  >
-                    <div className="p-1.5 rounded-md bg-muted shrink-0">
-                      <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">{mod.label}</p>
-                      <p className="text-[10px] text-muted-foreground truncate">{mod.sub}</p>
-                    </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1"
-                        onClick={onOpenImport}
-                        data-testid={`btn-import-${mod.id}`}
-                      >
-                        <Upload className="h-3 w-3" /> Importar
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 text-xs gap-1"
-                        onClick={onOpenExport}
-                        data-testid={`btn-export-${mod.id}`}
-                      >
-                        <Download className="h-3 w-3" /> Exportar
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
