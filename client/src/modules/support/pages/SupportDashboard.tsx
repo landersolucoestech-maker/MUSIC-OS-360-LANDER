@@ -1,19 +1,27 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
+import { Textarea } from "@/shared/ui/textarea";
+import { Label } from "@/shared/ui/label";
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle,
+} from "@/shared/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/ui/select";
 import { cn } from "@/shared/lib/utils";
-import { useTickets, TICKET_STATUS_LABELS } from "../hooks/useSupport";
+import { useTickets, TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS } from "../hooks/useSupport";
 import { MOCK_KNOWLEDGE_ARTICLES } from "../data/mockSupport";
-import type { TicketStatus } from "../types";
+import type { TicketStatus, TicketPriority } from "../types";
 import {
   Plus, BookOpen, Ticket, Search,
   ChevronDown, ChevronRight, ChevronUp,
 } from "lucide-react";
 
-/* ─────────── helpers ─────────── */
+/* ─── helpers ─── */
 
 const STATUS_COLOR: Record<TicketStatus, string> = {
   open:             "bg-blue-500 text-white",
@@ -28,10 +36,8 @@ const PRIORITY_LABEL: Record<string, string> = {
 };
 
 const PRIORITY_COLOR: Record<string, string> = {
-  low:      "text-green-400",
-  medium:   "text-yellow-400",
-  high:     "text-orange-400",
-  critical: "text-red-500",
+  low: "text-green-400", medium: "text-yellow-400",
+  high: "text-orange-400", critical: "text-red-500",
 };
 
 type TabKey = "all" | "open" | "waiting_customer" | "closed";
@@ -48,28 +54,23 @@ function formatRelative(iso: string) {
   });
 }
 
-/* ─────────── Hero Action Card ─────────── */
-
+/* ─── Hero card ─── */
 function ActionCard({
-  icon: Icon, label, desc, href, iconColor,
+  icon: Icon, label, desc, onClick, href, iconColor,
 }: {
   icon: React.ComponentType<{ className?: string }>;
-  label: string; desc: string; href: string; iconColor: string;
+  label: string; desc: string;
+  onClick?: () => void; href?: string;
+  iconColor: string;
 }) {
-  return (
-    <Link
-      to={href}
-      className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8",
-        "hover:border-primary/40 hover:bg-primary/[0.03] transition-all duration-200 group cursor-pointer",
-        "text-center",
-      )}
-      data-testid={`action-${label.toLowerCase().replace(/\s/g, "-")}`}
-    >
-      <div className={cn(
-        "flex h-14 w-14 items-center justify-center rounded-2xl",
-        iconColor,
-      )}>
+  const cls = cn(
+    "flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8",
+    "hover:border-primary/40 hover:bg-primary/[0.03] transition-all duration-200 group cursor-pointer text-center",
+  );
+
+  const inner = (
+    <>
+      <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl", iconColor)}>
         <Icon className="h-7 w-7" />
       </div>
       <div>
@@ -78,18 +79,20 @@ function ActionCard({
         </p>
         <p className="text-[12px] text-muted-foreground mt-0.5">{desc}</p>
       </div>
-    </Link>
+    </>
   );
+
+  if (onClick) return <button className={cls} onClick={onClick} data-testid={`action-${label}`}>{inner}</button>;
+  return <Link to={href!} className={cls} data-testid={`action-${label}`}>{inner}</Link>;
 }
 
-/* ─────────── FAQ Accordion Item ─────────── */
-
+/* ─── FAQ Accordion Item ─── */
 function FaqItem({ article }: { article: typeof MOCK_KNOWLEDGE_ARTICLES[0] }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="border-b border-border/60 last:border-0">
       <button
-        className="w-full flex items-center justify-between py-3.5 px-1 text-left hover:text-primary transition-colors group"
+        className="w-full flex items-center justify-between py-3.5 px-1 text-left group"
         onClick={() => setOpen((p) => !p)}
         data-testid={`faq-${article.id}`}
       >
@@ -110,9 +113,7 @@ function FaqItem({ article }: { article: typeof MOCK_KNOWLEDGE_ARTICLES[0] }) {
       </button>
       {open && (
         <div className="px-1 pb-4">
-          <p className="text-[12.5px] text-muted-foreground leading-relaxed">
-            {article.summary}
-          </p>
+          <p className="text-[12.5px] text-muted-foreground leading-relaxed">{article.summary}</p>
           <Link
             to="/support/knowledge"
             className="inline-flex items-center gap-1 mt-2 text-[11.5px] text-primary hover:underline font-medium"
@@ -125,15 +126,19 @@ function FaqItem({ article }: { article: typeof MOCK_KNOWLEDGE_ARTICLES[0] }) {
   );
 }
 
-/* ─────────── Main page ─────────── */
-
+/* ─── Main ─── */
 export default function SupportDashboard() {
-  const { tickets } = useTickets();
-  const navigate = useNavigate();
+  const { tickets, addTicket } = useTickets();
   const [activeTab, setActiveTab] = useState<TabKey>("all");
-  const [kbSearch, setKbSearch] = useState("");
+  const [kbSearch, setKbSearch]   = useState("");
+  const [showModal, setShowModal] = useState(false);
 
-  /* ticket counts per tab */
+  const [form, setForm] = useState({
+    subject: "",
+    priority: "medium" as TicketPriority,
+    description: "",
+  });
+
   const countByTab: Record<TabKey, number> = {
     all:              tickets.length,
     open:             tickets.filter(t => t.status === "open").length,
@@ -141,42 +146,43 @@ export default function SupportDashboard() {
     closed:           tickets.filter(t => t.status === "closed").length,
   };
 
-  const filteredTickets = tickets.filter((t) => {
-    if (activeTab === "all") return true;
-    return t.status === activeTab;
-  });
+  const filteredTickets = activeTab === "all"
+    ? tickets
+    : tickets.filter(t => t.status === activeTab);
 
-  /* filtered knowledge articles */
   const kbArticles = MOCK_KNOWLEDGE_ARTICLES.filter((a) => {
     if (!kbSearch) return true;
     const q = kbSearch.toLowerCase();
     return a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q);
   });
 
+  function handleSubmitTicket() {
+    if (!form.subject.trim()) return;
+    addTicket({
+      subject: form.subject,
+      description: form.description,
+      category: "outro",
+      priority: form.priority,
+      created_by: "Usuário Atual",
+    });
+    setShowModal(false);
+    setForm({ subject: "", priority: "medium", description: "" });
+  }
+
   return (
     <MainLayout
       title="Central de Suporte"
       description="Encontre ajuda, gerencie tickets e acompanhe o status"
-      actions={
-        <Button
-          size="sm"
-          className="h-8 text-xs gap-1.5"
-          onClick={() => navigate("/support/tickets")}
-          data-testid="button-novo-ticket"
-        >
-          <Plus className="h-3.5 w-3.5" /> Novo Ticket
-        </Button>
-      }
     >
       <div className="space-y-6 animate-fade-in">
 
-        {/* ── Three hero action cards ── */}
+        {/* Three hero action cards */}
         <div className="grid grid-cols-3 gap-4">
           <ActionCard
             icon={Plus}
             label="Novo Ticket"
             desc="Precisa de ajuda? Abra um novo ticket de suporte"
-            href="/support/tickets"
+            onClick={() => setShowModal(true)}
             iconColor="bg-primary/10 text-primary"
           />
           <ActionCard
@@ -195,10 +201,10 @@ export default function SupportDashboard() {
           />
         </div>
 
-        {/* ── Two-column body ── */}
+        {/* Two-column body */}
         <div className="grid lg:grid-cols-[1fr_420px] gap-5">
 
-          {/* ── Knowledge Base ── */}
+          {/* Knowledge Base */}
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
               <BookOpen className="h-4 w-4 text-muted-foreground" />
@@ -222,9 +228,7 @@ export default function SupportDashboard() {
                   <p className="text-[13px] text-muted-foreground">Nenhum artigo encontrado</p>
                 </div>
               ) : (
-                kbArticles.map((article) => (
-                  <FaqItem key={article.id} article={article} />
-                ))
+                kbArticles.map((article) => <FaqItem key={article.id} article={article} />)
               )}
             </div>
             <div className="px-5 py-3 border-t border-border/60">
@@ -237,7 +241,7 @@ export default function SupportDashboard() {
             </div>
           </div>
 
-          {/* ── Meus Tickets ── */}
+          {/* Meus Tickets */}
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
             <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
               <Ticket className="h-4 w-4 text-muted-foreground" />
@@ -326,6 +330,79 @@ export default function SupportDashboard() {
           </div>
         </div>
       </div>
+
+      {/* ─── Novo Ticket Modal ─── */}
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md" data-testid="modal-novo-ticket">
+          <DialogHeader>
+            <DialogTitle className="text-base font-semibold">Novo Ticket de Suporte</DialogTitle>
+            <p className="text-[12.5px] text-muted-foreground mt-1">
+              Descreva seu problema ou dúvida e nossa equipe entrará em contato.
+            </p>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1">
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium">Assunto</Label>
+              <Input
+                placeholder="Resumo do problema"
+                value={form.subject}
+                onChange={(e) => setForm({ ...form, subject: e.target.value })}
+                className="text-sm h-9"
+                data-testid="input-ticket-subject"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium">Prioridade</Label>
+              <Select
+                value={form.priority}
+                onValueChange={(v) => setForm({ ...form, priority: v as TicketPriority })}
+              >
+                <SelectTrigger className="h-9 text-sm" data-testid="select-ticket-priority">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([k, v]) => (
+                    <SelectItem key={k} value={k} className="text-sm">{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-[12px] font-medium">Descrição</Label>
+              <Textarea
+                placeholder="Descreva detalhadamente seu problema..."
+                value={form.description}
+                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                className="text-sm resize-none"
+                rows={4}
+                data-testid="textarea-ticket-description"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowModal(false)}
+              data-testid="button-cancel-ticket"
+            >
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSubmitTicket}
+              disabled={!form.subject.trim()}
+              data-testid="button-submit-ticket"
+            >
+              Enviar Ticket
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </MainLayout>
   );
 }

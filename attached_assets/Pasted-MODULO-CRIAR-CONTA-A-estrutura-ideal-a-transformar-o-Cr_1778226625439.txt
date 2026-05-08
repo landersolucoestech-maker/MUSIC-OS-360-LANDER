@@ -1,0 +1,197 @@
+MODULO CRIAR CONTA
+
+A estrutura ideal aí é transformar o “Criar nova conta” em um fluxo completo de onboarding multi-tenant, não apenas um formulário simples de cadastro.
+
+O comportamento correto seria:
+
+Usuário clica em “Criar nova conta”
+Abre uma nova página /register
+O usuário cria a organização (tenant)
+O sistema cria:
+empresa
+workspace
+usuário admin master
+subdomínio/slug da conta
+configurações iniciais
+Após finalizar:
+login automático
+redireciona para /dashboard
+
+A tela precisa seguir exatamente a mesma identidade visual da auth atual:
+
+dark premium
+azul #3B82F6
+glassmorphism leve
+layout corporativo
+visual enterprise/SaaS
+mesma tipografia e espaçamentos
+
+Estrutura ideal da página:
+
+ETAPA 1 — DADOS DA EMPRESA
+Campos:
+Nome da empresa
+Nome fantasia
+CNPJ
+Segmento: gravadora/editora
+Endereço completo
+Cidade
+Estado
+Telefone
+E-mail corporativo
+
+ETAPA 2 — DADOS DO ADMINISTRADOR
+Campos:
+Nome completo
+Cargo
+E-mail de acesso
+Senha
+Confirmar senha
+
+Esse usuário será o:
+
+Owner da organização
+Admin master do tenant
+
+ETAPA 3 — CONFIGURAÇÃO DO WORKSPACE
+Campos:
+Nome do workspace
+Slug/URL da empresa
+
+Exemplo:
+
+musicos360.com/landerrecords
+
+ETAPA 4 — PLANO / ATIVAÇÃO
+
+Mesmo que inicialmente seja gratuito.
+
+Campos:
+
+Trial de 7/14 dias
+Aceite dos termos
+Aceite LGPD
+
+Botão:
+
+CRIAR EMPRESA
+ARQUITETURA MULTI-TENANT CORRETA
+
+Ao finalizar cadastro:
+
+Criar Tenant
+
+Tabela:
+
+tenants
+Criar Organização
+
+Tabela:
+
+organizations
+Criar Usuário Master
+
+Tabela:
+
+users
+Vincular:
+user_organizations
+Criar Workspace inicial
+
+Tabela:
+
+workspaces
+
+ESTRUTURA VISUAL RECOMENDADA
+Layout dividido igual login:
+Lado esquerdo
+
+Formulário step-by-step:
+
+barra de progresso
+animação suave
+validação inline
+botão next/back
+Lado direito
+
+Hero institucional:
+
+logo 3D
+slogan
+cards com benefícios
+analytics
+financeiro
+distribuição
+contratos
+agenda
+financeiro
+
+UX IMPORTANTE
+Não fazer:
+formulário gigante único
+modal
+popup
+Fazer:
+
+Wizard onboarding profissional.
+
+ROTAS IDEAIS
+/auth/login
+/auth/register
+/auth/forgot-password
+/auth/reset-password
+
+BANCO MULTI-TENANT
+
+Cada registro operacional deve possuir:
+
+tenant_id
+organization_id
+
+Obrigatório em:
+
+artistas
+projetos
+financeiro
+contratos
+agenda
+analytics
+distribuições
+users
+
+REGRAS IMPORTANTES
+Ao cadastrar:
+slug deve ser único
+email deve ser único
+criar tenant automaticamente
+criar admin automaticamente
+iniciar sessão automaticamente
+
+EXPERIÊNCIA PREMIUM
+
+Adicione:
+
+transições suaves
+loading states
+validação em tempo real
+senha forte
+máscara de CNPJ
+autocomplete inteligente
+progress indicator
+
+FLUXO FINAL
+LOGIN
+   ↓
+Criar Conta
+   ↓
+Cadastro Empresa
+   ↓
+Cadastro Admin
+   ↓
+Configurar Workspace
+   ↓
+Criar Tenant
+   ↓
+Entrar no Sistema
+
+Isso transforma o auth numa experiência real de SaaS enterprise multi-tenant e elimina a aparência de sistema simples/amador.

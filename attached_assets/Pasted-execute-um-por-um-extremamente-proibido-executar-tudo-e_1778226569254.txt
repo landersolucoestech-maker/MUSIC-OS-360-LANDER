@@ -1,0 +1,585 @@
+execute um por um, é extremamente proibido executar tudo em paralelo:
+
+PROMPT — CRIAR PAINEL ADMINISTRATIVO MASTER ENTERPRISE | MUSIC OS 360
+
+Analise toda a arquitetura atual do projeto MUSIC OS 360 antes de iniciar qualquer alteração.
+
+O objetivo é criar um painel administrativo MASTER enterprise completo para gerenciamento global da plataforma SaaS multi-tenant.
+
+IMPORTANTE:
+
+* NÃO criar dashboard genérico
+* NÃO usar aparência de template admin comum
+* NÃO criar visual amador
+* NÃO usar componentes excessivamente simples
+* NÃO utilizar roxo
+* utilizar azul #3B82F6
+* manter identidade visual atual do MUSIC OS 360
+* manter dark mode premium
+* manter aparência enterprise/SaaS moderna
+
+======================================================================
+OBJETIVO
+========
+
+Criar um painel administrativo GLOBAL da plataforma.
+
+Esse painel NÃO é do cliente.
+
+Esse painel é do:
+
+* super admin
+* owner do SaaS
+* operação da plataforma
+* gestão global do sistema
+
+======================================================================
+ARQUITETURA
+===========
+
+Criar módulo:
+
+/modules/admin
+/modules/admin/components
+/modules/admin/layouts
+/modules/admin/pages
+/modules/admin/services
+/modules/admin/hooks
+/modules/admin/store
+/modules/admin/types
+
+Separar corretamente:
+
+* services
+* queries
+* layouts
+* components
+* charts
+* analytics
+* realtime
+* permissions
+
+======================================================================
+ROTAS
+=====
+
+Criar rotas:
+
+/admin
+/admin/dashboard
+/admin/clients
+/admin/subscriptions
+/admin/revenue
+/admin/plans
+/admin/users
+/admin/security
+/admin/audit
+/admin/logs
+/admin/system
+/admin/integrations
+/admin/settings
+/admin/notifications
+/admin/support
+/admin/analytics
+
+======================================================================
+ADMIN LAYOUT
+============
+
+Criar layout enterprise premium.
+
+Estrutura:
+
+* sidebar premium
+* topbar inteligente
+* search global
+* notifications
+* quick actions
+* profile dropdown
+* command palette
+
+Visual inspirado em:
+
+* Stripe Dashboard
+* Vercel
+* Linear
+* Supabase
+* Notion
+
+======================================================================
+SIDEBAR ADMIN
+=============
+
+Adicionar:
+
+Dashboard
+Clientes
+Assinaturas
+Planos
+Receita
+Analytics
+Usuários
+Segurança
+Logs & Auditoria
+Integrações
+Sistema
+Notificações
+Support Hub
+Configurações
+
+Utilizar lucide-react.
+
+======================================================================
+IDENTIDADE VISUAL
+=================
+
+Utilizar:
+
+* dark premium
+* azul #3B82F6
+* gradients suaves
+* glassmorphism leve
+* blur effects
+* glow azul discreto
+* hover elegante
+* cards premium
+* bordas translúcidas
+
+NÃO parecer template bootstrap/admin.
+
+======================================================================
+ADMIN DASHBOARD
+===============
+
+Criar dashboard executivo enterprise.
+
+Adicionar:
+
+* KPIs globais
+* métricas SaaS
+* analytics
+* gráficos
+* tendências
+* insights
+* atividade em realtime
+
+======================================================================
+KPIS PRINCIPAIS
+===============
+
+Adicionar cards:
+
+* MRR
+* ARR
+* Total de Clientes
+* Usuários Ativos
+* Churn Rate
+* Conversão Trial
+* Receita Mensal
+* Receita Anual
+* Crescimento
+* Lifetime Value
+* CAC
+* Assinaturas Ativas
+* Tickets Abertos
+* Sistema Operacional
+
+Adicionar:
+
+* comparativo percentual
+* trends
+* sparkline
+* animações suaves
+
+======================================================================
+GRÁFICOS
+========
+
+Criar gráficos premium utilizando recharts.
+
+Adicionar:
+
+* evolução receita
+* crescimento usuários
+* churn
+* retenção
+* assinaturas
+* planos
+* tickets
+* uso da plataforma
+
+Visual:
+
+* moderno
+* minimalista
+* elegante
+* responsivo
+
+======================================================================
+MÓDULO CLIENTES
+===============
+
+Página:
+
+/admin/clients
+
+Criar gestão global de tenants.
+
+Mostrar:
+
+* empresa
+* tenant
+* plano
+* status
+* usuários
+* consumo
+* criação
+* faturamento
+* atividade
+
+Funcionalidades:
+
+* visualizar tenant
+* suspender tenant
+* ativar tenant
+* alterar plano
+* impersonate/login as tenant
+* resetar limites
+* acessar workspace
+
+======================================================================
+MÓDULO ASSINATURAS
+==================
+
+Página:
+
+/admin/subscriptions
+
+Gerenciar:
+
+* planos
+* upgrades
+* downgrades
+* pagamentos
+* status
+* trials
+* renovações
+* inadimplência
+
+Adicionar:
+
+* filtros
+* analytics
+* receitas
+* MRR
+* ARR
+
+======================================================================
+MÓDULO SEGURANÇA
+================
+
+Página:
+
+/admin/security
+
+Adicionar:
+
+* sessões ativas
+* login attempts
+* IPs
+* bloqueios
+* MFA
+* dispositivos
+* atividades suspeitas
+* alertas
+
+Criar visual estilo:
+
+* Cloudflare
+* Auth0
+* Supabase Security
+
+======================================================================
+LOGS & AUDITORIA
+================
+
+Página:
+
+/admin/audit
+
+Adicionar:
+
+* audit trail
+* logs sistema
+* ações administrativas
+* alterações críticas
+* autenticação
+* webhooks
+* erros
+* integrações
+
+Funcionalidades:
+
+* filtros avançados
+* exportação
+* busca
+* timeline
+* detalhes expandíveis
+
+======================================================================
+CONFIGURAÇÕES
+=============
+
+Página:
+
+/admin/settings
+
+Adicionar:
+
+* branding
+* emails
+* SMTP
+* integrações
+* billing
+* limites
+* storage
+* realtime
+* cache
+* filas
+* feature flags
+
+======================================================================
+SUPORTE ADMINISTRATIVO
+======================
+
+Integrar com Support Hub.
+
+Adicionar:
+
+* tickets globais
+* suporte tenants
+* métricas suporte
+* SLA
+* filas
+* operadores
+
+======================================================================
+SISTEMA
+=======
+
+Página:
+
+/admin/system
+
+Mostrar:
+
+* status APIs
+* banco
+* websocket
+* filas
+* processamento
+* uso CPU
+* memória
+* storage
+* uptime
+
+Visual estilo:
+
+* Vercel
+* Railway
+* Datadog
+
+======================================================================
+MULTI-TENANT
+============
+
+IMPORTANTE.
+
+Separar corretamente:
+
+SUPER ADMIN:
+
+* acesso global
+
+TENANT ADMIN:
+
+* acesso apenas tenant próprio
+
+Implementar:
+
+* RBAC
+* permissões
+* roles
+* guards
+* middleware
+
+======================================================================
+ROLES
+=====
+
+Criar:
+
+super_admin
+admin
+operator
+support
+finance
+viewer
+
+======================================================================
+BANCO DE DADOS
+==============
+
+Criar tabelas:
+
+admin_logs
+admin_sessions
+admin_notifications
+system_metrics
+tenant_usage
+audit_logs
+security_events
+feature_flags
+
+Adicionar:
+
+* indexes
+* foreign keys
+* timestamps
+* soft delete
+
+======================================================================
+REALTIME
+========
+
+Adicionar realtime:
+
+* atividade usuários
+* logs
+* tickets
+* sistema
+* notificações
+* analytics
+
+======================================================================
+NOTIFICAÇÕES
+============
+
+Criar central:
+
+* alerts
+* erros
+* pagamentos
+* tickets
+* segurança
+* tenants
+
+Adicionar:
+
+* dropdown realtime
+* unread count
+* push states
+
+======================================================================
+UX
+==
+
+Adicionar:
+
+* command palette
+* busca global
+* atalhos teclado
+* loading skeleton
+* empty states
+* onboarding
+* animações suaves
+* lazy loading
+
+======================================================================
+PERFORMANCE
+===========
+
+Aplicar:
+
+* code splitting
+* suspense
+* virtualization
+* memoization
+* caching
+* optimized charts
+
+======================================================================
+TIPAGEM
+=======
+
+Criar:
+
+* interfaces
+* enums
+* zod schemas
+* validation
+* centralized types
+
+======================================================================
+STACK
+=====
+
+Manter stack atual:
+
+* React
+* TypeScript
+* Tailwind
+* shadcn/ui
+* TanStack Query
+* Recharts
+* Supabase
+
+======================================================================
+IMPORTANTE
+==========
+
+REMOVER aparência de:
+
+* template admin
+* painel genérico
+* dashboard comum
+
+O resultado final deve parecer:
+
+* SaaS enterprise real
+* plataforma premium
+* operação global profissional
+* software de alto nível
+
+======================================================================
+EXECUÇÃO
+========
+
+EXECUTAR EM FASES.
+
+FASE 1:
+Estrutura admin + rotas + layout
+
+FASE 2:
+Dashboard executivo
+
+FASE 3:
+Clientes multi-tenant
+
+FASE 4:
+Assinaturas + billing
+
+FASE 5:
+Segurança + auditoria
+
+FASE 6:
+Sistema + métricas
+
+FASE 7:
+Notificações + realtime
+
+FASE 8:
+Polimento visual + responsividade + performance
+
+NÃO executar tudo em paralelo.
+Executar fase por fase sem quebrar funcionalidades existentes.
