@@ -51,6 +51,8 @@ import {
   BookOpen,
   ServerCrash,
   Inbox,
+  BarChart2,
+  Mic2,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -89,9 +91,26 @@ const NAV_ITEMS: NavItem[] = [
     icon: Music,
     children: [
       { title: "Obras & Fonogramas", href: "/registro-musicas", icon: Music },
-      { title: "Monitoramento", href: "/monitoramento", icon: Radio },
       { title: "Licenciamento", href: "/licenciamento", icon: Shield },
       { title: "Takedowns", href: "/takedowns", icon: AlertTriangle },
+    ],
+  },
+  {
+    title: "Rights Monitoring",
+    icon: Radio,
+    children: [
+      { title: "Rights Monitoring", href: "/rights-monitoring", icon: Radio },
+      { title: "Rádio & TV", href: "/rights-monitoring", icon: Mic2 },
+      { title: "Cue Sheets", href: "/rights-monitoring", icon: FileText },
+    ],
+  },
+  {
+    title: "DSP Analytics",
+    icon: BarChart2,
+    children: [
+      { title: "Streaming", href: "/dsp-analytics", icon: BarChart2 },
+      { title: "TikTok Analytics", href: "/dsp-analytics", icon: TrendingUp },
+      { title: "Audience", href: "/dsp-analytics", icon: Users },
     ],
   },
   {
