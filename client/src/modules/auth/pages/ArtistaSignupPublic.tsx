@@ -434,12 +434,12 @@ export default function ArtistaSignupPublic() {
             <h1 className="text-2xl font-bold">{orgInfo.name}</h1>
             <div className="text-muted-foreground text-sm mt-2 space-y-2 max-w-lg mx-auto text-center">
               <p className="font-medium text-foreground">Cadastro de Artista</p>
-              <p>Preencha seus dados para realização do cadastro artístico junto à LANDER RECORDS.</p>
+              <p>Preencha seus dados para realização do cadastro artístico junto à {orgInfo.name}.</p>
               <p className="text-xs leading-relaxed">
                 As informações fornecidas neste formulário serão utilizadas exclusivamente para processos
                 de identificação, validação cadastral, formalização e gestão de artistas, compositores,
                 produtores e demais participantes relacionados às obras musicais e fonogramas vinculados
-                à LANDER RECORDS.
+                à {orgInfo.name}.
               </p>
             </div>
           </div>
