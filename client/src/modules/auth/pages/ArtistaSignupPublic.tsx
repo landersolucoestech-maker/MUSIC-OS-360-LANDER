@@ -686,7 +686,7 @@ export default function ArtistaSignupPublic() {
             {form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo) && (
               <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  Dados do {form.vinculo}
+                  {form.vinculo === "Com Empresário" ? "Dados do Empresário" : form.vinculo === "Gravadora" ? "Dados da Gravadora" : "Dados da Editora"}
                 </p>
 
                 <div className={`grid grid-cols-1 gap-4 ${VINCULO_COM_NOME_EMPRESA.has(form.vinculo) ? "sm:grid-cols-2" : ""}`}>
