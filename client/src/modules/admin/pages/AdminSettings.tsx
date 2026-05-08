@@ -17,7 +17,6 @@ import {
 type TabKey = "usuarios" | "geral" | "email" | "seguranca" | "notificacoes" | "aparencia" | "webhooks" | "chaves-api" | "integracoes";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { key: "usuarios",     label: "Usuários",    icon: Users     },
   { key: "geral",        label: "Geral",       icon: Settings  },
   { key: "email",        label: "Email",        icon: Mail      },
   { key: "seguranca",    label: "Segurança",    icon: Shield    },
@@ -26,6 +25,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
   { key: "webhooks",     label: "Webhooks",     icon: Webhook   },
   { key: "chaves-api",   label: "Chaves API",   icon: KeyRound  },
   { key: "integracoes",  label: "Integrações",  icon: Zap       },
+  { key: "usuarios",     label: "Usuários",     icon: Users     },
 ];
 
 /* ── integration helpers ── */
