@@ -467,6 +467,136 @@ export const META_ADS_MOCK = {
   ] as MetaAdsCampaign[],
 };
 
+// ─── Instagram Ads ────────────────────────────────────────────────────────────
+
+export interface InstagramAdsCampaign {
+  nome: string;
+  tipo: "Stories" | "Reels" | "Feed" | "Explorar";
+  impressoes: number;
+  alcance: number;
+  cliques: number;
+  ctr: number;
+  spend: number;
+  resultados: number;
+  custoResultado: number;
+  status: "ativa" | "encerrada" | "pausada";
+}
+
+export const INSTAGRAM_ADS_MOCK = {
+  mes: { impressoes: 2_640_000, alcance: 1_180_000, cliques: 82_400, ctr: 3.12, spend: 13_200, resultados: 7_100 },
+  evolution: [
+    { mes: "Dez", value: 1_400_000 },
+    { mes: "Jan", value: 1_620_000 },
+    { mes: "Fev", value: 1_840_000 },
+    { mes: "Mar", value: 2_100_000 },
+    { mes: "Abr", value: 2_380_000 },
+    { mes: "Mai", value: 2_640_000 },
+  ],
+  campanhas: [
+    { nome: "Ana Beatriz Santos — Reels Lançamento", tipo: "Reels",    impressoes: 1_020_000, alcance: 480_000, cliques: 34_200, ctr: 3.35, spend: 5_400, resultados: 3_200, custoResultado: 1.69, status: "ativa"    },
+    { nome: "Vitória Lunar — Stories EP Lunar",      tipo: "Stories",  impressoes: 840_000,   alcance: 390_000, cliques: 26_800, ctr: 3.19, spend: 4_200, resultados: 2_400, custoResultado: 1.75, status: "ativa"    },
+    { nome: "Raiz Nordestina — Feed Forró",          tipo: "Feed",     impressoes: 520_000,   alcance: 210_000, cliques: 14_600, ctr: 2.81, spend: 2_400, resultados: 1_100, custoResultado: 2.18, status: "pausada"  },
+    { nome: "MusicOS 360 — Explorar Brand",          tipo: "Explorar", impressoes: 260_000,   alcance: 100_000, cliques: 6_800,  ctr: 2.62, spend: 1_200, resultados: 400,   custoResultado: 3.00, status: "encerrada" },
+  ] as InstagramAdsCampaign[],
+};
+
+// ─── Facebook Ads ──────────────────────────────────────────────────────────────
+
+export interface FacebookAdsCampaign {
+  nome: string;
+  tipo: "Feed" | "Marketplace" | "Messenger" | "Vídeo";
+  impressoes: number;
+  alcance: number;
+  cliques: number;
+  ctr: number;
+  spend: number;
+  resultados: number;
+  custoResultado: number;
+  status: "ativa" | "encerrada" | "pausada";
+}
+
+export const FACEBOOK_ADS_MOCK = {
+  mes: { impressoes: 2_180_000, alcance: 1_010_000, cliques: 66_200, ctr: 3.04, spend: 11_600, resultados: 5_300 },
+  evolution: [
+    { mes: "Dez", value: 1_200_000 },
+    { mes: "Jan", value: 1_360_000 },
+    { mes: "Fev", value: 1_540_000 },
+    { mes: "Mar", value: 1_760_000 },
+    { mes: "Abr", value: 1_980_000 },
+    { mes: "Mai", value: 2_180_000 },
+  ],
+  campanhas: [
+    { nome: "Saudade de Mim — Vídeo Feed Nac.",       tipo: "Vídeo",      impressoes: 920_000,   alcance: 420_000, cliques: 29_400, ctr: 3.20, spend: 5_200, resultados: 2_400, custoResultado: 2.17, status: "ativa"    },
+    { nome: "Vitória Lunar — Alcance SP/RJ/MG",       tipo: "Feed",       impressoes: 740_000,   alcance: 340_000, cliques: 21_800, ctr: 2.95, spend: 3_600, resultados: 1_700, custoResultado: 2.12, status: "ativa"    },
+    { nome: "Shows Marcus Flow — Marketplace",         tipo: "Marketplace", impressoes: 320_000, alcance: 148_000, cliques: 10_400, ctr: 3.25, spend: 1_800, resultados: 780,   custoResultado: 2.31, status: "pausada"  },
+    { nome: "MusicOS 360 — Messenger Remarketing",    tipo: "Messenger",  impressoes: 200_000,   alcance: 102_000, cliques: 4_600,  ctr: 2.30, spend: 1_000, resultados: 420,   custoResultado: 2.38, status: "ativa"    },
+  ] as FacebookAdsCampaign[],
+};
+
+// ─── YouTube Ads ───────────────────────────────────────────────────────────────
+
+export interface YouTubeAdsCampaign {
+  nome: string;
+  tipo: "Pre-roll" | "Bumper" | "Discovery" | "Masthead";
+  impressoes: number;
+  cliques: number;
+  ctr: number;
+  spend: number;
+  views: number;
+  vtr: number;
+  status: "ativa" | "encerrada" | "pausada";
+}
+
+export const YOUTUBE_ADS_MOCK = {
+  mes: { impressoes: 3_420_000, cliques: 94_800, ctr: 2.77, spend: 38_400, views: 1_840_000, vtr: 53.8 },
+  evolution: [
+    { mes: "Dez", value: 1_800_000 },
+    { mes: "Jan", value: 2_100_000 },
+    { mes: "Fev", value: 2_400_000 },
+    { mes: "Mar", value: 2_800_000 },
+    { mes: "Abr", value: 3_100_000 },
+    { mes: "Mai", value: 3_420_000 },
+  ],
+  campanhas: [
+    { nome: "Ana Beatriz Santos — Pre-roll Nac.",     tipo: "Pre-roll",  impressoes: 1_400_000, cliques: 38_200, ctr: 2.73, spend: 16_200, views: 820_000,  vtr: 58.6, status: "ativa"    },
+    { nome: "Vitória Lunar — Discovery EP Lunar",     tipo: "Discovery", impressoes: 980_000,   cliques: 28_600, ctr: 2.92, spend: 11_800, views: 540_000,  vtr: 55.1, status: "ativa"    },
+    { nome: "Raiz Nordestina — Bumper Forró",         tipo: "Bumper",    impressoes: 760_000,   cliques: 18_400, ctr: 2.42, spend: 7_400,  views: 380_000,  vtr: 50.0, status: "pausada"  },
+    { nome: "MusicOS 360 — Masthead Festival",        tipo: "Masthead",  impressoes: 280_000,   cliques: 9_600,  ctr: 3.43, spend: 3_000,  views: 100_000,  vtr: 35.7, status: "encerrada" },
+  ] as YouTubeAdsCampaign[],
+};
+
+// ─── TikTok Ads ────────────────────────────────────────────────────────────────
+
+export interface TikTokAdsCampaign {
+  nome: string;
+  tipo: "In-feed" | "TopView" | "Brand Takeover" | "Spark";
+  impressoes: number;
+  cliques: number;
+  ctr: number;
+  spend: number;
+  plays: number;
+  engajamento: number;
+  status: "ativa" | "encerrada" | "pausada";
+}
+
+export const TIKTOK_ADS_MOCK = {
+  mes: { impressoes: 4_100_000, cliques: 142_000, ctr: 3.46, spend: 22_600, plays: 2_640_000, engajamento: 5.8 },
+  evolution: [
+    { mes: "Dez", value: 2_200_000 },
+    { mes: "Jan", value: 2_600_000 },
+    { mes: "Fev", value: 3_000_000 },
+    { mes: "Mar", value: 3_400_000 },
+    { mes: "Abr", value: 3_800_000 },
+    { mes: "Mai", value: 4_100_000 },
+  ],
+  campanhas: [
+    { nome: "Ana Beatriz Santos — In-feed Viral",    tipo: "In-feed",       impressoes: 1_800_000, cliques: 68_400, ctr: 3.80, spend: 9_800,  plays: 1_240_000, engajamento: 7.2, status: "ativa"    },
+    { nome: "Vitória Lunar — TopView EP Lunar",      tipo: "TopView",       impressoes: 1_100_000, cliques: 42_200, ctr: 3.84, spend: 7_200,  plays: 820_000,   engajamento: 6.8, status: "ativa"    },
+    { nome: "Marcus Flow — Spark BPM",               tipo: "Spark",         impressoes: 820_000,   cliques: 22_400, ctr: 2.73, spend: 3_800,  plays: 460_000,   engajamento: 4.1, status: "pausada"  },
+    { nome: "MusicOS 360 — Brand Takeover Festival", tipo: "Brand Takeover", impressoes: 380_000,  cliques: 9_000,  ctr: 2.37, spend: 1_800,  plays: 120_000,   engajamento: 3.2, status: "encerrada" },
+  ] as TikTokAdsCampaign[],
+};
+
 // ─── Google Ads ───────────────────────────────────────────────────────────────
 
 export interface GoogleAdsCampaign {

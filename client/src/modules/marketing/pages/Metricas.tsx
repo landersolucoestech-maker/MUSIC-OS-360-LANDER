@@ -19,16 +19,20 @@ import { SiYoutube, SiMeta, SiGoogleads, SiInstagram, SiTiktok, SiSpotify } from
 import { cn } from "@/shared/lib/utils";
 import {
   YOUTUBE_MOCK, YOUTUBE_TOTALS,
-  META_ADS_MOCK, GOOGLE_ADS_MOCK,
+  GOOGLE_ADS_MOCK,
   INSTAGRAM_MOCK, INSTAGRAM_TOTALS,
+  INSTAGRAM_ADS_MOCK,
+  FACEBOOK_ADS_MOCK,
+  YOUTUBE_ADS_MOCK,
   TIKTOK_MOCK, TIKTOK_TOTALS,
+  TIKTOK_ADS_MOCK,
   SPOTIFY_ADS_MOCK,
   fmtNum, type MonthlyPoint,
 } from "@/modules/analytics/data/mockAnalytics";
 import { formatCurrency } from "@/shared/lib/format-utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
-type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "meta" | "google" | "spotify";
+type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "instagramads" | "facebookads" | "youtubeads" | "tiktokads" | "google" | "spotify";
 
 // ─── SVG Area chart ────────────────────────────────────────────────────────────
 function AreaChart({ data, stroke, gradId }: { data: MonthlyPoint[]; stroke: string; gradId: string }) {
@@ -119,32 +123,41 @@ function KpiCard({ label, value, trend, up }: KpiProps) {
 
 // ─── Platform switcher ────────────────────────────────────────────────────────
 const PLATFORMS: { id: PlatformId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "overview",  label: "Visão Geral",  icon: BarChart2   },
-  { id: "youtube",   label: "YouTube",      icon: SiYoutube   },
-  { id: "tiktok",    label: "TikTok",       icon: SiTiktok    },
-  { id: "instagram", label: "Instagram",    icon: SiInstagram },
-  { id: "meta",      label: "Meta Ads",     icon: SiMeta      },
-  { id: "google",    label: "Google Ads",   icon: SiGoogleads },
-  { id: "spotify",   label: "Spotify Ads",  icon: SiSpotify   },
+  { id: "overview",     label: "Visão Geral",    icon: BarChart2   },
+  { id: "youtube",      label: "YouTube",        icon: SiYoutube   },
+  { id: "youtubeads",   label: "YouTube Ads",    icon: SiYoutube   },
+  { id: "tiktok",       label: "TikTok",         icon: SiTiktok    },
+  { id: "tiktokads",    label: "TikTok Ads",     icon: SiTiktok    },
+  { id: "instagram",    label: "Instagram",      icon: SiInstagram },
+  { id: "instagramads", label: "Instagram Ads",  icon: SiInstagram },
+  { id: "facebookads",  label: "Facebook Ads",   icon: SiMeta      },
+  { id: "google",       label: "Google Ads",     icon: SiGoogleads },
+  { id: "spotify",      label: "Spotify Ads",    icon: SiSpotify   },
 ];
 
 const CHART_COLOR: Record<PlatformId, string> = {
-  overview:  "hsl(217,91%,60%)",
-  youtube:   "#FF0000",
-  tiktok:    "hsl(271,91%,65%)",
-  instagram: "#E1306C",
-  meta:      "#0082FB",
-  google:    "#34A853",
-  spotify:   "#1DB954",
+  overview:     "hsl(217,91%,60%)",
+  youtube:      "#FF0000",
+  youtubeads:   "#CC0000",
+  tiktok:       "hsl(271,91%,65%)",
+  tiktokads:    "hsl(271,70%,50%)",
+  instagram:    "#E1306C",
+  instagramads: "#C13584",
+  facebookads:  "#0082FB",
+  google:       "#34A853",
+  spotify:      "#1DB954",
 };
 
 function getEvolution(id: PlatformId, ytSel: number, ttSel: number, igSel: number): MonthlyPoint[] {
-  if (id === "youtube")   return YOUTUBE_MOCK[ytSel]?.evolution ?? [];
-  if (id === "tiktok")    return TIKTOK_MOCK[ttSel]?.evolution ?? [];
-  if (id === "instagram") return INSTAGRAM_MOCK[igSel]?.evolution ?? [];
-  if (id === "meta")      return META_ADS_MOCK.evolution;
-  if (id === "google")    return GOOGLE_ADS_MOCK.evolution;
-  if (id === "spotify")   return SPOTIFY_ADS_MOCK.evolution;
+  if (id === "youtube")      return YOUTUBE_MOCK[ytSel]?.evolution ?? [];
+  if (id === "youtubeads")   return YOUTUBE_ADS_MOCK.evolution;
+  if (id === "tiktok")       return TIKTOK_MOCK[ttSel]?.evolution ?? [];
+  if (id === "tiktokads")    return TIKTOK_ADS_MOCK.evolution;
+  if (id === "instagram")    return INSTAGRAM_MOCK[igSel]?.evolution ?? [];
+  if (id === "instagramads") return INSTAGRAM_ADS_MOCK.evolution;
+  if (id === "facebookads")  return FACEBOOK_ADS_MOCK.evolution;
+  if (id === "google")       return GOOGLE_ADS_MOCK.evolution;
+  if (id === "spotify")      return SPOTIFY_ADS_MOCK.evolution;
   // overview: aggregate yt + tt views
   return YOUTUBE_MOCK[ytSel]?.evolution.map((p, i) => ({
     mes: p.mes,
@@ -193,11 +206,12 @@ function SidebarMetrics({
     const viewsTotaisMes     = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes;
     const engMedio           = ((TIKTOK_TOTALS.avgEngagement + INSTAGRAM_TOTALS.avgEngagement) / 2).toFixed(1);
     const alcanceTotal       = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes + INSTAGRAM_TOTALS.totalAlcanceMes;
-    const impressoesTotais   = META_ADS_MOCK.mes.impressoes + GOOGLE_ADS_MOCK.mes.impressoes;
-    const cliquesTotais      = META_ADS_MOCK.mes.cliques + GOOGLE_ADS_MOCK.mes.cliques;
-    const ctrMedio           = ((META_ADS_MOCK.mes.ctr + GOOGLE_ADS_MOCK.mes.ctr) / 2).toFixed(2);
-    const conversaosTotal    = (META_ADS_MOCK.mes.resultados || 0) + (GOOGLE_ADS_MOCK.mes.conversoes || 0);
-    const investimentoTotal  = META_ADS_MOCK.mes.spend + GOOGLE_ADS_MOCK.mes.spend;
+    const impressoesTotais   = INSTAGRAM_ADS_MOCK.mes.impressoes + FACEBOOK_ADS_MOCK.mes.impressoes + YOUTUBE_ADS_MOCK.mes.impressoes + TIKTOK_ADS_MOCK.mes.impressoes + GOOGLE_ADS_MOCK.mes.impressoes + SPOTIFY_ADS_MOCK.mes.impressoes;
+    const cliquesTotais      = INSTAGRAM_ADS_MOCK.mes.cliques + FACEBOOK_ADS_MOCK.mes.cliques + YOUTUBE_ADS_MOCK.mes.cliques + TIKTOK_ADS_MOCK.mes.cliques + GOOGLE_ADS_MOCK.mes.cliques + SPOTIFY_ADS_MOCK.mes.cliques;
+    const allSpends          = [INSTAGRAM_ADS_MOCK.mes.ctr, FACEBOOK_ADS_MOCK.mes.ctr, YOUTUBE_ADS_MOCK.mes.ctr, TIKTOK_ADS_MOCK.mes.ctr, GOOGLE_ADS_MOCK.mes.ctr, SPOTIFY_ADS_MOCK.mes.ctr];
+    const ctrMedio           = (allSpends.reduce((s, v) => s + v, 0) / allSpends.length).toFixed(2);
+    const conversaosTotal    = (INSTAGRAM_ADS_MOCK.mes.resultados || 0) + (FACEBOOK_ADS_MOCK.mes.resultados || 0) + (GOOGLE_ADS_MOCK.mes.conversoes || 0);
+    const investimentoTotal  = INSTAGRAM_ADS_MOCK.mes.spend + FACEBOOK_ADS_MOCK.mes.spend + YOUTUBE_ADS_MOCK.mes.spend + TIKTOK_ADS_MOCK.mes.spend + GOOGLE_ADS_MOCK.mes.spend + SPOTIFY_ADS_MOCK.mes.spend;
 
     const allContent = [
       ...YOUTUBE_MOCK.flatMap(a => a.topVideos.map(v => ({ titulo: v.titulo, views: v.views }))),
@@ -254,14 +268,47 @@ function SidebarMetrics({
     </div>
   );
 
-  if (platform === "meta") return (
+  if (platform === "instagramads") return (
     <div className="space-y-1">
-      <Row label="Impressões"   value={fmtNum(META_ADS_MOCK.mes.impressoes)} />
-      <Row label="Alcance"      value={fmtNum(META_ADS_MOCK.mes.alcance)} />
-      <Row label="Cliques"      value={fmtNum(META_ADS_MOCK.mes.cliques)} />
-      <Row label="CTR"          value={`${META_ADS_MOCK.mes.ctr}%`} />
-      <Row label="Investimento" value={formatCurrency(META_ADS_MOCK.mes.spend)} />
-      <Row label="Conversões"   value={fmtNum(META_ADS_MOCK.mes.conversoes)} />
+      <Row label="Impressões"   value={fmtNum(INSTAGRAM_ADS_MOCK.mes.impressoes)} />
+      <Row label="Alcance"      value={fmtNum(INSTAGRAM_ADS_MOCK.mes.alcance)} />
+      <Row label="Cliques"      value={fmtNum(INSTAGRAM_ADS_MOCK.mes.cliques)} />
+      <Row label="CTR"          value={`${INSTAGRAM_ADS_MOCK.mes.ctr}%`} />
+      <Row label="Investimento" value={formatCurrency(INSTAGRAM_ADS_MOCK.mes.spend)} />
+      <Row label="Resultados"   value={fmtNum(INSTAGRAM_ADS_MOCK.mes.resultados)} />
+    </div>
+  );
+
+  if (platform === "facebookads") return (
+    <div className="space-y-1">
+      <Row label="Impressões"   value={fmtNum(FACEBOOK_ADS_MOCK.mes.impressoes)} />
+      <Row label="Alcance"      value={fmtNum(FACEBOOK_ADS_MOCK.mes.alcance)} />
+      <Row label="Cliques"      value={fmtNum(FACEBOOK_ADS_MOCK.mes.cliques)} />
+      <Row label="CTR"          value={`${FACEBOOK_ADS_MOCK.mes.ctr}%`} />
+      <Row label="Investimento" value={formatCurrency(FACEBOOK_ADS_MOCK.mes.spend)} />
+      <Row label="Resultados"   value={fmtNum(FACEBOOK_ADS_MOCK.mes.resultados)} />
+    </div>
+  );
+
+  if (platform === "youtubeads") return (
+    <div className="space-y-1">
+      <Row label="Impressões"   value={fmtNum(YOUTUBE_ADS_MOCK.mes.impressoes)} />
+      <Row label="Cliques"      value={fmtNum(YOUTUBE_ADS_MOCK.mes.cliques)} />
+      <Row label="CTR"          value={`${YOUTUBE_ADS_MOCK.mes.ctr}%`} />
+      <Row label="Views"        value={fmtNum(YOUTUBE_ADS_MOCK.mes.views)} />
+      <Row label="VTR"          value={`${YOUTUBE_ADS_MOCK.mes.vtr}%`} />
+      <Row label="Investimento" value={formatCurrency(YOUTUBE_ADS_MOCK.mes.spend)} />
+    </div>
+  );
+
+  if (platform === "tiktokads") return (
+    <div className="space-y-1">
+      <Row label="Impressões"   value={fmtNum(TIKTOK_ADS_MOCK.mes.impressoes)} />
+      <Row label="Cliques"      value={fmtNum(TIKTOK_ADS_MOCK.mes.cliques)} />
+      <Row label="CTR"          value={`${TIKTOK_ADS_MOCK.mes.ctr}%`} />
+      <Row label="Plays"        value={fmtNum(TIKTOK_ADS_MOCK.mes.plays)} />
+      <Row label="Engajamento"  value={`${TIKTOK_ADS_MOCK.mes.engajamento}%`} />
+      <Row label="Investimento" value={formatCurrency(TIKTOK_ADS_MOCK.mes.spend)} />
     </div>
   );
 
@@ -306,13 +353,16 @@ function PerformanceAnalitica({
   const gradId = `grad-${platform}`;
 
   const chartLabel: Record<PlatformId, string> = {
-    overview:  "Views + Alcance consolidado — últimos 6 meses",
-    youtube:   "Views mensais — últimos 6 meses",
-    tiktok:    "Views mensais — últimos 6 meses",
-    instagram: "Crescimento de seguidores — últimos 6 meses",
-    meta:      "Impressões mensais — últimos 6 meses",
-    google:    "Impressões mensais — últimos 6 meses",
-    spotify:   "Impressões Spotify Ads — últimos 6 meses",
+    overview:     "Views + Alcance consolidado — últimos 6 meses",
+    youtube:      "Views mensais — últimos 6 meses",
+    youtubeads:   "Impressões YouTube Ads — últimos 6 meses",
+    tiktok:       "Views mensais — últimos 6 meses",
+    tiktokads:    "Impressões TikTok Ads — últimos 6 meses",
+    instagram:    "Crescimento de seguidores — últimos 6 meses",
+    instagramads: "Impressões Instagram Ads — últimos 6 meses",
+    facebookads:  "Impressões Facebook Ads — últimos 6 meses",
+    google:       "Impressões Google Ads — últimos 6 meses",
+    spotify:      "Impressões Spotify Ads — últimos 6 meses",
   };
 
   return (
@@ -373,7 +423,7 @@ function PerformanceAnalitica({
 }
 
 // ─── Top conteúdos ─────────────────────────────────────────────────────────────
-type ContentFilter = "todos" | "youtube" | "tiktok" | "instagram" | "meta" | "google" | "spotify";
+type ContentFilter = "todos" | "youtube" | "youtubeads" | "tiktok" | "tiktokads" | "instagram" | "instagramads" | "facebookads" | "google" | "spotify";
 
 interface ContentItem {
   titulo: string;
@@ -386,13 +436,16 @@ interface ContentItem {
 }
 
 const FILTER_OPTIONS: { id: ContentFilter; label: string }[] = [
-  { id: "todos",     label: "Todos"        },
-  { id: "youtube",   label: "YouTube"      },
-  { id: "tiktok",    label: "TikTok"       },
-  { id: "instagram", label: "Instagram"    },
-  { id: "meta",      label: "Meta Ads"     },
-  { id: "google",    label: "Google Ads"   },
-  { id: "spotify",   label: "Spotify Ads"  },
+  { id: "todos",        label: "Todos"           },
+  { id: "youtube",      label: "YouTube"         },
+  { id: "youtubeads",   label: "YouTube Ads"     },
+  { id: "tiktok",       label: "TikTok"          },
+  { id: "tiktokads",    label: "TikTok Ads"      },
+  { id: "instagram",    label: "Instagram"       },
+  { id: "instagramads", label: "Instagram Ads"   },
+  { id: "facebookads",  label: "Facebook Ads"    },
+  { id: "google",       label: "Google Ads"      },
+  { id: "spotify",      label: "Spotify Ads"     },
 ];
 
 function buildContentItems(): Record<ContentFilter, ContentItem[]> {
@@ -420,8 +473,26 @@ function buildContentItems(): Record<ContentFilter, ContentItem[]> {
     }))
   );
 
-  const meta: ContentItem[] = META_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
-    titulo: c.nome, artista: "Meta Ads", plataforma: "Meta Ads",
+  const ytads: ContentItem[] = YOUTUBE_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "YouTube Ads", plataforma: "YouTube Ads",
+    metric: c.views, metricLabel: "views",
+    icon: SiYoutube, color: "#CC0000",
+  }));
+
+  const ttads: ContentItem[] = TIKTOK_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "TikTok Ads", plataforma: "TikTok Ads",
+    metric: c.plays, metricLabel: "plays",
+    icon: SiTiktok, color: "hsl(271,70%,50%)",
+  }));
+
+  const igads: ContentItem[] = INSTAGRAM_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "Instagram Ads", plataforma: "Instagram Ads",
+    metric: c.resultados, metricLabel: "resultados",
+    icon: SiInstagram, color: "#C13584",
+  }));
+
+  const fbads: ContentItem[] = FACEBOOK_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "Facebook Ads", plataforma: "Facebook Ads",
     metric: c.resultados, metricLabel: "resultados",
     icon: SiMeta, color: "#0082FB",
   }));
@@ -438,19 +509,22 @@ function buildContentItems(): Record<ContentFilter, ContentItem[]> {
     icon: SiSpotify, color: "#1DB954",
   }));
 
-  const all = [...yt, ...tt, ...ig, ...meta, ...google, ...spotify].sort((a, b) => b.metric - a.metric);
+  const all = [...yt, ...tt, ...ig, ...ytads, ...ttads, ...igads, ...fbads, ...google, ...spotify].sort((a, b) => b.metric - a.metric);
 
-  return { todos: all, youtube: yt, tiktok: tt, instagram: ig, meta, google, spotify };
+  return { todos: all, youtube: yt, youtubeads: ytads, tiktok: tt, tiktokads: ttads, instagram: ig, instagramads: igads, facebookads: fbads, google, spotify };
 }
 
 const PLATFORM_TO_CONTENT: Record<PlatformId, ContentFilter> = {
-  overview:  "todos",
-  youtube:   "youtube",
-  tiktok:    "tiktok",
-  instagram: "instagram",
-  meta:      "meta",
-  google:    "google",
-  spotify:   "spotify",
+  overview:     "todos",
+  youtube:      "youtube",
+  youtubeads:   "youtubeads",
+  tiktok:       "tiktok",
+  tiktokads:    "tiktokads",
+  instagram:    "instagram",
+  instagramads: "instagramads",
+  facebookads:  "facebookads",
+  google:       "google",
+  spotify:      "spotify",
 };
 
 function TopConteudos({ platform }: { platform: PlatformId }) {
@@ -573,28 +647,6 @@ export default function MarketingMetricas() {
           <TopConteudos platform={platform} />
         </section>
 
-        {/* 4 — Campanhas */}
-        <section>
-          <Card className="border-border/60">
-            <CardContent className="p-5">
-              <div className="mb-5">
-                <p className="text-base font-semibold text-foreground">Performance de Campanhas</p>
-                <p className="text-sm text-muted-foreground mt-0.5">Resultados das campanhas publicitárias</p>
-              </div>
-              <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                  <LayoutGrid className="h-5 w-5 text-muted-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">Nenhuma campanha registrada</p>
-                  <p className="text-sm text-muted-foreground mt-1 max-w-xs">
-                    Conecte Meta Ads ou Google Ads em <strong>Configurações → Integrações</strong> para importar campanhas automaticamente.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </section>
 
       </div>
     </MainLayout>
