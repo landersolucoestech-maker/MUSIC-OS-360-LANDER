@@ -964,13 +964,12 @@ export default function ArtistaSignupPublic() {
                     </p>
                   </div>
 
+                  <div className="grid grid-cols-2 gap-3 pr-9">
+                    <Label className="text-xs text-muted-foreground">Distribuidora</Label>
+                    <Label className="text-xs text-muted-foreground">E-mail de share</Label>
+                  </div>
+
                   <div className="space-y-2.5">
-                    {idx === 0 && (
-                      <div className="grid grid-cols-2 gap-3">
-                        <Label className="text-xs text-muted-foreground">Distribuidora</Label>
-                        <Label className="text-xs text-muted-foreground">E-mail de share</Label>
-                      </div>
-                    )}
                     {emailsShareGravadora.map((entry, idx) => (
                       <div key={idx} className="flex items-center gap-2">
                         <div className="grid grid-cols-2 gap-3 flex-1">
