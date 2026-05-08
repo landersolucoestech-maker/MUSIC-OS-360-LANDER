@@ -185,10 +185,6 @@ export default function AdminDashboard() {
             </ResponsiveContainer>
           </div>
 
-        </div>
-
-        {/* ── Analytics Charts ── */}
-        <div className="grid lg:grid-cols-2 gap-5">
           {/* Distribuição por Plano */}
           <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
             <h2 className="text-[13px] font-semibold text-white mb-4">Distribuição por Plano</h2>
@@ -232,6 +228,7 @@ export default function AdminDashboard() {
               </div>
             </div>
           </div>
+
         </div>
 
         {/* Bottom row */}
