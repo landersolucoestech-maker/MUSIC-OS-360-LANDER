@@ -148,7 +148,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* KPI Grid */}
-        <div className="grid grid-cols-1 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           {KPI_CARDS.map((kpi) => (
             <KPICard key={kpi.label} {...kpi} />
           ))}
@@ -216,7 +216,7 @@ export default function AdminDashboard() {
           <h2 className="text-[13px] font-semibold text-white mb-3 flex items-center gap-2">
             <BarChart3 className="h-4 w-4 text-white/30" /> Analytics de Engajamento
           </h2>
-          <div className="grid grid-cols-1 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: "DAU / MAU",      value: `${(MOCK_KPIS.dau / MOCK_KPIS.mau * 100).toFixed(1)}%`, icon: Activity,   color: "text-blue-400",    bg: "bg-blue-500/10" },
               { label: "Sessões / Dia",  value: MOCK_KPIS.sessions_today.toLocaleString("pt-BR"),         icon: TrendingUp, color: "text-emerald-400", bg: "bg-emerald-500/10" },
