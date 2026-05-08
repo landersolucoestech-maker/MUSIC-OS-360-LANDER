@@ -12,7 +12,6 @@ const AdminSubscriptions  = lazy(() => import("@/modules/admin/pages/AdminSubscr
 const AdminRevenue        = lazy(() => import("@/modules/admin/pages/AdminRevenue"));
 const AdminPlans          = lazy(() => import("@/modules/admin/pages/AdminPlans"));
 const AdminAnalytics      = lazy(() => import("@/modules/admin/pages/AdminAnalytics"));
-const AdminUsers          = lazy(() => import("@/modules/admin/pages/AdminUsers"));
 const AdminSecurity       = lazy(() => import("@/modules/admin/pages/AdminSecurity"));
 const AdminAudit          = lazy(() => import("@/modules/admin/pages/AdminAudit"));
 const AdminIntegrations   = lazy(() => import("@/modules/admin/pages/AdminIntegrations"));
@@ -36,7 +35,7 @@ export function adminRoutes(S: SuspenseRouteComponent, P: SuspenseRouteComponent
       <Route path="/admin/revenue"      element={<P><AdminRevenue /></P>} />
       <Route path="/admin/plans"        element={<P><AdminPlans /></P>} />
       <Route path="/admin/analytics"    element={<P><AdminAnalytics /></P>} />
-      <Route path="/admin/users"        element={<P><AdminUsers /></P>} />
+      <Route path="/admin/users"        element={<Navigate to="/admin/settings" replace />} />
       <Route path="/admin/security"     element={<P><AdminSecurity /></P>} />
       <Route path="/admin/audit"        element={<P><AdminAudit /></P>} />
       <Route path="/admin/integrations" element={<P><AdminIntegrations /></P>} />

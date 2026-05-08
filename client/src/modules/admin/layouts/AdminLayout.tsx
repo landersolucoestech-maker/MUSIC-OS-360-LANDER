@@ -23,7 +23,6 @@ const NAV_ITEMS = [
   { label: "Planos",          href: "/admin/plans",     icon: Tag },
   { label: "Receita",         href: "/admin/revenue",   icon: DollarSign },
   { label: "Analytics",       href: "/admin/analytics", icon: BarChart3 },
-  { label: "Usuários",        href: "/admin/users",     icon: Users },
   { label: "Segurança",       href: "/admin/security",  icon: Shield },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
   { label: "Integrações",     href: "/admin/integrations", icon: Zap },
