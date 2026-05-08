@@ -147,7 +147,7 @@ const NAV_ITEMS: NavItem[] = [
       { title: "IA Criativa", href: "/marketing/ia-criativa", icon: Sparkles },
     ],
   },
-  { title: "Support Hub", href: "/support", icon: HeadphonesIcon },
+  { title: "Suporte", href: "/support", icon: HeadphonesIcon },
 ];
 
 export function AppSidebar() {
