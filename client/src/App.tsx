@@ -25,6 +25,7 @@ import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
 import { analyticsRoutes } from "@/app/routes/analytics.routes";
+import { supportRoutes } from "@/app/routes/support.routes";
 
 const Dashboard = lazy(() => import("@/shared/pages/Dashboard"));
 
@@ -82,6 +83,7 @@ const App = () => (
                 {operationsRoutes(ProtectedRoute)}
                 {adminRoutes(SuspenseRoute, SuperAdminRoute)}
                 {analyticsRoutes(ProtectedRoute)}
+                {supportRoutes(ProtectedRoute)}
               </Routes>
             </BrowserRouter>
           </TooltipProvider>

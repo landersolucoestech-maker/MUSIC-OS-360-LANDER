@@ -44,6 +44,12 @@ import {
   CheckCircle2,
   Activity,
   BarChart,
+  HeadphonesIcon,
+  Ticket,
+  MessagesSquare,
+  BookOpen,
+  ServerCrash,
+  Inbox,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -138,6 +144,18 @@ const NAV_ITEMS: NavItem[] = [
       { title: "Briefing", href: "/marketing/briefing", icon: FileEdit },
       { title: "Tarefas", href: "/marketing/tarefas", icon: ListChecks },
       { title: "IA Criativa", href: "/marketing/ia-criativa", icon: Sparkles },
+    ],
+  },
+  {
+    title: "Support Hub",
+    icon: HeadphonesIcon,
+    children: [
+      { title: "Dashboard", href: "/support", icon: LayoutDashboard },
+      { title: "Tickets", href: "/support/tickets", icon: Ticket },
+      { title: "Chat ao Vivo", href: "/support/chat", icon: MessagesSquare },
+      { title: "Base de Conhecimento", href: "/support/knowledge", icon: BookOpen },
+      { title: "Status do Sistema", href: "/support/status", icon: ServerCrash },
+      { title: "Solicitações", href: "/support/requests", icon: Inbox },
     ],
   },
 ];
