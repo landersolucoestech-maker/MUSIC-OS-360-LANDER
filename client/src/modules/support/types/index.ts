@@ -79,6 +79,7 @@ export interface KnowledgeCategory {
 
 export interface KnowledgeArticle {
   id: string;
+  tenant_id: string;
   category_id: string;
   category_name: string;
   title: string;

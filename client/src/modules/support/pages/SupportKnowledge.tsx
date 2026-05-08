@@ -6,7 +6,8 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_KNOWLEDGE_CATEGORIES, MOCK_KNOWLEDGE_ARTICLES } from "../data/mockSupport";
+import { MOCK_KNOWLEDGE_CATEGORIES } from "../data/mockSupport";
+import { useKnowledgeArticles } from "../hooks/useSupport";
 import type { KnowledgeArticle } from "../types";
 import {
   Search, BookOpen, Eye, ThumbsUp,
@@ -91,11 +92,12 @@ function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose
 }
 
 export default function SupportKnowledge() {
+  const { articles } = useKnowledgeArticles();
   const [search, setSearch] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedArticle, setSelectedArticle] = useState<KnowledgeArticle | null>(null);
 
-  const filtered = MOCK_KNOWLEDGE_ARTICLES.filter((a) => {
+  const filtered = articles.filter((a) => {
     if (selectedCategory !== "all" && a.category_id !== selectedCategory) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -107,8 +109,8 @@ export default function SupportKnowledge() {
     return true;
   });
 
-  const totalArticles = MOCK_KNOWLEDGE_ARTICLES.length;
-  const totalViews = MOCK_KNOWLEDGE_ARTICLES.reduce((s, a) => s + a.views, 0);
+  const totalArticles = articles.length;
+  const totalViews = articles.reduce((s, a) => s + a.views, 0);
 
   return (
     <MainLayout title="Base de Conhecimento" description="Artigos, tutoriais e guias">
@@ -170,7 +172,7 @@ export default function SupportKnowledge() {
               <span className="text-[10.5px]">{totalArticles}</span>
             </button>
             {MOCK_KNOWLEDGE_CATEGORIES.map((cat) => {
-              const count = MOCK_KNOWLEDGE_ARTICLES.filter((a) => a.category_id === cat.id).length;
+              const count = articles.filter((a) => a.category_id === cat.id).length;
               return (
                 <button
                   key={cat.id}

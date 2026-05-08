@@ -2,10 +2,11 @@ import { useState, useCallback } from "react";
 import { useTenant } from "@/app/providers/TenantContext";
 import {
   MOCK_TICKETS, MOCK_MESSAGES, MOCK_CHAT_ROOMS,
-  MOCK_CHAT_MESSAGES, MOCK_REQUESTS,
+  MOCK_CHAT_MESSAGES, MOCK_REQUESTS, MOCK_KNOWLEDGE_ARTICLES,
 } from "../data/mockSupport";
 import type {
   SupportTicket, SupportMessage, ChatRoom, ChatMessage, SupportRequest,
+  KnowledgeArticle,
   TicketStatus, TicketPriority, TicketCategory,
 } from "../types";
 
@@ -32,11 +33,13 @@ export function useTickets() {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
 
-  const [tickets, setTickets] = useState<SupportTicket[]>(() =>
-    load(lsKey("support_tickets", tenantId), MOCK_TICKETS).filter(
-      (t) => t.tenant_id === tenantId || t.tenant_id === "tenant-001"
-    )
-  );
+  const [tickets, setTickets] = useState<SupportTicket[]>(() => {
+    const stored = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
+    if (stored.length > 0) return stored;
+    const seeded = MOCK_TICKETS.filter((t) => t.tenant_id === "tenant-001");
+    save(lsKey("support_tickets", tenantId), seeded);
+    return seeded;
+  });
 
   const addTicket = useCallback(
     (data: Pick<SupportTicket, "subject" | "description" | "category" | "priority" | "created_by">) => {
@@ -84,9 +87,13 @@ export function useTicketMessages(ticketId: string) {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
 
-  const [allMessages, setAllMessages] = useState<Record<string, SupportMessage[]>>(() =>
-    load(lsKey("support_messages", tenantId), MOCK_MESSAGES)
-  );
+  const [allMessages, setAllMessages] = useState<Record<string, SupportMessage[]>>(() => {
+    const stored = load<Record<string, SupportMessage[]>>(lsKey("support_messages", tenantId), {});
+    if (Object.keys(stored).length > 0) return stored;
+    const seeded = MOCK_MESSAGES as Record<string, SupportMessage[]>;
+    save(lsKey("support_messages", tenantId), seeded);
+    return seeded;
+  });
 
   const messages = allMessages[ticketId] ?? [];
 
@@ -120,9 +127,13 @@ export function useChatRooms() {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
 
-  const [rooms, setRooms] = useState<ChatRoom[]>(() =>
-    load(lsKey("support_chats", tenantId), MOCK_CHAT_ROOMS)
-  );
+  const [rooms, setRooms] = useState<ChatRoom[]>(() => {
+    const stored = load<ChatRoom[]>(lsKey("support_chats", tenantId), []);
+    if (stored.length > 0) return stored;
+    const seeded = MOCK_CHAT_ROOMS.filter((r) => r.tenant_id === "tenant-001");
+    save(lsKey("support_chats", tenantId), seeded);
+    return seeded;
+  });
 
   const markRead = useCallback((roomId: string) => {
     setRooms((prev) => {
@@ -143,9 +154,13 @@ export function useChatMessages(roomId: string) {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
 
-  const [allMessages, setAllMessages] = useState<Record<string, ChatMessage[]>>(() =>
-    load(lsKey("support_chat_messages", tenantId), MOCK_CHAT_MESSAGES)
-  );
+  const [allMessages, setAllMessages] = useState<Record<string, ChatMessage[]>>(() => {
+    const stored = load<Record<string, ChatMessage[]>>(lsKey("support_chat_messages", tenantId), {});
+    if (Object.keys(stored).length > 0) return stored;
+    const seeded = MOCK_CHAT_MESSAGES as Record<string, ChatMessage[]>;
+    save(lsKey("support_chat_messages", tenantId), seeded);
+    return seeded;
+  });
 
   const messages = allMessages[roomId] ?? [];
 
@@ -172,15 +187,44 @@ export function useChatMessages(roomId: string) {
   return { messages, sendMessage };
 }
 
+/* ── Knowledge articles ── */
+
+export function useKnowledgeArticles() {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
+  const [articles, setArticles] = useState<KnowledgeArticle[]>(() => {
+    const stored = load<KnowledgeArticle[]>(lsKey("support_knowledge", tenantId), []);
+    if (stored.length > 0) return stored;
+    const seeded = MOCK_KNOWLEDGE_ARTICLES.filter((a) => a.tenant_id === "tenant-001");
+    save(lsKey("support_knowledge", tenantId), seeded);
+    return seeded;
+  });
+
+  const incrementViews = useCallback((id: string) => {
+    setArticles((prev) => {
+      const updated = prev.map((a) => a.id === id ? { ...a, views: a.views + 1 } : a);
+      save(lsKey("support_knowledge", tenantId), updated);
+      return updated;
+    });
+  }, [tenantId]);
+
+  return { articles, incrementViews };
+}
+
 /* ── Requests ── */
 
 export function useRequests() {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
 
-  const [requests, setRequests] = useState<SupportRequest[]>(() =>
-    load(lsKey("support_requests", tenantId), MOCK_REQUESTS)
-  );
+  const [requests, setRequests] = useState<SupportRequest[]>(() => {
+    const stored = load<SupportRequest[]>(lsKey("support_requests", tenantId), []);
+    if (stored.length > 0) return stored;
+    const seeded = MOCK_REQUESTS.filter((r) => r.tenant_id === "tenant-001");
+    save(lsKey("support_requests", tenantId), seeded);
+    return seeded;
+  });
 
   const addRequest = useCallback(
     (data: Pick<SupportRequest, "title" | "description" | "type" | "priority">) => {

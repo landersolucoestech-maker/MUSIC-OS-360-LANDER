@@ -191,7 +191,7 @@ export const MOCK_KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
 
 export const MOCK_KNOWLEDGE_ARTICLES: KnowledgeArticle[] = [
   {
-    id: "art-001", category_id: "cat-fin", category_name: "Financeiro",
+    id: "art-001", tenant_id: TENANT_ID, category_id: "cat-fin", category_name: "Financeiro",
     title: "Como importar arquivo OFX do seu banco",
     summary: "Passo a passo completo para importar extratos bancários no formato OFX e conciliar com suas transações.",
     content: `## Como importar arquivo OFX do seu banco
@@ -227,7 +227,7 @@ Itaú, Bradesco, Santander, Nubank, Inter, C6 Bank, Banco do Brasil, Caixa.
     created_at: "2026-01-15T00:00:00Z", updated_at: "2026-04-20T00:00:00Z", read_time: 4,
   },
   {
-    id: "art-002", category_id: "cat-ana", category_name: "Analytics",
+    id: "art-002", tenant_id: TENANT_ID, category_id: "cat-ana", category_name: "Analytics",
     title: "Entendendo os gráficos de streaming do artista",
     summary: "Aprenda a interpretar os dados de Spotify, YouTube e outras plataformas no painel do artista.",
     content: `## Entendendo os gráficos de streaming
@@ -261,7 +261,7 @@ Uma queda súbita pode indicar:
     created_at: "2026-02-01T00:00:00Z", updated_at: "2026-05-01T00:00:00Z", read_time: 5,
   },
   {
-    id: "art-003", category_id: "cat-dis", category_name: "Distribuição",
+    id: "art-003", tenant_id: TENANT_ID, category_id: "cat-dis", category_name: "Distribuição",
     title: "Como distribuir um novo lançamento musical",
     summary: "Guia completo para criar e enviar um álbum, single ou EP para as principais plataformas de streaming.",
     content: `## Distribuindo um novo lançamento
@@ -292,7 +292,7 @@ Veja como enviar seu próximo lançamento para Spotify, Apple Music, Deezer e ma
     created_at: "2026-01-10T00:00:00Z", updated_at: "2026-04-15T00:00:00Z", read_time: 6,
   },
   {
-    id: "art-004", category_id: "cat-con", category_name: "Contratos",
+    id: "art-004", tenant_id: TENANT_ID, category_id: "cat-con", category_name: "Contratos",
     title: "Criando templates de contrato personalizados",
     summary: "Configure templates reutilizáveis para contratos de artistas, produtores e parceiros.",
     content: `## Templates de Contrato
@@ -318,7 +318,7 @@ Use {{variavel}} para inserir dados dinâmicos:
     created_at: "2026-02-20T00:00:00Z", updated_at: "2026-03-10T00:00:00Z", read_time: 4,
   },
   {
-    id: "art-005", category_id: "cat-per", category_name: "Permissões",
+    id: "art-005", tenant_id: TENANT_ID, category_id: "cat-per", category_name: "Permissões",
     title: "Guia de roles e permissões do sistema",
     summary: "Entenda os níveis de acesso disponíveis e como configurar permissões para cada membro da equipe.",
     content: `## Roles e Permissões
@@ -350,7 +350,7 @@ O MUSIC OS 360 utiliza RBAC (Role-Based Access Control) com os seguintes níveis
     created_at: "2026-03-01T00:00:00Z", updated_at: "2026-04-28T00:00:00Z", read_time: 3,
   },
   {
-    id: "art-006", category_id: "cat-int", category_name: "Integrações",
+    id: "art-006", tenant_id: TENANT_ID, category_id: "cat-int", category_name: "Integrações",
     title: "Configurando webhooks para eventos do sistema",
     summary: "Receba notificações automáticas quando contratos são assinados, leads chegam ou transações são criadas.",
     content: `## Configurando Webhooks
