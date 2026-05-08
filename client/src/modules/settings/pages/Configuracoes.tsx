@@ -423,6 +423,14 @@ export default function Configuracoes() {
     });
   };
 
+  const applyTheme = (theme: "light" | "dark") => {
+    const root = window.document.documentElement;
+    root.classList.remove("light", "dark");
+    root.classList.add(theme);
+    localStorage.setItem("theme", theme);
+    setUserSettings({ ...userSettings, theme });
+  };
+
   const handleSaveAparencia = () => {
     saveUserSettings({
       theme: userSettings.theme,
@@ -1086,9 +1094,10 @@ export default function Configuracoes() {
               <CardContent className="space-y-6">
                 <div className="space-y-4">
                   <h4 className="font-medium">Tema</h4>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <button
-                      onClick={() => setUserSettings({ ...userSettings, theme: "light" })}
+                      onClick={() => applyTheme("light")}
+                      data-testid="button-theme-light"
                       className={`p-4 rounded-lg border-2 transition-all ${
                         userSettings.theme === "light" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
                       }`}
@@ -1100,7 +1109,8 @@ export default function Configuracoes() {
                       </div>
                     </button>
                     <button
-                      onClick={() => setUserSettings({ ...userSettings, theme: "dark" })}
+                      onClick={() => applyTheme("dark")}
+                      data-testid="button-theme-dark"
                       className={`p-4 rounded-lg border-2 transition-all ${
                         userSettings.theme === "dark" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
                       }`}
@@ -1109,18 +1119,6 @@ export default function Configuracoes() {
                         <Moon className="h-8 w-8" />
                         <span className="text-sm font-medium">Escuro</span>
                         {userSettings.theme === "dark" && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setUserSettings({ ...userSettings, theme: "system" })}
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        userSettings.theme === "system" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <Monitor className="h-8 w-8" />
-                        <span className="text-sm font-medium">Sistema</span>
-                        {userSettings.theme === "system" && <Check className="h-4 w-4 text-primary" />}
                       </div>
                     </button>
                   </div>
