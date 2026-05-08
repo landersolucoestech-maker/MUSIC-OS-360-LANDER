@@ -12,45 +12,27 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from "@/shared/ui/dialog";
 import { cn } from "@/shared/lib/utils";
-import { useRequests } from "../hooks/useSupport";
-import type { RequestType } from "../types";
+import { useRequests, REQUEST_STATUS_LABELS, REQUEST_TYPE_LABELS } from "../hooks/useSupport";
+import type { SupportRequest } from "../types";
 import {
-  ThumbsUp, Plus, Search, Inbox, Zap,
-  TrendingUp, CheckCircle2, Clock,
+  ThumbsUp, Plus, Search, Inbox,
+  CheckCircle2, Clock,
 } from "lucide-react";
 
-const STATUS_COLOR: Record<string, string> = {
-  pending: "border-yellow-500/30 text-yellow-400 bg-yellow-500/10",
-  under_review: "border-blue-500/30 text-blue-400 bg-blue-500/10",
-  planned: "border-purple-500/30 text-purple-400 bg-purple-500/10",
-  in_development: "border-cyan-500/30 text-cyan-400 bg-cyan-500/10",
-  completed: "border-green-500/30 text-green-400 bg-green-500/10",
-  declined: "border-border text-muted-foreground",
+const STATUS_COLOR: Record<SupportRequest["status"], string> = {
+  pending:   "border-yellow-500/30 text-yellow-400 bg-yellow-500/10",
+  in_review: "border-blue-500/30 text-blue-400 bg-blue-500/10",
+  approved:  "border-green-500/30 text-green-400 bg-green-500/10",
+  rejected:  "border-border text-muted-foreground",
+  done:      "border-purple-500/30 text-purple-400 bg-purple-500/10",
 };
 
-const STATUS_LABEL: Record<string, string> = {
-  pending: "Pendente",
-  under_review: "Em Análise",
-  planned: "Planejado",
-  in_development: "Em Desenvolvimento",
-  completed: "Concluído",
-  declined: "Recusado",
-};
-
-const TYPE_LABEL: Record<RequestType, string> = {
-  feature: "Feature",
-  improvement: "Melhoria",
-  bug: "Bug",
-  integration: "Integração",
-  other: "Outro",
-};
-
-const TYPE_COLOR: Record<RequestType, string> = {
-  feature: "text-purple-400",
-  improvement: "text-blue-400",
-  bug: "text-red-400",
+const TYPE_COLOR: Record<SupportRequest["type"], string> = {
+  feature:     "text-purple-400",
+  bug:         "text-red-400",
+  question:    "text-blue-400",
+  billing:     "text-green-400",
   integration: "text-cyan-400",
-  other: "text-muted-foreground",
 };
 
 function formatDate(iso: string) {
@@ -61,17 +43,18 @@ function formatDate(iso: string) {
 
 export default function SupportRequests() {
   const { requests, addRequest, upvote } = useRequests();
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [search, setSearch]           = useState("");
+  const [typeFilter, setTypeFilter]   = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<"votes" | "date">("votes");
-  const [showModal, setShowModal] = useState(false);
-  const [votedIds, setVotedIds] = useState<Set<string>>(new Set());
+  const [sortBy, setSortBy]           = useState<"votes" | "date">("votes");
+  const [showModal, setShowModal]     = useState(false);
+  const [votedIds, setVotedIds]       = useState<Set<string>>(new Set());
 
   const [form, setForm] = useState({
     title: "",
     description: "",
-    type: "feature" as RequestType,
+    type: "feature" as SupportRequest["type"],
+    priority: "medium" as SupportRequest["priority"],
   });
 
   const filtered = requests
@@ -102,15 +85,15 @@ export default function SupportRequests() {
       title: form.title,
       description: form.description,
       type: form.type,
-      submitted_by: "Usuário Atual",
+      priority: form.priority,
     });
     setShowModal(false);
-    setForm({ title: "", description: "", type: "feature" });
+    setForm({ title: "", description: "", type: "feature", priority: "medium" });
   }
 
   const totalVotes = requests.reduce((s, r) => s + r.votes, 0);
-  const planned = requests.filter((r) => r.status === "planned" || r.status === "in_development").length;
-  const completed = requests.filter((r) => r.status === "completed").length;
+  const approved   = requests.filter((r) => r.status === "approved" || r.status === "in_review").length;
+  const done       = requests.filter((r) => r.status === "done").length;
 
   return (
     <MainLayout
@@ -127,10 +110,10 @@ export default function SupportRequests() {
         {/* KPIs */}
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Solicitações", value: requests.length, icon: Inbox, color: "text-blue-400", bg: "bg-blue-500/10" },
-            { label: "Votos Totais", value: totalVotes, icon: ThumbsUp, color: "text-primary", bg: "bg-primary/10" },
-            { label: "Planejadas", value: planned, icon: Clock, color: "text-purple-400", bg: "bg-purple-500/10" },
-            { label: "Concluídas", value: completed, icon: CheckCircle2, color: "text-green-400", bg: "bg-green-500/10" },
+            { label: "Solicitações",  value: requests.length, icon: Inbox,        color: "text-blue-400",   bg: "bg-blue-500/10" },
+            { label: "Votos Totais",  value: totalVotes,      icon: ThumbsUp,     color: "text-primary",    bg: "bg-primary/10"  },
+            { label: "Em Análise",    value: approved,         icon: Clock,        color: "text-yellow-400", bg: "bg-yellow-500/10" },
+            { label: "Concluídas",    value: done,             icon: CheckCircle2, color: "text-green-400",  bg: "bg-green-500/10" },
           ].map(({ label, value, icon: Icon, color, bg }) => (
             <div key={label} className="rounded-xl border border-border/60 bg-card p-4">
               <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-2", bg)}>
@@ -160,7 +143,7 @@ export default function SupportRequests() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os tipos</SelectItem>
-              {(Object.entries(TYPE_LABEL) as [RequestType, string][]).map(([k, v]) => (
+              {(Object.entries(REQUEST_TYPE_LABELS) as [SupportRequest["type"], string][]).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
@@ -171,7 +154,7 @@ export default function SupportRequests() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os status</SelectItem>
-              {Object.entries(STATUS_LABEL).map(([k, v]) => (
+              {(Object.entries(REQUEST_STATUS_LABELS) as [SupportRequest["status"], string][]).map(([k, v]) => (
                 <SelectItem key={k} value={k}>{v}</SelectItem>
               ))}
             </SelectContent>
@@ -201,7 +184,7 @@ export default function SupportRequests() {
           </div>
         </div>
 
-        {/* Requests list */}
+        {/* List */}
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border border-border/60 bg-card">
             <Inbox className="h-10 w-10 text-muted-foreground/20 mb-3" />
@@ -220,7 +203,6 @@ export default function SupportRequests() {
                   className="rounded-xl border border-border/60 bg-card p-4 flex gap-4"
                   data-testid={`card-request-${req.id}`}
                 >
-                  {/* Vote button */}
                   <button
                     className={cn(
                       "flex flex-col items-center justify-center gap-0.5 w-14 shrink-0 rounded-xl border py-2 transition-colors",
@@ -236,42 +218,21 @@ export default function SupportRequests() {
                     <span className="text-[12px] font-bold">{req.votes}</span>
                   </button>
 
-                  {/* Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <p className="text-[13px] font-semibold text-foreground leading-snug">{req.title}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className={cn("text-[10.5px] font-medium", TYPE_COLOR[req.type])}>
-                          {TYPE_LABEL[req.type]}
+                          {REQUEST_TYPE_LABELS[req.type]}
                         </span>
                         <Badge variant="outline" className={cn("text-[10px] border", STATUS_COLOR[req.status])}>
-                          {STATUS_LABEL[req.status]}
+                          {REQUEST_STATUS_LABELS[req.status]}
                         </Badge>
                       </div>
                     </div>
                     <p className="text-[12px] text-muted-foreground line-clamp-2 mb-2">{req.description}</p>
                     <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground/60">
-                      <span>{req.submitted_by}</span>
-                      <span>·</span>
                       <span>{formatDate(req.created_at)}</span>
-                      {req.status === "in_development" && (
-                        <>
-                          <span>·</span>
-                          <span className="flex items-center gap-1 text-cyan-400">
-                            <Zap className="h-3 w-3" />
-                            Em desenvolvimento
-                          </span>
-                        </>
-                      )}
-                      {req.status === "planned" && (
-                        <>
-                          <span>·</span>
-                          <span className="flex items-center gap-1 text-purple-400">
-                            <TrendingUp className="h-3 w-3" />
-                            Planejado
-                          </span>
-                        </>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -291,30 +252,46 @@ export default function SupportRequests() {
             <div className="space-y-1.5">
               <Label className="text-xs">Título *</Label>
               <Input
-                placeholder="Descreva brevemente a sua solicitação..."
+                placeholder="Descreva brevemente a solicitação..."
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 className="text-sm"
                 data-testid="input-request-title"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs">Tipo</Label>
-              <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as RequestType })}>
-                <SelectTrigger className="text-xs h-8" data-testid="select-request-type">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.entries(TYPE_LABEL) as [RequestType, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo</Label>
+                <Select value={form.type} onValueChange={(v) => setForm({ ...form, type: v as SupportRequest["type"] })}>
+                  <SelectTrigger className="text-xs h-8" data-testid="select-request-type">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.entries(REQUEST_TYPE_LABELS) as [SupportRequest["type"], string][]).map(([k, v]) => (
+                      <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Prioridade</Label>
+                <Select value={form.priority} onValueChange={(v) => setForm({ ...form, priority: v as SupportRequest["priority"] })}>
+                  <SelectTrigger className="text-xs h-8">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="low" className="text-xs">Baixa</SelectItem>
+                    <SelectItem value="medium" className="text-xs">Média</SelectItem>
+                    <SelectItem value="high" className="text-xs">Alta</SelectItem>
+                    <SelectItem value="critical" className="text-xs">Crítica</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Descrição</Label>
               <Textarea
-                placeholder="Explique em detalhes sua solicitação e qual problema ela resolve..."
+                placeholder="Explique em detalhes sua solicitação..."
                 value={form.description}
                 onChange={(e) => setForm({ ...form, description: e.target.value })}
                 className="text-sm resize-none"

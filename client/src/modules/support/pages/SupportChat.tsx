@@ -5,7 +5,7 @@ import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import { useChatRooms, useChatMessages } from "../hooks/useSupport";
-import { Send, MessagesSquare, Circle, User, Shield } from "lucide-react";
+import { Send, MessagesSquare, User, Shield, Circle } from "lucide-react";
 
 const AGENT_REPLIES = [
   "Certo, estou verificando isso para você.",
@@ -13,7 +13,7 @@ const AGENT_REPLIES = [
   "Entendido! Posso te ajudar com isso.",
   "Analisando o problema agora...",
   "Obrigado pela informação. Vou investigar.",
-  "Isso foi resolvido em nossa última atualização. Verifique se a versão está atualizada.",
+  "Isso foi resolvido em nossa última atualização. Verifique a versão.",
 ];
 
 function formatTime(iso: string) {
@@ -32,12 +32,12 @@ function ChatWindow({ roomId }: { roomId: string }) {
 
   function handleSend() {
     if (!text.trim()) return;
-    sendMessage(text.trim());
+    sendMessage(text.trim(), "support");
     setText("");
     setTyping(true);
     setTimeout(() => {
       setTyping(false);
-      sendMessage(AGENT_REPLIES[Math.floor(Math.random() * AGENT_REPLIES.length)]);
+      sendMessage(AGENT_REPLIES[Math.floor(Math.random() * AGENT_REPLIES.length)], "user");
     }, 1500);
   }
 
@@ -50,7 +50,6 @@ function ChatWindow({ roomId }: { roomId: string }) {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-0">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
@@ -113,8 +112,6 @@ function ChatWindow({ roomId }: { roomId: string }) {
         )}
         <div ref={bottomRef} />
       </div>
-
-      {/* Input */}
       <div className="border-t border-border/60 p-3 flex gap-2">
         <Input
           placeholder="Digite uma mensagem..."
@@ -151,9 +148,12 @@ export default function SupportChat() {
 
   return (
     <MainLayout title="Chat ao Vivo" description="Atendimento em tempo real">
-      <div className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-fade-in" style={{ height: "calc(100vh - 160px)" }}>
+      <div
+        className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-fade-in"
+        style={{ height: "calc(100vh - 160px)" }}
+      >
         <div className="flex h-full">
-          {/* Sidebar: rooms */}
+          {/* Room list */}
           <div className="w-72 shrink-0 border-r border-border/60 flex flex-col">
             <div className="px-4 py-3 border-b border-border/60">
               <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
@@ -174,11 +174,11 @@ export default function SupportChat() {
                   <div className="flex items-center justify-between mb-0.5">
                     <div className="flex items-center gap-1.5">
                       <Circle className={cn(
-                        "h-1.5 w-1.5 fill-current",
-                        room.status === "active" ? "text-green-400" : "text-muted-foreground/40",
+                        "h-1.5 w-1.5 fill-current shrink-0",
+                        room.online ? "text-green-400" : "text-muted-foreground/40",
                       )} />
                       <span className="text-[12.5px] font-medium text-foreground truncate max-w-[140px]">
-                        {room.client_name}
+                        {room.participant_name}
                       </span>
                     </div>
                     {room.unread_count > 0 && (
@@ -187,22 +187,23 @@ export default function SupportChat() {
                       </Badge>
                     )}
                   </div>
-                  <p className="text-[11px] text-muted-foreground truncate">{room.subject}</p>
-                  <p className="text-[10px] text-muted-foreground/50 mt-0.5">{room.agent ?? "Não atribuído"}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">{room.last_message}</p>
+                  <p className="text-[10px] text-muted-foreground/50 mt-0.5">
+                    {room.participant_email}
+                  </p>
                 </button>
               ))}
             </div>
           </div>
 
-          {/* Main: chat */}
+          {/* Chat area */}
           <div className="flex-1 flex flex-col min-w-0">
             {activeRoomData ? (
               <>
-                {/* Header */}
                 <div className="flex items-center justify-between px-5 py-3 border-b border-border/60">
                   <div>
-                    <p className="text-[13px] font-semibold text-foreground">{activeRoomData.client_name}</p>
-                    <p className="text-[11px] text-muted-foreground">{activeRoomData.subject}</p>
+                    <p className="text-[13px] font-semibold text-foreground">{activeRoomData.participant_name}</p>
+                    <p className="text-[11px] text-muted-foreground">{activeRoomData.participant_email}</p>
                   </div>
                   <Badge
                     variant="outline"

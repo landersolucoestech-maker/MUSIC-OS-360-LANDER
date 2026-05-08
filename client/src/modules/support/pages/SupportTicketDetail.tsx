@@ -53,7 +53,6 @@ export default function SupportTicketDetail() {
   const ticket = tickets.find((t) => t.id === id);
   const { messages, addMessage } = useTicketMessages(id ?? "");
   const [reply, setReply] = useState("");
-  const [sending, setSending] = useState(false);
 
   if (!ticket) {
     return (
@@ -73,16 +72,8 @@ export default function SupportTicketDetail() {
 
   function handleSend() {
     if (!reply.trim()) return;
-    setSending(true);
-    addMessage({
-      ticket_id: ticket!.id,
-      sender: "agent",
-      sender_name: "Equipe de Suporte",
-      message: reply.trim(),
-      type: "reply",
-    });
+    addMessage(reply.trim(), "support");
     setReply("");
-    setTimeout(() => setSending(false), 300);
   }
 
   return (
@@ -99,9 +90,9 @@ export default function SupportTicketDetail() {
     >
       <div className="grid lg:grid-cols-[1fr_280px] gap-6 animate-fade-in">
 
-        {/* ── Main: messages ── */}
+        {/* ── Messages ── */}
         <div className="space-y-5">
-          {/* Header card */}
+          {/* Header */}
           <div className="rounded-2xl border border-border/60 bg-card p-5">
             <h1 className="text-base font-semibold text-foreground mb-2">{ticket.subject}</h1>
             <p className="text-[13px] text-muted-foreground leading-relaxed">{ticket.description}</p>
@@ -118,7 +109,7 @@ export default function SupportTicketDetail() {
             </div>
           </div>
 
-          {/* Messages */}
+          {/* Thread */}
           <div className="space-y-3">
             {messages.length === 0 ? (
               <div className="rounded-2xl border border-border/60 bg-card p-8 text-center">
@@ -126,13 +117,13 @@ export default function SupportTicketDetail() {
               </div>
             ) : (
               messages.map((msg) => {
-                const isAgent = msg.sender === "agent";
+                const isSupport = msg.sender_role === "support";
                 return (
                   <div
                     key={msg.id}
                     className={cn(
                       "rounded-xl border p-4",
-                      isAgent
+                      isSupport
                         ? "border-primary/20 bg-primary/5 ml-6"
                         : "border-border/60 bg-card mr-6",
                     )}
@@ -140,16 +131,21 @@ export default function SupportTicketDetail() {
                   >
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-1.5">
-                        {isAgent
+                        {isSupport
                           ? <Shield className="h-3.5 w-3.5 text-primary" />
                           : <User className="h-3.5 w-3.5 text-muted-foreground" />
                         }
                         <span className="text-[12px] font-semibold text-foreground">
                           {msg.sender_name}
                         </span>
-                        {isAgent && (
+                        {isSupport && (
                           <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-primary/30 text-primary">
                             Suporte
+                          </Badge>
+                        )}
+                        {msg.internal_note && (
+                          <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-yellow-500/30 text-yellow-400">
+                            Nota Interna
                           </Badge>
                         )}
                       </div>
@@ -164,7 +160,7 @@ export default function SupportTicketDetail() {
             )}
           </div>
 
-          {/* Reply box */}
+          {/* Reply */}
           {ticket.status !== "closed" && (
             <div className="rounded-2xl border border-border/60 bg-card p-4">
               <p className="text-[12px] font-medium text-muted-foreground mb-2">Responder</p>
@@ -181,24 +177,20 @@ export default function SupportTicketDetail() {
                   size="sm"
                   className="gap-1.5 text-xs"
                   onClick={handleSend}
-                  disabled={!reply.trim() || sending}
+                  disabled={!reply.trim()}
                   data-testid="button-send-reply"
                 >
-                  <Send className="h-3.5 w-3.5" />
-                  Enviar
+                  <Send className="h-3.5 w-3.5" /> Enviar
                 </Button>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── Sidebar: ticket info ── */}
+        {/* ── Sidebar ── */}
         <div className="space-y-4">
-          {/* Status control */}
           <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Gerenciar
-            </p>
+            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Gerenciar</p>
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground">Status</p>
               <Select
@@ -239,20 +231,16 @@ export default function SupportTicketDetail() {
                 onClick={() => updateTicket(ticket.id, { status: "resolved" })}
                 data-testid="button-resolve-ticket"
               >
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                Marcar como Resolvido
+                <CheckCircle2 className="h-3.5 w-3.5" /> Marcar como Resolvido
               </Button>
             )}
           </div>
 
-          {/* Details */}
           <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
-              Detalhes
-            </p>
+            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhes</p>
             {[
               { icon: User, label: "Solicitante", value: ticket.created_by },
-              { icon: Shield, label: "Responsável", value: ticket.assignee ?? "Não atribuído" },
+              { icon: Shield, label: "Responsável", value: ticket.assigned_to ?? "Não atribuído" },
               { icon: Tag, label: "Categoria", value: TICKET_CATEGORY_LABELS[ticket.category] },
               { icon: Calendar, label: "Criado em", value: formatDate(ticket.created_at) },
               { icon: Clock, label: "Atualizado", value: formatDate(ticket.updated_at) },
