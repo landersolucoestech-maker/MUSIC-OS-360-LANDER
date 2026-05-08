@@ -353,84 +353,133 @@ function PerformanceAnalitica() {
 }
 
 // ─── Top conteúdos ─────────────────────────────────────────────────────────────
+type ContentFilter = "todos" | "youtube" | "tiktok" | "instagram" | "meta" | "google";
+
+interface ContentItem {
+  titulo: string;
+  artista: string;
+  plataforma: string;
+  metric: number;
+  metricLabel: string;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
+  color: string;
+}
+
+const FILTER_OPTIONS: { id: ContentFilter; label: string }[] = [
+  { id: "todos",     label: "Todos"      },
+  { id: "youtube",   label: "YouTube"    },
+  { id: "tiktok",    label: "TikTok"     },
+  { id: "instagram", label: "Instagram"  },
+  { id: "meta",      label: "Meta Ads"   },
+  { id: "google",    label: "Google Ads" },
+];
+
+function buildContentItems(): Record<ContentFilter, ContentItem[]> {
+  const yt: ContentItem[] = YOUTUBE_MOCK.flatMap(a =>
+    a.topVideos.slice(0, 3).map(v => ({
+      titulo: v.titulo, artista: a.nome, plataforma: "YouTube",
+      metric: v.views, metricLabel: "views",
+      icon: SiYoutube, color: "#FF0000",
+    }))
+  );
+
+  const tt: ContentItem[] = TIKTOK_MOCK.flatMap(a =>
+    a.topVideos.slice(0, 3).map(v => ({
+      titulo: v.descricao, artista: a.nome, plataforma: "TikTok",
+      metric: v.views, metricLabel: "views",
+      icon: SiTiktok, color: "hsl(271,91%,65%)",
+    }))
+  );
+
+  const ig: ContentItem[] = INSTAGRAM_MOCK.flatMap(a =>
+    a.topPosts.slice(0, 2).map(p => ({
+      titulo: p.descricao, artista: a.nome, plataforma: "Instagram",
+      metric: p.alcance, metricLabel: "alcance",
+      icon: SiInstagram, color: "#E1306C",
+    }))
+  );
+
+  const meta: ContentItem[] = META_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "Meta Ads", plataforma: "Meta Ads",
+    metric: c.resultados, metricLabel: "resultados",
+    icon: SiMeta, color: "#0082FB",
+  }));
+
+  const google: ContentItem[] = GOOGLE_ADS_MOCK.campanhas.slice(0, 3).map(c => ({
+    titulo: c.nome, artista: "Google Ads", plataforma: "Google Ads",
+    metric: c.cliques, metricLabel: "cliques",
+    icon: SiGoogleads, color: "#34A853",
+  }));
+
+  const all = [...yt, ...tt, ...ig, ...meta, ...google].sort((a, b) => b.metric - a.metric);
+
+  return { todos: all, youtube: yt, tiktok: tt, instagram: ig, meta, google };
+}
+
 function TopConteudos() {
-  type Filter = "todos" | "youtube" | "tiktok";
-  const [filter, setFilter] = useState<Filter>("todos");
-
-  const ytItems = YOUTUBE_MOCK.flatMap(a =>
-    a.topVideos.slice(0, 3).map(v => ({
-      titulo: v.titulo, artista: a.nome, plataforma: "YouTube" as const, views: v.views,
-      icon: SiYoutube, color: "#FF0000", eng: "—",
-    }))
-  );
-  const ttItems = TIKTOK_MOCK.flatMap(a =>
-    a.topVideos.slice(0, 3).map(v => ({
-      titulo: v.descricao, artista: a.nome, plataforma: "TikTok" as const, views: v.views,
-      icon: SiTiktok, color: "hsl(271,91%,65%)", eng: `${((v.curtidas / v.views) * 100).toFixed(1)}%`,
-    }))
-  );
-
-  const all = [...ytItems, ...ttItems].sort((a, b) => b.views - a.views);
-  const rows = filter === "youtube" ? ytItems : filter === "tiktok" ? ttItems : all;
+  const [filter, setFilter] = useState<ContentFilter>("todos");
+  const allItems = buildContentItems();
+  const rows = allItems[filter].slice(0, 10);
 
   return (
     <Card className="border-border/60">
       <CardContent className="p-5">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-start justify-between gap-4 mb-5 flex-wrap">
           <div>
             <p className="text-base font-semibold text-foreground">Top Conteúdos</p>
             <p className="text-sm text-muted-foreground mt-0.5">Melhores desempenhos consolidados por plataforma</p>
           </div>
-          <div className="flex gap-1 bg-muted/50 rounded-lg p-0.5">
-            {(["todos", "youtube", "tiktok"] as Filter[]).map(f => (
+          <div className="flex gap-1 flex-wrap">
+            {FILTER_OPTIONS.map(f => (
               <button
-                key={f}
-                onClick={() => setFilter(f)}
+                key={f.id}
+                onClick={() => setFilter(f.id)}
                 className={cn(
-                  "px-3 py-1 rounded-md text-xs font-medium transition-all capitalize",
-                  filter === f ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-all whitespace-nowrap",
+                  filter === f.id
+                    ? "bg-foreground/8 text-foreground ring-1 ring-border shadow-sm"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
-                {f === "todos" ? "Todos" : f === "youtube" ? "YouTube" : "TikTok"}
+                {f.label}
               </button>
             ))}
           </div>
         </div>
 
         <div className="space-y-1">
-          {/* Header */}
-          <div className="grid grid-cols-[32px_1fr_100px_80px_80px] gap-3 px-3 py-1.5">
+          <div className="grid grid-cols-[28px_1fr_100px_90px] gap-3 px-3 py-1">
             <span />
             <span className="text-xs text-muted-foreground font-medium">Conteúdo</span>
-            <span className="text-xs text-muted-foreground font-medium text-right">Views</span>
-            <span className="text-xs text-muted-foreground font-medium text-right">Eng.</span>
+            <span className="text-xs text-muted-foreground font-medium text-right">Resultado</span>
             <span className="text-xs text-muted-foreground font-medium text-right">Plataforma</span>
           </div>
 
-          {rows.slice(0, 8).map((item, i) => {
+          {rows.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">Nenhum conteúdo encontrado</p>
+          ) : rows.map((item, i) => {
             const Icon = item.icon;
             return (
               <div
                 key={i}
-                className="grid grid-cols-[32px_1fr_100px_80px_80px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-muted/30 transition-colors"
+                className="grid grid-cols-[28px_1fr_100px_90px] gap-3 items-center px-3 py-2.5 rounded-lg hover:bg-muted/30 transition-colors"
               >
                 <span className="text-sm text-muted-foreground font-mono text-center">{i + 1}</span>
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0"
-                    style={{ backgroundColor: `${item.color}18` }}
-                  >
-                    <Icon className="h-4 w-4" style={{ color: item.color }} />
+                  <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0" style={{ backgroundColor: `${item.color}18` }}>
+                    <Icon className="h-3.5 w-3.5" style={{ color: item.color }} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm font-medium text-foreground truncate">{item.titulo}</p>
-                    <p className="text-xs text-muted-foreground truncate">{item.artista}</p>
+                    <p className="text-xs text-muted-foreground">{item.artista}</p>
                   </div>
                 </div>
-                <span className="text-sm font-semibold font-mono text-foreground text-right">{fmtNum(item.views)}</span>
-                <span className="text-sm text-muted-foreground text-right">{item.eng}</span>
+                <div className="text-right">
+                  <p className="text-sm font-semibold font-mono text-foreground">{fmtNum(item.metric)}</p>
+                  <p className="text-[10px] text-muted-foreground">{item.metricLabel}</p>
+                </div>
                 <div className="flex justify-end">
-                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-md bg-muted/60">{item.plataforma}</span>
+                  <span className="text-xs text-muted-foreground px-2 py-0.5 rounded-md bg-muted/60 whitespace-nowrap">{item.plataforma}</span>
                 </div>
               </div>
             );
