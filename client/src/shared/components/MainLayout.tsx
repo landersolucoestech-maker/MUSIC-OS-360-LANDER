@@ -25,7 +25,10 @@ import {
   Settings,
   LogOut,
   CheckCheck,
+  Sun,
+  Moon,
 } from "lucide-react";
+import { useTheme } from "@/app/providers/ThemeContext";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -122,6 +125,22 @@ function TopbarUserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function ThemeToggleButton() {
+  const { theme, toggleTheme } = useTheme();
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      data-testid="button-topbar-theme-toggle"
+      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+      title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
+      onClick={toggleTheme}
+    >
+      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+    </Button>
   );
 }
 
@@ -239,6 +258,8 @@ export function MainLayout({
                 <div className="w-px h-5 bg-border/60 mx-1" />
               </>
             )}
+
+            <ThemeToggleButton />
 
             <NotificationsPopover />
 

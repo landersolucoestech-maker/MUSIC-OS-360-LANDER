@@ -5,6 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/app/providers/AuthContext";
 import { TenantProvider } from "@/app/providers/TenantContext";
+import { ThemeProvider } from "@/app/providers/ThemeContext";
 import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
 import { RouteErrorBoundary } from "@/shared/components/RouteErrorBoundary";
 import { PageSkeleton } from "@/shared/components/PageSkeletons";
@@ -56,6 +57,7 @@ const SuperAdminRoute: SuspenseRouteComponent = ({ children }) => (
 );
 
 const App = () => (
+  <ThemeProvider>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -87,6 +89,7 @@ const App = () => (
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
+  </ThemeProvider>
 );
 
 export default App;
