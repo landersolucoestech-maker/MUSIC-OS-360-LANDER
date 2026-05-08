@@ -78,6 +78,12 @@ interface FormData {
   telefone: string;
   cpf_cnpj: string;
   data_nascimento: string;
+  vinculo: string;
+  vinculo_empresa_nome: string;
+  vinculo_empresa_contato: string;
+  vinculo_empresa_telefone: string;
+  vinculo_empresa_email: string;
+  vinculo_empresa_email_share: string;
   instagram: string;
   tiktok: string;
   youtube: string;
@@ -91,9 +97,14 @@ interface FormData {
   notas_label: string;
 }
 
+const VINCULO_OPTIONS = ["Independente", "Com Empresário", "Gravadora", "Editora"] as const;
+const VINCULO_COM_EMPRESA = new Set(["Com Empresário", "Gravadora", "Editora"]);
+
 const EMPTY: FormData = {
   nome_artistico: "", nome_civil: "", tipo_perfil: [], genero: "",
   genero_musical: "", email: "", telefone: "", cpf_cnpj: "", data_nascimento: "",
+  vinculo: "", vinculo_empresa_nome: "", vinculo_empresa_contato: "",
+  vinculo_empresa_telefone: "", vinculo_empresa_email: "", vinculo_empresa_email_share: "",
   instagram: "", tiktok: "", youtube: "", spotify: "",
   apple_music: "", deezer: "", soundcloud: "", presskit_url: "",
   bio: "", foto_url: "", notas_label: "",
@@ -242,32 +253,37 @@ export default function ArtistaSignupPublic() {
     if (!form.telefone.trim()) e.telefone = "Obrigatório";
     if (!form.cpf_cnpj.trim()) e.cpf_cnpj = "Obrigatório";
     if (!form.data_nascimento) e.data_nascimento = "Obrigatório";
+    if (!form.vinculo) e.vinculo = "Obrigatório";
+    if (form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo)) {
+      if (!form.vinculo_empresa_nome.trim()) e.vinculo_empresa_nome = "Obrigatório";
+      if (!form.vinculo_empresa_contato.trim()) e.vinculo_empresa_contato = "Obrigatório";
+      if (!form.vinculo_empresa_telefone.trim()) e.vinculo_empresa_telefone = "Obrigatório";
+      if (!form.vinculo_empresa_email.trim()) e.vinculo_empresa_email = "Obrigatório";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vinculo_empresa_email)) e.vinculo_empresa_email = "E-mail inválido";
+      if (!form.vinculo_empresa_email_share.trim()) e.vinculo_empresa_email_share = "Obrigatório";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vinculo_empresa_email_share)) e.vinculo_empresa_email_share = "E-mail inválido";
+    }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep2 = (): boolean => {
     const e: Record<string, string> = {};
-    if (!form.instagram.trim()) e.instagram = "Obrigatório";
-    if (!form.tiktok.trim()) e.tiktok = "Obrigatório";
     const urlFields: (keyof Omit<FormData, "tipo_perfil">)[] = ["spotify", "youtube", "apple_music", "deezer", "soundcloud", "presskit_url"];
     urlFields.forEach((f) => {
       const v = (form[f] as string).trim();
-      if (!v) { e[f] = "Obrigatório"; return; }
-      if (!/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
+      if (v && !/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
         if (/[\s/]/.test(v) || v.includes("://")) {
           e[f] = "URL deve começar com https://";
         }
       }
     });
-    if (!distribuidoras[0]?.distribuidora) e.distribuidora_0 = "Obrigatório";
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const validateStep3 = (): boolean => {
     const e: Record<string, string> = {};
-    if (!form.bio.trim()) e.bio = "Obrigatório";
     if (form.foto_url.trim() && !/^https?:\/\/.+/.test(form.foto_url.trim())) {
       e.foto_url = "URL inválida — deve começar com https://";
     }
@@ -301,6 +317,14 @@ export default function ArtistaSignupPublic() {
     const extrasNotas: string[] = [];
     if (form.data_nascimento) extrasNotas.push(`Data de Nascimento: ${form.data_nascimento}`);
     if (form.genero) extrasNotas.push(`Gênero: ${form.genero}`);
+    if (form.vinculo) extrasNotas.push(`Vínculo: ${form.vinculo}`);
+    if (form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo)) {
+      if (form.vinculo_empresa_nome.trim()) extrasNotas.push(`Empresa/Responsável: ${form.vinculo_empresa_nome.trim()}`);
+      if (form.vinculo_empresa_contato.trim()) extrasNotas.push(`Contato: ${form.vinculo_empresa_contato.trim()}`);
+      if (form.vinculo_empresa_telefone.trim()) extrasNotas.push(`Tel. empresa: ${form.vinculo_empresa_telefone.trim()}`);
+      if (form.vinculo_empresa_email.trim()) extrasNotas.push(`E-mail empresa: ${form.vinculo_empresa_email.trim()}`);
+      if (form.vinculo_empresa_email_share.trim()) extrasNotas.push(`E-mail share: ${form.vinculo_empresa_email_share.trim()}`);
+    }
     distribuidoras.forEach((entry, idx) => {
       if (entry.distribuidora) {
         const label = distribuidoras.length > 1 ? `Distribuidora ${idx + 1}` : "Distribuidora";
@@ -640,6 +664,95 @@ export default function ArtistaSignupPublic() {
                 {errors.data_nascimento && <p className="text-xs text-destructive">{errors.data_nascimento}</p>}
               </div>
             </div>
+
+            {/* Vínculo profissional */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Vínculo Profissional / Artístico <span className="text-destructive">*</span></Label>
+              <Select value={form.vinculo} onValueChange={(v) => set("vinculo", v)}>
+                <SelectTrigger data-testid="select-vinculo" className={errors.vinculo ? "border-destructive" : ""}>
+                  <SelectValue placeholder="Selecione seu vínculo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {VINCULO_OPTIONS.map((opt) => (
+                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {errors.vinculo && <p className="text-xs text-destructive">{errors.vinculo}</p>}
+            </div>
+
+            {/* Campos condicionais — empresa/responsável */}
+            {form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo) && (
+              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  Dados do {form.vinculo}
+                </p>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Nome da empresa / responsável <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="Razão social ou nome"
+                      value={form.vinculo_empresa_nome}
+                      onChange={(e) => set("vinculo_empresa_nome", e.target.value)}
+                      data-testid="input-vinculo-empresa-nome"
+                      className={errors.vinculo_empresa_nome ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_nome && <p className="text-xs text-destructive">{errors.vinculo_empresa_nome}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">Nome do contato <span className="text-destructive">*</span></Label>
+                    <Input
+                      placeholder="Pessoa responsável"
+                      value={form.vinculo_empresa_contato}
+                      onChange={(e) => set("vinculo_empresa_contato", e.target.value)}
+                      data-testid="input-vinculo-empresa-contato"
+                      className={errors.vinculo_empresa_contato ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_contato && <p className="text-xs text-destructive">{errors.vinculo_empresa_contato}</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-sm">Telefone / WhatsApp <span className="text-destructive">*</span></Label>
+                  <Input
+                    placeholder="(11) 99999-9999"
+                    value={form.vinculo_empresa_telefone}
+                    onChange={(e) => set("vinculo_empresa_telefone", e.target.value)}
+                    data-testid="input-vinculo-empresa-telefone"
+                    className={errors.vinculo_empresa_telefone ? "border-destructive" : ""}
+                  />
+                  {errors.vinculo_empresa_telefone && <p className="text-xs text-destructive">{errors.vinculo_empresa_telefone}</p>}
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">E-mail <span className="text-destructive">*</span></Label>
+                    <Input
+                      type="email"
+                      placeholder="contato@empresa.com"
+                      value={form.vinculo_empresa_email}
+                      onChange={(e) => set("vinculo_empresa_email", e.target.value)}
+                      data-testid="input-vinculo-empresa-email"
+                      className={errors.vinculo_empresa_email ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-sm">E-mail de Share <span className="text-destructive">*</span></Label>
+                    <Input
+                      type="email"
+                      placeholder="share@empresa.com"
+                      value={form.vinculo_empresa_email_share}
+                      onChange={(e) => set("vinculo_empresa_email_share", e.target.value)}
+                      data-testid="input-vinculo-empresa-email-share"
+                      className={errors.vinculo_empresa_email_share ? "border-destructive" : ""}
+                    />
+                    {errors.vinculo_empresa_email_share && <p className="text-xs text-destructive">{errors.vinculo_empresa_email_share}</p>}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -648,14 +761,14 @@ export default function ArtistaSignupPublic() {
           <div className="space-y-5">
             <div>
               <h2 className="font-semibold text-base">Links e Redes Sociais</h2>
-              <p className="text-sm text-muted-foreground">Preencha todos os campos abaixo</p>
+              <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
             </div>
 
             {/* Linha 1 — Instagram | TikTok */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram <span className="text-destructive">*</span>
+                  <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
                 </Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground shrink-0">@</span>
@@ -667,7 +780,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiTiktok className="h-3.5 w-3.5" /> TikTok <span className="text-destructive">*</span>
+                  <SiTiktok className="h-3.5 w-3.5" /> TikTok
                 </Label>
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-muted-foreground shrink-0">@</span>
@@ -683,7 +796,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify <span className="text-destructive">*</span>
+                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
                 </Label>
                 <Input
                   placeholder="https://open.spotify.com/artist/..."
@@ -695,7 +808,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube <span className="text-destructive">*</span>
+                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
                 </Label>
                 <Input
                   placeholder="https://youtube.com/@seucanal"
@@ -711,7 +824,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music <span className="text-destructive">*</span>
+                  <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music
                 </Label>
                 <Input placeholder="https://music.apple.com/..."
                   value={form.apple_music} onChange={(e) => set("apple_music", e.target.value)}
@@ -722,7 +835,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer <span className="text-destructive">*</span>
+                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer
                 </Label>
                 <Input placeholder="https://www.deezer.com/artist/..."
                   value={form.deezer} onChange={(e) => set("deezer", e.target.value)}
@@ -737,7 +850,7 @@ export default function ArtistaSignupPublic() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud <span className="text-destructive">*</span>
+                  <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
                 </Label>
                 <Input placeholder="https://soundcloud.com/..."
                   value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
@@ -748,7 +861,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK <span className="text-destructive">*</span>
+                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
                 </Label>
                 <Input
                   placeholder="https://drive.google.com/... ou Notion, Dropbox..."
@@ -776,7 +889,7 @@ export default function ArtistaSignupPublic() {
                 {distribuidoras.map((entry, idx) => (
                   <div key={idx} className="grid grid-cols-2 gap-3 items-end">
                     <div className="space-y-1.5">
-                      {idx === 0 && <Label className="text-sm">Distribuidora <span className="text-destructive">*</span></Label>}
+                      {idx === 0 && <Label className="text-sm">Distribuidora</Label>}
                       <Select
                         value={entry.distribuidora}
                         onValueChange={(v) => setDistribuidoraField(idx, "distribuidora", v)}
@@ -869,7 +982,7 @@ export default function ArtistaSignupPublic() {
 
             {/* Biografia */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Biografia / Proposta Artística <span className="text-destructive">*</span></Label>
+              <Label className="text-sm">Biografia / Proposta Artística</Label>
               <Textarea
                 placeholder="Trajetória, estilo, influências e o que te diferencia. Seja direto e autêntico."
                 rows={5} value={form.bio}
