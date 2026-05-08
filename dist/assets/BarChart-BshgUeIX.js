@@ -1,0 +1,1 @@
+import{g as a,X as i,Y as s,f as t,B as e}from"./AreaChart-Cm-a5mt7.js";var x=a({chartName:"BarChart",GraphicalChild:e,defaultTooltipEventType:"axis",validateTooltipEventTypes:["axis","item"],axisComponents:[{axisType:"xAxis",AxisComp:i},{axisType:"yAxis",AxisComp:s}],formatAxisMap:t});export{x as B};

@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { useTenant } from "@/app/providers/TenantContext";
 import {
   MOCK_TICKETS, MOCK_MESSAGES, MOCK_CHAT_ROOMS,
   MOCK_CHAT_MESSAGES, MOCK_REQUESTS,
@@ -8,11 +9,9 @@ import type {
   TicketStatus, TicketPriority, TicketCategory,
 } from "../types";
 
-const LS_KEY_TICKETS   = "musicos360_support_tickets";
-const LS_KEY_MESSAGES  = "musicos360_support_messages";
-const LS_KEY_CHATS     = "musicos360_support_chats";
-const LS_KEY_CHAT_MSGS = "musicos360_support_chat_messages";
-const LS_KEY_REQUESTS  = "musicos360_support_requests";
+function lsKey(base: string, tenantId: string) {
+  return `musicos360_${base}_${tenantId}`;
+}
 
 function load<T>(key: string, fallback: T): T {
   try {
@@ -30,8 +29,13 @@ function save<T>(key: string, value: T): void {
 /* ── Tickets ── */
 
 export function useTickets() {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
   const [tickets, setTickets] = useState<SupportTicket[]>(() =>
-    load(LS_KEY_TICKETS, MOCK_TICKETS)
+    load(lsKey("support_tickets", tenantId), MOCK_TICKETS).filter(
+      (t) => t.tenant_id === tenantId || t.tenant_id === "tenant-001"
+    )
   );
 
   const addTicket = useCallback(
@@ -39,7 +43,7 @@ export function useTickets() {
       const sla = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
       const next: SupportTicket = {
         id: `tkt-${Date.now()}`,
-        tenant_id: "tenant-001",
+        tenant_id: tenantId,
         ticket_number: `TKT-${String(Math.floor(Math.random() * 9000) + 1000)}`,
         subject: data.subject,
         description: data.description,
@@ -53,12 +57,12 @@ export function useTickets() {
       };
       setTickets((prev) => {
         const updated = [next, ...prev];
-        save(LS_KEY_TICKETS, updated);
+        save(lsKey("support_tickets", tenantId), updated);
         return updated;
       });
       return next;
     },
-    []
+    [tenantId]
   );
 
   const updateTicket = useCallback((id: string, changes: Partial<SupportTicket>) => {
@@ -66,10 +70,10 @@ export function useTickets() {
       const updated = prev.map((t) =>
         t.id === id ? { ...t, ...changes, updated_at: new Date().toISOString() } : t
       );
-      save(LS_KEY_TICKETS, updated);
+      save(lsKey("support_tickets", tenantId), updated);
       return updated;
     });
-  }, []);
+  }, [tenantId]);
 
   return { tickets, addTicket, updateTicket };
 }
@@ -77,8 +81,11 @@ export function useTickets() {
 /* ── Ticket messages ── */
 
 export function useTicketMessages(ticketId: string) {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
   const [allMessages, setAllMessages] = useState<Record<string, SupportMessage[]>>(() =>
-    load(LS_KEY_MESSAGES, MOCK_MESSAGES)
+    load(lsKey("support_messages", tenantId), MOCK_MESSAGES)
   );
 
   const messages = allMessages[ticketId] ?? [];
@@ -97,11 +104,11 @@ export function useTicketMessages(ticketId: string) {
       };
       setAllMessages((prev) => {
         const updated = { ...prev, [ticketId]: [...(prev[ticketId] ?? []), next] };
-        save(LS_KEY_MESSAGES, updated);
+        save(lsKey("support_messages", tenantId), updated);
         return updated;
       });
     },
-    [ticketId]
+    [ticketId, tenantId]
   );
 
   return { messages, addMessage };
@@ -110,8 +117,11 @@ export function useTicketMessages(ticketId: string) {
 /* ── Chat rooms ── */
 
 export function useChatRooms() {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
   const [rooms, setRooms] = useState<ChatRoom[]>(() =>
-    load(LS_KEY_CHATS, MOCK_CHAT_ROOMS)
+    load(lsKey("support_chats", tenantId), MOCK_CHAT_ROOMS)
   );
 
   const markRead = useCallback((roomId: string) => {
@@ -119,10 +129,10 @@ export function useChatRooms() {
       const updated = prev.map((r) =>
         r.id === roomId ? { ...r, unread_count: 0 } : r
       );
-      save(LS_KEY_CHATS, updated);
+      save(lsKey("support_chats", tenantId), updated);
       return updated;
     });
-  }, []);
+  }, [tenantId]);
 
   return { rooms, markRead };
 }
@@ -130,8 +140,11 @@ export function useChatRooms() {
 /* ── Chat messages ── */
 
 export function useChatMessages(roomId: string) {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
   const [allMessages, setAllMessages] = useState<Record<string, ChatMessage[]>>(() =>
-    load(LS_KEY_CHAT_MSGS, MOCK_CHAT_MESSAGES)
+    load(lsKey("support_chat_messages", tenantId), MOCK_CHAT_MESSAGES)
   );
 
   const messages = allMessages[roomId] ?? [];
@@ -149,11 +162,11 @@ export function useChatMessages(roomId: string) {
       };
       setAllMessages((prev) => {
         const updated = { ...prev, [roomId]: [...(prev[roomId] ?? []), next] };
-        save(LS_KEY_CHAT_MSGS, updated);
+        save(lsKey("support_chat_messages", tenantId), updated);
         return updated;
       });
     },
-    [roomId]
+    [roomId, tenantId]
   );
 
   return { messages, sendMessage };
@@ -162,15 +175,18 @@ export function useChatMessages(roomId: string) {
 /* ── Requests ── */
 
 export function useRequests() {
+  const { tenant } = useTenant();
+  const tenantId   = tenant.id;
+
   const [requests, setRequests] = useState<SupportRequest[]>(() =>
-    load(LS_KEY_REQUESTS, MOCK_REQUESTS)
+    load(lsKey("support_requests", tenantId), MOCK_REQUESTS)
   );
 
   const addRequest = useCallback(
     (data: Pick<SupportRequest, "title" | "description" | "type" | "priority">) => {
       const next: SupportRequest = {
         id: `req-${Date.now()}`,
-        tenant_id: "tenant-001",
+        tenant_id: tenantId,
         type: data.type,
         title: data.title,
         description: data.description,
@@ -182,11 +198,11 @@ export function useRequests() {
       };
       setRequests((prev) => {
         const updated = [next, ...prev];
-        save(LS_KEY_REQUESTS, updated);
+        save(lsKey("support_requests", tenantId), updated);
         return updated;
       });
     },
-    []
+    [tenantId]
   );
 
   const upvote = useCallback((id: string) => {
@@ -194,10 +210,10 @@ export function useRequests() {
       const updated = prev.map((r) =>
         r.id === id ? { ...r, votes: r.votes + 1 } : r
       );
-      save(LS_KEY_REQUESTS, updated);
+      save(lsKey("support_requests", tenantId), updated);
       return updated;
     });
-  }, []);
+  }, [tenantId]);
 
   return { requests, addRequest, upvote };
 }

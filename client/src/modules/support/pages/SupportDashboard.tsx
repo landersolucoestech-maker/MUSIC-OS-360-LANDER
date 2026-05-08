@@ -1,408 +1,290 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Input } from "@/shared/ui/input";
-import { Textarea } from "@/shared/ui/textarea";
-import { Label } from "@/shared/ui/label";
-import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
-} from "@/shared/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/shared/ui/select";
 import { cn } from "@/shared/lib/utils";
-import { useTickets, TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS } from "../hooks/useSupport";
-import { MOCK_KNOWLEDGE_ARTICLES } from "../data/mockSupport";
-import type { TicketStatus, TicketPriority } from "../types";
+import { useTickets } from "../hooks/useSupport";
+import { MOCK_SYSTEM_SERVICES } from "../data/mockSupport";
 import {
-  Plus, BookOpen, Ticket, Search,
-  ChevronDown, ChevronRight, ChevronUp,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
+} from "recharts";
+import {
+  Ticket, CheckCircle2, Clock, AlertTriangle, Activity,
+  TrendingUp, ChevronRight, Plus, BookOpen, MessagesSquare,
+  Inbox, Server, Zap,
 } from "lucide-react";
+import type { TicketStatus, TicketPriority } from "../types";
 
-/* ─── helpers ─── */
-
+/* ── helpers ── */
+const PRIORITY_DOT: Record<TicketPriority, string> = {
+  critical: "bg-red-500",
+  high:     "bg-orange-400",
+  medium:   "bg-yellow-400",
+  low:      "bg-green-500",
+};
 const STATUS_COLOR: Record<TicketStatus, string> = {
-  open:             "bg-blue-500 text-white",
-  in_progress:      "bg-yellow-500 text-black",
-  waiting_customer: "bg-orange-500 text-white",
-  resolved:         "bg-green-500 text-white",
-  closed:           "bg-muted text-muted-foreground",
+  open:             "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  in_progress:      "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
+  waiting_customer: "bg-orange-500/10 text-orange-400 border-orange-500/30",
+  resolved:         "bg-green-500/10 text-green-400 border-green-500/30",
+  closed:           "bg-muted text-muted-foreground border-border",
 };
-
-const PRIORITY_LABEL: Record<string, string> = {
-  low: "BAIXA", medium: "MÉDIA", high: "ALTA", critical: "CRÍTICA",
+const STATUS_LABEL: Record<TicketStatus, string> = {
+  open: "Aberto", in_progress: "Em Andamento",
+  waiting_customer: "Aguardando", resolved: "Resolvido", closed: "Fechado",
 };
-
-const PRIORITY_COLOR: Record<string, string> = {
-  low: "text-green-400", medium: "text-yellow-400",
-  high: "text-orange-400", critical: "text-red-500",
-};
-
-type TabKey = "all" | "open" | "waiting_customer" | "closed";
-const TABS: { key: TabKey; label: string }[] = [
-  { key: "all",              label: "Todos"      },
-  { key: "open",             label: "Aberto"     },
-  { key: "waiting_customer", label: "Aguardando" },
-  { key: "closed",           label: "Fechado"    },
-];
 
 function formatRelative(iso: string) {
-  return new Date(iso).toLocaleDateString("pt-BR", {
-    day: "2-digit", month: "short", year: "numeric",
-  });
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m atrás`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h atrás`;
+  return `${Math.floor(hrs / 24)}d atrás`;
 }
 
-/* ─── Hero card ─── */
-function ActionCard({
-  icon: Icon, label, desc, onClick, href, iconColor,
+/* ticket volume trend — last 7 days */
+const TREND_DATA = (() => {
+  const days = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+  return days.map((day, i) => ({
+    day,
+    abertos:   3 + Math.floor(Math.sin(i) * 2 + Math.random() * 3),
+    resolvidos: 2 + Math.floor(Math.cos(i) * 1.5 + Math.random() * 2),
+  }));
+})();
+
+/* quick-action card */
+function QuickCard({
+  icon: Icon, label, desc, href, iconBg,
 }: {
   icon: React.ComponentType<{ className?: string }>;
-  label: string; desc: string;
-  onClick?: () => void; href?: string;
-  iconColor: string;
+  label: string; desc: string; href: string; iconBg: string;
 }) {
-  const cls = cn(
-    "flex flex-col items-center justify-center gap-3 rounded-2xl border border-border/60 bg-card p-8",
-    "hover:border-primary/40 hover:bg-primary/[0.03] transition-all duration-200 group cursor-pointer text-center",
-  );
-
-  const inner = (
-    <>
-      <div className={cn("flex h-14 w-14 items-center justify-center rounded-2xl", iconColor)}>
-        <Icon className="h-7 w-7" />
+  return (
+    <Link
+      to={href}
+      className={cn(
+        "flex items-center gap-3 rounded-xl border border-border/60 bg-card px-4 py-3",
+        "hover:border-primary/30 hover:bg-primary/[0.02] transition-all group",
+      )}
+      data-testid={`quick-${label}`}
+    >
+      <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl shrink-0", iconBg)}>
+        <Icon className="h-4 w-4" />
       </div>
-      <div>
-        <p className="text-[14px] font-semibold text-foreground group-hover:text-primary transition-colors">
+      <div className="flex-1 min-w-0">
+        <p className="text-[12.5px] font-semibold text-foreground group-hover:text-primary transition-colors">
           {label}
         </p>
-        <p className="text-[12px] text-muted-foreground mt-0.5">{desc}</p>
+        <p className="text-[11px] text-muted-foreground truncate">{desc}</p>
       </div>
-    </>
+      <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/30 group-hover:text-primary transition-colors shrink-0" />
+    </Link>
   );
-
-  if (onClick) return <button className={cls} onClick={onClick} data-testid={`action-${label}`}>{inner}</button>;
-  return <Link to={href!} className={cls} data-testid={`action-${label}`}>{inner}</Link>;
 }
 
-/* ─── FAQ Accordion Item ─── */
-function FaqItem({ article }: { article: typeof MOCK_KNOWLEDGE_ARTICLES[0] }) {
-  const [open, setOpen] = useState(false);
+/* KPI card */
+function KpiCard({
+  icon: Icon, label, value, sub, iconBg, iconColor, trend,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string; value: string | number; sub?: string;
+  iconBg: string; iconColor: string; trend?: { up: boolean; val: string };
+}) {
   return (
-    <div className="border-b border-border/60 last:border-0">
-      <button
-        className="w-full flex items-center justify-between py-3.5 px-1 text-left group"
-        onClick={() => setOpen((p) => !p)}
-        data-testid={`faq-${article.id}`}
-      >
-        <div className="flex-1 min-w-0 pr-3">
-          <p className="text-[13px] font-medium text-foreground group-hover:text-primary transition-colors">
-            {article.title}
-          </p>
-          <div className="mt-1">
-            <span className="text-[10.5px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-medium">
-              {article.category_name}
-            </span>
-          </div>
+    <div className="rounded-2xl border border-border/60 bg-card p-5">
+      <div className="flex items-start justify-between mb-3">
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", iconBg)}>
+          <Icon className={cn("h-4 w-4", iconColor)} />
         </div>
-        {open
-          ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" />
-          : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-        }
-      </button>
-      {open && (
-        <div className="px-1 pb-4">
-          <p className="text-[12.5px] text-muted-foreground leading-relaxed">{article.summary}</p>
-          <Link
-            to="/support/knowledge"
-            className="inline-flex items-center gap-1 mt-2 text-[11.5px] text-primary hover:underline font-medium"
-          >
-            Ver artigo completo <ChevronRight className="h-3 w-3" />
-          </Link>
-        </div>
-      )}
+        {trend && (
+          <span className={cn("text-[11px] font-medium", trend.up ? "text-green-400" : "text-red-400")}>
+            {trend.up ? "↑" : "↓"} {trend.val}
+          </span>
+        )}
+      </div>
+      <p className="text-2xl font-bold text-foreground tabular-nums">{value}</p>
+      <p className="text-[12px] font-medium text-foreground/70 mt-0.5">{label}</p>
+      {sub && <p className="text-[10.5px] text-muted-foreground mt-0.5">{sub}</p>}
     </div>
   );
 }
 
-/* ─── Main ─── */
 export default function SupportDashboard() {
   const { tickets, addTicket } = useTickets();
-  const [activeTab, setActiveTab] = useState<TabKey>("all");
-  const [kbSearch, setKbSearch]   = useState("");
-  const [showModal, setShowModal] = useState(false);
+  const [showNew, setShowNew] = useState(false);
+  const [newForm, setNewForm] = useState({ subject: "", priority: "medium" as TicketPriority, description: "" });
 
-  const [form, setForm] = useState({
-    subject: "",
-    priority: "medium" as TicketPriority,
-    description: "",
-  });
+  const open       = tickets.filter(t => t.status === "open").length;
+  const inProgress = tickets.filter(t => t.status === "in_progress").length;
+  const waiting    = tickets.filter(t => t.status === "waiting_customer").length;
+  const resolved7d = useMemo(() => {
+    const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+    return tickets.filter(t => t.status === "resolved" && new Date(t.updated_at).getTime() > cutoff).length;
+  }, [tickets]);
 
-  const countByTab: Record<TabKey, number> = {
-    all:              tickets.length,
-    open:             tickets.filter(t => t.status === "open").length,
-    waiting_customer: tickets.filter(t => t.status === "waiting_customer").length,
-    closed:           tickets.filter(t => t.status === "closed").length,
-  };
+  const avgSLA = "94.2%";
+  const avgResp = "2h 18m";
 
-  const filteredTickets = activeTab === "all"
-    ? tickets
-    : tickets.filter(t => t.status === activeTab);
+  const systemOk = MOCK_SYSTEM_SERVICES.filter(s => s.status === "operational").length;
+  const systemTotal = MOCK_SYSTEM_SERVICES.length;
 
-  const kbArticles = MOCK_KNOWLEDGE_ARTICLES.filter((a) => {
-    if (!kbSearch) return true;
-    const q = kbSearch.toLowerCase();
-    return a.title.toLowerCase().includes(q) || a.summary.toLowerCase().includes(q);
-  });
+  const recentActivity = useMemo(
+    () => [...tickets].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()).slice(0, 6),
+    [tickets]
+  );
 
-  function handleSubmitTicket() {
-    if (!form.subject.trim()) return;
-    addTicket({
-      subject: form.subject,
-      description: form.description,
-      category: "outro",
-      priority: form.priority,
-      created_by: "Usuário Atual",
-    });
-    setShowModal(false);
-    setForm({ subject: "", priority: "medium", description: "" });
+  function handleCreate() {
+    if (!newForm.subject.trim()) return;
+    addTicket({ subject: newForm.subject, description: newForm.description, category: "outro", priority: newForm.priority, created_by: "Você" });
+    setShowNew(false);
+    setNewForm({ subject: "", priority: "medium", description: "" });
   }
 
   return (
     <MainLayout
       title="Central de Suporte"
-      description="Encontre ajuda, gerencie tickets e acompanhe o status"
+      description="Como podemos ajudar hoje?"
+      actions={
+        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setShowNew(true)} data-testid="button-novo-ticket">
+          <Plus className="h-3.5 w-3.5" /> Novo Ticket
+        </Button>
+      }
     >
       <div className="space-y-6 animate-fade-in">
 
-        {/* Three hero action cards */}
-        <div className="grid grid-cols-3 gap-4">
-          <ActionCard
-            icon={Plus}
-            label="Novo Ticket"
-            desc="Precisa de ajuda? Abra um novo ticket de suporte"
-            onClick={() => setShowModal(true)}
-            iconColor="bg-primary/10 text-primary"
-          />
-          <ActionCard
-            icon={BookOpen}
-            label="Base de Conhecimento"
-            desc="Encontre respostas rápidas nas perguntas frequentes"
-            href="/support/knowledge"
-            iconColor="bg-green-500/10 text-green-400"
-          />
-          <ActionCard
-            icon={Ticket}
-            label="Meus Tickets"
-            desc={`${tickets.length} ticket(s) · ${countByTab.open} aberto(s)`}
-            href="/support/tickets"
-            iconColor="bg-orange-500/10 text-orange-400"
-          />
+        {/* ── KPI Row ── */}
+        <div className="grid grid-cols-2 lg:grid-cols-6 gap-4">
+          <KpiCard icon={Ticket}       label="Abertos"        value={open}          sub={`${inProgress} em andamento`} iconBg="bg-blue-500/10"   iconColor="text-blue-400"   trend={{ up: false, val: "3" }} />
+          <KpiCard icon={CheckCircle2} label="Resolvidos 7d"  value={resolved7d}    sub="últimos 7 dias"               iconBg="bg-green-500/10"  iconColor="text-green-400"  trend={{ up: true,  val: "12%" }} />
+          <KpiCard icon={Clock}        label="SLA Cumprido"   value={avgSLA}        sub="média geral"                  iconBg="bg-primary/10"    iconColor="text-primary"    trend={{ up: true,  val: "2%" }} />
+          <KpiCard icon={Zap}          label="Tempo Resposta" value={avgResp}       sub="média primária"               iconBg="bg-yellow-500/10" iconColor="text-yellow-400" trend={{ up: true,  val: "8%" }} />
+          <KpiCard icon={AlertTriangle}label="Aguardando"     value={waiting}       sub="resposta do cliente"          iconBg="bg-orange-500/10" iconColor="text-orange-400" />
+          <KpiCard icon={Server}       label="Sistema"        value={`${systemOk}/${systemTotal}`} sub="serviços ok" iconBg="bg-emerald-500/10" iconColor="text-emerald-400" trend={{ up: true,  val: "99.7%" }} />
         </div>
 
-        {/* Two-column body */}
-        <div className="grid lg:grid-cols-[1fr_420px] gap-5">
+        {/* ── Main 2-col ── */}
+        <div className="grid lg:grid-cols-[1fr_340px] gap-5">
 
-          {/* Knowledge Base */}
+          {/* Trend chart */}
           <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
-              <BookOpen className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[13px] font-semibold text-foreground">Base de Conhecimento</span>
-            </div>
-            <div className="px-5 py-3 border-b border-border/60">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar na base de conhecimento..."
-                  className="pl-9 h-8 text-xs bg-muted/40 border-transparent focus:border-border"
-                  value={kbSearch}
-                  onChange={(e) => setKbSearch(e.target.value)}
-                  data-testid="input-kb-search"
-                />
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <div>
+                <p className="text-[13px] font-semibold text-foreground">Volume de Tickets</p>
+                <p className="text-[11px] text-muted-foreground">Últimos 7 dias</p>
+              </div>
+              <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-primary inline-block" /> Abertos</span>
+                <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full bg-green-500 inline-block" /> Resolvidos</span>
               </div>
             </div>
-            <div className="divide-y divide-border/60 px-5">
-              {kbArticles.length === 0 ? (
-                <div className="py-10 text-center">
-                  <p className="text-[13px] text-muted-foreground">Nenhum artigo encontrado</p>
-                </div>
-              ) : (
-                kbArticles.map((article) => <FaqItem key={article.id} article={article} />)
-              )}
-            </div>
-            <div className="px-5 py-3 border-t border-border/60">
-              <Link
-                to="/support/knowledge"
-                className="flex items-center justify-center gap-1.5 text-[12px] text-primary hover:underline font-medium"
-              >
-                Ver todos os artigos <ChevronRight className="h-3.5 w-3.5" />
-              </Link>
-            </div>
+            <ResponsiveContainer width="100%" height={180}>
+              <AreaChart data={TREND_DATA} margin={{ top: 10, right: 20, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="gradOpen" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#3B82F6" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="gradRes" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#22C55E" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#22C55E" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 10, fontSize: 12 }}
+                  labelStyle={{ color: "hsl(var(--foreground))", fontWeight: 600 }}
+                />
+                <Area type="monotone" dataKey="abertos"   stroke="#3B82F6" fill="url(#gradOpen)" strokeWidth={2} dot={false} />
+                <Area type="monotone" dataKey="resolvidos" stroke="#22C55E" fill="url(#gradRes)"  strokeWidth={2} dot={false} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
 
-          {/* Meus Tickets */}
-          <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <div className="flex items-center gap-2 px-5 py-4 border-b border-border/60">
-              <Ticket className="h-4 w-4 text-muted-foreground" />
-              <span className="text-[13px] font-semibold text-foreground">Meus Tickets</span>
-            </div>
+          {/* Quick actions */}
+          <div className="space-y-3">
+            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Acesso Rápido</p>
+            <QuickCard icon={Ticket}        label="Meus Tickets"        desc={`${tickets.length} ticket(s) · ${open} aberto(s)`}  href="/support/tickets"  iconBg="bg-blue-500/10 text-blue-400" />
+            <QuickCard icon={MessagesSquare} label="Chat ao Vivo"        desc="Atendimento em tempo real"                            href="/support/chat"      iconBg="bg-green-500/10 text-green-400" />
+            <QuickCard icon={BookOpen}      label="Base de Conhecimento" desc="Artigos e guias de uso"                               href="/support/knowledge" iconBg="bg-primary/10 text-primary" />
+            <QuickCard icon={Activity}      label="Status do Sistema"    desc={`${systemOk} de ${systemTotal} serviços operacionais`} href="/support/status"   iconBg="bg-emerald-500/10 text-emerald-400" />
+            <QuickCard icon={Inbox}         label="Solicitações"         desc="Features e melhorias"                                 href="/support/requests" iconBg="bg-purple-500/10 text-purple-400" />
+          </div>
+        </div>
 
-            {/* Tabs */}
-            <div className="flex border-b border-border/60 px-4">
-              {TABS.map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setActiveTab(tab.key)}
-                  className={cn(
-                    "flex items-center gap-1.5 px-3 py-2.5 text-[12px] font-medium border-b-2 transition-colors -mb-px",
-                    activeTab === tab.key
-                      ? "border-primary text-primary"
-                      : "border-transparent text-muted-foreground hover:text-foreground",
-                  )}
-                  data-testid={`tab-${tab.key}`}
-                >
-                  {tab.label}
-                  <span className={cn(
-                    "text-[10px] px-1 rounded-full min-w-4 text-center",
-                    activeTab === tab.key
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-muted-foreground",
-                  )}>
-                    {countByTab[tab.key]}
-                  </span>
-                </button>
-              ))}
+        {/* ── Activity feed ── */}
+        <div className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+          <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-muted-foreground" />
+              <span className="text-[13px] font-semibold text-foreground">Atividade Recente</span>
             </div>
-
-            {/* Ticket list */}
-            <div className="divide-y divide-border/60 overflow-y-auto" style={{ maxHeight: "440px" }}>
-              {filteredTickets.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-12 text-center">
-                  <Ticket className="h-8 w-8 text-muted-foreground/20 mb-2" />
-                  <p className="text-[13px] text-muted-foreground">Nenhum ticket nesta categoria</p>
-                </div>
-              ) : (
-                filteredTickets.map((ticket) => (
-                  <Link
-                    key={ticket.id}
-                    to={`/support/tickets/${ticket.id}`}
-                    className="flex items-start gap-3 px-5 py-3.5 hover:bg-muted/40 transition-colors group"
-                    data-testid={`row-ticket-${ticket.id}`}
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[10.5px] font-mono text-muted-foreground/70">
-                          {ticket.ticket_number}
-                        </span>
-                        <Badge className={cn("text-[9.5px] h-4 px-1.5 rounded-full font-medium", STATUS_COLOR[ticket.status])}>
-                          {TICKET_STATUS_LABELS[ticket.status]}
-                        </Badge>
-                      </div>
-                      <p className="text-[12.5px] font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                        {ticket.subject}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground truncate mt-0.5">
-                        {ticket.description.slice(0, 60)}…
-                      </p>
-                    </div>
-                    <div className="flex flex-col items-end gap-1 shrink-0 ml-2">
-                      <span className={cn("text-[10.5px] font-bold tracking-wide", PRIORITY_COLOR[ticket.priority])}>
-                        {PRIORITY_LABEL[ticket.priority]}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground/60">
-                        {formatRelative(ticket.updated_at)}
-                      </span>
-                    </div>
-                  </Link>
-                ))
-              )}
-            </div>
-
-            <div className="px-5 py-3 border-t border-border/60">
+            <Link to="/support/tickets" className="text-[11.5px] text-primary hover:underline flex items-center gap-0.5">
+              Ver todos <ChevronRight className="h-3 w-3" />
+            </Link>
+          </div>
+          <div className="divide-y divide-border/60">
+            {recentActivity.map((ticket) => (
               <Link
-                to="/support/tickets"
-                className="flex items-center justify-center gap-1.5 text-[12px] text-primary hover:underline font-medium"
+                key={ticket.id}
+                to={`/support/tickets/${ticket.id}`}
+                className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors group"
+                data-testid={`activity-${ticket.id}`}
               >
-                Ver todos os tickets <ChevronRight className="h-3.5 w-3.5" />
+                <div className={cn("h-2 w-2 rounded-full shrink-0", PRIORITY_DOT[ticket.priority])} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <span className="text-[10.5px] font-mono text-muted-foreground/60">{ticket.ticket_number}</span>
+                    <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
+                      {STATUS_LABEL[ticket.status]}
+                    </Badge>
+                  </div>
+                  <p className="text-[12.5px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                    {ticket.subject}
+                  </p>
+                </div>
+                <span className="text-[10.5px] text-muted-foreground/50 shrink-0">{formatRelative(ticket.updated_at)}</span>
               </Link>
+            ))}
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── New ticket mini-modal ── */}
+      {showNew && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowNew(false)}>
+          <div
+            className="w-full max-w-md rounded-2xl border border-border/60 bg-card p-5 space-y-4 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-[14px] font-semibold text-foreground">Novo Ticket de Suporte</p>
+            <input
+              className="w-full rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
+              placeholder="Assunto *"
+              value={newForm.subject}
+              onChange={(e) => setNewForm({ ...newForm, subject: e.target.value })}
+              data-testid="input-quick-ticket-subject"
+            />
+            <textarea
+              className="w-full rounded-xl border border-border/60 bg-muted/40 px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40 resize-none"
+              placeholder="Descreva o problema..."
+              rows={3}
+              value={newForm.description}
+              onChange={(e) => setNewForm({ ...newForm, description: e.target.value })}
+              data-testid="textarea-quick-ticket-desc"
+            />
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowNew(false)}>Cancelar</Button>
+              <Button size="sm" onClick={handleCreate} disabled={!newForm.subject.trim()} data-testid="button-quick-ticket-submit">
+                Criar Ticket
+              </Button>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* ─── Novo Ticket Modal ─── */}
-      <Dialog open={showModal} onOpenChange={setShowModal}>
-        <DialogContent className="sm:max-w-md" data-testid="modal-novo-ticket">
-          <DialogHeader>
-            <DialogTitle className="text-base font-semibold">Novo Ticket de Suporte</DialogTitle>
-            <p className="text-[12.5px] text-muted-foreground mt-1">
-              Descreva seu problema ou dúvida e nossa equipe entrará em contato.
-            </p>
-          </DialogHeader>
-
-          <div className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium">Assunto</Label>
-              <Input
-                placeholder="Resumo do problema"
-                value={form.subject}
-                onChange={(e) => setForm({ ...form, subject: e.target.value })}
-                className="text-sm h-9"
-                data-testid="input-ticket-subject"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium">Prioridade</Label>
-              <Select
-                value={form.priority}
-                onValueChange={(v) => setForm({ ...form, priority: v as TicketPriority })}
-              >
-                <SelectTrigger className="h-9 text-sm" data-testid="select-ticket-priority">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {(Object.entries(TICKET_PRIORITY_LABELS) as [TicketPriority, string][]).map(([k, v]) => (
-                    <SelectItem key={k} value={k} className="text-sm">{v}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-[12px] font-medium">Descrição</Label>
-              <Textarea
-                placeholder="Descreva detalhadamente seu problema..."
-                value={form.description}
-                onChange={(e) => setForm({ ...form, description: e.target.value })}
-                className="text-sm resize-none"
-                rows={4}
-                data-testid="textarea-ticket-description"
-              />
-            </div>
-          </div>
-
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowModal(false)}
-              data-testid="button-cancel-ticket"
-            >
-              Cancelar
-            </Button>
-            <Button
-              size="sm"
-              onClick={handleSubmitTicket}
-              disabled={!form.subject.trim()}
-              data-testid="button-submit-ticket"
-            >
-              Enviar Ticket
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
+      )}
     </MainLayout>
   );
 }
