@@ -52,7 +52,7 @@ function AreaChart({ data, stroke, gradId }: { data: MonthlyPoint[]; stroke: str
   const yLines = [0, 0.25, 0.5, 0.75, 1];
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 220 }} preserveAspectRatio="none" aria-hidden>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 300 }} preserveAspectRatio="none" aria-hidden>
       <defs>
         <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.22" />
