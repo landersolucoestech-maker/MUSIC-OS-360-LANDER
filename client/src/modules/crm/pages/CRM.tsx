@@ -351,27 +351,36 @@ export default function CRM() {
                       </Avatar>
 
                       <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3
-                            className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors"
-                            data-testid={`text-nome-${cliente.id}`}
-                            onClick={() => setViewModal({ open: true, cliente })}
-                          >
-                            {cliente.nome}
-                          </h3>
+                        <h3
+                          className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors"
+                          data-testid={`text-nome-${cliente.id}`}
+                          onClick={() => setViewModal({ open: true, cliente })}
+                        >
+                          {cliente.nome}
+                        </h3>
+
+                        {/* Categoria (segmento) */}
+                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
                           <StatusBadge status={cliente.status || "lead"} />
+                          {cliente.segmento && (
+                            <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium", SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
+                              {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
+                            </Badge>
+                          )}
                         </div>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {[
-                            cliente.tipo && (
-                              <span key="tipo" className={cn("inline-flex items-center gap-1", tipoConfig?.color?.split(" ").find(c => c.startsWith("text-")) || "text-muted-foreground")}>
-                                {TipoIcon && <TipoIcon className="h-2.5 w-2.5" />}
-                                {cliente.tipo}
-                              </span>
-                            ),
-                            cliente.cidade && <span key="cidade">{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</span>,
-                          ].filter(Boolean).reduce((acc: React.ReactNode[], el, i) => i === 0 ? [el] : [...acc, <span key={`sep-${i}`} className="mx-1">•</span>, el], [])}
+
+                        {/* Tipo • Cidade */}
+                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1 flex-wrap">
+                          {cliente.tipo && (
+                            <span className={cn("inline-flex items-center gap-1", tipoConfig?.color?.split(" ").find((c: string) => c.startsWith("text-")) || "text-muted-foreground")}>
+                              {TipoIcon && <TipoIcon className="h-2.5 w-2.5" />}
+                              {cliente.tipo}
+                            </span>
+                          )}
+                          {cliente.tipo && cliente.cidade && <span>•</span>}
+                          {cliente.cidade && <span>{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</span>}
                         </p>
+
                         {cliente.telefone && (
                           <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
                             <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
