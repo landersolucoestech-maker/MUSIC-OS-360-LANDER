@@ -523,11 +523,7 @@ export default function MarketingMetricas() {
       <div className="space-y-8">
 
         {/* 1 — Performance analítica */}
-        <section className="space-y-2">
-          <div>
-            <p className="text-base font-semibold text-foreground">Performance Analítica</p>
-            <p className="text-sm text-muted-foreground">Evolução mensal por plataforma</p>
-          </div>
+        <section>
           <PerformanceAnalitica platform={platform} setPlatform={setPlatform} />
         </section>
 
