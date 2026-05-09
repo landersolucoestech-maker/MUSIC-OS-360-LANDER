@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
@@ -189,6 +189,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const isEditing = !!artista;
   const { addArtista, updateArtista } = useArtistas();
   const { addCliente } = useClientes();
+  const scrollRef = useRef<HTMLDivElement>(null);
 
   // ── Non-form state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting]   = useState(false);
@@ -377,9 +378,16 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setLabelParceira(typeof artista?.label_parceira === "string" ? artista.label_parceira : "");
     setDocumentosList(Array.isArray(artista?.documentos) ? (artista.documentos as { nome: string; url: string }[]) : []);
 
-    // Garantir que o card inicial já está visível após o reset
+    // Garantir que o card inicial já está visível após o reset, e repor scroll ao topo
     if (contatosEquipe.length === 0) {
-      setTimeout(() => appendContato({ ...EMPTY_CONTATO }), 0);
+      setTimeout(() => {
+        appendContato({ ...EMPTY_CONTATO });
+        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+      }, 0);
+    } else {
+      setTimeout(() => {
+        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+      }, 0);
     }
   }, [open, artista]);
 
@@ -565,7 +573,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
+        <div ref={scrollRef} className="flex-1 min-h-0 overflow-y-auto px-6 py-4">
           <div className="space-y-8">
 
             {/* ═══ 1. Informações Básicas ═══ */}
