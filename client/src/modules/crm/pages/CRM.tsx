@@ -28,15 +28,6 @@ import { cn } from "@/shared/lib/utils";
 const getXLSX = () => import("xlsx");
 
 type Cliente = Record<string, any>;
-type SegmentoTab = "todos" | "contratante" | "parceiro" | "fornecedor" | "contato";
-
-const SEGMENTO_TABS: { value: SegmentoTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { value: "todos",       label: "Todos",        icon: Users },
-  { value: "contratante", label: "Contratantes", icon: Building2 },
-  { value: "parceiro",    label: "Parceiros",    icon: Handshake },
-  { value: "fornecedor",  label: "Fornecedores", icon: Package },
-  { value: "contato",     label: "Contatos",     icon: UserCheck },
-];
 
 const SEGMENTO_LABEL: Record<string, string> = {
   contratante: "Contratante",
@@ -79,8 +70,6 @@ export default function CRM() {
   const { contratos } = useContratos();
   const clientes = rawClientes as Cliente[];
   const csvInputRef = useRef<HTMLInputElement>(null);
-
-  const [activeTab, setActiveTab] = useState<SegmentoTab>("todos");
 
   const contratosPorCliente = useMemo(() => {
     const map = new Map<string, Array<{ status?: string | null; data_fim?: string | null }>>();
@@ -128,13 +117,9 @@ export default function CRM() {
         cliente.cidade?.toLowerCase().includes(q) ||
         cliente.tipo?.toLowerCase().includes(q);
       const matchesStatus = statusFilter === "all" || cliente.status === statusFilter;
-      const matchesSegmento =
-        activeTab === "todos" ||
-        cliente.segmento === activeTab ||
-        (activeTab === "contato" && !cliente.segmento);
-      return matchesSearch && matchesStatus && matchesSegmento;
+      return matchesSearch && matchesStatus;
     });
-  }, [clientes, searchTerm, statusFilter, activeTab]);
+  }, [clientes, searchTerm, statusFilter]);
 
   const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
 
@@ -202,12 +187,6 @@ export default function CRM() {
     if (csvInputRef.current) csvInputRef.current.value = "";
   };
 
-  const tabCount = (tab: SegmentoTab) => {
-    if (tab === "todos") return clientes.length;
-    if (tab === "contato") return clientes.filter(c => !c.segmento).length;
-    return clientes.filter(c => c.segmento === tab).length;
-  };
-
   return (
     <MainLayout
       title="CRM"
@@ -244,36 +223,6 @@ export default function CRM() {
               <span className={cn("text-2xl font-bold tracking-tight", accent)}>{clientesLoading ? "—" : value}</span>
             </div>
           ))}
-        </div>
-
-        {/* ── Segmento Tabs ── */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-px border-b border-border" data-testid="crm-tabs">
-          {SEGMENTO_TABS.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeTab === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setActiveTab(tab.value)}
-                data-testid={`tab-${tab.value}`}
-                className={cn(
-                  "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors shrink-0",
-                  isActive
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
-                )}
-              >
-                <Icon className="h-3.5 w-3.5" />
-                {tab.label}
-                <span className={cn(
-                  "text-[10px] font-mono px-1.5 py-0 rounded-full min-w-[18px] text-center",
-                  isActive ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"
-                )}>
-                  {tabCount(tab.value)}
-                </span>
-              </button>
-            );
-          })}
         </div>
 
         {/* ── Filter Bar ── */}
