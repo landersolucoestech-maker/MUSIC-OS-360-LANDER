@@ -69,6 +69,11 @@ const CATEGORIAS_EQUIPE = [
   { value: "roadie",          label: "Roadie" },
 ];
 
+const CATEGORIAS_GRAVADORA_EXTRA = [
+  { value: "gestor",     label: "Gestor" },
+  { value: "empresario", label: "Empresário" },
+];
+
 const DISTRIBUIDORAS_OPTIONS = [
   { id: "onerpm",    label: "ONErpm" },
   { id: "distrokid", label: "DistroKid" },
@@ -973,6 +978,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                                     </SelectTrigger>
                                     <SelectContent className="bg-background border border-border z-50">
                                       {CATEGORIAS_EQUIPE.map((c) => (
+                                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                      ))}
+                                      {tipoPerfilVal === "gravadora" && CATEGORIAS_GRAVADORA_EXTRA.map((c) => (
                                         <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                                       ))}
                                     </SelectContent>
