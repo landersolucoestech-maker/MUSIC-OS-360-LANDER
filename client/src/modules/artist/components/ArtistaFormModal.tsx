@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm, Controller } from "react-hook-form";
+import { useForm, useFieldArray, Controller } from "react-hook-form";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
@@ -21,7 +21,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Save, Plus, X, CheckCircle2, XCircle } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
@@ -54,20 +54,47 @@ const BANCOS = [
 ];
 
 const TIPO_PERFIL_OPTIONS = [
-  { value: "independente",    label: "Independente" },
-  { value: "com_empresario",  label: "Com empresário" },
-  { value: "gravadora",       label: "Gravadora" },
+  { value: "independente",   label: "Independente" },
+  { value: "com_empresario", label: "Com empresário" },
+  { value: "gravadora",      label: "Gravadora" },
+];
+
+const CATEGORIAS_EQUIPE = [
+  { value: "booker",          label: "Booker" },
+  { value: "assessoria",      label: "Assessoria de Imprensa" },
+  { value: "juridico",        label: "Jurídico" },
+  { value: "financeiro",      label: "Financeiro" },
+  { value: "contador",        label: "Contador" },
+  { value: "editora_musical", label: "Editora Musical" },
+  { value: "roadie",          label: "Roadie" },
+];
+
+const DISTRIBUIDORAS_OPTIONS = [
+  { id: "onerpm",    label: "ONErpm" },
+  { id: "distrokid", label: "DistroKid" },
+  { id: "30por1",    label: "30 Por 1" },
+  { id: "symphonic", label: "Symphonic" },
+  { id: "musicpro",  label: "MusicPro" },
+  { id: "somvibe",   label: "Somvibe" },
+  { id: "outros",    label: "Outros" },
 ];
 
 const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]) => ({ value, label }));
 
-// ─── Form value type ──────────────────────────────────────────────
+// ─── Types ────────────────────────────────────────────────────────
+
+interface ContatoEquipe {
+  nome: string;
+  categoria: string;
+  telefone: string;
+  email: string;
+  distribuidoras: string[];
+  emailShare: string;
+}
 
 interface ArtistaFormValues {
   nomeArtistico: string;
   generoMusical: string;
-  tipoArtista: string;
-  statusArtista: string;
   especialidades: string[];
   biografia: string;
   notasInternas: string;
@@ -92,13 +119,16 @@ interface ArtistaFormValues {
   deezer: string;
   appleMusic: string;
   tipoPerfil: string;
+  contatosEquipe: ContatoEquipe[];
 }
+
+const EMPTY_CONTATO: ContatoEquipe = {
+  nome: "", categoria: "", telefone: "", email: "", distribuidoras: [], emailShare: "",
+};
 
 const DEFAULT_VALUES: ArtistaFormValues = {
   nomeArtistico: "",
   generoMusical: "",
-  tipoArtista: "artista_solo",
-  statusArtista: "contratado",
   especialidades: [],
   biografia: "",
   notasInternas: "",
@@ -123,6 +153,7 @@ const DEFAULT_VALUES: ArtistaFormValues = {
   deezer: "",
   appleMusic: "",
   tipoPerfil: "independente",
+  contatosEquipe: [],
 };
 
 // ─── Helper: URL validation icon ─────────────────────────────────
@@ -155,7 +186,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [documentosPessoais, setDocumentosPessoais] = useState<UploadedFile[]>([]);
   const [presskit, setPresskit]           = useState<UploadedFile[]>([]);
 
-  // Perfil 360 pass-through (no UI in this form — preserved as-is)
+  // Perfil 360 pass-through
   const [bannerUrl, setBannerUrl]                   = useState("");
   const [galeriaUrls, setGaleriaUrls]               = useState<string[]>([]);
   const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
@@ -166,8 +197,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const [labelParceira, setLabelParceira]           = useState("");
   const [documentosList, setDocumentosList]         = useState<{ nome: string; url: string }[]>([]);
 
-  // Preserved data: platform metrics + legacy IDs (no form UI — must round-trip unchanged)
+  // Preserved: platform metrics + legacy IDs + removed UI fields (round-tripped unchanged)
   const [preservedData, setPreservedData] = useState<{
+    tipoArtista: string;
+    statusArtista: string;
     spotifyOuvintes: string;
     instagramSeguidores: string;
     youtubeInscritos: string;
@@ -197,6 +230,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     faseCarreira: string;
     contratoId: string;
   }>({
+    tipoArtista: "artista_solo", statusArtista: "contratado",
     spotifyOuvintes: "", instagramSeguidores: "", youtubeInscritos: "",
     tiktokSeguidores: "", soundcloudSeguidores: "", deezerFas: "", appleMusicAlbuns: "",
     empresarioId: "", empresarioNome: "", empresarioTelefone: "", empresarioEmail: "",
@@ -211,8 +245,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const form = useForm<ArtistaFormValues>({ defaultValues: DEFAULT_VALUES });
   const { register, control, watch: wf, setValue, reset, handleSubmit: rhfSubmit } = form;
 
+  const { fields: contatoFields, append: appendContato, remove: removeContato } = useFieldArray({
+    control,
+    name: "contatosEquipe",
+  });
+
   // ── Reactive watches ────────────────────────────────────────────
   const especialidadesVal = wf("especialidades");
+  const tipoPerfilVal     = wf("tipoPerfil");
   const spotifyVal        = wf("spotify");
   const instagramVal      = wf("instagram");
   const youtubeVal        = wf("youtube");
@@ -226,11 +266,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     if (!open) return;
     const f = artistaToFormFields(artista ?? null);
 
+    // Load contatos_equipe from artista
+    const contatosEquipe: ContatoEquipe[] = Array.isArray((artista as any)?.contatos_equipe)
+      ? ((artista as any).contatos_equipe as ContatoEquipe[])
+      : [];
+
     reset({
       nomeArtistico: f.nomeArtistico,
       generoMusical: f.generoMusical,
-      tipoArtista:   f.tipoArtista,
-      statusArtista: f.statusArtista,
       especialidades: f.especialidades,
       biografia:     f.biografia,
       notasInternas: f.notasInternas,
@@ -255,10 +298,13 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       deezer:        f.deezer,
       appleMusic:    f.appleMusic,
       tipoPerfil:    f.tipoPerfil || "independente",
+      contatosEquipe,
     });
 
-    // Load preserved data (no UI — must be round-tripped unchanged)
+    // Load preserved data
     setPreservedData({
+      tipoArtista:   f.tipoArtista,
+      statusArtista: f.statusArtista,
       spotifyOuvintes: f.spotifyOuvintes,
       instagramSeguidores: f.instagramSeguidores,
       youtubeInscritos: f.youtubeInscritos,
@@ -331,6 +377,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     );
   };
 
+  const toggleDistribuidora = (contatoIdx: number, distId: string, checked: boolean) => {
+    const current = (wf(`contatosEquipe.${contatoIdx}.distribuidoras`) as string[]) ?? [];
+    setValue(
+      `contatosEquipe.${contatoIdx}.distribuidoras`,
+      checked ? [...current, distId] : current.filter((d) => d !== distId)
+    );
+  };
+
   // ── Submit ──────────────────────────────────────────────────────
   const onSubmit = async (values: ArtistaFormValues) => {
     if (!values.nomeArtistico.trim()) { toast.error("Nome artístico é obrigatório"); return; }
@@ -344,8 +398,8 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         tagsMusicais:    preservedData.tagsMusicais,
         faseCarreira:    preservedData.faseCarreira,
         generoMusical:   values.generoMusical,
-        tipoArtista:     values.tipoArtista,
-        statusArtista:   values.statusArtista,
+        tipoArtista:     preservedData.tipoArtista,
+        statusArtista:   preservedData.statusArtista,
         especialidades:  values.especialidades,
         biografia:       values.biografia,
         notasInternas:   values.notasInternas,
@@ -401,20 +455,24 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
       const payload = formToArtistaPayload(formInput);
       const extraFields = {
-        genero:               values.genero || null,
-        banner_url:           bannerUrl.trim() || null,
-        galeria_urls:         galeriaUrls.length > 0 ? galeriaUrls : null,
+        genero:                 values.genero || null,
+        banner_url:             bannerUrl.trim() || null,
+        galeria_urls:           galeriaUrls.length > 0 ? galeriaUrls : null,
         video_apresentacao_url: videoApresentacaoUrl.trim() || null,
-        manager_nome:         managerNome.trim() || null,
-        manager_contato:      managerContato.trim() || null,
-        produtor_executivo:   produtorExecutivo.trim() || null,
-        agencia_booking:      agenciaBooking.trim() || null,
-        label_parceira:       labelParceira.trim() || null,
-        documentos:           documentosList.length > 0 ? documentosList : null,
+        manager_nome:           managerNome.trim() || null,
+        manager_contato:        managerContato.trim() || null,
+        produtor_executivo:     produtorExecutivo.trim() || null,
+        agencia_booking:        agenciaBooking.trim() || null,
+        label_parceira:         labelParceira.trim() || null,
+        documentos:             documentosList.length > 0 ? documentosList : null,
+        contatos_equipe:        values.contatosEquipe.length > 0 ? values.contatosEquipe : null,
       };
 
       if (isEditing) {
-        await updateArtista.mutateAsync({ id: artista.id, ...payload, ...extraFields, contrato_id: preservedData.contratoId || null });
+        await updateArtista.mutateAsync({
+          id: artista.id, ...payload, ...extraFields,
+          contrato_id: preservedData.contratoId || null,
+        });
       } else {
         await addCliente.mutateAsync({
           tipo_pessoa: "pessoa_fisica" as const,
@@ -438,7 +496,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     }
   };
 
-  // ── Computed validation states ──────────────────────────────────
+  // ── URL validation states ───────────────────────────────────────
   const urlStates = {
     spotify:    validateSpotifyUrl(spotifyVal),
     instagram:  validateInstagramUrl(instagramVal),
@@ -507,50 +565,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                           {GENEROS_MUSICAIS.map((g) => (
                             <SelectItem key={g} value={g}>{g}</SelectItem>
                           ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tipo de Artista</Label>
-                  <Controller
-                    control={control}
-                    name="tipoArtista"
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-tipo-artista">
-                          <SelectValue placeholder="Selecione o tipo" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
-                          <SelectItem value="artista_solo">Artista Solo</SelectItem>
-                          <SelectItem value="banda">Banda</SelectItem>
-                          <SelectItem value="dupla">Dupla</SelectItem>
-                          <SelectItem value="grupo">Grupo</SelectItem>
-                          <SelectItem value="coletivo">Coletivo</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    )}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Controller
-                    control={control}
-                    name="statusArtista"
-                    render={({ field }) => (
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-status-artista">
-                          <SelectValue placeholder="Selecione o status" />
-                        </SelectTrigger>
-                        <SelectContent className="bg-background border border-border z-50">
-                          <SelectItem value="contratado">Contratado</SelectItem>
-                          <SelectItem value="negociacao">Em Negociação</SelectItem>
-                          <SelectItem value="inativo">Inativo</SelectItem>
-                          <SelectItem value="suspenso">Suspenso</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
@@ -760,22 +774,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 <div className="space-y-2">
                   <Label>Spotify</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("spotify")}
-                      placeholder="https://open.spotify.com/artist/…"
-                      data-testid="input-spotify-url"
-                    />
+                    <Input {...register("spotify")} placeholder="https://open.spotify.com/artist/…" data-testid="input-spotify-url" />
                     <UrlIcon state={urlStates.spotify} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Instagram</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("instagram")}
-                      placeholder="https://instagram.com/perfil"
-                      data-testid="input-instagram-url"
-                    />
+                    <Input {...register("instagram")} placeholder="https://instagram.com/perfil" data-testid="input-instagram-url" />
                     <UrlIcon state={urlStates.instagram} />
                   </div>
                 </div>
@@ -785,22 +791,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 <div className="space-y-2">
                   <Label>YouTube</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("youtube")}
-                      placeholder="https://youtube.com/channel/UC…"
-                      data-testid="input-youtube-url"
-                    />
+                    <Input {...register("youtube")} placeholder="https://youtube.com/channel/UC…" data-testid="input-youtube-url" />
                     <UrlIcon state={urlStates.youtube} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>TikTok</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("tiktok")}
-                      placeholder="https://tiktok.com/@perfil"
-                      data-testid="input-tiktok-url"
-                    />
+                    <Input {...register("tiktok")} placeholder="https://tiktok.com/@perfil" data-testid="input-tiktok-url" />
                     <UrlIcon state={urlStates.tiktok} />
                   </div>
                 </div>
@@ -810,22 +808,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 <div className="space-y-2">
                   <Label>SoundCloud</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("soundcloud")}
-                      placeholder="https://soundcloud.com/perfil"
-                      data-testid="input-soundcloud-url"
-                    />
+                    <Input {...register("soundcloud")} placeholder="https://soundcloud.com/perfil" data-testid="input-soundcloud-url" />
                     <UrlIcon state={urlStates.soundcloud} />
                   </div>
                 </div>
                 <div className="space-y-2">
                   <Label>Deezer</Label>
                   <div className="flex items-center gap-2">
-                    <Input
-                      {...register("deezer")}
-                      placeholder="https://deezer.com/artist/…"
-                      data-testid="input-deezer-url"
-                    />
+                    <Input {...register("deezer")} placeholder="https://deezer.com/artist/…" data-testid="input-deezer-url" />
                     <UrlIcon state={urlStates.deezer} />
                   </div>
                 </div>
@@ -851,11 +841,11 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               </p>
             </div>
 
-            {/* ═══ 5. Relacionamento Comercial ═══ */}
+            {/* ═══ 5. Tipo de Perfil ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-primary">5.</span>
-                <h3 className="text-lg font-semibold">Relacionamento Comercial</h3>
+                <h3 className="text-lg font-semibold">Tipo de Perfil</h3>
               </div>
               <Separator />
 
@@ -867,7 +857,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
                       <SelectTrigger data-testid="select-tipo-perfil">
-                        <SelectValue placeholder="Selecione o perfil comercial" />
+                        <SelectValue placeholder="Selecione o perfil" />
                       </SelectTrigger>
                       <SelectContent className="bg-background border border-border z-50">
                         {TIPO_PERFIL_OPTIONS.map((opt) => (
@@ -877,10 +867,157 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                     </Select>
                   )}
                 />
-                <p className="text-xs text-muted-foreground">
-                  Define a estrutura comercial do artista: independente, com representação empresarial ou vinculado a gravadora.
-                </p>
               </div>
+
+              {/* ── Equipa (só visível quando Independente) ── */}
+              {tipoPerfilVal === "independente" && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm text-muted-foreground">Equipa / Contactos</Label>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => appendContato({ ...EMPTY_CONTATO })}
+                      data-testid="button-add-contato"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Adicionar
+                    </Button>
+                  </div>
+
+                  {contatoFields.length === 0 && (
+                    <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                      Nenhum contacto adicionado. Clique em "Adicionar" para incluir membros da equipa.
+                    </p>
+                  )}
+
+                  {contatoFields.map((field, idx) => {
+                    const categoriaVal = wf(`contatosEquipe.${idx}.categoria`);
+                    const distribuidorasVal = (wf(`contatosEquipe.${idx}.distribuidoras`) as string[]) ?? [];
+                    const isEditora = categoriaVal === "editora_musical";
+
+                    return (
+                      <div
+                        key={field.id}
+                        className="p-3 border rounded-lg space-y-3 bg-muted/20"
+                        data-testid={`card-contato-${idx}`}
+                      >
+                        {/* Header */}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground font-medium">
+                            Contacto {idx + 1}
+                          </span>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                            onClick={() => removeContato(idx)}
+                            data-testid={`button-remove-contato-${idx}`}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+
+                        {/* Nome + Categoria */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Nome</Label>
+                            <Input
+                              {...register(`contatosEquipe.${idx}.nome`)}
+                              placeholder="Nome completo"
+                              className="h-8 text-sm"
+                              data-testid={`input-contato-nome-${idx}`}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Categoria</Label>
+                            <Controller
+                              control={control}
+                              name={`contatosEquipe.${idx}.categoria`}
+                              render={({ field: f }) => (
+                                <Select value={f.value} onValueChange={f.onChange}>
+                                  <SelectTrigger className="h-8 text-sm" data-testid={`select-contato-categoria-${idx}`}>
+                                    <SelectValue placeholder="Selecione…" />
+                                  </SelectTrigger>
+                                  <SelectContent className="bg-background border border-border z-50">
+                                    {CATEGORIAS_EQUIPE.map((c) => (
+                                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Telefone + Email */}
+                        <div className="grid grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Telefone</Label>
+                            <Input
+                              {...register(`contatosEquipe.${idx}.telefone`)}
+                              placeholder="(00) 00000-0000"
+                              className="h-8 text-sm"
+                              data-testid={`input-contato-telefone-${idx}`}
+                            />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Email</Label>
+                            <Input
+                              {...register(`contatosEquipe.${idx}.email`)}
+                              type="email"
+                              placeholder="email@exemplo.com"
+                              className="h-8 text-sm"
+                              data-testid={`input-contato-email-${idx}`}
+                            />
+                          </div>
+                        </div>
+
+                        {/* Distribuidoras (só quando categoria = Editora Musical) */}
+                        {isEditora && (
+                          <div className="space-y-2 pt-2 border-t border-border/40">
+                            <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
+                            <div className="grid grid-cols-2 gap-2">
+                              {DISTRIBUIDORAS_OPTIONS.map((dist) => (
+                                <div key={dist.id} className="flex items-center gap-2">
+                                  <Checkbox
+                                    id={`dist-${idx}-${dist.id}`}
+                                    checked={distribuidorasVal.includes(dist.id)}
+                                    onCheckedChange={(checked) =>
+                                      toggleDistribuidora(idx, dist.id, !!checked)
+                                    }
+                                    data-testid={`checkbox-dist-${idx}-${dist.id}`}
+                                  />
+                                  <Label
+                                    htmlFor={`dist-${idx}-${dist.id}`}
+                                    className="text-xs cursor-pointer font-normal"
+                                  >
+                                    {dist.label}
+                                  </Label>
+                                </div>
+                              ))}
+                            </div>
+
+                            <div className="space-y-1.5 pt-1">
+                              <Label className="text-xs">Email de Share</Label>
+                              <Input
+                                {...register(`contatosEquipe.${idx}.emailShare`)}
+                                type="email"
+                                placeholder="email@share.com"
+                                className="h-8 text-sm"
+                                data-testid={`input-contato-email-share-${idx}`}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* ═══ 6. Observações ═══ */}
