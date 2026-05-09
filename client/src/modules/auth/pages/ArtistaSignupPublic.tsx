@@ -5,137 +5,127 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Separator } from "@/shared/ui/separator";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
-  Loader2, CheckCircle2, Music2, ChevronRight, ChevronLeft,
-  Link2, Image, FileText, User, Star, Shield, Zap, AlertCircle,
-  Instagram, Youtube, CalendarDays, Package, Plus, Trash2,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/ui/select";
+import {
+  Loader2, CheckCircle2, ChevronRight, ChevronLeft,
+  AlertCircle, Shield, Zap, Star, Plus, X, CheckCircle, XCircle,
+  User, Link2, FileText, CreditCard, Globe, Building, Users,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
-import { createArtistUseCase, DuplicateArtistaError } from "@/modules/artist/application/createArtist.usecase";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useClientes } from "@/modules/crm/hooks/useClientes";
+import {
+  ESPECIALIDADES_LABELS,
+  formToArtistaPayload,
+  validateSpotifyUrl,
+  validateYoutubeUrl,
+  validateInstagramUrl,
+  validateTiktokUrl,
+  validateSoundcloudUrl,
+  validateDeezerUrl,
+  validateAppleMusicUrl,
+  type FormToArtistaInput,
+  type UrlValidationState,
+} from "@/modules/artist/mappers";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
-// ─── Constants ────────────────────────────────────────────────────────────────
+// ─── Same constants as ArtistaFormModal ───────────────────────────────────────
+
+const GENEROS_MUSICAIS = [
+  "Funk", "Forró", "Sertanejo", "Pop", "Rock", "MPB", "Eletrônica",
+  "Hip Hop", "R&B", "Axé", "Pagode", "Gospel", "Reggae", "Jazz", "Outro",
+];
+
+const BANCOS = [
+  "Banco do Brasil", "Bradesco", "Caixa Econômica", "Itaú", "Santander",
+  "Nubank", "Inter", "C6 Bank", "PicPay", "Mercado Pago", "Outro",
+];
 
 const TIPO_PERFIL_OPTIONS = [
-  "DJ",
-  "DJ/Produtor",
-  "Compositor/Autor",
-  "Intérprete",
-  "Produtor",
+  { value: "independente",   label: "Independente" },
+  { value: "com_empresario", label: "Com empresário" },
+  { value: "gravadora",      label: "Gravadora" },
 ];
 
-const GENEROS = [
-  "Afrobeat", "Axé", "Blues", "Bolero", "Bossa Nova",
-  "Country", "Drill", "EDM", "Eletrônica", "Flamenco",
-  "Forró", "Funk", "Gospel", "Hip Hop", "House",
-  "Jazz", "K-Pop", "Lo-fi", "Maracatu", "Metal",
-  "MPB", "Pagode", "Pisadinha", "Pop", "Pop Rock",
-  "R&B", "Reggae", "Reggaeton", "Rock", "Samba",
-  "Sertanejo", "Sertanejo Universitário", "Soul", "Techno", "Trap",
-  "Zouk", "Outro",
+const CATEGORIAS_EQUIPE = [
+  { value: "booker",          label: "Booker" },
+  { value: "assessoria",      label: "Assessoria de Imprensa" },
+  { value: "juridico",        label: "Jurídico" },
+  { value: "financeiro",      label: "Financeiro" },
+  { value: "contador",        label: "Contador" },
+  { value: "editora_musical", label: "Editora Musical" },
+  { value: "roadie",          label: "Roadie" },
 ];
 
-const DISTRIBUIDORAS = [
-  "Believe",
-  "CD Baby",
-  "DistroKid",
-  "Ingrooves",
-  "Kontor",
-  "ONErpm",
-  "Orchard",
-  "Sony Music",
-  "Stem",
-  "Symphonic",
-  "TuneCore",
-  "Warner Music",
-  "Outro",
+const CATEGORIAS_GRAVADORA_EXTRA = [
+  { value: "gestor",     label: "Gestor" },
+  { value: "empresario", label: "Empresário" },
 ];
 
-type Step = 1 | 2 | 3;
-type SlugState = "checking" | "valid" | "invalid";
+const DISTRIBUIDORAS_OPTIONS = [
+  { id: "onerpm",    label: "ONErpm" },
+  { id: "distrokid", label: "DistroKid" },
+  { id: "30por1",    label: "30 Por 1" },
+  { id: "symphonic", label: "Symphonic" },
+  { id: "musicpro",  label: "MusicPro" },
+  { id: "somvibe",   label: "Somvibe" },
+  { id: "outros",    label: "Outros" },
+];
+
+const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]) => ({ value, label }));
+
+// ─── Types (same as ArtistaFormModal) ─────────────────────────────────────────
 
 interface DistribuidoraEntry {
-  distribuidora: string;
+  id: string;
   email: string;
+  nomeCustom?: string;
 }
 
-interface OrgInfo {
-  name: string;
-  slug: string;
-}
-
-interface FormData {
-  nome_artistico: string;
-  nome_civil: string;
-  tipo_perfil: string[];
-  genero: string;
-  genero_musical: string;
-  email: string;
+interface ContatoEquipe {
+  nome: string;
+  categoria: string;
   telefone: string;
-  cpf_cnpj: string;
-  data_nascimento: string;
-  vinculo: string;
-  vinculo_empresa_nome: string;
-  vinculo_empresa_contato: string;
-  vinculo_empresa_telefone: string;
-  vinculo_empresa_email: string;
-  instagram: string;
-  tiktok: string;
-  youtube: string;
-  spotify: string;
-  apple_music: string;
-  deezer: string;
-  soundcloud: string;
-  presskit_url: string;
-  bio: string;
-  foto_url: string;
-  notas_label: string;
+  email: string;
+  distribuidoras: DistribuidoraEntry[];
 }
 
-const VINCULO_OPTIONS = ["Independente", "Com Empresário", "Gravadora", "Editora"] as const;
-const VINCULO_COM_EMPRESA = new Set(["Com Empresário", "Gravadora", "Editora"]);
-const VINCULO_COM_NOME_EMPRESA = new Set(["Gravadora", "Editora"]);
-
-const EMPTY: FormData = {
-  nome_artistico: "", nome_civil: "", tipo_perfil: [], genero: "",
-  genero_musical: "", email: "", telefone: "", cpf_cnpj: "", data_nascimento: "",
-  vinculo: "", vinculo_empresa_nome: "", vinculo_empresa_contato: "",
-  vinculo_empresa_telefone: "", vinculo_empresa_email: "",
-  instagram: "", tiktok: "", youtube: "", spotify: "",
-  apple_music: "", deezer: "", soundcloud: "", presskit_url: "",
-  bio: "", foto_url: "", notas_label: "",
+const EMPTY_CONTATO: ContatoEquipe = {
+  nome: "", categoria: "", telefone: "", email: "", distribuidoras: [],
 };
 
-const EMPTY_DISTRIBUIDORA: DistribuidoraEntry = { distribuidora: "", email: "" };
+// ─── Steps ────────────────────────────────────────────────────────────────────
 
 const STEPS = [
-  { num: 1 as Step, label: "Dados Básicos", icon: User },
-  { num: 2 as Step, label: "Links e Redes", icon: Link2 },
-  { num: 3 as Step, label: "Bio e Contexto", icon: FileText },
-];
+  { num: 1, label: "Informações Básicas",  icon: User },
+  { num: 2, label: "Dados Pessoais",       icon: FileText },
+  { num: 3, label: "Dados Bancários",      icon: CreditCard },
+  { num: 4, label: "Redes Sociais",        icon: Link2 },
+  { num: 5, label: "Distribuidoras",       icon: Globe },
+  { num: 6, label: "Tipo de Perfil",       icon: Building },
+  { num: 7, label: "Observações",          icon: Users },
+] as const;
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+type StepNum = (typeof STEPS)[number]["num"];
 
-const DEMO_SLUGS = new Set([
-  "minha-gravadora",
-  "gravadora-exemplo",
-  "demo",
-  "musicos360",
-  "teste",
-]);
+// ─── OrgInfo ──────────────────────────────────────────────────────────────────
+
+interface OrgInfo { name: string; slug: string; }
+type SlugState = "checking" | "valid" | "invalid";
+
+const DEMO_SLUGS = new Set(["minha-gravadora", "gravadora-exemplo", "demo", "musicos360", "teste"]);
 
 function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
   const defaultInfo: OrgInfo = { name: "MUSIC OS 360", slug };
-
   try {
     const rawData = localStorage.getItem("musicos360_mock_data");
     const seedName =
-      MOCK_COMPANY_SETTINGS.fantasy_name ||
-      MOCK_COMPANY_SETTINGS.company_name ||
-      "MUSIC OS 360";
+      MOCK_COMPANY_SETTINGS.fantasy_name || MOCK_COMPANY_SETTINGS.company_name || "MUSIC OS 360";
     let orgName = seedName;
     if (rawData) {
       const data = JSON.parse(rawData) as Record<string, unknown>;
@@ -144,42 +134,24 @@ function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
         ? (cs as Record<string, unknown>[])[0]
         : (cs as Record<string, unknown>);
       if (settings) {
-        orgName =
-          (settings.fantasy_name as string) ||
-          (settings.company_name as string) ||
-          seedName;
+        orgName = (settings.fantasy_name as string) || (settings.company_name as string) || seedName;
       }
     }
-
-    const allKeys = Object.keys(localStorage);
-    const slugKeys = allKeys.filter((k) => k.startsWith("musicos360_org_slug:"));
+    const slugKeys = Object.keys(localStorage).filter((k) => k.startsWith("musicos360_org_slug:"));
     const slugMatch = slugKeys.some((k) => localStorage.getItem(k) === slug);
-
     if (slugMatch) return { valid: true, info: { name: orgName, slug } };
     if (DEMO_SLUGS.has(slug.toLowerCase())) return { valid: true, info: { name: orgName, slug } };
-
     return { valid: false, info: defaultInfo };
   } catch {
     return { valid: true, info: defaultInfo };
   }
 }
 
-function extractSpotifyArtistId(input: string): string | null {
-  if (!input.trim()) return null;
-  const match = input.match(/spotify\.com\/artist\/([a-zA-Z0-9]+)/);
-  if (match) return match[1];
-  if (/^[a-zA-Z0-9]+$/.test(input.trim())) return input.trim();
-  return null;
-}
+// ─── URL icon helper (same as ArtistaFormModal) ───────────────────────────────
 
-function extractYouTubeChannelId(input: string): string | null {
-  if (!input.trim()) return null;
-  const handleMatch = input.match(/youtube\.com\/@([^/?&\s]+)/);
-  if (handleMatch) return `@${handleMatch[1]}`;
-  const channelMatch = input.match(/youtube\.com\/channel\/([a-zA-Z0-9_-]+)/);
-  if (channelMatch) return channelMatch[1];
-  if (/^@[a-zA-Z0-9_.]+$/.test(input.trim())) return input.trim();
-  if (/^UC[a-zA-Z0-9_-]+$/.test(input.trim())) return input.trim();
+function UrlIcon({ state }: { state: UrlValidationState }) {
+  if (state === "valid")   return <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />;
+  if (state === "invalid") return <XCircle className="h-4 w-4 text-destructive shrink-0" />;
   return null;
 }
 
@@ -187,18 +159,64 @@ function extractYouTubeChannelId(input: string): string | null {
 
 export default function ArtistaSignupPublic() {
   const { orgSlug } = useParams<{ orgSlug?: string }>();
+  const { addArtista } = useArtistas();
+  const { addCliente }  = useClientes();
 
   const [slugState, setSlugState] = useState<SlugState>("checking");
-  const [orgInfo, setOrgInfo] = useState<OrgInfo>({ name: "MUSIC OS 360", slug: orgSlug ?? "" });
-
-  const [step, setStep] = useState<Step>(1);
-  const [form, setForm] = useState<FormData>(EMPTY);
-  const [distribuidoras, setDistribuidoras] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
-  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [orgInfo, setOrgInfo]     = useState<OrgInfo>({ name: "MUSIC OS 360", slug: orgSlug ?? "" });
+  const [step, setStep]           = useState<StepNum>(1);
+  const [errors, setErrors]       = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [success, setSuccess] = useState(false);
-  const [protocol, setProtocol] = useState("");
+  const [success, setSuccess]     = useState(false);
+  const [protocol, setProtocol]   = useState("");
 
+  // ── Form state — mirrors ArtistaFormModal fields ───────────────────────────
+  // Step 1: Informações Básicas
+  const [nomeArtistico, setNomeArtistico]   = useState("");
+  const [generoMusical, setGeneroMusical]   = useState("");
+  const [especialidades, setEspecialidades] = useState<string[]>([]);
+  const [biografia, setBiografia]           = useState("");
+  const [fotoUrl, setFotoUrl]               = useState("");
+  const [documentosPessoaisUrl, setDocumentosPessoaisUrl] = useState("");
+  const [presskitUrl, setPresskitUrl]       = useState("");
+
+  // Step 2: Dados Pessoais
+  const [nome, setNome]               = useState("");
+  const [dataNascimento, setDataNascimento] = useState("");
+  const [cpfCnpj, setCpfCnpj]         = useState("");
+  const [rg, setRg]                   = useState("");
+  const [genero, setGenero]           = useState("");
+  const [endereco, setEndereco]       = useState("");
+  const [telefone, setTelefone]       = useState("");
+  const [email, setEmail]             = useState("");
+
+  // Step 3: Dados Bancários
+  const [banco, setBanco]             = useState("");
+  const [agencia, setAgencia]         = useState("");
+  const [conta, setConta]             = useState("");
+  const [chavePix, setChavePix]       = useState("");
+  const [titularConta, setTitularConta] = useState("");
+
+  // Step 4: Redes Sociais
+  const [spotify, setSpotify]         = useState("");
+  const [instagram, setInstagram]     = useState("");
+  const [youtube, setYoutube]         = useState("");
+  const [tiktok, setTiktok]           = useState("");
+  const [soundcloud, setSoundcloud]   = useState("");
+  const [deezer, setDeezer]           = useState("");
+  const [appleMusic, setAppleMusic]   = useState("");
+
+  // Step 5: Distribuidoras / Agregadoras
+  const [distribuidorasGerais, setDistribuidorasGerais] = useState<DistribuidoraEntry[]>([]);
+
+  // Step 6: Tipo de Perfil + Equipe
+  const [tipoPerfil, setTipoPerfil]       = useState("independente");
+  const [contatosEquipe, setContatosEquipe] = useState<ContatoEquipe[]>([{ ...EMPTY_CONTATO }]);
+
+  // Step 7: Observações
+  const [notasInternas, setNotasInternas] = useState("");
+
+  // ── Slug validation ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) { setSlugState("invalid"); return; }
     const result = resolveOrg(orgSlug);
@@ -206,192 +224,268 @@ export default function ArtistaSignupPublic() {
     setSlugState(result.valid ? "valid" : "invalid");
   }, [orgSlug]);
 
-  const set = (field: keyof Omit<FormData, "tipo_perfil">, value: string) => {
-    setForm((p) => ({ ...p, [field]: value }));
-    if (errors[field]) setErrors((p) => { const e = { ...p }; delete e[field]; return e; });
-  };
-
-  const setDistribuidoraField = (idx: number, field: keyof DistribuidoraEntry, value: string) => {
-    setDistribuidoras((prev) => {
-      const next = [...prev];
-      next[idx] = { ...next[idx], [field]: value };
-      return next;
-    });
-  };
-
-  const addDistribuidora = () => {
-    setDistribuidoras((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
-  };
-
-  const removeDistribuidora = (idx: number) => {
-    setDistribuidoras((prev) => prev.filter((_, i) => i !== idx));
-  };
-
-  const toggleTipoPerfil = (opt: string) => {
-    setForm((p) => {
-      const exists = p.tipo_perfil.includes(opt);
-      return {
-        ...p,
-        tipo_perfil: exists
-          ? p.tipo_perfil.filter((v) => v !== opt)
-          : [...p.tipo_perfil, opt],
-      };
-    });
-    if (errors.tipo_perfil) setErrors((p) => { const e = { ...p }; delete e.tipo_perfil; return e; });
-  };
-
-  const validateStep1 = (): boolean => {
-    const e: Record<string, string> = {};
-    if (!form.nome_artistico.trim()) e.nome_artistico = "Obrigatório";
-    if (!form.nome_civil.trim()) e.nome_civil = "Obrigatório";
-    if (form.tipo_perfil.length === 0) e.tipo_perfil = "Selecione ao menos um tipo de perfil";
-    if (!form.genero) e.genero = "Obrigatório";
-    if (!form.genero_musical) e.genero_musical = "Obrigatório";
-    if (!form.email.trim()) e.email = "Obrigatório";
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email)) e.email = "E-mail inválido";
-    if (!form.telefone.trim()) e.telefone = "Obrigatório";
-    if (!form.cpf_cnpj.trim()) e.cpf_cnpj = "Obrigatório";
-    if (!form.data_nascimento) e.data_nascimento = "Obrigatório";
-    if (!form.vinculo) e.vinculo = "Obrigatório";
-    if (form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo)) {
-      if (VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && !form.vinculo_empresa_nome.trim()) e.vinculo_empresa_nome = "Obrigatório";
-      if (!form.vinculo_empresa_contato.trim()) e.vinculo_empresa_contato = "Obrigatório";
-      if (!form.vinculo_empresa_telefone.trim()) e.vinculo_empresa_telefone = "Obrigatório";
-      if (!form.vinculo_empresa_email.trim()) e.vinculo_empresa_email = "Obrigatório";
-      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.vinculo_empresa_email)) e.vinculo_empresa_email = "E-mail inválido";
+  // ── Ensure at least one empty equipe card when perfil changes ─────────────
+  useEffect(() => {
+    const PERFIS_COM_EQUIPA = ["independente", "com_empresario", "gravadora"];
+    if (PERFIS_COM_EQUIPA.includes(tipoPerfil) && contatosEquipe.length === 0) {
+      setContatosEquipe([{ ...EMPTY_CONTATO }]);
     }
-    setErrors(e);
-    return Object.keys(e).length === 0;
+  }, [tipoPerfil]);
+
+  // ── URL validation states (same as ArtistaFormModal) ──────────────────────
+  const urlStates = {
+    spotify:    validateSpotifyUrl(spotify),
+    instagram:  validateInstagramUrl(instagram),
+    youtube:    validateYoutubeUrl(youtube),
+    tiktok:     validateTiktokUrl(tiktok),
+    soundcloud: validateSoundcloudUrl(soundcloud),
+    deezer:     validateDeezerUrl(deezer),
+    appleMusic: validateAppleMusicUrl(appleMusic),
   };
 
-  const validateStep2 = (): boolean => {
-    const e: Record<string, string> = {};
-    const urlFields: (keyof Omit<FormData, "tipo_perfil">)[] = ["spotify", "youtube", "apple_music", "deezer", "soundcloud", "presskit_url"];
-    urlFields.forEach((f) => {
-      const v = (form[f] as string).trim();
-      if (v && !/^https?:\/\/.+/.test(v) && !v.startsWith("@")) {
-        if (/[\s/]/.test(v) || v.includes("://")) {
-          e[f] = "URL deve começar com https://";
+  // ── Especialidades toggle ──────────────────────────────────────────────────
+  const toggleEspecialidade = (value: string, checked: boolean) => {
+    setEspecialidades((prev) =>
+      checked ? [...prev, value] : prev.filter((x) => x !== value)
+    );
+  };
+
+  // ── Distribuidoras gerais helpers (same as ArtistaFormModal) ──────────────
+  const toggleDistGeral = (distId: string, checked: boolean) => {
+    if (checked) {
+      setDistribuidorasGerais((prev) => [
+        ...prev,
+        { id: distId, email: "", nomeCustom: distId === "outros" ? "" : undefined },
+      ]);
+    } else {
+      setDistribuidorasGerais((prev) => prev.filter((d) => d.id !== distId));
+    }
+  };
+
+  const updateDistEmailGeral = (distId: string, email: string) => {
+    setDistribuidorasGerais((prev) =>
+      prev.map((d) => (d.id === distId ? { ...d, email } : d))
+    );
+  };
+
+  const updateDistNomeCustomGeral = (nomeCustom: string) => {
+    setDistribuidorasGerais((prev) =>
+      prev.map((d) => (d.id === "outros" ? { ...d, nomeCustom } : d))
+    );
+  };
+
+  // ── Equipe helpers (same as ArtistaFormModal) ──────────────────────────────
+  const addContato = () => setContatosEquipe((prev) => [...prev, { ...EMPTY_CONTATO }]);
+
+  const removeContato = (idx: number) =>
+    setContatosEquipe((prev) => prev.filter((_, i) => i !== idx));
+
+  const updateContato = (idx: number, field: keyof ContatoEquipe, value: unknown) =>
+    setContatosEquipe((prev) =>
+      prev.map((c, i) => (i === idx ? { ...c, [field]: value } : c))
+    );
+
+  const toggleDistEquipe = (contatoIdx: number, distId: string, checked: boolean) => {
+    setContatosEquipe((prev) =>
+      prev.map((c, i) => {
+        if (i !== contatoIdx) return c;
+        if (checked) {
+          return {
+            ...c,
+            distribuidoras: [
+              ...c.distribuidoras,
+              { id: distId, email: "", nomeCustom: distId === "outros" ? "" : undefined },
+            ],
+          };
         }
-      }
-    });
-    setErrors(e);
-    return Object.keys(e).length === 0;
+        return { ...c, distribuidoras: c.distribuidoras.filter((d) => d.id !== distId) };
+      })
+    );
   };
 
-  const validateStep3 = (): boolean => {
+  const updateDistEmailEquipe = (contatoIdx: number, distId: string, email: string) => {
+    setContatosEquipe((prev) =>
+      prev.map((c, i) =>
+        i === contatoIdx
+          ? { ...c, distribuidoras: c.distribuidoras.map((d) => d.id === distId ? { ...d, email } : d) }
+          : c
+      )
+    );
+  };
+
+  const updateDistNomeCustomEquipe = (contatoIdx: number, nomeCustom: string) => {
+    setContatosEquipe((prev) =>
+      prev.map((c, i) =>
+        i === contatoIdx
+          ? { ...c, distribuidoras: c.distribuidoras.map((d) => d.id === "outros" ? { ...d, nomeCustom } : d) }
+          : c
+      )
+    );
+  };
+
+  // ── Validation per step ────────────────────────────────────────────────────
+  const clearError = (key: string) =>
+    setErrors((prev) => { const e = { ...prev }; delete e[key]; return e; });
+
+  const validateStep = (s: StepNum): boolean => {
     const e: Record<string, string> = {};
-    if (form.foto_url.trim() && !/^https?:\/\/.+/.test(form.foto_url.trim())) {
-      e.foto_url = "URL inválida — deve começar com https://";
+
+    if (s === 1) {
+      if (!nomeArtistico.trim()) e.nomeArtistico = "Obrigatório";
+      if (!generoMusical)        e.generoMusical  = "Obrigatório";
     }
+
+    if (s === 2) {
+      if (!nome.trim())    e.nome    = "Obrigatório";
+      if (!email.trim())   e.email   = "Obrigatório";
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) e.email = "E-mail inválido";
+    }
+
+    if (s === 4) {
+      const urlCheck = (field: string, val: string) => {
+        if (val.trim() && !/^https?:\/\/.+/.test(val.trim())) {
+          e[field] = "URL deve começar com https://";
+        }
+      };
+      urlCheck("spotify",    spotify);
+      urlCheck("youtube",    youtube);
+      urlCheck("soundcloud", soundcloud);
+      urlCheck("deezer",     deezer);
+      urlCheck("appleMusic", appleMusic);
+    }
+
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
   const goNext = () => {
-    if (step === 1 && !validateStep1()) return;
-    if (step === 2 && !validateStep2()) return;
-    setStep((s) => (s + 1) as Step);
+    if (!validateStep(step)) return;
+    setStep((s) => (s + 1) as StepNum);
     setErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const goBack = () => {
-    setStep((s) => (s - 1) as Step);
+    setStep((s) => (s - 1) as StepNum);
     setErrors({});
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
+  // ── Submit (same payload as ArtistaFormModal) ──────────────────────────────
   const handleSubmit = async () => {
-    if (!validateStep3()) return;
+    if (!validateStep(step)) return;
+    if (!nomeArtistico.trim()) { toast.error("Nome artístico é obrigatório"); return; }
+    if (!nome.trim())          { toast.error("Nome completo é obrigatório");  return; }
+
     setIsSubmitting(true);
-
-    const spotifyId = extractSpotifyArtistId(form.spotify);
-    const youtubeId = extractYouTubeChannelId(form.youtube);
-
-    // ── Notas internas: informações sem campo dedicado ─────────────────────────
-    const notasLinhas: string[] = [];
-    if (form.notas_label.trim()) notasLinhas.push(form.notas_label.trim());
-    if (form.genero) notasLinhas.push(`Gênero: ${form.genero}`);
-    if (form.vinculo) notasLinhas.push(`Vínculo: ${form.vinculo}`);
-    // Spotify/YouTube URL completa quando não é um ID extraível
-    if (form.spotify.trim() && !spotifyId) notasLinhas.push(`Spotify (URL): ${form.spotify.trim()}`);
-    if (form.youtube.trim() && !youtubeId) notasLinhas.push(`YouTube (URL): ${form.youtube.trim()}`);
-    const notasInternas = notasLinhas.filter(Boolean).join("\n");
-
-    // ── Distribuidoras → campos dedicados ─────────────────────────────────────
-    const distribuidorasSelecionadas: Record<string, boolean> = {};
-    const distribuidorasEmails: Record<string, string> = {};
-    distribuidoras.forEach((entry) => {
-      if (entry.distribuidora) {
-        distribuidorasSelecionadas[entry.distribuidora] = true;
-        if (entry.email) distribuidorasEmails[entry.distribuidora] = entry.email;
-      }
-    });
-
-    // ── Mapeamento de vínculo para campos dedicados ────────────────────────────
-    const isEmpresario = form.vinculo === "Com Empresário";
-    const isGravadoraEditora = VINCULO_COM_NOME_EMPRESA.has(form.vinculo);
-
     try {
-      const result = await createArtistUseCase({
-        nome_artistico: form.nome_artistico,
-        nome_civil: form.nome_civil,
-        tipo: form.tipo_perfil.join(", "),
-        status: "onboarding",
-        genero_musical: form.genero_musical,
-        email: form.email,
-        telefone: form.telefone,
-        cpf_cnpj: form.cpf_cnpj,
-        data_nascimento: form.data_nascimento || undefined,
-        foto_url: form.foto_url || undefined,
-        observacoes: form.bio || undefined,
-        org_slug: orgSlug,
-        // redes sociais
-        instagram: form.instagram.trim().replace(/^@/, "") || undefined,
-        tiktok: form.tiktok.trim().replace(/^@/, "") || undefined,
-        spotify_artist_id: spotifyId ?? undefined,
-        youtube_channel_id: youtubeId ?? undefined,
-        deezer_url: form.deezer.trim() || undefined,
-        apple_music_url: form.apple_music.trim() || undefined,
-        soundcloud_url: form.soundcloud.trim() || undefined,
-        presskit_url: form.presskit_url.trim() || undefined,
-        // vínculo empresário
-        empresario_nome: isEmpresario ? (form.vinculo_empresa_contato.trim() || undefined) : undefined,
-        empresario_telefone: isEmpresario ? (form.vinculo_empresa_telefone.trim() || undefined) : undefined,
-        empresario_email: isEmpresario ? (form.vinculo_empresa_email.trim() || undefined) : undefined,
-        // vínculo gravadora / editora
-        gravadora_nome: isGravadoraEditora ? (form.vinculo_empresa_nome.trim() || undefined) : undefined,
-        gravadora_responsavel_nome: isGravadoraEditora ? (form.vinculo_empresa_contato.trim() || undefined) : undefined,
-        gravadora_responsavel_telefone: isGravadoraEditora ? (form.vinculo_empresa_telefone.trim() || undefined) : undefined,
-        gravadora_responsavel_email: isGravadoraEditora ? (form.vinculo_empresa_email.trim() || undefined) : undefined,
-        // distribuidoras
-        distribuidoras_selecionadas: Object.keys(distribuidorasSelecionadas).length ? distribuidorasSelecionadas : undefined,
-        distribuidoras_emails: Object.keys(distribuidorasEmails).length ? distribuidorasEmails : undefined,
-        // notas residuais
-        notas_internas: notasInternas || undefined,
+      const formInput: FormToArtistaInput = {
+        nomeArtistico,
+        slugArtistico: "",
+        tagsMusicais: [],
+        faseCarreira: "",
+        generoMusical,
+        tipoArtista: "artista_solo",
+        statusArtista: "onboarding",
+        especialidades,
+        biografia,
+        notasInternas,
+        nome,
+        dataNascimento,
+        cpfCnpj,
+        rg,
+        endereco,
+        telefone,
+        email,
+        banco,
+        agencia,
+        conta,
+        chavePix,
+        titularConta,
+        spotify,
+        spotifyOuvintes: "",
+        instagram,
+        instagramSeguidores: "",
+        youtube,
+        youtubeInscritos: "",
+        tiktok,
+        tiktokSeguidores: "",
+        soundcloud,
+        soundcloudSeguidores: "",
+        deezer,
+        deezerFas: "",
+        appleMusic,
+        appleMusicAlbuns: "",
+        relacionamentos: [],
+        tipoPerfil: tipoPerfil as FormToArtistaInput["tipoPerfil"],
+        empresarioId: "",
+        empresarioNome: "",
+        empresarioTelefone: "",
+        empresarioEmail: "",
+        gravadoraId: "",
+        gravadoraNome: "",
+        gravadoraTelefone: "",
+        gravadoraEmail: "",
+        gravadoraResponsavelId: "",
+        gravadoraResponsavelNome: "",
+        gravadoraResponsavelTelefone: "",
+        gravadoraResponsavelEmail: "",
+        distribuidorasSelecionadas: {},
+        distribuidorasEmails: {},
+        distribuidorasEmpresaSelecionadas: {},
+        distribuidorasEmpresaEmails: {},
+        fotoUrl,
+        documentosPessoaisUrl,
+        presskitUrl,
+        contratoId: "",
+      };
+
+      const payload = formToArtistaPayload(formInput);
+
+      const extraFields = {
+        genero:                 genero || null,
+        banner_url:             null,
+        galeria_urls:           null,
+        video_apresentacao_url: null,
+        manager_nome:           null,
+        manager_contato:        null,
+        produtor_executivo:     null,
+        agencia_booking:        null,
+        label_parceira:         null,
+        documentos:             null,
+        contatos_equipe:        contatosEquipe.filter((c) => c.nome || c.email).length > 0
+                                  ? contatosEquipe.filter((c) => c.nome || c.email)
+                                  : null,
+        distribuidoras_gerais:  distribuidorasGerais.length > 0 ? distribuidorasGerais : null,
+      };
+
+      await addCliente.mutateAsync({
+        tipo_pessoa: "pessoa_fisica" as const,
+        nome:        nomeArtistico.trim(),
+        cpf_cnpj:    cpfCnpj.trim() || null,
+        responsavel: nome.trim() || null,
+        email:       email.trim() || null,
+        telefone:    telefone.trim() || null,
+        endereco:    endereco.trim() || null,
+        cidade:      null as string | null,
+        estado:      null as string | null,
+        observacoes: biografia.trim() || null,
+        status:      "ativo",
       });
-      const alphanumeric = result.id.replace(/[^a-zA-Z0-9]/g, "");
+
+      const result = await addArtista.mutateAsync({ ...payload, ...extraFields });
+      const alphanumeric = (result?.id ?? Date.now().toString()).replace(/[^a-zA-Z0-9]/g, "");
       setProtocol(alphanumeric.slice(-8).toUpperCase());
       setSuccess(true);
     } catch (err: unknown) {
-      if (err instanceof DuplicateArtistaError) {
-        if (err.field === "email") {
-          setErrors({ email: "E-mail já cadastrado" });
-          setStep(1);
-          toast.error("E-mail já cadastrado. Corrija no passo 1.");
-        } else {
-          setErrors({ cpf_cnpj: "CPF/CNPJ já cadastrado" });
-          setStep(1);
-          toast.error("CPF/CNPJ já cadastrado. Corrija no passo 1.");
-        }
-      } else {
-        toast.error("Erro ao enviar cadastro. Tente novamente.");
-      }
+      toast.error("Erro ao enviar cadastro. Tente novamente.");
+      console.error(err);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+  // ── Loading ────────────────────────────────────────────────────────────────
   if (slugState === "checking") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -403,7 +497,7 @@ export default function ArtistaSignupPublic() {
     );
   }
 
-  // ── Invalid slug ─────────────────────────────────────────────────────────────
+  // ── Invalid slug ───────────────────────────────────────────────────────────
   if (slugState === "invalid") {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -427,7 +521,7 @@ export default function ArtistaSignupPublic() {
     );
   }
 
-  // ── Success ──────────────────────────────────────────────────────────────────
+  // ── Success ────────────────────────────────────────────────────────────────
   if (success) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
@@ -447,14 +541,14 @@ export default function ArtistaSignupPublic() {
             <p className="text-xs text-muted-foreground">Guarde este número para acompanhamento</p>
           </div>
           <p className="text-sm text-muted-foreground">
-            Verifique seu e-mail <strong>{form.email}</strong> nos próximos dias.
+            Verifique seu e-mail <strong>{email}</strong> nos próximos dias.
           </p>
         </div>
       </div>
     );
   }
 
-  // ── Form ─────────────────────────────────────────────────────────────────────
+  // ── Form ──────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-background">
       {/* Hero */}
@@ -463,12 +557,7 @@ export default function ArtistaSignupPublic() {
           <div className="flex justify-center mb-3">
             <div className="rounded-xl bg-primary/10 border border-primary/20 w-16 h-16 flex items-center justify-center">
               <span className="text-primary font-bold text-xl tracking-tight">
-                {orgInfo.name
-                  .split(/\s+/)
-                  .filter(Boolean)
-                  .slice(0, 2)
-                  .map((w) => w[0].toUpperCase())
-                  .join("")}
+                {orgInfo.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("")}
               </span>
             </div>
           </div>
@@ -486,11 +575,11 @@ export default function ArtistaSignupPublic() {
             </div>
           </div>
           <div className="flex items-center justify-center gap-6 pt-1">
-            {[
+            {([
               { icon: Zap, text: "Resposta rápida" },
               { icon: Shield, text: "Dados seguros" },
               { icon: Star, text: "Sem compromisso" },
-            ].map(({ icon: Icon, text }) => (
+            ] as const).map(({ icon: Icon, text }) => (
               <div key={text} className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <Icon className="h-3.5 w-3.5 text-primary" />
                 <span>{text}</span>
@@ -502,546 +591,854 @@ export default function ArtistaSignupPublic() {
 
       {/* Form body */}
       <div className="max-w-xl mx-auto px-4 py-8 space-y-6">
-        {/* Stepper */}
-        <div className="flex items-center gap-2">
-          {STEPS.map((s, idx) => (
-            <div key={s.num} className="flex items-center gap-2 flex-1">
-              <div className={cn("flex items-center gap-2", idx < STEPS.length - 1 && "flex-1")}>
-                <div className={cn(
-                  "flex items-center justify-center rounded-full w-7 h-7 text-xs font-bold shrink-0 transition-colors",
-                  step === s.num ? "bg-primary text-primary-foreground"
-                    : step > s.num ? "bg-primary/20 text-primary"
-                    : "bg-muted text-muted-foreground"
-                )}>
-                  {step > s.num ? <CheckCircle2 className="h-4 w-4" /> : s.num}
+
+        {/* Stepper — condensed for 7 steps */}
+        <div className="overflow-x-auto pb-1">
+          <div className="flex items-center gap-1 min-w-max">
+            {STEPS.map((s, idx) => (
+              <div key={s.num} className="flex items-center gap-1">
+                <div className="flex items-center gap-1.5">
+                  <div className={cn(
+                    "flex items-center justify-center rounded-full w-6 h-6 text-xs font-bold shrink-0 transition-colors",
+                    step === s.num
+                      ? "bg-primary text-primary-foreground"
+                      : step > s.num
+                        ? "bg-primary/20 text-primary"
+                        : "bg-muted text-muted-foreground"
+                  )}>
+                    {step > s.num ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.num}
+                  </div>
+                  <span className={cn(
+                    "text-xs font-medium hidden sm:block whitespace-nowrap",
+                    step === s.num ? "text-foreground" : "text-muted-foreground"
+                  )}>
+                    {s.label}
+                  </span>
                 </div>
-                <span className={cn(
-                  "text-xs font-medium hidden sm:block whitespace-nowrap",
-                  step === s.num ? "text-foreground" : "text-muted-foreground"
-                )}>
-                  {s.label}
-                </span>
+                {idx < STEPS.length - 1 && (
+                  <div className={cn("h-px w-4 transition-colors", step > s.num ? "bg-primary/40" : "bg-border")} />
+                )}
               </div>
-              {idx < STEPS.length - 1 && (
-                <div className={cn("h-px flex-1 transition-colors", step > s.num ? "bg-primary/40" : "bg-border")} />
-              )}
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
 
-        {/* ── Step 1 — Dados Básicos ─────────────────────────────────────────── */}
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 1 — Informações Básicas
+            Mirrors ArtistaFormModal section 1
+        ═══════════════════════════════════════════════════════════════════════ */}
         {step === 1 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">Dados Básicos</h2>
-              <p className="text-sm text-muted-foreground">Informações essenciais sobre você</p>
+              <h2 className="font-semibold text-base">1. Informações Básicas</h2>
+              <p className="text-sm text-muted-foreground">Nome artístico, género musical e especialidades</p>
             </div>
 
-            {/* Nome Artístico + Nome Civil */}
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-sm">Nome Artístico <span className="text-destructive">*</span></Label>
                 <Input
                   placeholder="Nome usado profissionalmente"
-                  value={form.nome_artistico}
-                  onChange={(e) => set("nome_artistico", e.target.value)}
+                  value={nomeArtistico}
+                  onChange={(e) => { setNomeArtistico(e.target.value); clearError("nomeArtistico"); }}
                   data-testid="input-nome-artistico"
-                  className={errors.nome_artistico ? "border-destructive" : ""}
+                  className={errors.nomeArtistico ? "border-destructive" : ""}
                 />
-                {errors.nome_artistico && <p className="text-xs text-destructive">{errors.nome_artistico}</p>}
+                {errors.nomeArtistico && <p className="text-xs text-destructive">{errors.nomeArtistico}</p>}
               </div>
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">Nome Civil <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="Nome completo (documentos)"
-                  value={form.nome_civil}
-                  onChange={(e) => set("nome_civil", e.target.value)}
-                  data-testid="input-nome-civil"
-                  className={errors.nome_civil ? "border-destructive" : ""}
-                />
-                {errors.nome_civil && <p className="text-xs text-destructive">{errors.nome_civil}</p>}
+                <Label className="text-sm">Gênero Musical <span className="text-destructive">*</span></Label>
+                <Select
+                  value={generoMusical}
+                  onValueChange={(v) => { setGeneroMusical(v); clearError("generoMusical"); }}
+                >
+                  <SelectTrigger data-testid="select-genero-musical" className={errors.generoMusical ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Selecione o gênero" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    {GENEROS_MUSICAIS.map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.generoMusical && <p className="text-xs text-destructive">{errors.generoMusical}</p>}
               </div>
             </div>
 
-            {/* Tipo de Perfil — multi-select toggles */}
             <div className="space-y-2">
-              <Label className="text-sm">
-                Tipo de Perfil <span className="text-destructive">*</span>
-              </Label>
-              <div className="flex flex-wrap gap-2" data-testid="group-tipo-perfil">
-                {TIPO_PERFIL_OPTIONS.map((opt) => {
-                  const selected = form.tipo_perfil.includes(opt);
-                  return (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => toggleTipoPerfil(opt)}
-                      data-testid={`toggle-tipo-${opt.toLowerCase().replace(/\//g, "-").replace(/\s/g, "-")}`}
-                      className={cn(
-                        "px-3 py-1.5 rounded-full text-sm font-medium border transition-all",
-                        selected
-                          ? "bg-primary text-primary-foreground border-primary"
-                          : "bg-transparent text-foreground border-border hover:border-primary/60 hover:text-primary"
-                      )}
-                    >
-                      {opt}
-                    </button>
-                  );
-                })}
+              <Label className="text-sm">Especialidade / Função</Label>
+              <div className="flex flex-wrap gap-4">
+                {ESPECIALIDADES.map((esp) => (
+                  <div key={esp.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`esp-${esp.value}`}
+                      checked={especialidades.includes(esp.value)}
+                      onCheckedChange={(checked) => toggleEspecialidade(esp.value, !!checked)}
+                    />
+                    <Label htmlFor={`esp-${esp.value}`} className="text-sm cursor-pointer">{esp.label}</Label>
+                  </div>
+                ))}
               </div>
-              {errors.tipo_perfil && <p className="text-xs text-destructive">{errors.tipo_perfil}</p>}
             </div>
 
-            {/* Gênero + Gênero Musical */}
+            <div className="space-y-1.5">
+              <Label className="text-sm">Foto de Perfil (URL)</Label>
+              <Input
+                placeholder="https://…"
+                value={fotoUrl}
+                onChange={(e) => setFotoUrl(e.target.value)}
+                data-testid="input-foto-url"
+              />
+              {fotoUrl && /^https?:\/\/.+/.test(fotoUrl) && (
+                <div className="flex items-center gap-3 mt-2">
+                  <img
+                    src={fotoUrl}
+                    alt="Preview"
+                    className="h-16 w-16 rounded-full object-cover border border-border"
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
+                  />
+                  <p className="text-xs text-muted-foreground">Preview da foto</p>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Link de Documentos Pessoais (PDF)</Label>
+              <Input
+                placeholder="https://drive.google.com/… ou Dropbox"
+                value={documentosPessoaisUrl}
+                onChange={(e) => setDocumentosPessoaisUrl(e.target.value)}
+                data-testid="input-documentos-pessoais-url"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Link do Presskit / Media Kit</Label>
+              <Input
+                placeholder="https://drive.google.com/… ou Notion"
+                value={presskitUrl}
+                onChange={(e) => setPresskitUrl(e.target.value)}
+                data-testid="input-presskit-url"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Biografia</Label>
+              <Textarea
+                placeholder="Trajetória, conquistas e estilo musical…"
+                className="min-h-[100px]"
+                value={biografia}
+                onChange={(e) => setBiografia(e.target.value)}
+                data-testid="textarea-biografia"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 2 — Dados Pessoais
+            Mirrors ArtistaFormModal section 2
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 2 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="font-semibold text-base">2. Dados Pessoais</h2>
+              <p className="text-sm text-muted-foreground">Informações pessoais e de contacto</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm">Nome Completo <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="Nome conforme documento"
+                  value={nome}
+                  onChange={(e) => { setNome(e.target.value); clearError("nome"); }}
+                  data-testid="input-nome-civil"
+                  className={errors.nome ? "border-destructive" : ""}
+                />
+                {errors.nome && <p className="text-xs text-destructive">{errors.nome}</p>}
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm">Data de Nascimento</Label>
+                <Input
+                  type="date"
+                  value={dataNascimento}
+                  onChange={(e) => setDataNascimento(e.target.value)}
+                  data-testid="input-data-nascimento"
+                  className="block"
+                />
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-sm">Gênero <span className="text-destructive">*</span></Label>
-                <Select value={form.genero} onValueChange={(v) => set("genero", v)}>
-                  <SelectTrigger data-testid="select-genero" className={errors.genero ? "border-destructive" : ""}>
+                <Label className="text-sm">CPF</Label>
+                <Input
+                  placeholder="000.000.000-00"
+                  value={cpfCnpj}
+                  onChange={(e) => setCpfCnpj(e.target.value)}
+                  data-testid="input-cpf-cnpj"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">RG</Label>
+                <Input
+                  placeholder="00.000.000-0"
+                  value={rg}
+                  onChange={(e) => setRg(e.target.value)}
+                  data-testid="input-rg"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Gênero</Label>
+                <Select value={genero} onValueChange={setGenero}>
+                  <SelectTrigger data-testid="select-genero-pessoa">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-background border border-border z-50">
                     <SelectItem value="Masculino">Masculino</SelectItem>
                     <SelectItem value="Feminino">Feminino</SelectItem>
                   </SelectContent>
                 </Select>
-                {errors.genero && <p className="text-xs text-destructive">{errors.genero}</p>}
               </div>
               <div className="space-y-1.5">
-                <Label className="text-sm">Gênero Musical <span className="text-destructive">*</span></Label>
-                <Select value={form.genero_musical} onValueChange={(v) => set("genero_musical", v)}>
-                  <SelectTrigger data-testid="select-genero-musical" className={errors.genero_musical ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Selecione" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {GENEROS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-                {errors.genero_musical && <p className="text-xs text-destructive">{errors.genero_musical}</p>}
+                <Label className="text-sm">Endereço Completo</Label>
+                <Input
+                  placeholder="Rua, número, bairro, cidade, CEP"
+                  value={endereco}
+                  onChange={(e) => setEndereco(e.target.value)}
+                  data-testid="input-endereco"
+                />
               </div>
             </div>
 
-            {/* E-mail + Telefone */}
             <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Telefone / WhatsApp</Label>
+                <Input
+                  placeholder="(11) 99999-9999"
+                  value={telefone}
+                  onChange={(e) => setTelefone(e.target.value)}
+                  data-testid="input-telefone"
+                />
+              </div>
+              <div className="space-y-1.5">
                 <Label className="text-sm">E-mail <span className="text-destructive">*</span></Label>
                 <Input
-                  type="email" placeholder="seu@email.com"
-                  value={form.email} onChange={(e) => set("email", e.target.value)}
+                  type="email"
+                  placeholder="email@exemplo.com"
+                  value={email}
+                  onChange={(e) => { setEmail(e.target.value); clearError("email"); }}
                   data-testid="input-email"
                   className={errors.email ? "border-destructive" : ""}
                 />
                 {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
               </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">Telefone / WhatsApp <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="(11) 99999-9999"
-                  value={form.telefone} onChange={(e) => set("telefone", e.target.value)}
-                  data-testid="input-telefone"
-                  className={errors.telefone ? "border-destructive" : ""}
-                />
-                {errors.telefone && <p className="text-xs text-destructive">{errors.telefone}</p>}
-              </div>
             </div>
-
-            {/* CPF + Data de Nascimento */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">CPF <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="000.000.000-00"
-                  value={form.cpf_cnpj} onChange={(e) => set("cpf_cnpj", e.target.value)}
-                  data-testid="input-cpf-cnpj"
-                  className={errors.cpf_cnpj ? "border-destructive" : ""}
-                />
-                {errors.cpf_cnpj && <p className="text-xs text-destructive">{errors.cpf_cnpj}</p>}
-              </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-                  Data de Nascimento <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  type="date"
-                  value={form.data_nascimento}
-                  onChange={(e) => set("data_nascimento", e.target.value)}
-                  data-testid="input-data-nascimento"
-                  className={errors.data_nascimento ? "border-destructive block" : "block"}
-                />
-                {errors.data_nascimento && <p className="text-xs text-destructive">{errors.data_nascimento}</p>}
-              </div>
-            </div>
-
-            {/* Vínculo profissional */}
-            <div className="space-y-1.5">
-              <Label className="text-sm">Vínculo Profissional / Artístico <span className="text-destructive">*</span></Label>
-              <Select value={form.vinculo} onValueChange={(v) => set("vinculo", v)}>
-                <SelectTrigger data-testid="select-vinculo" className={errors.vinculo ? "border-destructive" : ""}>
-                  <SelectValue placeholder="Selecione seu vínculo" />
-                </SelectTrigger>
-                <SelectContent>
-                  {VINCULO_OPTIONS.map((opt) => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {errors.vinculo && <p className="text-xs text-destructive">{errors.vinculo}</p>}
-            </div>
-
-            {/* Campos condicionais — empresa/responsável */}
-            {form.vinculo && VINCULO_COM_EMPRESA.has(form.vinculo) && (
-              <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
-                  {form.vinculo === "Com Empresário" ? "Dados do Empresário" : form.vinculo === "Gravadora" ? "Dados da Gravadora" : "Dados da Editora"}
-                </p>
-
-                <div className={`grid grid-cols-1 gap-4 ${VINCULO_COM_NOME_EMPRESA.has(form.vinculo) ? "sm:grid-cols-2" : ""}`}>
-                  {VINCULO_COM_NOME_EMPRESA.has(form.vinculo) && (
-                    <div className="space-y-1.5">
-                      <Label className="text-sm">Nome da empresa <span className="text-destructive">*</span></Label>
-                      <Input
-                        placeholder="Razão social ou nome"
-                        value={form.vinculo_empresa_nome}
-                        onChange={(e) => set("vinculo_empresa_nome", e.target.value)}
-                        data-testid="input-vinculo-empresa-nome"
-                        className={errors.vinculo_empresa_nome ? "border-destructive" : ""}
-                      />
-                      {errors.vinculo_empresa_nome && <p className="text-xs text-destructive">{errors.vinculo_empresa_nome}</p>}
-                    </div>
-                  )}
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Nome do contato <span className="text-destructive">*</span></Label>
-                    <Input
-                      placeholder="Pessoa responsável"
-                      value={form.vinculo_empresa_contato}
-                      onChange={(e) => set("vinculo_empresa_contato", e.target.value)}
-                      data-testid="input-vinculo-empresa-contato"
-                      className={errors.vinculo_empresa_contato ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_contato && <p className="text-xs text-destructive">{errors.vinculo_empresa_contato}</p>}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">Telefone / WhatsApp <span className="text-destructive">*</span></Label>
-                    <Input
-                      placeholder="(11) 99999-9999"
-                      value={form.vinculo_empresa_telefone}
-                      onChange={(e) => set("vinculo_empresa_telefone", e.target.value)}
-                      data-testid="input-vinculo-empresa-telefone"
-                      className={errors.vinculo_empresa_telefone ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_telefone && <p className="text-xs text-destructive">{errors.vinculo_empresa_telefone}</p>}
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-sm">E-mail de Contato <span className="text-destructive">*</span></Label>
-                    <Input
-                      type="email"
-                      placeholder="contato@empresa.com"
-                      value={form.vinculo_empresa_email}
-                      onChange={(e) => set("vinculo_empresa_email", e.target.value)}
-                      data-testid="input-vinculo-empresa-email"
-                      className={errors.vinculo_empresa_email ? "border-destructive" : ""}
-                    />
-                    {errors.vinculo_empresa_email && <p className="text-xs text-destructive">{errors.vinculo_empresa_email}</p>}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         )}
 
-        {/* ── Step 2 — Links e Redes ────────────────────────────────────────── */}
-        {step === 2 && (
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 3 — Dados Bancários
+            Mirrors ArtistaFormModal section 3
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 3 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">Links e Redes Sociais</h2>
+              <h2 className="font-semibold text-base">3. Dados Bancários</h2>
+              <p className="text-sm text-muted-foreground">Conta para recebimentos e chave Pix</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Banco</Label>
+                <Select value={banco} onValueChange={setBanco}>
+                  <SelectTrigger data-testid="select-banco">
+                    <SelectValue placeholder="Selecione o banco" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    {BANCOS.map((b) => (
+                      <SelectItem key={b} value={b}>{b}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Agência</Label>
+                <Input
+                  placeholder="0000"
+                  value={agencia}
+                  onChange={(e) => setAgencia(e.target.value)}
+                  data-testid="input-agencia"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm">Conta com Dígito</Label>
+                <Input
+                  placeholder="00000-0"
+                  value={conta}
+                  onChange={(e) => setConta(e.target.value)}
+                  data-testid="input-conta"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm">Chave Pix</Label>
+                <Input
+                  placeholder="CPF, e-mail, telefone ou chave aleatória"
+                  value={chavePix}
+                  onChange={(e) => setChavePix(e.target.value)}
+                  data-testid="input-chave-pix"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Titular da Conta</Label>
+              <Input
+                placeholder="Nome completo do titular"
+                value={titularConta}
+                onChange={(e) => setTitularConta(e.target.value)}
+                data-testid="input-titular-conta"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 4 — Perfis e Redes Sociais
+            Mirrors ArtistaFormModal section 4
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 4 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="font-semibold text-base">4. Perfis e Redes Sociais</h2>
               <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
             </div>
 
-            {/* Linha 1 — Instagram | TikTok */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Instagram className="h-3.5 w-3.5 text-pink-500" /> Instagram
+                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
                 </Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground shrink-0">@</span>
-                  <Input placeholder="usuario" value={form.instagram}
-                    onChange={(e) => set("instagram", e.target.value)} data-testid="input-instagram"
-                    className={errors.instagram ? "border-destructive" : ""} />
+                  <Input
+                    placeholder="https://open.spotify.com/artist/…"
+                    value={spotify}
+                    onChange={(e) => { setSpotify(e.target.value); clearError("spotify"); }}
+                    data-testid="input-spotify-url"
+                    className={cn("flex-1", errors.spotify ? "border-destructive" : "")}
+                  />
+                  <UrlIcon state={urlStates.spotify} />
                 </div>
-                {errors.instagram && <p className="text-xs text-destructive">{errors.instagram}</p>}
+                {errors.spotify && <p className="text-xs text-destructive">{errors.spotify}</p>}
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <span className="h-3.5 w-3.5 text-pink-500 flex items-center justify-center text-xs">Ig</span> Instagram
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://instagram.com/perfil"
+                    value={instagram}
+                    onChange={(e) => setInstagram(e.target.value)}
+                    data-testid="input-instagram-url"
+                    className="flex-1"
+                  />
+                  <UrlIcon state={urlStates.instagram} />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-sm flex items-center gap-1.5">
+                  <span className="h-3.5 w-3.5 text-red-500 text-xs font-bold">▶</span> YouTube
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://youtube.com/channel/UC…"
+                    value={youtube}
+                    onChange={(e) => { setYoutube(e.target.value); clearError("youtube"); }}
+                    data-testid="input-youtube-url"
+                    className={cn("flex-1", errors.youtube ? "border-destructive" : "")}
+                  />
+                  <UrlIcon state={urlStates.youtube} />
+                </div>
+                {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <SiTiktok className="h-3.5 w-3.5" /> TikTok
                 </Label>
                 <div className="flex items-center gap-2">
-                  <span className="text-sm text-muted-foreground shrink-0">@</span>
-                  <Input placeholder="usuario" value={form.tiktok}
-                    onChange={(e) => set("tiktok", e.target.value)} data-testid="input-tiktok"
-                    className={errors.tiktok ? "border-destructive" : ""} />
+                  <Input
+                    placeholder="https://tiktok.com/@perfil"
+                    value={tiktok}
+                    onChange={(e) => setTiktok(e.target.value)}
+                    data-testid="input-tiktok-url"
+                    className="flex-1"
+                  />
+                  <UrlIcon state={urlStates.tiktok} />
                 </div>
-                {errors.tiktok && <p className="text-xs text-destructive">{errors.tiktok}</p>}
               </div>
             </div>
 
-            {/* Linha 2 — Spotify | YouTube */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <SiSpotify className="h-3.5 w-3.5 text-green-500" /> Spotify
-                </Label>
-                <Input
-                  placeholder="https://open.spotify.com/artist/..."
-                  value={form.spotify} onChange={(e) => set("spotify", e.target.value)}
-                  data-testid="input-spotify"
-                  className={errors.spotify ? "border-destructive" : ""}
-                />
-                {errors.spotify && <p className="text-xs text-destructive">{errors.spotify}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <Youtube className="h-3.5 w-3.5 text-red-500" /> YouTube
-                </Label>
-                <Input
-                  placeholder="https://youtube.com/@seucanal"
-                  value={form.youtube} onChange={(e) => set("youtube", e.target.value)}
-                  data-testid="input-youtube"
-                  className={errors.youtube ? "border-destructive" : ""}
-                />
-                {errors.youtube && <p className="text-xs text-destructive">{errors.youtube}</p>}
-              </div>
-            </div>
-
-            {/* Linha 3 — Apple Music | Deezer */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music
-                </Label>
-                <Input placeholder="https://music.apple.com/..."
-                  value={form.apple_music} onChange={(e) => set("apple_music", e.target.value)}
-                  data-testid="input-apple-music"
-                  className={errors.apple_music ? "border-destructive" : ""}
-                />
-                {errors.apple_music && <p className="text-xs text-destructive">{errors.apple_music}</p>}
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-sm flex items-center gap-1.5">
-                  <Music2 className="h-3.5 w-3.5 text-purple-500" /> Deezer
-                </Label>
-                <Input placeholder="https://www.deezer.com/artist/..."
-                  value={form.deezer} onChange={(e) => set("deezer", e.target.value)}
-                  data-testid="input-deezer"
-                  className={errors.deezer ? "border-destructive" : ""}
-                />
-                {errors.deezer && <p className="text-xs text-destructive">{errors.deezer}</p>}
-              </div>
-            </div>
-
-            {/* Linha 4 — SoundCloud | Link do Presskit */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
                   <SiSoundcloud className="h-3.5 w-3.5 text-orange-500" /> SoundCloud
                 </Label>
-                <Input placeholder="https://soundcloud.com/..."
-                  value={form.soundcloud} onChange={(e) => set("soundcloud", e.target.value)}
-                  data-testid="input-soundcloud"
-                  className={errors.soundcloud ? "border-destructive" : ""}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://soundcloud.com/perfil"
+                    value={soundcloud}
+                    onChange={(e) => { setSoundcloud(e.target.value); clearError("soundcloud"); }}
+                    data-testid="input-soundcloud-url"
+                    className={cn("flex-1", errors.soundcloud ? "border-destructive" : "")}
+                  />
+                  <UrlIcon state={urlStates.soundcloud} />
+                </div>
                 {errors.soundcloud && <p className="text-xs text-destructive">{errors.soundcloud}</p>}
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <Link2 className="h-3.5 w-3.5 text-primary" /> Link do Press Kit / EPK
+                  <span className="h-3.5 w-3.5 text-purple-500 text-xs font-bold">Dz</span> Deezer
                 </Label>
-                <Input
-                  placeholder="https://drive.google.com/... ou Notion, Dropbox..."
-                  value={form.presskit_url} onChange={(e) => set("presskit_url", e.target.value)}
-                  data-testid="input-presskit"
-                  className={errors.presskit_url ? "border-destructive" : ""}
-                />
-                {errors.presskit_url && <p className="text-xs text-destructive">{errors.presskit_url}</p>}
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://deezer.com/artist/…"
+                    value={deezer}
+                    onChange={(e) => { setDeezer(e.target.value); clearError("deezer"); }}
+                    data-testid="input-deezer-url"
+                    className={cn("flex-1", errors.deezer ? "border-destructive" : "")}
+                  />
+                  <UrlIcon state={urlStates.deezer} />
+                </div>
+                {errors.deezer && <p className="text-xs text-destructive">{errors.deezer}</p>}
               </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm flex items-center gap-1.5">
+                <SiApplemusic className="h-3.5 w-3.5 text-red-400" /> Apple Music
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  placeholder="https://music.apple.com/artist/…"
+                  value={appleMusic}
+                  onChange={(e) => { setAppleMusic(e.target.value); clearError("appleMusic"); }}
+                  data-testid="input-apple-music-url"
+                  className={cn("flex-1", errors.appleMusic ? "border-destructive" : "")}
+                />
+                <UrlIcon state={urlStates.appleMusic} />
+              </div>
+              {errors.appleMusic && <p className="text-xs text-destructive">{errors.appleMusic}</p>}
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Cole as URLs públicas. O sistema extrai automaticamente os identificadores
+              do Spotify e YouTube para buscar métricas reais.{" "}
+              Ícone <CheckCircle className="inline h-3 w-3 text-green-500" /> = URL válida.
+            </p>
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 5 — Distribuidoras / Agregadoras
+            Mirrors ArtistaFormModal section 5
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 5 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="font-semibold text-base">5. Distribuidoras / Agregadoras</h2>
+              <p className="text-sm text-muted-foreground">
+                Selecione as plataformas que distribuem ou agregam a sua música
+              </p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+              {DISTRIBUIDORAS_OPTIONS.map((dist) => {
+                const entry = distribuidorasGerais.find((d) => d.id === dist.id);
+                const isChecked = !!entry;
+                return (
+                  <div key={dist.id} className="space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id={`geral-dist-${dist.id}`}
+                        checked={isChecked}
+                        onCheckedChange={(checked) => toggleDistGeral(dist.id, !!checked)}
+                        data-testid={`checkbox-geral-dist-${dist.id}`}
+                      />
+                      <Label htmlFor={`geral-dist-${dist.id}`} className="text-sm cursor-pointer font-medium">
+                        {dist.label}
+                      </Label>
+                    </div>
+
+                    {isChecked && dist.id === "outros" && (
+                      <div className="ml-6 space-y-1.5">
+                        <Input
+                          value={entry?.nomeCustom ?? ""}
+                          onChange={(e) => updateDistNomeCustomGeral(e.target.value)}
+                          placeholder="Nome da distribuidora…"
+                          className="h-8 text-sm"
+                          data-testid="input-geral-dist-nome-custom"
+                        />
+                        {(entry?.nomeCustom ?? "").trim().length > 0 && (
+                          <Input
+                            value={entry?.email ?? ""}
+                            onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                            type="email"
+                            placeholder="Email de share…"
+                            className="h-8 text-sm"
+                            data-testid="input-geral-dist-email-outros"
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {isChecked && dist.id !== "outros" && (
+                      <div className="ml-6">
+                        <Input
+                          value={entry?.email ?? ""}
+                          onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                          type="email"
+                          placeholder={`Email de share — ${dist.label}`}
+                          className="h-8 text-sm"
+                          data-testid={`input-geral-dist-email-${dist.id}`}
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {distribuidorasGerais.some((d) => d.id === "outros" && !(d.nomeCustom ?? "").trim()) && (
+              <p className="text-xs text-muted-foreground ml-6">
+                Preencha o nome da distribuidora para activar o email de share.
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 6 — Tipo de Perfil + Equipe
+            Mirrors ArtistaFormModal section 6
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 6 && (
+          <div className="space-y-5">
+            <div>
+              <h2 className="font-semibold text-base">6. Tipo de Perfil</h2>
+              <p className="text-sm text-muted-foreground">Vínculo profissional e equipa</p>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-sm">Perfil Comercial <span className="text-destructive">*</span></Label>
+              <Select value={tipoPerfil} onValueChange={setTipoPerfil}>
+                <SelectTrigger data-testid="select-tipo-perfil">
+                  <SelectValue placeholder="Selecione o perfil" />
+                </SelectTrigger>
+                <SelectContent className="bg-background border border-border z-50">
+                  {TIPO_PERFIL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <Separator />
 
-            {/* Distribuidoras */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <Package className="h-4 w-4 text-muted-foreground" />
-                <h3 className="text-sm font-semibold">Distribuidoras</h3>
-              </div>
-              <p className="text-xs text-muted-foreground -mt-2">
-                Informe se já distribui sua música digitalmente. Você pode adicionar mais de uma.
-              </p>
-
+            {/* Equipa dinâmica — mesma lógica do ArtistaFormModal */}
+            {["independente", "com_empresario", "gravadora"].includes(tipoPerfil) && (
               <div className="space-y-3">
-                {distribuidoras.map((entry, idx) => (
-                  <div key={idx} className="grid grid-cols-2 gap-3 items-end">
-                    <div className="space-y-1.5">
-                      {idx === 0 && <Label className="text-sm">Distribuidora</Label>}
-                      <Select
-                        value={entry.distribuidora}
-                        onValueChange={(v) => setDistribuidoraField(idx, "distribuidora", v)}
-                      >
-                        <SelectTrigger data-testid={`select-distribuidora-${idx}`} className={idx === 0 && errors.distribuidora_0 ? "border-destructive" : ""}>
-                          <SelectValue placeholder="Selecione" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {DISTRIBUIDORAS.map((d) => (
-                            <SelectItem key={d} value={d}>{d}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      {idx === 0 && errors.distribuidora_0 && <p className="text-xs text-destructive">{errors.distribuidora_0}</p>}
-                    </div>
-                    <div className="flex items-end gap-2">
-                      <div className="space-y-1.5 flex-1">
-                        {idx === 0 && <Label className="text-sm">E-mail de share / acesso</Label>}
-                        <Input
-                          type="email"
-                          placeholder="email@distribuidora.com"
-                          value={entry.email}
-                          onChange={(e) => setDistribuidoraField(idx, "email", e.target.value)}
-                          data-testid={`input-distribuidora-email-${idx}`}
-                        />
-                      </div>
-                      {idx > 0 && (
+                <div className="flex items-center justify-between">
+                  <Label className="text-sm text-muted-foreground">Equipa / Contactos</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={addContato}
+                    data-testid="button-add-contato"
+                  >
+                    <Plus className="h-3 w-3" />
+                    Adicionar
+                  </Button>
+                </div>
+
+                {contatosEquipe.length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                    Nenhum contacto adicionado. Clique em "Adicionar" para incluir membros da equipa.
+                  </p>
+                )}
+
+                {contatosEquipe.map((contato, idx) => {
+                  const isEditora =
+                    contato.categoria === "editora_musical" ||
+                    contato.categoria === "empresario" ||
+                    contato.categoria === "gestor" ||
+                    tipoPerfil === "com_empresario";
+                  const outrosEntry = contato.distribuidoras.find((d) => d.id === "outros");
+
+                  return (
+                    <div
+                      key={idx}
+                      className="p-3 border rounded-lg space-y-3 bg-muted/20"
+                      data-testid={`card-contato-${idx}`}
+                    >
+                      {/* Header */}
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground font-medium">
+                          Contacto {idx + 1}
+                        </span>
                         <Button
                           type="button"
                           variant="ghost"
-                          size="icon"
-                          onClick={() => removeDistribuidora(idx)}
-                          data-testid={`button-remove-distribuidora-${idx}`}
-                          className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => removeContato(idx)}
+                          data-testid={`button-remove-contato-${idx}`}
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <X className="h-3.5 w-3.5" />
                         </Button>
+                      </div>
+
+                      {/* Nome + Categoria */}
+                      <div className={tipoPerfil === "com_empresario" ? "space-y-1.5" : "grid grid-cols-2 gap-3"}>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Nome</Label>
+                          <Input
+                            value={contato.nome}
+                            onChange={(e) => updateContato(idx, "nome", e.target.value)}
+                            placeholder="Nome completo"
+                            className="h-8 text-sm"
+                            data-testid={`input-contato-nome-${idx}`}
+                          />
+                        </div>
+                        {tipoPerfil !== "com_empresario" && (
+                          <div className="space-y-1.5">
+                            <Label className="text-xs">Categoria</Label>
+                            <Select
+                              value={contato.categoria}
+                              onValueChange={(v) => updateContato(idx, "categoria", v)}
+                            >
+                              <SelectTrigger className="h-8 text-sm" data-testid={`select-contato-categoria-${idx}`}>
+                                <SelectValue placeholder="Selecione…" />
+                              </SelectTrigger>
+                              <SelectContent className="bg-background border border-border z-50">
+                                {CATEGORIAS_EQUIPE.map((c) => (
+                                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                ))}
+                                {tipoPerfil === "gravadora" && CATEGORIAS_GRAVADORA_EXTRA.map((c) => (
+                                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Telefone + Email */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Telefone</Label>
+                          <Input
+                            value={contato.telefone}
+                            onChange={(e) => updateContato(idx, "telefone", e.target.value)}
+                            placeholder="(00) 00000-0000"
+                            className="h-8 text-sm"
+                            data-testid={`input-contato-telefone-${idx}`}
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs">Email</Label>
+                          <Input
+                            value={contato.email}
+                            onChange={(e) => updateContato(idx, "email", e.target.value)}
+                            type="email"
+                            placeholder="email@exemplo.com"
+                            className="h-8 text-sm"
+                            data-testid={`input-contato-email-${idx}`}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Distribuidoras — só quando Editora Musical (mesma lógica do modal) */}
+                      {isEditora && (
+                        <div className="space-y-3 pt-2 border-t border-border/40">
+                          <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
+                          <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                            {DISTRIBUIDORAS_OPTIONS.map((dist) => {
+                              const dEntry = contato.distribuidoras.find((d) => d.id === dist.id);
+                              const dChecked = !!dEntry;
+                              return (
+                                <div key={dist.id} className="space-y-1.5">
+                                  <div className="flex items-center gap-2">
+                                    <Checkbox
+                                      id={`dist-${idx}-${dist.id}`}
+                                      checked={dChecked}
+                                      onCheckedChange={(checked) => toggleDistEquipe(idx, dist.id, !!checked)}
+                                      data-testid={`checkbox-dist-${idx}-${dist.id}`}
+                                    />
+                                    <Label htmlFor={`dist-${idx}-${dist.id}`} className="text-xs cursor-pointer font-medium">
+                                      {dist.label}
+                                    </Label>
+                                  </div>
+
+                                  {dChecked && dist.id === "outros" && (
+                                    <div className="ml-6 space-y-1.5">
+                                      <Input
+                                        value={dEntry?.nomeCustom ?? ""}
+                                        onChange={(e) => updateDistNomeCustomEquipe(idx, e.target.value)}
+                                        placeholder="Nome da distribuidora…"
+                                        className="h-7 text-xs"
+                                        data-testid={`input-dist-nome-custom-${idx}`}
+                                      />
+                                      {(dEntry?.nomeCustom ?? "").trim().length > 0 && (
+                                        <Input
+                                          value={dEntry?.email ?? ""}
+                                          onChange={(e) => updateDistEmailEquipe(idx, dist.id, e.target.value)}
+                                          type="email"
+                                          placeholder="Email de share…"
+                                          className="h-7 text-xs"
+                                          data-testid={`input-dist-email-share-${idx}-${dist.id}`}
+                                        />
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {dChecked && dist.id !== "outros" && (
+                                    <div className="ml-6">
+                                      <Input
+                                        value={dEntry?.email ?? ""}
+                                        onChange={(e) => updateDistEmailEquipe(idx, dist.id, e.target.value)}
+                                        type="email"
+                                        placeholder={`Email de share — ${dist.label}`}
+                                        className="h-7 text-xs"
+                                        data-testid={`input-dist-email-share-${idx}-${dist.id}`}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                          {outrosEntry && !outrosEntry.nomeCustom && (
+                            <p className="text-xs text-muted-foreground ml-6">
+                              Preencha o nome da distribuidora para activar o email de share.
+                            </p>
+                          )}
+                        </div>
                       )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
-
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={addDistribuidora}
-                data-testid="button-add-distribuidora"
-                className="gap-1.5 text-xs"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                Adicionar outra distribuidora
-              </Button>
-            </div>
+            )}
           </div>
         )}
 
-        {/* ── Step 3 — Bio e Contexto ───────────────────────────────────────── */}
-        {step === 3 && (
+        {/* ══════════════════════════════════════════════════════════════════════
+            STEP 7 — Observações
+            Mirrors ArtistaFormModal section 7 + summary
+        ═══════════════════════════════════════════════════════════════════════ */}
+        {step === 7 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">Bio e Contexto</h2>
-              <p className="text-sm text-muted-foreground">Conte um pouco mais sobre você e sua proposta</p>
+              <h2 className="font-semibold text-base">7. Observações</h2>
+              <p className="text-sm text-muted-foreground">Notas para a equipa e revisão final</p>
             </div>
 
-            {/* Resumo do artista */}
+            {/* Resumo do cadastro */}
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
               <p className="text-xs font-semibold uppercase tracking-widest text-primary">Resumo do Cadastro</p>
               <div className="text-sm space-y-1.5">
                 {[
-                  { label: "Nome do Artista", value: form.nome_artistico },
-                  { label: "Tipo de Perfil", value: form.tipo_perfil.length > 0 ? form.tipo_perfil.join(", ") : null },
-                  { label: "Telefone / WhatsApp", value: form.telefone },
-                  { label: "E-mail", value: form.email },
-                  ...(() => {
-                    const filled = distribuidoras.map((d) => d.distribuidora).filter(Boolean);
-                    return filled.length > 0 ? [{ label: "Distribuidoras", value: filled.join(", ") }] : [];
-                  })(),
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex gap-2">
-                    <span className="text-muted-foreground w-36 shrink-0 text-xs">{label}</span>
-                    <span className={cn("font-medium truncate text-xs", value ? "" : "text-muted-foreground italic")}>
-                      {value || "—"}
-                    </span>
-                  </div>
-                ))}
+                  { label: "Nome Artístico",  value: nomeArtistico },
+                  { label: "Nome Completo",   value: nome },
+                  { label: "E-mail",          value: email },
+                  { label: "Telefone",        value: telefone },
+                  { label: "Gênero Musical",  value: generoMusical },
+                  { label: "Tipo de Perfil",  value: TIPO_PERFIL_OPTIONS.find((o) => o.value === tipoPerfil)?.label },
+                  distribuidorasGerais.length > 0
+                    ? {
+                        label: "Distribuidoras",
+                        value: distribuidorasGerais
+                          .map((d) => {
+                            const opt = DISTRIBUIDORAS_OPTIONS.find((o) => o.id === d.id);
+                            return d.id === "outros" ? (d.nomeCustom || "Outros") : (opt?.label ?? d.id);
+                          })
+                          .join(", "),
+                      }
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .map((item) => item && (
+                    <div key={item.label} className="flex gap-2">
+                      <span className="text-muted-foreground w-36 shrink-0 text-xs">{item.label}</span>
+                      <span className={cn("font-medium truncate text-xs", item.value ? "" : "text-muted-foreground italic")}>
+                        {item.value || "—"}
+                      </span>
+                    </div>
+                  ))}
               </div>
             </div>
 
-            {/* Biografia */}
             <div className="space-y-1.5">
-              <Label className="text-sm">Biografia / Proposta Artística</Label>
+              <Label className="text-sm">Notas Internas / Mensagem para a gravadora</Label>
               <Textarea
-                placeholder="Trajetória, estilo, influências e o que te diferencia. Seja direto e autêntico."
-                rows={5} value={form.bio}
-                onChange={(e) => set("bio", e.target.value)} data-testid="textarea-bio"
-                className={errors.bio ? "border-destructive" : ""}
-              />
-              {errors.bio && <p className="text-xs text-destructive">{errors.bio}</p>}
-              <p className="text-xs text-muted-foreground">{form.bio.length} caracteres</p>
-            </div>
-
-            {/* Foto de Perfil */}
-            <div className="space-y-1.5">
-              <Label className="text-sm flex items-center gap-1.5">
-                <Image className="h-3.5 w-3.5 text-primary" /> Foto de Perfil (URL)
-              </Label>
-              <Input
-                placeholder="https://..." value={form.foto_url}
-                onChange={(e) => set("foto_url", e.target.value)}
-                data-testid="input-foto-url"
-                className={errors.foto_url ? "border-destructive" : ""}
-              />
-              {errors.foto_url && <p className="text-xs text-destructive">{errors.foto_url}</p>}
-              {form.foto_url && /^https?:\/\/.+/.test(form.foto_url) && (
-                <div className="mt-2 flex items-center gap-3">
-                  <img src={form.foto_url} alt="Preview"
-                    className="h-16 w-16 rounded-full object-cover border border-border"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                  <p className="text-xs text-muted-foreground">Preview da foto</p>
-                </div>
-              )}
-            </div>
-
-            {/* Mensagem para a gravadora */}
-            <div className="space-y-1.5">
-              <Label className="text-sm">Mensagem para a gravadora</Label>
-              <Textarea
-                placeholder="Disponibilidade, projetos em andamento, metas ou qualquer info extra..."
-                rows={3} value={form.notas_label}
-                onChange={(e) => set("notas_label", e.target.value)} data-testid="textarea-notas"
+                placeholder="Notas internas, rider técnico, preferências, informações adicionais, disponibilidade, projetos em andamento…"
+                className="min-h-[120px]"
+                value={notasInternas}
+                onChange={(e) => setNotasInternas(e.target.value)}
+                data-testid="textarea-observacoes"
               />
             </div>
           </div>
         )}
 
-        {/* Navigation */}
+        {/* ── Navigation ──────────────────────────────────────────────────────── */}
         <div className="flex items-center gap-3 pt-2">
           {step > 1 && (
-            <Button type="button" variant="outline" onClick={goBack}
-              disabled={isSubmitting} data-testid="button-back" className="gap-1.5">
-              <ChevronLeft className="h-4 w-4" /> Voltar
+            <Button
+              type="button"
+              variant="outline"
+              onClick={goBack}
+              disabled={isSubmitting}
+              data-testid="button-back"
+              className="gap-1.5"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Voltar
             </Button>
           )}
           <div className="flex-1" />
-          {step < 3 ? (
-            <Button type="button" onClick={goNext} data-testid="button-next" className="gap-1.5">
-              Próximo <ChevronRight className="h-4 w-4" />
+          {step < 7 ? (
+            <Button
+              type="button"
+              onClick={goNext}
+              data-testid="button-next"
+              className="gap-1.5"
+            >
+              Próximo
+              <ChevronRight className="h-4 w-4" />
             </Button>
           ) : (
-            <Button type="button" onClick={handleSubmit} disabled={isSubmitting}
-              data-testid="button-submit" className="gap-1.5 min-w-36">
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              data-testid="button-submit"
+              className="gap-1.5 min-w-36"
+            >
               {isSubmitting
-                ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                ? <><Loader2 className="h-4 w-4 animate-spin" /> Enviando…</>
                 : <><CheckCircle2 className="h-4 w-4" /> Enviar Cadastro</>}
             </Button>
           )}
