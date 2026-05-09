@@ -13,7 +13,7 @@ import {
 import {
   Loader2, CheckCircle2, ChevronRight, ChevronLeft,
   AlertCircle, Shield, Zap, Star, Plus, X, CheckCircle, XCircle,
-  User, Link2, FileText, CreditCard, Globe, Building, Users,
+  User, Link2, FileText, CreditCard, Globe, Building, Users, Camera, Trash2,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -682,24 +682,71 @@ export default function ArtistaSignupPublic() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">Foto de Perfil (URL)</Label>
-              <Input
-                placeholder="https://…"
-                value={fotoUrl}
-                onChange={(e) => setFotoUrl(e.target.value)}
-                data-testid="input-foto-url"
-              />
-              {fotoUrl && /^https?:\/\/.+/.test(fotoUrl) && (
-                <div className="flex items-center gap-3 mt-2">
-                  <img
-                    src={fotoUrl}
-                    alt="Preview"
-                    className="h-16 w-16 rounded-full object-cover border border-border"
-                    onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
-                  />
-                  <p className="text-xs text-muted-foreground">Preview da foto</p>
+              <Label className="text-sm">Foto de Perfil</Label>
+              <div className="flex items-center gap-4">
+                <div className="relative shrink-0">
+                  {fotoUrl ? (
+                    <img
+                      src={fotoUrl}
+                      alt="Avatar"
+                      className="h-20 w-20 rounded-full object-cover border-2 border-border"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-muted border-2 border-dashed border-border flex items-center justify-center">
+                      <User className="h-8 w-8 text-muted-foreground/40" />
+                    </div>
+                  )}
+                  <label
+                    htmlFor="foto-upload"
+                    className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow"
+                    title="Alterar foto"
+                  >
+                    <Camera className="h-3.5 w-3.5 text-primary-foreground" />
+                  </label>
                 </div>
-              )}
+                <div className="flex flex-col gap-1.5">
+                  <label
+                    htmlFor="foto-upload"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-primary cursor-pointer hover:underline"
+                    data-testid="label-upload-foto"
+                  >
+                    <Camera className="h-4 w-4" />
+                    Selecionar foto
+                  </label>
+                  {fotoUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setFotoUrl("")}
+                      className="inline-flex items-center gap-1.5 text-xs text-destructive hover:underline"
+                      data-testid="button-remove-foto"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                      Remover foto
+                    </button>
+                  )}
+                  <p className="text-xs text-muted-foreground">JPG, PNG ou WEBP — máx. 5 MB</p>
+                </div>
+                <input
+                  id="foto-upload"
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  className="hidden"
+                  data-testid="input-foto-upload"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 5 * 1024 * 1024) {
+                      toast.error("A foto deve ter no máximo 5 MB");
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = (ev) => {
+                      setFotoUrl(ev.target?.result as string ?? "");
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </div>
             </div>
 
             <div className="space-y-1.5">

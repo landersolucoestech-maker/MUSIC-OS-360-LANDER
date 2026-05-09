@@ -60,6 +60,10 @@ export interface Share {
   artista_id?: string | null;
   percentual?: number | null;
   tipo?: string | null;
+  direcao?: "a_receber" | "a_enviar" | null;
+  status?: "pendente" | "parcial" | "recebido" | "enviado" | "cancelado" | null;
+  valor_total?: number | null;
+  valor_liquidado?: number | null;
   detentor?: string | null;
   acordo_notas?: string | null;
   acordo_url?: string | null;

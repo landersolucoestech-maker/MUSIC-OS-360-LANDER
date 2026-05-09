@@ -1,0 +1,111 @@
+Página de Gestão de Shares
+
+Objetivo da página:
+Controlar integralmente os shares a enviar, shares enviados, shares a receber e shares recebidos, permitindo acompanhamento financeiro e operacional completo dos repasses relacionados aos lançamentos.
+
+Ajustes necessários:
+
+1. KPIs / Cards superiores
+   Corrigir os KPI cards da página para refletirem corretamente:
+
+* Total de shares a enviar
+* Total já enviado
+* Total de shares a receber
+* Total já recebido
+* Percentual pendente
+* Percentual liquidado
+* Quantidade de lançamentos com pendências
+
+Os cards devem possuir consistência visual, valores formatados corretamente e atualização dinâmica baseada nos registros reais.
+
+2. Cards da lista de lançamentos e shares
+   Corrigir o layout e estrutura dos cards/listagens de lançamentos e shares.
+   Os dados exibidos atualmente estão inconsistentes visualmente e estruturalmente.
+
+As colunas obrigatórias da listagem devem ser:
+
+* Lançamento
+* Artistas
+* Tipo de lançamento
+* Distribuidora
+* Status
+* Porcentagens
+* Recebido
+* Enviado
+* Ações
+
+O botão de ações deve conter operações como:
+
+* Visualizar
+* Editar
+* Registrar pagamento
+* Registrar recebimento
+* Excluir
+
+3. Modal “Registrar Share Pendente”
+   O modal precisa ser reformulado.
+
+Adicionar obrigatoriamente:
+
+* Campo para definir se o share é:
+
+  * Enviar
+  * Receber
+
+* Campo de status:
+
+  * Pendente
+  * Parcial
+  * Pago
+  * Recebido
+  * Cancelado
+
+* Campo “Função” deve aceitar apenas os seguintes valores:
+
+  * Compositor/Autor
+  * Intérprete
+  * Produtor (Músico/Arranjador)
+  * Editora
+  * Gravadora
+  * Empresário
+
+Padronizar os selects, validações e persistência dos dados.
+
+4. Página /cadastro/demo
+   Modificar o campo:
+   “Foto de Perfil (URL)”
+
+Alterações:
+
+* Não deve mais utilizar input de link/URL
+* Deve ser substituído por upload de avatar/imagem
+* O avatar upload deve ficar no topo da seção “Informações Básicas”
+* Implementar preview da imagem enviada
+* Permitir atualização e remoção do avatar
+
+5. Módulo de Contabilidade
+   O módulo de contabilidade NÃO deveria ter sido removido.
+
+Ele é essencial para:
+
+* Controle de gastos de projetos
+* Controle de gastos por artista
+* Gestão de recoupment
+* Controle financeiro operacional
+* Acompanhamento de investimentos e retorno
+
+Restaurar completamente o módulo de contabilidade preservando:
+
+* Estrutura financeira
+* Relacionamentos
+* Histórico
+* Integrações existentes
+* Dados vinculados a projetos e artistas
+
+6. Sidebar
+   Remover completamente da sidebar:
+
+* “SISTEMA MULTI-TENANT”
+* “Tenant Atual”
+
+Essas informações não devem mais aparecer visualmente no menu lateral.

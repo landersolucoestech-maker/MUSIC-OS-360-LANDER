@@ -6,51 +6,95 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Download, Plus, Search, Image, Loader2, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import {
+  Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Send, Download,
+  Plus, Search, Loader2, MoreHorizontal, Eye, Pencil, Trash2,
+} from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { toast } from "sonner";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { ShareViewModal } from "@/modules/releases/components/ShareViewModal";
 import { SharePendenteFormModal } from "@/modules/releases/components/SharePendenteFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useShares } from "@/modules/releases/hooks/useShares";
-import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+
+const TIPO_LABELS: Record<string, string> = {
+  interprete: "Intérprete",
+  compositor: "Compositor",
+  produtor: "Produtor",
+  editora: "Editora",
+  gravadora: "Gravadora",
+  empresario: "Empresário",
+  autor: "Autor",
+  outro: "Outro",
+};
+
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
+  pendente: { label: "Pendente", variant: "outline" },
+  parcial: { label: "Parcial", variant: "secondary" },
+  recebido: { label: "Recebido", variant: "default" },
+  enviado: { label: "Enviado", variant: "default" },
+  cancelado: { label: "Cancelado", variant: "destructive" },
+};
+
+const fmt = (v: number) =>
+  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function GestaoShares() {
-  const { shares, isLoading: loadingShares, deleteShare } = useShares();
-  const { lancamentos, isLoading: loadingLancamentos } = useLancamentos();
+  const { shares, isLoading: loadingShares, deleteShare, updateShare } = useShares();
   const { artistas } = useArtistas();
-  
+  const { obras, isLoading: loadingObras } = useObras();
+
   const [searchTerm, setSearchTerm] = useState("");
-  const [artistFilter, setArtistFilter] = useState("todos");
+  const [direcaoFilter, setDirecaoFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState("todos");
-  const [shareFilter, setShareFilter] = useState("todos");
+  const [tipoFilter, setTipoFilter] = useState("todos");
   const [viewModal, setViewModal] = useState<{ open: boolean; share?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; share?: any }>({ open: false });
-  const [sharePendenteModal, setSharePendenteModal] = useState<{ open: boolean; share?: any }>({ open: false });
+  const [formModal, setFormModal] = useState<{ open: boolean; share?: any }>({ open: false });
 
-  const isLoading = loadingShares || loadingLancamentos;
+  const isLoading = loadingShares || loadingObras;
 
-  const shareReceber = shares.filter((s: any) => s.status === "a_receber").length;
-  const shareRecebido = shares.filter((s: any) => s.status === "recebido").length;
-  const shareEnviar = shares.filter((s: any) => s.status === "a_enviar").length;
-  const shareAplicado = shares.filter((s: any) => s.status === "aplicado").length;
+  // ── KPI counts ──────────────────────────────────────────────────────────────
+  const aReceber = shares.filter(
+    (s: any) => s.direcao === "a_receber" && (s.status === "pendente" || s.status === "parcial"),
+  ).length;
+  const recebidos = shares.filter(
+    (s: any) => s.direcao === "a_receber" && s.status === "recebido",
+  ).length;
+  const aEnviar = shares.filter(
+    (s: any) => s.direcao === "a_enviar" && (s.status === "pendente" || s.status === "parcial"),
+  ).length;
+  const enviados = shares.filter(
+    (s: any) => s.direcao === "a_enviar" && s.status === "enviado",
+  ).length;
 
-  const filteredLancamentos = lancamentos.filter((item: any) => {
-    const artistaNome = artistas.find((a: any) => a.id === item.artista_id)?.nome_artistico || "";
-    const matchesSearch = searchTerm === "" ||
-      item.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      artistaNome.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesArtist = artistFilter === "todos" || item.artista_id === artistFilter;
-    return matchesSearch && matchesArtist;
+  // ── Filter ──────────────────────────────────────────────────────────────────
+  const filteredShares = shares.filter((s: any) => {
+    const obra = obras.find((o: any) => o.id === s.obra_id);
+    const artista = artistas.find((a: any) => a.id === s.artista_id);
+    const nomeDetentor = artista?.nome_artistico || s.detentor || "";
+    const tituloObra = obra?.titulo || "";
+
+    const matchesSearch =
+      searchTerm === "" ||
+      tituloObra.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      nomeDetentor.toLowerCase().includes(searchTerm.toLowerCase());
+
+    const matchesDirecao = direcaoFilter === "todos" || s.direcao === direcaoFilter;
+    const matchesStatus = statusFilter === "todos" || s.status === statusFilter;
+    const matchesTipo = tipoFilter === "todos" || s.tipo === tipoFilter;
+
+    return matchesSearch && matchesDirecao && matchesStatus && matchesTipo;
   });
 
   const handleClearFilters = () => {
     setSearchTerm("");
-    setArtistFilter("todos");
+    setDirecaoFilter("todos");
     setStatusFilter("todos");
-    setShareFilter("todos");
+    setTipoFilter("todos");
   };
 
   const handleDelete = () => {
@@ -58,6 +102,11 @@ export default function GestaoShares() {
       deleteShare.mutate(deleteModal.share.id);
       setDeleteModal({ open: false });
     }
+  };
+
+  const handleRegistrarLiquidacao = (share: any, novoStatus: "recebido" | "enviado") => {
+    updateShare.mutate({ id: share.id, status: novoStatus, valor_liquidado: share.valor_total });
+    toast.success(novoStatus === "recebido" ? "Recebimento registrado!" : "Envio registrado!");
   };
 
   if (isLoading) {
@@ -79,19 +128,26 @@ export default function GestaoShares() {
       <Button
         size="sm"
         className="gap-2 bg-primary hover:bg-primary/90"
-        onClick={() => setSharePendenteModal({ open: true })}
+        onClick={() => setFormModal({ open: true })}
         data-testid="button-register-pending-share"
       >
         <Plus className="h-4 w-4" />
-        Registrar Share Pendente
+        Registrar Share
       </Button>
     </>
   );
 
+  const hasActiveFilters =
+    searchTerm !== "" ||
+    direcaoFilter !== "todos" ||
+    statusFilter !== "todos" ||
+    tipoFilter !== "todos";
+
   return (
     <MainLayout title="Gestão de Shares" actions={headerActions}>
       <div className="space-y-6">
-        {/* Metrics */}
+
+        {/* ── KPIs ──────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Card>
             <CardContent className="pt-6">
@@ -101,7 +157,7 @@ export default function GestaoShares() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">A Receber</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid="metric-a-receber">{shareReceber}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="metric-a-receber">{aReceber}</p>
                 </div>
               </div>
             </CardContent>
@@ -114,7 +170,7 @@ export default function GestaoShares() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Recebidos</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid="metric-recebidos">{shareRecebido}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="metric-recebidos">{recebidos}</p>
                 </div>
               </div>
             </CardContent>
@@ -127,7 +183,7 @@ export default function GestaoShares() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">A Enviar</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid="metric-a-enviar">{shareEnviar}</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="metric-a-enviar">{aEnviar}</p>
                 </div>
               </div>
             </CardContent>
@@ -136,40 +192,39 @@ export default function GestaoShares() {
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-primary/10 rounded-lg">
-                  <Share2 className="h-5 w-5 text-primary" />
+                  <Send className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Aplicados</p>
-                  <p className="text-2xl font-bold text-foreground" data-testid="metric-aplicados">{shareAplicado}</p>
+                  <p className="text-sm text-muted-foreground">Enviados</p>
+                  <p className="text-2xl font-bold text-foreground" data-testid="metric-enviados">{enviados}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
         </div>
 
-        {/* Filters */}
+        {/* ── Filters ───────────────────────────────────────────────────────── */}
         <Card>
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-3">
               <div className="relative flex-1 min-w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar lançamento ou artista..."
+                  placeholder="Buscar obra ou detentor..."
                   className="pl-9"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   data-testid="input-search"
                 />
               </div>
-              <Select value={artistFilter} onValueChange={setArtistFilter}>
-                <SelectTrigger className="w-48" data-testid="select-artist">
-                  <SelectValue placeholder="Artista" />
+              <Select value={direcaoFilter} onValueChange={setDirecaoFilter}>
+                <SelectTrigger className="w-44" data-testid="select-direcao">
+                  <SelectValue placeholder="Direção" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="todos">Todos os artistas</SelectItem>
-                  {artistas.map((a: any) => (
-                    <SelectItem key={a.id} value={a.id}>{a.nome_artistico}</SelectItem>
-                  ))}
+                  <SelectItem value="todos">Todas as direções</SelectItem>
+                  <SelectItem value="a_receber">A Receber</SelectItem>
+                  <SelectItem value="a_enviar">A Enviar</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -178,13 +233,28 @@ export default function GestaoShares() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os status</SelectItem>
-                  <SelectItem value="a_receber">A Receber</SelectItem>
+                  <SelectItem value="pendente">Pendente</SelectItem>
+                  <SelectItem value="parcial">Parcial</SelectItem>
                   <SelectItem value="recebido">Recebido</SelectItem>
-                  <SelectItem value="a_enviar">A Enviar</SelectItem>
-                  <SelectItem value="aplicado">Aplicado</SelectItem>
+                  <SelectItem value="enviado">Enviado</SelectItem>
+                  <SelectItem value="cancelado">Cancelado</SelectItem>
                 </SelectContent>
               </Select>
-              {(searchTerm || artistFilter !== "todos" || statusFilter !== "todos") && (
+              <Select value={tipoFilter} onValueChange={setTipoFilter}>
+                <SelectTrigger className="w-44" data-testid="select-tipo">
+                  <SelectValue placeholder="Função" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todas as funções</SelectItem>
+                  <SelectItem value="interprete">Intérprete</SelectItem>
+                  <SelectItem value="compositor">Compositor</SelectItem>
+                  <SelectItem value="produtor">Produtor</SelectItem>
+                  <SelectItem value="editora">Editora</SelectItem>
+                  <SelectItem value="gravadora">Gravadora</SelectItem>
+                  <SelectItem value="empresario">Empresário</SelectItem>
+                </SelectContent>
+              </Select>
+              {hasActiveFilters && (
                 <Button variant="ghost" size="sm" onClick={handleClearFilters} data-testid="button-clear-filters">
                   Limpar filtros
                 </Button>
@@ -193,66 +263,128 @@ export default function GestaoShares() {
           </CardContent>
         </Card>
 
-        {/* Table */}
+        {/* ── Table ─────────────────────────────────────────────────────────── */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Lançamentos e Shares</CardTitle>
-            <CardDescription>{filteredLancamentos.length} lançamentos encontrados</CardDescription>
+            <CardTitle className="text-lg">Shares Cadastrados</CardTitle>
+            <CardDescription>{filteredShares.length} share{filteredShares.length !== 1 ? "s" : ""} encontrado{filteredShares.length !== 1 ? "s" : ""}</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
-            {filteredLancamentos.length > 0 ? (
+            {filteredShares.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Lançamento</TableHead>
-                    <TableHead>Artista</TableHead>
-                    <TableHead>Tipo</TableHead>
-                    <TableHead>Distribuidora</TableHead>
+                    <TableHead>Obra</TableHead>
+                    <TableHead>Detentor</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead className="text-center">%</TableHead>
+                    <TableHead>Direção</TableHead>
+                    <TableHead className="text-right">Valor Total</TableHead>
+                    <TableHead className="text-right">Liquidado</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLancamentos.map((item: any) => {
-                    const artista = artistas.find((a: any) => a.id === item.artista_id);
+                  {filteredShares.map((share: any) => {
+                    const obra = obras.find((o: any) => o.id === share.obra_id);
+                    const artista = artistas.find((a: any) => a.id === share.artista_id);
+                    const nomeDetentor = artista?.nome_artistico || share.detentor || "—";
+                    const statusConf = STATUS_CONFIG[share.status] ?? { label: share.status ?? "—", variant: "outline" as const };
+                    const isPendente = share.status === "pendente" || share.status === "parcial";
+
                     return (
-                      <TableRow key={item.id} data-testid={`row-lancamento-${item.id}`}>
+                      <TableRow key={share.id} data-testid={`row-share-${share.id}`}>
                         <TableCell>
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-muted rounded-md flex items-center justify-center shrink-0">
-                              <Image className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
+                              <Share2 className="h-3.5 w-3.5 text-primary" />
                             </div>
                             <div>
-                              <p className="font-medium text-foreground">{item.titulo}</p>
-                              <p className="text-sm text-muted-foreground">{item.data_lancamento}</p>
+                              <p className="font-medium text-foreground text-sm">{obra?.titulo ?? share.obra_id ?? "—"}</p>
+                              <p className="text-xs text-muted-foreground">{obra?.compositor ?? ""}</p>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-foreground">{artista?.nome_artistico || "-"}</TableCell>
+                        <TableCell className="text-foreground text-sm">{nomeDetentor}</TableCell>
                         <TableCell>
-                          <Badge variant="outline">{item.tipo || "-"}</Badge>
+                          <Badge variant="outline" className="text-xs">
+                            {TIPO_LABELS[share.tipo] ?? share.tipo ?? "—"}
+                          </Badge>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">{item.distribuidora || "-"}</TableCell>
+                        <TableCell className="text-center font-mono text-sm">
+                          {share.percentual != null ? `${share.percentual}%` : "—"}
+                        </TableCell>
                         <TableCell>
-                          <Badge variant="secondary">{item.status || "Ativo"}</Badge>
+                          {share.direcao === "a_receber" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
+                              <ArrowDownLeft className="h-3.5 w-3.5" /> A Receber
+                            </span>
+                          ) : share.direcao === "a_enviar" ? (
+                            <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 font-medium">
+                              <ArrowUpRight className="h-3.5 w-3.5" /> A Enviar
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {share.valor_total != null ? fmt(share.valor_total) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right font-mono text-sm">
+                          {share.valor_liquidado != null ? fmt(share.valor_liquidado) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={statusConf.variant} className="text-xs">
+                            {statusConf.label}
+                          </Badge>
                         </TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-actions-${item.id}`}>
+                              <Button variant="ghost" size="icon" data-testid={`button-actions-${share.id}`}>
                                 <MoreHorizontal className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem data-testid={`button-ver-share-${item.id}`} onClick={() => setViewModal({ open: true, share: item })}>
+                              <DropdownMenuItem
+                                data-testid={`button-ver-${share.id}`}
+                                onClick={() => setViewModal({ open: true, share })}
+                              >
                                 <Eye className="h-4 w-4 mr-2" />
-                                Ver
+                                Visualizar
                               </DropdownMenuItem>
-                              <DropdownMenuItem data-testid={`button-editar-share-${item.id}`} onClick={() => setSharePendenteModal({ open: true, share: item })}>
+                              <DropdownMenuItem
+                                data-testid={`button-editar-${share.id}`}
+                                onClick={() => setFormModal({ open: true, share })}
+                              >
                                 <Pencil className="h-4 w-4 mr-2" />
                                 Editar
                               </DropdownMenuItem>
-                              <DropdownMenuItem data-testid={`button-excluir-share-${item.id}`} className="text-destructive" onClick={() => setDeleteModal({ open: true, share: item })}>
+                              {isPendente && share.direcao === "a_receber" && (
+                                <DropdownMenuItem
+                                  data-testid={`button-receber-${share.id}`}
+                                  onClick={() => handleRegistrarLiquidacao(share, "recebido")}
+                                >
+                                  <CheckCircle className="h-4 w-4 mr-2 text-green-600" />
+                                  Registrar Recebimento
+                                </DropdownMenuItem>
+                              )}
+                              {isPendente && share.direcao === "a_enviar" && (
+                                <DropdownMenuItem
+                                  data-testid={`button-enviar-${share.id}`}
+                                  onClick={() => handleRegistrarLiquidacao(share, "enviado")}
+                                >
+                                  <Send className="h-4 w-4 mr-2 text-orange-600" />
+                                  Registrar Envio
+                                </DropdownMenuItem>
+                              )}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                data-testid={`button-excluir-${share.id}`}
+                                className="text-destructive"
+                                onClick={() => setDeleteModal({ open: true, share })}
+                              >
                                 <Trash2 className="h-4 w-4 mr-2" />
                                 Excluir
                               </DropdownMenuItem>
@@ -267,8 +399,9 @@ export default function GestaoShares() {
             ) : (
               <EmptyState
                 icon={Share2}
-                title="Nenhum lançamento cadastrado"
-                description="Os lançamentos aparecerão aqui para gestão de shares"
+                title="Nenhum share encontrado"
+                description={hasActiveFilters ? "Tente ajustar os filtros de busca" : "Registre o primeiro share para começar"}
+                action={!hasActiveFilters ? { label: "Registrar Share", onClick: () => setFormModal({ open: true }) } : undefined}
               />
             )}
           </CardContent>
@@ -290,8 +423,9 @@ export default function GestaoShares() {
       />
 
       <SharePendenteFormModal
-        open={sharePendenteModal.open}
-        onOpenChange={(open) => setSharePendenteModal({ ...sharePendenteModal, open })}
+        open={formModal.open}
+        onOpenChange={(open) => setFormModal({ ...formModal, open })}
+        share={formModal.share}
       />
     </MainLayout>
   );
