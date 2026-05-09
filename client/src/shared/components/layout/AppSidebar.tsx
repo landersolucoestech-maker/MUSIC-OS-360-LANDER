@@ -107,9 +107,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     children: [
       { title: "Transações", href: "/accounting", icon: DollarSign },
-      { title: "Fluxo de Caixa", href: "/accounting/fluxo-caixa", icon: TrendingUp },
-      { title: "Conciliação", href: "/accounting/conciliacao", icon: ClipboardCheck },
-      { title: "Relatórios", href: "/accounting/relatorios", icon: BarChart },
       { title: "Contabilidade", href: "/accounting/contabilidade", icon: BookOpen },
       { title: "Nota Fiscal", href: "/accounting/nota-fiscal", icon: Receipt },
     ],
