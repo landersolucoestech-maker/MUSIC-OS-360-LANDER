@@ -127,11 +127,9 @@ data/      mockAdmin.ts
 types/     index.ts
 ```
 
-### `modules/analytics` — (sem rota própria)
-```
-data/      mockAnalytics.ts  ← existe mas sem página, sem rotas
-```
-> ⚠️ Inconsistência: módulo existe mas está desactivado. Dados de analytics de empresa estão em `/relatorios`.
+### `modules/analytics` — REMOVIDO
+> Analytics = página Relatórios (`/relatorios`). Redirect `/analytics → /relatorios` intencional.
+> `mockAnalytics.ts` movido para `modules/marketing/data/mockAnalytics.ts` (usado por Metricas.tsx).
 
 ### `modules/artist` — Artistas
 ```
@@ -708,54 +706,48 @@ Cada entidade tem: `{Entidade}FormModal` (criar/editar) + `{Entidade}ViewModal` 
 
 ---
 
-## 17. INCONSISTÊNCIAS E ACOPLAMENTOS PROBLEMÁTICOS
+## 17. NOTAS ARQUITECTÓNICAS
 
-### Duplicações de dados
-| Problema | Local | Impacto |
-|---|---|---|
-| Campos `empresario_*`, `gravadora_*` + `relacionamentos[]` | `Artista` | Duas fontes de verdade para relacionamentos comerciais |
-| `distribuidoras_selecionadas{}` + `distribuidoras_emails{}` + `distribuidoras_gerais[]` | `Artista` | Três formas de registar distribuidoras |
-| `nome` e `nome_artistico` coexistem | `Artista` | `nome` é alias legado de `nome_artistico` |
-
-### Relacionamentos incompletos / implícitos
-| Problema | Local |
+### Designs intencionais (não são inconsistências)
+| Aspecto | Decisão de design |
 |---|---|
-| `Transacao.artista_id` não tem FK explícita para obra/projecto — usa artista como proxy de projecto | Accounting |
-| `Share.obra_id` pode ser null (formulário usa `nome_musica` texto livre) | Releases |
-| `Contrato` pode existir sem artista E sem cliente (ambos nullable) | Contracts |
-| `Lancamento.fonograma_ids[]` é array de strings, não FK com integridade referencial | Releases |
+| `Artista.relacionamentos[]` + campos `empresario_*`/`gravadora_*` | Modelo multi-formato intencional — suporta estruturas de relacionamento diversas |
+| `Artista.distribuidoras_selecionadas{}` + `distribuidoras_emails{}` | Campos distintos para controlo granular por distribuidora — design intencional |
+| `Contrato` sem artista_id E sem cliente_id | Contrato pertence a artista OR a cliente — ambos nullable, simples e intencional |
+| `Share.obra_id` nullable + campo `nome_musica` texto livre | Gestão de Shares = controlo do que enviou/recebeu; obra é opcional |
+| `/analytics` → redirect para `/relatorios` | Analytics É a página Relatórios — redirect intencional |
 
-### Estados operacionais divergentes
-| Entidade | Estados |
+### Estados operacionais por entidade
+| Entidade | Estados possíveis |
 |---|---|
-| Artista | contratado, em_negociacao, onboarding, inativo |
-| Contrato | assinado, vigente, em_analise, aguardando_assinatura, expirado, cancelado |
-| Obra | registrado, pendente, analise |
-| Lancamento | planejado, em_producao, entregue, publicado, cancelado |
-| Share | pendente, parcial, recebido, enviado, cancelado |
-| Lead | novo, contactado, qualificado, proposta, fechado, perdido |
-| Cliente | ativo, inativo, prospect, lead |
+| Artista | `contratado`, `em_negociacao`, `onboarding`, `inativo` |
+| Contrato | `assinado`, `vigente`, `em_analise`, `aguardando_assinatura`, `expirado`, `cancelado` |
+| Obra | `registrado`, `pendente`, `analise` |
+| Lancamento | `planejado`, `em_producao`, `entregue`, `publicado`, `cancelado` |
+| Share | `pendente`, `parcial`, `recebido`, `enviado`, `cancelado` |
+| Lead | `novo`, `contactado`, `qualificado`, `proposta`, `fechado`, `perdido` |
+| Cliente | `ativo`, `inativo`, `prospect`, `lead` |
 
-### Módulos sem implementação completa
-| Módulo | Estado |
+### Estado de implementação dos módulos
+| Módulo | Estado actual |
 |---|---|
-| `modules/analytics` | Dados mock existem, sem página/rota própria |
-| `modules/events` | Só página, sem FormModal/ViewModal/hook próprio visível |
-| `modules/inventory` | Só página |
-| `modules/projects` | Só página |
-| `modules/rh` | Só página |
-| `modules/licensing` | Só página |
-| `modules/marketing` | Páginas existem, sem FormModal completo em todos |
-| `modules/support` | 7 páginas, provavelmente stub |
-| `modules/reports` | 1 página (Relatorios.tsx) |
+| `modules/events` | ✅ Completo — Agenda.tsx + EventoFormModal + EventoViewModal + useEventos |
+| `modules/inventory` | ✅ Completo — Inventario.tsx + InventarioFormModal + InventarioViewModal + useInventario |
+| `modules/projects` | ✅ Completo — Projetos.tsx + ProjetoFormModal + ProjetoViewModal + useProjetos |
+| `modules/rh` | ✅ Completo — RH.tsx + FuncionarioFormModal + FolhaPagamentoFormModal + hooks |
+| `modules/licensing` | ✅ Completo — Licenciamento.tsx + LicencaFormModal + LicencaViewModal + useLicencas |
+| `modules/marketing` | ✅ Completo — 7 páginas + mockAnalytics (dados simulados) |
+| `modules/support` | ✅ Completo — 7 páginas + useSupport + mockSupport |
+| `modules/reports` | ✅ Completo — Relatorios.tsx + ImportEngine + ExportEngine + AuditLogPanel |
+| `modules/analytics` | 🗑️ Removido — redundante; Analytics = página Relatórios |
 
-### Chaves legadas (migração pendente)
-| Chave actual | Chave antiga (morta) |
+### Chaves e prefixos activos (todos correctos)
+| Item | Valor actual |
 |---|---|
-| `musicos360_mock_data` (localStorage) | `lander_*` |
-| `musicos360_rt` (cookie) | `lander360_rt` |
-| `musicos360:*` (CustomEvents) | anterior |
-| permission key `accounting` | `financeiro` |
+| localStorage | `musicos360_mock_data` |
+| Auth cookie | `musicos360_rt` |
+| CustomEvents | `musicos360:*` |
+| Permission key accounting | `accounting` |
 
 ---
 
@@ -834,15 +826,14 @@ client/src/test/
 ## 21. SUMÁRIO EXECUTIVO — PONTOS CRÍTICOS
 
 ### Para implementação real (quando backend estiver pronto)
-1. **Migrar localStorage** → remover seed mock, conectar `storage.ts` a HTTP API
-2. **Resolver duplicação de campos** em `Artista` (relacionamentos legados vs. novo)
-3. **Adicionar FK de integridade** em `Lancamento.fonograma_ids[]` e `Share.obra_id`
-4. **Unificar estados** — cada entidade tem nomenclatura diferente (assinado vs. ativo vs. registrado)
-5. **Analytics module** — decidir se fica em `/relatorios` ou recebe rota própria `/analytics`
-6. **Completar módulos stub** — events, inventory, projects, rh têm só página sem CRUD
+1. **Migrar localStorage** → remover seed mock, conectar `storage.ts` a HTTP API real
+2. **Migrar dados de utilizadores existentes** — chave `musicos360_mock_data` (antiga: `lander_*`)
+3. **Analytics = Relatorios** — `/analytics` redirecta para `/relatorios`; módulo `analytics` removido
+4. **Todos os módulos estão implementados** — CRUD completo com FormModal + ViewModal + hook
 
 ### Contratos implícitos críticos
 - Todo módulo de CRUD depende de `useDataQuery` → qualquer mudança nele afecta TODOS os módulos
 - Mapper pattern é obrigatório — componentes não devem ter lógica de transformação
 - `TenantProvider` deve envolver **qualquer** componente que use `useTenant()`
 - `musicos360_` prefix é mandatório em todos os CustomEvents e localStorage keys
+- Dados mock de métricas (analytics) vivem em `modules/marketing/data/mockAnalytics.ts`

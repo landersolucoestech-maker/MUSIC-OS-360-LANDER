@@ -24,7 +24,7 @@ import {
   TIKTOK_MOCK, TIKTOK_TOTALS,
   SPOTIFY_ADS_MOCK,
   fmtNum, type MonthlyPoint,
-} from "@/modules/analytics/data/mockAnalytics";
+} from "@/modules/marketing/data/mockAnalytics";
 import { formatCurrency } from "@/shared/lib/format-utils";
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
