@@ -39,8 +39,6 @@ const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secon
   cancelado: { label: "Cancelado", variant: "destructive" },
 };
 
-const fmt = (v: number) =>
-  v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
 export default function GestaoShares() {
   const { shares, isLoading: loadingShares, deleteShare, updateShare } = useShares();
@@ -274,13 +272,10 @@ export default function GestaoShares() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Obra</TableHead>
+                    <TableHead>Lançamento</TableHead>
                     <TableHead>Detentor</TableHead>
                     <TableHead>Função</TableHead>
                     <TableHead className="text-center">%</TableHead>
-                    <TableHead>Direção</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead className="text-right">Liquidado</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -314,25 +309,6 @@ export default function GestaoShares() {
                         </TableCell>
                         <TableCell className="text-center font-mono text-sm">
                           {share.percentual != null ? `${share.percentual}%` : "—"}
-                        </TableCell>
-                        <TableCell>
-                          {share.direcao === "a_receber" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-blue-600 dark:text-blue-400 font-medium">
-                              <ArrowDownLeft className="h-3.5 w-3.5" /> A Receber
-                            </span>
-                          ) : share.direcao === "a_enviar" ? (
-                            <span className="inline-flex items-center gap-1 text-xs text-orange-600 dark:text-orange-400 font-medium">
-                              <ArrowUpRight className="h-3.5 w-3.5" /> A Enviar
-                            </span>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {share.valor_total != null ? fmt(share.valor_total) : "—"}
-                        </TableCell>
-                        <TableCell className="text-right font-mono text-sm">
-                          {share.valor_liquidado != null ? fmt(share.valor_liquidado) : "—"}
                         </TableCell>
                         <TableCell>
                           <Badge variant={statusConf.variant} className="text-xs">
