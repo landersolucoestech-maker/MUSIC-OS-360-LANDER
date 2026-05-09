@@ -291,6 +291,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       ? (rawContatos as ContatoEquipe[])
       : [];
 
+    // Se não houver contactos, iniciar já com um card vazio (dentro do reset para evitar scroll automático)
+    const initialContatos = contatosEquipe.length > 0 ? contatosEquipe : [{ ...EMPTY_CONTATO }];
+
     reset({
       nomeArtistico: f.nomeArtistico,
       generoMusical: f.generoMusical,
@@ -318,7 +321,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       deezer:        f.deezer,
       appleMusic:    f.appleMusic,
       tipoPerfil:    f.tipoPerfil || "independente",
-      contatosEquipe,
+      contatosEquipe: initialContatos,
     });
 
     setPreservedData({
@@ -378,17 +381,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setLabelParceira(typeof artista?.label_parceira === "string" ? artista.label_parceira : "");
     setDocumentosList(Array.isArray(artista?.documentos) ? (artista.documentos as { nome: string; url: string }[]) : []);
 
-    // Garantir que o card inicial já está visível após o reset, e repor scroll ao topo
-    if (contatosEquipe.length === 0) {
-      setTimeout(() => {
-        appendContato({ ...EMPTY_CONTATO });
-        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-      }, 0);
-    } else {
-      setTimeout(() => {
-        scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
-      }, 0);
-    }
+    // Repor scroll ao topo — o card já está incluído no reset() acima
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ top: 0, behavior: "instant" });
+    }, 50);
   }, [open, artista]);
 
   // ── Handlers ────────────────────────────────────────────────────
