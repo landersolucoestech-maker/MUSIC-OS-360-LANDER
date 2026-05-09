@@ -33,7 +33,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
-import { MetaAdsConfigDialog } from "@/modules/integrations/components/MetaAdsConfigDialog";
+import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
 import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
 import { ResendConfigDialog } from "@/modules/integrations/components/ResendConfigDialog";
 import { useResendStatus } from "@/modules/integrations/hooks/useResend";

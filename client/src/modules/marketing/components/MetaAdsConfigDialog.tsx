@@ -44,9 +44,6 @@ export function MetaAdsConfigDialog({
   const handleSave = async () => {
     const trimmedToken = accessToken.trim();
     const trimmedAccount = adAccountId.trim();
-    // Permite atualizar só o ad_account_id quando já existe um token salvo —
-    // assim o admin não precisa colar o access_token de novo só para trocar
-    // a conta de anúncios. Se não tem token salvo, exige um novo.
     if (!trimmedToken && !status?.has_token) return;
     await saveMutation.mutateAsync({
       access_token: trimmedToken,
