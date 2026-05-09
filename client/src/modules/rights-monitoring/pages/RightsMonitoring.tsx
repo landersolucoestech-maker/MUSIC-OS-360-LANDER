@@ -7,7 +7,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   Shield, Radio, Search, RefreshCw, Upload, FileText,
-  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock, Download, X
+  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock, X
 } from "lucide-react";
 import { RightsKPICards } from "../components/RightsKPICards";
 import { ExecucoesTable } from "../components/ExecucoesTable";
@@ -20,13 +20,12 @@ import {
   MOCK_BROADCAST_DETECTIONS,
   MOCK_CUE_SHEETS,
   MOCK_SETLISTS,
-  MOCK_ECAD_IMPORTS,
   MOCK_ECAD_PERIODOS,
 } from "../services/mock-data";
 import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs, getCatalogArtistas } from "../services/catalog-lookup";
 import type { RightsExecution } from "../types";
 
-type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria" | "importacoes";
+type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria";
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -40,30 +39,6 @@ const STATUS_ECAD: Record<string, { label: string; className: string }> = {
   erro:       { label: "Erro",       className: "bg-destructive/15 text-destructive border-destructive/30" },
 };
 
-function exportToCsv(rows: RightsExecution[], filename = "execucoes.csv") {
-  const headers = ["ID", "Obra", "Artista", "ISRC", "Origem", "Tipo", "Data/Hora", "Match ECAD", "Valor Estimado (BRL)", "Status"];
-  const fmtBRLPlain = (n: number) => n.toFixed(2).replace(".", ",");
-  const lines = rows.map(e => [
-    e.id,
-    `"${e.obra_titulo.replace(/"/g, '""')}"`,
-    `"${e.artista.replace(/"/g, '""')}"`,
-    e.isrc,
-    `"${e.origem.replace(/"/g, '""')}"`,
-    e.tipo_execucao,
-    e.data_hora,
-    e.match_ecad ? "Sim" : "Não",
-    fmtBRLPlain(e.valor_estimado),
-    e.status,
-  ].join(";"));
-  const csv = [headers.join(";"), ...lines].join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = filename;
-  a.click();
-  URL.revokeObjectURL(url);
-}
 
 export default function RightsMonitoring() {
   const navigate = useNavigate();
@@ -202,7 +177,6 @@ export default function RightsMonitoring() {
     { key: "cue_sheets",      label: "Cue Sheets",      icon: <FileText className="h-4 w-4" />, badge: MOCK_CUE_SHEETS.length },
     { key: "divergencias",    label: "Divergências",    icon: <AlertTriangle className="h-4 w-4" />, badge: openDivergencias.length },
     { key: "auditoria",       label: "Auditoria",       icon: <FileSearch className="h-4 w-4" /> },
-    { key: "importacoes",     label: "Importações ECAD",icon: <Upload className="h-4 w-4" />, badge: MOCK_ECAD_IMPORTS.length },
   ];
 
   function handleViewDetail(exec: RightsExecution) {
@@ -284,20 +258,6 @@ export default function RightsMonitoring() {
                       </span>
                     )}
                   </CardDescription>
-                </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 h-8 text-xs"
-                    data-testid="button-exportar-csv"
-                    onClick={() => exportToCsv(filtered, `execucoes_${new Date().toISOString().split("T")[0]}.csv`)}
-                    disabled={filtered.length === 0}
-                  >
-                    <Download className="h-3.5 w-3.5" />
-                    Exportar CSV
-                    {filtered.length > 0 && <span className="text-muted-foreground">({filtered.length})</span>}
-                  </Button>
                 </div>
               </div>
 
@@ -640,70 +600,6 @@ export default function RightsMonitoring() {
           </Card>
         )}
 
-        {/* ── Importações ECAD ── */}
-        {activeTab === "importacoes" && (
-          <Card className="border-border/60">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <div>
-                <CardTitle className="text-sm font-semibold">Histórico de Importações ECAD</CardTitle>
-                <CardDescription className="text-xs">Pipeline: Upload → Parser → Normalização → Match → Conciliação</CardDescription>
-              </div>
-              <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
-                <Upload className="h-3.5 w-3.5" />Nova Importação
-              </Button>
-            </CardHeader>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Arquivo</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Período</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Data Importação</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Execuções</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Valor Total</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Linhas</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {MOCK_ECAD_IMPORTS.map(imp => {
-                      const cfg = STATUS_ECAD[imp.status] ?? { label: imp.status, className: "bg-muted text-muted-foreground border-border" };
-                      return (
-                        <tr key={imp.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <p className="font-medium text-sm">{imp.arquivo}</p>
-                          </td>
-                          <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">{imp.periodo}</td>
-                          <td className="py-3 px-4 text-sm text-muted-foreground hidden lg:table-cell">
-                            {new Date(imp.data_importacao).toLocaleDateString("pt-BR")}
-                          </td>
-                          <td className="py-3 px-4 text-right text-sm tabular-nums hidden md:table-cell">
-                            {fmtNum(imp.total_execucoes)}
-                          </td>
-                          <td className="py-3 px-4 text-right font-medium tabular-nums">{fmtBRL(imp.valor_total)}</td>
-                          <td className="py-3 px-4">
-                            <div className="text-xs">
-                              <span className="text-success">{fmtNum(imp.linhas_ok)} ok</span>
-                              {imp.linhas_erro > 0 && (
-                                <span className="text-destructive ml-1">· {imp.linhas_erro} erro</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${cfg.className}`}>
-                              {cfg.label}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Modals */}
         <EcadImportModal open={importModalOpen} onOpenChange={setImportModalOpen} />

@@ -1,0 +1,583 @@
+PROMPT — AUDITORIA TÉCNICA PROFUNDA + CONSOLIDAÇÃO ESTRUTURAL DO MUSIC OS 360
+CONTEXTO GERAL
+
+O projeto atual do MUSIC OS 360 já possui:
+
+arquitetura frontend relativamente avançada;
+modularização parcial;
+Design System iniciado;
+estrutura SaaS multi-tenant visual;
+aparência enterprise;
+múltiplos módulos operacionais.
+
+Porém, o sistema também acumulou:
+
+dívida técnica;
+resíduos estruturais;
+overengineering prematuro;
+duplicidade operacional;
+acoplamento excessivo;
+inconsistências arquiteturais;
+excesso de mocks;
+complexidade desnecessária.
+
+O objetivo desta etapa NÃO é criar novas funcionalidades.
+
+O objetivo é executar uma:
+
+AUDITORIA TÉCNICA PROFUNDA + LIMPEZA E CONSOLIDAÇÃO ESTRUTURAL
+
+ANTES de qualquer nova refatoração arquitetural ou expansão do sistema.
+
+DIRETRIZES CRÍTICAS
+NÃO FAZER NESTA ETAPA
+
+NÃO:
+
+criar novos módulos;
+criar novas funcionalidades;
+alterar regras de negócio ativas;
+reorganizar completamente a arquitetura ainda;
+iniciar backend;
+expandir IA;
+expandir analytics;
+criar novas integrações;
+criar automações;
+criar dashboards novos.
+OBJETIVO REAL
+
+Executar:
+
+limpeza técnica profunda;
+estabilização estrutural;
+remoção de resíduos;
+remoção de código morto;
+remoção de duplicidade;
+redução de acoplamento;
+consolidação visual;
+consolidação operacional;
+preparação para arquitetura enterprise real.
+STACK IDENTIFICADA
+
+Frontend:
+
+React 18
+TypeScript
+Vite
+TailwindCSS
+Shadcn/UI
+Radix UI
+React Router DOM
+React Query
+Zustand
+React Hook Form
+Zod
+Recharts
+Socket.io client
+ESTRUTURA IDENTIFICADA
+/app
+/modules
+/shared
+/test
+MÓDULOS IDENTIFICADOS
+/accounting
+/analytics
+/artist
+/auth
+/catalog
+/contracts
+/crm
+/events
+/integrations
+/inventory
+/licensing
+/marketing
+/monitoring
+/projects
+/releases
+/rh
+/settings
+AUDITORIA TÉCNICA OBRIGATÓRIA
+1. LIMPEZA DE RESÍDUOS ESTRUTURAIS
+REMOVER COMPLETAMENTE
+.git
+.local
+dist
+
+Essas pastas NÃO devem existir dentro do projeto exportado.
+
+VALIDAR E LIMPAR
+attached_assets
+
+Remover:
+
+assets órfãos;
+uploads temporários;
+imagens duplicadas;
+mídias sem referência;
+arquivos antigos.
+public
+
+Validar:
+
+logos antigas;
+placeholders;
+SVGs duplicados;
+imagens não utilizadas;
+favicons obsoletos.
+scripts
+
+Remover:
+
+scripts experimentais;
+scripts antigos;
+automações órfãs;
+arquivos temporários.
+test
+
+Remover:
+
+snapshots antigos;
+testes mortos;
+mocks abandonados;
+testes quebrados sem uso.
+2. LIMPEZA GLOBAL DE CÓDIGO
+REMOVER
+componentes órfãos;
+hooks mortos;
+stores não utilizadas;
+contexts abandonados;
+providers desnecessários;
+wrappers redundantes;
+layouts antigos;
+rotas órfãs;
+services redundantes;
+DTOs duplicados;
+validators redundantes;
+schemas não utilizados.
+3. IMPORTS E DEPENDÊNCIAS
+VALIDAR GLOBALMENTE
+
+Corrigir:
+
+imports inválidos;
+aliases inconsistentes;
+imports relativos excessivos;
+dependências não utilizadas;
+bibliotecas duplicadas;
+paths quebrados.
+4. TYPESCRIPT
+CORRIGIR
+any desnecessário;
+tipos quebrados;
+tipagens duplicadas;
+inconsistências Zod;
+schemas conflitantes;
+tipagens órfãs.
+5. ZUSTAND
+VALIDAR
+stores gigantes;
+estado duplicado;
+acoplamento excessivo;
+stores mortas;
+estado misturando:
+UI;
+domínio;
+sessão;
+fluxo operacional.
+6. REACT QUERY
+VALIDAR
+queries órfãs;
+invalidations incorretas;
+hooks duplicados;
+caches sem uso;
+queries mockadas sem propósito.
+7. TAILWIND
+VALIDAR
+classes duplicadas;
+estilos inline excessivos;
+spacing inconsistente;
+radius inconsistentes;
+tokens não utilizados;
+padrões visuais divergentes.
+DESIGN SYSTEM — CONSOLIDAÇÃO OBRIGATÓRIA
+PADRONIZAR
+typography scale;
+spacing scale;
+radius scale;
+shadow scale;
+responsive system;
+interaction states;
+animation rules.
+REFATORAR VISUALMENTE
+
+Padronizar:
+
+tabelas;
+formulários;
+modais;
+drawers;
+dropdowns;
+badges;
+toasts;
+cards;
+containers;
+headers;
+navegação.
+REFERÊNCIAS VISUAIS
+
+Seguir padrão visual inspirado em:
+
+Linear;
+Stripe;
+Notion;
+Vercel;
+Framer.
+IMPORTANTE
+
+O sistema NÃO pode parecer:
+
+template gratuito;
+dashboard genérico;
+painel administrativo comum.
+MULTI-TENANT — DIRETRIZ DEFINITIVA
+
+O sistema deve manter o bloco:
+
+SISTEMA MULTI-TENANT
+Tenant Atual
+Gravadora Exemplo Ltda
+
+Esse bloco deve permanecer visível no sidebar.
+
+OBJETIVO
+
+Reforçar:
+
+contexto organizacional;
+sensação SaaS;
+percepção enterprise;
+arquitetura multiempresa.
+IMPORTANTE
+
+O sistema atualmente possui:
+
+multi-tenant visual;
+
+Mas ainda NÃO possui:
+
+multi-tenant estrutural consolidado.
+PREPARAR ESTRUTURA PARA
+TenantContext;
+tenant-aware architecture;
+tenant permissions;
+tenant configs;
+tenant scopes;
+tenant routing.
+
+SEM implementar backend ainda.
+
+SHARED LAYER — DIRETRIZ DEFINITIVA
+
+O /shared NÃO pode virar:
+
+dumping ground
+SEPARAR CORRETAMENTE
+/shared/ui
+/shared/layouts
+/shared/providers
+/shared/config
+/shared/hooks
+/shared/infrastructure
+/shared/utils
+REMOVER DO SHARED
+lógica de domínio;
+services específicos;
+hooks acoplados;
+componentes híbridos;
+lógica operacional de módulos.
+MÓDULO INTEGRATIONS — PROBLEMA CRÍTICO
+
+O módulo:
+
+/integrations
+
+está centralizando:
+
+adapters;
+APIs;
+providers;
+conectores;
+lógica externa.
+
+Isso é um risco grave de:
+
+spaghetti architecture;
+dependência circular;
+acoplamento excessivo.
+DIRETRIZ DEFINITIVA
+
+NÃO expandir o módulo integrations.
+
+Preparar futura migração para adapters por domínio.
+
+Exemplo correto:
+
+/catalog/adapters
+/contracts/adapters
+/analytics/adapters
+ACCOUNTING — DIRETRIZ DEFINITIVA
+
+O módulo accounting NÃO deve:
+
+calcular royalties;
+distribuir receitas;
+realizar repasses automáticos;
+possuir engine financeira;
+possuir contabilidade automatizada;
+possuir recoupment automático;
+possuir splits automáticos.
+ACCOUNTING DEVE SER SOMENTE
+operacional;
+organizacional;
+gerencial.
+IMPLEMENTAR APENAS
+entradas;
+saídas;
+categorias;
+anexos;
+histórico;
+importação OFX;
+conciliação manual.
+SHARES
+
+Shares devem ser:
+
+apenas documentais;
+administrativos;
+organizacionais.
+
+SEM:
+
+cálculos;
+pagamentos;
+automações financeiras.
+CRM + LEADS — DIRETRIZ DEFINITIVA
+
+UNIFICAR:
+
+/crm
+/leads
+MOTIVO
+
+Manter módulos separados:
+
+duplica lógica;
+duplica formulários;
+duplica pipelines;
+aumenta manutenção;
+aumenta complexidade.
+FLUXO REAL
+
+O sistema deve suportar:
+
+leads via tráfego pago;
+leads cadastrados manualmente;
+contratantes;
+parceiros;
+clientes;
+fornecedores;
+artistas em negociação.
+
+Tudo dentro do mesmo ecossistema operacional.
+
+DIFERENCIAÇÃO INTERNA
+
+Diferenciar contatos usando:
+
+tags;
+status;
+pipeline;
+relacionamento;
+origem;
+etapa comercial.
+FORMULÁRIOS
+
+Os formulários de:
+
+CRM;
+Leads;
+
+DEVEM ser unificados.
+
+ONBOARDING — DIRETRIZ DEFINITIVA
+
+O onboarding NÃO deve virar:
+
+pipeline operacional central;
+núcleo principal do sistema;
+CRM;
+central estratégica;
+engine de workflows complexos.
+PAPEL CORRETO DO ONBOARDING
+
+O onboarding deve funcionar apenas como:
+
+fluxo inicial de entrada;
+formulário estruturado;
+coleta organizada de informações;
+envio de documentos;
+envio de links;
+upload básico de assets;
+aceleração operacional.
+OBJETIVO DO ONBOARDING
+reduzir trabalho manual;
+padronizar entrada de dados;
+acelerar cadastro de artistas/parceiros.
+CONTRACTS — DIRETRIZ DEFINITIVA
+
+O módulo contracts deve evoluir para:
+
+núcleo documental operacional do sistema
+CONSOLIDAR
+templates;
+versionamento;
+timeline;
+histórico;
+rastreabilidade;
+auditoria;
+status;
+organização documental.
+PREPARAR FUTURAMENTE PARA
+
+Autentique
+
+SEM implementar integração agora.
+
+MONITORING — AJUSTES OBRIGATÓRIOS
+REMOVER
+Exportar CSV
+
+da página Monitoring.
+
+MOTIVO
+
+Essa funcionalidade já existe centralizada em:
+
+Relatórios
+REMOVER
+Importações ECAD
+
+como aba ou botão separado.
+
+MOTIVO
+
+Já existe:
+
+Importar ECAD
+
+ao lado de:
+
+Sincronizar
+
+Evitar redundância visual e operacional.
+
+OBRAS E FONOGRAMAS — AJUSTE VISUAL
+
+Nos cards de:
+
+Obras;
+Fonogramas;
+
+NÃO exibir:
+
+ECAD
+ABR
+
+antes dos códigos.
+
+EXIBIR SOMENTE
+907182736
+
+E NÃO:
+
+ECAD 907182736
+ABR 907182736
+MOTIVO
+
+Os prefixos:
+
+poluem visualmente;
+ocupam espaço desnecessário;
+não agregam valor operacional.
+OVERENGINEERING — DIRETRIZ CRÍTICA
+
+O sistema já começou cedo demais:
+
+IA;
+analytics avançado;
+abstrações sofisticadas;
+integrações complexas.
+
+ANTES de consolidar:
+
+onboarding;
+contracts;
+catalog;
+workflows;
+core operacional.
+DIRETRIZ DEFINITIVA
+
+NÃO expandir:
+
+IA;
+analytics;
+dashboards;
+integrações;
+automações.
+
+Até consolidar profundamente:
+
+arquitetura;
+UX;
+Design System;
+desacoplamento;
+domínio operacional.
+RESULTADO ESPERADO
+
+Ao finalizar esta etapa o sistema deve estar:
+
+mais limpo;
+mais leve;
+mais desacoplado;
+mais previsível;
+mais consistente;
+mais escalável;
+menos poluído;
+menos redundante;
+preparado para arquitetura enterprise real.
+CONCLUSÃO FINAL
+
+O MUSIC OS 360 já possui:
+
+módulos suficientes;
+visual suficiente;
+estrutura suficiente;
+aparência SaaS;
+identidade enterprise inicial.
+
+Agora o foco NÃO deve ser:
+
+adicionar funcionalidades
+
+E sim:
+
+consolidar profundamente a arquitetura
+
+Porque o maior risco atual NÃO é:
+
+falta de funcionalidades
+
+E SIM:
+
+crescimento descontrolado sem maturidade arquitetural
