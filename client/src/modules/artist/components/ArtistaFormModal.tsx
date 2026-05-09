@@ -1009,7 +1009,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                           <div className="space-y-3 pt-2 border-t border-border/40">
                             <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
 
-                            <div className="space-y-2">
+                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                               {DISTRIBUIDORAS_OPTIONS.map((dist) => {
                                 const entry = distsVal.find((d) => d.id === dist.id);
                                 const isChecked = !!entry;
