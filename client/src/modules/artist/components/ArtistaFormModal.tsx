@@ -928,7 +928,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                   {contatoFields.map((field, idx) => {
                     const categoriaVal = wf(`contatosEquipe.${idx}.categoria`);
                     const distsVal     = getDists(idx);
-                    const isEditora    = categoriaVal === "editora_musical" || tipoPerfilVal === "com_empresario";
+                    const isEditora    = categoriaVal === "editora_musical" || categoriaVal === "empresario" || categoriaVal === "gestor" || tipoPerfilVal === "com_empresario";
                     const outrosEntry  = distsVal.find((d) => d.id === "outros");
 
                     return (
