@@ -248,7 +248,10 @@ export function CRMFormModal({ open, onOpenChange, cliente, mode }: CRMFormModal
       tipo_pessoa: tipoContato === "pessoa_juridica" ? "pessoa_juridica" : "pessoa_fisica",
       nome: tipoContato === "pessoa_fisica" ? nomeCompletoPF : razaoSocialPJ,
       cpf_cnpj: tipoContato === "pessoa_fisica" ? cpfPF : cnpjPJ,
+      categoria: tipoContato === "pessoa_fisica" ? categoriaPF : categoriaPJ,
       responsavel: tipoContato === "pessoa_juridica" ? nomeResponsavelPJ : undefined,
+      responsavel_email: tipoContato === "pessoa_juridica" ? emailResponsavelPJ : undefined,
+      responsavel_telefone: tipoContato === "pessoa_juridica" ? telefoneResponsavelPJ : undefined,
       email: tipoContato === "pessoa_fisica" ? emailPF : emailPJ,
       telefone: tipoContato === "pessoa_fisica" ? telefonePF : telefonePJ,
       endereco: numero || bairro

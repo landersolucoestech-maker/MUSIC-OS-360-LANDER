@@ -359,14 +359,17 @@ export default function CRM() {
                           {cliente.nome}
                         </h3>
 
-                        {/* Categoria (segmento) */}
+                        {/* Categoria */}
                         <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                          <StatusBadge status={cliente.status || "lead"} />
-                          {cliente.segmento && (
+                          {cliente.categoria ? (
+                            <Badge variant="outline" className="text-[10px] px-2 py-0 h-5 border font-medium bg-primary/10 text-primary border-primary/20">
+                              {cliente.categoria}
+                            </Badge>
+                          ) : cliente.segmento ? (
                             <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium", SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
                               {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
                             </Badge>
-                          )}
+                          ) : null}
                         </div>
 
                         {/* Tipo • Cidade */}
