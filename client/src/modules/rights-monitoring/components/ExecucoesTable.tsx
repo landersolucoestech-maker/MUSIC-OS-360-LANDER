@@ -114,7 +114,7 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
                     variant="ghost"
                     size="sm"
                     data-testid={`btn-detail-${exec.id}`}
-                    className="h-7 px-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                    className="h-7 px-2"
                     onClick={() => onViewDetail?.(exec)}
                   >
                     <ExternalLink className="h-3.5 w-3.5" />

@@ -250,7 +250,7 @@ export default function AdminClients() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/30 hover:text-white transition-colors opacity-0 group-hover:opacity-100"
+                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
                             data-testid={`actions-${t.id}`}
                           >
                             <MoreHorizontal className="h-4 w-4" />

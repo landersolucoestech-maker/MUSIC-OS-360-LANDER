@@ -194,9 +194,6 @@ export default function CRM() {
       actions={
         <>
           <input type="file" ref={csvInputRef} accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExcelExport}>
-            Exportar
-          </Button>
           <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
             <Plus className="h-3.5 w-3.5" /> Novo Contato
           </Button>
@@ -360,7 +357,7 @@ export default function CRM() {
                       <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-menu-${cliente.id}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>

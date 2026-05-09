@@ -133,7 +133,7 @@ export default function AdminNotifications() {
                       {n.tenant_name && <span className="flex items-center gap-1"><Zap className="h-3 w-3" />{n.tenant_name}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1.5">
                     {!n.read && (
                       <button
                         onClick={() => markRead(n.id)}
