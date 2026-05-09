@@ -1197,13 +1197,40 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               })}
             </div>
 
-            {/* ═══ 6. Observações ═══ */}
+            {/* ═══ 6. Observações e Contrato ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-primary">6.</span>
-                <h3 className="text-lg font-semibold">Observações</h3>
+                <h3 className="text-lg font-semibold">Observações e Contrato</h3>
               </div>
               <Separator />
+
+              <div className="space-y-2">
+                <Label>Contrato Vinculado</Label>
+                <Controller
+                  control={control}
+                  name="contratoId"
+                  render={({ field }) => (
+                    <Select value={field.value} onValueChange={field.onChange}>
+                      <SelectTrigger data-testid="select-contrato">
+                        <SelectValue placeholder="Selecione um contrato ativo (opcional)" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-background border border-border z-50">
+                        <SelectItem value="">Nenhum</SelectItem>
+                        {contratosDisponiveis.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.numero_contrato || c.id} — {c.tipo || "Contrato"}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Contratos activos sem artista vinculado. Para desvincular, selecione "Nenhum".
+                </p>
+              </div>
+
               <div className="space-y-2">
                 <Label>Notas Internas</Label>
                 <Textarea
