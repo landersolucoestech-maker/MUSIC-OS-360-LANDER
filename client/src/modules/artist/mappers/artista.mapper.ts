@@ -7,7 +7,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { Artista, ArtistaRelacionamento, ArtistaDistribuidoraEntry } from "@/modules/artist/hooks/useArtistas";
 
 // ─── Utilidades internas ──────────────────────────────────────────
 
@@ -102,29 +102,35 @@ const ESPECIALIDADES_ENUM: Record<string, string> = Object.fromEntries(
 /**
  * Converte qualquer variação de label ou enum para o valor interno.
  * Retorna "" para valores não reconhecidos (serão filtrados no import).
- *
- * Estratégia de lookup (ordem):
- *  1. normalizeKey(raw)            → "DJ/Produtor"  → "dj/produtor"  → "dj_produtor" ✓
- *  2. normalizeKey(raw, _→/)       → "dj_produtor"  → "dj/produtor"  → "dj_produtor" ✓
- *  3. raw já é o enum direto       → "dj_produtor"  em ESPECIALIDADES_LABELS          ✓
- *
- * Nunca retorna o raw original — valores fora do padrão são descartados.
  */
 function normalizeEspecialidade(raw: string): string {
-  // 1. Preserva "/" — chaves do ESPECIALIDADES_ENUM têm "/" (ex: "dj/produtor")
   const v1 = normalizeKey(raw);
   if (ESPECIALIDADES_ENUM[v1]) return ESPECIALIDADES_ENUM[v1];
 
-  // 2. Converte "_" → "/" para aceitar enums internos (ex: "dj_produtor")
   const v2 = normalizeKey(raw.replace(/_/g, "/"));
   if (ESPECIALIDADES_ENUM[v2]) return ESPECIALIDADES_ENUM[v2];
 
-  // 3. Verifica se o próprio raw normalizado já é chave do enum interno
   const asEnum = v1.replace(/\//g, "_");
   if (ESPECIALIDADES_LABELS[asEnum]) return asEnum;
 
-  // Valor fora do padrão — descarta
   return "";
+}
+
+// ─── Slug artístico ───────────────────────────────────────────────
+
+/**
+ * Gera um slug a partir do nome artístico:
+ * remove acentos, converte para lowercase, substitui espaços por hífens.
+ */
+export function gerarSlugArtistico(nome: string): string {
+  return nome
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-");
 }
 
 // ─── Extratores de ID de plataformas ─────────────────────────────
@@ -147,6 +153,45 @@ export function extractYoutubeId(input: string | null | undefined): string | nul
   if (/^UC[A-Za-z0-9_-]{22}$/.test(v)) return v;
   const m = v.match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/i);
   return m?.[1] ?? null;
+}
+
+// ─── Validadores de URL de plataformas ───────────────────────────
+
+export type UrlValidationState = "idle" | "valid" | "invalid";
+
+export function validateSpotifyUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return extractSpotifyId(url) !== null ? "valid" : "invalid";
+}
+
+export function validateYoutubeUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return extractYoutubeId(url) !== null ? "valid" : "invalid";
+}
+
+export function validateInstagramUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return /instagram\.com\//i.test(url) ? "valid" : "invalid";
+}
+
+export function validateTiktokUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return /tiktok\.com\//i.test(url) ? "valid" : "invalid";
+}
+
+export function validateSoundcloudUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return /soundcloud\.com\//i.test(url) ? "valid" : "invalid";
+}
+
+export function validateDeezerUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return /deezer\.com\//i.test(url) ? "valid" : "invalid";
+}
+
+export function validateAppleMusicUrl(url: string): UrlValidationState {
+  if (!url.trim()) return "idle";
+  return /music\.apple\.com\//i.test(url) ? "valid" : "invalid";
 }
 
 // ─── Mapeamento canônico de colunas ──────────────────────────────
@@ -232,8 +277,6 @@ const DIST_COLS: Record<string, string> = {
  * os nomes de campo internos como fallback.
  */
 export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, "id" | "user_id" | "created_at" | "updated_at"> | null {
-  // Usa pickRow em vez de row[key] direto para tolerar diferenças de
-  // normalização Unicode nos cabeçalhos (NFD vs NFC) geradas pelo Excel.
   const p = (...keys: string[]) => pickRow(row, ...keys);
 
   const nomeArtistico = strOrNull(p("Nome Artístico", "nome_artistico", "Nome", "nome"));
@@ -304,8 +347,21 @@ export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, 
 
 // ─── Form Fields Interface ────────────────────────────────────────
 
+export interface ArtistaFormRelacionamento {
+  tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
+  nome: string;
+  telefone: string;
+  email: string;
+  escritorio: string;
+  crc: string;
+  distribuidoras: ArtistaDistribuidoraEntry[];
+}
+
 export interface ArtistaFormFields {
   nomeArtistico: string;
+  slugArtistico: string;
+  tagsMusicais: string[];
+  faseCarreira: string;
   generoMusical: string;
   tipoArtista: string;
   statusArtista: string;
@@ -338,6 +394,9 @@ export interface ArtistaFormFields {
   deezerFas: string;
   appleMusic: string;
   appleMusicAlbuns: string;
+  // relacionamentos comerciais (novo modelo relacional)
+  relacionamentos: ArtistaFormRelacionamento[];
+  // legado — mantido para backward compat com CRM select
   tipoPerfil: "independente" | "com_empresario" | "gravadora" | "editora";
   empresarioId: string;
   empresarioNome: string;
@@ -361,72 +420,136 @@ export interface ArtistaFormFields {
   contratoId: string;
 }
 
+function emptyRelacionamento(tipo: ArtistaFormRelacionamento["tipo"]): ArtistaFormRelacionamento {
+  return { tipo, nome: "", telefone: "", email: "", escritorio: "", crc: "", distribuidoras: [] };
+}
+
+function dbRelToForm(r: ArtistaRelacionamento): ArtistaFormRelacionamento {
+  return {
+    tipo: r.tipo,
+    nome: r.nome ?? "",
+    telefone: r.telefone ?? "",
+    email: r.email ?? "",
+    escritorio: r.escritorio ?? "",
+    crc: r.crc ?? "",
+    distribuidoras: Array.isArray(r.distribuidoras) ? r.distribuidoras : [],
+  };
+}
+
+/**
+ * Migra campos legados para o novo array de relacionamentos quando o artista
+ * não tem `relacionamentos` mas tem campos empresario_* / gravadora_* preenchidos.
+ */
+function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamento[] {
+  const rels: ArtistaFormRelacionamento[] = [];
+  if (artista.empresario_nome) {
+    rels.push({
+      tipo: "empresario",
+      nome: str(artista.empresario_nome),
+      telefone: str(artista.empresario_telefone),
+      email: str(artista.empresario_email),
+      escritorio: "",
+      crc: "",
+      distribuidoras: [],
+    });
+  }
+  if (artista.gravadora_nome) {
+    const tp = str(artista.tipo_perfil);
+    const tipoRel: ArtistaFormRelacionamento["tipo"] = tp === "editora" ? "editora" : "gravadora";
+    rels.push({
+      tipo: tipoRel,
+      nome: str(artista.gravadora_nome),
+      telefone: str(artista.gravadora_telefone),
+      email: str(artista.gravadora_email),
+      escritorio: "",
+      crc: "",
+      distribuidoras: [],
+    });
+  }
+  return rels;
+}
+
 /**
  * Converte um registro de artista (vindo do banco) no estado de formulário.
  * Usado no useEffect de ArtistaFormModal quando open=true.
  */
 export function artistaToFormFields(artista: Artista | null | undefined): ArtistaFormFields {
-  if (!artista) {
-    return {
-      nomeArtistico: "",
-      generoMusical: "",
-      tipoArtista: "artista_solo",
-      statusArtista: "contratado",
-      especialidades: [],
-      biografia: "",
-      notasInternas: "",
-      nome: "",
-      dataNascimento: "",
-      cpfCnpj: "",
-      rg: "",
-      endereco: "",
-      telefone: "",
-      email: "",
-      banco: "",
-      agencia: "",
-      conta: "",
-      chavePix: "",
-      titularConta: "",
-      spotify: "",
-      spotifyOuvintes: "",
-      instagram: "",
-      instagramSeguidores: "",
-      youtube: "",
-      youtubeInscritos: "",
-      tiktok: "",
-      tiktokSeguidores: "",
-      soundcloud: "",
-      soundcloudSeguidores: "",
-      deezer: "",
-      deezerFas: "",
-      appleMusic: "",
-      appleMusicAlbuns: "",
-      tipoPerfil: "independente",
-      empresarioId: "",
-      empresarioNome: "",
-      empresarioTelefone: "",
-      empresarioEmail: "",
-      gravadoraId: "",
-      gravadoraNome: "",
-      gravadoraTelefone: "",
-      gravadoraEmail: "",
-      gravadoraResponsavelId: "",
-      gravadoraResponsavelNome: "",
-      gravadoraResponsavelTelefone: "",
-      gravadoraResponsavelEmail: "",
-      distribuidorasSelecionadas: {},
-      distribuidorasEmails: {},
-      distribuidorasEmpresaSelecionadas: {},
-      distribuidorasEmpresaEmails: {},
-      fotoUrl: "",
-      documentosPessoaisUrl: "",
-      presskitUrl: "",
-      contratoId: "",
-    };
+  const emptyBase: ArtistaFormFields = {
+    nomeArtistico: "",
+    slugArtistico: "",
+    tagsMusicais: [],
+    faseCarreira: "",
+    generoMusical: "",
+    tipoArtista: "artista_solo",
+    statusArtista: "contratado",
+    especialidades: [],
+    biografia: "",
+    notasInternas: "",
+    nome: "",
+    dataNascimento: "",
+    cpfCnpj: "",
+    rg: "",
+    endereco: "",
+    telefone: "",
+    email: "",
+    banco: "",
+    agencia: "",
+    conta: "",
+    chavePix: "",
+    titularConta: "",
+    spotify: "",
+    spotifyOuvintes: "",
+    instagram: "",
+    instagramSeguidores: "",
+    youtube: "",
+    youtubeInscritos: "",
+    tiktok: "",
+    tiktokSeguidores: "",
+    soundcloud: "",
+    soundcloudSeguidores: "",
+    deezer: "",
+    deezerFas: "",
+    appleMusic: "",
+    appleMusicAlbuns: "",
+    relacionamentos: [],
+    tipoPerfil: "independente",
+    empresarioId: "",
+    empresarioNome: "",
+    empresarioTelefone: "",
+    empresarioEmail: "",
+    gravadoraId: "",
+    gravadoraNome: "",
+    gravadoraTelefone: "",
+    gravadoraEmail: "",
+    gravadoraResponsavelId: "",
+    gravadoraResponsavelNome: "",
+    gravadoraResponsavelTelefone: "",
+    gravadoraResponsavelEmail: "",
+    distribuidorasSelecionadas: {},
+    distribuidorasEmails: {},
+    distribuidorasEmpresaSelecionadas: {},
+    distribuidorasEmpresaEmails: {},
+    fotoUrl: "",
+    documentosPessoaisUrl: "",
+    presskitUrl: "",
+    contratoId: "",
+  };
+
+  if (!artista) return emptyBase;
+
+  // Relacionamentos: usa novo campo ou migra do legado
+  let relacionamentos: ArtistaFormRelacionamento[] = [];
+  if (Array.isArray(artista.relacionamentos) && artista.relacionamentos.length > 0) {
+    relacionamentos = artista.relacionamentos.map(dbRelToForm);
+  } else {
+    relacionamentos = migrateLegatoRelacionamentos(artista);
   }
 
   return {
     nomeArtistico: str(artista.nome_artistico),
+    slugArtistico: str(artista.slug_artistico),
+    tagsMusicais: Array.isArray(artista.tags_musicais) ? artista.tags_musicais : [],
+    faseCarreira: str(artista.fase_carreira),
     generoMusical: str(artista.genero_musical),
     tipoArtista: str(artista.tipo) || "artista_solo",
     statusArtista: str(artista.status) || "contratado",
@@ -466,7 +589,9 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     deezerFas: artista.deezer_fas != null ? String(artista.deezer_fas) : "",
     appleMusic: str(artista.apple_music_url),
     appleMusicAlbuns: artista.apple_music_albuns != null ? String(artista.apple_music_albuns) : "",
-    // Perfil
+    // Relacionamentos
+    relacionamentos,
+    // Legado
     tipoPerfil: (str(artista.tipo_perfil) || "independente") as ArtistaFormFields["tipoPerfil"],
     empresarioId: str(artista.empresario_id),
     empresarioNome: str(artista.empresario_nome),
@@ -480,10 +605,8 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     gravadoraResponsavelNome: str(artista.gravadora_responsavel_nome),
     gravadoraResponsavelTelefone: str(artista.gravadora_responsavel_telefone),
     gravadoraResponsavelEmail: str(artista.gravadora_responsavel_email),
-    // Distribuidoras do artista
     distribuidorasSelecionadas: (artista.distribuidoras_selecionadas as Record<string, boolean> | null) ?? {},
     distribuidorasEmails: (artista.distribuidoras_emails as Record<string, string> | null) ?? {},
-    // Distribuidoras da empresa
     distribuidorasEmpresaSelecionadas: (artista.distribuidoras_empresa_selecionadas as Record<string, boolean> | null) ?? {},
     distribuidorasEmpresaEmails: (artista.distribuidoras_empresa_emails as Record<string, string> | null) ?? {},
     // Arquivos
@@ -504,8 +627,24 @@ export interface FormToArtistaInput extends ArtistaFormFields {
  * exportação e re-importação não percam dados.
  */
 export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" | "user_id" | "created_at" | "updated_at"> {
+  // Converte ArtistaFormRelacionamento[] → ArtistaRelacionamento[]
+  const relacionamentos: ArtistaRelacionamento[] = f.relacionamentos
+    .filter((r) => r.nome.trim() !== "")
+    .map((r) => ({
+      tipo: r.tipo,
+      nome: r.nome.trim(),
+      telefone: r.telefone.trim(),
+      email: r.email.trim(),
+      ...(r.escritorio.trim() ? { escritorio: r.escritorio.trim() } : {}),
+      ...(r.crc.trim() ? { crc: r.crc.trim() } : {}),
+      ...(r.distribuidoras.length > 0 ? { distribuidoras: r.distribuidoras } : {}),
+    }));
+
   return {
     nome_artistico: f.nomeArtistico.trim(),
+    slug_artistico: strOrNull(f.slugArtistico),
+    tags_musicais: f.tagsMusicais.length > 0 ? f.tagsMusicais : null,
+    fase_carreira: strOrNull(f.faseCarreira),
     nome_civil: strOrNull(f.nome),
     tipo: (f.tipoArtista || null) as any,
     status: (f.statusArtista || null) as any,
@@ -541,7 +680,9 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     instagram_seguidores: numOrNull(f.instagramSeguidores),
     tiktok: strOrNull(f.tiktok),
     tiktok_seguidores: numOrNull(f.tiktokSeguidores),
-    // Perfil
+    // Relacionamentos (novo)
+    relacionamentos: relacionamentos.length > 0 ? relacionamentos : null,
+    // Legado (mantido para backward compat)
     tipo_perfil: f.tipoPerfil,
     empresario_id: strOrNull(f.empresarioId),
     empresario_nome: strOrNull(f.empresarioNome),
@@ -555,10 +696,8 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     gravadora_responsavel_nome: strOrNull(f.gravadoraResponsavelNome),
     gravadora_responsavel_telefone: strOrNull(f.gravadoraResponsavelTelefone),
     gravadora_responsavel_email: strOrNull(f.gravadoraResponsavelEmail),
-    // Distribuidoras do artista
     distribuidoras_selecionadas: Object.keys(f.distribuidorasSelecionadas).length > 0 ? f.distribuidorasSelecionadas : null,
     distribuidoras_emails: Object.keys(f.distribuidorasEmails).length > 0 ? f.distribuidorasEmails : null,
-    // Distribuidoras da empresa
     distribuidoras_empresa_selecionadas: Object.keys(f.distribuidorasEmpresaSelecionadas).length > 0 ? f.distribuidorasEmpresaSelecionadas : null,
     distribuidoras_empresa_emails: Object.keys(f.distribuidorasEmpresaEmails).length > 0 ? f.distribuidorasEmpresaEmails : null,
     notas_internas: strOrNull(f.notasInternas),
@@ -567,3 +706,6 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     presskit_url: strOrNull(f.presskitUrl),
   } as any;
 }
+
+// Re-export emptyRelacionamento for use in the form component
+export { emptyRelacionamento };

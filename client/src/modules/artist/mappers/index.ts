@@ -8,15 +8,26 @@
 
 export type {
   ArtistaFormFields,
+  ArtistaFormRelacionamento,
   FormToArtistaInput,
+  UrlValidationState,
 } from "./artista.mapper";
 
 export {
   ESPECIALIDADES_LABELS,
   extractSpotifyId,
   extractYoutubeId,
+  gerarSlugArtistico,
+  validateSpotifyUrl,
+  validateYoutubeUrl,
+  validateInstagramUrl,
+  validateTiktokUrl,
+  validateSoundcloudUrl,
+  validateDeezerUrl,
+  validateAppleMusicUrl,
   artistaToExportRow,
   importRowToArtista,
   artistaToFormFields,
   formToArtistaPayload,
+  emptyRelacionamento,
 } from "./artista.mapper";

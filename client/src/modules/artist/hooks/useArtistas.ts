@@ -1,6 +1,22 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 
+export interface ArtistaDistribuidoraEntry {
+  id: string;
+  email: string;
+}
+
+export interface ArtistaRelacionamento {
+  tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
+  nome: string;
+  telefone: string;
+  email: string;
+  escritorio?: string;
+  crc?: string;
+  responsaveis?: string[];
+  distribuidoras?: ArtistaDistribuidoraEntry[];
+}
+
 export interface Artista {
   id: string;
   user_id?: string;
@@ -17,6 +33,12 @@ export interface Artista {
   foto_url?: string | null;
   observacoes?: string | null;
   contrato_id?: string | null;
+  // novos campos básicos
+  slug_artistico?: string | null;
+  tags_musicais?: string[] | null;
+  fase_carreira?: string | null;
+  // relacionamentos comerciais (modelo relacional)
+  relacionamentos?: ArtistaRelacionamento[] | null;
   // plataformas de streaming
   spotify_artist_id?: string | null;
   spotify_ouvintes?: number | null;
@@ -49,7 +71,7 @@ export interface Artista {
   titular_conta?: string | null;
   // especialidades / função
   especialidades?: string[] | null;
-  // tipo de perfil
+  // tipo de perfil (legado — mantido para backward compat)
   tipo_perfil?: string | null;
   empresario_id?: string | null;
   empresario_nome?: string | null;
@@ -63,10 +85,10 @@ export interface Artista {
   gravadora_responsavel_nome?: string | null;
   gravadora_responsavel_telefone?: string | null;
   gravadora_responsavel_email?: string | null;
-  // distribuidoras do artista
+  // distribuidoras do artista (legado)
   distribuidoras_selecionadas?: Record<string, boolean> | null;
   distribuidoras_emails?: Record<string, string> | null;
-  // distribuidoras da empresa (empresário / gravadora / editora)
+  // distribuidoras da empresa (legado)
   distribuidoras_empresa_selecionadas?: Record<string, boolean> | null;
   distribuidoras_empresa_emails?: Record<string, string> | null;
   // documentos / presskit
