@@ -6,12 +6,11 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
 import {
   Loader2, CheckCircle2, Music2, ChevronRight, ChevronLeft,
   Link2, Image, FileText, User, Star, Shield, Zap, AlertCircle,
-  Instagram, Youtube, CalendarDays, Package, Plus, Trash2, Mail,
+  Instagram, Youtube, CalendarDays, Package, Plus, Trash2,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
 import { createArtistUseCase, DuplicateArtistaError } from "@/modules/artist/application/createArtist.usecase";
@@ -83,7 +82,6 @@ interface FormData {
   vinculo_empresa_contato: string;
   vinculo_empresa_telefone: string;
   vinculo_empresa_email: string;
-  vinculo_empresa_email_share: string;
   instagram: string;
   tiktok: string;
   youtube: string;
@@ -105,7 +103,7 @@ const EMPTY: FormData = {
   nome_artistico: "", nome_civil: "", tipo_perfil: [], genero: "",
   genero_musical: "", email: "", telefone: "", cpf_cnpj: "", data_nascimento: "",
   vinculo: "", vinculo_empresa_nome: "", vinculo_empresa_contato: "",
-  vinculo_empresa_telefone: "", vinculo_empresa_email: "", vinculo_empresa_email_share: "",
+  vinculo_empresa_telefone: "", vinculo_empresa_email: "",
   instagram: "", tiktok: "", youtube: "", spotify: "",
   apple_music: "", deezer: "", soundcloud: "", presskit_url: "",
   bio: "", foto_url: "", notas_label: "",
@@ -196,7 +194,6 @@ export default function ArtistaSignupPublic() {
   const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<FormData>(EMPTY);
   const [distribuidoras, setDistribuidoras] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
-  const [emailsShareGravadora, setEmailsShareGravadora] = useState<{ distribuidora: string; email: string }[]>([{ distribuidora: "", email: "" }]);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -221,13 +218,6 @@ export default function ArtistaSignupPublic() {
       return next;
     });
   };
-
-  const addEmailShareGravadora = () =>
-    setEmailsShareGravadora((p) => [...p, { distribuidora: "", email: "" }]);
-  const removeEmailShareGravadora = (idx: number) =>
-    setEmailsShareGravadora((p) => p.filter((_, i) => i !== idx));
-  const updateEmailShareGravadora = (idx: number, field: "distribuidora" | "email", val: string) =>
-    setEmailsShareGravadora((p) => p.map((v, i) => (i === idx ? { ...v, [field]: val } : v)));
 
   const addDistribuidora = () => {
     setDistribuidoras((prev) => [...prev, { ...EMPTY_DISTRIBUIDORA }]);
@@ -325,14 +315,6 @@ export default function ArtistaSignupPublic() {
     // Spotify/YouTube URL completa quando não é um ID extraível
     if (form.spotify.trim() && !spotifyId) notasLinhas.push(`Spotify (URL): ${form.spotify.trim()}`);
     if (form.youtube.trim() && !youtubeId) notasLinhas.push(`YouTube (URL): ${form.youtube.trim()}`);
-    // Share emails (distribuidora × gravadora/editora/empresário)
-    if (VINCULO_COM_EMPRESA.has(form.vinculo)) {
-      emailsShareGravadora.filter((e) => e.email.trim() || e.distribuidora).forEach((e, i) => {
-        const prefix = `Share ${form.vinculo} ${i + 1}`;
-        if (e.distribuidora) notasLinhas.push(`${prefix} — Distribuidora: ${e.distribuidora}`);
-        if (e.email.trim()) notasLinhas.push(`${prefix} — E-mail: ${e.email.trim()}`);
-      });
-    }
     const notasInternas = notasLinhas.filter(Boolean).join("\n");
 
     // ── Distribuidoras → campos dedicados ─────────────────────────────────────
@@ -960,82 +942,6 @@ export default function ArtistaSignupPublic() {
                 Adicionar outra distribuidora
               </Button>
             </div>
-
-            {/* E-mails de Share — aparece quando há vínculo com empresa e ao menos uma distribuidora selecionada */}
-            {VINCULO_COM_EMPRESA.has(form.vinculo) && distribuidoras.some((d) => d.distribuidora) && (
-              <>
-                <Separator />
-                <div className="space-y-4">
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-muted-foreground" />
-                      <h3 className="text-sm font-semibold">E-mails de Share — {form.vinculo}</h3>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      Informe os e-mails de share responsáveis pelo recebimento de direitos. Você pode adicionar múltiplos responsáveis.
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pr-9">
-                    <Label className="text-xs text-muted-foreground">Distribuidora</Label>
-                    <Label className="text-xs text-muted-foreground">E-mail de share</Label>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {emailsShareGravadora.map((entry, idx) => (
-                      <div key={idx} className="flex items-center gap-2">
-                        <div className="grid grid-cols-2 gap-3 flex-1">
-                          <Select
-                            value={entry.distribuidora}
-                            onValueChange={(v) => updateEmailShareGravadora(idx, "distribuidora", v)}
-                          >
-                            <SelectTrigger data-testid={`select-share-distribuidora-${idx}`}>
-                              <SelectValue placeholder="Selecione" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {DISTRIBUIDORAS.map((d) => (
-                                <SelectItem key={d} value={d}>{d}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="email"
-                            placeholder="email@empresa.com"
-                            value={entry.email}
-                            onChange={(e) => updateEmailShareGravadora(idx, "email", e.target.value)}
-                            data-testid={`input-share-gravadora-${idx}`}
-                          />
-                        </div>
-                        {emailsShareGravadora.length > 1 && (
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeEmailShareGravadora(idx)}
-                            data-testid={`button-remove-share-gravadora-${idx}`}
-                            className="text-destructive hover:text-destructive hover:bg-destructive/10 shrink-0"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={addEmailShareGravadora}
-                    data-testid="button-add-share-gravadora"
-                    className="gap-1.5 text-xs"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Adicionar outro e-mail de share
-                  </Button>
-                </div>
-              </>
-            )}
           </div>
         )}
 
