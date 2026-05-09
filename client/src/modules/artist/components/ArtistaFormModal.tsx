@@ -263,6 +263,14 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   // ── Reactive watches ────────────────────────────────────────────
   const especialidadesVal = wf("especialidades");
   const tipoPerfilVal     = wf("tipoPerfil");
+
+  // Auto-adicionar um card vazio quando o perfil muda e a lista está vazia
+  useEffect(() => {
+    const PERFIS_COM_EQUIPA = ["independente", "com_empresario", "gravadora"];
+    if (PERFIS_COM_EQUIPA.includes(tipoPerfilVal) && contatoFields.length === 0) {
+      appendContato({ ...EMPTY_CONTATO });
+    }
+  }, [tipoPerfilVal]);
   const spotifyVal        = wf("spotify");
   const instagramVal      = wf("instagram");
   const youtubeVal        = wf("youtube");
