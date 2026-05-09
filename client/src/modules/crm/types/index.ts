@@ -7,10 +7,3 @@ export type {
   ClienteInsert,
   ClienteUpdate,
 } from "../hooks/useClientes";
-
-export type {
-  Contato,
-  ContatoInsert,
-  ContatoUpdate,
-  ContatoWithRelations,
-} from "../hooks/useContatos";

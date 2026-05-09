@@ -1,6 +1,5 @@
 /**
  * Tipos canônicos do módulo rh.
- * Constantes de domínio (SETORES, TIPOS_CONTRATO, etc.) vivem em rh/domain/funcionario.rules.ts.
  */
 export type {
   Funcionario,

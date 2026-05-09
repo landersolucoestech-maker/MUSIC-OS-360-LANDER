@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { AppSidebar } from "./AppSidebar";
+import { AppSidebar } from "./layout/AppSidebar";
 import { cn } from "@/shared/lib/utils";
 import { useAuth } from "@/app/providers/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";

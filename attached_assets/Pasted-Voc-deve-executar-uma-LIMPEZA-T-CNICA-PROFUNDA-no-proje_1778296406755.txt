@@ -1,0 +1,119 @@
+Você deve executar uma LIMPEZA TÉCNICA PROFUNDA no projeto atual do MUSIC OS 360.
+
+IMPORTANTE:
+NÃO criar funcionalidades.
+NÃO alterar regras de negócio.
+NÃO reorganizar arquitetura ainda.
+NÃO criar novos módulos.
+NÃO modificar fluxos operacionais.
+
+O objetivo desta etapa é SOMENTE:
+
+* remover resíduos;
+* remover código morto;
+* remover duplicidade;
+* remover arquivos órfãos;
+* limpar imports;
+* limpar dependências;
+* estabilizar o projeto.
+
+EXECUTAR:
+
+1. REMOVER COMPLETAMENTE:
+
+* .git
+* .local
+* dist
+
+Essas pastas NÃO devem existir no projeto exportado.
+
+2. VALIDAR E REMOVER:
+
+* componentes não utilizados;
+* hooks mortos;
+* stores sem uso;
+* providers órfãos;
+* contexts abandonados;
+* rotas antigas;
+* layouts não utilizados;
+* wrappers redundantes;
+* DTOs duplicados;
+* validators redundantes;
+* schemas órfãos;
+* services não utilizados;
+* imports inválidos;
+* aliases quebrados;
+* dependências não utilizadas.
+
+3. VALIDAR TODOS OS MÓDULOS:
+
+* accounting
+* analytics
+* artist
+* auth
+* catalog
+* contracts
+* crm
+* events
+* integrations
+* inventory
+* licensing
+* marketing
+* monitoring
+* projects
+* releases
+* rh
+* settings
+
+4. REMOVER:
+
+* arquivos temporários;
+* mocks antigos;
+* fake data abandonada;
+* imagens sem uso;
+* assets órfãos;
+* scripts experimentais;
+* snapshots antigos;
+* testes quebrados sem uso.
+
+5. VALIDAR:
+
+* TypeScript;
+* Zod;
+* React Query;
+* Zustand;
+* Tailwind;
+* imports relativos excessivos.
+
+6. CORRIGIR:
+
+* any desnecessário;
+* tipagens quebradas;
+* imports inválidos;
+* warnings;
+* paths inconsistentes.
+
+7. NÃO alterar:
+
+* UX atual;
+* identidade visual;
+* Design System;
+* estrutura de domínio;
+* navegação.
+
+8. O resultado final deve:
+
+* reduzir ruído estrutural;
+* reduzir acoplamento;
+* reduzir duplicidade;
+* melhorar previsibilidade;
+* estabilizar o projeto para próxima etapa.
+
+IMPORTANTE:
+Ao finalizar:
+
+* mostrar tudo que foi removido;
+* mostrar tudo que foi corrigido;
+* listar arquivos afetados;
+* listar dependências removidas;
+* listar warnings corrigidos.
