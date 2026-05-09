@@ -55,9 +55,11 @@ const STATUS_OPTIONS = [
   { value: "cancelado", label: "Cancelado" },
 ];
 
+const NONE = "__none__";
+
 const EMPTY: ShareFormData = {
-  obra_id: "",
-  artista_id: "",
+  obra_id: NONE,
+  artista_id: NONE,
   detentor: "",
   funcao: "interprete",
   direcao: "a_receber",
@@ -71,8 +73,8 @@ const EMPTY: ShareFormData = {
 
 function shareToForm(share: any): ShareFormData {
   return {
-    obra_id: share.obra_id ?? "",
-    artista_id: share.artista_id ?? "",
+    obra_id: share.obra_id ?? NONE,
+    artista_id: share.artista_id ?? NONE,
     detentor: share.detentor ?? "",
     funcao: share.tipo ?? "interprete",
     direcao: share.direcao ?? "a_receber",
@@ -131,8 +133,8 @@ export function SharePendenteFormModal({ open, onOpenChange, share, onSuccess }:
     setIsSubmitting(true);
     try {
       const payload: any = {
-        obra_id: formData.obra_id || null,
-        artista_id: formData.artista_id || null,
+        obra_id: formData.obra_id === NONE ? null : (formData.obra_id || null),
+        artista_id: formData.artista_id === NONE ? null : (formData.artista_id || null),
         detentor: formData.detentor.trim() || null,
         tipo: formData.funcao,
         direcao: formData.direcao,
@@ -195,7 +197,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, onSuccess }:
                   <SelectValue placeholder="Selecione a obra" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem obra vinculada</SelectItem>
+                  <SelectItem value="__none__">Sem obra vinculada</SelectItem>
                   {obras.map((o: any) => (
                     <SelectItem key={o.id} value={o.id}>{o.titulo}</SelectItem>
                   ))}
@@ -209,7 +211,7 @@ export function SharePendenteFormModal({ open, onOpenChange, share, onSuccess }:
                   <SelectValue placeholder="Selecione o artista" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Sem artista vinculado</SelectItem>
+                  <SelectItem value="__none__">Sem artista vinculado</SelectItem>
                   {artistas.map((a: any) => (
                     <SelectItem key={a.id} value={a.id}>{a.nome_artistico}</SelectItem>
                   ))}
