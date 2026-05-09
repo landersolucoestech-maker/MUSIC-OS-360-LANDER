@@ -371,9 +371,9 @@ export default function CRM() {
                       </Avatar>
 
                       {/* Main content */}
-                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2">
+                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
 
-                        {/* Col 1: Nome + badges */}
+                        {/* Col 1: Nome + contacto + badges */}
                         <div className="min-w-0">
                           <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Nome</p>
                           <h3 className="font-semibold text-sm leading-tight truncate" data-testid={`text-nome-${cliente.id}`}>
@@ -381,6 +381,18 @@ export default function CRM() {
                           </h3>
                           {cliente.empresa && (
                             <p className="text-xs text-muted-foreground truncate mt-0.5">{cliente.empresa}</p>
+                          )}
+                          {cliente.email && (
+                            <p className="text-xs flex items-center gap-1 mt-1 text-muted-foreground truncate">
+                              <Mail className="h-3 w-3 shrink-0" />
+                              <span className="truncate">{cliente.email}</span>
+                            </p>
+                          )}
+                          {cliente.telefone && (
+                            <p className="text-xs flex items-center gap-1 mt-0.5 text-muted-foreground">
+                              <Phone className="h-3 w-3 shrink-0" />
+                              {cliente.telefone}
+                            </p>
                           )}
                           <div className="flex items-center gap-1 flex-wrap mt-1.5">
                             <StatusBadge status={cliente.status || "lead"} />
@@ -397,24 +409,7 @@ export default function CRM() {
                           </div>
                         </div>
 
-                        {/* Col 2: Contacto */}
-                        <div className="min-w-0">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Contacto</p>
-                          {cliente.email ? (
-                            <p className="text-xs flex items-center gap-1 truncate">
-                              <Mail className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              <span className="truncate">{cliente.email}</span>
-                            </p>
-                          ) : <p className="text-xs text-muted-foreground">—</p>}
-                          {cliente.telefone && (
-                            <p className="text-xs flex items-center gap-1 mt-0.5">
-                              <Phone className="h-3 w-3 shrink-0 text-muted-foreground" />
-                              {cliente.telefone}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Col 3: Categoria + Localização */}
+                        {/* Col 2: Categoria + Localização */}
                         <div className="hidden sm:block min-w-0">
                           {cliente.tipo && (
                             <>
