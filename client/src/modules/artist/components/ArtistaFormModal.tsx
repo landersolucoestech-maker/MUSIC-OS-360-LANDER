@@ -376,6 +376,11 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setAgenciaBooking(typeof artista?.agencia_booking === "string" ? artista.agencia_booking : "");
     setLabelParceira(typeof artista?.label_parceira === "string" ? artista.label_parceira : "");
     setDocumentosList(Array.isArray(artista?.documentos) ? (artista.documentos as { nome: string; url: string }[]) : []);
+
+    // Garantir que o card inicial já está visível após o reset
+    if (contatosEquipe.length === 0) {
+      setTimeout(() => appendContato({ ...EMPTY_CONTATO }), 0);
+    }
   }, [open, artista]);
 
   // ── Handlers ────────────────────────────────────────────────────
