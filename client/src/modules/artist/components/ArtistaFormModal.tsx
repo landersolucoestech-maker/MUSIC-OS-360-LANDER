@@ -1216,7 +1216,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                         <SelectValue placeholder="Selecione um contrato ativo (opcional)" />
                       </SelectTrigger>
                       <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="">Nenhum</SelectItem>
+                        <SelectItem value="none">Nenhum</SelectItem>
                         {contratosDisponiveis.map((c: any) => (
                           <SelectItem key={c.id} value={c.id}>
                             {c.numero_contrato || c.id} — {c.tipo || "Contrato"}
