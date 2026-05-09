@@ -923,7 +923,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                   {contatoFields.map((field, idx) => {
                     const categoriaVal = wf(`contatosEquipe.${idx}.categoria`);
                     const distsVal     = getDists(idx);
-                    const isEditora    = categoriaVal === "editora_musical" || tipoPerfilVal === "com_empresario" || tipoPerfilVal === "gravadora";
+                    const isEditora    = categoriaVal === "editora_musical" || tipoPerfilVal === "com_empresario";
                     const outrosEntry  = distsVal.find((d) => d.id === "outros");
 
                     return (
@@ -950,7 +950,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                         </div>
 
                         {/* Nome + Categoria */}
-                        <div className={(tipoPerfilVal === "com_empresario" || tipoPerfilVal === "gravadora") ? "space-y-1.5" : "grid grid-cols-2 gap-3"}>
+                        <div className={tipoPerfilVal === "com_empresario" ? "space-y-1.5" : "grid grid-cols-2 gap-3"}>
                           <div className="space-y-1.5">
                             <Label className="text-xs">Nome</Label>
                             <Input
@@ -960,7 +960,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                               data-testid={`input-contato-nome-${idx}`}
                             />
                           </div>
-                          {tipoPerfilVal !== "com_empresario" && tipoPerfilVal !== "gravadora" && (
+                          {tipoPerfilVal !== "com_empresario" && (
                             <div className="space-y-1.5">
                               <Label className="text-xs">Categoria</Label>
                               <Controller
