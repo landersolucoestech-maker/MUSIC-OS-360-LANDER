@@ -340,92 +340,81 @@ export default function CRM() {
                   data-testid={`row-contato-${cliente.id}`}
                   className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
                 >
-                  <div className="flex items-center gap-0">
+                  <div className="flex items-center gap-0 min-w-0">
 
-                    {/* ── [Avatar] Nome + contatos + badge(categoria) ── */}
-                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
-                      <Avatar className="h-10 w-10 shrink-0 rounded-xl">
-                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-xl">
+                    {/* 1. [Avatar] Nome */}
+                    <div className="flex items-center gap-3 min-w-0 w-52 shrink-0 pr-4">
+                      <Avatar className="h-9 w-9 shrink-0 rounded-lg">
+                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-lg">
                           {getInitials(cliente.nome)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <h3
-                            className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors truncate"
-                            data-testid={`text-nome-${cliente.id}`}
-                            onClick={() => setViewModal({ open: true, cliente })}
-                          >
-                            {cliente.nome}
-                          </h3>
-                          {(cliente.categoria || cliente.segmento) && (
-                            <Badge variant="outline" className={cn(
-                              "text-[10px] px-2 py-0 h-5 border font-medium shrink-0",
-                              cliente.categoria
-                                ? "bg-primary/10 text-primary border-primary/20"
-                                : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
-                            )}>
-                              {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                          {cliente.telefone && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
-                              <Phone className="h-3 w-3" />{cliente.telefone}
-                            </span>
-                          )}
-                          {cliente.email && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
-                              <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
-                            </span>
-                          )}
-                        </div>
-                      </div>
+                      <h3
+                        className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors truncate"
+                        data-testid={`text-nome-${cliente.id}`}
+                        onClick={() => setViewModal({ open: true, cliente })}
+                      >
+                        {cliente.nome}
+                      </h3>
                     </div>
 
-                    {/* ── métricas inline ── */}
-                    <div className="hidden md:flex items-center gap-4 shrink-0 border-l border-border/60 px-4">
-                      <div className="text-center">
-                        <p className="text-sm font-semibold text-foreground leading-none">{clienteContratos.length}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">contratos</p>
-                      </div>
-                      <div className="text-center">
-                        <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
-                      </div>
-                      {cliente.temperatura && (
-                        <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium capitalize shrink-0", temperaturaStyle[cliente.temperatura])}>
-                          {cliente.temperatura}
+                    {/* 2. badge(categoria) */}
+                    <div className="hidden sm:flex items-center shrink-0 border-l border-border/60 px-4 w-36">
+                      {(cliente.categoria || cliente.segmento) ? (
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] px-2 py-0 h-5 border font-medium",
+                          cliente.categoria
+                            ? "bg-primary/10 text-primary border-primary/20"
+                            : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
+                        )}>
+                          {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
                         </Badge>
-                      )}
-                    </div>
-
-                    {/* ── responsável ── */}
-                    <div className="hidden lg:flex flex-col gap-0.5 shrink-0 border-l border-border/60 px-4 min-w-[140px]">
-                      {cliente.responsavel ? (
-                        <>
-                          <p className="text-xs font-semibold text-foreground leading-tight truncate">{cliente.responsavel}</p>
-                          {cliente.responsavel_telefone && (
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-2.5 w-2.5 shrink-0" />{cliente.responsavel_telefone}
-                            </p>
-                          )}
-                          {cliente.responsavel_email && (
-                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
-                              <Mail className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{cliente.responsavel_email}</span>
-                            </p>
-                          )}
-                          {!cliente.responsavel_telefone && !cliente.responsavel_email && (
-                            <p className="text-[11px] text-muted-foreground">Responsável interno</p>
-                          )}
-                        </>
                       ) : (
-                        <p className="text-xs text-muted-foreground italic">—</p>
+                        <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </div>
 
-                    {/* ── ações ── */}
-                    <div className="pl-2 shrink-0">
+                    {/* 3. cidade/estado */}
+                    <div className="hidden md:flex items-center shrink-0 border-l border-border/60 px-4 w-36">
+                      {cliente.cidade ? (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <MapPin className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</span>
+                        </span>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+
+                    {/* 4. contatos (telefone + email) */}
+                    <div className="flex-1 hidden lg:flex flex-col gap-0.5 border-l border-border/60 px-4 min-w-0">
+                      {cliente.telefone && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
+                        </span>
+                      )}
+                      {cliente.email && (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                          <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
+                        </span>
+                      )}
+                      {!cliente.telefone && !cliente.email && (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </div>
+
+                    {/* 5. responsável */}
+                    <div className="hidden xl:flex flex-col gap-0.5 shrink-0 border-l border-border/60 px-4 w-44">
+                      {cliente.responsavel ? (
+                        <p className="text-xs font-medium text-foreground truncate">{cliente.responsavel}</p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">—</p>
+                      )}
+                      {cliente.responsavel && <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />}
+                    </div>
+
+                    {/* 6. ações */}
+                    <div className="pl-2 shrink-0 ml-auto">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
