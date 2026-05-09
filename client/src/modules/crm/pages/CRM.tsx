@@ -345,7 +345,7 @@ export default function CRM() {
                 onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
               />
             ) : (
-              <div className="divide-y divide-border/60">
+              <div className="space-y-2">
                 {filteredClientes.map((cliente) => {
                   const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
                   const situacao = getContratoSituacao(clienteContratos);
@@ -353,99 +353,132 @@ export default function CRM() {
                     <div
                       key={cliente.id}
                       data-testid={`row-contato-${cliente.id}`}
-                      className="flex items-center gap-3 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
+                      className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-card hover:border-border hover:bg-muted/20 transition-colors cursor-pointer"
+                      onClick={() => setViewModal({ open: true, cliente })}
                     >
-                      <Checkbox
-                        checked={selectedIds.includes(cliente.id)}
-                        onCheckedChange={() => toggleSelect(cliente.id)}
-                        data-testid={`checkbox-contato-${cliente.id}`}
-                        className="shrink-0"
-                      />
+                      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
+                        <Checkbox
+                          checked={selectedIds.includes(cliente.id)}
+                          onCheckedChange={() => toggleSelect(cliente.id)}
+                          data-testid={`checkbox-contato-${cliente.id}`}
+                        />
+                      </div>
 
-                      <Avatar className="h-8 w-8 shrink-0">
+                      <Avatar className="h-9 w-9 shrink-0">
                         <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
                           {getInitials(cliente.nome)}
                         </AvatarFallback>
                       </Avatar>
 
-                      <div className="min-w-0 w-44 shrink-0">
-                        <h3 className="font-medium text-sm leading-tight truncate" data-testid={`text-nome-${cliente.id}`}>
-                          {cliente.nome}
-                        </h3>
-                        <div className="flex items-center gap-1 flex-wrap mt-1">
-                          <StatusBadge status={cliente.status || "lead"} />
-                          {cliente.segmento && (
-                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", SEGMENTO_BADGE[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
-                              {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
-                            </Badge>
+                      {/* Main content */}
+                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-2">
+
+                        {/* Col 1: Nome + badges */}
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Nome</p>
+                          <h3 className="font-semibold text-sm leading-tight truncate" data-testid={`text-nome-${cliente.id}`}>
+                            {cliente.nome}
+                          </h3>
+                          {cliente.empresa && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">{cliente.empresa}</p>
                           )}
-                          {cliente.temperatura && (
-                            <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border")}>
-                              {cliente.temperatura}
-                            </Badge>
+                          <div className="flex items-center gap-1 flex-wrap mt-1.5">
+                            <StatusBadge status={cliente.status || "lead"} />
+                            {cliente.segmento && (
+                              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", SEGMENTO_BADGE[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
+                                {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
+                              </Badge>
+                            )}
+                            {cliente.temperatura && (
+                              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border capitalize", temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border")}>
+                                {cliente.temperatura}
+                              </Badge>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Col 2: Contacto */}
+                        <div className="min-w-0">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Contacto</p>
+                          {cliente.email ? (
+                            <p className="text-xs flex items-center gap-1 truncate">
+                              <Mail className="h-3 w-3 shrink-0 text-muted-foreground" />
+                              <span className="truncate">{cliente.email}</span>
+                            </p>
+                          ) : <p className="text-xs text-muted-foreground">—</p>}
+                          {cliente.telefone && (
+                            <p className="text-xs flex items-center gap-1 mt-0.5">
+                              <Phone className="h-3 w-3 shrink-0 text-muted-foreground" />
+                              {cliente.telefone}
+                            </p>
                           )}
-                          <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
+                        </div>
+
+                        {/* Col 3: Categoria + Localização */}
+                        <div className="hidden sm:block min-w-0">
+                          {cliente.tipo && (
+                            <>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Categoria</p>
+                              <p className="text-xs font-medium truncate">{cliente.tipo}</p>
+                            </>
+                          )}
+                          {cliente.cidade && (
+                            <div className={cliente.tipo ? "mt-1.5" : ""}>
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Cidade</p>
+                              <p className="text-xs font-medium">{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</p>
+                            </div>
+                          )}
+                          {!cliente.tipo && !cliente.cidade && <p className="text-xs text-muted-foreground">—</p>}
+                        </div>
+
+                        {/* Col 4: Contratos + Responsável */}
+                        <div className="hidden lg:block min-w-0">
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Contratos</p>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs font-semibold">{clienteContratos.length}</span>
+                            <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
+                          </div>
+                          {cliente.responsavel && (
+                            <div className="mt-1.5">
+                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Responsável</p>
+                              <p className="text-xs font-medium truncate">{cliente.responsavel}</p>
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-4 flex-1 min-w-0 text-xs text-muted-foreground">
-                        {cliente.telefone && (
-                          <span className="flex items-center gap-1 shrink-0">
-                            <Phone className="h-3 w-3" /> {cliente.telefone}
-                          </span>
-                        )}
-                        {cliente.email && (
-                          <span className="flex items-center gap-1 min-w-0">
-                            <Mail className="h-3 w-3 shrink-0" />
-                            <span className="truncate">{cliente.email}</span>
-                          </span>
-                        )}
+                      {/* Actions */}
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" data-testid={`button-menu-${cliente.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                            </DropdownMenuItem>
+                            <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
+                              <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
+                              <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
+                              <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
-
-                      <div className="hidden lg:flex items-center gap-6 text-xs shrink-0">
-                        {cliente.cidade && (
-                          <div>
-                            <p className="text-muted-foreground mb-0.5">Cidade</p>
-                            <p className="font-medium">{cliente.cidade}/{cliente.estado}</p>
-                          </div>
-                        )}
-                        {clienteContratos.length > 0 && (
-                          <div>
-                            <p className="text-muted-foreground mb-0.5">Contratos</p>
-                            <p className="font-medium">{clienteContratos.length}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" data-testid={`button-menu-${cliente.id}`}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
-                            <Eye className="h-3.5 w-3.5 mr-2" /> Ver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
-                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
-                            <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
-                            <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
-                            <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
                     </div>
                   );
                 })}

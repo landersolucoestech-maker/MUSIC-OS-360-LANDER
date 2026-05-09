@@ -73,6 +73,20 @@ const STATUS_COLORS: Record<string, string> = {
   arquivado: "bg-slate-500",
 };
 
+const CATEGORIA_LABELS: Record<string, string> = {
+  show:              "Show",
+  festival:          "Festival",
+  evento_corporativo:"Evento Corporativo",
+  rodeio:            "Rodeio",
+  show_teatro:       "Show / Teatro",
+  lancamento:        "Lançamento",
+  producao_musical:  "Produção Musical",
+  gravacao:          "Gravação",
+  videoclipe:        "Videoclipe",
+  tour:              "Tour",
+  outro:             "Outro",
+};
+
 const PRIORIDADE_BADGE: Record<string, string> = {
   alta: "bg-destructive/10 text-destructive",
   media: "bg-warning/10 text-warning",
@@ -290,7 +304,7 @@ export default function Leads() {
                       </TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Empresa</TableHead>
-                      <TableHead>Artista</TableHead>
+                      <TableHead>Categoria</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead>Prioridade</TableHead>
                       <TableHead className="text-right">Prob.</TableHead>
@@ -329,7 +343,7 @@ export default function Leads() {
                               {lead.nome_contratante || <span className="text-muted-foreground italic">(sem nome)</span>}
                             </TableCell>
                             <TableCell className="max-w-[140px] truncate text-muted-foreground">{(lead.nome_empresa as string) || "—"}</TableCell>
-                            <TableCell className="max-w-[160px] truncate">{lead.artista_interesse || "—"}</TableCell>
+                            <TableCell className="max-w-[160px] truncate text-sm">{lead.tipo_evento ? (CATEGORIA_LABELS[lead.tipo_evento] ?? lead.tipo_evento) : "—"}</TableCell>
                             <TableCell>
                               <Badge className={`text-xs text-white ${STATUS_COLORS[lead.status_lead ?? ""] || "bg-secondary"}`}>
                                 {STATUS_LABELS[lead.status_lead ?? ""] || lead.status_lead}
