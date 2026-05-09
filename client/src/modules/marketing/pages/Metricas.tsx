@@ -11,7 +11,7 @@ import {
 import {
   Eye, Heart, Users, TrendingUp, Download,
   BarChart2, DollarSign, MousePointer, Music2,
-  ArrowUpRight, ArrowDownRight, ChevronDown,
+  ChevronDown,
   LayoutGrid, FileDown, FileSpreadsheet, FileText,
   Play, ThumbsUp, MessageCircle, Share2, Zap,
 } from "lucide-react";
@@ -92,28 +92,6 @@ function AreaChart({ data, stroke, gradId }: { data: MonthlyPoint[]; stroke: str
         </text>
       ))}
     </svg>
-  );
-}
-
-// ─── KPI card ─────────────────────────────────────────────────────────────────
-interface KpiProps {
-  label: string;
-  value: string;
-  trend?: string;
-  up?: boolean;
-}
-function KpiCard({ label, value, trend, up }: KpiProps) {
-  return (
-    <div className="flex flex-col gap-1 px-4 py-3 rounded-xl border border-border/60 bg-card hover:border-border transition-colors">
-      <span className="text-xs text-muted-foreground font-medium">{label}</span>
-      <span className="text-2xl font-bold font-mono text-foreground leading-none">{value}</span>
-      {trend && (
-        <span className={cn("text-xs font-medium flex items-center gap-0.5 leading-none", up ? "text-success" : "text-destructive")}>
-          {up ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-          {trend}
-        </span>
-      )}
-    </div>
   );
 }
 
@@ -521,19 +499,6 @@ function TopConteudos({ platform }: { platform: PlatformId }) {
 export default function MarketingMetricas() {
   const [platform, setPlatform] = useState<PlatformId>("overview");
 
-  const alcanceTotal = YOUTUBE_TOTALS.totalViewsMes + TIKTOK_TOTALS.totalViewsMes + INSTAGRAM_TOTALS.totalAlcanceMes;
-  const seguidoresTotal = YOUTUBE_TOTALS.totalSubscribers + TIKTOK_TOTALS.totalFollowers + INSTAGRAM_TOTALS.totalFollowers;
-  const engMedio = ((TIKTOK_TOTALS.avgEngagement + INSTAGRAM_TOTALS.avgEngagement) / 2).toFixed(1);
-
-  const KPIS: KpiProps[] = [
-    { label: "Alcance Total",  value: fmtNum(alcanceTotal),                           trend: "+12.4%", up: true  },
-    { label: "Engajamento",    value: `${engMedio}%`,                                  trend: "+3.1%",  up: true  },
-    { label: "Seguidores",     value: fmtNum(seguidoresTotal),                         trend: "+8.7%",  up: true  },
-    { label: "Streams",        value: "—" },
-    { label: "ROI Médio",      value: "0%" },
-    { label: "Conversões",     value: fmtNum(GOOGLE_ADS_MOCK.mes.conversoes),          trend: "+5.2%",  up: true  },
-  ];
-
   const ExportButton = () => (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -557,12 +522,7 @@ export default function MarketingMetricas() {
     >
       <div className="space-y-8">
 
-        {/* 1 — KPIs */}
-        <section className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-3">
-          {KPIS.map(k => <KpiCard key={k.label} {...k} />)}
-        </section>
-
-        {/* 2 — Performance analítica */}
+        {/* 1 — Performance analítica */}
         <section className="space-y-2">
           <div>
             <p className="text-base font-semibold text-foreground">Performance Analítica</p>
