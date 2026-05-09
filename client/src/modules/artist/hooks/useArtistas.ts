@@ -4,6 +4,13 @@ import { useDataQuery } from "@/shared/hooks/useDataQuery";
 export interface ArtistaDistribuidoraEntry {
   id: string;
   email: string;
+  nomeCustom?: string;
+}
+
+export interface ArtistaResponsavel {
+  nome: string;
+  telefone: string;
+  email: string;
 }
 
 export interface ArtistaRelacionamento {
@@ -13,7 +20,7 @@ export interface ArtistaRelacionamento {
   email: string;
   escritorio?: string;
   crc?: string;
-  responsaveis?: string[];
+  responsaveis?: ArtistaResponsavel[];
   distribuidoras?: ArtistaDistribuidoraEntry[];
 }
 

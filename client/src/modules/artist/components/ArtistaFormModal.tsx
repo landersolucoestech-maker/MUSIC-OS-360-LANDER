@@ -42,6 +42,7 @@ import {
   validateAppleMusicUrl,
   emptyRelacionamento,
   type ArtistaFormRelacionamento,
+  type ArtistaFormResponsavel,
   type FormToArtistaInput,
   type UrlValidationState,
 } from "@/modules/artist/mappers";
@@ -77,14 +78,14 @@ const FASES_CARREIRA = [
 ];
 
 const TIPOS_RELACIONAMENTO = [
-  { tipo: "empresario" as const, label: "Empresários",              hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false },
-  { tipo: "gravadora"  as const, label: "Gravadoras",               hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false },
-  { tipo: "editora"    as const, label: "Editoras",                 hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false },
-  { tipo: "booker"     as const, label: "Bookers",                  hasDistribuidoras: false, hasEscritorio: false, hasCRC: false },
-  { tipo: "juridico"   as const, label: "Jurídico",                 hasDistribuidoras: false, hasEscritorio: true,  hasCRC: false },
-  { tipo: "financeiro" as const, label: "Financeiro",               hasDistribuidoras: false, hasEscritorio: false, hasCRC: false },
-  { tipo: "contador"   as const, label: "Contador",                 hasDistribuidoras: false, hasEscritorio: false, hasCRC: true  },
-  { tipo: "assessoria" as const, label: "Assessoria de Imprensa",   hasDistribuidoras: false, hasEscritorio: false, hasCRC: false },
+  { tipo: "empresario" as const, label: "Empresários",              hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
+  { tipo: "gravadora"  as const, label: "Gravadoras",               hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: true  },
+  { tipo: "editora"    as const, label: "Editoras",                 hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: true  },
+  { tipo: "booker"     as const, label: "Bookers",                  hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
+  { tipo: "juridico"   as const, label: "Jurídico",                 hasDistribuidoras: false, hasEscritorio: true,  hasCRC: false, hasResponsaveis: false },
+  { tipo: "financeiro" as const, label: "Financeiro",               hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
+  { tipo: "contador"   as const, label: "Contador",                 hasDistribuidoras: false, hasEscritorio: false, hasCRC: true,  hasResponsaveis: false },
+  { tipo: "assessoria" as const, label: "Assessoria de Imprensa",   hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
 ];
 
 const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]) => ({ value, label }));
@@ -338,7 +339,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const addDistribuidora = (relIdx: number, distId: string) => {
     const current = getRelDist(relIdx);
     if (current.find((d) => d.id === distId)) return;
-    setValue(`relacionamentos.${relIdx}.distribuidoras`, [...current, { id: distId, email: "" }]);
+    setValue(`relacionamentos.${relIdx}.distribuidoras`, [...current, { id: distId, email: "", nomeCustom: distId === "outro" ? "" : undefined }]);
   };
 
   const removeDistribuidora = (relIdx: number, distIdx: number) => {
@@ -352,6 +353,33 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     const updated = [...getRelDist(relIdx)];
     updated[distIdx] = { ...updated[distIdx], email };
     setValue(`relacionamentos.${relIdx}.distribuidoras`, updated);
+  };
+
+  const updateDistribuidoraNomeCustom = (relIdx: number, distIdx: number, nomeCustom: string) => {
+    const updated = [...getRelDist(relIdx)];
+    updated[distIdx] = { ...updated[distIdx], nomeCustom };
+    setValue(`relacionamentos.${relIdx}.distribuidoras`, updated);
+  };
+
+  // Responsáveis helpers (for gravadoras and editoras)
+  const getRelResp = (relIdx: number): ArtistaFormResponsavel[] =>
+    (wf(`relacionamentos.${relIdx}.responsaveis`) as ArtistaFormResponsavel[] | undefined) ?? [];
+
+  const addResponsavel = (relIdx: number) => {
+    setValue(`relacionamentos.${relIdx}.responsaveis`, [...getRelResp(relIdx), { nome: "", telefone: "", email: "" }]);
+  };
+
+  const removeResponsavel = (relIdx: number, respIdx: number) => {
+    setValue(
+      `relacionamentos.${relIdx}.responsaveis`,
+      getRelResp(relIdx).filter((_, i) => i !== respIdx)
+    );
+  };
+
+  const updateResponsavel = (relIdx: number, respIdx: number, field: keyof ArtistaFormResponsavel, value: string) => {
+    const updated = [...getRelResp(relIdx)];
+    updated[respIdx] = { ...updated[respIdx], [field]: value };
+    setValue(`relacionamentos.${relIdx}.responsaveis`, updated);
   };
 
   // ── Submit ──────────────────────────────────────────────────────
@@ -927,7 +955,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 vários empresários, gravadoras, editoras e equipa simultaneamente.
               </p>
 
-              {TIPOS_RELACIONAMENTO.map(({ tipo, label, hasDistribuidoras, hasEscritorio, hasCRC }) => {
+              {TIPOS_RELACIONAMENTO.map(({ tipo, label, hasDistribuidoras, hasEscritorio, hasCRC, hasResponsaveis }) => {
                 const tipoFields = fields
                   .map((field, idx) => ({ field, idx }))
                   .filter(({ field }) => (field as ArtistaFormRelacionamento).tipo === tipo);
@@ -1032,6 +1060,76 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                         </div>
 
                         {/* Distribuidoras sub-section */}
+                        {hasResponsaveis && (() => {
+                          const resps = getRelResp(idx);
+                          return (
+                            <div className="space-y-2 pt-2 border-t border-border/40">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-xs text-muted-foreground">Responsáveis</Label>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 text-xs gap-1 px-2"
+                                  onClick={() => addResponsavel(idx)}
+                                >
+                                  <Plus className="h-3 w-3" />
+                                  Adicionar Responsável
+                                </Button>
+                              </div>
+                              {resps.length === 0 && (
+                                <p className="text-xs text-muted-foreground">Nenhum responsável cadastrado.</p>
+                              )}
+                              {resps.map((rv, ri) => (
+                                <div key={ri} className="p-2 border rounded space-y-2 bg-muted/10">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">Responsável {ri + 1}</span>
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
+                                      onClick={() => removeResponsavel(idx, ri)}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Nome</Label>
+                                      <Input
+                                        value={rv.nome}
+                                        onChange={(e) => updateResponsavel(idx, ri, "nome", e.target.value)}
+                                        placeholder="Nome completo"
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs">Telefone</Label>
+                                      <Input
+                                        value={rv.telefone}
+                                        onChange={(e) => updateResponsavel(idx, ri, "telefone", e.target.value)}
+                                        placeholder="(00) 00000-0000"
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                  </div>
+                                  <div className="space-y-1">
+                                    <Label className="text-xs">Email</Label>
+                                    <Input
+                                      type="email"
+                                      value={rv.email}
+                                      onChange={(e) => updateResponsavel(idx, ri, "email", e.target.value)}
+                                      placeholder="email@exemplo.com"
+                                      className="h-7 text-xs"
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+
                         {hasDistribuidoras && (() => {
                           const dists = getRelDist(idx);
                           const available = DISTRIBUIDORAS_OPTIONS.filter(
@@ -1042,26 +1140,38 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                               <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
 
                               {dists.map((d, di) => (
-                                <div key={di} className="flex items-center gap-2">
-                                  <span className="text-xs font-medium min-w-[80px] shrink-0">
-                                    {DISTRIBUIDORAS_OPTIONS.find((o) => o.id === d.id)?.label ?? d.id}
-                                  </span>
-                                  <Input
-                                    value={d.email}
-                                    onChange={(e) => updateDistribuidoraEmail(idx, di, e.target.value)}
-                                    placeholder="email@distribuidora.com"
-                                    type="email"
-                                    className="h-7 text-xs"
-                                  />
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-6 w-6 p-0 shrink-0"
-                                    onClick={() => removeDistribuidora(idx, di)}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </Button>
+                                <div key={di} className="space-y-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-xs font-medium min-w-[80px] shrink-0">
+                                      {DISTRIBUIDORAS_OPTIONS.find((o) => o.id === d.id)?.label ?? d.id}
+                                    </span>
+                                    <Input
+                                      value={d.email}
+                                      onChange={(e) => updateDistribuidoraEmail(idx, di, e.target.value)}
+                                      placeholder="email@distribuidora.com"
+                                      type="email"
+                                      className="h-7 text-xs"
+                                    />
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-6 w-6 p-0 shrink-0"
+                                      onClick={() => removeDistribuidora(idx, di)}
+                                    >
+                                      <X className="h-3 w-3" />
+                                    </Button>
+                                  </div>
+                                  {d.id === "outro" && (
+                                    <div className="ml-[88px]">
+                                      <Input
+                                        value={d.nomeCustom ?? ""}
+                                        onChange={(e) => updateDistribuidoraNomeCustom(idx, di, e.target.value)}
+                                        placeholder="Nome da distribuidora personalizada"
+                                        className="h-7 text-xs"
+                                      />
+                                    </div>
+                                  )}
                                 </div>
                               ))}
 

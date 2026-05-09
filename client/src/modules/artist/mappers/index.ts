@@ -9,6 +9,7 @@
 export type {
   ArtistaFormFields,
   ArtistaFormRelacionamento,
+  ArtistaFormResponsavel,
   FormToArtistaInput,
   UrlValidationState,
 } from "./artista.mapper";

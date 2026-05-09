@@ -7,7 +7,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { Artista, ArtistaRelacionamento, ArtistaDistribuidoraEntry } from "@/modules/artist/hooks/useArtistas";
+import type { Artista, ArtistaRelacionamento, ArtistaDistribuidoraEntry, ArtistaResponsavel } from "@/modules/artist/hooks/useArtistas";
 
 // ─── Utilidades internas ──────────────────────────────────────────
 
@@ -347,6 +347,12 @@ export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, 
 
 // ─── Form Fields Interface ────────────────────────────────────────
 
+export interface ArtistaFormResponsavel {
+  nome: string;
+  telefone: string;
+  email: string;
+}
+
 export interface ArtistaFormRelacionamento {
   tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
   nome: string;
@@ -354,6 +360,7 @@ export interface ArtistaFormRelacionamento {
   email: string;
   escritorio: string;
   crc: string;
+  responsaveis: ArtistaFormResponsavel[];
   distribuidoras: ArtistaDistribuidoraEntry[];
 }
 
@@ -421,7 +428,7 @@ export interface ArtistaFormFields {
 }
 
 function emptyRelacionamento(tipo: ArtistaFormRelacionamento["tipo"]): ArtistaFormRelacionamento {
-  return { tipo, nome: "", telefone: "", email: "", escritorio: "", crc: "", distribuidoras: [] };
+  return { tipo, nome: "", telefone: "", email: "", escritorio: "", crc: "", responsaveis: [], distribuidoras: [] };
 }
 
 function dbRelToForm(r: ArtistaRelacionamento): ArtistaFormRelacionamento {
@@ -432,16 +439,42 @@ function dbRelToForm(r: ArtistaRelacionamento): ArtistaFormRelacionamento {
     email: r.email ?? "",
     escritorio: r.escritorio ?? "",
     crc: r.crc ?? "",
+    responsaveis: Array.isArray(r.responsaveis)
+      ? r.responsaveis.map((rv) => ({ nome: rv.nome ?? "", telefone: rv.telefone ?? "", email: rv.email ?? "" }))
+      : [],
     distribuidoras: Array.isArray(r.distribuidoras) ? r.distribuidoras : [],
   };
+}
+
+/** Constrói ArtistaDistribuidoraEntry[] a partir dos campos legados de distribuidoras. */
+function buildLegacyDistribuidoras(
+  selecionadas: Record<string, boolean> | null | undefined,
+  emails: Record<string, string> | null | undefined,
+): ArtistaDistribuidoraEntry[] {
+  if (!selecionadas) return [];
+  return Object.entries(selecionadas)
+    .filter(([, selected]) => selected)
+    .map(([id]) => ({ id, email: emails?.[id] ?? "" }));
 }
 
 /**
  * Migra campos legados para o novo array de relacionamentos quando o artista
  * não tem `relacionamentos` mas tem campos empresario_* / gravadora_* preenchidos.
+ * Também migra distribuidoras_selecionadas e gravadora_responsavel_* legados.
  */
 function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamento[] {
   const rels: ArtistaFormRelacionamento[] = [];
+
+  // Distribuidoras legadas — serão atribuídas ao primeiro empresario ou gravadora
+  const legacyDists = buildLegacyDistribuidoras(
+    artista.distribuidoras_selecionadas as Record<string, boolean> | null,
+    artista.distribuidoras_emails as Record<string, string> | null,
+  );
+  const legacyEmpresaDists = buildLegacyDistribuidoras(
+    artista.distribuidoras_empresa_selecionadas as Record<string, boolean> | null,
+    artista.distribuidoras_empresa_emails as Record<string, string> | null,
+  );
+
   if (artista.empresario_nome) {
     rels.push({
       tipo: "empresario",
@@ -450,12 +483,23 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
       email: str(artista.empresario_email),
       escritorio: "",
       crc: "",
-      distribuidoras: [],
+      responsaveis: [],
+      distribuidoras: legacyDists,
     });
   }
+
   if (artista.gravadora_nome) {
     const tp = str(artista.tipo_perfil);
     const tipoRel: ArtistaFormRelacionamento["tipo"] = tp === "editora" ? "editora" : "gravadora";
+    // Migrar o responsável único legado (gravadora_responsavel_*) para o array
+    const responsaveis: ArtistaFormResponsavel[] = [];
+    if (artista.gravadora_responsavel_nome) {
+      responsaveis.push({
+        nome: str(artista.gravadora_responsavel_nome),
+        telefone: str(artista.gravadora_responsavel_telefone),
+        email: str(artista.gravadora_responsavel_email),
+      });
+    }
     rels.push({
       tipo: tipoRel,
       nome: str(artista.gravadora_nome),
@@ -463,9 +507,12 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
       email: str(artista.gravadora_email),
       escritorio: "",
       crc: "",
-      distribuidoras: [],
+      responsaveis,
+      // Se já existe empresario, as legacyDists foram atribuídas a ele; caso contrário atribuir aqui
+      distribuidoras: artista.empresario_nome ? legacyEmpresaDists : legacyDists,
     });
   }
+
   return rels;
 }
 
@@ -630,15 +677,57 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
   // Converte ArtistaFormRelacionamento[] → ArtistaRelacionamento[]
   const relacionamentos: ArtistaRelacionamento[] = f.relacionamentos
     .filter((r) => r.nome.trim() !== "")
-    .map((r) => ({
-      tipo: r.tipo,
-      nome: r.nome.trim(),
-      telefone: r.telefone.trim(),
-      email: r.email.trim(),
-      ...(r.escritorio.trim() ? { escritorio: r.escritorio.trim() } : {}),
-      ...(r.crc.trim() ? { crc: r.crc.trim() } : {}),
-      ...(r.distribuidoras.length > 0 ? { distribuidoras: r.distribuidoras } : {}),
-    }));
+    .map((r) => {
+      const responsaveisValid = (r.responsaveis ?? []).filter((rv) => rv.nome.trim() !== "");
+      return {
+        tipo: r.tipo,
+        nome: r.nome.trim(),
+        telefone: r.telefone.trim(),
+        email: r.email.trim(),
+        ...(r.escritorio.trim() ? { escritorio: r.escritorio.trim() } : {}),
+        ...(r.crc.trim() ? { crc: r.crc.trim() } : {}),
+        ...(responsaveisValid.length > 0 ? { responsaveis: responsaveisValid } : {}),
+        ...(r.distribuidoras.length > 0 ? { distribuidoras: r.distribuidoras } : {}),
+      };
+    });
+
+  // Deriva mapas legados de distribuidoras a partir do novo modelo relacional
+  // (empresario + gravadora + editora têm distribuidoras próprias no novo modelo)
+  const empresarioRels = f.relacionamentos.filter((r) => r.tipo === "empresario");
+  const gravadoraRels  = f.relacionamentos.filter((r) => r.tipo === "gravadora" || r.tipo === "editora");
+
+  const distribuidorasSelecionadas: Record<string, boolean> = {};
+  const distribuidorasEmails: Record<string, string>        = {};
+  for (const rel of empresarioRels) {
+    for (const d of rel.distribuidoras) {
+      distribuidorasSelecionadas[d.id] = true;
+      if (d.email) distribuidorasEmails[d.id] = d.email;
+    }
+  }
+  // Se não há empresario, usa as distribuidoras da gravadora para o mapa legado
+  if (empresarioRels.length === 0) {
+    for (const rel of gravadoraRels) {
+      for (const d of rel.distribuidoras) {
+        distribuidorasSelecionadas[d.id] = true;
+        if (d.email) distribuidorasEmails[d.id] = d.email;
+      }
+    }
+  }
+  // Mapa "empresa" (distribuidoras da gravadora quando também há empresario)
+  const distribuidorasEmpresaSelecionadas: Record<string, boolean> = {};
+  const distribuidorasEmpresaEmails: Record<string, string>        = {};
+  if (empresarioRels.length > 0) {
+    for (const rel of gravadoraRels) {
+      for (const d of rel.distribuidoras) {
+        distribuidorasEmpresaSelecionadas[d.id] = true;
+        if (d.email) distribuidorasEmpresaEmails[d.id] = d.email;
+      }
+    }
+  }
+
+  // Primeiro responsável da primeira gravadora → campos legados
+  const firstGrav = f.relacionamentos.find((r) => r.tipo === "gravadora" || r.tipo === "editora");
+  const firstResp = firstGrav?.responsaveis?.[0];
 
   return {
     nome_artistico: f.nomeArtistico.trim(),
@@ -682,7 +771,7 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     tiktok_seguidores: numOrNull(f.tiktokSeguidores),
     // Relacionamentos (novo)
     relacionamentos: relacionamentos.length > 0 ? relacionamentos : null,
-    // Legado (mantido para backward compat)
+    // Legado (mantido para backward compat — derivado do novo modelo relacional)
     tipo_perfil: f.tipoPerfil,
     empresario_id: strOrNull(f.empresarioId),
     empresario_nome: strOrNull(f.empresarioNome),
@@ -692,14 +781,16 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     gravadora_nome: strOrNull(f.gravadoraNome),
     gravadora_telefone: strOrNull(f.gravadoraTelefone),
     gravadora_email: strOrNull(f.gravadoraEmail),
+    // Responsável da gravadora — agora derivado do primeiro responsável do primeiro relacionamento de gravadora
     gravadora_responsavel_id: strOrNull(f.gravadoraResponsavelId),
-    gravadora_responsavel_nome: strOrNull(f.gravadoraResponsavelNome),
-    gravadora_responsavel_telefone: strOrNull(f.gravadoraResponsavelTelefone),
-    gravadora_responsavel_email: strOrNull(f.gravadoraResponsavelEmail),
-    distribuidoras_selecionadas: Object.keys(f.distribuidorasSelecionadas).length > 0 ? f.distribuidorasSelecionadas : null,
-    distribuidoras_emails: Object.keys(f.distribuidorasEmails).length > 0 ? f.distribuidorasEmails : null,
-    distribuidoras_empresa_selecionadas: Object.keys(f.distribuidorasEmpresaSelecionadas).length > 0 ? f.distribuidorasEmpresaSelecionadas : null,
-    distribuidoras_empresa_emails: Object.keys(f.distribuidorasEmpresaEmails).length > 0 ? f.distribuidorasEmpresaEmails : null,
+    gravadora_responsavel_nome: firstResp ? firstResp.nome || null : strOrNull(f.gravadoraResponsavelNome),
+    gravadora_responsavel_telefone: firstResp ? firstResp.telefone || null : strOrNull(f.gravadoraResponsavelTelefone),
+    gravadora_responsavel_email: firstResp ? firstResp.email || null : strOrNull(f.gravadoraResponsavelEmail),
+    // Distribuidoras — derivadas do novo modelo relacional para não apagar dados legados
+    distribuidoras_selecionadas: Object.keys(distribuidorasSelecionadas).length > 0 ? distribuidorasSelecionadas : null,
+    distribuidoras_emails: Object.keys(distribuidorasEmails).length > 0 ? distribuidorasEmails : null,
+    distribuidoras_empresa_selecionadas: Object.keys(distribuidorasEmpresaSelecionadas).length > 0 ? distribuidorasEmpresaSelecionadas : null,
+    distribuidoras_empresa_emails: Object.keys(distribuidorasEmpresaEmails).length > 0 ? distribuidorasEmpresaEmails : null,
     notas_internas: strOrNull(f.notasInternas),
     // Documentos / presskit
     documentos_pessoais_url: strOrNull(f.documentosPessoaisUrl),
