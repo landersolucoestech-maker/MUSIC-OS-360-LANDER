@@ -340,84 +340,78 @@ export default function CRM() {
                   data-testid={`row-contato-${cliente.id}`}
                   className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
                 >
-                  <div className="flex items-center gap-0 min-w-0">
+                  <div className="flex items-center gap-6 min-w-0">
 
-                    {/* 1. [Avatar] Nome */}
-                    <div className="flex items-center gap-3 min-w-0 w-52 shrink-0 pr-4">
-                      <Avatar className="h-9 w-9 shrink-0 rounded-lg">
-                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-lg">
+                    {/* BLOCO 1 — avatar + nome + categoria + cidade */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <Avatar className="h-10 w-10 shrink-0 rounded-xl">
+                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-xl">
                           {getInitials(cliente.nome)}
                         </AvatarFallback>
                       </Avatar>
-                      <h3
-                        className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors truncate"
-                        data-testid={`text-nome-${cliente.id}`}
-                        onClick={() => setViewModal({ open: true, cliente })}
-                      >
-                        {cliente.nome}
-                      </h3>
+                      <div className="min-w-0">
+                        <h3
+                          className="font-semibold text-sm leading-snug cursor-pointer hover:text-primary transition-colors truncate"
+                          data-testid={`text-nome-${cliente.id}`}
+                          onClick={() => setViewModal({ open: true, cliente })}
+                        >
+                          {cliente.nome}
+                        </h3>
+                        <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+                          {(cliente.categoria || cliente.segmento) && (
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] px-1.5 py-0 h-4 border font-medium",
+                              cliente.categoria
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
+                            )}>
+                              {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
+                            </Badge>
+                          )}
+                          {cliente.cidade && (
+                            <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
+                              <MapPin className="h-2.5 w-2.5 shrink-0" />
+                              {cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
 
-                    {/* 2. badge(categoria) */}
-                    <div className="hidden sm:flex items-center shrink-0 border-l border-border/60 px-4 w-36">
-                      {(cliente.categoria || cliente.segmento) ? (
-                        <Badge variant="outline" className={cn(
-                          "text-[10px] px-2 py-0 h-5 border font-medium",
-                          cliente.categoria
-                            ? "bg-primary/10 text-primary border-primary/20"
-                            : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
-                        )}>
-                          {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
-                        </Badge>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </div>
-
-                    {/* 3. cidade/estado */}
-                    <div className="hidden md:flex items-center shrink-0 border-l border-border/60 px-4 w-36">
-                      {cliente.cidade ? (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                          <MapPin className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</span>
-                        </span>
-                      ) : (
-                        <span className="text-xs text-muted-foreground">—</span>
-                      )}
-                    </div>
-
-                    {/* 4. contatos (telefone + email) */}
-                    <div className="flex-1 hidden lg:flex flex-col gap-0.5 border-l border-border/60 px-4 min-w-0">
-                      {cliente.telefone && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                    {/* BLOCO 2 — telefone + email */}
+                    <div className="hidden md:flex flex-col gap-0.5 shrink-0">
+                      {cliente.telefone ? (
+                        <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
                         </span>
-                      )}
+                      ) : <span className="text-xs text-muted-foreground">—</span>}
                       {cliente.email && (
-                        <span className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                        <span className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] truncate">
                           <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
                         </span>
                       )}
-                      {!cliente.telefone && !cliente.email && (
+                    </div>
+
+                    {/* BLOCO 3 — responsável + cargo */}
+                    <div className="hidden lg:flex flex-col gap-0.5 shrink-0 min-w-[120px]">
+                      {cliente.responsavel ? (
+                        <>
+                          <span className="text-xs font-medium text-foreground truncate">{cliente.responsavel}</span>
+                          <span className="text-[11px] text-muted-foreground">
+                            {cliente.responsavel_email || "Responsável"}
+                          </span>
+                        </>
+                      ) : (
                         <span className="text-xs text-muted-foreground">—</span>
                       )}
                     </div>
 
-                    {/* 5. responsável */}
-                    <div className="hidden xl:flex flex-col gap-0.5 shrink-0 border-l border-border/60 px-4 w-44">
-                      {cliente.responsavel ? (
-                        <p className="text-xs font-medium text-foreground truncate">{cliente.responsavel}</p>
-                      ) : (
-                        <p className="text-xs text-muted-foreground">—</p>
-                      )}
-                      {cliente.responsavel && <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />}
-                    </div>
-
-                    {/* 6. ações */}
-                    <div className="pl-2 shrink-0 ml-auto">
+                    {/* BLOCO 4 — status + ações */}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
                             <MoreHorizontal className="h-4 w-4" />
                           </Button>
                         </DropdownMenuTrigger>
@@ -445,6 +439,7 @@ export default function CRM() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
+
                   </div>
                 </div>
               );
