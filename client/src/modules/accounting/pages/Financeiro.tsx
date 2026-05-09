@@ -405,7 +405,7 @@ export default function Financeiro() {
                     {/* Date */}
                     <div className="hidden sm:block text-right shrink-0">
                       <p className="text-xs text-muted-foreground mb-0.5">Data</p>
-                      <p className="text-xs font-mono text-foreground">{transacao.data ? String(transacao.data).slice(5, 7) + "-" + String(transacao.data).slice(0, 4) : "-"}</p>
+                      <p className="text-xs font-mono text-foreground">{formatDate(transacao.data)}</p>
                     </div>
 
                     {/* Amount */}

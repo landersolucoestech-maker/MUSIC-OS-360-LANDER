@@ -320,6 +320,9 @@ export function AppSidebar() {
               <p className="text-[9px] font-medium text-sidebar-foreground/40 uppercase tracking-[0.09em] leading-none mt-[3px]">
                 ERP OPERACIONAL MUSICAL
               </p>
+              <span className="inline-flex items-center mt-[4px] px-1 py-px rounded-sm text-[7px] font-bold uppercase tracking-[0.1em] bg-primary/10 text-primary/70 leading-none">
+                SISTEMA MULTI-TENANT
+              </span>
             </div>
           )}
         </div>
@@ -353,7 +356,7 @@ export function AppSidebar() {
       {/* ── Tenant block ──────────────────────────────────────────────────── */}
       {!collapsed && (
         <div className="px-2.5 pt-1.5 pb-2 border-b border-sidebar-border">
-          <p className="text-[8.5px] font-semibold text-sidebar-foreground/30 uppercase tracking-[0.14em] px-1 pb-1"></p>
+          <p className="text-[8.5px] font-semibold text-sidebar-foreground/30 uppercase tracking-[0.14em] px-1 pb-1">Tenant Atual</p>
           <div
             className={cn(
               "flex items-center gap-2 rounded-md px-2 py-1.5",

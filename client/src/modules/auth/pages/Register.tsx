@@ -456,7 +456,7 @@ export default function Register() {
                   </div>
                   <input
                     className="flex h-11 flex-1 rounded-r-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors"
-                    placeholder="lander-records"
+                    placeholder="minha-gravadora"
                     {...form3.register("slug")}
                     data-testid="input-slug"
                     onChange={(e) => form3.setValue("slug", slugify(e.target.value))}

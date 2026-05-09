@@ -263,7 +263,7 @@ export function MainLayout({
 
             <NotificationsPopover />
 
-            <Link to="/suporte">
+            <Link to="/support">
               <Button
                 variant="ghost"
                 size="icon"

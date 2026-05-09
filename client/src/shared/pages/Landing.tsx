@@ -43,7 +43,7 @@ const PRICING = [
     price: "R$ 297",
     period: "/mês",
     desc: "Para gravadoras e editoras em crescimento.",
-    features: ["Até 50 artistas", "Catálogo ilimitado", "Royalties automáticos", "CRM básico", "Suporte por e-mail"],
+    features: ["Até 50 artistas", "Catálogo ilimitado", "Contabilidade integrada", "CRM básico", "Suporte por e-mail"],
     cta: "Começar grátis",
     highlighted: false,
   },
@@ -138,7 +138,7 @@ export default function Landing() {
           <div className="text-center mb-16">
             <h2 className="text-3xl font-bold mb-4">Tudo que sua label precisa</h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Módulos integrados que conversam entre si — do cadastro do artista ao pagamento de royalties.
+              Módulos integrados que conversam entre si — do cadastro do artista à gestão financeira completa.
             </p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
