@@ -83,13 +83,18 @@ const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]
 
 // ─── Types ────────────────────────────────────────────────────────
 
+interface DistribuidoraEntry {
+  id: string;
+  email: string;
+  nomeCustom?: string;
+}
+
 interface ContatoEquipe {
   nome: string;
   categoria: string;
   telefone: string;
   email: string;
-  distribuidoras: string[];
-  emailShare: string;
+  distribuidoras: DistribuidoraEntry[];
 }
 
 interface ArtistaFormValues {
@@ -123,7 +128,7 @@ interface ArtistaFormValues {
 }
 
 const EMPTY_CONTATO: ContatoEquipe = {
-  nome: "", categoria: "", telefone: "", email: "", distribuidoras: [], emailShare: "",
+  nome: "", categoria: "", telefone: "", email: "", distribuidoras: [],
 };
 
 const DEFAULT_VALUES: ArtistaFormValues = {
@@ -224,7 +229,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     distribuidorasEmails: Record<string, string>;
     distribuidorasEmpresaSelecionadas: Record<string, boolean>;
     distribuidorasEmpresaEmails: Record<string, string>;
-    relacionamentos: any[];
+    relacionamentos: unknown[];
     slugArtistico: string;
     tagsMusicais: string[];
     faseCarreira: string;
@@ -266,9 +271,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     if (!open) return;
     const f = artistaToFormFields(artista ?? null);
 
-    // Load contatos_equipe from artista
-    const contatosEquipe: ContatoEquipe[] = Array.isArray((artista as any)?.contatos_equipe)
-      ? ((artista as any).contatos_equipe as ContatoEquipe[])
+    const rawContatos = (artista as Artista & { contatos_equipe?: unknown })?.contatos_equipe;
+    const contatosEquipe: ContatoEquipe[] = Array.isArray(rawContatos)
+      ? (rawContatos as ContatoEquipe[])
       : [];
 
     reset({
@@ -301,7 +306,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       contatosEquipe,
     });
 
-    // Load preserved data
     setPreservedData({
       tipoArtista:   f.tipoArtista,
       statusArtista: f.statusArtista,
@@ -328,14 +332,13 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       distribuidorasEmails: f.distribuidorasEmails,
       distribuidorasEmpresaSelecionadas: f.distribuidorasEmpresaSelecionadas,
       distribuidorasEmpresaEmails: f.distribuidorasEmpresaEmails,
-      relacionamentos: f.relacionamentos,
+      relacionamentos: f.relacionamentos as unknown[],
       slugArtistico: f.slugArtistico,
       tagsMusicais: f.tagsMusicais,
       faseCarreira: f.faseCarreira,
       contratoId: f.contratoId,
     });
 
-    // File uploads
     setImagemArtista(
       f.fotoUrl ? [{ url: f.fotoUrl, name: "foto", size: 0, type: "image/*", path: "" }] : []
     );
@@ -350,7 +353,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         : []
     );
 
-    // Perfil 360 pass-through
     setBannerUrl(typeof artista?.banner_url === "string" ? artista.banner_url : "");
     setGaleriaUrls(Array.isArray(artista?.galeria_urls) ? (artista.galeria_urls as string[]) : []);
     setVideoApresentacaoUrl(typeof artista?.video_apresentacao_url === "string" ? artista.video_apresentacao_url : "");
@@ -377,12 +379,37 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     );
   };
 
+  // Distribuidoras helpers — work with DistribuidoraEntry[]
+  const getDists = (idx: number): DistribuidoraEntry[] =>
+    (wf(`contatosEquipe.${idx}.distribuidoras`) as DistribuidoraEntry[] | undefined) ?? [];
+
   const toggleDistribuidora = (contatoIdx: number, distId: string, checked: boolean) => {
-    const current = (wf(`contatosEquipe.${contatoIdx}.distribuidoras`) as string[]) ?? [];
-    setValue(
-      `contatosEquipe.${contatoIdx}.distribuidoras`,
-      checked ? [...current, distId] : current.filter((d) => d !== distId)
+    const current = getDists(contatoIdx);
+    if (checked) {
+      setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, [
+        ...current,
+        { id: distId, email: "", nomeCustom: distId === "outros" ? "" : undefined },
+      ]);
+    } else {
+      setValue(
+        `contatosEquipe.${contatoIdx}.distribuidoras`,
+        current.filter((d) => d.id !== distId)
+      );
+    }
+  };
+
+  const updateDistEmail = (contatoIdx: number, distId: string, email: string) => {
+    const updated = getDists(contatoIdx).map((d) =>
+      d.id === distId ? { ...d, email } : d
     );
+    setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, updated);
+  };
+
+  const updateDistNomeCustom = (contatoIdx: number, nomeCustom: string) => {
+    const updated = getDists(contatoIdx).map((d) =>
+      d.id === "outros" ? { ...d, nomeCustom } : d
+    );
+    setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, updated);
   };
 
   // ── Submit ──────────────────────────────────────────────────────
@@ -429,7 +456,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         deezerFas:       preservedData.deezerFas,
         appleMusic:      values.appleMusic,
         appleMusicAlbuns: preservedData.appleMusicAlbuns,
-        relacionamentos: preservedData.relacionamentos,
+        relacionamentos: preservedData.relacionamentos as Parameters<typeof formToArtistaPayload>[0]["relacionamentos"],
         tipoPerfil:      values.tipoPerfil as FormToArtistaInput["tipoPerfil"],
         empresarioId:    preservedData.empresarioId,
         empresarioNome:  preservedData.empresarioNome,
@@ -869,7 +896,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 />
               </div>
 
-              {/* ── Equipa (só visível quando Independente) ── */}
+              {/* ── Equipa dinâmica (só quando Independente) ── */}
               {tipoPerfilVal === "independente" && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
@@ -895,8 +922,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
                   {contatoFields.map((field, idx) => {
                     const categoriaVal = wf(`contatosEquipe.${idx}.categoria`);
-                    const distribuidorasVal = (wf(`contatosEquipe.${idx}.distribuidoras`) as string[]) ?? [];
-                    const isEditora = categoriaVal === "editora_musical";
+                    const distsVal     = getDists(idx);
+                    const isEditora    = categoriaVal === "editora_musical";
+                    const outrosEntry  = distsVal.find((d) => d.id === "outros");
 
                     return (
                       <div
@@ -976,41 +1004,83 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                           </div>
                         </div>
 
-                        {/* Distribuidoras (só quando categoria = Editora Musical) */}
+                        {/* Distribuidoras — só quando Editora Musical */}
                         {isEditora && (
-                          <div className="space-y-2 pt-2 border-t border-border/40">
+                          <div className="space-y-3 pt-2 border-t border-border/40">
                             <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
-                            <div className="grid grid-cols-2 gap-2">
-                              {DISTRIBUIDORAS_OPTIONS.map((dist) => (
-                                <div key={dist.id} className="flex items-center gap-2">
-                                  <Checkbox
-                                    id={`dist-${idx}-${dist.id}`}
-                                    checked={distribuidorasVal.includes(dist.id)}
-                                    onCheckedChange={(checked) =>
-                                      toggleDistribuidora(idx, dist.id, !!checked)
-                                    }
-                                    data-testid={`checkbox-dist-${idx}-${dist.id}`}
-                                  />
-                                  <Label
-                                    htmlFor={`dist-${idx}-${dist.id}`}
-                                    className="text-xs cursor-pointer font-normal"
-                                  >
-                                    {dist.label}
-                                  </Label>
-                                </div>
-                              ))}
+
+                            <div className="space-y-2">
+                              {DISTRIBUIDORAS_OPTIONS.map((dist) => {
+                                const entry = distsVal.find((d) => d.id === dist.id);
+                                const isChecked = !!entry;
+
+                                return (
+                                  <div key={dist.id} className="space-y-1.5">
+                                    {/* Checkbox row */}
+                                    <div className="flex items-center gap-2">
+                                      <Checkbox
+                                        id={`dist-${idx}-${dist.id}`}
+                                        checked={isChecked}
+                                        onCheckedChange={(checked) =>
+                                          toggleDistribuidora(idx, dist.id, !!checked)
+                                        }
+                                        data-testid={`checkbox-dist-${idx}-${dist.id}`}
+                                      />
+                                      <Label
+                                        htmlFor={`dist-${idx}-${dist.id}`}
+                                        className="text-xs cursor-pointer font-medium"
+                                      >
+                                        {dist.label}
+                                      </Label>
+                                    </div>
+
+                                    {/* Quando selecionada: campo nome (só "outros") + email de share */}
+                                    {isChecked && dist.id === "outros" && (
+                                      <div className="ml-6 space-y-1.5">
+                                        <Input
+                                          value={entry?.nomeCustom ?? ""}
+                                          onChange={(e) => updateDistNomeCustom(idx, e.target.value)}
+                                          placeholder="Nome da distribuidora…"
+                                          className="h-7 text-xs"
+                                          data-testid={`input-dist-nome-custom-${idx}`}
+                                        />
+                                        {(entry?.nomeCustom ?? "").trim().length > 0 && (
+                                          <Input
+                                            value={entry?.email ?? ""}
+                                            onChange={(e) => updateDistEmail(idx, dist.id, e.target.value)}
+                                            type="email"
+                                            placeholder="Email de share…"
+                                            className="h-7 text-xs"
+                                            data-testid={`input-dist-email-share-${idx}-${dist.id}`}
+                                          />
+                                        )}
+                                      </div>
+                                    )}
+
+                                    {/* Email de share para distribuidoras normais */}
+                                    {isChecked && dist.id !== "outros" && (
+                                      <div className="ml-6">
+                                        <Input
+                                          value={entry?.email ?? ""}
+                                          onChange={(e) => updateDistEmail(idx, dist.id, e.target.value)}
+                                          type="email"
+                                          placeholder={`Email de share — ${dist.label}`}
+                                          className="h-7 text-xs"
+                                          data-testid={`input-dist-email-share-${idx}-${dist.id}`}
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
                             </div>
 
-                            <div className="space-y-1.5 pt-1">
-                              <Label className="text-xs">Email de Share</Label>
-                              <Input
-                                {...register(`contatosEquipe.${idx}.emailShare`)}
-                                type="email"
-                                placeholder="email@share.com"
-                                className="h-8 text-sm"
-                                data-testid={`input-contato-email-share-${idx}`}
-                              />
-                            </div>
+                            {/* Campo nome para "outros" mesmo sem o trigger do nome */}
+                            {outrosEntry && !outrosEntry.nomeCustom && (
+                              <p className="text-xs text-muted-foreground ml-6">
+                                Preencha o nome da distribuidora para activar o email de share.
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>

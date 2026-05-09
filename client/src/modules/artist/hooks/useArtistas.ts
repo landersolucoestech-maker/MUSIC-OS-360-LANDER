@@ -119,8 +119,7 @@ export interface Artista {
     categoria: string;
     telefone: string;
     email: string;
-    distribuidoras: string[];
-    emailShare: string;
+    distribuidoras: Array<{ id: string; email: string; nomeCustom?: string }>;
   }> | null;
   // status de onboarding
   org_slug?: string | null;
