@@ -340,146 +340,122 @@ export default function CRM() {
                   data-testid={`row-contato-${cliente.id}`}
                   className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
                 >
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-0">
 
-                    {/* ── Bloco Principal: Identidade ── */}
-                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
-                      <Avatar className="h-11 w-11 shrink-0 rounded-xl">
-                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-sm font-bold rounded-xl">
+                    {/* ── [Avatar] Nome + contatos + badge(categoria) ── */}
+                    <div className="flex items-center gap-3 flex-1 min-w-0 pr-4">
+                      <Avatar className="h-10 w-10 shrink-0 rounded-xl">
+                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-xl">
                           {getInitials(cliente.nome)}
                         </AvatarFallback>
                       </Avatar>
-
                       <div className="min-w-0">
-                        <h3
-                          className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors"
-                          data-testid={`text-nome-${cliente.id}`}
-                          onClick={() => setViewModal({ open: true, cliente })}
-                        >
-                          {cliente.nome}
-                        </h3>
-
-                        {/* Categoria */}
-                        <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                          {cliente.categoria ? (
-                            <Badge variant="outline" className="text-[10px] px-2 py-0 h-5 border font-medium bg-primary/10 text-primary border-primary/20">
-                              {cliente.categoria}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h3
+                            className="font-semibold text-sm leading-tight cursor-pointer hover:text-primary transition-colors truncate"
+                            data-testid={`text-nome-${cliente.id}`}
+                            onClick={() => setViewModal({ open: true, cliente })}
+                          >
+                            {cliente.nome}
+                          </h3>
+                          {(cliente.categoria || cliente.segmento) && (
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] px-2 py-0 h-5 border font-medium shrink-0",
+                              cliente.categoria
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
+                            )}>
+                              {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
                             </Badge>
-                          ) : cliente.segmento ? (
-                            <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium", SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
-                              {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
-                            </Badge>
-                          ) : null}
+                          )}
                         </div>
-
-                        {/* Tipo • Cidade */}
-                        <p className="text-xs text-muted-foreground mt-1.5 flex items-center gap-1 flex-wrap">
-                          {cliente.tipo && (
-                            <span className={cn("inline-flex items-center gap-1", tipoConfig?.color?.split(" ").find((c: string) => c.startsWith("text-")) || "text-muted-foreground")}>
-                              {TipoIcon && <TipoIcon className="h-2.5 w-2.5" />}
-                              {cliente.tipo}
+                        <div className="flex items-center gap-3 mt-0.5 flex-wrap">
+                          {cliente.telefone && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                              <Phone className="h-3 w-3" />{cliente.telefone}
                             </span>
                           )}
-                          {cliente.tipo && cliente.cidade && <span>•</span>}
-                          {cliente.cidade && <span>{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</span>}
-                        </p>
-
-                        {cliente.telefone && (
-                          <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
-                            <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
-                          </p>
-                        )}
-                        {cliente.email && (
-                          <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1 truncate">
-                            <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
-                          </p>
-                        )}
+                          {cliente.email && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 min-w-0">
+                              <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* ── Bloco Secundário: Contexto Operacional ── */}
-                    <div className="hidden md:flex flex-col gap-1 shrink-0 min-w-[180px] border-l border-border/60 pl-4">
-                      <p className="text-xs flex items-center gap-1.5 text-muted-foreground">
-                        <FileText className="h-3 w-3 shrink-0 text-primary/70" />
-                        <span>
-                          <span className="font-semibold text-foreground">{clienteContratos.length}</span>
-                          {" "}contrato{clienteContratos.length !== 1 ? "s" : ""} ativo{clienteContratos.length !== 1 ? "s" : ""}
-                        </span>
-                      </p>
-                      <p className="text-xs flex items-center gap-1.5 text-muted-foreground">
-                        <Disc3 className="h-3 w-3 shrink-0 text-primary/70" />
-                        <span>
-                          <span className="font-semibold text-foreground">—</span> lançamentos vinculados
-                        </span>
-                      </p>
-                      <p className="text-xs flex items-center gap-1.5 text-muted-foreground">
-                        <Clock className="h-3 w-3 shrink-0 text-primary/70" />
-                        <span>Última interação: —</span>
-                      </p>
-                      <div className="flex items-center gap-1.5 mt-0.5">
+                    {/* ── métricas inline ── */}
+                    <div className="hidden md:flex items-center gap-4 shrink-0 border-l border-border/60 px-4">
+                      <div className="text-center">
+                        <p className="text-sm font-semibold text-foreground leading-none">{clienteContratos.length}</p>
+                        <p className="text-[10px] text-muted-foreground mt-0.5">contratos</p>
+                      </div>
+                      <div className="text-center">
                         <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
-                        {cliente.temperatura && (
-                          <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium capitalize", temperaturaStyle[cliente.temperatura])}>
-                            {cliente.temperatura}
-                          </Badge>
-                        )}
                       </div>
-                    </div>
-
-                    {/* ── Bloco Terceiro: Responsável ── */}
-                    <div className="hidden lg:flex flex-col gap-1 shrink-0 min-w-[160px] border-l border-border/60 pl-4">
-                      {cliente.responsavel ? (
-                        <>
-                          <p className="text-xs font-semibold text-foreground leading-tight">{cliente.responsavel}</p>
-                          {cliente.responsavel_telefone && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3 shrink-0" />{cliente.responsavel_telefone}
-                            </p>
-                          )}
-                          {cliente.responsavel_email && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
-                              <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.responsavel_email}</span>
-                            </p>
-                          )}
-                          {!cliente.responsavel_telefone && !cliente.responsavel_email && (
-                            <p className="text-xs text-muted-foreground">Responsável interno</p>
-                          )}
-                        </>
-                      ) : (
-                        <p className="text-xs text-muted-foreground italic">Sem responsável</p>
+                      {cliente.temperatura && (
+                        <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium capitalize shrink-0", temperaturaStyle[cliente.temperatura])}>
+                          {cliente.temperatura}
+                        </Badge>
                       )}
                     </div>
 
-                    {/* ── Ações: menu 3 pontinhos ── */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
-                          <Eye className="h-3.5 w-3.5 mr-2" /> Abrir
-                        </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
-                          <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
-                          <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
-                        </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
-                          <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
-                        </DropdownMenuItem>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    {/* ── responsável ── */}
+                    <div className="hidden lg:flex flex-col gap-0.5 shrink-0 border-l border-border/60 px-4 min-w-[140px]">
+                      {cliente.responsavel ? (
+                        <>
+                          <p className="text-xs font-semibold text-foreground leading-tight truncate">{cliente.responsavel}</p>
+                          {cliente.responsavel_telefone && (
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-2.5 w-2.5 shrink-0" />{cliente.responsavel_telefone}
+                            </p>
+                          )}
+                          {cliente.responsavel_email && (
+                            <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+                              <Mail className="h-2.5 w-2.5 shrink-0" /><span className="truncate">{cliente.responsavel_email}</span>
+                            </p>
+                          )}
+                          {!cliente.responsavel_telefone && !cliente.responsavel_email && (
+                            <p className="text-[11px] text-muted-foreground">Responsável interno</p>
+                          )}
+                        </>
+                      ) : (
+                        <p className="text-xs text-muted-foreground italic">—</p>
+                      )}
+                    </div>
+
+                    {/* ── ações ── */}
+                    <div className="pl-2 shrink-0">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity" data-testid={`button-menu-${cliente.id}`}>
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
+                            <Eye className="h-3.5 w-3.5 mr-2" /> Abrir
+                          </DropdownMenuItem>
+                          <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
+                            <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
+                            <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
+                            <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
               );
