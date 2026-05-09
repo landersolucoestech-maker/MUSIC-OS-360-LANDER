@@ -290,15 +290,15 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="outline" className="text-xs">
-                          {TIPO_INTERACAO_LABELS[inter.tipo_interacao] || inter.tipo_interacao}
+                          {TIPO_INTERACAO_LABELS[inter.tipo_interacao as string] || inter.tipo_interacao}
                         </Badge>
                         <span className="text-xs text-muted-foreground flex items-center gap-1">
                           <Clock className="h-3 w-3" />
-                          {formatDateTime(inter.data_interacao)}
+                          {formatDateTime(inter.data_interacao as string)}
                         </span>
                       </div>
                       {inter.descricao && (
-                        <p className="text-muted-foreground">{inter.descricao}</p>
+                        <p className="text-muted-foreground">{inter.descricao as string}</p>
                       )}
                     </div>
                   </div>

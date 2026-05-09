@@ -12,7 +12,7 @@ import type { SuspenseRouteComponent } from "./types";
 const Auth = lazy(() => import("@/modules/auth/pages/Auth"));
 const Register = lazy(() => import("@/modules/auth/pages/Register"));
 const ArtistaSignupPublic = lazy(() => import("@/modules/auth/pages/ArtistaSignupPublic"));
-const LeadCapture = lazy(() => import("@/modules/leads/pages/LeadCapture"));
+const LeadCapture = lazy(() => import("@/modules/crm/pages/LeadCapture"));
 const NotFound = lazy(() => import("@/shared/pages/NotFound"));
 
 export function publicRoutes(S: SuspenseRouteComponent) {

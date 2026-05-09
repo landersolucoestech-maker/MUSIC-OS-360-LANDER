@@ -1,11 +1,3 @@
-/**
- * Regras de negócio e constantes do domínio Lead.
- *
- * Centraliza toda a lógica de negócio relacionada a leads:
- * opções de status, origem, prioridade, probabilidade etc.
- * Importar daqui em vez de dispersar regras nos hooks/componentes.
- */
-
 export const TIPO_LEAD_OPTIONS = [
   { value: "artista_banda", label: "Artista / Banda" },
   { value: "contratante_show", label: "Contratante de Show" },
@@ -104,10 +96,6 @@ export const ORIGEM_LABELS: Record<string, string> = Object.fromEntries(
   ORIGEM_LEAD_OPTIONS.map((o) => [o.value, o.label]),
 );
 
-/**
- * Calcula a probabilidade de fechamento com base no status do lead.
- * Aplicada automaticamente ao atualizar o status via leadService.update.
- */
 export function getProbabilidadeForStatus(
   status: string,
   current: number | null,

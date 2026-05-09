@@ -1,9 +1,3 @@
-/**
- * STEP 3 — Domain Entity: Lead
- *
- * Encapsula as invariants e regras de negócio do ciclo de vida de um Lead.
- * Factory method garante que nenhum lead inválido possa ser criado.
- */
 import { ValidationError } from "@/shared/lib/errors";
 import { STATUS_LEAD_OPTIONS } from "./lead.rules";
 
@@ -25,10 +19,6 @@ export interface LeadData {
   [key: string]: unknown;
 }
 
-/**
- * STEP 3 — Validação estrita de dados de lead.
- * @throws ValidationError se dados inválidos.
- */
 export function validateLead(data: Partial<LeadData>): void {
   const errors: Record<string, string> = {};
   if (!data.nome?.trim()) {
@@ -45,10 +35,6 @@ export function validateLead(data: Partial<LeadData>): void {
   }
 }
 
-/**
- * STEP 3 — Factory method seguro para criação de lead.
- * Garante que nenhum lead inválido passe para a camada de persistência.
- */
 export function buildLeadPayload(
   input: Partial<LeadData>,
 ): Omit<LeadData, "id" | "created_at" | "updated_at"> {
@@ -66,7 +52,6 @@ export function buildLeadPayload(
   };
 }
 
-/** Retorna lista de erros de validação (sem lançar). */
 export function validateLeadMinimum(data: Partial<LeadData>): string[] {
   const errors: string[] = [];
   if (!data.nome?.trim()) errors.push("Nome é obrigatório");
@@ -76,7 +61,6 @@ export function validateLeadMinimum(data: Partial<LeadData>): string[] {
   return errors;
 }
 
-/** Retorna true se o lead está em estágio ativo. */
 export function isLeadAtivo(lead: LeadData): boolean {
   return (
     lead.status_lead !== "perdido" &&
@@ -85,12 +69,10 @@ export function isLeadAtivo(lead: LeadData): boolean {
   );
 }
 
-/** Retorna true se o lead foi convertido. */
 export function isLeadConvertido(lead: LeadData): boolean {
   return lead.status_lead === "fechado" || lead.status_lead === "confirmado";
 }
 
-/** Calcula a temperatura do lead com base na probabilidade. */
 export function getLeadTemperatura(
   probabilidade: number | null | undefined,
 ): "quente" | "morno" | "frio" {
@@ -100,7 +82,6 @@ export function getLeadTemperatura(
   return "frio";
 }
 
-/** Retorna o label de exibição do status. */
 export function getLeadStatusLabel(status: string | null | undefined): string {
   if (!status) return "—";
   const opt = STATUS_LEAD_OPTIONS.find((o) => o.value === status);

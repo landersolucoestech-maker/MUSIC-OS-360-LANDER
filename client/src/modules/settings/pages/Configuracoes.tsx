@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
-import { LeadIntegrationsDialog } from "@/modules/leads/components/LeadIntegrationsDialog";
+import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { MetaAdsConfigDialog } from "@/modules/integrations/components/MetaAdsConfigDialog";

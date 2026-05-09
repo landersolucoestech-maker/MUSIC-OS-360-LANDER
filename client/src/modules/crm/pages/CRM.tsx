@@ -16,14 +16,14 @@ import {
   ArrowRight,
 } from "lucide-react";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
-import { useLeads } from "@/modules/leads/hooks/useLeads";
+import { useLeads } from "@/modules/crm/hooks/useLeads";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CRMFormModal } from "@/modules/crm/components/CRMFormModal";
 import { CRMViewModal } from "@/modules/crm/components/CRMViewModal";
-import { LeadFormModal } from "@/modules/leads/components/LeadFormModal";
-import { LeadViewModal } from "@/modules/leads/components/LeadViewModal";
+import { LeadFormModal } from "@/modules/crm/components/LeadFormModal";
+import { LeadViewModal } from "@/modules/crm/components/LeadViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";

@@ -16,7 +16,7 @@ import type {
   LeadInteraction,
   LeadInteractionInsert,
 } from "../types";
-import { getProbabilidadeForStatus } from "@/modules/leads/domain/lead.rules";
+import { getProbabilidadeForStatus } from "../domain/lead.rules";
 
 export const leadService = {
   async list(): Promise<Lead[]> {
