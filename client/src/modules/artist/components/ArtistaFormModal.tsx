@@ -896,8 +896,8 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 />
               </div>
 
-              {/* ── Equipa dinâmica (só quando Independente) ── */}
-              {tipoPerfilVal === "independente" && (
+              {/* ── Equipa dinâmica (Independente, Com empresário e Gravadora) ── */}
+              {["independente", "com_empresario", "gravadora"].includes(tipoPerfilVal) && (
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-sm text-muted-foreground">Equipa / Contactos</Label>
