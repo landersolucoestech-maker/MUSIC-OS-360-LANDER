@@ -322,7 +322,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       soundcloud:    f.soundcloud,
       deezer:        f.deezer,
       appleMusic:    f.appleMusic,
-      distribuidorasGerais: [],
+      distribuidorasGerais: Array.isArray((artista as Artista & { distribuidoras_gerais?: DistribuidoraEntry[] })?.distribuidoras_gerais)
+        ? ((artista as Artista & { distribuidoras_gerais?: DistribuidoraEntry[] }).distribuidoras_gerais as DistribuidoraEntry[])
+        : [],
       tipoPerfil:    f.tipoPerfil || "independente",
       contatosEquipe: initialContatos,
     });

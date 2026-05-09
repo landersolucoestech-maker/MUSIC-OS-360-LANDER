@@ -1384,6 +1384,128 @@ export function ArtistaVisao360Modal({
                 </CardContent>
               </Card>
 
+              {/* Distribuidoras / Agregadoras (novo formato — secção 5 do formulário) */}
+              {(() => {
+                const distsGerais: Array<{ id: string; email: string; nomeCustom?: string }> =
+                  Array.isArray((artista as Record<string, unknown>).distribuidoras_gerais)
+                    ? ((artista as Record<string, unknown>).distribuidoras_gerais as Array<{ id: string; email: string; nomeCustom?: string }>)
+                    : [];
+                if (distsGerais.length === 0) return null;
+                const DIST_LABEL: Record<string, string> = {
+                  onerpm: "ONErpm", distrokid: "DistroKid", "30por1": "30 Por 1",
+                  symphonic: "Symphonic", musicpro: "MusicPro", somvibe: "Somvibe",
+                };
+                return (
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Globe className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="font-semibold">Distribuidoras / Agregadoras</h3>
+                      </div>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {distsGerais.map((d) => (
+                          <Badge key={d.id} variant="secondary">
+                            {d.id === "outros" ? (d.nomeCustom || "Outros") : (DIST_LABEL[d.id] ?? d.id)}
+                          </Badge>
+                        ))}
+                      </div>
+                      {distsGerais.some((d) => d.email) && (
+                        <div className="grid grid-cols-2 gap-4 pt-3 border-t border-border">
+                          {distsGerais.filter((d) => d.email).map((d) => (
+                            <div key={d.id}>
+                              <p className="text-xs text-muted-foreground">
+                                E-mail Share — {d.id === "outros" ? (d.nomeCustom || "Outros") : (DIST_LABEL[d.id] ?? d.id)}
+                              </p>
+                              <p className="text-sm font-medium">{d.email}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* Equipa / Contactos */}
+              {(() => {
+                type ContatoEquipeItem = { nome: string; categoria: string; telefone: string; email: string; distribuidoras?: Array<{ id: string; email: string; nomeCustom?: string }> };
+                const equipe: ContatoEquipeItem[] = Array.isArray((artista as Record<string, unknown>).contatos_equipe)
+                  ? ((artista as Record<string, unknown>).contatos_equipe as ContatoEquipeItem[]).filter((c) => c.nome || c.email || c.telefone)
+                  : [];
+                if (equipe.length === 0) return null;
+                const CAT_LABEL: Record<string, string> = {
+                  booker: "Booker", assessoria: "Assessoria de Imprensa", juridico: "Jurídico",
+                  financeiro: "Financeiro", contador: "Contador", editora_musical: "Editora Musical",
+                  roadie: "Roadie", gestor: "Gestor", empresario: "Empresário",
+                };
+                const DIST_LABEL: Record<string, string> = {
+                  onerpm: "ONErpm", distrokid: "DistroKid", "30por1": "30 Por 1",
+                  symphonic: "Symphonic", musicpro: "MusicPro", somvibe: "Somvibe",
+                };
+                return (
+                  <Card className="bg-muted/30">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-4">
+                        <Users className="h-5 w-5 text-muted-foreground" />
+                        <h3 className="font-semibold">Equipa / Contactos</h3>
+                      </div>
+                      <div className="space-y-4">
+                        {equipe.map((c, idx) => (
+                          <div key={idx} className="p-3 rounded-lg border border-border/50 bg-background/40 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-semibold">{c.nome || "—"}</p>
+                              {c.categoria && (
+                                <Badge variant="outline" className="text-xs capitalize">
+                                  {CAT_LABEL[c.categoria] ?? c.categoria}
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="grid grid-cols-2 gap-2">
+                              {c.telefone && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">Telefone</p>
+                                  <p className="text-sm">{c.telefone}</p>
+                                </div>
+                              )}
+                              {c.email && (
+                                <div>
+                                  <p className="text-xs text-muted-foreground">E-mail</p>
+                                  <p className="text-sm">{c.email}</p>
+                                </div>
+                              )}
+                            </div>
+                            {Array.isArray(c.distribuidoras) && c.distribuidoras.length > 0 && (
+                              <div className="pt-2 border-t border-border/40">
+                                <p className="text-xs text-muted-foreground mb-1.5">Distribuidoras</p>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {c.distribuidoras.map((d) => (
+                                    <Badge key={d.id} variant="secondary" className="text-xs">
+                                      {d.id === "outros" ? (d.nomeCustom || "Outros") : (DIST_LABEL[d.id] ?? d.id)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                                {c.distribuidoras.some((d) => d.email) && (
+                                  <div className="grid grid-cols-2 gap-2 mt-2">
+                                    {c.distribuidoras.filter((d) => d.email).map((d) => (
+                                      <div key={d.id}>
+                                        <p className="text-xs text-muted-foreground">
+                                          Share — {d.id === "outros" ? (d.nomeCustom || "Outros") : (DIST_LABEL[d.id] ?? d.id)}
+                                        </p>
+                                        <p className="text-sm">{d.email}</p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
               {/* Observações */}
               {artista.observacoes && (
                 <Card className="bg-muted/30">
