@@ -629,58 +629,6 @@ export default function ArtistaSignupPublic() {
         ═══════════════════════════════════════════════════════════════════════ */}
         {step === 1 && (
           <div className="space-y-5">
-            <div>
-              <h2 className="font-semibold text-base">1. Informações Básicas</h2>
-              <p className="text-sm text-muted-foreground">Nome artístico, género musical e especialidades</p>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">Nome Artístico <span className="text-destructive">*</span></Label>
-                <Input
-                  placeholder="Nome usado profissionalmente"
-                  value={nomeArtistico}
-                  onChange={(e) => { setNomeArtistico(e.target.value); clearError("nomeArtistico"); }}
-                  data-testid="input-nome-artistico"
-                  className={errors.nomeArtistico ? "border-destructive" : ""}
-                />
-                {errors.nomeArtistico && <p className="text-xs text-destructive">{errors.nomeArtistico}</p>}
-              </div>
-              <div className="space-y-1.5 col-span-2 sm:col-span-1">
-                <Label className="text-sm">Gênero Musical <span className="text-destructive">*</span></Label>
-                <Select
-                  value={generoMusical}
-                  onValueChange={(v) => { setGeneroMusical(v); clearError("generoMusical"); }}
-                >
-                  <SelectTrigger data-testid="select-genero-musical" className={errors.generoMusical ? "border-destructive" : ""}>
-                    <SelectValue placeholder="Selecione o gênero" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-background border border-border z-50">
-                    {GENEROS_MUSICAIS.map((g) => (
-                      <SelectItem key={g} value={g}>{g}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                {errors.generoMusical && <p className="text-xs text-destructive">{errors.generoMusical}</p>}
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label className="text-sm">Especialidade / Função</Label>
-              <div className="flex flex-wrap gap-4">
-                {ESPECIALIDADES.map((esp) => (
-                  <div key={esp.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`esp-${esp.value}`}
-                      checked={especialidades.includes(esp.value)}
-                      onCheckedChange={(checked) => toggleEspecialidade(esp.value, !!checked)}
-                    />
-                    <Label htmlFor={`esp-${esp.value}`} className="text-sm cursor-pointer">{esp.label}</Label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
             <div className="space-y-1.5">
               <Label className="text-sm">Foto de Perfil</Label>
               <div className="flex items-center gap-4">
@@ -746,6 +694,58 @@ export default function ArtistaSignupPublic() {
                     reader.readAsDataURL(file);
                   }}
                 />
+              </div>
+            </div>
+
+            <div>
+              <h2 className="font-semibold text-base">1. Informações Básicas</h2>
+              <p className="text-sm text-muted-foreground">Nome artístico, género musical e especialidades</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm">Nome Artístico <span className="text-destructive">*</span></Label>
+                <Input
+                  placeholder="Nome usado profissionalmente"
+                  value={nomeArtistico}
+                  onChange={(e) => { setNomeArtistico(e.target.value); clearError("nomeArtistico"); }}
+                  data-testid="input-nome-artistico"
+                  className={errors.nomeArtistico ? "border-destructive" : ""}
+                />
+                {errors.nomeArtistico && <p className="text-xs text-destructive">{errors.nomeArtistico}</p>}
+              </div>
+              <div className="space-y-1.5 col-span-2 sm:col-span-1">
+                <Label className="text-sm">Gênero Musical <span className="text-destructive">*</span></Label>
+                <Select
+                  value={generoMusical}
+                  onValueChange={(v) => { setGeneroMusical(v); clearError("generoMusical"); }}
+                >
+                  <SelectTrigger data-testid="select-genero-musical" className={errors.generoMusical ? "border-destructive" : ""}>
+                    <SelectValue placeholder="Selecione o gênero" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-background border border-border z-50">
+                    {GENEROS_MUSICAIS.map((g) => (
+                      <SelectItem key={g} value={g}>{g}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {errors.generoMusical && <p className="text-xs text-destructive">{errors.generoMusical}</p>}
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-sm">Especialidade / Função</Label>
+              <div className="flex flex-wrap gap-4">
+                {ESPECIALIDADES.map((esp) => (
+                  <div key={esp.value} className="flex items-center space-x-2">
+                    <Checkbox
+                      id={`esp-${esp.value}`}
+                      checked={especialidades.includes(esp.value)}
+                      onCheckedChange={(checked) => toggleEspecialidade(esp.value, !!checked)}
+                    />
+                    <Label htmlFor={`esp-${esp.value}`} className="text-sm cursor-pointer">{esp.label}</Label>
+                  </div>
+                ))}
               </div>
             </div>
 
