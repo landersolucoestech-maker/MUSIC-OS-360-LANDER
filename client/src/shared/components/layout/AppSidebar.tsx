@@ -25,7 +25,6 @@ import {
   Upload,
   Shield,
   AlertTriangle,
-  UserPlus,
   Briefcase,
   Share2,
   Receipt,
@@ -121,7 +120,6 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Inventário", href: "/inventario", icon: Package },
   { title: "MusicChat", href: "/chat", icon: MessageCircle },
   { title: "CRM", href: "/crm", icon: Contact },
-  { title: "Leads", href: "/leads", icon: UserPlus },
   { title: "Recursos Humanos", href: "/rh", icon: Briefcase },
   { title: "Relatórios", href: "/relatorios", icon: Activity },
   {

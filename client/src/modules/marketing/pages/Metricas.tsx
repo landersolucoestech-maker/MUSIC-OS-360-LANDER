@@ -12,7 +12,7 @@ import {
   Eye, Heart, Users, TrendingUp, Download,
   BarChart2, DollarSign, MousePointer, Music2,
   ChevronDown,
-  LayoutGrid, FileDown, FileSpreadsheet, FileText,
+  LayoutGrid, FileSpreadsheet, FileText,
   Play, ThumbsUp, MessageCircle, Share2, Zap,
 } from "lucide-react";
 import { SiYoutube, SiGoogleads, SiInstagram, SiTiktok, SiSpotify } from "react-icons/si";
@@ -509,7 +509,6 @@ export default function MarketingMetricas() {
       <DropdownMenuContent align="end" className="w-44">
         <DropdownMenuItem className="gap-2 text-sm" data-testid="export-pdf"><FileText className="h-3.5 w-3.5" /> Exportar PDF</DropdownMenuItem>
         <DropdownMenuItem className="gap-2 text-sm" data-testid="export-xlsx"><FileSpreadsheet className="h-3.5 w-3.5" /> Exportar XLSX</DropdownMenuItem>
-        <DropdownMenuItem className="gap-2 text-sm" data-testid="export-csv"><FileDown className="h-3.5 w-3.5" /> Exportar CSV</DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
