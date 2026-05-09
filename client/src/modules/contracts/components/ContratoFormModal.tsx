@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -11,46 +11,36 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { format, parseISO } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
-import { cn } from "@/shared/lib/utils";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { ScrollArea } from "@/shared/ui/scroll-area";
+import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 
-interface ContractTemplate {
-  id: string;
-  name: string;
-  template_type: string;
-  is_active: boolean;
-}
-
+// ── Schema ──────────────────────────────────────────────────────────────────
 const contractSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
-  client_type: z.enum(["artista", "pessoa_fisica", "pessoa_juridica"], { required_error: "Tipo de cliente é obrigatório" }),
+  client_type: z.enum(["artista", "pessoa_fisica", "pessoa_juridica"], {
+    required_error: "Tipo de cliente é obrigatório",
+  }),
   service_type: z.enum(
     [
-      "empresariamento",
-      "empresariamento_suporte",
-      "gestao",
-      "agenciamento",
-      "edicao",
-      "distribuicao",
-      "marketing",
-      "producao_musical",
-      "producao_audiovisual",
-      "licenciamento",
-      "publicidade",
-      "parceria",
-      "shows",
-      "outros",
+      "empresariamento", "empresariamento_suporte", "gestao", "agenciamento",
+      "edicao", "distribuicao", "marketing", "producao_musical",
+      "producao_audiovisual", "licenciamento", "publicidade", "parceria",
+      "shows", "outros",
     ],
     { required_error: "Tipo de serviço é obrigatório" },
   ),
   artist_id: z.string().optional(),
   company_id: z.string().optional(),
-  project_id: z.string().optional(),
   contractor_contact: z.string().optional(),
   responsible_person: z.string().optional(),
-  status: z.enum(["pendente", "assinado", "aguardando_assinatura", "ativo", "vigente", "expirado", "rescindido", "cancelado", "rascunho"]).default("rascunho"),
+  status: z
+    .enum(["pendente", "assinado", "aguardando_assinatura", "ativo", "vigente", "expirado", "rescindido", "cancelado", "rascunho"])
+    .default("rascunho"),
   arquivo_url: z.string().optional(),
   notas_versao: z.string().optional(),
   lancamento_id: z.string().optional(),
@@ -69,204 +59,124 @@ const contractSchema = z.object({
 
 type ContractFormData = z.infer<typeof contractSchema>;
 
+// ── Labels ───────────────────────────────────────────────────────────────────
+const ARTISTA_SERVICE_LABELS: Record<string, string> = {
+  empresariamento: "Empresariamento",
+  empresariamento_suporte: "Empresariamento com suporte",
+  gestao: "Gestão",
+  agenciamento: "Agenciamento",
+  edicao: "Edição",
+  distribuicao: "Distribuição",
+  marketing: "Marketing",
+  producao_musical: "Produção Musical",
+  producao_audiovisual: "Produção Audiovisual",
+  licenciamento: "Licenciamento",
+};
+
+const EMPRESA_SERVICE_LABELS: Record<string, string> = {
+  producao_musical: "Produção Musical",
+  marketing: "Marketing",
+  producao_audiovisual: "Produção Audiovisual",
+  publicidade: "Publicidade",
+  parceria: "Parceria",
+  shows: "Shows",
+  licenciamento: "Licenciamento",
+  outros: "Outros",
+};
+
+const EMPRESA_SERVICE_KEYS = Object.keys(EMPRESA_SERVICE_LABELS);
+
+const STATUS_LABELS: Record<string, string> = {
+  rascunho: "Rascunho",
+  pendente: "Pendente",
+  aguardando_assinatura: "Aguardando Assinatura",
+  assinado: "Assinado",
+  ativo: "Ativo",
+  vigente: "Vigente",
+  expirado: "Expirado",
+  rescindido: "Rescindido",
+  cancelado: "Cancelado",
+};
+
+// ── ContractForm ─────────────────────────────────────────────────────────────
 interface ContractFormProps {
   onSubmit: (data: ContractFormData) => void;
   onCancel?: () => void;
   initialData?: Partial<ContractFormData>;
   isLoading?: boolean;
-  artists?: Array<{
-    id: string;
-    name: string;
-    full_name?: string;
-    cpf_cnpj?: string;
-    rg?: string;
-    full_address?: string;
-    artist_types?: string[];
-  }>;
-  companies?: Array<{ id: string; name: string }>;
-  projects?: Array<{ id: string; name: string }>;
-  contacts?: Array<{
-    id: string;
-    name: string;
-    company?: string | null;
-    document?: string;
-    address?: string;
-    city?: string;
-    state?: string;
-    zip_code?: string;
-    position?: string;
-  }>;
-  templates?: ContractTemplate[];
+  artists?: Array<{ id: string; name: string }>;
 }
 
-export const ContractForm: React.FC<ContractFormProps> = ({
+const ContractForm = ({
   onSubmit,
   onCancel,
   initialData,
   isLoading = false,
   artists = [],
-  companies = [],
-  projects = [],
-  contacts = [],
-  templates = [],
-}) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<ContractTemplate | null>(null);
+}: ContractFormProps) => {
   const [documentos, setDocumentos] = useState<UploadedFile[]>([]);
   const { clientes } = useClientes();
   const { lancamentos } = useLancamentos();
 
-  // Filtrar contatos do CRM por tipo_pessoa (campo canônico dos clientes CRM)
-  // Cliente interface has [key: string]: unknown index signature, so bracket access is valid without cast
   const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
   const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
   const form = useForm<ContractFormData>({
     resolver: zodResolver(contractSchema),
-    defaultValues: {
-      status: "rascunho",
-      registry_office: false,
-      ...initialData,
-    },
+    defaultValues: { status: "rascunho", registry_office: false, ...initialData },
   });
 
-  // Reset form when initialData changes (for edit mode)
   useEffect(() => {
     if (initialData) {
-      form.reset({
-        status: "rascunho",
-        registry_office: false,
-        ...initialData,
-      });
+      form.reset({ status: "rascunho", registry_office: false, ...initialData });
     }
   }, [initialData, form]);
 
-  // Load template when service_type changes
-  const watchedServiceType = form.watch("service_type");
-
-  useEffect(() => {
-    if (watchedServiceType && templates.length > 0) {
-      const template = templates.find((t) => t.template_type === watchedServiceType && t.is_active);
-      if (template) {
-        setSelectedTemplate(template);
-      } else {
-        setSelectedTemplate(null);
-      }
-    } else {
-      setSelectedTemplate(null);
-    }
-  }, [watchedServiceType, templates]);
-
-  const handleSubmit = (data: ContractFormData) => {
-    const submitData = {
-      ...data,
-      template_id: selectedTemplate?.id,
-    };
-    onSubmit(submitData);
-  };
-
-  const handleManualSubmit = () => {
-    form.handleSubmit(handleSubmit)();
-  };
-
-  const artistaServiceTypeLabels = {
-    empresariamento: "Empresariamento",
-    empresariamento_suporte: "Empresariamento com suporte",
-    gestao: "Gestão",
-    agenciamento: "Agenciamento",
-    edicao: "Edição",
-    distribuicao: "Distribuição",
-    marketing: "Marketing",
-    producao_musical: "Produção Musical",
-    producao_audiovisual: "Produção Audiovisual",
-    licenciamento: "Licenciamento",
-  };
-
-  const empresaServiceTypeLabels = {
-    producao_musical: "Produção Musical",
-    marketing: "Marketing",
-    producao_audiovisual: "Produção Audiovisual",
-    publicidade: "Publicidade",
-    parceria: "Parceria",
-    shows: "Shows",
-    licenciamento: "Licenciamento",
-    outros: "Outros",
-  };
-
-  const empresaServiceTypes = Object.keys(empresaServiceTypeLabels);
+  const handleManualSubmit = () => form.handleSubmit(onSubmit)();
 
   const getFilteredServiceTypes = () => {
     const clientType = form.watch("client_type");
-    if (clientType === "pessoa_juridica") {
-      return Object.entries(empresaServiceTypeLabels);
-    }
-    return Object.entries(artistaServiceTypeLabels);
-  };
-
-  const statusLabels = {
-    rascunho: "Rascunho",
-    pendente: "Pendente",
-    aguardando_assinatura: "Aguardando Assinatura",
-    assinado: "Assinado",
-    ativo: "Ativo",
-    vigente: "Vigente",
-    expirado: "Expirado",
-    rescindido: "Rescindido",
-    cancelado: "Cancelado",
+    if (clientType === "pessoa_juridica") return Object.entries(EMPRESA_SERVICE_LABELS);
+    return Object.entries(ARTISTA_SERVICE_LABELS);
   };
 
   return (
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      {/* ── Informações Básicas ── */}
       <Card>
         <CardHeader>
           <CardTitle>Informações Básicas</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+            {/* Título */}
             <div className="space-y-2">
-              <Label>Título do Contrato</Label>
-              <Select
-                value={form.watch("title")}
-                onValueChange={(value) => {
-                  form.setValue("title", value);
-                  // Find the template and set service_type accordingly
-                  const template = templates.find((t) => t.name === value);
-                  if (template) {
-                    form.setValue("service_type", template.template_type as any);
-                    setSelectedTemplate(template);
-                  }
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o template de contrato" />
-                </SelectTrigger>
-                <SelectContent>
-                  {templates
-                    .filter((t) => t.is_active)
-                    .map((template) => (
-                      <SelectItem key={template.id} value={template.name || `template-${template.id}`}>
-                        {template.name}
-                      </SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
+              <Label htmlFor="title">Título do Contrato *</Label>
+              <Input
+                id="title"
+                {...form.register("title")}
+                placeholder="Ex: Contrato de Agenciamento Artístico"
+                data-testid="input-titulo"
+              />
               {form.formState.errors.title && (
                 <p className="text-sm text-destructive">{form.formState.errors.title.message}</p>
               )}
             </div>
 
+            {/* Tipo de Cliente */}
             <div className="space-y-2">
-              <Label>Tipo de Cliente</Label>
+              <Label>Tipo de Cliente *</Label>
               <Select
                 value={form.watch("client_type")}
                 onValueChange={(value) => {
-                  form.setValue("client_type", value as any);
-                  const currentServiceType = form.watch("service_type");
-                  if (value === "pessoa_juridica" && currentServiceType && !empresaServiceTypes.includes(currentServiceType)) {
+                  form.setValue("client_type", value as ContractFormData["client_type"]);
+                  const current = form.watch("service_type");
+                  if (value === "pessoa_juridica" && current && !EMPRESA_SERVICE_KEYS.includes(current)) {
                     form.setValue("service_type", undefined as any);
                   }
                 }}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="select-client-type">
                   <SelectValue placeholder="Selecione o tipo de cliente" />
                 </SelectTrigger>
                 <SelectContent>
@@ -280,20 +190,19 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               )}
             </div>
 
+            {/* Tipo de Serviço */}
             <div className="space-y-2">
-              <Label>Tipo de Serviço</Label>
+              <Label>Tipo de Serviço *</Label>
               <Select
                 value={form.watch("service_type")}
-                onValueChange={(value) => form.setValue("service_type", value as any)}
+                onValueChange={(value) => form.setValue("service_type", value as ContractFormData["service_type"])}
               >
-                <SelectTrigger>
+                <SelectTrigger data-testid="select-service-type">
                   <SelectValue placeholder="Selecione o tipo de serviço" />
                 </SelectTrigger>
                 <SelectContent>
                   {getFilteredServiceTypes().map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -302,22 +211,25 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               )}
             </div>
 
+            {/* Status */}
             <div className="space-y-2">
               <Label>Status</Label>
-              <Select value={form.watch("status")} onValueChange={(value) => form.setValue("status", value as any)}>
-                <SelectTrigger>
+              <Select
+                value={form.watch("status")}
+                onValueChange={(value) => form.setValue("status", value as ContractFormData["status"])}
+              >
+                <SelectTrigger data-testid="select-status">
                   <SelectValue placeholder="Selecione o status" />
                 </SelectTrigger>
                 <SelectContent>
-                  {Object.entries(statusLabels).map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
+                  {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                    <SelectItem key={value} value={value}>{label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
+            {/* Contratante PF */}
             {form.watch("client_type") === "pessoa_fisica" && (
               <div className="space-y-2">
                 <Label>Contratante (Pessoa Física)</Label>
@@ -325,32 +237,24 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   value={form.watch("contractor_contact")}
                   onValueChange={(value) => {
                     form.setValue("contractor_contact", value);
-                    const contato = contatosPF.find(c => c.id === value);
-                    if (contato) {
-                      form.setValue("responsible_person", (contato.responsavel as string) || (contato.nome as string));
-                    }
+                    const contato = contatosPF.find((c) => c.id === value);
+                    if (contato) form.setValue("responsible_person", (contato.responsavel as string) || (contato.nome as string));
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={contatosPF.length > 0 ? "Selecione um contato do CRM" : "Nenhum contato PF cadastrado"}
-                    />
+                    <SelectValue placeholder={contatosPF.length > 0 ? "Selecione um contato do CRM" : "Nenhum contato PF cadastrado"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border border-border z-50">
-                    {contatosPF.length > 0 ? (
-                      contatosPF.map((contato) => (
-                        <SelectItem key={contato.id} value={contato.id}>
-                          {contato.nome}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum contato PF cadastrado no CRM</div>
-                    )}
+                  <SelectContent>
+                    {contatosPF.length > 0
+                      ? contatosPF.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
+                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum contato PF cadastrado no CRM</div>
+                    }
                   </SelectContent>
                 </Select>
               </div>
             )}
 
+            {/* Contratante PJ */}
             {form.watch("client_type") === "pessoa_juridica" && (
               <div className="space-y-2">
                 <Label>Contratante (Pessoa Jurídica)</Label>
@@ -358,7 +262,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   value={form.watch("company_id")}
                   onValueChange={(value) => {
                     form.setValue("company_id", value);
-                    const empresa = contatosPJ.find(c => c.id === value);
+                    const empresa = contatosPJ.find((c) => c.id === value);
                     if (empresa) {
                       form.setValue("responsible_person", (empresa.responsavel as string) || "");
                       form.setValue("contractor_contact", empresa.id);
@@ -366,49 +270,40 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                   }}
                 >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={contatosPJ.length > 0 ? "Selecione uma empresa do CRM" : "Nenhuma empresa cadastrada"}
-                    />
+                    <SelectValue placeholder={contatosPJ.length > 0 ? "Selecione uma empresa do CRM" : "Nenhuma empresa cadastrada"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border border-border z-50">
-                    {contatosPJ.length > 0 ? (
-                      contatosPJ.map((empresa) => (
-                        <SelectItem key={empresa.id} value={empresa.id}>
-                          {empresa.nome}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-sm text-muted-foreground">Nenhuma empresa cadastrada no CRM</div>
-                    )}
+                  <SelectContent>
+                    {contatosPJ.length > 0
+                      ? contatosPJ.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
+                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhuma empresa cadastrada no CRM</div>
+                    }
                   </SelectContent>
                 </Select>
               </div>
             )}
 
+            {/* Artista */}
             {form.watch("client_type") === "artista" && (
               <div className="space-y-2">
                 <Label>Cliente/Artista</Label>
-                <Select value={form.watch("artist_id")} onValueChange={(value) => form.setValue("artist_id", value)}>
+                <Select
+                  value={form.watch("artist_id")}
+                  onValueChange={(value) => form.setValue("artist_id", value)}
+                >
                   <SelectTrigger>
-                    <SelectValue
-                      placeholder={artists.length > 0 ? "Selecione um artista" : "Nenhum artista cadastrado"}
-                    />
+                    <SelectValue placeholder={artists.length > 0 ? "Selecione um artista" : "Nenhum artista cadastrado"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-background border border-border z-50">
-                    {artists.length > 0 ? (
-                      artists.map((artist) => (
-                        <SelectItem key={artist.id} value={artist.id}>
-                          {artist.name}
-                        </SelectItem>
-                      ))
-                    ) : (
-                      <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                    )}
+                  <SelectContent>
+                    {artists.length > 0
+                      ? artists.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)
+                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
+                    }
                   </SelectContent>
                 </Select>
               </div>
             )}
 
+            {/* Responsável */}
             <div className="space-y-2">
               <Label htmlFor="responsible_person">Responsável</Label>
               <Input
@@ -416,22 +311,18 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 {...form.register("responsible_person")}
                 placeholder="Nome do responsável"
               />
-              {form.formState.errors.responsible_person && (
-                <p className="text-sm text-destructive">{form.formState.errors.responsible_person.message}</p>
-              )}
             </div>
           </div>
         </CardContent>
       </Card>
 
+      {/* ── Datas ── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Datas</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Datas</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <div className="space-y-2">
-              <Label>Data de Início</Label>
+              <Label>Data de Início *</Label>
               <DatePickerField
                 value={form.watch("start_date") ? format(form.watch("start_date"), "yyyy-MM-dd") : ""}
                 onChange={(iso) => form.setValue("start_date", iso ? parseISO(iso) : (undefined as any))}
@@ -439,7 +330,6 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 data-testid="datepicker-start-date"
               />
             </div>
-
             <div className="space-y-2">
               <Label>Data de Término</Label>
               <DatePickerField
@@ -449,8 +339,7 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                 data-testid="datepicker-end-date"
               />
             </div>
-
-            <div className="flex items-center space-x-2">
+            <div className="flex items-center gap-2 pt-6">
               <Checkbox
                 id="registry_office"
                 checked={form.watch("registry_office")}
@@ -474,72 +363,45 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         </CardContent>
       </Card>
 
+      {/* ── Valores ── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Valores</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Valores</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {/* Pessoa Física ou Jurídica: Valor do Contrato */}
+            {/* PF ou PJ: valor fixo */}
             {(form.watch("client_type") === "pessoa_juridica" || form.watch("client_type") === "pessoa_fisica") && (
               <div className="space-y-2">
                 <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
-                <Input
-                  id="fixed_value"
-                  type="number"
-                  step="0.01"
-                  placeholder="0,00"
-                  {...form.register("fixed_value", { valueAsNumber: true })}
-                />
+                <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("fixed_value", { valueAsNumber: true })} />
               </div>
             )}
 
-            {/* Artista + Agenciamento/Gestão/Empresariamento: Royalties e Adiantamento */}
+            {/* Artista + gestão/agenciamento/empresariamento: royalties + adiantamento */}
             {form.watch("client_type") === "artista" &&
-              ["agenciamento", "gestao", "empresariamento", "empresariamento_suporte"].includes(
-                form.watch("service_type") || "",
-              ) && (
+              ["agenciamento", "gestao", "empresariamento", "empresariamento_suporte"].includes(form.watch("service_type") || "") && (
                 <>
                   <div className="space-y-2">
                     <Label htmlFor="royalties_percentage">Royalties (%)</Label>
-                    <Input
-                      id="royalties_percentage"
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      max="100"
-                      placeholder="0,00"
-                      {...form.register("royalties_percentage", { valueAsNumber: true })}
-                    />
+                    <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                      {...form.register("royalties_percentage", { valueAsNumber: true })} />
                   </div>
-
                   <div className="space-y-2">
                     <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
-                    <Input
-                      id="advance_payment"
-                      type="number"
-                      step="0.01"
-                      placeholder="0,00"
-                      {...form.register("advance_payment", { valueAsNumber: true })}
-                    />
+                    <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("advance_payment", { valueAsNumber: true })} />
                   </div>
-
                   {form.watch("service_type") === "empresariamento_suporte" && (
                     <div className="space-y-2">
                       <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
-                      <Input
-                        id="financial_support"
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        {...form.register("financial_support", { valueAsNumber: true })}
-                      />
+                      <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
+                        {...form.register("financial_support", { valueAsNumber: true })} />
                     </div>
                   )}
                 </>
               )}
 
-            {/* Artista + Produção Musical/Edição/Distribuição: Tipo de Pagamento */}
+            {/* Artista + produção/edição/distribuição: tipo de pagamento */}
             {form.watch("client_type") === "artista" &&
               ["producao_musical", "edicao", "distribuicao"].includes(form.watch("service_type") || "") && (
                 <>
@@ -549,68 +411,46 @@ export const ContractForm: React.FC<ContractFormProps> = ({
                       value={form.watch("payment_type")}
                       onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
                     >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione o tipo de pagamento" />
-                      </SelectTrigger>
+                      <SelectTrigger><SelectValue placeholder="Selecione o tipo de pagamento" /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
                         <SelectItem value="royalties">Royalties</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-
                   {form.watch("payment_type") === "valor_fixo" && (
                     <div className="space-y-2">
-                      <Label htmlFor="fixed_value">Valor do Serviço (R$)</Label>
-                      <Input
-                        id="fixed_value"
-                        type="number"
-                        step="0.01"
-                        placeholder="0,00"
-                        {...form.register("fixed_value", { valueAsNumber: true })}
-                      />
+                      <Label htmlFor="fixed_value_prod">Valor do Serviço (R$)</Label>
+                      <Input id="fixed_value_prod" type="number" step="0.01" placeholder="0,00"
+                        {...form.register("fixed_value", { valueAsNumber: true })} />
                     </div>
                   )}
-
                   {form.watch("payment_type") === "royalties" && (
                     <div className="space-y-2">
-                      <Label htmlFor="royalties_percentage">Royalties (%)</Label>
-                      <Input
-                        id="royalties_percentage"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        placeholder="0,00"
-                        {...form.register("royalties_percentage", { valueAsNumber: true })}
-                      />
+                      <Label htmlFor="royalties_pct_prod">Royalties (%)</Label>
+                      <Input id="royalties_pct_prod" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                        {...form.register("royalties_percentage", { valueAsNumber: true })} />
                     </div>
                   )}
                 </>
               )}
 
-            {/* Artista + Produção Audiovisual/Marketing: Valor Fixo do Serviço */}
+            {/* Artista + audiovisual/marketing: valor fixo */}
             {form.watch("client_type") === "artista" &&
               ["producao_audiovisual", "marketing"].includes(form.watch("service_type") || "") && (
                 <div className="space-y-2">
-                  <Label htmlFor="fixed_value">Valor Fixo do Serviço (R$)</Label>
-                  <Input
-                    id="fixed_value"
-                    type="number"
-                    step="0.01"
-                    placeholder="0,00"
-                    {...form.register("fixed_value", { valueAsNumber: true })}
-                  />
+                  <Label htmlFor="fixed_value_av">Valor Fixo do Serviço (R$)</Label>
+                  <Input id="fixed_value_av" type="number" step="0.01" placeholder="0,00"
+                    {...form.register("fixed_value", { valueAsNumber: true })} />
                 </div>
               )}
           </div>
         </CardContent>
       </Card>
 
+      {/* ── Arquivo e Vínculos ── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Arquivo e Vínculos</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Arquivo e Vínculos</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="arquivo_url">URL do Arquivo (PDF)</Label>
@@ -641,12 +481,10 @@ export const ContractForm: React.FC<ContractFormProps> = ({
               <SelectTrigger data-testid="select-lancamento-id">
                 <SelectValue placeholder="Selecionar lançamento" />
               </SelectTrigger>
-              <SelectContent className="bg-background border border-border z-50">
+              <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
                 {lancamentos.map((l) => (
-                  <SelectItem key={l.id} value={l.id}>
-                    {l.titulo}
-                  </SelectItem>
+                  <SelectItem key={l.id} value={l.id}>{l.titulo}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -654,10 +492,9 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         </CardContent>
       </Card>
 
+      {/* ── Documentos Anexos ── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Documentos Anexos</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Documentos Anexos</CardTitle></CardHeader>
         <CardContent>
           <FileUpload
             folder="contratos/documentos"
@@ -670,24 +507,19 @@ export const ContractForm: React.FC<ContractFormProps> = ({
         </CardContent>
       </Card>
 
+      {/* ── Observações e Termos ── */}
       <Card>
-        <CardHeader>
-          <CardTitle>Observações e Termos</CardTitle>
-        </CardHeader>
+        <CardHeader><CardTitle>Observações e Termos</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="observations">Observações</Label>
-            <Textarea
-              id="observations"
-              {...form.register("observations")}
-              placeholder="Observações adicionais..."
-              rows={3}
-            />
+            <Textarea id="observations" {...form.register("observations")}
+              placeholder="Observações adicionais..." rows={3} />
           </div>
-
           <div className="space-y-2">
             <Label htmlFor="terms">Termos</Label>
-            <Textarea id="terms" {...form.register("terms")} placeholder="Termos do contrato..." rows={3} />
+            <Textarea id="terms" {...form.register("terms")}
+              placeholder="Termos do contrato..." rows={3} />
           </div>
         </CardContent>
       </Card>
@@ -706,8 +538,8 @@ export const ContractForm: React.FC<ContractFormProps> = ({
   );
 };
 
-// ── Mapper: ContratoWithRelations → ContractFormData (for pre-filling edit form) ──
-function contratoToFormData(c: import("@/modules/contracts/hooks/useContratos").ContratoWithRelations): Partial<ContractFormData> {
+// ── Mapper: ContratoWithRelations → ContractFormData ─────────────────────────
+function contratoToFormData(c: ContratoWithRelations): Partial<ContractFormData> {
   const status = c.status as ContractFormData["status"] | undefined;
   const serviceType = c.tipo as ContractFormData["service_type"] | undefined;
   const clientType: ContractFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
@@ -726,12 +558,7 @@ function contratoToFormData(c: import("@/modules/contracts/hooks/useContratos").
   };
 }
 
-// Modal wrapper component for backwards compatibility
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
-import { ScrollArea } from "@/shared/ui/scroll-area";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
-
+// ── ContratoFormModal ────────────────────────────────────────────────────────
 interface ContratoFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -740,24 +567,23 @@ interface ContratoFormModalProps {
   prefill?: { titulo: string; observacoes: string };
 }
 
-export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
+export const ContratoFormModal = ({
   open,
   onOpenChange,
   contrato,
   mode = "create",
   prefill,
-}) => {
+}: ContratoFormModalProps) => {
   const { addContrato, updateContrato } = useContratos();
 
   const handleSubmit = (data: ContractFormData) => {
     const {
       title, client_type, service_type, artist_id, status,
       arquivo_url, notas_versao, lancamento_id,
-      start_date, end_date, fixed_value, royalties_percentage,
-      advance_payment, financial_support, observations,
+      start_date, end_date, fixed_value,
+      royalties_percentage, advance_payment, financial_support, observations,
     } = data;
 
-    // In edit mode, fall back to existing contrato values to prevent accidental clearing
     const resolvedArquivoUrl = arquivo_url || (mode === "edit" && contrato ? (contrato.arquivo_url ?? null) : null);
     const resolvedLancamentoId = lancamento_id || (mode === "edit" && contrato ? (contrato.lancamento_id ?? null) : null);
 
@@ -775,12 +601,9 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
     };
 
     if (mode === "edit" && contrato) {
-      // ── Versioning logic ──
-      // Detect arquivo_url change and append new version
       const prevUrl = contrato.arquivo_url;
       const newUrl = arquivo_url || null;
       const urlChanged = newUrl && newUrl !== prevUrl;
-
       const existingVersions: ContratoVersao[] = Array.isArray(contrato.versoes)
         ? (contrato.versoes as ContratoVersao[])
         : [];
@@ -796,13 +619,10 @@ export const ContratoFormModal: React.FC<ContratoFormModalProps> = ({
         };
         payload.versoes = [...existingVersions, newVersion];
       } else {
-        // Keep existing versions unchanged
         payload.versoes = existingVersions;
       }
-
       updateContrato.mutate({ id: contrato.id, ...payload });
     } else {
-      // Create: first version if arquivo_url is set
       if (arquivo_url) {
         const firstVersion: ContratoVersao = {
           versao: "v1",

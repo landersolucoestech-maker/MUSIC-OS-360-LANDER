@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { PageHeader } from "@/shared/components/PageHeader";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
@@ -25,7 +24,11 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { TemplateContratoFormModal } from "@/modules/contracts/components/TemplateContratoFormModal";
 import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
+import {
+  useTemplatesContratos,
+  type TemplateContrato,
+  type TemplateContratoInsert,
+} from "@/modules/contracts/hooks/useTemplatesContratos";
 
 const TIPOS_SERVICO = [
   "Agenciamento",
@@ -48,13 +51,13 @@ export default function TemplatesContratos() {
   const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } = useTemplatesContratos();
   const [searchTerm, setSearchTerm] = useState("");
   const [filterTipo, setFilterTipo] = useState<string>("todos");
-  
+
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isViewOpen, setIsViewOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateContrato | null>(null);
 
-  const filteredTemplates = templates.filter((tpl: any) => {
+  const filteredTemplates = templates.filter((tpl) => {
     const matchesSearch =
       tpl.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       tpl.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -67,17 +70,17 @@ export default function TemplatesContratos() {
     setIsFormOpen(true);
   };
 
-  const handleEdit = (template: any) => {
+  const handleEdit = (template: TemplateContrato) => {
     setSelectedTemplate(template);
     setIsFormOpen(true);
   };
 
-  const handleView = (template: any) => {
+  const handleView = (template: TemplateContrato) => {
     setSelectedTemplate(template);
     setIsViewOpen(true);
   };
 
-  const handleDeleteClick = (template: any) => {
+  const handleDeleteClick = (template: TemplateContrato) => {
     setSelectedTemplate(template);
     setIsDeleteOpen(true);
   };
@@ -90,7 +93,7 @@ export default function TemplatesContratos() {
     }
   };
 
-  const handleSave = (data: any) => {
+  const handleSave = (data: TemplateContratoInsert) => {
     if (selectedTemplate) {
       updateTemplate.mutate({ id: selectedTemplate.id, ...data });
     } else {
@@ -110,11 +113,18 @@ export default function TemplatesContratos() {
     );
   }
 
+  const ativos = templates.filter((t) => t.ativo).length;
+  const inativos = templates.filter((t) => !t.ativo).length;
+  const tiposUnicos = new Set(templates.map((t) => t.tipo_servico)).size;
+
   return (
     <MainLayout title="Templates de Contratos" description="Gerencie modelos de contratos personalizáveis">
       <div className="space-y-6">
         <div className="flex justify-end">
-          <Button size="sm" className="gap-2" onClick={handleAdd}><Plus className="h-4 w-4" />Novo Template</Button>
+          <Button size="sm" className="gap-2" onClick={handleAdd}>
+            <Plus className="h-4 w-4" />
+            Novo Template
+          </Button>
         </div>
 
         {/* Stats */}
@@ -134,9 +144,7 @@ export default function TemplatesContratos() {
               <FileText className="h-4 w-4 text-success" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {templates.filter((t: any) => t.ativo).length}
-              </div>
+              <div className="text-2xl font-bold">{ativos}</div>
             </CardContent>
           </Card>
           <Card>
@@ -145,9 +153,7 @@ export default function TemplatesContratos() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold text-muted-foreground">
-                {templates.filter((t: any) => !t.ativo).length}
-              </div>
+              <div className="text-2xl font-bold text-muted-foreground">{inativos}</div>
             </CardContent>
           </Card>
           <Card>
@@ -156,9 +162,7 @@ export default function TemplatesContratos() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
-                {new Set(templates.map((t: any) => t.tipo_servico)).size}
-              </div>
+              <div className="text-2xl font-bold">{tiposUnicos}</div>
             </CardContent>
           </Card>
         </div>
@@ -175,7 +179,7 @@ export default function TemplatesContratos() {
             />
           </div>
           <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="w-[180px] bg-card border-border">
+            <SelectTrigger className="w-[200px] bg-card border-border">
               <SelectValue placeholder="Todos os tipos" />
             </SelectTrigger>
             <SelectContent>
@@ -215,12 +219,12 @@ export default function TemplatesContratos() {
                     <TableHead>Variáveis</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Atualização</TableHead>
-                    <TableHead className="w-[100px]">Ações</TableHead>
+                    <TableHead className="w-[120px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTemplates.map((template: any) => (
-                    <TableRow key={template.id}>
+                  {filteredTemplates.map((template) => (
+                    <TableRow key={template.id} data-testid={`row-template-${template.id}`}>
                       <TableCell>
                         <div>
                           <p className="font-medium">{template.nome}</p>
@@ -232,11 +236,11 @@ export default function TemplatesContratos() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline">{template.tipo_servico}</Badge>
+                        <Badge variant="outline">{template.tipo_servico ?? "—"}</Badge>
                       </TableCell>
                       <TableCell>
                         <span className="text-sm text-muted-foreground">
-                          {template.variaveis?.length || 0} variáveis
+                          {(template.variaveis as string[] | null)?.length ?? 0} variáveis
                         </span>
                       </TableCell>
                       <TableCell>
@@ -245,17 +249,24 @@ export default function TemplatesContratos() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        {new Date(template.updated_at).toLocaleDateString("pt-BR")}
+                        {template.updated_at
+                          ? new Date(template.updated_at).toLocaleDateString("pt-BR")
+                          : "—"}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" onClick={() => handleView(template)}>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleView(template)}>
                             Ver
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleEdit(template)}>
+                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleEdit(template)}>
                             Editar
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => handleDeleteClick(template)}>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 text-xs text-destructive hover:text-destructive"
+                            onClick={() => handleDeleteClick(template)}
+                          >
                             Excluir
                           </Button>
                         </div>
@@ -269,7 +280,6 @@ export default function TemplatesContratos() {
         </Card>
       </div>
 
-      {/* Modals */}
       <TemplateContratoFormModal
         open={isFormOpen}
         onOpenChange={setIsFormOpen}

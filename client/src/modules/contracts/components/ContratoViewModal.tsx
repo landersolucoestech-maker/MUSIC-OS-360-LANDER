@@ -1,16 +1,12 @@
-import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Badge } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent } from "@/shared/ui/card";
 import {
   FileText, ExternalLink, Send, History, Music, Clock, AlertCircle, Info, User,
-  Loader2, Plus, Trash2,
 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
@@ -24,30 +20,9 @@ interface ContratoViewModalProps {
   contrato?: ContratoWithRelations;
 }
 
-export function ContratoViewModal({
-  open,
-  onOpenChange,
-  contrato,
-}: ContratoViewModalProps) {
+export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoViewModalProps) {
   const { lancamentos } = useLancamentos();
   const navigate = useNavigate();
-
-  const [showSignerForm, setShowSignerForm] = useState(false);
-  const [signers, setSigners] = useState([{ name: "", email: "" }]);
-  const [isCreating, setIsCreating] = useState(false);
-
-  const handleAddSigner = () => setSigners((prev) => [...prev, { name: "", email: "" }]);
-  const handleRemoveSigner = (index: number) =>
-    setSigners((prev) => prev.filter((_, i) => i !== index));
-  const handleSignerChange = (index: number, field: "name" | "email", value: string) =>
-    setSigners((prev) => prev.map((s, i) => (i === index ? { ...s, [field]: value } : s)));
-  const handleAutentique = async () => {
-    setIsCreating(true);
-    await new Promise((r) => setTimeout(r, 1200));
-    setIsCreating(false);
-    setShowSignerForm(false);
-    setSigners([{ name: "", email: "" }]);
-  };
 
   if (!contrato) return null;
 
@@ -55,7 +30,9 @@ export function ContratoViewModal({
     ? lancamentos.find((l) => l.id === contrato.lancamento_id)
     : undefined;
 
-  const versoes: ContratoVersao[] = Array.isArray(contrato.versoes) ? (contrato.versoes as ContratoVersao[]) : [];
+  const versoes: ContratoVersao[] = Array.isArray(contrato.versoes)
+    ? (contrato.versoes as ContratoVersao[])
+    : [];
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -70,6 +47,7 @@ export function ContratoViewModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-3xl max-h-[90vh] p-0 flex flex-col">
+        {/* ── Header ── */}
         <DialogHeader className="px-6 pt-6 pb-4 shrink-0 border-b border-border">
           <div className="flex items-start gap-3">
             <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -95,6 +73,7 @@ export function ContratoViewModal({
           </div>
         </DialogHeader>
 
+        {/* ── Tabs ── */}
         <Tabs defaultValue="informacoes" className="flex flex-col flex-1 overflow-hidden">
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 shrink-0">
             {[
@@ -182,7 +161,7 @@ export function ContratoViewModal({
               )}
             </TabsContent>
 
-            {/* ── Versões ── */}
+            {/* ── Versões (histórico documental) ── */}
             <TabsContent value="versoes" className="p-6 mt-0" data-testid="tab-content-versoes">
               {versoes.length > 0 ? (
                 <div className="space-y-3">
@@ -233,7 +212,7 @@ export function ContratoViewModal({
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <History className="h-12 w-12 mb-3 text-muted-foreground/30" />
                   <p className="text-sm font-medium">Sem histórico de versões</p>
-                  <p className="text-xs mt-1">As versões do documento aparecerão aqui</p>
+                  <p className="text-xs mt-1">As versões do documento aparecerão aqui ao editar o arquivo</p>
                 </div>
               )}
             </TabsContent>
@@ -295,78 +274,18 @@ export function ContratoViewModal({
           </ScrollArea>
         </Tabs>
 
-        {/* Formulário de Signatários inline */}
-        {showSignerForm && (
-          <div className="px-6 py-4 border-t border-border shrink-0 bg-muted/20 space-y-3">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <Send className="h-4 w-4" />
-              Signatários
-            </h3>
-            <div className="space-y-2">
-              {signers.map((signer, index) => (
-                <div key={index} className="flex gap-2 items-end">
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Nome</Label>
-                    <Input
-                      placeholder="Nome completo"
-                      value={signer.name}
-                      onChange={(e) => handleSignerChange(index, "name", e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <div className="flex-1 space-y-1">
-                    <Label className="text-xs">Email</Label>
-                    <Input
-                      type="email"
-                      placeholder="email@exemplo.com"
-                      value={signer.email}
-                      onChange={(e) => handleSignerChange(index, "email", e.target.value)}
-                      className="h-8 text-sm"
-                    />
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => handleRemoveSigner(index)}
-                    disabled={signers.length === 1}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={handleAddSigner}>
-                <Plus className="h-3 w-3 mr-1" />
-                Signatário
-              </Button>
-              <Button
-                size="sm"
-                className="h-7 text-xs gap-1"
-                onClick={handleAutentique}
-                disabled={isCreating}
-              >
-                {isCreating ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
-                {isCreating ? "Enviando..." : "Enviar"}
-              </Button>
-              <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setShowSignerForm(false)}>
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        )}
-
+        {/* ── Footer ── */}
         <DialogFooter className="px-6 py-3 border-t border-border gap-2 flex-wrap shrink-0">
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
+          {/* Placeholder para futura integração Autentique */}
           <Button
             variant="outline"
             size="sm"
             className="gap-2 opacity-50 cursor-not-allowed"
             disabled
-            title="Integração Autentique em breve"
+            title="Integração Autentique — em breve"
             data-testid="button-autentique-disabled"
           >
             <Send className="h-3.5 w-3.5" />

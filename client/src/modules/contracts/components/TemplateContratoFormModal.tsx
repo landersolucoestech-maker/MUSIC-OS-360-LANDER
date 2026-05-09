@@ -16,9 +16,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
+import { Switch } from "@/shared/ui/switch";
 import { X, Plus, Save } from "lucide-react";
-import { TemplateContrato } from "@/modules/contracts/lib/template-contrato-types";
-import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
+import type { TemplateContrato, TemplateContratoInsert } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -34,7 +34,7 @@ interface TemplateContratoFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   template: TemplateContrato | null;
-  onSave: (data: Omit<TemplateContrato, "id" | "dataCriacao" | "dataAtualizacao">) => void;
+  onSave: (data: TemplateContratoInsert) => void;
   tiposServico: string[];
 }
 
@@ -43,7 +43,7 @@ const templateSchema = z.object({
     .min(1, "Nome é obrigatório")
     .max(150, "Nome deve ter no máximo 150 caracteres")
     .trim(),
-  tipoServico: z.string()
+  tipo_servico: z.string()
     .min(1, "Tipo de contrato é obrigatório"),
   ativo: z.boolean().default(true),
 });
@@ -57,8 +57,6 @@ export function TemplateContratoFormModal({
   onSave,
   tiposServico,
 }: TemplateContratoFormModalProps) {
-  const [imagemCabecalho, setImagemCabecalho] = useState<UploadedFile[]>([]);
-  const [imagemRodape, setImagemRodape] = useState<UploadedFile[]>([]);
   const [clausulas, setClausulas] = useState<Clausula[]>([]);
 
   const {
@@ -73,7 +71,7 @@ export function TemplateContratoFormModal({
     mode: "onChange",
     defaultValues: {
       nome: "",
-      tipoServico: "",
+      tipo_servico: "",
       ativo: true,
     },
   });
@@ -83,81 +81,59 @@ export function TemplateContratoFormModal({
       if (template) {
         reset({
           nome: template.nome,
-          tipoServico: template.tipoServico,
-          ativo: template.ativo,
+          tipo_servico: template.tipo_servico ?? "",
+          ativo: template.ativo ?? true,
         });
-        setClausulas(parseClausulasFromContent(template.conteudo));
+        setClausulas(parseClausulasFromContent(template.conteudo ?? ""));
       } else {
         reset({
           nome: "",
-          tipoServico: "",
+          tipo_servico: "",
           ativo: true,
         });
-        setImagemCabecalho([]);
-        setImagemRodape([]);
         setClausulas([]);
       }
     }
   }, [template, open, reset]);
 
   const parseClausulasFromContent = (content: string): Clausula[] => {
-    const lines = content.split('\n');
+    const lines = content.split("\n");
     const clausulasTemp: Clausula[] = [];
     let currentClausula: Clausula | null = null;
 
     for (const line of lines) {
       if (line.match(/^CLÁUSULA|^Cláusula|^\d+\./)) {
-        if (currentClausula) {
-          clausulasTemp.push(currentClausula);
-        }
-        currentClausula = {
-          id: crypto.randomUUID(),
-          titulo: line.trim(),
-          conteudo: "",
-        };
+        if (currentClausula) clausulasTemp.push(currentClausula);
+        currentClausula = { id: crypto.randomUUID(), titulo: line.trim(), conteudo: "" };
       } else if (currentClausula) {
         currentClausula.conteudo += line + "\n";
       }
     }
-
-    if (currentClausula) {
-      clausulasTemp.push(currentClausula);
-    }
-
-    return clausulasTemp.length > 0 ? clausulasTemp : [];
+    if (currentClausula) clausulasTemp.push(currentClausula);
+    return clausulasTemp;
   };
 
   const handleAddClausula = () => {
-    const novaClausula: Clausula = {
+    setClausulas([...clausulas, {
       id: crypto.randomUUID(),
       titulo: `CLÁUSULA ${clausulas.length + 1}ª`,
       conteudo: "",
-    };
-    setClausulas([...clausulas, novaClausula]);
+    }]);
   };
 
-  const handleRemoveClausula = (id: string) => {
+  const handleRemoveClausula = (id: string) =>
     setClausulas(clausulas.filter((c) => c.id !== id));
-  };
 
-  const handleClausulaChange = (id: string, field: "titulo" | "conteudo", value: string) => {
-    setClausulas(
-      clausulas.map((c) => (c.id === id ? { ...c, [field]: value } : c))
-    );
-  };
+  const handleClausulaChange = (id: string, field: "titulo" | "conteudo", value: string) =>
+    setClausulas(clausulas.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
 
-  const buildConteudo = (): string => {
-    return clausulas
-      .map((c) => `${c.titulo}\n${c.conteudo}`)
-      .join("\n\n");
-  };
+  const buildConteudo = (): string =>
+    clausulas.map((c) => `${c.titulo}\n${c.conteudo}`).join("\n\n");
 
   const extractVariaveis = (): string[] => {
-    const conteudo = buildConteudo();
     const regex = /\{\{([A-Z_]+)\}\}/g;
-    const matches = conteudo.matchAll(regex);
     const extracted = new Set<string>();
-    for (const match of matches) {
+    for (const match of buildConteudo().matchAll(regex)) {
       extracted.add(match[1]);
     }
     return Array.from(extracted);
@@ -166,7 +142,7 @@ export function TemplateContratoFormModal({
   const onSubmit = (data: TemplateFormData) => {
     onSave({
       nome: data.nome,
-      tipoServico: data.tipoServico,
+      tipo_servico: data.tipo_servico,
       descricao: "",
       conteudo: buildConteudo(),
       variaveis: extractVariaveis(),
@@ -196,10 +172,10 @@ export function TemplateContratoFormModal({
                 error={errors.nome?.message}
               />
               <div className="space-y-1.5">
-                <Label htmlFor="tipoServico">Tipo de Contrato <span className="text-destructive">*</span></Label>
-                <Select 
-                  value={watch("tipoServico")} 
-                  onValueChange={(v) => setValue("tipoServico", v, { shouldValidate: true })}
+                <Label htmlFor="tipo_servico">Tipo de Contrato <span className="text-destructive">*</span></Label>
+                <Select
+                  value={watch("tipo_servico")}
+                  onValueChange={(v) => setValue("tipo_servico", v, { shouldValidate: true })}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo" />
@@ -212,35 +188,17 @@ export function TemplateContratoFormModal({
                     ))}
                   </SelectContent>
                 </Select>
-                <FieldError error={errors.tipoServico?.message} />
+                <FieldError error={errors.tipo_servico?.message} />
               </div>
             </div>
-          </div>
 
-          {/* Cabeçalho e Rodapé */}
-          <div className="rounded-lg border border-border p-4 space-y-4">
-            <h3 className="font-medium text-foreground">Cabeçalho e Rodapé</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <Label>Imagem do Cabeçalho (Logo)</Label>
-                <FileUpload
-                  folder="templates/cabecalho"
-                  accept="image/*"
-                  maxSize={5}
-                  value={imagemCabecalho}
-                  onChange={setImagemCabecalho}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Imagem do Rodapé</Label>
-                <FileUpload
-                  folder="templates/rodape"
-                  accept="image/*"
-                  maxSize={5}
-                  value={imagemRodape}
-                  onChange={setImagemRodape}
-                />
-              </div>
+            <div className="flex items-center gap-3">
+              <Switch
+                id="ativo"
+                checked={watch("ativo")}
+                onCheckedChange={(v) => setValue("ativo", v)}
+              />
+              <Label htmlFor="ativo" className="cursor-pointer">Template ativo</Label>
             </div>
           </div>
 
@@ -261,7 +219,7 @@ export function TemplateContratoFormModal({
             </div>
 
             {clausulas.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
+              <div className="text-center py-8 text-muted-foreground text-sm">
                 Nenhuma cláusula adicionada. Clique em "Adicionar Cláusula" para começar.
               </div>
             ) : (
@@ -269,16 +227,13 @@ export function TemplateContratoFormModal({
                 {clausulas.map((clausula, index) => (
                   <div key={clausula.id} className="rounded-lg border border-border p-4 space-y-3">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <span className="text-muted-foreground">☰</span>
-                        <span className="font-medium">Cláusula {index + 1}</span>
-                      </div>
+                      <span className="font-medium text-sm">Cláusula {index + 1}</span>
                       <Button
                         type="button"
                         variant="ghost"
                         size="icon"
                         onClick={() => handleRemoveClausula(clausula.id)}
-                        className="text-destructive hover:text-destructive"
+                        className="text-destructive hover:text-destructive h-7 w-7"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -296,12 +251,12 @@ export function TemplateContratoFormModal({
                       <Textarea
                         value={clausula.conteudo}
                         onChange={(e) => handleClausulaChange(clausula.id, "conteudo", e.target.value)}
-                        placeholder="Texto da cláusula... Use {{variavel}} para campos dinâmicos."
+                        placeholder="Texto da cláusula... Use {{VARIAVEL}} para campos dinâmicos."
                         rows={4}
                         className="text-sm"
                       />
                       <p className="text-xs text-muted-foreground">
-                        Variáveis disponíveis: {"{{contracted_name}}"}, {"{{royalties_percentage}}"}, {"{{start_date}}"}, {"{{end_date}}"}, {"{{fixed_value}}"}, {"{{advance_amount}}"}, {"{{financial_support}}"}, {"{{work_title}}"}
+                        Variáveis disponíveis: {"{{CONTRACTED_NAME}}"}, {"{{ROYALTIES_PERCENTAGE}}"}, {"{{START_DATE}}"}, {"{{END_DATE}}"}, {"{{FIXED_VALUE}}"}, {"{{ADVANCE_AMOUNT}}"}, {"{{FINANCIAL_SUPPORT}}"}, {"{{WORK_TITLE}}"}
                       </p>
                     </div>
                   </div>
@@ -310,13 +265,8 @@ export function TemplateContratoFormModal({
             )}
           </div>
 
-          {/* Actions */}
-          <div className="flex justify-end gap-3 pt-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancelar
             </Button>
             <Button type="submit" className="gap-2" disabled={isSubmitting}>
