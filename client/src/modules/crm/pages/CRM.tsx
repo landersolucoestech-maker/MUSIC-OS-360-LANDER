@@ -1,36 +1,32 @@
 import { useCallback, useState, useMemo, useRef } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
-import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
-  Users, Download, Plus, Phone, Mail, Search, Eye,
-  Pencil, Trash2, MoreHorizontal, UserCheck, UserPlus, FileText,
-  X, Building2, Handshake, Package, Upload,
+  Users, Plus, Phone, Mail, Search, Eye,
+  Pencil, Trash2, UserCheck, FileText,
+  X, Building2, Handshake, Package, MapPin,
+  Star, Radio, Newspaper, TrendingUp, Scale, Music2,
+  Mic2, Video, Globe, MessageSquare, BarChart3,
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
 import { StatusBadge } from "@/shared/components/StatusBadge";
-import { MetricCard } from "@/shared/components/MetricCard";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CRMFormModal } from "@/modules/crm/components/CRMFormModal";
 import { CRMViewModal } from "@/modules/crm/components/CRMViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { ListItemSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
 const getXLSX = () => import("xlsx");
 
 type Cliente = Record<string, any>;
-
 type SegmentoTab = "todos" | "contratante" | "parceiro" | "fornecedor" | "contato";
 
 const SEGMENTO_TABS: { value: SegmentoTab; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
@@ -41,18 +37,34 @@ const SEGMENTO_TABS: { value: SegmentoTab; label: string; icon: React.ComponentT
   { value: "contato",     label: "Contatos",     icon: UserCheck },
 ];
 
-const SEGMENTO_BADGE: Record<string, string> = {
-  contratante: "bg-blue-500/10 text-blue-500 border-blue-500/20",
-  parceiro:    "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
-  fornecedor:  "bg-warning/10 text-warning border-warning/20",
-  contato:     "bg-muted text-muted-foreground border-border",
-};
-
 const SEGMENTO_LABEL: Record<string, string> = {
   contratante: "Contratante",
   parceiro:    "Parceiro",
   fornecedor:  "Fornecedor",
   contato:     "Contato",
+};
+
+const TIPO_CONFIG: Record<string, { color: string; icon: React.ComponentType<{ className?: string }> }> = {
+  distribuidora: { color: "bg-violet-500/10 text-violet-500 border-violet-500/20", icon: Globe },
+  editora:       { color: "bg-blue-500/10 text-blue-500 border-blue-500/20",       icon: FileText },
+  artista:       { color: "bg-primary/10 text-primary border-primary/20",           icon: Music2 },
+  produtor:      { color: "bg-emerald-500/10 text-emerald-500 border-emerald-500/20", icon: Mic2 },
+  radio:         { color: "bg-orange-500/10 text-orange-500 border-orange-500/20",  icon: Radio },
+  imprensa:      { color: "bg-yellow-500/10 text-yellow-500 border-yellow-500/20",  icon: Newspaper },
+  marca:         { color: "bg-pink-500/10 text-pink-500 border-pink-500/20",        icon: Star },
+  juridico:      { color: "bg-slate-500/10 text-slate-500 border-slate-500/20",     icon: Scale },
+  investidor:    { color: "bg-teal-500/10 text-teal-500 border-teal-500/20",        icon: TrendingUp },
+  streaming:     { color: "bg-green-500/10 text-green-500 border-green-500/20",     icon: BarChart3 },
+  influencer:    { color: "bg-rose-500/10 text-rose-500 border-rose-500/20",        icon: Users },
+  sync:          { color: "bg-indigo-500/10 text-indigo-500 border-indigo-500/20",  icon: Video },
+  agregadora:    { color: "bg-cyan-500/10 text-cyan-500 border-cyan-500/20",        icon: Package },
+};
+
+const SEGMENTO_COLOR: Record<string, string> = {
+  contratante: "bg-blue-500/10 text-blue-500 border-blue-500/20",
+  parceiro:    "bg-emerald-500/10 text-emerald-500 border-emerald-500/20",
+  fornecedor:  "bg-warning/10 text-warning border-warning/20",
+  contato:     "bg-muted text-muted-foreground border-border",
 };
 
 const temperaturaStyle: Record<string, string> = {
@@ -81,15 +93,14 @@ export default function CRM() {
   }, [contratos]);
 
   const kpis = useMemo(() => ({
-    total:      clientes.length,
-    ativos:     clientes.filter((c) => c.status === "ativo").length,
-    comContrato: clientes.filter((c) => contratosPorCliente.has(c.id)).length,
+    total:        clientes.length,
+    ativos:       clientes.filter((c) => c.status === "ativo").length,
+    comContrato:  clientes.filter((c) => contratosPorCliente.has(c.id)).length,
     contratantes: clientes.filter((c) => c.segmento === "contratante").length,
     parceiros:    clientes.filter((c) => c.segmento === "parceiro").length,
     fornecedores: clientes.filter((c) => c.segmento === "fornecedor").length,
   }), [clientes, contratosPorCliente]);
 
-  const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; cliente?: Cliente }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; cliente?: Cliente }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; cliente?: Cliente }>({ open: false });
@@ -105,12 +116,16 @@ export default function CRM() {
 
   const filteredClientes = useMemo(() => {
     return clientes.filter((cliente) => {
+      const q = searchTerm.toLowerCase();
       const matchesSearch =
-        searchTerm === "" ||
-        cliente.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.responsavel?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        cliente.empresa?.toLowerCase().includes(searchTerm.toLowerCase());
+        q === "" ||
+        cliente.nome?.toLowerCase().includes(q) ||
+        cliente.email?.toLowerCase().includes(q) ||
+        cliente.telefone?.toLowerCase().includes(q) ||
+        cliente.empresa?.toLowerCase().includes(q) ||
+        cliente.responsavel?.toLowerCase().includes(q) ||
+        cliente.cidade?.toLowerCase().includes(q) ||
+        cliente.tipo?.toLowerCase().includes(q);
       const matchesStatus = statusFilter === "all" || cliente.status === statusFilter;
       const matchesSegmento =
         activeTab === "todos" ||
@@ -121,20 +136,6 @@ export default function CRM() {
   }, [clientes, searchTerm, statusFilter, activeTab]);
 
   const hasActiveFilters = searchTerm !== "" || statusFilter !== "all";
-
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredClientes.length && filteredClientes.length > 0) setSelectedIds([]);
-    else setSelectedIds(filteredClientes.map((c: any) => c.id));
-  };
-  const toggleSelect = (id: string) =>
-    setSelectedIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-
-  const handleBulkDelete = () => {
-    if (selectedIds.length === 0) return;
-    selectedIds.forEach((id) => deleteCliente.mutate(id));
-    toast.success(`${selectedIds.length} contato(s) excluído(s)`);
-    setSelectedIds([]);
-  };
 
   const handleDelete = () => {
     if (deleteModal.cliente) {
@@ -152,7 +153,7 @@ export default function CRM() {
   const clearFilters = () => { setSearchTerm(""); setStatusFilter("all"); };
 
   const getInitials = (nome: string) =>
-    nome.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase();
+    nome?.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() ?? "?";
 
   const handleExcelExport = async () => {
     if (filteredClientes.length === 0) { toast.error("Nenhum cliente para exportar"); return; }
@@ -209,10 +210,13 @@ export default function CRM() {
   return (
     <MainLayout
       title="CRM"
-      description="Gestão de relacionamento comercial"
+      description="Central de relacionamento operacional"
       actions={
         <>
           <input type="file" ref={csvInputRef} accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleExcelExport}>
+            Exportar
+          </Button>
           <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
             <Plus className="h-3.5 w-3.5" /> Novo Contato
           </Button>
@@ -221,23 +225,35 @@ export default function CRM() {
     >
       <div className="space-y-6">
 
-        {/* ── KPI Cards ── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard title="Total" value={clientesLoading ? "—" : kpis.total} icon={Users} accent="primary" />
-          <MetricCard title="Contratantes" value={clientesLoading ? "—" : kpis.contratantes} icon={Building2} accent="primary" />
-          <MetricCard title="Parceiros" value={clientesLoading ? "—" : kpis.parceiros} icon={Handshake} accent="success" />
-          <MetricCard title="Fornecedores" value={clientesLoading ? "—" : kpis.fornecedores} icon={Package} accent="warning" />
+        {/* ── KPI Strip ── */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Total de Contatos", value: kpis.total,        icon: Users,     accent: "text-foreground" },
+            { label: "Ativos",            value: kpis.ativos,       icon: UserCheck, accent: "text-emerald-500" },
+            { label: "Com Contrato",      value: kpis.comContrato,  icon: FileText,  accent: "text-primary" },
+            { label: "Contratantes",      value: kpis.contratantes, icon: Building2, accent: "text-blue-500" },
+            { label: "Parceiros",         value: kpis.parceiros,    icon: Handshake, accent: "text-emerald-500" },
+            { label: "Fornecedores",      value: kpis.fornecedores, icon: Package,   accent: "text-warning" },
+          ].map(({ label, value, icon: Icon, accent }) => (
+            <div key={label} className="bg-card border border-border/60 rounded-xl p-3.5 flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground leading-tight">{label}</span>
+                <Icon className={cn("h-3.5 w-3.5 shrink-0", accent)} />
+              </div>
+              <span className={cn("text-2xl font-bold tracking-tight", accent)}>{clientesLoading ? "—" : value}</span>
+            </div>
+          ))}
         </div>
 
         {/* ── Segmento Tabs ── */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 border-b border-border" data-testid="crm-tabs">
+        <div className="flex items-center gap-1 overflow-x-auto pb-px border-b border-border" data-testid="crm-tabs">
           {SEGMENTO_TABS.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.value;
             return (
               <button
                 key={tab.value}
-                onClick={() => { setActiveTab(tab.value); setSelectedIds([]); }}
+                onClick={() => setActiveTab(tab.value)}
                 data-testid={`tab-${tab.value}`}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors shrink-0",
@@ -264,7 +280,7 @@ export default function CRM() {
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
-              placeholder="Buscar por nome, email ou responsável…"
+              placeholder="Nome, email, telefone, empresa, cidade…"
               className="pl-9 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -272,7 +288,7 @@ export default function CRM() {
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status">
+            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border" data-testid="select-status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -293,194 +309,160 @@ export default function CRM() {
           </span>
         </div>
 
-        {/* ── Contacts List ── */}
-        <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">
-                  {SEGMENTO_TABS.find(t => t.value === activeTab)?.label ?? "Lista"}
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredClientes.length})</span>
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">
-                  {activeTab === "todos"       && "Todos os contatos e empresas cadastradas"}
-                  {activeTab === "contratante" && "Empresas e pessoas que contratam shows e serviços"}
-                  {activeTab === "parceiro"    && "Gravadoras, distribuidoras e parceiros estratégicos"}
-                  {activeTab === "fornecedor"  && "Fornecedores de serviços e plataformas"}
-                  {activeTab === "contato"     && "Contatos sem segmento definido"}
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="pt-0">
-            {/* Bulk selection */}
-            {clientes.length > 0 && (
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <Checkbox
-                  checked={selectedIds.length === filteredClientes.length && filteredClientes.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  data-testid="checkbox-select-all"
-                />
-                <span className="text-xs text-muted-foreground flex-1">
-                  {selectedIds.length > 0 ? `${selectedIds.length} selecionado(s)` : "Selecionar todos"}
-                </span>
-                {selectedIds.length > 0 && (
-                  <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                    <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
-                  </Button>
-                )}
-              </div>
-            )}
+        {/* ── Smart Relationship Cards ── */}
+        {clientesLoading ? (
+          <div className="space-y-3">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="h-32 rounded-2xl bg-muted/40 animate-pulse border border-border/40" />
+            ))}
+          </div>
+        ) : filteredClientes.length === 0 ? (
+          <EmptyState
+            icon={Users}
+            title={hasActiveFilters ? "Nenhum resultado" : `Nenhum ${SEGMENTO_TABS.find(t => t.value === activeTab)?.label.toLowerCase() || "contato"} cadastrado`}
+            description={hasActiveFilters ? "Ajuste os filtros ou limpe a busca." : "Adicione o primeiro contato nesta categoria."}
+            actionLabel={hasActiveFilters ? undefined : "Novo Contato"}
+            onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
+          />
+        ) : (
+          <div className="space-y-3">
+            {filteredClientes.map((cliente) => {
+              const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
+              const situacao = getContratoSituacao(clienteContratos);
+              const tipoKey = cliente.tipo?.toLowerCase();
+              const tipoConfig = tipoKey ? TIPO_CONFIG[tipoKey] : undefined;
+              const TipoIcon = tipoConfig?.icon;
 
-            {clientesLoading ? (
-              <div className="space-y-2">
-                {Array.from({ length: 5 }).map((_, i) => <ListItemSkeleton key={i} />)}
-              </div>
-            ) : filteredClientes.length === 0 ? (
-              <EmptyState
-                icon={Users}
-                title={hasActiveFilters ? "Nenhum resultado" : `Nenhum ${SEGMENTO_TABS.find(t => t.value === activeTab)?.label.toLowerCase() || "contato"} cadastrado`}
-                description={hasActiveFilters ? "Ajuste os filtros ou limpe a busca." : "Adicione o primeiro contato nesta categoria."}
-                actionLabel={hasActiveFilters ? undefined : "Novo Contato"}
-                onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
-              />
-            ) : (
-              <div className="space-y-2">
-                {filteredClientes.map((cliente) => {
-                  const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
-                  const situacao = getContratoSituacao(clienteContratos);
-                  return (
-                    <div
-                      key={cliente.id}
-                      data-testid={`row-contato-${cliente.id}`}
-                      className="flex items-start gap-3 p-3 rounded-lg border border-border/60 bg-card hover:border-border hover:bg-muted/20 transition-colors cursor-pointer"
-                      onClick={() => setViewModal({ open: true, cliente })}
-                    >
-                      <div onClick={(e) => e.stopPropagation()} className="pt-0.5">
-                        <Checkbox
-                          checked={selectedIds.includes(cliente.id)}
-                          onCheckedChange={() => toggleSelect(cliente.id)}
-                          data-testid={`checkbox-contato-${cliente.id}`}
-                        />
-                      </div>
+              return (
+                <div
+                  key={cliente.id}
+                  data-testid={`row-contato-${cliente.id}`}
+                  className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start gap-4">
 
-                      <Avatar className="h-9 w-9 shrink-0">
-                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-semibold">
+                    {/* ── Bloco 1: Identidade ── */}
+                    <div className="flex items-start gap-3.5 flex-1 min-w-0">
+                      <Avatar className="h-11 w-11 shrink-0 rounded-xl">
+                        <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-sm font-bold rounded-xl">
                           {getInitials(cliente.nome)}
                         </AvatarFallback>
                       </Avatar>
 
-                      {/* Main content */}
-                      <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-2">
-
-                        {/* Col 1: Nome + contacto + badges */}
-                        <div className="min-w-0">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Nome</p>
-                          <h3 className="font-semibold text-sm leading-tight truncate" data-testid={`text-nome-${cliente.id}`}>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start gap-2 flex-wrap">
+                          <h3
+                            className="font-semibold text-base leading-tight cursor-pointer hover:text-primary transition-colors"
+                            data-testid={`text-nome-${cliente.id}`}
+                            onClick={() => setViewModal({ open: true, cliente })}
+                          >
                             {cliente.nome}
                           </h3>
-                          {cliente.empresa && (
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">{cliente.empresa}</p>
+                          {cliente.segmento && (
+                            <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium shrink-0", SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
+                              {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
+                            </Badge>
+                          )}
+                          {cliente.tipo && (
+                            <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium shrink-0 flex items-center gap-1", tipoConfig?.color || "bg-muted text-muted-foreground border-border")}>
+                              {TipoIcon && <TipoIcon className="h-2.5 w-2.5" />}
+                              {cliente.tipo}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {cliente.empresa && (
+                          <p className="text-xs text-muted-foreground mt-0.5 truncate">{cliente.empresa}</p>
+                        )}
+
+                        <div className="flex flex-wrap items-center gap-3 mt-2 text-xs text-muted-foreground">
+                          {cliente.cidade && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}
+                            </span>
                           )}
                           {cliente.email && (
-                            <p className="text-xs flex items-center gap-1 mt-1 text-muted-foreground truncate">
+                            <span className="flex items-center gap-1 min-w-0">
                               <Mail className="h-3 w-3 shrink-0" />
                               <span className="truncate">{cliente.email}</span>
-                            </p>
+                            </span>
                           )}
                           {cliente.telefone && (
-                            <p className="text-xs flex items-center gap-1 mt-0.5 text-muted-foreground">
+                            <span className="flex items-center gap-1 shrink-0">
                               <Phone className="h-3 w-3 shrink-0" />
                               {cliente.telefone}
-                            </p>
-                          )}
-                          <div className="flex items-center gap-1 flex-wrap mt-1.5">
-                            <StatusBadge status={cliente.status || "lead"} />
-                            {cliente.segmento && (
-                              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border", SEGMENTO_BADGE[cliente.segmento] || "bg-muted text-muted-foreground border-border")}>
-                                {SEGMENTO_LABEL[cliente.segmento] ?? cliente.segmento}
-                              </Badge>
-                            )}
-                            {cliente.temperatura && (
-                              <Badge variant="outline" className={cn("text-[10px] px-1.5 py-0 h-4 border capitalize", temperaturaStyle[cliente.temperatura] || "bg-muted text-muted-foreground border-border")}>
-                                {cliente.temperatura}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Col 2: Categoria + Localização */}
-                        <div className="hidden sm:block min-w-0">
-                          {cliente.tipo && (
-                            <>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Categoria</p>
-                              <p className="text-xs font-medium truncate">{cliente.tipo}</p>
-                            </>
-                          )}
-                          {cliente.cidade && (
-                            <div className={cliente.tipo ? "mt-1.5" : ""}>
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Cidade</p>
-                              <p className="text-xs font-medium">{cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}</p>
-                            </div>
-                          )}
-                          {!cliente.tipo && !cliente.cidade && <p className="text-xs text-muted-foreground">—</p>}
-                        </div>
-
-                        {/* Col 4: Contratos + Responsável */}
-                        <div className="hidden lg:block min-w-0">
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Contratos</p>
-                          <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-semibold">{clienteContratos.length}</span>
-                            <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
-                          </div>
-                          {cliente.responsavel && (
-                            <div className="mt-1.5">
-                              <p className="text-[10px] text-muted-foreground uppercase tracking-wide mb-0.5">Responsável</p>
-                              <p className="text-xs font-medium truncate">{cliente.responsavel}</p>
-                            </div>
+                            </span>
                           )}
                         </div>
-                      </div>
-
-                      {/* Actions */}
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0" data-testid={`button-menu-${cliente.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
-                              <Eye className="h-3.5 w-3.5 mr-2" /> Ver
-                            </DropdownMenuItem>
-                            <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
-                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
-                              <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
-                              <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
-                              <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
                       </div>
                     </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+
+                    {/* ── Bloco 2: Contexto Operacional ── */}
+                    <div className="flex sm:flex-col items-start gap-3 sm:gap-1.5 sm:min-w-[160px] sm:shrink-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <StatusBadge status={cliente.status || "lead"} />
+                        {cliente.temperatura && (
+                          <Badge variant="outline" className={cn("text-[10px] px-2 py-0 h-5 border font-medium capitalize", temperaturaStyle[cliente.temperatura])}>
+                            {cliente.temperatura}
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {clienteContratos.length > 0 && (
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {clienteContratos.length} contrato{clienteContratos.length !== 1 ? "s" : ""}
+                          </span>
+                        )}
+                        <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
+                      </div>
+                      {cliente.responsavel && (
+                        <p className="text-xs text-muted-foreground truncate max-w-[160px]">
+                          Resp.: <span className="text-foreground font-medium">{cliente.responsavel}</span>
+                        </p>
+                      )}
+                    </div>
+
+                    {/* ── Bloco 4: Ações visíveis ── */}
+                    <div className="flex sm:flex-col gap-1.5 sm:shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                        onClick={() => setViewModal({ open: true, cliente })}
+                        data-testid={`button-ver-${cliente.id}`}
+                      >
+                        <Eye className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Abrir</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+                        onClick={() => setFormModal({ open: true, mode: "edit", cliente })}
+                        data-testid={`button-editar-${cliente.id}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Editar</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2.5 text-xs gap-1.5 text-muted-foreground hover:text-destructive"
+                        onClick={() => setDeleteModal({ open: true, cliente })}
+                        data-testid={`button-excluir-${cliente.id}`}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span className="hidden sm:inline">Excluir</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       <CRMFormModal
