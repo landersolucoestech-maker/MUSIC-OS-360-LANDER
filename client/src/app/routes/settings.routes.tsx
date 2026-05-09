@@ -4,7 +4,7 @@
 import { lazy } from "react";
 import { Route } from "react-router-dom";
 import type { SuspenseRouteComponent } from "./types";
-import { AdminRoute } from "@/shared/components/AdminRoute";
+import { AdminRoute } from "@/shared/infrastructure/AdminRoute";
 
 const Configuracoes = lazy(() => import("@/modules/settings/pages/Configuracoes"));
 const Aparencia = lazy(() => import("@/modules/settings/pages/Aparencia"));

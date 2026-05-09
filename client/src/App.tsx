@@ -6,13 +6,13 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/app/providers/AuthContext";
 import { TenantProvider } from "@/app/providers/TenantContext";
 import { ThemeProvider } from "@/app/providers/ThemeContext";
-import { ErrorBoundary } from "@/shared/components/ErrorBoundary";
-import { RouteErrorBoundary } from "@/shared/components/RouteErrorBoundary";
+import { ErrorBoundary } from "@/shared/infrastructure/ErrorBoundary";
+import { RouteErrorBoundary } from "@/shared/infrastructure/RouteErrorBoundary";
 import { PageSkeleton } from "@/shared/components/PageSkeletons";
 import { createQueryClient } from "@/shared/lib/query-config";
 import type { SuspenseRouteComponent } from "@/app/routes/types";
 import "@/shared/domain-events/consistency";
-import { RealtimeLayer } from "@/shared/components/RealtimeLayer";
+import { RealtimeLayer } from "@/shared/infrastructure/RealtimeLayer";
 
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";

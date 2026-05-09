@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
-import { ErrorBoundary } from '@/shared/components/ErrorBoundary';
+import { ErrorBoundary } from '@/shared/infrastructure/ErrorBoundary';
 
 // Componente que lança erro para testar
 function ThrowError({ shouldThrow }: { shouldThrow: boolean }) {

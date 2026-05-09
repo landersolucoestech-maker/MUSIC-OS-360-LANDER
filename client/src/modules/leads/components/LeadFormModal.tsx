@@ -45,7 +45,7 @@ import {
 import type { Lead } from "../hooks/useLeads";
 import { useLeadInteractions, TIPO_INTERACAO_OPTIONS, TIPO_INTERACAO_LABELS } from "../hooks/useLeadInteractions";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
-import { leadSchema, formatZodErrors } from "@/shared/lib/validation-schemas";
+import { leadSchema, formatZodErrors } from "@/modules/leads/lib/lead-schema";
 import { formatDateTime } from "@/shared/lib/format-utils";
 import { maskPhone } from "@/shared/lib/masks";
 import { toast } from "sonner";

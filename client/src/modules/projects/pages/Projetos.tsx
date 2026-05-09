@@ -17,7 +17,7 @@ import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import type { ProjetoWithRelationsExtended } from "@/shared/types/projetos-extensions";
+import type { ProjetoWithRelationsExtended } from "@/modules/projects/types/projetos-extensions";
 import { getFirstMusicaInfo, getMusicaInfo, parseMusicasFromProjeto, type MusicaData } from "@/modules/projects/utils/musicaHelpers";
 
 const projetoColumns: CSVColumn[] = [

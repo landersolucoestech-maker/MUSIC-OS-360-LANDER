@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { MemoryRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import React from 'react';
-import { RouteErrorBoundary } from '@/shared/components/RouteErrorBoundary';
+import { RouteErrorBoundary } from '@/shared/infrastructure/RouteErrorBoundary';
 
 // Componente que lança erro para testar
 function ThrowError({ shouldThrow }: { shouldThrow: boolean }) {

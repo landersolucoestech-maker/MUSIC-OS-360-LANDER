@@ -1,2 +1,2 @@
-// app providers
-export * from "./providers/AuthContext";
+// app barrel — providers
+export * from "./providers";

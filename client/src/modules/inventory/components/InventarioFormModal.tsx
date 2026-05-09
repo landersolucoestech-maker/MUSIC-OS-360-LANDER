@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { inventarioSchema, type InventarioFormData } from "@/shared/lib/validation-schemas";
+import { inventarioSchema, type InventarioFormData } from "@/modules/inventory/lib/inventario-schema";
 import { FieldError } from "@/shared/components/FormField";
 
 interface InventarioFormModalProps {

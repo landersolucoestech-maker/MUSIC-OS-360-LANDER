@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { User, Shield, Building2, UserCheck, Info, AlertTriangle, Eye, Plus, Pencil, Trash2, CheckCircle, Download, Music } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { usuarioSchema, type UsuarioFormData } from "@/shared/lib/validation-schemas";
+import { usuarioSchema, type UsuarioFormData } from "@/modules/settings/lib/usuario-schema";
 import { FormField, FieldError } from "@/shared/components/FormField";
 import { useUsuarios } from "@/modules/settings/hooks/useUsuarios";
 interface UsuarioFormModalProps {

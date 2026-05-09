@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
-import { ErrorFallback } from '@/shared/components/ErrorFallback';
+import { ErrorFallback } from '@/shared/infrastructure/ErrorFallback';
 
 describe('ErrorFallback', () => {
   const mockOnRetry = vi.fn();
