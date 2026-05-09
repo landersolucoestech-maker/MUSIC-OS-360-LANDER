@@ -6,7 +6,7 @@ import {
   Upload, Download, Activity,
   CheckCircle2, AlertTriangle, Users,
   Music, FileText, Radio, Scale, Trash2, Truck, Share, FileSignature,
-  ArrowLeftRight, Calculator, Receipt, Calendar, Package,
+  ArrowLeftRight, Receipt, Calendar, Package,
   Contact, UserPlus, Briefcase, Megaphone,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -34,7 +34,6 @@ const MODULE_LIST: ModuleEntry[] = [
   { id: "gestao-shares",  label: "Gestão de Shares",       sub: "Participações, splits, percentuais",                       icon: Share          },
   { id: "contratos",      label: "Contratos",              sub: "Templates, assinaturas, vencimentos",                      icon: FileSignature  },
   { id: "transacoes",     label: "Transações",             sub: "Receitas, despesas, OFX, conciliação",                     icon: ArrowLeftRight },
-  { id: "contabilidade",  label: "Contabilidade",          sub: "P&L, fluxo de caixa, recoupment",                         icon: Calculator     },
   { id: "nota-fiscal",    label: "Nota Fiscal",            sub: "Emissão, NFS-e, NF-e, histórico",                         icon: Receipt        },
   { id: "agenda",         label: "Agenda",                 sub: "Shows, eventos, compromissos",                             icon: Calendar       },
   { id: "inventario",     label: "Inventário",             sub: "Equipamentos, patrimônio, controle",                       icon: Package        },

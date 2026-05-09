@@ -28,7 +28,6 @@ import {
   Briefcase,
   Share2,
   Receipt,
-  Calculator,
   Eye,
   Target,
   CalendarDays,
@@ -108,11 +107,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: DollarSign,
     children: [
       { title: "Transações", href: "/accounting", icon: DollarSign },
-      {
-        title: "Contabilidade",
-        href: "/accounting/contabilidade",
-        icon: Calculator,
-      },
       { title: "Nota Fiscal", href: "/accounting/nota-fiscal", icon: Receipt },
     ],
   },

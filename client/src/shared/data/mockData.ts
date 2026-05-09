@@ -396,7 +396,6 @@ function buildSeedData(): Record<string, unknown[]> {
       conta: "12345-6",
     },
   ],
-  fechamentos_contabeis: [],
   profiles: [],
   user_settings: [],
   roles: [],
@@ -531,15 +530,6 @@ export const MOCK_COMPANY_SETTINGS = {
   agencia: "0001",
   conta: "12345-6",
 };
-
-export const MOCK_FECHAMENTOS = [
-  { id: "fech-001", user_id: UID, org_id: OID, periodo: "2026-03", status: "fechado", data_fechamento: d(-1), receitas: 218307.50, despesas: 128600.00, resultado: 89707.50, observacoes: "Mês de março encerrado", created_at: NOW },
-  { id: "fech-002", user_id: UID, org_id: OID, periodo: "2026-02", status: "fechado", data_fechamento: d(-32), receitas: 198450.00, despesas: 115200.00, resultado: 83250.00, observacoes: "Fevereiro encerrado", created_at: NOW },
-  { id: "fech-003", user_id: UID, org_id: OID, periodo: "2026-01", status: "fechado", data_fechamento: d(-62), receitas: 175320.00, despesas: 102500.00, resultado: 72820.00, observacoes: "Janeiro encerrado", created_at: NOW },
-  { id: "fech-004", user_id: UID, org_id: OID, periodo: "2025-12", status: "fechado", data_fechamento: d(-122), receitas: 312000.00, despesas: 189000.00, resultado: 123000.00, observacoes: "Dezembro - melhor mês do ano", created_at: NOW },
-  { id: "fech-005", user_id: UID, org_id: OID, periodo: "2025-11", status: "fechado", data_fechamento: d(-152), receitas: 165400.00, despesas: 98700.00, resultado: 66700.00, observacoes: "Novembro encerrado", created_at: NOW },
-  { id: "fech-006", user_id: UID, org_id: OID, periodo: "2025-10", status: "fechado", data_fechamento: d(-182), receitas: 189600.00, despesas: 112400.00, resultado: 77200.00, observacoes: "Outubro encerrado", created_at: NOW },
-];
 
 export const MOCK_ARTISTAS_ASSINADOS = (MOCK_DATA.artistas as Array<Record<string, unknown>>).filter(
   (a) => a.status === "contratado"

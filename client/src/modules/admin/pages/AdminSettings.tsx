@@ -37,7 +37,7 @@ const STATUS_CFG: Record<IntegrationStatus, { label: string; color: string; bg: 
 };
 const CAT_LABEL: Record<string, string> = {
   payment: "Pagamento", communication: "Comunicação", analytics: "Analytics",
-  storage: "Storage", music: "Música", accounting: "Contabilidade",
+  storage: "Storage", music: "Música", accounting: "Accounting",
 };
 function fmtDate(iso?: string) {
   if (!iso) return "—";
