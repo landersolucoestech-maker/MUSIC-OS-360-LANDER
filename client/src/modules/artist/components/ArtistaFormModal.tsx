@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
@@ -21,18 +21,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Badge } from "@/shared/ui/badge";
-import { Loader2, Save, Plus, X, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
-import { useArtistas, type Artista, type ArtistaDistribuidoraEntry } from "@/modules/artist/hooks/useArtistas";
+import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { toast } from "sonner";
 import {
   artistaToFormFields,
   formToArtistaPayload,
   ESPECIALIDADES_LABELS,
-  gerarSlugArtistico,
   validateSpotifyUrl,
   validateYoutubeUrl,
   validateInstagramUrl,
@@ -40,9 +37,6 @@ import {
   validateSoundcloudUrl,
   validateDeezerUrl,
   validateAppleMusicUrl,
-  emptyRelacionamento,
-  type ArtistaFormRelacionamento,
-  type ArtistaFormResponsavel,
   type FormToArtistaInput,
   type UrlValidationState,
 } from "@/modules/artist/mappers";
@@ -59,33 +53,10 @@ const BANCOS = [
   "Nubank", "Inter", "C6 Bank", "PicPay", "Mercado Pago", "Outro",
 ];
 
-const DISTRIBUIDORAS_OPTIONS = [
-  { id: "onerpm",    label: "ONErpm" },
-  { id: "distrokid", label: "DistroKid" },
-  { id: "30por1",    label: "30 Por 1" },
-  { id: "symphonic", label: "Symphonic" },
-  { id: "somvibe",   label: "Somvibe" },
-  { id: "soundon",   label: "SoundOn" },
-  { id: "musicpro",  label: "MusicPro" },
-  { id: "outro",     label: "Outro" },
-];
-
-const FASES_CARREIRA = [
-  { value: "iniciante",    label: "Iniciante" },
-  { value: "em_ascensao",  label: "Em Ascensão" },
-  { value: "consolidado",  label: "Consolidado" },
-  { value: "mainstream",   label: "Mainstream" },
-];
-
-const TIPOS_RELACIONAMENTO = [
-  { tipo: "empresario" as const, label: "Empresários",              hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
-  { tipo: "gravadora"  as const, label: "Gravadoras",               hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: true  },
-  { tipo: "editora"    as const, label: "Editoras",                 hasDistribuidoras: true,  hasEscritorio: false, hasCRC: false, hasResponsaveis: true  },
-  { tipo: "booker"     as const, label: "Bookers",                  hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
-  { tipo: "juridico"   as const, label: "Jurídico",                 hasDistribuidoras: false, hasEscritorio: true,  hasCRC: false, hasResponsaveis: false },
-  { tipo: "financeiro" as const, label: "Financeiro",               hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
-  { tipo: "contador"   as const, label: "Contador",                 hasDistribuidoras: false, hasEscritorio: false, hasCRC: true,  hasResponsaveis: false },
-  { tipo: "assessoria" as const, label: "Assessoria de Imprensa",   hasDistribuidoras: false, hasEscritorio: false, hasCRC: false, hasResponsaveis: false },
+const TIPO_PERFIL_OPTIONS = [
+  { value: "independente",    label: "Independente" },
+  { value: "com_empresario",  label: "Com empresário" },
+  { value: "gravadora",       label: "Gravadora" },
 ];
 
 const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]) => ({ value, label }));
@@ -94,9 +65,6 @@ const ESPECIALIDADES = Object.entries(ESPECIALIDADES_LABELS).map(([value, label]
 
 interface ArtistaFormValues {
   nomeArtistico: string;
-  slugArtistico: string;
-  tagsMusicais: string[];
-  faseCarreira: string;
   generoMusical: string;
   tipoArtista: string;
   statusArtista: string;
@@ -123,15 +91,11 @@ interface ArtistaFormValues {
   soundcloud: string;
   deezer: string;
   appleMusic: string;
-  relacionamentos: ArtistaFormRelacionamento[];
-  contratoId: string;
+  tipoPerfil: string;
 }
 
 const DEFAULT_VALUES: ArtistaFormValues = {
   nomeArtistico: "",
-  slugArtistico: "",
-  tagsMusicais: [],
-  faseCarreira: "",
   generoMusical: "",
   tipoArtista: "artista_solo",
   statusArtista: "contratado",
@@ -158,8 +122,7 @@ const DEFAULT_VALUES: ArtistaFormValues = {
   soundcloud: "",
   deezer: "",
   appleMusic: "",
-  relacionamentos: [],
-  contratoId: "",
+  tipoPerfil: "independente",
 };
 
 // ─── Helper: URL validation icon ─────────────────────────────────
@@ -184,41 +147,72 @@ interface ArtistaFormModalProps {
 export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: ArtistaFormModalProps) {
   const isEditing = !!artista;
   const { addArtista, updateArtista } = useArtistas();
-  const { clientes, addCliente } = useClientes();
-  const { contratos } = useContratos();
+  const { addCliente } = useClientes();
 
   // ── Non-form state ──────────────────────────────────────────────
   const [isSubmitting, setIsSubmitting]   = useState(false);
   const [imagemArtista, setImagemArtista] = useState<UploadedFile[]>([]);
   const [documentosPessoais, setDocumentosPessoais] = useState<UploadedFile[]>([]);
   const [presskit, setPresskit]           = useState<UploadedFile[]>([]);
-  const [tagInput, setTagInput]           = useState("");
-  const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
 
   // Perfil 360 pass-through (no UI in this form — preserved as-is)
-  const [bannerUrl, setBannerUrl]           = useState("");
-  const [galeriaUrls, setGaleriaUrls]       = useState<string[]>([]);
+  const [bannerUrl, setBannerUrl]                   = useState("");
+  const [galeriaUrls, setGaleriaUrls]               = useState<string[]>([]);
   const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
-  const [managerNome, setManagerNome]       = useState("");
-  const [managerContato, setManagerContato] = useState("");
-  const [produtorExecutivo, setProdutorExecutivo] = useState("");
-  const [agenciaBooking, setAgenciaBooking] = useState("");
-  const [labelParceira, setLabelParceira]   = useState("");
-  const [documentosList, setDocumentosList] = useState<{ nome: string; url: string }[]>([]);
+  const [managerNome, setManagerNome]               = useState("");
+  const [managerContato, setManagerContato]         = useState("");
+  const [produtorExecutivo, setProdutorExecutivo]   = useState("");
+  const [agenciaBooking, setAgenciaBooking]         = useState("");
+  const [labelParceira, setLabelParceira]           = useState("");
+  const [documentosList, setDocumentosList]         = useState<{ nome: string; url: string }[]>([]);
+
+  // Preserved data: platform metrics + legacy IDs (no form UI — must round-trip unchanged)
+  const [preservedData, setPreservedData] = useState<{
+    spotifyOuvintes: string;
+    instagramSeguidores: string;
+    youtubeInscritos: string;
+    tiktokSeguidores: string;
+    soundcloudSeguidores: string;
+    deezerFas: string;
+    appleMusicAlbuns: string;
+    empresarioId: string;
+    empresarioNome: string;
+    empresarioTelefone: string;
+    empresarioEmail: string;
+    gravadoraId: string;
+    gravadoraNome: string;
+    gravadoraTelefone: string;
+    gravadoraEmail: string;
+    gravadoraResponsavelId: string;
+    gravadoraResponsavelNome: string;
+    gravadoraResponsavelTelefone: string;
+    gravadoraResponsavelEmail: string;
+    distribuidorasSelecionadas: Record<string, boolean>;
+    distribuidorasEmails: Record<string, string>;
+    distribuidorasEmpresaSelecionadas: Record<string, boolean>;
+    distribuidorasEmpresaEmails: Record<string, string>;
+    relacionamentos: any[];
+    slugArtistico: string;
+    tagsMusicais: string[];
+    faseCarreira: string;
+    contratoId: string;
+  }>({
+    spotifyOuvintes: "", instagramSeguidores: "", youtubeInscritos: "",
+    tiktokSeguidores: "", soundcloudSeguidores: "", deezerFas: "", appleMusicAlbuns: "",
+    empresarioId: "", empresarioNome: "", empresarioTelefone: "", empresarioEmail: "",
+    gravadoraId: "", gravadoraNome: "", gravadoraTelefone: "", gravadoraEmail: "",
+    gravadoraResponsavelId: "", gravadoraResponsavelNome: "", gravadoraResponsavelTelefone: "", gravadoraResponsavelEmail: "",
+    distribuidorasSelecionadas: {}, distribuidorasEmails: {},
+    distribuidorasEmpresaSelecionadas: {}, distribuidorasEmpresaEmails: {},
+    relacionamentos: [], slugArtistico: "", tagsMusicais: [], faseCarreira: "", contratoId: "",
+  });
 
   // ── react-hook-form ─────────────────────────────────────────────
   const form = useForm<ArtistaFormValues>({ defaultValues: DEFAULT_VALUES });
   const { register, control, watch: wf, setValue, reset, handleSubmit: rhfSubmit } = form;
 
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: "relacionamentos",
-  });
-
   // ── Reactive watches ────────────────────────────────────────────
-  const nomeArtisticoVal = wf("nomeArtistico");
   const especialidadesVal = wf("especialidades");
-  const tagsMusicaisVal   = wf("tagsMusicais");
   const spotifyVal        = wf("spotify");
   const instagramVal      = wf("instagram");
   const youtubeVal        = wf("youtube");
@@ -227,13 +221,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   const deezerVal         = wf("deezer");
   const appleMusicVal     = wf("appleMusic");
 
-  // ── Slug auto-generation ────────────────────────────────────────
-  useEffect(() => {
-    if (!slugManuallyEdited && nomeArtisticoVal) {
-      setValue("slugArtistico", gerarSlugArtistico(nomeArtisticoVal));
-    }
-  }, [nomeArtisticoVal, slugManuallyEdited]);
-
   // ── Load artista data on open ───────────────────────────────────
   useEffect(() => {
     if (!open) return;
@@ -241,9 +228,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
     reset({
       nomeArtistico: f.nomeArtistico,
-      slugArtistico: f.slugArtistico,
-      tagsMusicais:  f.tagsMusicais,
-      faseCarreira:  f.faseCarreira,
       generoMusical: f.generoMusical,
       tipoArtista:   f.tipoArtista,
       statusArtista: f.statusArtista,
@@ -270,12 +254,40 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       soundcloud:    f.soundcloud,
       deezer:        f.deezer,
       appleMusic:    f.appleMusic,
-      relacionamentos: f.relacionamentos,
-      contratoId:    f.contratoId,
+      tipoPerfil:    f.tipoPerfil || "independente",
     });
 
-    setSlugManuallyEdited(!!f.slugArtistico);
-    setTagInput("");
+    // Load preserved data (no UI — must be round-tripped unchanged)
+    setPreservedData({
+      spotifyOuvintes: f.spotifyOuvintes,
+      instagramSeguidores: f.instagramSeguidores,
+      youtubeInscritos: f.youtubeInscritos,
+      tiktokSeguidores: f.tiktokSeguidores,
+      soundcloudSeguidores: f.soundcloudSeguidores,
+      deezerFas: f.deezerFas,
+      appleMusicAlbuns: f.appleMusicAlbuns,
+      empresarioId: f.empresarioId,
+      empresarioNome: f.empresarioNome,
+      empresarioTelefone: f.empresarioTelefone,
+      empresarioEmail: f.empresarioEmail,
+      gravadoraId: f.gravadoraId,
+      gravadoraNome: f.gravadoraNome,
+      gravadoraTelefone: f.gravadoraTelefone,
+      gravadoraEmail: f.gravadoraEmail,
+      gravadoraResponsavelId: f.gravadoraResponsavelId,
+      gravadoraResponsavelNome: f.gravadoraResponsavelNome,
+      gravadoraResponsavelTelefone: f.gravadoraResponsavelTelefone,
+      gravadoraResponsavelEmail: f.gravadoraResponsavelEmail,
+      distribuidorasSelecionadas: f.distribuidorasSelecionadas,
+      distribuidorasEmails: f.distribuidorasEmails,
+      distribuidorasEmpresaSelecionadas: f.distribuidorasEmpresaSelecionadas,
+      distribuidorasEmpresaEmails: f.distribuidorasEmpresaEmails,
+      relacionamentos: f.relacionamentos,
+      slugArtistico: f.slugArtistico,
+      tagsMusicais: f.tagsMusicais,
+      faseCarreira: f.faseCarreira,
+      contratoId: f.contratoId,
+    });
 
     // File uploads
     setImagemArtista(
@@ -307,22 +319,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   // ── Handlers ────────────────────────────────────────────────────
 
   const handleClose = (nextOpen: boolean) => {
-    if (!nextOpen) {
-      reset(DEFAULT_VALUES);
-      setSlugManuallyEdited(false);
-    }
+    if (!nextOpen) reset(DEFAULT_VALUES);
     onOpenChange(nextOpen);
   };
-
-  const addTag = (tag: string) => {
-    const t = tag.trim();
-    if (!t || tagsMusicaisVal.includes(t)) return;
-    setValue("tagsMusicais", [...tagsMusicaisVal, t]);
-    setTagInput("");
-  };
-
-  const removeTag = (tag: string) =>
-    setValue("tagsMusicais", tagsMusicaisVal.filter((t) => t !== tag));
 
   const toggleEspecialidade = (value: string, checked: boolean) => {
     const current = wf("especialidades");
@@ -332,56 +331,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     );
   };
 
-  // Distribuidoras helpers (direct setValue on the array item)
-  const getRelDist = (relIdx: number): ArtistaDistribuidoraEntry[] =>
-    (wf(`relacionamentos.${relIdx}.distribuidoras`) as ArtistaDistribuidoraEntry[] | undefined) ?? [];
-
-  const addDistribuidora = (relIdx: number, distId: string) => {
-    const current = getRelDist(relIdx);
-    if (current.find((d) => d.id === distId)) return;
-    setValue(`relacionamentos.${relIdx}.distribuidoras`, [...current, { id: distId, email: "", nomeCustom: distId === "outro" ? "" : undefined }]);
-  };
-
-  const removeDistribuidora = (relIdx: number, distIdx: number) => {
-    setValue(
-      `relacionamentos.${relIdx}.distribuidoras`,
-      getRelDist(relIdx).filter((_, i) => i !== distIdx)
-    );
-  };
-
-  const updateDistribuidoraEmail = (relIdx: number, distIdx: number, email: string) => {
-    const updated = [...getRelDist(relIdx)];
-    updated[distIdx] = { ...updated[distIdx], email };
-    setValue(`relacionamentos.${relIdx}.distribuidoras`, updated);
-  };
-
-  const updateDistribuidoraNomeCustom = (relIdx: number, distIdx: number, nomeCustom: string) => {
-    const updated = [...getRelDist(relIdx)];
-    updated[distIdx] = { ...updated[distIdx], nomeCustom };
-    setValue(`relacionamentos.${relIdx}.distribuidoras`, updated);
-  };
-
-  // Responsáveis helpers (for gravadoras and editoras)
-  const getRelResp = (relIdx: number): ArtistaFormResponsavel[] =>
-    (wf(`relacionamentos.${relIdx}.responsaveis`) as ArtistaFormResponsavel[] | undefined) ?? [];
-
-  const addResponsavel = (relIdx: number) => {
-    setValue(`relacionamentos.${relIdx}.responsaveis`, [...getRelResp(relIdx), { nome: "", telefone: "", email: "" }]);
-  };
-
-  const removeResponsavel = (relIdx: number, respIdx: number) => {
-    setValue(
-      `relacionamentos.${relIdx}.responsaveis`,
-      getRelResp(relIdx).filter((_, i) => i !== respIdx)
-    );
-  };
-
-  const updateResponsavel = (relIdx: number, respIdx: number, field: keyof ArtistaFormResponsavel, value: string) => {
-    const updated = [...getRelResp(relIdx)];
-    updated[respIdx] = { ...updated[respIdx], [field]: value };
-    setValue(`relacionamentos.${relIdx}.responsaveis`, updated);
-  };
-
   // ── Submit ──────────────────────────────────────────────────────
   const onSubmit = async (values: ArtistaFormValues) => {
     if (!values.nomeArtistico.trim()) { toast.error("Nome artístico é obrigatório"); return; }
@@ -389,20 +338,11 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
     setIsSubmitting(true);
     try {
-      // Compute legacy fields from relacionamentos for backward compat
-      const firstEmp  = values.relacionamentos.find((r) => r.tipo === "empresario");
-      const firstGrav = values.relacionamentos.find((r) => r.tipo === "gravadora");
-      const firstEdit = values.relacionamentos.find((r) => r.tipo === "editora");
-      const tipoPerfil = firstEmp  ? "com_empresario" as const
-        : firstGrav ? "gravadora"    as const
-        : firstEdit ? "editora"      as const
-        : "independente" as const;
-
       const formInput: FormToArtistaInput = {
         nomeArtistico:   values.nomeArtistico,
-        slugArtistico:   values.slugArtistico,
-        tagsMusicais:    values.tagsMusicais,
-        faseCarreira:    values.faseCarreira,
+        slugArtistico:   preservedData.slugArtistico,
+        tagsMusicais:    preservedData.tagsMusicais,
+        faseCarreira:    preservedData.faseCarreira,
         generoMusical:   values.generoMusical,
         tipoArtista:     values.tipoArtista,
         statusArtista:   values.statusArtista,
@@ -422,41 +362,41 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         chavePix:        values.chavePix,
         titularConta:    values.titularConta,
         spotify:         values.spotify,
-        spotifyOuvintes: "",
+        spotifyOuvintes: preservedData.spotifyOuvintes,
         instagram:       values.instagram,
-        instagramSeguidores: "",
+        instagramSeguidores: preservedData.instagramSeguidores,
         youtube:         values.youtube,
-        youtubeInscritos: "",
+        youtubeInscritos: preservedData.youtubeInscritos,
         tiktok:          values.tiktok,
-        tiktokSeguidores: "",
+        tiktokSeguidores: preservedData.tiktokSeguidores,
         soundcloud:      values.soundcloud,
-        soundcloudSeguidores: "",
+        soundcloudSeguidores: preservedData.soundcloudSeguidores,
         deezer:          values.deezer,
-        deezerFas:       "",
+        deezerFas:       preservedData.deezerFas,
         appleMusic:      values.appleMusic,
-        appleMusicAlbuns: "",
-        relacionamentos: values.relacionamentos,
-        tipoPerfil,
-        empresarioId:    "",
-        empresarioNome:  firstEmp?.nome ?? "",
-        empresarioTelefone: firstEmp?.telefone ?? "",
-        empresarioEmail: firstEmp?.email ?? "",
-        gravadoraId:     "",
-        gravadoraNome:   (firstGrav ?? firstEdit)?.nome ?? "",
-        gravadoraTelefone: (firstGrav ?? firstEdit)?.telefone ?? "",
-        gravadoraEmail:  (firstGrav ?? firstEdit)?.email ?? "",
-        gravadoraResponsavelId: "",
-        gravadoraResponsavelNome: "",
-        gravadoraResponsavelTelefone: "",
-        gravadoraResponsavelEmail: "",
-        distribuidorasSelecionadas: {},
-        distribuidorasEmails: {},
-        distribuidorasEmpresaSelecionadas: {},
-        distribuidorasEmpresaEmails: {},
+        appleMusicAlbuns: preservedData.appleMusicAlbuns,
+        relacionamentos: preservedData.relacionamentos,
+        tipoPerfil:      values.tipoPerfil as FormToArtistaInput["tipoPerfil"],
+        empresarioId:    preservedData.empresarioId,
+        empresarioNome:  preservedData.empresarioNome,
+        empresarioTelefone: preservedData.empresarioTelefone,
+        empresarioEmail: preservedData.empresarioEmail,
+        gravadoraId:     preservedData.gravadoraId,
+        gravadoraNome:   preservedData.gravadoraNome,
+        gravadoraTelefone: preservedData.gravadoraTelefone,
+        gravadoraEmail:  preservedData.gravadoraEmail,
+        gravadoraResponsavelId: preservedData.gravadoraResponsavelId,
+        gravadoraResponsavelNome: preservedData.gravadoraResponsavelNome,
+        gravadoraResponsavelTelefone: preservedData.gravadoraResponsavelTelefone,
+        gravadoraResponsavelEmail: preservedData.gravadoraResponsavelEmail,
+        distribuidorasSelecionadas: preservedData.distribuidorasSelecionadas,
+        distribuidorasEmails: preservedData.distribuidorasEmails,
+        distribuidorasEmpresaSelecionadas: preservedData.distribuidorasEmpresaSelecionadas,
+        distribuidorasEmpresaEmails: preservedData.distribuidorasEmpresaEmails,
         fotoUrl:             imagemArtista[0]?.url ?? "",
         documentosPessoaisUrl: documentosPessoais[0]?.url ?? "",
         presskitUrl:         presskit[0]?.url ?? "",
-        contratoId:          values.contratoId,
+        contratoId:          preservedData.contratoId,
       };
 
       const payload = formToArtistaPayload(formInput);
@@ -474,7 +414,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       };
 
       if (isEditing) {
-        await updateArtista.mutateAsync({ id: artista.id, ...payload, ...extraFields });
+        await updateArtista.mutateAsync({ id: artista.id, ...payload, ...extraFields, contrato_id: preservedData.contratoId || null });
       } else {
         await addCliente.mutateAsync({
           tipo_pessoa: "pessoa_fisica" as const,
@@ -489,11 +429,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
           observacoes: values.biografia.trim() || null,
           status:      "ativo",
         });
-        await addArtista.mutateAsync({
-          ...payload,
-          ...extraFields,
-          contrato_id: values.contratoId || null,
-        });
+        await addArtista.mutateAsync({ ...payload, ...extraFields });
       }
       handleClose(false);
       onSuccess?.();
@@ -512,10 +448,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     deezer:     validateDeezerUrl(deezerVal),
     appleMusic: validateAppleMusicUrl(appleMusicVal),
   };
-
-  const contratosDisponiveis = contratos.filter(
-    (c: any) => (c.status === "ativo" || c.status === "vencendo") && !c.artista_id
-  );
 
   // ── JSX ─────────────────────────────────────────────────────────
   return (
@@ -584,70 +516,46 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Slug Artístico</Label>
-                  <Input
-                    {...register("slugArtistico")}
-                    placeholder="nome-do-artista"
-                    onChange={(e) => {
-                      register("slugArtistico").onChange(e);
-                      setSlugManuallyEdited(true);
-                    }}
-                    data-testid="input-slug-artistico"
-                  />
-                  <p className="text-xs text-muted-foreground">Gerado automaticamente. Editável.</p>
-                </div>
-                <div className="space-y-2">
-                  <Label>Fase da Carreira</Label>
+                  <Label>Tipo de Artista</Label>
                   <Controller
                     control={control}
-                    name="faseCarreira"
+                    name="tipoArtista"
                     render={({ field }) => (
                       <Select value={field.value} onValueChange={field.onChange}>
-                        <SelectTrigger data-testid="select-fase-carreira">
-                          <SelectValue placeholder="Selecione a fase" />
+                        <SelectTrigger data-testid="select-tipo-artista">
+                          <SelectValue placeholder="Selecione o tipo" />
                         </SelectTrigger>
                         <SelectContent className="bg-background border border-border z-50">
-                          {FASES_CARREIRA.map((f) => (
-                            <SelectItem key={f.value} value={f.value}>{f.label}</SelectItem>
-                          ))}
+                          <SelectItem value="artista_solo">Artista Solo</SelectItem>
+                          <SelectItem value="banda">Banda</SelectItem>
+                          <SelectItem value="dupla">Dupla</SelectItem>
+                          <SelectItem value="grupo">Grupo</SelectItem>
+                          <SelectItem value="coletivo">Coletivo</SelectItem>
                         </SelectContent>
                       </Select>
                     )}
                   />
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Tags Musicais</Label>
-                <div className="flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px] bg-background">
-                  {tagsMusicaisVal.map((tag) => (
-                    <Badge key={tag} variant="secondary" className="gap-1 pr-1">
-                      {tag}
-                      <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-0.5 rounded-full hover:bg-muted p-0.5"
-                      >
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    </Badge>
-                  ))}
-                  <input
-                    value={tagInput}
-                    onChange={(e) => setTagInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" || e.key === ",") {
-                        e.preventDefault();
-                        addTag(tagInput);
-                      }
-                    }}
-                    onBlur={() => { if (tagInput.trim()) addTag(tagInput); }}
-                    placeholder={tagsMusicaisVal.length === 0 ? "Digite uma tag e pressione Enter…" : ""}
-                    className="flex-1 min-w-[120px] bg-transparent outline-none text-sm placeholder:text-muted-foreground"
-                    data-testid="input-tags-musicais"
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Controller
+                    control={control}
+                    name="statusArtista"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger data-testid="select-status-artista">
+                          <SelectValue placeholder="Selecione o status" />
+                        </SelectTrigger>
+                        <SelectContent className="bg-background border border-border z-50">
+                          <SelectItem value="contratado">Contratado</SelectItem>
+                          <SelectItem value="negociacao">Em Negociação</SelectItem>
+                          <SelectItem value="inativo">Inativo</SelectItem>
+                          <SelectItem value="suspenso">Suspenso</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
                   />
                 </div>
-                <p className="text-xs text-muted-foreground">Separe com Enter ou vírgula. Ex: trap, autoral, baile.</p>
               </div>
 
               <div className="space-y-2">
@@ -735,7 +643,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>CPF / CNPJ</Label>
+                  <Label>CPF</Label>
                   <Input
                     {...register("cpfCnpj")}
                     placeholder="000.000.000-00"
@@ -943,293 +851,45 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               </p>
             </div>
 
-            {/* ═══ 5. Relacionamentos Comerciais ═══ */}
+            {/* ═══ 5. Relacionamento Comercial ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-primary">5.</span>
-                <h3 className="text-lg font-semibold">Relacionamentos Comerciais</h3>
-              </div>
-              <Separator />
-              <p className="text-sm text-muted-foreground">
-                Adicione múltiplos relacionamentos por categoria. Cada artista pode ter
-                vários empresários, gravadoras, editoras e equipa simultaneamente.
-              </p>
-
-              {TIPOS_RELACIONAMENTO.map(({ tipo, label, hasDistribuidoras, hasEscritorio, hasCRC, hasResponsaveis }) => {
-                const tipoFields = fields
-                  .map((field, idx) => ({ field, idx }))
-                  .filter(({ field }) => (field as ArtistaFormRelacionamento).tipo === tipo);
-
-                return (
-                  <div key={tipo} className="space-y-2">
-                    <div className="flex items-center justify-between py-1">
-                      <span className="text-sm font-medium">{label}</span>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => append(emptyRelacionamento(tipo))}
-                        data-testid={`button-add-${tipo}`}
-                      >
-                        <Plus className="h-3 w-3" />
-                        Adicionar
-                      </Button>
-                    </div>
-
-                    {tipoFields.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-3 border border-dashed rounded-lg">
-                        Nenhum(a) {label.toLowerCase()} cadastrado(a).
-                      </p>
-                    )}
-
-                    {tipoFields.map(({ idx }, position) => (
-                      <div
-                        key={`${tipo}-${idx}`}
-                        className="p-3 border rounded-lg space-y-3 bg-muted/20"
-                        data-testid={`card-relacionamento-${tipo}-${position}`}
-                      >
-                        {/* Card header */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground font-medium">
-                            {label.replace(/s$/, "")} {position + 1}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => remove(idx)}
-                            data-testid={`button-remove-relacionamento-${idx}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-
-                        {/* Nome + Telefone */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Nome</Label>
-                            <Input
-                              {...register(`relacionamentos.${idx}.nome`)}
-                              placeholder="Nome completo"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Telefone</Label>
-                            <Input
-                              {...register(`relacionamentos.${idx}.telefone`)}
-                              placeholder="(00) 00000-0000"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                        </div>
-
-                        {/* Email + optional field */}
-                        <div className={hasEscritorio || hasCRC ? "grid grid-cols-2 gap-3" : ""}>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Email</Label>
-                            <Input
-                              {...register(`relacionamentos.${idx}.email`)}
-                              type="email"
-                              placeholder="email@exemplo.com"
-                              className="h-8 text-sm"
-                            />
-                          </div>
-                          {hasEscritorio && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Escritório / Firma</Label>
-                              <Input
-                                {...register(`relacionamentos.${idx}.escritorio`)}
-                                placeholder="Nome do escritório"
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                          )}
-                          {hasCRC && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">CRC</Label>
-                              <Input
-                                {...register(`relacionamentos.${idx}.crc`)}
-                                placeholder="CRC 000000/0-0"
-                                className="h-8 text-sm"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Distribuidoras sub-section */}
-                        {hasResponsaveis && (() => {
-                          const resps = getRelResp(idx);
-                          return (
-                            <div className="space-y-2 pt-2 border-t border-border/40">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-xs text-muted-foreground">Responsáveis</Label>
-                                <Button
-                                  type="button"
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-6 text-xs gap-1 px-2"
-                                  onClick={() => addResponsavel(idx)}
-                                >
-                                  <Plus className="h-3 w-3" />
-                                  Adicionar Responsável
-                                </Button>
-                              </div>
-                              {resps.length === 0 && (
-                                <p className="text-xs text-muted-foreground">Nenhum responsável cadastrado.</p>
-                              )}
-                              {resps.map((rv, ri) => (
-                                <div key={ri} className="p-2 border rounded space-y-2 bg-muted/10">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-xs text-muted-foreground">Responsável {ri + 1}</span>
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-5 w-5 p-0 text-muted-foreground hover:text-destructive"
-                                      onClick={() => removeResponsavel(idx, ri)}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                  <div className="grid grid-cols-2 gap-2">
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Nome</Label>
-                                      <Input
-                                        value={rv.nome}
-                                        onChange={(e) => updateResponsavel(idx, ri, "nome", e.target.value)}
-                                        placeholder="Nome completo"
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                    <div className="space-y-1">
-                                      <Label className="text-xs">Telefone</Label>
-                                      <Input
-                                        value={rv.telefone}
-                                        onChange={(e) => updateResponsavel(idx, ri, "telefone", e.target.value)}
-                                        placeholder="(00) 00000-0000"
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                  </div>
-                                  <div className="space-y-1">
-                                    <Label className="text-xs">Email</Label>
-                                    <Input
-                                      type="email"
-                                      value={rv.email}
-                                      onChange={(e) => updateResponsavel(idx, ri, "email", e.target.value)}
-                                      placeholder="email@exemplo.com"
-                                      className="h-7 text-xs"
-                                    />
-                                  </div>
-                                </div>
-                              ))}
-                            </div>
-                          );
-                        })()}
-
-                        {hasDistribuidoras && (() => {
-                          const dists = getRelDist(idx);
-                          const available = DISTRIBUIDORAS_OPTIONS.filter(
-                            (o) => !dists.find((d) => d.id === o.id)
-                          );
-                          return (
-                            <div className="space-y-2 pt-2 border-t border-border/40">
-                              <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
-
-                              {dists.map((d, di) => (
-                                <div key={di} className="space-y-1">
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-xs font-medium min-w-[80px] shrink-0">
-                                      {DISTRIBUIDORAS_OPTIONS.find((o) => o.id === d.id)?.label ?? d.id}
-                                    </span>
-                                    <Input
-                                      value={d.email}
-                                      onChange={(e) => updateDistribuidoraEmail(idx, di, e.target.value)}
-                                      placeholder="email@distribuidora.com"
-                                      type="email"
-                                      className="h-7 text-xs"
-                                    />
-                                    <Button
-                                      type="button"
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-6 w-6 p-0 shrink-0"
-                                      onClick={() => removeDistribuidora(idx, di)}
-                                    >
-                                      <X className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                  {d.id === "outro" && (
-                                    <div className="ml-[88px]">
-                                      <Input
-                                        value={d.nomeCustom ?? ""}
-                                        onChange={(e) => updateDistribuidoraNomeCustom(idx, di, e.target.value)}
-                                        placeholder="Nome da distribuidora personalizada"
-                                        className="h-7 text-xs"
-                                      />
-                                    </div>
-                                  )}
-                                </div>
-                              ))}
-
-                              {available.length > 0 && (
-                                <Select onValueChange={(val) => addDistribuidora(idx, val)}>
-                                  <SelectTrigger className="h-7 text-xs">
-                                    <SelectValue placeholder="Adicionar distribuidora…" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-background border border-border z-50">
-                                    {available.map((o) => (
-                                      <SelectItem key={o.id} value={o.id}>{o.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            </div>
-                          );
-                        })()}
-                      </div>
-                    ))}
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* ═══ 6. Observações e Contrato ═══ */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">6.</span>
-                <h3 className="text-lg font-semibold">Observações e Contrato</h3>
+                <h3 className="text-lg font-semibold">Relacionamento Comercial</h3>
               </div>
               <Separator />
 
               <div className="space-y-2">
-                <Label>Contrato Vinculado</Label>
+                <Label>Perfil Comercial <span className="text-destructive">*</span></Label>
                 <Controller
                   control={control}
-                  name="contratoId"
+                  name="tipoPerfil"
                   render={({ field }) => (
                     <Select value={field.value} onValueChange={field.onChange}>
-                      <SelectTrigger data-testid="select-contrato">
-                        <SelectValue placeholder="Selecione um contrato ativo (opcional)" />
+                      <SelectTrigger data-testid="select-tipo-perfil">
+                        <SelectValue placeholder="Selecione o perfil comercial" />
                       </SelectTrigger>
                       <SelectContent className="bg-background border border-border z-50">
-                        <SelectItem value="none">Nenhum</SelectItem>
-                        {contratosDisponiveis.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.numero_contrato || c.id} — {c.tipo || "Contrato"}
-                          </SelectItem>
+                        {TIPO_PERFIL_OPTIONS.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Contratos activos sem artista vinculado. Para desvincular, selecione "Nenhum".
+                  Define a estrutura comercial do artista: independente, com representação empresarial ou vinculado a gravadora.
                 </p>
               </div>
+            </div>
+
+            {/* ═══ 6. Observações ═══ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-primary">6.</span>
+                <h3 className="text-lg font-semibold">Observações</h3>
+              </div>
+              <Separator />
 
               <div className="space-y-2">
                 <Label>Notas Internas</Label>
