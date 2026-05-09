@@ -268,24 +268,19 @@ export default function Contabilidade() {
       .sort((a, b) => b.lucro - a.lucro);
   }, [transacoes, artistas]);
 
-  // ── P&L por Projeto (agrupado por categoria como proxy) ─────────────────────
+  // ── P&L por Projeto — cada transação é um "projeto" (descricao = nome) ───────
   const plPorProjeto = useMemo(() => {
-    const cats = new Set([
-      ...receitas.map((t: any) => t.categoria ?? "outras"),
-      ...despesas.map((t: any) => t.categoria ?? "outras"),
-    ]);
-    return Array.from(cats)
-      .map((cat) => {
-        const rec = receitas.filter((t: any) => (t.categoria ?? "outras") === cat);
-        const des = despesas.filter((t: any) => (t.categoria ?? "outras") === cat);
-        const totalRec = sum(rec, "valor");
-        const totalDes = sum(des, "valor");
-        const lucro = totalRec - totalDes;
-        return { categoria: cat as string, totalRec, totalDes, lucro };
-      })
-      .filter((p) => p.totalRec > 0 || p.totalDes > 0)
-      .sort((a, b) => b.lucro - a.lucro);
-  }, [receitas, despesas]);
+    return transacoes
+      .map((t: any) => ({
+        id: t.id,
+        nome: t.descricao ?? "—",
+        categoria: t.categoria ?? "—",
+        receita: t.tipo === "receita" ? (t.valor ?? 0) : 0,
+        despesa: t.tipo === "despesa" ? (t.valor ?? 0) : 0,
+        resultado: t.tipo === "receita" ? (t.valor ?? 0) : -(t.valor ?? 0),
+      }))
+      .sort((a, b) => b.resultado - a.resultado);
+  }, [transacoes]);
 
   // ── Recoupment ───────────────────────────────────────────────────────────────
   const recoupment = useMemo(() => {
@@ -348,6 +343,14 @@ export default function Contabilidade() {
     <MainLayout title="Contabilidade" actions={headerActions}>
       <div className="space-y-6">
 
+        {/* ── KPIs — sempre visíveis acima das abas ────────────────────────── */}
+        <KpiCards
+          totalReceitas={totalReceitas}
+          totalDespesas={totalDespesas}
+          lucroLiquido={lucroLiquido}
+          margemLiquida={margemLiquida}
+        />
+
         <Tabs value={activeTab} onValueChange={setActiveTab} data-testid="tabs-contabilidade">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="todos" data-testid="tab-todos">Todos</TabsTrigger>
@@ -358,12 +361,6 @@ export default function Contabilidade() {
 
           {/* ── ABA: TODOS ────────────────────────────────────────────────── */}
           <TabsContent value="todos" className="space-y-6 mt-6">
-            <KpiCards
-              totalReceitas={totalReceitas}
-              totalDespesas={totalDespesas}
-              lucroLiquido={lucroLiquido}
-              margemLiquida={margemLiquida}
-            />
             <PLTable
               receitasPorCategoria={receitasPorCategoria}
               despesasPorCategoria={despesasPorCategoria}
@@ -378,14 +375,15 @@ export default function Contabilidade() {
           <TabsContent value="por-projeto" className="space-y-4 mt-6">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">P&amp;L por Categoria / Projeto</CardTitle>
-                <CardDescription>Resultado financeiro agrupado por tipo de operação</CardDescription>
+                <CardTitle className="text-lg">P&amp;L por Projeto</CardTitle>
+                <CardDescription>Resultado financeiro por lançamento e operação</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/40">
+                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome do Projeto</th>
                         <th className="text-left px-4 py-3 font-medium text-muted-foreground">Categoria</th>
                         <th className="text-right px-4 py-3 font-medium text-muted-foreground">Receitas</th>
                         <th className="text-right px-4 py-3 font-medium text-muted-foreground">Despesas</th>
@@ -394,21 +392,22 @@ export default function Contabilidade() {
                     </thead>
                     <tbody>
                       {plPorProjeto.map((p) => (
-                        <tr key={p.categoria} className="border-b border-border/50 hover:bg-muted/20" data-testid={`row-projeto-${p.categoria}`}>
-                          <td className="px-4 py-3 font-medium text-foreground">{catLabel(p.categoria)}</td>
-                          <td className="px-4 py-3 text-right font-mono text-green-600 dark:text-green-400">
-                            {p.totalRec > 0 ? formatCurrency(p.totalRec) : "—"}
+                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/20" data-testid={`row-projeto-${p.id}`}>
+                          <td className="px-4 py-2.5 font-medium text-foreground max-w-xs truncate">{p.nome}</td>
+                          <td className="px-4 py-2.5 text-muted-foreground">{catLabel(p.categoria)}</td>
+                          <td className="px-4 py-2.5 text-right font-mono text-green-600 dark:text-green-400">
+                            {p.receita > 0 ? formatCurrency(p.receita) : "—"}
                           </td>
-                          <td className="px-4 py-3 text-right font-mono text-destructive">
-                            {p.totalDes > 0 ? `(${formatCurrency(p.totalDes)})` : "—"}
+                          <td className="px-4 py-2.5 text-right font-mono text-destructive">
+                            {p.despesa > 0 ? `(${formatCurrency(p.despesa)})` : "—"}
                           </td>
-                          <td className={`px-4 py-3 text-right font-bold font-mono ${p.lucro >= 0 ? "text-primary" : "text-destructive"}`}>
-                            {p.lucro >= 0 ? "+" : ""}{formatCurrency(p.lucro)}
+                          <td className={`px-4 py-2.5 text-right font-bold font-mono ${p.resultado >= 0 ? "text-primary" : "text-destructive"}`}>
+                            {p.resultado >= 0 ? "+" : ""}{formatCurrency(p.resultado)}
                           </td>
                         </tr>
                       ))}
                       <tr className="border-t-2 border-border bg-muted/40">
-                        <td className="px-4 py-3 font-bold text-foreground">Total Geral</td>
+                        <td className="px-4 py-3 font-bold text-foreground" colSpan={2}>Total Geral</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</td>
                         <td className="px-4 py-3 text-right font-bold font-mono text-destructive">({formatCurrency(totalDespesas)})</td>
                         <td className={`px-4 py-3 text-right font-bold font-mono ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
