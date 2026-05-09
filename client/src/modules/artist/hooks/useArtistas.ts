@@ -113,6 +113,8 @@ export interface Artista {
   agencia_booking?: string | null;
   label_parceira?: string | null;
   documentos?: { nome: string; url: string }[] | null;
+  // distribuidoras / agregadoras gerais do artista
+  distribuidoras_gerais?: Array<{ id: string; email: string; nomeCustom?: string }> | null;
   // equipa / contactos do artista independente
   contatos_equipe?: Array<{
     nome: string;

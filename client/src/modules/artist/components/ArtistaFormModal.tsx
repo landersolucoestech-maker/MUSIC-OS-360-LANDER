@@ -128,6 +128,7 @@ interface ArtistaFormValues {
   soundcloud: string;
   deezer: string;
   appleMusic: string;
+  distribuidorasGerais: DistribuidoraEntry[];
   tipoPerfil: string;
   contatosEquipe: ContatoEquipe[];
 }
@@ -162,6 +163,7 @@ const DEFAULT_VALUES: ArtistaFormValues = {
   soundcloud: "",
   deezer: "",
   appleMusic: "",
+  distribuidorasGerais: [],
   tipoPerfil: "independente",
   contatosEquipe: [],
 };
@@ -320,6 +322,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       soundcloud:    f.soundcloud,
       deezer:        f.deezer,
       appleMusic:    f.appleMusic,
+      distribuidorasGerais: [],
       tipoPerfil:    f.tipoPerfil || "independente",
       contatosEquipe: initialContatos,
     });
@@ -399,6 +402,36 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     setValue(
       "especialidades",
       checked ? [...current, value] : current.filter((x) => x !== value)
+    );
+  };
+
+  // Distribuidoras gerais (secção 5) helpers
+  const getDistsGerais = (): DistribuidoraEntry[] =>
+    (wf("distribuidorasGerais") as DistribuidoraEntry[] | undefined) ?? [];
+
+  const toggleDistGeral = (distId: string, checked: boolean) => {
+    const current = getDistsGerais();
+    if (checked) {
+      setValue("distribuidorasGerais", [
+        ...current,
+        { id: distId, email: "", nomeCustom: distId === "outros" ? "" : undefined },
+      ]);
+    } else {
+      setValue("distribuidorasGerais", current.filter((d) => d.id !== distId));
+    }
+  };
+
+  const updateDistEmailGeral = (distId: string, email: string) => {
+    setValue(
+      "distribuidorasGerais",
+      getDistsGerais().map((d) => (d.id === distId ? { ...d, email } : d))
+    );
+  };
+
+  const updateDistNomeCustomGeral = (nomeCustom: string) => {
+    setValue(
+      "distribuidorasGerais",
+      getDistsGerais().map((d) => (d.id === "outros" ? { ...d, nomeCustom } : d))
     );
   };
 
@@ -516,6 +549,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         label_parceira:         labelParceira.trim() || null,
         documentos:             documentosList.length > 0 ? documentosList : null,
         contatos_equipe:        values.contatosEquipe.length > 0 ? values.contatosEquipe : null,
+        distribuidoras_gerais:  values.distribuidorasGerais.length > 0 ? values.distribuidorasGerais : null,
       };
 
       if (isEditing) {
@@ -891,10 +925,89 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               </p>
             </div>
 
-            {/* ═══ 5. Tipo de Perfil ═══ */}
+            {/* ═══ 5. Distribuidoras / Agregadoras ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
                 <span className="text-xl font-bold text-primary">5.</span>
+                <h3 className="text-lg font-semibold">Distribuidoras / Agregadoras</h3>
+              </div>
+              <Separator />
+
+              {(() => {
+                const distsGerais = getDistsGerais();
+                const outrosEntryGeral = distsGerais.find((d) => d.id === "outros");
+                return (
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {DISTRIBUIDORAS_OPTIONS.map((dist) => {
+                      const entry = distsGerais.find((d) => d.id === dist.id);
+                      const isChecked = !!entry;
+                      return (
+                        <div key={dist.id} className="space-y-1.5">
+                          <div className="flex items-center gap-2">
+                            <Checkbox
+                              id={`geral-dist-${dist.id}`}
+                              checked={isChecked}
+                              onCheckedChange={(checked) => toggleDistGeral(dist.id, !!checked)}
+                              data-testid={`checkbox-geral-dist-${dist.id}`}
+                            />
+                            <Label htmlFor={`geral-dist-${dist.id}`} className="text-sm cursor-pointer font-medium">
+                              {dist.label}
+                            </Label>
+                          </div>
+
+                          {isChecked && dist.id === "outros" && (
+                            <div className="ml-6 space-y-1.5">
+                              <Input
+                                value={entry?.nomeCustom ?? ""}
+                                onChange={(e) => updateDistNomeCustomGeral(e.target.value)}
+                                placeholder="Nome da distribuidora…"
+                                className="h-8 text-sm"
+                                data-testid="input-geral-dist-nome-custom"
+                              />
+                              {(entry?.nomeCustom ?? "").trim().length > 0 && (
+                                <Input
+                                  value={entry?.email ?? ""}
+                                  onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                                  type="email"
+                                  placeholder="Email de share…"
+                                  className="h-8 text-sm"
+                                  data-testid="input-geral-dist-email-outros"
+                                />
+                              )}
+                            </div>
+                          )}
+
+                          {isChecked && dist.id !== "outros" && (
+                            <div className="ml-6">
+                              <Input
+                                value={entry?.email ?? ""}
+                                onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                                type="email"
+                                placeholder={`Email de share — ${dist.label}`}
+                                className="h-8 text-sm"
+                                data-testid={`input-geral-dist-email-${dist.id}`}
+                              />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+
+              {/* Hint para "Outros" sem nome ainda */}
+              {getDistsGerais().some((d) => d.id === "outros" && !(d.nomeCustom ?? "").trim()) && (
+                <p className="text-xs text-muted-foreground ml-6">
+                  Preencha o nome da distribuidora para activar o email de share.
+                </p>
+              )}
+            </div>
+
+            {/* ═══ 6. Tipo de Perfil ═══ */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <span className="text-xl font-bold text-primary">6.</span>
                 <h3 className="text-lg font-semibold">Tipo de Perfil</h3>
               </div>
               <Separator />
@@ -1118,10 +1231,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               )}
             </div>
 
-            {/* ═══ 6. Observações ═══ */}
+            {/* ═══ 7. Observações ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">6.</span>
+                <span className="text-xl font-bold text-primary">7.</span>
                 <h3 className="text-lg font-semibold">Observações</h3>
               </div>
               <Separator />
