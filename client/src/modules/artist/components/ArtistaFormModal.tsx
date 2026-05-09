@@ -950,7 +950,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                         </div>
 
                         {/* Nome + Categoria */}
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className={tipoPerfilVal === "com_empresario" ? "space-y-1.5" : "grid grid-cols-2 gap-3"}>
                           <div className="space-y-1.5">
                             <Label className="text-xs">Nome</Label>
                             <Input
@@ -960,25 +960,27 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                               data-testid={`input-contato-nome-${idx}`}
                             />
                           </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Categoria</Label>
-                            <Controller
-                              control={control}
-                              name={`contatosEquipe.${idx}.categoria`}
-                              render={({ field: f }) => (
-                                <Select value={f.value} onValueChange={f.onChange}>
-                                  <SelectTrigger className="h-8 text-sm" data-testid={`select-contato-categoria-${idx}`}>
-                                    <SelectValue placeholder="Selecione…" />
-                                  </SelectTrigger>
-                                  <SelectContent className="bg-background border border-border z-50">
-                                    {CATEGORIAS_EQUIPE.map((c) => (
-                                      <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                              )}
-                            />
-                          </div>
+                          {tipoPerfilVal !== "com_empresario" && (
+                            <div className="space-y-1.5">
+                              <Label className="text-xs">Categoria</Label>
+                              <Controller
+                                control={control}
+                                name={`contatosEquipe.${idx}.categoria`}
+                                render={({ field: f }) => (
+                                  <Select value={f.value} onValueChange={f.onChange}>
+                                    <SelectTrigger className="h-8 text-sm" data-testid={`select-contato-categoria-${idx}`}>
+                                      <SelectValue placeholder="Selecione…" />
+                                    </SelectTrigger>
+                                    <SelectContent className="bg-background border border-border z-50">
+                                      {CATEGORIAS_EQUIPE.map((c) => (
+                                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                )}
+                              />
+                            </div>
+                          )}
                         </div>
 
                         {/* Telefone + Email */}
