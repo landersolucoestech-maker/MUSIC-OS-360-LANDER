@@ -115,34 +115,10 @@ export default function MarketingIACriativa() {
     }, 1000);
   };
 
-  const headerActions = (
-    <div className="flex flex-wrap items-center justify-end gap-2">
-      <Card className="bg-card px-4 py-2">
-        <div className="text-center">
-          <span className="text-2xl font-bold" data-testid="text-kpi-ideias">{ideiasGeradas.length}</span>
-          <p className="text-xs text-muted-foreground">Ideias Geradas</p>
-        </div>
-      </Card>
-      <Card className="bg-card px-4 py-2">
-        <div className="text-center">
-          <span className="text-2xl font-bold" data-testid="text-kpi-utilidade">0%</span>
-          <p className="text-xs text-muted-foreground">Taxa de Utilidade</p>
-        </div>
-      </Card>
-      <Card className="bg-card px-4 py-2">
-        <div className="text-center">
-          <span className="text-2xl font-bold" data-testid="text-kpi-mes">0</span>
-          <p className="text-xs text-muted-foreground">Este Mês</p>
-        </div>
-      </Card>
-    </div>
-  );
-
   return (
     <MainLayout
       title="IA Criativa Inteligente"
       description="Acelere a criação e otimização com IA integrada à estratégia e análise de resultados"
-      actions={headerActions}
     >
       <div className="space-y-6">
         {/* Tabs */}
