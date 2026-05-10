@@ -8,8 +8,8 @@ import type { SuspenseRouteComponent } from "./types";
 const RegistroMusicas  = lazy(() => import("@/modules/catalog/pages/RegistroMusicas"));
 const Takedowns        = lazy(() => import("@/modules/monitoring/pages/Takedowns"));
 const Licenciamento    = lazy(() => import("@/modules/licensing/pages/Licenciamento"));
-const RightsMonitoring = lazy(() => import("@/modules/rights-monitoring/pages/RightsMonitoring"));
-const ExecucaoDetail   = lazy(() => import("@/modules/rights-monitoring/pages/ExecucaoDetail"));
+const RightsMonitoring = lazy(() => import("@/modules/monitoring/rights/pages/RightsMonitoring"));
+const ExecucaoDetail   = lazy(() => import("@/modules/monitoring/rights/pages/ExecucaoDetail"));
 
 export function catalogRoutes(P: SuspenseRouteComponent) {
   return (

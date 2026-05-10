@@ -13,6 +13,7 @@ import {
   ConflictError,
   IntegrationError,
 } from "./errors";
+import { API_BASE_URL } from "./env";
 
 // ─── Token management ─────────────────────────────────────────────────────────
 // access_token: in-memory only (cleared on page refresh — intentional)
@@ -28,11 +29,7 @@ export function getAccessToken(): string | null {
 }
 
 // ─── Config ──────────────────────────────────────────────────────────────────
-// VITE_API_URL must be set explicitly when VITE_USE_MOCK=false.
-// Defaults to "" (relative URLs) so same-domain deployments work without config.
-
-const BASE_URL: string =
-  (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+// API_BASE_URL vem de shared/lib/env.ts — fonte única de verdade para env vars.
 
 // ─── Table → REST endpoint map ───────────────────────────────────────────────
 
@@ -118,7 +115,7 @@ async function mapError(res: Response): Promise<never> {
 
 async function tryRefresh(): Promise<boolean> {
   try {
-    const res = await fetch(`${BASE_URL}/auth/refresh`, {
+    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
       method: "POST",
       credentials: "include",
       headers: { "Content-Type": "application/json" },
@@ -141,7 +138,7 @@ async function request<T>(path: string, init: RequestInit = {}, _retry = true): 
   };
   if (_accessToken) headers["Authorization"] = `Bearer ${_accessToken}`;
 
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     ...init,
     headers,
     credentials: "include",   // sends httpOnly refresh cookie on every request

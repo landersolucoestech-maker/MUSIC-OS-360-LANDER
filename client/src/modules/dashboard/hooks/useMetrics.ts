@@ -1,3 +1,10 @@
+/**
+ * modules/dashboard/hooks/useMetrics.ts
+ *
+ * Hook agregador de métricas cross-módulo para o Dashboard.
+ * Pertence ao módulo dashboard — NÃO é shared, pois importa directamente
+ * de módulos de domínio. Shared nunca importa de módulos.
+ */
 import { useMemo } from "react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
@@ -68,15 +75,12 @@ export function useMetrics(): UseMetricsReturn {
   const { transacoes, isLoading: loadingTransacoes } = useTransacoes();
   const { eventos, isLoading: loadingEventos } = useEventos();
   const { clientes, isLoading: loadingClientes } = useClientes();
-  const isLoading = loadingArtistas || loadingContratos || loadingTransacoes || 
+  const isLoading = loadingArtistas || loadingContratos || loadingTransacoes ||
                     loadingEventos || loadingClientes;
 
-  // Artistas Metrics - using eventos instead of vendas
   const artistasMetrics = useMemo<ArtistasMetrics>(() => {
     const artistasComContrato = artistas.filter(a => a.contrato_id).length;
     const artistasAtivos = artistas.filter(a => a.status === "ativo" || a.status === "contratado").length;
-    
-    // Calculate shows from all eventos (performances of any type)
     const shows = eventos;
     const totalShows = shows.length;
     const showsAgendados = shows.filter(e => {
@@ -84,14 +88,12 @@ export function useMetrics(): UseMetricsReturn {
       return s === "confirmado" || s === "pendente" || s === "negociacao";
     }).length;
     const showsRealizados = shows.filter(e => (e.status ?? "").toLowerCase() === "realizado").length;
-
-    // Calculate revenue from confirmed/realized events
     const receitaTotal = shows
       .filter(e => {
         const s = (e.status ?? "").toLowerCase();
         return s === "confirmado" || s === "realizado";
       })
-      .reduce((acc, e) => acc + ((e as any).valor_cache || 0), 0);
+      .reduce((acc, e) => acc + ((e as Record<string, unknown>)["valor_cache"] as number || 0), 0);
 
     return {
       total: artistas.length,
@@ -105,12 +107,9 @@ export function useMetrics(): UseMetricsReturn {
     };
   }, [artistas, eventos]);
 
-  // CRM Metrics - using contratos instead of vendas
   const crmMetrics = useMemo<CRMMetrics>(() => {
     const ativos = clientes.filter(c => c.status === "ativo" || c.status === "cliente_ativo").length;
     const leads = clientes.filter(c => c.status === "lead").length;
-    
-    // Use contratos instead of vendas
     const contratosClientes = contratos.filter(c => c.cliente_id);
     const valorTotalContratos = contratosClientes
       .filter(c => c.status === "ativo")
@@ -125,27 +124,21 @@ export function useMetrics(): UseMetricsReturn {
     };
   }, [clientes, contratos]);
 
-  // Financeiro Metrics
   const financeiroMetrics = useMemo<FinanceiroMetrics>(() => {
     const receitasPagas = transacoes
       .filter(t => t.tipo === "receita" && t.status === "pago")
       .reduce((acc, t) => acc + t.valor, 0);
-
     const despesasPagas = transacoes
       .filter(t => t.tipo === "despesa" && t.status === "pago")
       .reduce((acc, t) => acc + t.valor, 0);
-
     const contasReceber = transacoes
       .filter(t => t.tipo === "receita" && t.status === "pendente")
       .reduce((acc, t) => acc + t.valor, 0);
-
     const contasPagar = transacoes
       .filter(t => t.tipo === "despesa" && t.status === "pendente")
       .reduce((acc, t) => acc + t.valor, 0);
-
     const lucroLiquido = receitasPagas - despesasPagas;
     const margem = receitasPagas > 0 ? Math.round((lucroLiquido / receitasPagas) * 100) : 0;
-
     const receitasPendentes = transacoes.filter(t => t.tipo === "receita" && t.status === "pendente").length;
     const despesasPendentes = transacoes.filter(t => t.tipo === "despesa" && t.status === "pendente").length;
 
@@ -161,7 +154,6 @@ export function useMetrics(): UseMetricsReturn {
     };
   }, [transacoes]);
 
-  // Dashboard Metrics - using eventos instead of vendas
   const dashboardMetrics = useMemo<DashboardMetrics>(() => {
     const hoje = new Date();
     const inicioMes = startOfMonth(hoje);
@@ -173,20 +165,16 @@ export function useMetrics(): UseMetricsReturn {
         const inicio = parseISO(c.data_inicio);
         const fim = parseISO(c.data_fim);
         return hoje >= inicio && hoje <= fim;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     }).length;
-    
+
     const contratosVencendo = contratos.filter(c => {
       if (c.status !== "ativo") return false;
       try {
         const dataFim = parseISO(c.data_fim);
         const diasRestantes = differenceInDays(dataFim, hoje);
         return diasRestantes >= 0 && diasRestantes <= 30;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     }).length;
 
     const trintaDiasAtras = subDays(hoje, 30);
@@ -196,30 +184,21 @@ export function useMetrics(): UseMetricsReturn {
         try {
           const dataTransacao = parseISO(t.data);
           return dataTransacao >= trintaDiasAtras && dataTransacao <= hoje;
-        } catch {
-          return false;
-        }
+        } catch { return false; }
       })
       .reduce((acc, t) => acc + t.valor, 0);
 
     const eventosHoje = eventos.filter(e => {
-      try {
-        return isToday(parseISO(e.data_inicio));
-      } catch {
-        return false;
-      }
+      try { return isToday(parseISO(e.data_inicio)); } catch { return false; }
     }).length;
 
     const eventosMes = eventos.filter(e => {
       try {
         const d = parseISO(e.data_inicio);
         return d >= inicioMes && d <= fimMes;
-      } catch {
-        return false;
-      }
+      } catch { return false; }
     }).length;
 
-    // Top 4 artistas por eventos/receita
     const artistasComReceita = artistas.map(artista => {
       const eventosArtista = eventos.filter(e => e.artista_id === artista.id);
       const receita = eventosArtista
@@ -227,7 +206,7 @@ export function useMetrics(): UseMetricsReturn {
           const s = (e.status ?? "").toLowerCase();
           return s === "confirmado" || s === "realizado";
         })
-        .reduce((acc, e) => acc + ((e as any).valor_cache || 0), 0);
+        .reduce((acc, e) => acc + ((e as Record<string, unknown>)["valor_cache"] as number || 0), 0);
       const shows = eventosArtista.filter(e => {
         const s = (e.status ?? "").toLowerCase();
         return s === "confirmado" || s === "realizado";
@@ -256,6 +235,8 @@ export function useMetrics(): UseMetricsReturn {
       artistasDestaque,
     };
   }, [artistas, contratos, transacoes, eventos]);
+
+  void format; // date-fns import kept for potential future use
 
   return {
     artistasMetrics,

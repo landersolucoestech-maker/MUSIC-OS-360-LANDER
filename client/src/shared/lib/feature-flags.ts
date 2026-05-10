@@ -14,7 +14,7 @@ export interface FeatureFlags {
   moduleCatalog:      boolean;
   moduleReleases:     boolean;
   moduleContracts:    boolean;
-  moduleFinanceiro:   boolean;
+  moduleAccounting:   boolean;
   moduleCrm:          boolean;
   moduleMarketing:    boolean;
   moduleEvents:       boolean;
@@ -72,7 +72,7 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   moduleCatalog:      true,
   moduleReleases:     true,
   moduleContracts:    true,
-  moduleFinanceiro:   true,
+  moduleAccounting:   true,
   moduleCrm:          true,
   moduleMarketing:    true,
   moduleEvents:       true,

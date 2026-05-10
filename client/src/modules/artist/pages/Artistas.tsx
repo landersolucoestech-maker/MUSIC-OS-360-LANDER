@@ -27,7 +27,7 @@ import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatf
 import { useArtistasAssinados } from "@/modules/artist/hooks/useArtistasAssinados";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useMetrics } from "@/shared/hooks/useMetrics";
+import { useMetrics } from "@/modules/dashboard/hooks/useMetrics";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -43,6 +43,7 @@ import {
   ESPECIALIDADES_LABELS,
 } from "@/modules/artist/mappers";
 import { cn } from "@/shared/lib/utils";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 
 const getXLSX = () => import("xlsx");
 
@@ -286,15 +287,17 @@ export default function Artistas() {
             onChange={handleExcelImport}
             data-testid="input-import-excel"
           />
-          <Button
-            size="sm"
-            className="h-8 text-xs gap-1.5"
-            onClick={() => setCreateModal(true)}
-            data-testid="button-novo-artista"
-          >
-            <PlusCircle className="h-3.5 w-3.5" />
-            Novo Artista
-          </Button>
+          <RequirePermission module="artists" action="write">
+            <Button
+              size="sm"
+              className="h-8 text-xs gap-1.5"
+              onClick={() => setCreateModal(true)}
+              data-testid="button-novo-artista"
+            >
+              <PlusCircle className="h-3.5 w-3.5" />
+              Novo Artista
+            </Button>
+          </RequirePermission>
         </>
       }
     >
@@ -611,22 +614,26 @@ export default function Artistas() {
                                     </Button>
                                   </DropdownMenuTrigger>
                                   <DropdownMenuContent align="end">
-                                    <DropdownMenuItem
-                                      onClick={() => setEditModal({ open: true, artista })}
-                                      data-testid={`menu-edit-${artista.id}`}
-                                    >
-                                      <Pencil className="h-3.5 w-3.5 mr-2" />
-                                      Editar
-                                    </DropdownMenuItem>
+                                    <RequirePermission module="artists" action="write">
+                                      <DropdownMenuItem
+                                        onClick={() => setEditModal({ open: true, artista })}
+                                        data-testid={`menu-edit-${artista.id}`}
+                                      >
+                                        <Pencil className="h-3.5 w-3.5 mr-2" />
+                                        Editar
+                                      </DropdownMenuItem>
+                                    </RequirePermission>
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem
-                                      className="text-destructive focus:text-destructive"
-                                      onClick={() => setDeleteModal({ open: true, artista: artista as any })}
-                                      data-testid={`menu-delete-${artista.id}`}
-                                    >
-                                      <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                      Excluir
-                                    </DropdownMenuItem>
+                                    <RequirePermission module="artists" action="delete">
+                                      <DropdownMenuItem
+                                        className="text-destructive focus:text-destructive"
+                                        onClick={() => setDeleteModal({ open: true, artista: artista as any })}
+                                        data-testid={`menu-delete-${artista.id}`}
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                        Excluir
+                                      </DropdownMenuItem>
+                                    </RequirePermission>
                                   </DropdownMenuContent>
                                 </DropdownMenu>
                               </div>

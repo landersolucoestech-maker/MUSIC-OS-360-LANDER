@@ -12,6 +12,17 @@ import { MOCK_USER_ID } from "@/shared/data/mockData";
  * Para alternar entre modos, use a variável VITE_USE_MOCK.
  */
 
+/**
+ * Callbacks opcionais invocados imediatamente após cada mutação bem-sucedida.
+ * Usados pelos módulos para emitir domain events tipados sem acoplamento ao
+ * generic useDataQuery.
+ */
+type MutationSuccessCallbacks<T> = {
+  onCreate?: (result: T) => void;
+  onUpdate?: (result: T) => void;
+  onDelete?: (id: string) => void;
+};
+
 type QueryConfig<T = object> = {
   queryKey: string[];
   table: string;
@@ -21,6 +32,8 @@ type QueryConfig<T = object> = {
   filters?: Record<string, unknown>;
   enabled?: boolean;
   additionalInvalidateKeys?: string[][];
+  /** Callbacks pós-mutação para emissão de domain events. */
+  onMutationSuccess?: MutationSuccessCallbacks<T>;
   _phantom?: T;
 };
 
@@ -49,6 +62,7 @@ export function useDataQuery<T extends object>(
     filters,
     enabled = true,
     additionalInvalidateKeys,
+    onMutationSuccess,
   } = config;
 
   const cacheConfig = getCacheConfig(queryKey);
@@ -79,9 +93,10 @@ export function useDataQuery<T extends object>(
         table,
         item as Omit<T & { id: string }, "id" | "user_id" | "created_at" | "updated_at">,
       ) as T,
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateAll();
       toast.success(messages.create?.success || defaultMessages.create?.success);
+      onMutationSuccess?.onCreate?.(result);
     },
     onError: (error: Error) => {
       toast.error(`${messages.create?.error || defaultMessages.create?.error}: ${error.message}`);
@@ -95,9 +110,10 @@ export function useDataQuery<T extends object>(
         id,
         data as Partial<T & { id: string }>,
       ) as T,
-    onSuccess: () => {
+    onSuccess: (result) => {
       invalidateAll();
       toast.success(messages.update?.success || defaultMessages.update?.success);
+      onMutationSuccess?.onUpdate?.(result);
     },
     onError: (error: Error) => {
       toast.error(`${messages.update?.error || defaultMessages.update?.error}: ${error.message}`);
@@ -105,10 +121,11 @@ export function useDataQuery<T extends object>(
   });
 
   const deleteMutation = useMutation({
-    mutationFn: async (id: string) => await storage.delete(table, id),
-    onSuccess: () => {
+    mutationFn: async (id: string) => { await storage.delete(table, id); return id; },
+    onSuccess: (id) => {
       invalidateAll();
       toast.success(messages.delete?.success || defaultMessages.delete?.success);
+      onMutationSuccess?.onDelete?.(id);
     },
     onError: (error: Error) => {
       toast.error(`${messages.delete?.error || defaultMessages.delete?.error}: ${error.message}`);

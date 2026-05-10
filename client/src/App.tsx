@@ -28,7 +28,7 @@ import { contractsRoutes } from "@/app/routes/contracts.routes";
 import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
 
-const Dashboard = lazy(() => import("@/shared/pages/Dashboard"));
+const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
 
 const queryClient = createQueryClient();
 
@@ -40,8 +40,19 @@ const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
   </RouteErrorBoundary>
 );
 
+function AuthGuard({ children }: { children: React.ReactNode }) {
+  const { user, loading } = useAuth();
+  if (loading) return <PageSkeleton />;
+  if (!user) return <Navigate to="/auth" replace />;
+  return <>{children}</>;
+}
+
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
-  <SuspenseRoute>{children}</SuspenseRoute>
+  <RouteErrorBoundary>
+    <Suspense fallback={<PageSkeleton />}>
+      <AuthGuard>{children}</AuthGuard>
+    </Suspense>
+  </RouteErrorBoundary>
 );
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {

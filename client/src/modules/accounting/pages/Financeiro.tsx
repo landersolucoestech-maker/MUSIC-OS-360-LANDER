@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import { useMetrics } from "@/shared/hooks/useMetrics";
+import { useMetrics } from "@/modules/dashboard/hooks/useMetrics";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { TransacaoFormModal } from "@/modules/accounting/components/TransacaoFormModal";
 import { TransacaoViewModal } from "@/modules/accounting/components/TransacaoViewModal";
@@ -24,6 +24,7 @@ import { MetricCard } from "@/shared/components/MetricCard";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
 import { cn } from "@/shared/lib/utils";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FinanceiroSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 
@@ -199,9 +200,11 @@ export default function Financeiro() {
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
             <LinkIcon className="h-3.5 w-3.5" /> Integração Bancária
           </Button>
-          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
-            <Plus className="h-3.5 w-3.5" /> Nova Transação
-          </Button>
+          <RequirePermission module="accounting" action="write">
+            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
+              <Plus className="h-3.5 w-3.5" /> Nova Transação
+            </Button>
+          </RequirePermission>
         </>
       }
     >
@@ -429,15 +432,19 @@ export default function Financeiro() {
                         <DropdownMenuItem onClick={() => setViewModal({ open: true, transacao })}>
                           <Eye className="h-3.5 w-3.5 mr-2" /> Ver
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteModal({ open: true, transacao })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                        </DropdownMenuItem>
+                        <RequirePermission module="accounting" action="write">
+                          <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                          </DropdownMenuItem>
+                        </RequirePermission>
+                        <RequirePermission module="accounting" action="delete">
+                          <DropdownMenuItem
+                            onClick={() => setDeleteModal({ open: true, transacao })}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </RequirePermission>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

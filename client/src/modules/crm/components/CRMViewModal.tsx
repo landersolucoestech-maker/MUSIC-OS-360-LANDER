@@ -12,7 +12,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
+import { ContratoStatusBadge, getContratoSituacao } from "@/modules/contracts/components/ContratoStatusBadge";
 import { formatCurrency, formatDate, getInitials } from "@/shared/lib/format-utils";
 import { Mail, Phone, Building, MapPin, FileText, DollarSign, Music, User } from "lucide-react";
 

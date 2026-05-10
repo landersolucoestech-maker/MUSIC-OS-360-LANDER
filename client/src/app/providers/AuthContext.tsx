@@ -5,6 +5,7 @@ import {
   setAccessToken,
   getAccessToken,
 } from "@/shared/lib/api-client";
+import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
 
 /**
  * AuthContext — suporta dois modos:
@@ -20,10 +21,6 @@ import {
  *   - On mount: tenta renovar sessão com refresh_token salvo
  */
 
-const MOCK_MODE =
-  import.meta.env.VITE_USE_MOCK !== "false" &&
-  import.meta.env.VITE_MOCK_MODE !== "false";
-const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? "";
 
 interface AuthContextType {
   user: User | null;
@@ -75,7 +72,7 @@ function tokenToSession(access: string): Session {
 // ─── Real HTTP auth helpers ───────────────────────────────────────────────────
 
 async function httpPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_BASE_URL}${path}`, {
     method: "POST",
     credentials: "include",   // sends httpOnly refresh cookie automatically
     headers: { "Content-Type": "application/json" },

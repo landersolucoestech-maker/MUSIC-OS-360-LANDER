@@ -14,13 +14,7 @@ import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { getCurrentOrgId } from "./tenant";
 import { TenantError, NotFoundError, TransactionError, ConflictError, IntegrationError } from "./errors";
 import { api, TABLE_ENDPOINT, PENDING_TABLES } from "./api-client";
-
-// ─── Flag de modo ─────────────────────────────────────────────────────────────
-
-// VITE_USE_MOCK is the canonical flag; fall back to VITE_MOCK_MODE for back-compat.
-const MOCK_MODE =
-  import.meta.env.VITE_USE_MOCK !== "false" &&
-  import.meta.env.VITE_MOCK_MODE !== "false";
+import { MOCK_MODE } from "./env";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -29,6 +23,10 @@ export type StorageRow = Record<string, unknown> & { id: string };
 export interface ListOptions {
   filters?: Record<string, unknown>;
   orderBy?: { column: string; ascending?: boolean };
+  /** Número máximo de registos a retornar. Undefined = sem limite. */
+  limit?: number;
+  /** Índice do primeiro registo a retornar (0-based). */
+  offset?: number;
   /** Passa true para ignorar o filtro de tenant (uso interno apenas). */
   _bypassTenant?: boolean;
 }
@@ -140,7 +138,10 @@ const mockStorage = {
     } else {
       filtered = applyFilters(rows, options?.filters);
     }
-    return sortRows(filtered, options?.orderBy ?? { column: "created_at", ascending: false });
+    const sorted = sortRows(filtered, options?.orderBy ?? { column: "created_at", ascending: false });
+    const offset = options?.offset ?? 0;
+    const limit  = options?.limit;
+    return limit !== undefined ? sorted.slice(offset, offset + limit) : sorted.slice(offset);
   },
 
   async findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined> {
@@ -292,6 +293,8 @@ const httpStorage = {
       params.set("orderBy", options.orderBy.column);
       params.set("ascending", String(options.orderBy.ascending ?? false));
     }
+    if (options?.limit  !== undefined) params.set("limit",  String(options.limit));
+    if (options?.offset !== undefined) params.set("offset", String(options.offset));
     const qs = params.toString();
     return api.get<T[]>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
   },

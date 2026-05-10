@@ -24,6 +24,7 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { cn } from "@/shared/lib/utils";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 
 const contratoColumns: CSVColumn[] = [
   { key: "titulo", label: "Título" },
@@ -173,10 +174,12 @@ export default function Contratos() {
             <FileStack className="h-3.5 w-3.5" />
             Templates
           </Button>
-          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
-            <Plus className="h-3.5 w-3.5" />
-            Novo Contrato
-          </Button>
+          <RequirePermission module="contracts" action="write">
+            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
+              <Plus className="h-3.5 w-3.5" />
+              Novo Contrato
+            </Button>
+          </RequirePermission>
         </>
       }
     >
@@ -386,17 +389,21 @@ export default function Contratos() {
                           <Eye className="h-3.5 w-3.5 mr-2" />
                           Ver
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", contrato })}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteModal({ open: true, contrato })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
+                        <RequirePermission module="contracts" action="write">
+                          <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", contrato })}>
+                            <Pencil className="h-3.5 w-3.5 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
+                        </RequirePermission>
+                        <RequirePermission module="contracts" action="delete">
+                          <DropdownMenuItem
+                            onClick={() => setDeleteModal({ open: true, contrato })}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 mr-2" />
+                            Excluir
+                          </DropdownMenuItem>
+                        </RequirePermission>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

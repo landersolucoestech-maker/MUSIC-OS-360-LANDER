@@ -18,7 +18,7 @@ import {
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useLeads } from "@/modules/crm/hooks/useLeads";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
+import { ContratoStatusBadge, getContratoSituacao } from "@/modules/contracts/components/ContratoStatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { CRMFormModal } from "@/modules/crm/components/CRMFormModal";
 import { CRMViewModal } from "@/modules/crm/components/CRMViewModal";

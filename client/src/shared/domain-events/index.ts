@@ -21,22 +21,33 @@ export const DomainEvents = {
   ARTIST_DELETED: "ARTIST_DELETED",
 
   // Catálogo
-  MUSIC_REGISTERED: "MUSIC_REGISTERED",
+  MUSIC_REGISTERED:    "MUSIC_REGISTERED",
+  MUSIC_UPDATED:       "MUSIC_UPDATED",
+  MUSIC_DELETED:       "MUSIC_DELETED",
   PHONOGRAM_REGISTERED: "PHONOGRAM_REGISTERED",
+  PHONOGRAM_UPDATED:   "PHONOGRAM_UPDATED",
+  PHONOGRAM_DELETED:   "PHONOGRAM_DELETED",
 
   // Contratos
   CONTRACT_CREATED: "CONTRACT_CREATED",
   CONTRACT_UPDATED: "CONTRACT_UPDATED",
-  CONTRACT_SIGNED: "CONTRACT_SIGNED",
+  CONTRACT_DELETED: "CONTRACT_DELETED",
+  CONTRACT_SIGNED:  "CONTRACT_SIGNED",
+
+  // Lançamentos
+  RELEASE_CREATED: "RELEASE_CREATED",
+  RELEASE_UPDATED: "RELEASE_UPDATED",
+  RELEASE_DELETED: "RELEASE_DELETED",
 
   // CRM / Leads
-  LEAD_CAPTURED: "LEAD_CAPTURED",
+  LEAD_CAPTURED:  "LEAD_CAPTURED",
   LEAD_CONVERTED: "LEAD_CONVERTED",
 
   // Financeiro
   TRANSACTION_CREATED: "TRANSACTION_CREATED",
   TRANSACTION_UPDATED: "TRANSACTION_UPDATED",
-  FINANCE_CALCULATED: "FINANCE_CALCULATED",
+  TRANSACTION_DELETED: "TRANSACTION_DELETED",
+  FINANCE_CALCULATED:  "FINANCE_CALCULATED",
 
   // Sistema
   AUDIT_ENTRY_CREATED: "AUDIT_ENTRY_CREATED",
@@ -66,6 +77,13 @@ export interface ContractCreatedPayload {
   org_id: string;
 }
 
+export interface ReleaseCreatedPayload {
+  id: string;
+  titulo: string;
+  artista_id?: string;
+  org_id: string;
+}
+
 export interface LeadCapturedPayload {
   id: string;
   nome: string;
@@ -90,20 +108,29 @@ export interface AuditEntryCreatedPayload {
 }
 
 export type DomainEventPayloads = {
-  ARTIST_CREATED: ArtistCreatedPayload;
-  ARTIST_UPDATED: Partial<ArtistCreatedPayload> & { id: string };
-  ARTIST_DELETED: { id: string; org_id: string };
-  MUSIC_REGISTERED: MusicRegisteredPayload;
-  PHONOGRAM_REGISTERED: { id: string; obra_id: string; org_id: string };
-  CONTRACT_CREATED: ContractCreatedPayload;
-  CONTRACT_UPDATED: Partial<ContractCreatedPayload> & { id: string };
-  CONTRACT_SIGNED: { id: string; org_id: string };
-  LEAD_CAPTURED: LeadCapturedPayload;
-  LEAD_CONVERTED: { id: string; artista_id?: string; org_id: string };
-  TRANSACTION_CREATED: TransactionCreatedPayload;
-  TRANSACTION_UPDATED: Partial<TransactionCreatedPayload> & { id: string };
-  FINANCE_CALCULATED: { artista_id: string; valor: number; org_id: string };
-  AUDIT_ENTRY_CREATED: AuditEntryCreatedPayload;
+  ARTIST_CREATED:        ArtistCreatedPayload;
+  ARTIST_UPDATED:        Partial<ArtistCreatedPayload> & { id: string };
+  ARTIST_DELETED:        { id: string; org_id: string };
+  MUSIC_REGISTERED:      MusicRegisteredPayload;
+  MUSIC_UPDATED:         Partial<MusicRegisteredPayload> & { obra_id: string };
+  MUSIC_DELETED:         { obra_id: string; org_id: string };
+  PHONOGRAM_REGISTERED:  { id: string; obra_id: string; org_id: string };
+  PHONOGRAM_UPDATED:     { id: string; obra_id: string; org_id: string };
+  PHONOGRAM_DELETED:     { id: string; org_id: string };
+  CONTRACT_CREATED:      ContractCreatedPayload;
+  CONTRACT_UPDATED:      Partial<ContractCreatedPayload> & { id: string };
+  CONTRACT_DELETED:      { id: string; org_id: string };
+  CONTRACT_SIGNED:       { id: string; org_id: string };
+  RELEASE_CREATED:       ReleaseCreatedPayload;
+  RELEASE_UPDATED:       Partial<ReleaseCreatedPayload> & { id: string };
+  RELEASE_DELETED:       { id: string; org_id: string };
+  LEAD_CAPTURED:         LeadCapturedPayload;
+  LEAD_CONVERTED:        { id: string; artista_id?: string; org_id: string };
+  TRANSACTION_CREATED:   TransactionCreatedPayload;
+  TRANSACTION_UPDATED:   Partial<TransactionCreatedPayload> & { id: string };
+  TRANSACTION_DELETED:   { id: string; org_id: string };
+  FINANCE_CALCULATED:    { artista_id: string; valor: number; org_id: string };
+  AUDIT_ENTRY_CREATED:   AuditEntryCreatedPayload;
 };
 
 // ─── Event Bus ───────────────────────────────────────────────────────────────

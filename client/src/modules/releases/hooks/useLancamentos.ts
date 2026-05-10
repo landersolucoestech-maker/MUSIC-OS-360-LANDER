@@ -1,5 +1,7 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import { emit, DomainEvents } from "@/shared/domain-events";
+import { useTenant } from "@/shared/providers";
 import type {
   Lancamento,
   LancamentoInsert,
@@ -10,11 +12,32 @@ import type {
 export type { Lancamento, LancamentoInsert, LancamentoUpdate, LancamentoWithRelations };
 
 export function useLancamentos() {
+  const { tenant } = useTenant();
+  const orgId = tenant?.id ?? "unknown";
+
   const result = useDataQuery<LancamentoWithRelations>({
     queryKey: [...QUERY_KEYS.LANCAMENTOS],
     table: "lancamentos",
     select: "*, artistas(*)",
     orderBy: { column: "data_lancamento", ascending: false },
+    onMutationSuccess: {
+      onCreate: (l) =>
+        emit(DomainEvents.RELEASE_CREATED, {
+          id: (l as LancamentoWithRelations & { id: string }).id,
+          titulo: l.titulo ?? "",
+          artista_id: l.artista_id ?? undefined,
+          org_id: orgId,
+        }),
+      onUpdate: (l) =>
+        emit(DomainEvents.RELEASE_UPDATED, {
+          id: (l as LancamentoWithRelations & { id: string }).id,
+          titulo: l.titulo ?? "",
+          artista_id: l.artista_id ?? undefined,
+          org_id: orgId,
+        }),
+      onDelete: (id) =>
+        emit(DomainEvents.RELEASE_DELETED, { id, org_id: orgId }),
+    },
   }, {
     create: { success: "Lançamento criado com sucesso!", error: "Erro ao criar lançamento" },
     update: { success: "Lançamento atualizado com sucesso!", error: "Erro ao atualizar lançamento" },

@@ -123,7 +123,7 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
     key:             "accounting",
     name:            "Accounting",
     route:           "/accounting",
-    featureFlag:     "moduleFinanceiro",
+    featureFlag:     "moduleAccounting",
     primaryEntities: ["Transacao", "NotaFiscal"],
     dependsOn:       ["artists", "contracts", "projects"],
     consumedBy:      [],

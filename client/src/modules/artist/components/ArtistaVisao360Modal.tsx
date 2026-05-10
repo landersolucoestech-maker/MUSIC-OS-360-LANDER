@@ -199,7 +199,7 @@ import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import {
   ContratoStatusBadge,
   getContratoSituacao,
-} from "@/shared/components/ContratoStatusBadge";
+} from "@/modules/contracts/components/ContratoStatusBadge";
 
 interface Meta {
   id: number;

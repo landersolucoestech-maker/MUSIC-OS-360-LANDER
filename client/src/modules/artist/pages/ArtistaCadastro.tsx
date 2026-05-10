@@ -28,7 +28,7 @@ import {
   ESPECIALIDADES_LABELS,
 } from "@/modules/artist/mappers";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
-import { ContratoStatusBadge, getContratoSituacao } from "@/shared/components/ContratoStatusBadge";
+import { ContratoStatusBadge, getContratoSituacao } from "@/modules/contracts/components/ContratoStatusBadge";
 import { toast } from "sonner";
 
 // ─── Constants ────────────────────────────────────────────────────────────────

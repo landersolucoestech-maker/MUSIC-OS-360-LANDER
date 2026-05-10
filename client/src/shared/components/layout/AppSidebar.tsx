@@ -68,70 +68,75 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { ThemeToggle } from "@/shared/components/ThemeToggle";
 
+import type { FeatureFlags } from "@/shared/lib/feature-flags";
+
 interface NavItem {
   title: string;
   href?: string;
   icon: React.ComponentType<{ className?: string }>;
+  /** Se definido, o item só aparece quando esta feature flag estiver activa. */
+  featureFlag?: keyof FeatureFlags;
   children?: {
     title: string;
     href: string;
     icon: React.ComponentType<{ className?: string }>;
+    featureFlag?: keyof FeatureFlags;
   }[];
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard", href: "/", icon: LayoutDashboard },
-  { title: "Artistas", href: "/artistas", icon: Users },
-  { title: "Projetos", href: "/projetos", icon: FolderKanban },
+  { title: "Dashboard",       href: "/",          icon: LayoutDashboard },
+  { title: "Artistas",        href: "/artistas",  icon: Users,        featureFlag: "moduleArtists" },
+  { title: "Projetos",        href: "/projetos",  icon: FolderKanban, featureFlag: "moduleProjects" },
   {
     title: "Catálogo",
     icon: Music,
+    featureFlag: "moduleCatalog",
     children: [
-      { title: "Obras & Fonogramas", href: "/registro-musicas", icon: Music },
-      { title: "Monitoramento", href: "/rights-monitoring", icon: Radio },
-      { title: "Licenciamento", href: "/licenciamento", icon: Shield },
-      { title: "Takedowns", href: "/takedowns", icon: AlertTriangle },
+      { title: "Obras & Fonogramas", href: "/registro-musicas",   icon: Music },
+      { title: "Monitoramento",      href: "/rights-monitoring",  icon: Radio,         featureFlag: "moduleMonitoring" },
+      { title: "Licenciamento",      href: "/licenciamento",      icon: Shield,        featureFlag: "moduleLicensing" },
+      { title: "Takedowns",          href: "/takedowns",          icon: AlertTriangle, featureFlag: "moduleMonitoring" },
     ],
   },
   {
     title: "Lançamentos",
     icon: Radio,
+    featureFlag: "moduleReleases",
     children: [
-      { title: "Distribuição", href: "/lancamentos", icon: Upload },
+      { title: "Distribuição",    href: "/lancamentos",   icon: Upload },
       { title: "Gestão de Shares", href: "/gestao-shares", icon: Share2 },
     ],
   },
-  { title: "Contratos", href: "/contratos", icon: FileText },
+  { title: "Contratos",        href: "/contratos",  icon: FileText,      featureFlag: "moduleContracts" },
   {
     title: "Financeiro",
     icon: DollarSign,
+    featureFlag: "moduleAccounting",
     children: [
-      { title: "Transações", href: "/accounting", icon: DollarSign },
-      { title: "Contabilidade", href: "/accounting/contabilidade", icon: BookOpen },
-      { title: "Nota Fiscal", href: "/accounting/nota-fiscal", icon: Receipt },
+      { title: "Transações",   href: "/accounting",                  icon: DollarSign },
+      { title: "Contabilidade", href: "/accounting/contabilidade",   icon: BookOpen },
+      { title: "Nota Fiscal",  href: "/accounting/nota-fiscal",      icon: Receipt },
     ],
   },
-  { title: "Agenda", href: "/agenda", icon: Calendar },
-  { title: "Inventário", href: "/inventario", icon: Package },
-  { title: "MusicChat", href: "/chat", icon: MessageCircle },
-  { title: "CRM", href: "/crm", icon: Contact },
-  { title: "Recursos Humanos", href: "/rh", icon: Briefcase },
-  { title: "Relatórios", href: "/relatorios", icon: Activity },
+  { title: "Agenda",           href: "/agenda",     icon: Calendar,      featureFlag: "moduleEvents" },
+  { title: "Inventário",       href: "/inventario", icon: Package,       featureFlag: "moduleInventory" },
+  { title: "MusicChat",        href: "/chat",       icon: MessageCircle },
+  { title: "CRM",              href: "/crm",        icon: Contact,       featureFlag: "moduleCrm" },
+  { title: "Recursos Humanos", href: "/rh",         icon: Briefcase,     featureFlag: "moduleRh" },
+  { title: "Relatórios",       href: "/relatorios", icon: Activity },
   {
     title: "Marketing",
     icon: Megaphone,
+    featureFlag: "moduleMarketing",
     children: [
-      { title: "Visão Geral", href: "/marketing/visao-geral", icon: Eye },
-      { title: "Campanhas", href: "/marketing/campanhas", icon: Target },
-      {
-        title: "Calendário de Conteúdo",
-        href: "/marketing/calendario",
-        icon: CalendarDays,
-      },
-      { title: "Métricas", href: "/marketing/metricas", icon: TrendingUp },
-      { title: "Briefing", href: "/marketing/briefing", icon: FileEdit },
-      { title: "Tarefas", href: "/marketing/tarefas", icon: ListChecks },
-      { title: "IA Criativa", href: "/marketing/ia-criativa", icon: Sparkles },
+      { title: "Visão Geral",          href: "/marketing/visao-geral", icon: Eye },
+      { title: "Campanhas",            href: "/marketing/campanhas",   icon: Target },
+      { title: "Calendário de Conteúdo", href: "/marketing/calendario", icon: CalendarDays },
+      { title: "Métricas",             href: "/marketing/metricas",    icon: TrendingUp },
+      { title: "Briefing",             href: "/marketing/briefing",    icon: FileEdit },
+      { title: "Tarefas",              href: "/marketing/tarefas",     icon: ListChecks },
+      { title: "IA Criativa",          href: "/marketing/ia-criativa", icon: Sparkles },
     ],
   },
   { title: "Suporte", href: "/support", icon: HeadphonesIcon },
@@ -139,13 +144,26 @@ const NAV_ITEMS: NavItem[] = [
 
 export function AppSidebar() {
   const { user, signOut } = useAuth();
-  const { tenant } = useTenant();
+  const { tenant, isFeatureEnabled } = useTenant();
   const { isAdmin } = useIsAdmin();
   const currentRole = useCurrentRole();
   const isSuperAdmin = currentRole === "super_admin";
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const location = useLocation();
+
+  const visibleNavItems = useMemo(
+    () => NAV_ITEMS.flatMap((item) => {
+      if (item.featureFlag && !isFeatureEnabled(item.featureFlag)) return [];
+      if (!item.children) return [item];
+      const visibleChildren = item.children.filter(
+        (c) => !c.featureFlag || isFeatureEnabled(c.featureFlag),
+      );
+      if (visibleChildren.length === 0) return [];
+      return [{ ...item, children: visibleChildren }];
+    }),
+    [isFeatureEnabled],
+  );
 
   const adminItems: NavItem[] = useMemo(
     () => {
@@ -393,7 +411,7 @@ export function AppSidebar() {
 
       {/* ── Navigation ────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-px">
-        {NAV_ITEMS.map(renderNavItem)}
+        {visibleNavItems.map(renderNavItem)}
         {adminItems.length > 0 && (
           <>
             <div className="my-2 mx-1 border-t border-sidebar-border/60" />

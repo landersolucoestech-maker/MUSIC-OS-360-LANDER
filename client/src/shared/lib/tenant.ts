@@ -9,11 +9,7 @@
  */
 import { MOCK_ORG_ID } from "@/shared/data/mockData";
 import { getAccessToken } from "@/shared/lib/api-client";
-
-// VITE_USE_MOCK is canonical; VITE_MOCK_MODE kept for back-compat.
-const MOCK_MODE =
-  import.meta.env.VITE_USE_MOCK !== "false" &&
-  import.meta.env.VITE_MOCK_MODE !== "false";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 // ─── JWT payload decode ───────────────────────────────────────────────────────
 

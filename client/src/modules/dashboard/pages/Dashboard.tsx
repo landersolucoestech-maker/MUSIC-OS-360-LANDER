@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { parseISO, differenceInDays, isAfter } from "date-fns";
-import { useMetrics } from "@/shared/hooks/useMetrics";
+import { useMetrics } from "../hooks/useMetrics";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
