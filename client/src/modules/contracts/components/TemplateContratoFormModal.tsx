@@ -66,6 +66,8 @@ export function TemplateContratoFormModal({
   const cabecalhoRef = useRef<HTMLInputElement>(null);
   const rodapeRef = useRef<HTMLInputElement>(null);
 
+  const [outrosNome, setOutrosNome] = useState("");
+
   const [artistasSelecionados, setArtistasSelecionados] = useState<string[]>([]);
   const [clientesSelecionados, setClientesSelecionados] = useState<string[]>([]);
   const [artistaSearch, setArtistaSearch] = useState("");
@@ -118,6 +120,7 @@ export function TemplateContratoFormModal({
         );
         setArtistasSelecionados((t.artistas_ids as string[]) ?? []);
         setClientesSelecionados((t.clientes_ids as string[]) ?? []);
+        setOutrosNome((t.outros_nome as string) ?? "");
       } else {
         reset({ nome: "", tipo_servico: "", ativo: true });
         setClausulas([]);
@@ -125,6 +128,7 @@ export function TemplateContratoFormModal({
         setRodape(null);
         setArtistasSelecionados([]);
         setClientesSelecionados([]);
+        setOutrosNome("");
       }
       setArtistaSearch("");
       setClienteSearch("");
@@ -221,9 +225,13 @@ export function TemplateContratoFormModal({
   });
 
   const onSubmit = (data: TemplateContratoFormData) => {
+    const tipoFinal = data.tipo_servico === "Outros"
+      ? (outrosNome.trim() || "Outros")
+      : data.tipo_servico;
+
     onSave({
       nome: data.nome,
-      tipo_servico: data.tipo_servico,
+      tipo_servico: tipoFinal,
       descricao: "",
       conteudo: buildConteudo(),
       variaveis: extractVariaveis(),
@@ -232,6 +240,7 @@ export function TemplateContratoFormModal({
       footer_image_url: rodape?.dataUrl ?? null,
       artistas_ids: isArtistico ? artistasSelecionados : [],
       clientes_ids: !isArtistico ? clientesSelecionados : [],
+      outros_nome: data.tipo_servico === "Outros" ? outrosNome.trim() : "",
     } as TemplateContratoInsert);
   };
 
@@ -276,6 +285,21 @@ export function TemplateContratoFormModal({
                 <FieldError error={errors.tipo_servico?.message} />
               </div>
             </div>
+
+            {tipoSelecionado === "Outros" && (
+              <div className="space-y-1.5">
+                <Label htmlFor="outros_nome">
+                  Nome do tipo de contrato <span className="text-destructive">*</span>
+                </Label>
+                <Input
+                  id="outros_nome"
+                  placeholder="Ex: Contrato de Cessão de Direitos"
+                  value={outrosNome}
+                  onChange={(e) => setOutrosNome(e.target.value)}
+                  data-testid="input-outros-nome"
+                />
+              </div>
+            )}
 
             <div className="flex items-center gap-3">
               <Switch
