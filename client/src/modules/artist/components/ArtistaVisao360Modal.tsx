@@ -247,7 +247,7 @@ const getHistoricoBadge = (tipo: string) => {
     case "criacao":
       return <Badge className="bg-success">Criação</Badge>;
     case "edicao":
-      return <Badge className="bg-blue-600">Edição</Badge>;
+      return <Badge className="bg-blue-600 text-[#ffffff]">Edição</Badge>;
     case "obra":
       return <Badge className="bg-purple-600">Obra</Badge>;
     case "contrato":

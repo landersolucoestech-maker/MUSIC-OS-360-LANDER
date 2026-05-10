@@ -33,7 +33,7 @@ const getStatusBadge = (status: string) => {
     case "agendado":
     case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
     case "realizado":
-    case "concluido": return <Badge className="bg-blue-600">Realizado</Badge>;
+    case "concluido": return <Badge className="bg-blue-600 text-[#ffffff]">Realizado</Badge>;
     case "cancelado": return <Badge className="bg-destructive text-destructive-foreground">Cancelado</Badge>;
     default: return <Badge variant="secondary">{status || "—"}</Badge>;
   }
