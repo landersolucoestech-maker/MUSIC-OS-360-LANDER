@@ -29,21 +29,21 @@ import {
   type TemplateContrato,
   type TemplateContratoInsert,
 } from "@/modules/contracts/hooks/useTemplatesContratos";
+import { CONTRACT_TYPES } from "@/modules/contracts/constants/contract-types";
 
 const TIPOS_SERVICO = [
-  "Agenciamento",
-  "Gestão",
-  "Empresariamento",
-  "Empresariamento com Suporte Financeiro",
-  "Licenciamento",
-  "Edição",
-  "Show/Evento",
-  "Produção Musical",
-  "Produção Audiovisual",
-  "Marketing",
-  "Criação de Sites",
-  "Distribuição",
-  "Parceria",
+  ...CONTRACT_TYPES.SERVICOS,
+  ...CONTRACT_TYPES.COLABORADORES,
+  ...CONTRACT_TYPES.ARTISTICOS,
+  ...CONTRACT_TYPES.FONOGRAFICOS,
+  ...CONTRACT_TYPES.EDITORIAIS,
+  ...CONTRACT_TYPES.LICENCIAMENTO,
+  ...CONTRACT_TYPES.SHOWS,
+  ...CONTRACT_TYPES.DISTRIBUICAO,
+  ...CONTRACT_TYPES.PARCERIAS,
+  ...CONTRACT_TYPES.MARCAS_PUBLICIDADE,
+  ...CONTRACT_TYPES.JURIDICOS,
+  ...CONTRACT_TYPES.RESCISAO,
   "Outros",
 ];
 

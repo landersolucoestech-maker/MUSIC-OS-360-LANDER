@@ -26,10 +26,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { templateContratoSchema, type TemplateContratoFormData } from "@/modules/contracts/lib/template-contrato-schema";
 import { FormField, FieldError } from "@/shared/components/FormField";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useCRMContatos } from "@/modules/contracts/hooks/useCRMContatos";
+import { getContractPartyOrigin } from "@/modules/contracts/mappers/contract-party-origin.mapper";
 import { cn } from "@/shared/lib/utils";
-
-const TIPO_ARTISTICO = "Contrato Artístico";
 
 const ACCEPT_DOCS = ".pdf,.doc,.docx,.png,.jpg,.jpeg";
 
@@ -69,14 +68,14 @@ export function TemplateContratoFormModal({
   const [outrosNome, setOutrosNome] = useState("");
 
   const [artistasSelecionados, setArtistasSelecionados] = useState<string[]>([]);
-  const [clientesSelecionados, setClientesSelecionados] = useState<string[]>([]);
+  const [contatosSelecionados, setContatosSelecionados] = useState<string[]>([]);
   const [artistaSearch, setArtistaSearch] = useState("");
-  const [clienteSearch, setClienteSearch] = useState("");
+  const [contatoSearch, setContatoSearch] = useState("");
   const [artistaPopoverOpen, setArtistaPopoverOpen] = useState(false);
-  const [clientePopoverOpen, setClientePopoverOpen] = useState(false);
+  const [contatoPopoverOpen, setContatoPopoverOpen] = useState(false);
 
   const { artistas = [] } = useArtistas();
-  const { clientes = [] } = useClientes();
+  const { contatos = [] } = useCRMContatos();
 
   const {
     register,
@@ -96,7 +95,9 @@ export function TemplateContratoFormModal({
   });
 
   const tipoSelecionado = watch("tipo_servico");
-  const isArtistico = tipoSelecionado === TIPO_ARTISTICO;
+  const partyOrigin = getContractPartyOrigin(tipoSelecionado ?? "");
+  const isArtistico = partyOrigin === "ARTIST";
+  const isCRM = partyOrigin === "CRM";
 
   useEffect(() => {
     if (open) {
@@ -119,7 +120,7 @@ export function TemplateContratoFormModal({
             : null
         );
         setArtistasSelecionados((t.artistas_ids as string[]) ?? []);
-        setClientesSelecionados((t.clientes_ids as string[]) ?? []);
+        setContatosSelecionados((t.clientes_ids as string[]) ?? []);
         setOutrosNome((t.outros_nome as string) ?? "");
       } else {
         reset({ nome: "", tipo_servico: "", ativo: true });
@@ -127,21 +128,28 @@ export function TemplateContratoFormModal({
         setCabecalho(null);
         setRodape(null);
         setArtistasSelecionados([]);
-        setClientesSelecionados([]);
+        setContatosSelecionados([]);
         setOutrosNome("");
       }
       setArtistaSearch("");
-      setClienteSearch("");
+      setContatoSearch("");
     }
   }, [template, open, reset]);
 
   useEffect(() => {
-    if (tipoSelecionado === TIPO_ARTISTICO) {
-      setClientesSelecionados([]);
-    } else {
+    if (isArtistico) {
+      setContatosSelecionados([]);
+    }
+
+    if (isCRM) {
       setArtistasSelecionados([]);
     }
-  }, [tipoSelecionado]);
+
+    if (partyOrigin === "NONE") {
+      setContatosSelecionados([]);
+      setArtistasSelecionados([]);
+    }
+  }, [partyOrigin, isArtistico, isCRM]);
 
   const parseClausulasFromContent = (content: string): Clausula[] => {
     const lines = content.split("\n");
@@ -206,8 +214,8 @@ export function TemplateContratoFormModal({
     );
   };
 
-  const toggleCliente = (id: string) => {
-    setClientesSelecionados((prev) =>
+  const toggleContato = (id: string) => {
+    setContatosSelecionados((prev) =>
       prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
     );
   };
@@ -218,11 +226,9 @@ export function TemplateContratoFormModal({
     return nome.includes(artistaSearch.toLowerCase());
   });
 
-  const clientesFiltrados = clientes.filter((c) => {
-    const t = c as Record<string, unknown>;
-    const nome = (t.nome as string || "").toLowerCase();
-    return nome.includes(clienteSearch.toLowerCase());
-  });
+  const contatosFiltrados = contatos.filter((c) =>
+    c.nome.toLowerCase().includes(contatoSearch.toLowerCase())
+  );
 
   const onSubmit = (data: TemplateContratoFormData) => {
     const tipoFinal = data.tipo_servico === "Outros"
@@ -238,8 +244,9 @@ export function TemplateContratoFormModal({
       ativo: data.ativo,
       header_image_url: cabecalho?.dataUrl ?? null,
       footer_image_url: rodape?.dataUrl ?? null,
+      party_origin: partyOrigin,
       artistas_ids: isArtistico ? artistasSelecionados : [],
-      clientes_ids: !isArtistico ? clientesSelecionados : [],
+      clientes_ids: isCRM ? contatosSelecionados : [],
       outros_nome: data.tipo_servico === "Outros" ? outrosNome.trim() : "",
     } as TemplateContratoInsert);
   };
@@ -311,16 +318,16 @@ export function TemplateContratoFormModal({
             </div>
           </div>
 
-          {/* Partes do Contrato — condicional por tipo */}
-          {tipoSelecionado && (
+          {/* Partes do Contrato — visível apenas quando partyOrigin !== "NONE" */}
+          {partyOrigin !== "NONE" && (
             <div className="rounded-lg border border-border p-4 space-y-4">
               <h3 className="font-medium text-foreground">
-                {isArtistico ? "Artistas Vinculados" : "Clientes Vinculados"}
+                {isArtistico ? "Artistas Vinculados" : "Contatos Vinculados"}
               </h3>
               <p className="text-xs text-muted-foreground">
                 {isArtistico
                   ? "Selecione os artistas cadastrados que serão parte deste template."
-                  : "Selecione os clientes cadastrados que serão parte deste template."}
+                  : "Selecione contatos do CRM vinculados ao contrato."}
               </p>
 
               {isArtistico ? (
@@ -410,18 +417,18 @@ export function TemplateContratoFormModal({
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Popover open={clientePopoverOpen} onOpenChange={setClientePopoverOpen}>
+                  <Popover open={contatoPopoverOpen} onOpenChange={setContatoPopoverOpen}>
                     <PopoverTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
                         className="w-full justify-between font-normal"
-                        data-testid="button-select-clientes"
+                        data-testid="button-select-contatos"
                       >
                         <span className="text-muted-foreground">
-                          {clientesSelecionados.length > 0
-                            ? `${clientesSelecionados.length} cliente(s) selecionado(s)`
-                            : "Buscar e selecionar clientes…"}
+                          {contatosSelecionados.length > 0
+                            ? `${contatosSelecionados.length} contato(s) selecionado(s)`
+                            : "Buscar contatos do CRM…"}
                         </span>
                         <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
                       </Button>
@@ -431,28 +438,25 @@ export function TemplateContratoFormModal({
                         <Search className="h-4 w-4 shrink-0 text-muted-foreground mr-2" />
                         <input
                           className="flex-1 bg-transparent py-2.5 text-sm outline-none placeholder:text-muted-foreground"
-                          placeholder="Buscar cliente…"
-                          value={clienteSearch}
-                          onChange={(e) => setClienteSearch(e.target.value)}
-                          data-testid="input-search-cliente"
+                          placeholder="Buscar contatos do CRM..."
+                          value={contatoSearch}
+                          onChange={(e) => setContatoSearch(e.target.value)}
+                          data-testid="input-search-contato"
                         />
                       </div>
                       <div className="max-h-52 overflow-y-auto p-1">
-                        {clientesFiltrados.length === 0 ? (
-                          <p className="py-4 text-center text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                        {contatosFiltrados.length === 0 ? (
+                          <p className="py-4 text-center text-sm text-muted-foreground">Nenhum contato encontrado.</p>
                         ) : (
-                          clientesFiltrados.map((c) => {
-                            const t = c as Record<string, unknown>;
-                            const id = t.id as string;
-                            const nome = (t.nome as string) || id;
-                            const selecionado = clientesSelecionados.includes(id);
+                          contatosFiltrados.map((c) => {
+                            const selecionado = contatosSelecionados.includes(c.id);
                             return (
                               <button
-                                key={id}
+                                key={c.id}
                                 type="button"
                                 className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent cursor-pointer"
-                                onClick={() => toggleCliente(id)}
-                                data-testid={`item-cliente-${id}`}
+                                onClick={() => toggleContato(c.id)}
+                                data-testid={`item-contato-${c.id}`}
                               >
                                 <div className={cn(
                                   "h-4 w-4 rounded border flex items-center justify-center shrink-0",
@@ -460,7 +464,10 @@ export function TemplateContratoFormModal({
                                 )}>
                                   {selecionado && <Check className="h-3 w-3 text-primary-foreground" />}
                                 </div>
-                                <span>{nome}</span>
+                                <span className="flex-1 text-left">{c.nome}</span>
+                                {c.tipo && (
+                                  <span className="text-xs text-muted-foreground">{c.tipo}</span>
+                                )}
                               </button>
                             );
                           })
@@ -469,19 +476,19 @@ export function TemplateContratoFormModal({
                     </PopoverContent>
                   </Popover>
 
-                  {clientesSelecionados.length > 0 && (
+                  {contatosSelecionados.length > 0 && (
                     <div className="flex flex-wrap gap-1.5">
-                      {clientesSelecionados.map((id) => {
-                        const c = clientes.find((x) => (x as Record<string, unknown>).id === id) as Record<string, unknown> | undefined;
-                        const nome = c ? ((c.nome as string) || id) : id;
+                      {contatosSelecionados.map((id) => {
+                        const c = contatos.find((x) => x.id === id);
+                        const nome = c ? c.nome : id;
                         return (
                           <Badge key={id} variant="secondary" className="gap-1 pr-1">
                             {nome}
                             <button
                               type="button"
                               className="rounded-full hover:bg-muted-foreground/20 p-0.5"
-                              onClick={() => toggleCliente(id)}
-                              data-testid={`remove-cliente-${id}`}
+                              onClick={() => toggleContato(id)}
+                              data-testid={`remove-contato-${id}`}
                             >
                               <X className="h-3 w-3" />
                             </button>

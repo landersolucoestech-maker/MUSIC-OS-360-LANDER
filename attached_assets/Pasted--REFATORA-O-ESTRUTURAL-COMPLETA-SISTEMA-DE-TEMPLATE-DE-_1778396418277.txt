@@ -1,0 +1,486 @@
+# REFATORAÇÃO ESTRUTURAL COMPLETA — SISTEMA DE TEMPLATE DE CONTRATOS
+
+## OBJETIVO
+
+Refatorar toda a arquitetura de templates de contratos para suportar:
+
+* múltiplas categorias de contratos;
+* classificação inteligente por domínio;
+* renderização dinâmica de partes envolvidas;
+* integração com artistas;
+* integração com CRM;
+* escalabilidade futura;
+* centralização das regras de negócio;
+* eliminação de hardcodes frágeis.
+
+A implementação atual está incorreta porque a regra de negócio está acoplada diretamente ao formulário:
+
+```ts
+const TIPO_ARTISTICO = "Contrato Artístico";
+```
+
+Essa abordagem deve ser completamente removida.
+
+---
+
+# PROBLEMA ATUAL
+
+Hoje:
+
+* o formulário decide a lógica;
+* o tipo é comparado por string;
+* apenas um contrato é considerado artístico;
+* CRM está modelado como clientes;
+* regras estão espalhadas;
+* não existe domínio centralizado;
+* não existe classificação estrutural.
+
+Isso inviabiliza escalabilidade.
+
+---
+
+# ARQUITETURA CORRETA
+
+A estrutura precisa ser separada em:
+
+```txt
+/contracts
+  /constants
+  /domain
+  /mappers
+  /hooks
+  /types
+  /utils
+  /components
+```
+
+---
+
+# ETAPA 1 — CENTRALIZAR TAXONOMIA
+
+## CRIAR:
+
+```txt
+/modules/contracts/constants/contract-types.ts
+```
+
+---
+
+# ADICIONAR:
+
+```ts
+export const CONTRACT_TYPES = {
+  SERVICOS: [
+    "Produção Musical",
+    "Produção Audiovisual",
+    "Produção Executiva",
+    "Direção Artística",
+    "Marketing Musical",
+    "Assessoria de Imprensa",
+    "Gestão de Redes Sociais",
+    "Gestão de Tráfego Pago",
+    "Publicidade e Promoção",
+    "Criação de Sites",
+    "Booking",
+    "Gestão de Turnês",
+    "Distribuição Musical",
+    "Gestão de Catálogo",
+  ],
+
+  COLABORADORES: [
+    "Designer Gráfico",
+    "Videomaker / Filmmaker",
+    "Fotógrafo",
+    "Social Media",
+    "Gestor de Catálogo",
+    "Editor de Áudio",
+    "Editor de Vídeo",
+    "Roadie",
+    "Equipe Técnica",
+  ],
+
+  ARTISTICOS: [
+    "Agenciamento Artístico",
+    "Empresariamento 360",
+    "Empresariamento 360 com Investimento",
+    "Co-Management",
+  ],
+
+  FONOGRAFICOS: [
+    "Contrato de Gravação",
+    "Licenciamento de Fonograma",
+    "Cessão de Fonograma",
+    "Distribuição Fonográfica",
+    "Label Services",
+  ],
+
+  EDITORIAIS: [
+    "Cessão de Direitos Autorais",
+    "Edição Musical",
+    "Coedição Musical",
+    "Administração Editorial",
+    "Split Sheet",
+  ],
+
+  LICENCIAMENTO: [
+    "Obra Musical",
+    "Fonograma",
+    "Sincronização (Filmes, Séries, Novelas, Games, Ads)",
+    "Publicidade",
+  ],
+
+  SHOWS: [
+    "Contrato de Show",
+    "Contrato de Participação em Evento",
+    "Contrato de Turnê",
+  ],
+
+  DISTRIBUICAO: [
+    "Termo de Distribuição Digital de Fonograma",
+  ],
+
+  PARCERIAS: [
+    "Parceria entre Artistas",
+    "Parceria entre Gravadoras",
+    "Parceria com Produtores",
+    "Parceria com Marcas (Brand Deal)",
+    "Colaboração Musical (Feat com estrutura contratual)",
+  ],
+
+  MARCAS_PUBLICIDADE: [
+    "Endorsement",
+    "Publicidade com Artista",
+    "Contrato com Influenciador / Creator",
+    "Licenciamento de Imagem",
+  ],
+
+  JURIDICOS: [
+    "NDA (Acordo de Confidencialidade)",
+    "Cessão de Uso de Imagem e Voz",
+    "Termos de Uso de Conteúdo",
+    "Autorização de Uso de Obra",
+    "Procuração Artística",
+  ],
+
+  RESCISAO: [
+    "Distrato Contratual",
+    "Rescisão Unilateral",
+    "Rescisão por Inadimplemento",
+    "Termo de Quitação",
+  ],
+} as const;
+```
+
+---
+
+# ETAPA 2 — CRIAR DOMÍNIO DAS PARTES DO CONTRATO
+
+## CRIAR:
+
+```txt
+/modules/contracts/domain/contract-party-origin.ts
+```
+
+---
+
+# ADICIONAR:
+
+```ts
+export type ContractPartyOrigin =
+  | "ARTIST"
+  | "CRM"
+  | "NONE";
+```
+
+---
+
+# ETAPA 3 — MAPEAR ORIGEM DAS PARTES
+
+## CRIAR:
+
+```txt
+/modules/contracts/mappers/contract-party-origin.mapper.ts
+```
+
+---
+
+# ADICIONAR:
+
+```ts
+import { CONTRACT_TYPES } from "../constants/contract-types";
+import { ContractPartyOrigin } from "../domain/contract-party-origin";
+
+const ARTIST_TYPES = [
+  ...CONTRACT_TYPES.ARTISTICOS,
+  ...CONTRACT_TYPES.SHOWS,
+  ...CONTRACT_TYPES.MARCAS_PUBLICIDADE,
+  "Parceria entre Artistas",
+  "Colaboração Musical (Feat com estrutura contratual)",
+];
+
+export const getContractPartyOrigin = (
+  contractType: string
+): ContractPartyOrigin => {
+  if (ARTIST_TYPES.includes(contractType)) {
+    return "ARTIST";
+  }
+
+  const allCRMTypes = Object.values(CONTRACT_TYPES)
+    .flat()
+    .filter((type) => !ARTIST_TYPES.includes(type));
+
+  if (allCRMTypes.includes(contractType)) {
+    return "CRM";
+  }
+
+  return "NONE";
+};
+```
+
+---
+
+# ETAPA 4 — REMOVER HARDCODE DO FORMULÁRIO
+
+## REMOVER:
+
+```ts
+const TIPO_ARTISTICO = "Contrato Artístico";
+```
+
+---
+
+# REMOVER:
+
+```ts
+const isArtistico = tipoSelecionado === TIPO_ARTISTICO;
+```
+
+---
+
+# ADICIONAR:
+
+```ts
+import { getContractPartyOrigin } from "@/modules/contracts/mappers/contract-party-origin.mapper";
+
+const partyOrigin = getContractPartyOrigin(tipoSelecionado);
+
+const isArtistico = partyOrigin === "ARTIST";
+const isCRM = partyOrigin === "CRM";
+```
+
+---
+
+# ETAPA 5 — REFATORAR HOOKS
+
+## REMOVER:
+
+```ts
+useClientes()
+```
+
+---
+
+# CRIAR:
+
+```ts
+useCRMContatos()
+```
+
+---
+
+# O HOOK DEVE RETORNAR:
+
+```ts
+[
+  clientes,
+  fornecedores,
+  freelancers,
+  parceiros,
+  marcas,
+  creators,
+  colaboradores,
+]
+```
+
+---
+
+# ESTRUTURA CORRETA:
+
+```ts
+{
+  id: string;
+  nome: string;
+  tipo: string;
+  email?: string;
+  telefone?: string;
+  documento?: string;
+}
+```
+
+---
+
+# ETAPA 6 — REFATORAR PAYLOAD
+
+## TEMPLATE CONTRATO
+
+O payload atual é limitado.
+
+Adicionar:
+
+```ts
+party_origin?: "ARTIST" | "CRM" | "NONE";
+```
+
+---
+
+# SALVAMENTO
+
+```ts
+onSave({
+  ...
+  party_origin: partyOrigin,
+  artistas_ids: isArtistico ? artistasSelecionados : [],
+  clientes_ids: isCRM ? clientesSelecionados : [],
+});
+```
+
+---
+
+# ETAPA 7 — REFATORAR RENDERIZAÇÃO
+
+## SUBSTITUIR:
+
+```tsx
+{tipoSelecionado && (
+```
+
+---
+
+# POR:
+
+```tsx
+{partyOrigin !== "NONE" && (
+```
+
+---
+
+# ETAPA 8 — REFATORAR UI
+
+## TÍTULO
+
+```tsx
+{
+  isArtistico
+    ? "Artistas Vinculados"
+    : "Contatos Vinculados"
+}
+```
+
+---
+
+## DESCRIÇÃO
+
+```tsx
+{
+  isArtistico
+    ? "Selecione os artistas vinculados ao contrato."
+    : "Selecione contatos do CRM vinculados ao contrato."
+}
+```
+
+---
+
+## PLACEHOLDER
+
+```tsx
+"Buscar contatos do CRM..."
+```
+
+---
+
+# ETAPA 9 — REFATORAR RESET
+
+## SUBSTITUIR useEffect
+
+```ts
+useEffect(() => {
+  if (isArtistico) {
+    setClientesSelecionados([]);
+  }
+
+  if (isCRM) {
+    setArtistasSelecionados([]);
+  }
+
+  if (partyOrigin === "NONE") {
+    setClientesSelecionados([]);
+    setArtistasSelecionados([]);
+  }
+}, [partyOrigin]);
+```
+
+---
+
+# ETAPA 10 — VALIDAÇÃO
+
+## AJUSTAR schema ZOD
+
+Se:
+
+* origem = ARTIST
+  → exigir artistas_ids.
+
+Se:
+
+* origem = CRM
+  → exigir clientes_ids.
+
+---
+
+# ETAPA 11 — PREPARAÇÃO FUTURA
+
+A arquitetura precisa permitir futuramente:
+
+* múltiplas partes;
+* artista + marca;
+* artista + produtor;
+* artista + gravadora;
+* contratos multi-entidade;
+* templates automáticos;
+* geração por IA;
+* assinatura digital;
+* automação jurídica.
+
+Portanto:
+
+* NÃO usar condicionais hardcoded;
+* NÃO usar comparação direta de string;
+* NÃO manter regras dentro do JSX.
+
+---
+
+# RESULTADO FINAL ESPERADO
+
+## Contratos artísticos
+
+→ vinculam artistas.
+
+## Contratos operacionais/comerciais/jurídicos
+
+→ vinculam CRM.
+
+## Contratos neutros
+
+→ não exibem seleção.
+
+## Toda regra centralizada.
+
+## Formulário desacoplado.
+
+## Arquitetura escalável.
+
+## Sem hardcodes frágeis.
+
+## Sem lógica espalhada.
+
+## Compatível com crescimento futuro do Music OS 360.
