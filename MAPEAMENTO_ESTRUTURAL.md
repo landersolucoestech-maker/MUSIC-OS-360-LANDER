@@ -919,3 +919,70 @@ Para cada módulo:
 - `npx tsc --noEmit` → **0 erros** após todas as alterações
 - Browser console **limpo**
 - Arquitectura de dependências corrigida: `types/ → hooks → components` (antes: `hooks ↔ types` circular)
+
+---
+
+## 24. ETAPA 5 — CONSOLIDAÇÃO DOS FORMULÁRIOS: SCHEMAS ZOD + ZODRESOLVER (Maio 2026)
+
+### Problema corrigido
+Formulários sem validação centralizada — schemas Zod inline em componentes, tipos duplicados,
+`FieldError` local redefinido em múltiplos ficheiros, e `zodResolver` ausente em `ArtistaFormModal`.
+
+### Padrão aplicado
+`{module}/lib/{entity}-schema.ts` — exporta `const {entity}Schema` (z.object) + `export type {Entity}FormData = z.infer<typeof {entity}Schema>`.
+
+### Ficheiros de schema criados
+
+| Módulo | Ficheiro |
+|---|---|
+| `accounting` | `accounting/lib/transacao-schema.ts`, `accounting/lib/nota-fiscal-schema.ts` |
+| `artist` | `artist/lib/artista-schema.ts` |
+| `catalog` | `catalog/lib/obra-schema.ts`, `catalog/lib/fonograma-schema.ts` |
+| `contracts` | `contracts/lib/contrato-schema.ts`, `contracts/lib/template-contrato-schema.ts` |
+| `crm` | `crm/lib/crm-schema.ts` (+ `crm/lib/lead-schema.ts` pré-existente) |
+| `events` | `events/lib/evento-schema.ts` |
+| `inventory` | `inventory/lib/inventario-schema.ts` (pré-existente) |
+| `licensing` | `licensing/lib/licenca-schema.ts` |
+| `marketing` | `marketing/lib/campanha-schema.ts`, `marketing/lib/conteudo-schema.ts`, `marketing/lib/briefing-schema.ts`, `marketing/lib/tarefa-marketing-schema.ts` |
+| `monitoring` | `monitoring/lib/regra-schema.ts`, `monitoring/lib/takedown-schema.ts` |
+| `projects` | `projects/lib/projeto-schema.ts` |
+| `releases` | `releases/lib/lancamento-schema.ts`, `releases/lib/share-schema.ts` |
+| `rh` | `rh/lib/funcionario-schema.ts`, `rh/lib/folha-pagamento-schema.ts`, `rh/lib/ferias-ausencias-schema.ts` |
+| `settings` | `settings/lib/usuario-schema.ts` (pré-existente) |
+
+### Schemas inline extraídos para lib (componentes actualizados)
+
+| Componente | Schema inline removido → importa de |
+|---|---|
+| `contracts/components/ContratoFormModal.tsx` | `contracts/lib/contrato-schema.ts` |
+| `contracts/components/TemplateContratoFormModal.tsx` | `contracts/lib/template-contrato-schema.ts` |
+| `monitoring/components/RegraFormModal.tsx` | `monitoring/lib/regra-schema.ts` |
+
+### zodResolver wired
+
+| Componente | Estado anterior | Estado actual |
+|---|---|---|
+| `artist/components/ArtistaFormModal.tsx` | `useForm` sem resolver | `zodResolver(artistaSchema)` adicionado |
+
+### FieldError local duplicado removido
+
+| Componente | Acção |
+|---|---|
+| `accounting/components/TransacaoFormModal.tsx` | Local `FieldError` + `AlertCircle` removidos → importa de `@/shared/components/FormField` |
+| `events/components/EventoFormModal.tsx` | Local `FieldError` (shadowing) removido; call sites `field="X"` → `error={errors.X}` |
+| `crm/components/CRMFormModal.tsx` | Local `FieldError` + `AlertCircle` removidos (eram dead code — 0 call sites) |
+| `releases/components/LancamentoFormModal.tsx` | Local `FieldError` removido (dead code — 0 call sites) |
+
+### Pendente — formas que ainda usam useState puro (sem zodResolver)
+Os schemas lib já existem; falta migração de `useState` → `useForm + zodResolver`:
+`ObraFormModal`, `FonogramaFormModal`, `CRMFormModal`, `EventoFormModal`, `LicencaFormModal`,
+`CampanhaFormModal`, `ConteudoFormModal`, `BriefingFormModal`, `TarefaMarketingFormModal`,
+`TakedownFormModal`, `ProjetoFormModal`, `ShareFormModal`, `FuncionarioFormModal`,
+`FolhaPagamentoFormModal`, `FeriasAusenciasFormModal`, `NotaFiscalFormModal`
+
+### Resultado
+- `npx tsc --noEmit` → **0 erros** após todas as alterações
+- 22 ficheiros schema criados (cobertura 100% dos módulos)
+- 3 schemas inline extraídos para lib
+- 1 zodResolver fiado (ArtistaFormModal)
+- 4 `FieldError` locais eliminados

@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import { contratoSchema, type ContratoFormData } from "@/modules/contracts/lib/contrato-schema";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
@@ -18,46 +18,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
-
-// ── Schema ──────────────────────────────────────────────────────────────────
-const contractSchema = z.object({
-  title: z.string().min(1, "Título é obrigatório"),
-  client_type: z.enum(["artista", "pessoa_fisica", "pessoa_juridica"], {
-    required_error: "Tipo de cliente é obrigatório",
-  }),
-  service_type: z.enum(
-    [
-      "empresariamento", "empresariamento_suporte", "gestao", "agenciamento",
-      "edicao", "distribuicao", "marketing", "producao_musical",
-      "producao_audiovisual", "licenciamento", "publicidade", "parceria",
-      "shows", "outros",
-    ],
-    { required_error: "Tipo de serviço é obrigatório" },
-  ),
-  artist_id: z.string().optional(),
-  company_id: z.string().optional(),
-  contractor_contact: z.string().optional(),
-  responsible_person: z.string().optional(),
-  status: z
-    .enum(["pendente", "assinado", "aguardando_assinatura", "ativo", "vigente", "expirado", "rescindido", "cancelado", "rascunho"])
-    .default("rascunho"),
-  arquivo_url: z.string().optional(),
-  notas_versao: z.string().optional(),
-  lancamento_id: z.string().optional(),
-  start_date: z.date({ required_error: "Data de início é obrigatória" }),
-  end_date: z.date().optional(),
-  registry_office: z.boolean().optional(),
-  registry_date: z.date().optional(),
-  payment_type: z.enum(["valor_fixo", "royalties"]).optional(),
-  fixed_value: z.number().optional(),
-  royalties_percentage: z.number().min(0).max(100).optional(),
-  advance_payment: z.number().optional(),
-  financial_support: z.number().optional(),
-  observations: z.string().optional(),
-  terms: z.string().optional(),
-});
-
-type ContractFormData = z.infer<typeof contractSchema>;
 
 // ── Labels ───────────────────────────────────────────────────────────────────
 const ARTISTA_SERVICE_LABELS: Record<string, string> = {
@@ -100,9 +60,9 @@ const STATUS_LABELS: Record<string, string> = {
 
 // ── ContractForm ─────────────────────────────────────────────────────────────
 interface ContractFormProps {
-  onSubmit: (data: ContractFormData) => void;
+  onSubmit: (data: ContratoFormData) => void;
   onCancel?: () => void;
-  initialData?: Partial<ContractFormData>;
+  initialData?: Partial<ContratoFormData>;
   isLoading?: boolean;
   artists?: Array<{ id: string; name: string }>;
 }
@@ -121,8 +81,8 @@ const ContractForm = ({
   const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
   const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
-  const form = useForm<ContractFormData>({
-    resolver: zodResolver(contractSchema),
+  const form = useForm<ContratoFormData>({
+    resolver: zodResolver(contratoSchema),
     defaultValues: { status: "rascunho", registry_office: false, ...initialData },
   });
 
@@ -169,7 +129,7 @@ const ContractForm = ({
               <Select
                 value={form.watch("client_type")}
                 onValueChange={(value) => {
-                  form.setValue("client_type", value as ContractFormData["client_type"]);
+                  form.setValue("client_type", value as ContratoFormData["client_type"]);
                   const current = form.watch("service_type");
                   if (value === "pessoa_juridica" && current && !EMPRESA_SERVICE_KEYS.includes(current)) {
                     form.setValue("service_type", undefined as any);
@@ -195,7 +155,7 @@ const ContractForm = ({
               <Label>Tipo de Serviço *</Label>
               <Select
                 value={form.watch("service_type")}
-                onValueChange={(value) => form.setValue("service_type", value as ContractFormData["service_type"])}
+                onValueChange={(value) => form.setValue("service_type", value as ContratoFormData["service_type"])}
               >
                 <SelectTrigger data-testid="select-service-type">
                   <SelectValue placeholder="Selecione o tipo de serviço" />
@@ -216,7 +176,7 @@ const ContractForm = ({
               <Label>Status</Label>
               <Select
                 value={form.watch("status")}
-                onValueChange={(value) => form.setValue("status", value as ContractFormData["status"])}
+                onValueChange={(value) => form.setValue("status", value as ContratoFormData["status"])}
               >
                 <SelectTrigger data-testid="select-status">
                   <SelectValue placeholder="Selecione o status" />
@@ -538,11 +498,11 @@ const ContractForm = ({
   );
 };
 
-// ── Mapper: ContratoWithRelations → ContractFormData ─────────────────────────
-function contratoToFormData(c: ContratoWithRelations): Partial<ContractFormData> {
-  const status = c.status as ContractFormData["status"] | undefined;
-  const serviceType = c.tipo as ContractFormData["service_type"] | undefined;
-  const clientType: ContractFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
+// ── Mapper: ContratoWithRelations → ContratoFormData ─────────────────────────
+function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData> {
+  const status = c.status as ContratoFormData["status"] | undefined;
+  const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
+  const clientType: ContratoFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
   return {
     title: c.titulo ?? "",
     service_type: serviceType,
@@ -576,7 +536,7 @@ export const ContratoFormModal = ({
 }: ContratoFormModalProps) => {
   const { addContrato, updateContrato } = useContratos();
 
-  const handleSubmit = (data: ContractFormData) => {
+  const handleSubmit = (data: ContratoFormData) => {
     const {
       title, client_type, service_type, artist_id, status,
       arquivo_url, notas_versao, lancamento_id,

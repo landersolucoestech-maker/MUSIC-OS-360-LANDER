@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { artistaSchema } from "@/modules/artist/lib/artista-schema";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
@@ -255,7 +257,10 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   });
 
   // ── react-hook-form ─────────────────────────────────────────────
-  const form = useForm<ArtistaFormValues>({ defaultValues: DEFAULT_VALUES });
+  const form = useForm<ArtistaFormValues>({
+    resolver: zodResolver(artistaSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
   const { register, control, watch: wf, setValue, reset, handleSubmit: rhfSubmit } = form;
 
   const { fields: contatoFields, append: appendContato, remove: removeContato } = useFieldArray({

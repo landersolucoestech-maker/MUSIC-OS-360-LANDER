@@ -33,19 +33,8 @@ interface ClienteCRM {
   observacoes?: string | null;
   status: StatusCRM;
 }
-import { Plus, Trash2, CalendarIcon, AlertCircle } from "lucide-react";
+import { Plus, Trash2, CalendarIcon } from "lucide-react";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
-
-// FieldError component padronizado
-const FieldError = ({ error }: { error?: string }) => {
-  if (!error) return null;
-  return (
-    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
-      <AlertCircle className="h-3 w-3" />
-      {error}
-    </p>
-  );
-};
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Separator } from "@/shared/ui/separator";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";

@@ -21,7 +21,7 @@ import { X, Plus, Save } from "lucide-react";
 import type { TemplateContrato, TemplateContratoInsert } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { templateContratoSchema, type TemplateContratoFormData } from "@/modules/contracts/lib/template-contrato-schema";
 import { FormField, FieldError } from "@/shared/components/FormField";
 
 interface Clausula {
@@ -37,18 +37,6 @@ interface TemplateContratoFormModalProps {
   onSave: (data: TemplateContratoInsert) => void;
   tiposServico: string[];
 }
-
-const templateSchema = z.object({
-  nome: z.string()
-    .min(1, "Nome é obrigatório")
-    .max(150, "Nome deve ter no máximo 150 caracteres")
-    .trim(),
-  tipo_servico: z.string()
-    .min(1, "Tipo de contrato é obrigatório"),
-  ativo: z.boolean().default(true),
-});
-
-type TemplateFormData = z.infer<typeof templateSchema>;
 
 export function TemplateContratoFormModal({
   open,
@@ -66,8 +54,8 @@ export function TemplateContratoFormModal({
     watch,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<TemplateFormData>({
-    resolver: zodResolver(templateSchema),
+  } = useForm<TemplateContratoFormData>({
+    resolver: zodResolver(templateContratoSchema),
     mode: "onChange",
     defaultValues: {
       nome: "",
@@ -139,7 +127,7 @@ export function TemplateContratoFormModal({
     return Array.from(extracted);
   };
 
-  const onSubmit = (data: TemplateFormData) => {
+  const onSubmit = (data: TemplateContratoFormData) => {
     onSave({
       nome: data.nome,
       tipo_servico: data.tipo_servico,

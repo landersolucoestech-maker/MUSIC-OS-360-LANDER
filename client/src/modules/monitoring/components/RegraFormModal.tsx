@@ -6,7 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { regraSchema, type RegraFormData } from "@/modules/monitoring/lib/regra-schema";
 import { FormField, FormTextarea, FieldError } from "@/shared/components/FormField";
 
 interface Regra {
@@ -25,22 +25,6 @@ interface RegraFormModalProps {
   onSave: (regra: Omit<Regra, "id" | "origin">) => void;
 }
 
-const regraFormSchema = z.object({
-  category: z.string()
-    .min(1, "Informe o nome da categoria")
-    .max(50, "Categoria deve ter no máximo 50 caracteres")
-    .trim(),
-  type: z.enum(["Receita", "Despesa"], {
-    errorMap: () => ({ message: "Selecione o tipo" })
-  }),
-  keywords: z.string()
-    .min(1, "Informe pelo menos uma palavra-chave")
-    .max(500, "Palavras-chave devem ter no máximo 500 caracteres")
-    .trim(),
-});
-
-type RegraFormData = z.infer<typeof regraFormSchema>;
-
 export function RegraFormModal({ open, onOpenChange, mode, regra, onSave }: RegraFormModalProps) {
   const {
     register,
@@ -50,7 +34,7 @@ export function RegraFormModal({ open, onOpenChange, mode, regra, onSave }: Regr
     reset,
     formState: { errors, isSubmitting },
   } = useForm<RegraFormData>({
-    resolver: zodResolver(regraFormSchema),
+    resolver: zodResolver(regraSchema),
     mode: "onChange",
     defaultValues: {
       category: "",

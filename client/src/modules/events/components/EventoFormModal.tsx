@@ -152,11 +152,6 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
     onOpenChange(false);
   };
 
-  const FieldError = ({ field }: { field: string }) => {
-    if (!errors[field]) return null;
-    return <span className="text-sm text-destructive mt-1">{errors[field]}</span>;
-  };
-
   const getLocalPlaceholder = () => {
     if (formData.tipoEvento === "reunioes") {
       return "Nome do local da reunião";
@@ -184,7 +179,7 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
                 disabled={isViewMode}
                 className={errors.titulo ? "border-destructive" : ""}
               />
-              <FieldError field="titulo" />
+              <FieldError error={errors.titulo} />
             </div>
 
             {/* Tipo de Evento */}
@@ -206,7 +201,7 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
                   ))}
                 </SelectContent>
               </Select>
-              <FieldError field="tipoEvento" />
+              <FieldError error={errors.tipoEvento} />
             </div>
 
             {/* Artista - Condicional */}
@@ -269,7 +264,7 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
                 className={errors.dataInicio ? "border-destructive" : ""}
                 data-testid="datepicker-data-inicio"
               />
-              <FieldError field="dataInicio" />
+              <FieldError error={errors.dataInicio} />
             </div>
 
             {/* Horário de Início */}

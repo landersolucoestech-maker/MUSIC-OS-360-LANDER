@@ -22,18 +22,6 @@ import {
   projetoToLancamentoSeed,
 } from "@/modules/releases/mappers";
 
-// FieldError component padronizado
-const FieldError = ({ error }: { error?: string }) => {
-  if (!error) return null;
-  return (
-    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
-      <AlertCircle className="h-3 w-3" />
-      {error}
-    </p>
-  );
-};
-
-
 interface Faixa {
   id: number;
   titulo: string;

@@ -7,7 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { X, Upload, FileText, Loader2, AlertCircle } from "lucide-react";
+import { X, Upload, FileText, Loader2 } from "lucide-react";
+import { FieldError } from "@/shared/components/FormField";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
@@ -15,16 +16,6 @@ import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 
-// FieldError component padronizado
-const FieldError = ({ error }: { error?: string }) => {
-  if (!error) return null;
-  return (
-    <p className="text-xs text-destructive flex items-center gap-1 mt-1">
-      <AlertCircle className="h-3 w-3" />
-      {error}
-    </p>
-  );
-};
 import {
   TransacaoFormData,
   initialFormData,
