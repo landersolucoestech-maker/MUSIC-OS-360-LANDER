@@ -31,6 +31,7 @@ import type { Funcionario } from "@/modules/rh/hooks/useFuncionarios";
 import { useUsuarios } from "@/modules/settings/hooks/useUsuarios";
 import { maskCPF, maskPhone } from "@/shared/lib/masks";
 import { toast } from "sonner";
+import { funcionarioSchema } from "@/modules/rh/lib/funcionario-schema";
 
 interface FuncionarioFormModalProps {
   open: boolean;
@@ -111,20 +112,39 @@ export function FuncionarioFormModal({
   }, [open, mode, funcionario]);
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!nomeCompleto.trim()) {
-      newErrors.nome_completo = "Nome completo é obrigatório";
-    }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = "Email inválido";
-    }
-    setErrors(newErrors);
-    if (Object.keys(newErrors).length > 0) {
-      if (newErrors.nome_completo) {
+    const result = funcionarioSchema.safeParse({
+      nomeCompleto,
+      email: email || "",
+      cpf: cpf || "",
+      rg: rg || "",
+      dataNascimento: dataNascimento || "",
+      telefone: telefone || "",
+      endereco: endereco || "",
+      cargo: cargo || "",
+      setor: setor || "",
+      tipoContrato: tipoContrato || "",
+      dataAdmissao: dataAdmissao || "",
+      salarioBase: salarioBase !== "" ? Number(salarioBase) : null,
+      status: status as "ativo" | "inativo" | "ferias" | "licenca",
+      observacoes: observacoes || "",
+    });
+
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0];
+        if (field && !newErrors[String(field)]) {
+          newErrors[String(field)] = err.message;
+        }
+      });
+      setErrors(newErrors);
+      if (newErrors.nomeCompleto || newErrors.email || newErrors.cpf || newErrors.rg || newErrors.dataNascimento || newErrors.telefone || newErrors.endereco) {
         setActiveTab("pessoal");
       }
       return false;
     }
+
+    setErrors({});
     return true;
   };
 

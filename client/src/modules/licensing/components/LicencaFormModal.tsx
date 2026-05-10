@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -6,9 +8,10 @@ import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
-import { FormField, FormTextarea } from "@/shared/components/FormField";
+import { FieldError } from "@/shared/components/FormField";
 import { toast } from "sonner";
-import { FileText, Music, DollarSign, Calendar, Building } from "lucide-react";
+import { FileText, Music, DollarSign, Building } from "lucide-react";
+import { licencaSchema, type LicencaFormData } from "@/modules/licensing/lib/licenca-schema";
 
 interface LicencaFormModalProps {
   open: boolean;
@@ -21,35 +24,62 @@ const tiposLicenca = ["Sync TV", "Sync Cinema", "Sync Publicidade", "Sync Games"
 const midiasDestino = ["TV Aberta", "TV Fechada", "Cinema", "Streaming", "Redes Sociais", "Publicidade Digital", "Games", "Outro"];
 const territorios = ["Brasil", "América Latina", "Mundial", "Estados Unidos", "Europa", "Ásia"];
 
-export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaFormModalProps) {
-  const [formData, setFormData] = useState({
-    titulo: licenca?.titulo || "",
-    tipoLicenca: licenca?.tipoLicenca || "",
-    obraMusical: licenca?.obraMusical || "",
-    artista: licenca?.artista || "",
-    cliente: licenca?.cliente || "",
-    projeto: licenca?.projeto || "",
-    midiaDestino: licenca?.midiaDestino || "",
-    territorio: licenca?.territorio || "",
-    dataInicio: licenca?.dataInicio || "",
-    dataFim: licenca?.dataFim || "",
-    valor: licenca?.valor || "",
-    moeda: licenca?.moeda || "BRL",
-    observacoes: licenca?.observacoes || "",
-  });
+const DEFAULT_VALUES: LicencaFormData = {
+  titulo: "",
+  tipoLicenca: "",
+  obraMusical: "",
+  artista: "",
+  cliente: "",
+  projeto: "",
+  midiaDestino: "",
+  territorio: "",
+  dataInicio: "",
+  dataFim: "",
+  valor: "",
+  moeda: "BRL",
+  observacoes: "",
+};
 
+export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaFormModalProps) {
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Nova Licença de Sync" : mode === "edit" ? "Editar Licença" : "Detalhes da Licença";
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (mode === "view") return;
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors, isSubmitting },
+  } = useForm<LicencaFormData>({
+    resolver: zodResolver(licencaSchema),
+    defaultValues: DEFAULT_VALUES,
+  });
 
-    if (!formData.titulo || !formData.obraMusical || !formData.cliente) {
-      toast.error("Preencha os campos obrigatórios!");
-      return;
+  useEffect(() => {
+    if (!open) return;
+    if (licenca) {
+      reset({
+        titulo: licenca.titulo || "",
+        tipoLicenca: licenca.tipoLicenca || "",
+        obraMusical: licenca.obraMusical || "",
+        artista: licenca.artista || "",
+        cliente: licenca.cliente || "",
+        projeto: licenca.projeto || "",
+        midiaDestino: licenca.midiaDestino || "",
+        territorio: licenca.territorio || "",
+        dataInicio: licenca.dataInicio || "",
+        dataFim: licenca.dataFim || "",
+        valor: licenca.valor || "",
+        moeda: licenca.moeda || "BRL",
+        observacoes: licenca.observacoes || "",
+      });
+    } else {
+      reset(DEFAULT_VALUES);
     }
+  }, [open, licenca, reset]);
 
+  const onSubmit = (_data: LicencaFormData) => {
+    if (isViewMode) return;
     toast.success(mode === "create" ? "Licença criada com sucesso!" : "Licença atualizada com sucesso!");
     onOpenChange(false);
   };
@@ -64,31 +94,43 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
           </DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           {/* Informações Básicas */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
               <Music className="h-4 w-4" /> Informações da Licença
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Título da Licença *</Label>
                 <Input
-                  value={formData.titulo}
-                  onChange={(e) => setFormData({ ...formData, titulo: e.target.value })}
+                  {...register("titulo")}
                   disabled={isViewMode}
                   placeholder="Nome/Título da licença"
+                  className={errors.titulo ? "border-destructive" : ""}
+                  data-testid="input-titulo"
                 />
+                <FieldError error={errors.titulo?.message} />
               </div>
               <div className="space-y-2">
-                <Label>Tipo de Licença *</Label>
-                <Select value={formData.tipoLicenca} onValueChange={(v) => setFormData({ ...formData, tipoLicenca: v })} disabled={isViewMode}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o tipo" /></SelectTrigger>
-                  <SelectContent>
-                    {tiposLicenca.map(tipo => <SelectItem key={tipo} value={tipo.toLowerCase().replace(/ /g, "_")}>{tipo}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Label>Tipo de Licença</Label>
+                <Controller
+                  name="tipoLicenca"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
+                      <SelectTrigger data-testid="select-tipo-licenca">
+                        <SelectValue placeholder="Selecione o tipo" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tiposLicenca.map(tipo => (
+                          <SelectItem key={tipo} value={tipo.toLowerCase().replace(/ /g, "_")}>{tipo}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
 
@@ -96,20 +138,23 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               <div className="space-y-2">
                 <Label>Obra Musical *</Label>
                 <Input
-                  value={formData.obraMusical}
-                  onChange={(e) => setFormData({ ...formData, obraMusical: e.target.value })}
+                  {...register("obraMusical")}
                   disabled={isViewMode}
                   placeholder="Nome da obra"
+                  className={errors.obraMusical ? "border-destructive" : ""}
+                  data-testid="input-obra-musical"
                 />
+                <FieldError error={errors.obraMusical?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Artista</Label>
                 <Input
-                  value={formData.artista}
-                  onChange={(e) => setFormData({ ...formData, artista: e.target.value })}
+                  {...register("artista")}
                   disabled={isViewMode}
                   placeholder="Nome do artista"
+                  data-testid="input-artista"
                 />
+                <FieldError error={errors.artista?.message} />
               </div>
             </div>
           </div>
@@ -119,46 +164,69 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
             <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
               <Building className="h-4 w-4" /> Cliente e Projeto
             </h3>
-            
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Cliente *</Label>
                 <Input
-                  value={formData.cliente}
-                  onChange={(e) => setFormData({ ...formData, cliente: e.target.value })}
+                  {...register("cliente")}
                   disabled={isViewMode}
                   placeholder="Nome do cliente"
+                  className={errors.cliente ? "border-destructive" : ""}
+                  data-testid="input-cliente"
                 />
+                <FieldError error={errors.cliente?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Projeto</Label>
                 <Input
-                  value={formData.projeto}
-                  onChange={(e) => setFormData({ ...formData, projeto: e.target.value })}
+                  {...register("projeto")}
                   disabled={isViewMode}
                   placeholder="Nome do projeto/campanha"
+                  data-testid="input-projeto"
                 />
+                <FieldError error={errors.projeto?.message} />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Mídia de Destino</Label>
-                <Select value={formData.midiaDestino} onValueChange={(v) => setFormData({ ...formData, midiaDestino: v })} disabled={isViewMode}>
-                  <SelectTrigger><SelectValue placeholder="Selecione a mídia" /></SelectTrigger>
-                  <SelectContent>
-                    {midiasDestino.map(midia => <SelectItem key={midia} value={midia.toLowerCase().replace(/ /g, "_")}>{midia}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="midiaDestino"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
+                      <SelectTrigger data-testid="select-midia-destino">
+                        <SelectValue placeholder="Selecione a mídia" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {midiasDestino.map(midia => (
+                          <SelectItem key={midia} value={midia.toLowerCase().replace(/ /g, "_")}>{midia}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Território</Label>
-                <Select value={formData.territorio} onValueChange={(v) => setFormData({ ...formData, territorio: v })} disabled={isViewMode}>
-                  <SelectTrigger><SelectValue placeholder="Selecione o território" /></SelectTrigger>
-                  <SelectContent>
-                    {territorios.map(t => <SelectItem key={t} value={t.toLowerCase().replace(/ /g, "_")}>{t}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <Controller
+                  name="territorio"
+                  control={control}
+                  render={({ field }) => (
+                    <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
+                      <SelectTrigger data-testid="select-territorio">
+                        <SelectValue placeholder="Selecione o território" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {territorios.map(t => (
+                          <SelectItem key={t} value={t.toLowerCase().replace(/ /g, "_")}>{t}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
               </div>
             </div>
           </div>
@@ -168,46 +236,66 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
             <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
               <DollarSign className="h-4 w-4" /> Período e Valor
             </h3>
-            
+
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">
                 <Label>Data Início</Label>
-                <DatePickerField
-                  value={formData.dataInicio}
-                  onChange={(iso) => setFormData({ ...formData, dataInicio: iso })}
-                  disabled={isViewMode}
-                  placeholder="Selecione a data"
-                  data-testid="datepicker-data-inicio"
+                <Controller
+                  name="dataInicio"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      disabled={isViewMode}
+                      placeholder="Selecione a data"
+                      data-testid="datepicker-data-inicio"
+                    />
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Data Fim</Label>
-                <DatePickerField
-                  value={formData.dataFim}
-                  onChange={(iso) => setFormData({ ...formData, dataFim: iso })}
-                  disabled={isViewMode}
-                  placeholder="Selecione a data"
-                  data-testid="datepicker-data-fim"
+                <Controller
+                  name="dataFim"
+                  control={control}
+                  render={({ field }) => (
+                    <DatePickerField
+                      value={field.value ?? ""}
+                      onChange={field.onChange}
+                      disabled={isViewMode}
+                      placeholder="Selecione a data"
+                      data-testid="datepicker-data-fim"
+                    />
+                  )}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Valor</Label>
                 <div className="flex gap-2">
-                  <Select value={formData.moeda} onValueChange={(v) => setFormData({ ...formData, moeda: v })} disabled={isViewMode}>
-                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="BRL">R$</SelectItem>
-                      <SelectItem value="USD">US$</SelectItem>
-                      <SelectItem value="EUR">€</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <Controller
+                    name="moeda"
+                    control={control}
+                    render={({ field }) => (
+                      <Select value={field.value ?? "BRL"} onValueChange={field.onChange} disabled={isViewMode}>
+                        <SelectTrigger className="w-24" data-testid="select-moeda">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="BRL">R$</SelectItem>
+                          <SelectItem value="USD">US$</SelectItem>
+                          <SelectItem value="EUR">€</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                   <Input
                     type="number"
-                    value={formData.valor}
-                    onChange={(e) => setFormData({ ...formData, valor: e.target.value })}
+                    {...register("valor")}
                     disabled={isViewMode}
                     placeholder="0,00"
                     className="flex-1"
+                    data-testid="input-valor"
                   />
                 </div>
               </div>
@@ -218,12 +306,13 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
           <div className="space-y-2">
             <Label>Observações</Label>
             <Textarea
-              value={formData.observacoes}
-              onChange={(e) => setFormData({ ...formData, observacoes: e.target.value })}
+              {...register("observacoes")}
               disabled={isViewMode}
               placeholder="Observações adicionais..."
               rows={3}
+              data-testid="textarea-observacoes"
             />
+            <FieldError error={errors.observacoes?.message} />
           </div>
 
           <DialogFooter>
@@ -231,7 +320,7 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
               {isViewMode ? "Fechar" : "Cancelar"}
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-primary hover:bg-primary/90">
+              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting} data-testid="button-submit">
                 {mode === "create" ? "Criar Licença" : "Salvar Alterações"}
               </Button>
             )}

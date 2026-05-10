@@ -21,6 +21,7 @@ import {
 import { Textarea } from "@/shared/ui/textarea";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { folhaPagamentoSchema } from "@/modules/rh/lib/folha-pagamento-schema";
 import { useFolhaPagamento, STATUS_PAGAMENTO } from "@/modules/rh/hooks/useFolhaPagamento";
 import type { FolhaPagamento } from "@/modules/rh/hooks/useFolhaPagamento";
 import { useFuncionarios } from "@/modules/rh/hooks/useFuncionarios";
@@ -96,6 +97,23 @@ export function FolhaPagamentoFormModal({
   };
 
   const handleSubmit = async () => {
+    const validation = folhaPagamentoSchema.safeParse({
+      funcionarioId,
+      mesReferencia,
+      salarioBruto: salarioBruto !== "" ? Number(salarioBruto) : null,
+      descontos: descontos !== "" ? Number(descontos) : null,
+      bonus: bonus !== "" ? Number(bonus) : null,
+      dataPagamento: dataPagamento || "",
+      status: status as "pendente" | "processado" | "pago" | "cancelado",
+      observacoes: observacoes || "",
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
+      return;
+    }
+
     if (!funcionarioId) {
       toast.error("Selecione um funcionário");
       return;

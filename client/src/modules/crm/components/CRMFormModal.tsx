@@ -43,6 +43,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/shared/lib/utils";
 import { maskCPF, maskCNPJ, maskPhone, maskCEP, fetchAddressByCEP } from "@/shared/lib/masks";
+import { crmPessoaFisicaSchema, crmPessoaJuridicaSchema } from "@/modules/crm/lib/crm-schema";
 
 // Tipos principais
 type TipoContatoPrincipal = "pessoa_fisica" | "pessoa_juridica";
@@ -214,21 +215,34 @@ export function CRMFormModal({ open, onOpenChange, cliente, mode }: CRMFormModal
 
   const handleSubmit = () => {
     if (tipoContato === "pessoa_fisica") {
-      if (!nomeCompletoPF.trim()) {
-        toast.error("Nome completo é obrigatório");
-        return;
-      }
-      if (!emailPF.trim()) {
-        toast.error("Email é obrigatório");
+      const validation = crmPessoaFisicaSchema.safeParse({
+        nomeCompletoPF,
+        emailPF,
+        telefonePF,
+        cpfPF,
+        categoriaPF,
+        funcaoPF,
+      });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast.error(firstError?.message || "Preencha os campos obrigatórios");
         return;
       }
     } else if (tipoContato === "pessoa_juridica") {
-      if (!razaoSocialPJ.trim()) {
-        toast.error("Razão social é obrigatória");
-        return;
-      }
-      if (!emailPJ.trim()) {
-        toast.error("Email é obrigatório");
+      const validation = crmPessoaJuridicaSchema.safeParse({
+        razaoSocialPJ,
+        cnpjPJ,
+        emailPJ,
+        telefonePJ,
+        categoriaPJ,
+        nomeResponsavelPJ,
+        emailResponsavelPJ,
+        telefoneResponsavelPJ,
+        cargoPJ,
+      });
+      if (!validation.success) {
+        const firstError = validation.error.errors[0];
+        toast.error(firstError?.message || "Preencha os campos obrigatórios");
         return;
       }
     }

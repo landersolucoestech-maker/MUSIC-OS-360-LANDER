@@ -2,15 +2,15 @@ import { z } from "zod";
 
 export const shareSchema = z.object({
   nome_musica: z.string()
-    .min(1, "Nome da música é obrigatório")
     .max(200, "Nome deve ter no máximo 200 caracteres")
-    .trim(),
+    .optional()
+    .or(z.literal("")),
   detentor: z.string()
-    .min(1, "Detentor é obrigatório")
     .max(150, "Detentor deve ter no máximo 150 caracteres")
-    .trim(),
-  funcao: z.enum(["compositor", "interprete", "produtor", "editora", "gravadora", "empresario", "outro"]),
-  direcao: z.enum(["a_receber", "a_pagar"]).default("a_receber"),
+    .optional()
+    .or(z.literal("")),
+  funcao: z.enum(["compositor", "interprete", "produtor", "editora", "gravadora", "empresario", "outro"]).optional(),
+  direcao: z.enum(["a_receber", "a_pagar", "a_enviar"]).default("a_receber"),
   percentual: z.string()
     .refine(
       (v) => !v || (!isNaN(parseFloat(v)) && parseFloat(v) >= 0 && parseFloat(v) <= 100),

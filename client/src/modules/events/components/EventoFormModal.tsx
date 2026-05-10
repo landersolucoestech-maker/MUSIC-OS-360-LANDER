@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { eventoSchema } from "@/modules/events/lib/evento-schema";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -117,20 +118,39 @@ export function EventoFormModal({ open, onOpenChange, evento, mode }: EventoForm
   };
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
+    const result = eventoSchema.safeParse({
+      titulo: formData.titulo,
+      tipoEvento: formData.tipoEvento,
+      artista: formData.artista,
+      status: formData.status,
+      dataInicio: formData.dataInicio,
+      horarioInicio: formData.horarioInicio,
+      dataFim: formData.dataFim,
+      horarioFim: formData.horarioFim,
+      nomeLocal: formData.nomeLocal,
+      endereco: formData.endereco,
+      contatoLocal: formData.contatoLocal,
+      capacidadePublico: formData.capacidadePublico,
+      valorCache: formData.valorCache,
+      publicoEsperado: formData.publicoEsperado,
+      descricao: formData.descricao,
+      observacoes: formData.observacoes,
+    });
 
-    if (!formData.titulo.trim()) {
-      newErrors.titulo = "Título é obrigatório";
-    }
-    if (!formData.tipoEvento) {
-      newErrors.tipoEvento = "Tipo de evento é obrigatório";
-    }
-    if (!formData.dataInicio) {
-      newErrors.dataInicio = "Data de início é obrigatória";
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0];
+        if (field && !newErrors[field]) {
+          newErrors[String(field)] = err.message;
+        }
+      });
+      setErrors(newErrors);
+      return false;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {

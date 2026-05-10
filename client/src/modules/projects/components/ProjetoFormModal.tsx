@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/shared/ui/textarea";
 import { FormTextarea } from "@/shared/components/FormField";
 import { toast } from "sonner";
+import { projetoSchema } from "@/modules/projects/lib/projeto-schema";
 import { Plus, Upload, X, Music, FileAudio, Loader2, Link } from "lucide-react";
 
 interface ProjetoFormModalProps {
@@ -212,6 +213,20 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === "view") return;
+
+    const validation = projetoSchema.safeParse({
+      tipoLancamento,
+      nomeEP: nomeEP || "",
+      artistaResponsavel,
+      status: status || "",
+      observacoes: observacoes || "",
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
+      return;
+    }
 
     if (!tipoLancamento) {
       toast.error("Selecione o tipo de lançamento!");

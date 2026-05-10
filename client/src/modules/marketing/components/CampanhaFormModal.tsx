@@ -13,6 +13,7 @@ import { useCampanhas } from "@/modules/marketing/hooks/useCampanhas";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { campanhaToFormFields, emptyCampanhaFormFields, formToCampanhaPayload } from "@/modules/marketing/mappers";
+import { campanhaSchema } from "@/modules/marketing/lib/campanha-schema";
 import { 
   Facebook, 
   Instagram, 
@@ -129,6 +130,24 @@ export const CampanhaFormModal = ({ open, onOpenChange, initialData, mode }: Cam
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+
+    const validation = campanhaSchema.safeParse({
+      nome,
+      artista_id: artistaId,
+      lancamento_id: lancamentoId,
+      plataformas: plataformasSelecionadas,
+      orcamentoDiario,
+      duracao,
+      objetivo,
+      status,
+      observacoes,
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
+      return;
+    }
 
     const data = formToCampanhaPayload({
       nome,

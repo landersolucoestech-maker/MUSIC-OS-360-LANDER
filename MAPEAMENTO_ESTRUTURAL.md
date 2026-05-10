@@ -973,16 +973,39 @@ Formulários sem validação centralizada — schemas Zod inline em componentes,
 | `crm/components/CRMFormModal.tsx` | Local `FieldError` + `AlertCircle` removidos (eram dead code — 0 call sites) |
 | `releases/components/LancamentoFormModal.tsx` | Local `FieldError` removido (dead code — 0 call sites) |
 
-### Pendente — formas que ainda usam useState puro (sem zodResolver)
-Os schemas lib já existem; falta migração de `useState` → `useForm + zodResolver`:
-`ObraFormModal`, `FonogramaFormModal`, `CRMFormModal`, `EventoFormModal`, `LicencaFormModal`,
-`CampanhaFormModal`, `ConteudoFormModal`, `BriefingFormModal`, `TarefaMarketingFormModal`,
-`TakedownFormModal`, `ProjetoFormModal`, `ShareFormModal`, `FuncionarioFormModal`,
-`FolhaPagamentoFormModal`, `FeriasAusenciasFormModal`, `NotaFiscalFormModal`
+### Phase 2 — safeParse wired em todas as forms pendentes (CONCLUÍDO)
 
-### Resultado
+Todos os formulários abaixo receberam validação Zod via `schema.safeParse()` no `handleSubmit`
+(ou substituição do `validate()` local por safeParse → `setErrors` para FieldError inline):
+
+| Componente | Abordagem |
+|---|---|
+| `marketing/components/TarefaMarketingFormModal.tsx` | Migração completa `useForm+zodResolver` |
+| `marketing/components/ConteudoFormModal.tsx` | Híbrido: useForm + useState para multi-select |
+| `marketing/components/BriefingFormModal.tsx` | Migração completa `useForm+zodResolver` |
+| `marketing/components/CampanhaFormModal.tsx` | safeParse no handleSubmit |
+| `monitoring/components/TakedownFormModal.tsx` | Migração completa `useForm+zodResolver` |
+| `licensing/components/LicencaFormModal.tsx` | Migração completa `useForm+zodResolver` |
+| `catalog/components/ObraFormModal.tsx` | safeParse no handleSubmit |
+| `catalog/components/FonogramaFormModal.tsx` | safeParse no handleSubmit |
+| `crm/components/CRMFormModal.tsx` | safeParse (PF + PJ schemas) no handleSubmit |
+| `events/components/EventoFormModal.tsx` | validate() substituído por safeParse → setErrors |
+| `releases/components/SharePendenteFormModal.tsx` | safeParse no handleSubmit |
+| `rh/components/FuncionarioFormModal.tsx` | validate() substituído por safeParse → setErrors |
+| `rh/components/FolhaPagamentoFormModal.tsx` | safeParse no handleSubmit |
+| `rh/components/FeriasAusenciasFormModal.tsx` | validate() substituído por safeParse → setErrors |
+| `accounting/components/NotaFiscalFormModal.tsx` | safeParse antes da validação inline |
+| `projects/components/ProjetoFormModal.tsx` | safeParse no handleSubmit |
+| `crm/components/LeadFormModal.tsx` | já tinha safeParse (pre-existente) |
+
+Schemas actualizados para alinhar com o comportamento real dos forms:
+- `releases/lib/share-schema.ts` — direcao enum expandido para incluir `a_enviar`; campos opcionais
+- `rh/lib/funcionario-schema.ts` — email e cargo tornados opcionais (form não os obriga)
+
+### Resultado Final (Phase 1 + Phase 2)
 - `npx tsc --noEmit` → **0 erros** após todas as alterações
 - 22 ficheiros schema criados (cobertura 100% dos módulos)
 - 3 schemas inline extraídos para lib
-- 1 zodResolver fiado (ArtistaFormModal)
+- 1 zodResolver fiado (ArtistaFormModal — migração completa)
 - 4 `FieldError` locais eliminados
+- 16 formulários com safeParse/zodResolver wired (Phase 2 CONCLUÍDA)

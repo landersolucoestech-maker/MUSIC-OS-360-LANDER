@@ -21,6 +21,7 @@ import {
 } from "@/shared/ui/select";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { feriasAusenciasSchema } from "@/modules/rh/lib/ferias-ausencias-schema";
 import {
   useFeriasAusencias,
   TIPOS_AUSENCIA,
@@ -109,16 +110,40 @@ export function FeriasAusenciasFormModal({
   };
 
   const validate = (): boolean => {
-    const newErrors: Record<string, string> = {};
-    if (!funcionarioId) newErrors.funcionario_id = "Selecione um funcionário";
-    if (!tipo) newErrors.tipo = "Selecione o tipo de ausência";
-    if (!dataInicio) newErrors.data_inicio = "Data de início é obrigatória";
-    if (!dataFim) newErrors.data_fim = "Data de fim é obrigatória";
-    if (dataInicio && dataFim && new Date(dataFim) < new Date(dataInicio)) {
-      newErrors.data_fim = "Data fim deve ser igual ou posterior à data início";
+    const result = feriasAusenciasSchema.safeParse({
+      funcionarioId,
+      tipo,
+      dataInicio,
+      dataFim,
+      status: status as "pendente" | "aprovado" | "rejeitado" | "em_andamento" | "concluido",
+      aprovadoPor: aprovadoPor || "",
+      observacoes: observacoes || "",
+    });
+
+    if (!result.success) {
+      const newErrors: Record<string, string> = {};
+      result.error.errors.forEach((err) => {
+        const field = err.path[0];
+        if (field && !newErrors[String(field)]) {
+          newErrors[String(field)] = err.message;
+        }
+      });
+      // Map schema field names back to the original error keys
+      if (newErrors.funcionarioId) newErrors.funcionario_id = newErrors.funcionarioId;
+      if (newErrors.dataInicio) newErrors.data_inicio = newErrors.dataInicio;
+      if (newErrors.dataFim) newErrors.data_fim = newErrors.dataFim;
+      setErrors(newErrors);
+      return false;
     }
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+
+    // Extra date range check not covered by schema
+    if (dataInicio && dataFim && new Date(dataFim) < new Date(dataInicio)) {
+      setErrors({ data_fim: "Data fim deve ser igual ou posterior à data início" });
+      return false;
+    }
+
+    setErrors({});
+    return true;
   };
 
   const handleSubmit = () => {

@@ -13,6 +13,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { toast } from "sonner";
 import { useShares } from "@/modules/releases/hooks/useShares";
+import { shareSchema } from "@/modules/releases/lib/share-schema";
 
 interface SharePendenteFormModalProps {
   open: boolean;
@@ -95,6 +96,24 @@ export function SharePendenteFormModal({ open, onOpenChange, share, onSuccess }:
   };
 
   const handleSubmit = async () => {
+    const validation = shareSchema.safeParse({
+      nome_musica: formData.nome_musica,
+      detentor: formData.detentor,
+      funcao: formData.funcao as any,
+      direcao: formData.direcao as any,
+      percentual: formData.percentual,
+      status: formData.status as any,
+      acordo_notas: formData.acordo_notas,
+      acordo_url: formData.acordo_url,
+      observacoes: formData.observacoes,
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
+      return;
+    }
+
     if (!formData.direcao) {
       toast.error("Selecione a direção do share");
       return;

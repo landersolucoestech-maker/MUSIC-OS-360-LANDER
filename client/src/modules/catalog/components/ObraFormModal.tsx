@@ -66,6 +66,7 @@ import {
   obraToFormFields,
   formToObraPayload,
 } from "@/modules/catalog/mappers";
+import { obraSchema } from "@/modules/catalog/lib/obra-schema";
 
 // ── Autocomplete: busca por nome_artistico, armazena/exibe nome_civil ──
 interface ArtistNameInputProps {
@@ -495,13 +496,25 @@ export function ObraFormModal({
       return;
     }
 
-    if (!tituloObra) {
-      toast.error("Título da obra é obrigatório!");
-      return;
-    }
+    const validation = obraSchema.safeParse({
+      tituloObra,
+      generoMusical,
+      idioma,
+      situacao,
+      iswc,
+      codAbramus,
+      codEcad,
+      duracaoMin: String(duracaoMin),
+      duracaoSeg: String(duracaoSeg),
+      instrumental: instrumental as "sim" | "nao",
+      criadaPorIA,
+      letraCompleta,
+      aceitaTermos,
+    });
 
-    if (!aceitaTermos) {
-      toast.error("Você precisa aceitar os termos de uso!");
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
       return;
     }
 

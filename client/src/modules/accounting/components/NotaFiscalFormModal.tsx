@@ -19,6 +19,7 @@ import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings"
 import { Badge } from "@/shared/ui/badge";
 import { isValidCpfCnpj, isValidCEP, isValidEmail, formatCpfCnpj, formatCEP, onlyDigits } from "@/shared/lib/br-validators";
 import { parseTipoOperacao, serializeTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import { notaFiscalSchema } from "@/modules/accounting/lib/nota-fiscal-schema";
 
 interface NotaFiscalFormModalProps {
   open: boolean;
@@ -326,6 +327,53 @@ export function NotaFiscalFormModal({ open, onOpenChange, notaFiscal, mode, defa
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (mode === "view") return;
+
+    const schemaValidation = notaFiscalSchema.safeParse({
+      numero: formData.numero || "",
+      serie: formData.serie || "",
+      tipo_nota: formData.tipo_nota as "nfse" | "nfe" | "nfce",
+      cliente_id: formData.cliente_id || "",
+      natureza_operacao: formData.natureza_operacao || "",
+      codigo_servico_municipal: formData.codigo_servico_municipal || "",
+      codigo_municipio: formData.codigo_municipio || "",
+      cfop: formData.cfop || "",
+      descricao_servicos: formData.descricao_servicos || "",
+      data_emissao: formData.data_emissao,
+      vencimento: formData.vencimento,
+      status: formData.status || "",
+      tomador_cnpj: formData.tomador_cnpj || "",
+      tomador_razao_social: formData.tomador_razao_social || "",
+      tomador_inscricao_estadual: formData.tomador_inscricao_estadual || "",
+      tomador_inscricao_municipal: formData.tomador_inscricao_municipal || "",
+      tomador_email: formData.tomador_email || "",
+      tomador_endereco: formData.tomador_endereco || "",
+      tomador_cidade: formData.tomador_cidade || "",
+      tomador_uf: formData.tomador_uf || "",
+      tomador_cep: formData.tomador_cep || "",
+      valor_servicos: Number(formData.valor_servicos) || 0,
+      valor_deducoes: Number(formData.valor_deducoes) || 0,
+      base_calculo: Number(formData.base_calculo) || 0,
+      aliquota_iss: Number(formData.aliquota_iss) || 0,
+      valor_iss: Number(formData.valor_iss) || 0,
+      iss_retido: !!formData.iss_retido,
+      valor_pis: Number(formData.valor_pis) || 0,
+      valor_cofins: Number(formData.valor_cofins) || 0,
+      valor_inss: Number(formData.valor_inss) || 0,
+      valor_ir: Number(formData.valor_ir) || 0,
+      valor_csll: Number(formData.valor_csll) || 0,
+      valor_liquido: Number(formData.valor_liquido) || 0,
+      forma_pagamento: formData.forma_pagamento || "",
+      condicao_pagamento: formData.condicao_pagamento || "",
+      url_pdf: formData.url_pdf || "",
+      observacoes: formData.observacoes || "",
+    });
+
+    if (!schemaValidation.success) {
+      const firstError = schemaValidation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
+      return;
+    }
+
     const errors: Record<string, string> = {};
     if (!formData.numero?.trim()) errors.numero = "Número obrigatório";
     if (!formData.tomador_razao_social?.trim()) errors.tomador_razao_social = "Razão social obrigatória";

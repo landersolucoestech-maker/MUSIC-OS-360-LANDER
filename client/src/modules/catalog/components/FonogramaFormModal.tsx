@@ -33,6 +33,7 @@ import {
   fonogramaToParticipacao,
   fonogramaToFormFields,
 } from "@/modules/catalog/mappers";
+import { fonogramaSchema } from "@/modules/catalog/lib/fonograma-schema";
 
 type FonogramaRow = Fonograma;
 
@@ -568,8 +569,20 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       return;
     }
 
-    if (!aceitaTermos) {
-      toast.error("Você precisa aceitar os termos de uso!");
+    const isrcJoined = joinIsrc(isrcPais, isrcRegistrante, isrcAno, isrcDesignacao);
+    const validation = fonogramaSchema.safeParse({
+      titulo: titulo || "",
+      isrc: isrcJoined || "",
+      genero: generoMusical || "",
+      instrumental,
+      criadaPorIA,
+      pubSimultanea,
+      aceitaTermos,
+    });
+
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError?.message || "Preencha os campos obrigatórios");
       return;
     }
 

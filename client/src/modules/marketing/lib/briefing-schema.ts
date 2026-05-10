@@ -9,7 +9,7 @@ export const briefingSchema = z.object({
   prioridade: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
   budget: z.string().optional().or(z.literal("")),
-  prazoEntrega: z.date().optional().nullable(),
+  prazoEntrega: z.string().optional().or(z.literal("")),
   objetivo: z.string()
     .max(1000, "Objetivo deve ter no máximo 1000 caracteres")
     .optional()
