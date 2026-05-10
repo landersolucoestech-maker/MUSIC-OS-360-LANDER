@@ -1,4 +1,5 @@
 import { io, Socket } from 'socket.io-client';
+import { WS_URL } from "@/shared/lib/env";
 
 /**
  * Singleton Socket.IO client.
@@ -10,9 +11,6 @@ import { io, Socket } from 'socket.io-client';
  * Auth: JWT access_token is passed in handshake.auth.token so the backend
  * WsGateway can validate it on connection.
  */
-
-const WS_URL: string =
-  (import.meta.env.VITE_WS_URL as string | undefined) ?? '';
 
 let _socket: Socket | null = null;
 let _currentToken: string | null = null;

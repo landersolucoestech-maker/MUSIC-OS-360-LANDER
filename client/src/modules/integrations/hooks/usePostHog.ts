@@ -16,6 +16,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 import type { AnalyticsEventName, AnalyticsEventProperties } from "@/shared/integrations/contracts/monitoring.contract";
+import { IS_DEV } from "@/shared/lib/env";
 
 // ─── Tipos específicos do PostHog ─────────────────────────────────────────────
 
@@ -51,19 +52,19 @@ export function usePostHogStatus() {
  */
 export function usePostHogAnalytics() {
   const track = (event: AnalyticsEventName, properties?: AnalyticsEventProperties) => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.debug("[PostHog stub] track:", event, properties);
     }
   };
 
   const identify = (userId: string, properties?: AnalyticsEventProperties) => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.debug("[PostHog stub] identify:", userId, properties);
     }
   };
 
   const page = (name: string) => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.debug("[PostHog stub] page:", name);
     }
   };

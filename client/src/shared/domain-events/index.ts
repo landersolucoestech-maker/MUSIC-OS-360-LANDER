@@ -29,15 +29,23 @@ export const DomainEvents = {
   PHONOGRAM_DELETED:   "PHONOGRAM_DELETED",
 
   // Contratos
-  CONTRACT_CREATED: "CONTRACT_CREATED",
-  CONTRACT_UPDATED: "CONTRACT_UPDATED",
-  CONTRACT_DELETED: "CONTRACT_DELETED",
-  CONTRACT_SIGNED:  "CONTRACT_SIGNED",
+  CONTRACT_CREATED:          "CONTRACT_CREATED",
+  CONTRACT_UPDATED:          "CONTRACT_UPDATED",
+  CONTRACT_DELETED:          "CONTRACT_DELETED",
+  CONTRACT_SIGNED:           "CONTRACT_SIGNED",
+  CONTRACT_TEMPLATE_CREATED: "CONTRACT_TEMPLATE_CREATED",
+  CONTRACT_TEMPLATE_UPDATED: "CONTRACT_TEMPLATE_UPDATED",
+  CONTRACT_TEMPLATE_DELETED: "CONTRACT_TEMPLATE_DELETED",
 
   // Lançamentos
   RELEASE_CREATED: "RELEASE_CREATED",
   RELEASE_UPDATED: "RELEASE_UPDATED",
   RELEASE_DELETED: "RELEASE_DELETED",
+
+  // Shares (gestão de participação em obras/fonogramas)
+  SHARE_CREATED: "SHARE_CREATED",
+  SHARE_UPDATED: "SHARE_UPDATED",
+  SHARE_DELETED: "SHARE_DELETED",
 
   // CRM / Leads
   LEAD_CAPTURED:  "LEAD_CAPTURED",
@@ -48,6 +56,11 @@ export const DomainEvents = {
   TRANSACTION_UPDATED: "TRANSACTION_UPDATED",
   TRANSACTION_DELETED: "TRANSACTION_DELETED",
   FINANCE_CALCULATED:  "FINANCE_CALCULATED",
+
+  // Notas Fiscais
+  INVOICE_CREATED: "INVOICE_CREATED",
+  INVOICE_UPDATED: "INVOICE_UPDATED",
+  INVOICE_DELETED: "INVOICE_DELETED",
 
   // Sistema
   AUDIT_ENTRY_CREATED: "AUDIT_ENTRY_CREATED",
@@ -117,19 +130,28 @@ export type DomainEventPayloads = {
   PHONOGRAM_REGISTERED:  { id: string; obra_id: string; org_id: string };
   PHONOGRAM_UPDATED:     { id: string; obra_id: string; org_id: string };
   PHONOGRAM_DELETED:     { id: string; org_id: string };
-  CONTRACT_CREATED:      ContractCreatedPayload;
-  CONTRACT_UPDATED:      Partial<ContractCreatedPayload> & { id: string };
-  CONTRACT_DELETED:      { id: string; org_id: string };
-  CONTRACT_SIGNED:       { id: string; org_id: string };
+  CONTRACT_CREATED:          ContractCreatedPayload;
+  CONTRACT_UPDATED:          Partial<ContractCreatedPayload> & { id: string };
+  CONTRACT_DELETED:          { id: string; org_id: string };
+  CONTRACT_SIGNED:           { id: string; org_id: string };
+  CONTRACT_TEMPLATE_CREATED: { id: string; nome?: string; tipo?: string; org_id: string };
+  CONTRACT_TEMPLATE_UPDATED: { id: string; nome?: string; tipo?: string; org_id: string };
+  CONTRACT_TEMPLATE_DELETED: { id: string; org_id: string };
   RELEASE_CREATED:       ReleaseCreatedPayload;
   RELEASE_UPDATED:       Partial<ReleaseCreatedPayload> & { id: string };
   RELEASE_DELETED:       { id: string; org_id: string };
+  SHARE_CREATED:         { id: string; obra_id?: string; artista_id?: string; percentual?: number; org_id: string };
+  SHARE_UPDATED:         { id: string; obra_id?: string; artista_id?: string; percentual?: number; org_id: string };
+  SHARE_DELETED:         { id: string; org_id: string };
   LEAD_CAPTURED:         LeadCapturedPayload;
   LEAD_CONVERTED:        { id: string; artista_id?: string; org_id: string };
   TRANSACTION_CREATED:   TransactionCreatedPayload;
   TRANSACTION_UPDATED:   Partial<TransactionCreatedPayload> & { id: string };
   TRANSACTION_DELETED:   { id: string; org_id: string };
   FINANCE_CALCULATED:    { artista_id: string; valor: number; org_id: string };
+  INVOICE_CREATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
+  INVOICE_UPDATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
+  INVOICE_DELETED:       { id: string; org_id: string };
   AUDIT_ENTRY_CREATED:   AuditEntryCreatedPayload;
 };
 

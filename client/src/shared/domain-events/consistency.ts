@@ -16,6 +16,7 @@
 import { subscribe, DomainEvents } from "./index";
 import { storage } from "@/shared/lib/storage";
 import { getCurrentOrgId } from "@/shared/lib/tenant";
+import { IS_DEV } from "@/shared/lib/env";
 
 let _initialized = false;
 
@@ -43,7 +44,7 @@ function initConsistencyHooks(): void {
   subscribe(DomainEvents.ARTIST_CREATED, ({ id, nome_artistico }) => {
     try {
       // Registra entrada de auditoria de boas-vindas no console (dev)
-      if (import.meta.env.DEV) {
+      if (IS_DEV) {
         console.info(`[consistency] Artista criado: "${nome_artistico}" (${id})`);
       }
     } catch {
@@ -64,7 +65,7 @@ function initConsistencyHooks(): void {
       existing["_global"] = true;
       storage.setRaw(flagKey, existing);
 
-      if (import.meta.env.DEV) {
+      if (IS_DEV) {
         console.info(
           `[consistency] Transação criada: ${tipo} R$${valor?.toFixed(2)} → P&L marcado como desatualizado`,
         );
@@ -76,7 +77,7 @@ function initConsistencyHooks(): void {
 
   // ── LEAD_CONVERTED → Cria artista rascunho se lead era artista ───────────
   subscribe(DomainEvents.LEAD_CONVERTED, ({ id, artista_id }) => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.info(
         `[consistency] Lead ${id} convertido${artista_id ? ` → artista ${artista_id}` : ""}`,
       );
@@ -85,7 +86,7 @@ function initConsistencyHooks(): void {
 
   // ── MUSIC_REGISTERED → Valida integridade do catálogo ───────────────────
   subscribe(DomainEvents.MUSIC_REGISTERED, ({ obra_id, titulo }) => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.info(`[consistency] Música registrada: "${titulo}" (${obra_id})`);
     }
   });

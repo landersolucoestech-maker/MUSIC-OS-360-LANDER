@@ -1,5 +1,6 @@
 import { Button } from "@/shared/ui/button";
 import { AlertTriangle, Home, RefreshCw } from "lucide-react";
+import { IS_DEV } from "@/shared/lib/env";
 
 interface ErrorFallbackProps {
   error?: Error | null;
@@ -8,7 +9,7 @@ interface ErrorFallbackProps {
 }
 
 export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) {
-  const isDev = import.meta.env.DEV;
+  const isDev = IS_DEV;
 
   return (
     <div className="flex flex-col items-center justify-center min-h-[400px] p-8 text-center">

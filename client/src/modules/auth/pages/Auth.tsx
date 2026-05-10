@@ -9,10 +9,7 @@ import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
 import { Loader2, User, Lock, Facebook, Instagram, MessageCircle, Globe, Mail, ArrowLeft } from "lucide-react";
 import { authRateLimiter, isLeakedPassword } from "@/shared/lib/security";
-
-const MOCK_MODE =
-  import.meta.env.VITE_USE_MOCK !== "false" &&
-  import.meta.env.VITE_MOCK_MODE !== "false";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 // Password complexity validation with leaked password protection
 const passwordSchema = z

@@ -25,3 +25,16 @@ export const IS_DEV: boolean = import.meta.env.DEV === true;
 
 /** true em build de produção. */
 export const IS_PROD: boolean = import.meta.env.PROD === true;
+
+/**
+ * URL do servidor WebSocket / Socket.IO.
+ * String vazia = same-origin (Vite proxy resolve em dev).
+ */
+export const WS_URL: string =
+  (import.meta.env.VITE_WS_URL as string | undefined) ?? "";
+
+/**
+ * Modo de ambiente Vite: "development" | "production" | "test".
+ * Equivale a import.meta.env.MODE.
+ */
+export const ENV_MODE: string = (import.meta.env.MODE as string) ?? "development";

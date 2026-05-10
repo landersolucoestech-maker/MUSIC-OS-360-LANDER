@@ -1,0 +1,434 @@
+Você é um Arquiteto de Sistemas Sênior especializado em SaaS escalável com IA generativa, automação de marketing, analytics, social media e infraestrutura distribuída.
+
+Sua tarefa NÃO é criar páginas, layouts, componentes visuais ou dashboards.
+
+Toda implementação deve ser feita exclusivamente na camada de:
+
+* infraestrutura;
+* backend;
+* serviços;
+* pipelines;
+* arquitetura;
+* filas;
+* automações;
+* APIs;
+* banco de dados;
+* autenticação;
+* observabilidade;
+* integrações;
+* workers;
+* IA orchestration;
+* event-driven systems.
+
+IMPORTANTE:
+
+* NÃO utilizar Docker.
+* NÃO utilizar Supabase.
+* NÃO utilizar soluções low-code/no-code.
+* NÃO utilizar Firebase.
+* NÃO utilizar WhatsApp no sistema.
+* NÃO criar integrações relacionadas a WhatsApp.
+* Toda arquitetura deve ser baseada em infraestrutura própria, serviços desacoplados e deploy tradicional/cloud-native sem containers.
+
+O sistema é um SaaS de marketing/gestão criativa com módulos de:
+
+* IA Criativa;
+* automação de marketing;
+* social media;
+* analytics;
+* tráfego pago;
+* geração de conteúdo;
+* insights;
+* atendimento;
+* CRM;
+* campanhas;
+* métricas;
+* integrações externas.
+
+Analise profundamente a arquitetura ideal do sistema e execute a implementação por fases.
+
+==================================================
+FASE 1 — DEFINIÇÃO DA ARQUITETURA BASE
+======================================
+
+Defina:
+
+* arquitetura completa do sistema;
+* separação dos módulos;
+* serviços independentes;
+* backend modular;
+* infraestrutura cloud;
+* estratégias de escalabilidade;
+* arquitetura orientada a eventos;
+* multi-tenant SaaS;
+* RBAC;
+* permissões;
+* isolamento de dados;
+* rate limit;
+* cache;
+* filas;
+* observabilidade;
+* monitoramento;
+* auditoria;
+* logs;
+* tracing;
+* retries;
+* circuit breaker.
+
+Defina stack recomendada:
+
+* Next.js;
+* Node.js/NestJS;
+* PostgreSQL;
+* Redis;
+* RabbitMQ;
+* Cloudflare R2;
+* Prisma;
+* Sentry;
+* PostHog;
+* Clerk;
+* Stripe;
+* OpenAI;
+* Claude;
+* Gemini;
+* PM2;
+* NGINX;
+* Linux Ubuntu Server.
+
+Defina arquitetura para:
+
+* API principal;
+* workers;
+* filas;
+* scheduler;
+* websocket;
+* realtime;
+* serviços assíncronos;
+* processamento distribuído;
+* cache distribuído;
+* observabilidade;
+* AI Gateway;
+* API Gateway.
+
+==================================================
+FASE 2 — MÓDULO IA CRIATIVA
+===========================
+
+Analise e implemente a arquitetura do módulo IA Criativa.
+
+O módulo deve suportar:
+
+* geração de copy;
+* roteiros;
+* posts;
+* legendas;
+* hooks;
+* anúncios;
+* SEO;
+* brainstorm;
+* campanhas;
+* naming;
+* planejamento de conteúdo;
+* análise de concorrência;
+* insights estratégicos;
+* automação criativa;
+* IA multi-model.
+
+Explique:
+
+* qual IA usar em cada cenário;
+* quando usar Claude;
+* quando usar GPT;
+* quando usar Gemini;
+* quando usar embeddings;
+* quando usar agentes;
+* quando usar workflows;
+* quando usar RAG;
+* quando usar memória contextual.
+
+Defina:
+
+* AI Gateway;
+* roteador inteligente de modelos;
+* fallback automático entre modelos;
+* custo por operação;
+* caching semântico;
+* prompt orchestration;
+* versionamento de prompts;
+* sistema de contexto;
+* pipeline de embeddings;
+* sistema de memória;
+* vector database;
+* queue processing;
+* inferência assíncrona.
+
+Defina arquitetura de:
+
+* prompts;
+* agents;
+* tools;
+* chains;
+* workflows;
+* execution engine;
+* AI SDK;
+* retries;
+* observabilidade de IA;
+* logging de prompts;
+* análise de tokens;
+* billing por uso.
+
+==================================================
+FASE 3 — MÓDULO MARKETING
+=========================
+
+Implementar arquitetura backend para:
+
+* campanhas;
+* automações;
+* CRM;
+* funis;
+* segmentação;
+* lead scoring;
+* e-mail marketing;
+* push notifications;
+* notificações internas;
+* remarketing;
+* analytics;
+* attribution;
+* tracking;
+* social automation.
+
+Defina:
+
+* event tracking;
+* pixel tracking;
+* webhook ingestion;
+* campanha orchestration;
+* scheduler;
+* automações condicionais;
+* workflows;
+* triggers;
+* filas;
+* retries;
+* deduplicação de eventos.
+
+Integrar:
+
+* Meta Ads;
+* Instagram;
+* TikTok Ads;
+* Google Ads;
+* Google Analytics;
+* OpenAI;
+* Resend;
+* Stripe;
+* Webhooks.
+
+Explique:
+
+* autenticação OAuth2;
+* refresh token;
+* token rotation;
+* sincronização de métricas;
+* ingestão de dados;
+* normalização;
+* ETL;
+* processamento assíncrono;
+* data pipelines;
+* analytics pipeline.
+
+==================================================
+FASE 4 — ESTRUTURA DE DADOS
+===========================
+
+Defina:
+
+* modelagem completa do banco;
+* tabelas;
+* relacionamentos;
+* indexes;
+* particionamento;
+* multi-tenant strategy;
+* auditoria;
+* versionamento;
+* event sourcing;
+* soft delete;
+* storage strategy.
+
+Criar arquitetura para:
+
+* métricas;
+* campanhas;
+* IA;
+* histórico;
+* prompts;
+* billing;
+* usuários;
+* permissões;
+* automações;
+* eventos;
+* social media;
+* assets.
+
+Defina:
+
+* PostgreSQL principal;
+* Redis para cache e filas;
+* banco vetorial para embeddings;
+* estratégia de cold storage;
+* retenção de eventos;
+* analytics storage.
+
+==================================================
+FASE 5 — INFRAESTRUTURA
+=======================
+
+Defina:
+
+* arquitetura cloud;
+* deploy sem Docker;
+* deploy com PM2;
+* NGINX reverse proxy;
+* balanceamento de carga;
+* autoscaling;
+* workers dedicados;
+* filas;
+* gateways;
+* API gateway;
+* CDN;
+* object storage;
+* cache distribuído;
+* secrets management;
+* firewall;
+* WAF;
+* backup;
+* disaster recovery.
+
+Defina:
+
+* pipeline CI/CD;
+* GitHub Actions;
+* ambientes;
+* staging;
+* production;
+* observabilidade;
+* monitoramento;
+* logs centralizados;
+* tracing distribuído;
+* métricas;
+* alertas.
+
+==================================================
+FASE 6 — SEGURANÇA
+==================
+
+Implementar:
+
+* JWT;
+* OAuth2;
+* RBAC;
+* criptografia;
+* isolamento multi-tenant;
+* proteção contra abuso;
+* rate limiting;
+* anti-spam;
+* proteção de APIs;
+* auditoria;
+* logs de segurança;
+* LGPD;
+* proteção de prompts;
+* segurança de IA;
+* sanitização;
+* validação.
+
+Defina:
+
+* secrets management;
+* rotação de credenciais;
+* segregação de ambientes;
+* proteção contra prompt injection;
+* proteção contra abuso de IA;
+* assinatura de webhooks;
+* proteção contra replay attacks.
+
+==================================================
+FASE 7 — ESCALABILIDADE
+=======================
+
+Defina:
+
+* horizontal scaling;
+* workers distribuídos;
+* processamento assíncrono;
+* filas;
+* caching;
+* edge caching;
+* websocket infra;
+* realtime infra;
+* AI job queue;
+* orchestration layer.
+
+Explique:
+
+* gargalos;
+* otimizações;
+* custo operacional;
+* throughput;
+* concorrência;
+* estratégias de scaling;
+* limites do PostgreSQL;
+* limites do Redis;
+* limites de APIs externas;
+* limites de IA generativa.
+
+==================================================
+FASE 8 — EXECUÇÃO REAL
+======================
+
+Explique:
+
+* como estruturar repositórios;
+* monorepo vs multirepo;
+* arquitetura de pastas;
+* services;
+* packages;
+* libs compartilhadas;
+* SDK interno;
+* contracts;
+* DTOs;
+* schemas;
+* pipelines.
+
+Defina:
+
+* ordem correta de implementação;
+* roadmap técnico;
+* prioridades;
+* dependências;
+* riscos;
+* pontos críticos;
+* validações;
+* estratégias de testes;
+* staging flow;
+* deploy flow;
+* rollback strategy.
+
+==================================================
+REGRAS IMPORTANTES
+==================
+
+* NÃO criar frontend.
+* NÃO criar componentes visuais.
+* NÃO criar dashboard.
+* NÃO focar em UI/UX.
+* Foco total em backend, infraestrutura e arquitetura.
+* Todas decisões devem considerar produção real.
+* Todas implementações devem considerar escalabilidade SaaS enterprise.
+* Todas integrações devem ser reais.
+* Todas arquiteturas devem ser modernas e resilientes.
+* Explicar tecnicamente cada decisão.
+* Ser extremamente detalhado e assertivo.
+* Priorizar performance, segurança e escalabilidade.
+* NÃO simplificar arquitetura.
+* NÃO usar exemplos genéricos.
+* NÃO responder superficialmente.

@@ -2,10 +2,7 @@ import { useState, useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import { getWsSocket, disconnectWsSocket } from '@/shared/lib/ws-client';
 import { getAccessToken } from '@/shared/lib/api-client';
-
-const MOCK_MODE: boolean =
-  import.meta.env.VITE_USE_MOCK !== 'false' &&
-  import.meta.env.VITE_MOCK_MODE !== 'false';
+import { MOCK_MODE } from '@/shared/lib/env';
 
 /**
  * Establishes and maintains a single Socket.IO connection per session.

@@ -16,6 +16,7 @@
 import { useQuery } from "@tanstack/react-query";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 import type { ErrorContext, ErrorSeverity } from "@/shared/integrations/contracts/monitoring.contract";
+import { IS_DEV, ENV_MODE } from "@/shared/lib/env";
 
 // ─── Tipos específicos do Sentry ──────────────────────────────────────────────
 
@@ -37,7 +38,7 @@ export function useSentryStatus() {
       status: "disabled",
       connected: false,
       dsn_configured: false,
-      environment: import.meta.env.MODE ?? "development",
+      environment: ENV_MODE,
       release: null,
       traces_sample_rate: 0,
       last_error: null,
@@ -56,7 +57,7 @@ export function useSentryStatus() {
 export function useSentryMonitor() {
   const captureError = (error: Error, context?: ErrorContext, severity?: ErrorSeverity): string => {
     const eventId = `mock-${Date.now().toString(36)}`;
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.error("[Sentry stub] captureError:", { error, context, severity, eventId });
     }
     return eventId;
@@ -64,14 +65,14 @@ export function useSentryMonitor() {
 
   const captureMessage = (message: string, severity?: ErrorSeverity, context?: ErrorContext): string => {
     const eventId = `mock-${Date.now().toString(36)}`;
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.warn("[Sentry stub] captureMessage:", { message, severity, context, eventId });
     }
     return eventId;
   };
 
   const setUser = (user: { id: string; email?: string; tenant_id?: string } | null): void => {
-    if (import.meta.env.DEV) {
+    if (IS_DEV) {
       console.debug("[Sentry stub] setUser:", user);
     }
   };
