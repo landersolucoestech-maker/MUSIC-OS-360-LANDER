@@ -4,7 +4,7 @@ import { cn } from "@/shared/lib/utils";
 import {
   computeEvolutionSummary,
   type TrendDirection,
-} from "@/modules/artist";
+} from "@/modules/artist/components/ArtistaEvolutionCard";
 interface MetricEvolutionPoint { date: string; value?: number; [key: string]: unknown; }
 
 interface PlatformMiniTrendProps {

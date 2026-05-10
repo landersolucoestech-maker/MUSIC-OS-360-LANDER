@@ -837,3 +837,34 @@ client/src/test/
 - `TenantProvider` deve envolver **qualquer** componente que use `useTenant()`
 - `musicos360_` prefix é mandatório em todos os CustomEvents e localStorage keys
 - Dados mock de métricas (analytics) vivem em `modules/marketing/data/mockAnalytics.ts`
+
+---
+
+## 22. ETAPA 3 — LIMPEZA DE CÓDIGO MORTO (Maio 2026)
+
+### Ficheiros removidos (53 total — todos barrels com 0 importadores)
+
+**Barrel `index.ts` de módulos** (18 ficheiros):
+`modules/index.ts` (mega-barrel com `./leads` quebrado), `modules/accounting/index.ts`, `modules/artist/index.ts`, `modules/auth/index.ts`, `modules/catalog/index.ts`, `modules/contracts/index.ts`, `modules/crm/index.ts`, `modules/events/index.ts`, `modules/integrations/index.ts`, `modules/inventory/index.ts`, `modules/licensing/index.ts`, `modules/marketing/index.ts`, `modules/monitoring/index.ts`, `modules/projects/index.ts`, `modules/releases/index.ts`, `modules/rh/index.ts`, `modules/rights-monitoring/index.ts`, `modules/settings/index.ts`
+
+**Barrel `shared/index.ts`** (1 ficheiro):
+`shared/index.ts`
+
+**Barrel `types/index.ts` de módulos** (17 ficheiros — excepto `rights-monitoring/types` que tem 1 importador em teste):
+`accounting/types`, `admin/types`, `artist/types`, `catalog/types`, `contracts/types`, `crm/types`, `events/types`, `inventory/types`, `licensing/types`, `marketing/types`, `monitoring/types`, `projects/types`, `releases/types`, `reports/types`, `rh/types`, `settings/types`, `support/types`
+
+**Hook morto** (1 ficheiro):
+`shared/hooks/useKeyboardShortcuts.ts` — navegação por teclado nunca conectada a nenhuma página
+
+**Correcção de import introduzida pela limpeza** (1 ficheiro):
+`modules/artist/components/PlatformMiniTrend.tsx` — import de `computeEvolutionSummary` corrigido de `@/modules/artist` (barrel removido) para `@/modules/artist/components/ArtistaEvolutionCard` (fonte directa)
+
+### Mantidos apesar de 0 importadores directos (infra arquitectural)
+- `shared/lib/tenant.ts` — helpers `getCurrentOrgId`, `withTenantFilter`, `stampTenant` para modo produção (JWT)
+- `shared/lib/tenant-isolation.ts` — `isolateByTenant`, `assertTenantOwnership`, `stampTenantId` documentados em `replit.md`
+- `shared/hooks/useCanAccess.ts` — RBAC hook para controlo de permissões por módulo/acção (referenciado em `useIsAdmin.ts`)
+
+### Resultado
+- **371 → 318 ficheiros** fonte `.ts`/`.tsx`
+- `npx tsc --noEmit` → **0 erros** após todas as remoções e correcções
+- Browser console **limpo** após restart
