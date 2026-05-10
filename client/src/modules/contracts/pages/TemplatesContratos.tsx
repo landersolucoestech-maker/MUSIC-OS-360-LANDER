@@ -31,6 +31,7 @@ import {
 } from "@/modules/contracts/hooks/useTemplatesContratos";
 
 const TIPOS_SERVICO = [
+  "Contrato Artístico",
   "Agenciamento",
   "Gestão",
   "Empresariamento",
