@@ -14,7 +14,7 @@ export function TakedownViewModal({ open, onOpenChange, takedown }: TakedownView
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Resolvido": return <Badge className="bg-success">{status}</Badge>;
+      case "Resolvido": return <Badge className="bg-success text-[#000000]">{status}</Badge>;
       case "Pendente": return <Badge className="bg-warning text-warning-foreground">{status}</Badge>;
       case "Em Análise": return <Badge className="bg-blue-500">{status}</Badge>;
       case "Rejeitado": return <Badge className="bg-destructive">{status}</Badge>;

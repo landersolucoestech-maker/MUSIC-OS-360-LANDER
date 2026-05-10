@@ -1052,7 +1052,7 @@ export default function Configuracoes() {
                           <p className="text-sm text-muted-foreground">Chrome • Windows • São Paulo, BR</p>
                         </div>
                       </div>
-                      <Badge className="bg-success">Ativa</Badge>
+                      <Badge className="bg-success text-[#000000]">Ativa</Badge>
                     </div>
                   </div>
                   <Button variant="outline" className="text-destructive hover:text-destructive/80">

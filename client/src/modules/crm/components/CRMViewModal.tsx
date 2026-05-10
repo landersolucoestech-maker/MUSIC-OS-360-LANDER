@@ -48,7 +48,7 @@ export const CRMViewModal = forwardRef<HTMLDivElement, CRMViewModalProps>(
 
     const getStatusBadge = (status: string) => {
       switch (status) {
-        case "cliente_ativo": return <Badge className="bg-success">Cliente Ativo</Badge>;
+        case "cliente_ativo": return <Badge className="bg-success text-[#000000]">Cliente Ativo</Badge>;
         case "lead": return <Badge className="bg-blue-600 text-[#ffffff]">Lead</Badge>;
         case "inativo": return <Badge className="bg-slate-500">Inativo</Badge>;
         default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;

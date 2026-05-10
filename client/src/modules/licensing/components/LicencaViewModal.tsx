@@ -14,7 +14,7 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case "Ativa": return <Badge className="bg-success">{status}</Badge>;
+      case "Ativa": return <Badge className="bg-success text-[#000000]">{status}</Badge>;
       case "Em Negociação": return <Badge className="bg-warning text-warning-foreground">{status}</Badge>;
       case "Proposta Enviada": return <Badge className="bg-blue-500">{status}</Badge>;
       case "Expirada": return <Badge className="bg-destructive">{status}</Badge>;

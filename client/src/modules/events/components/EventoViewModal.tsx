@@ -29,7 +29,7 @@ const tipoEventoLabels: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "confirmado": return <Badge className="bg-success">Confirmado</Badge>;
+    case "confirmado": return <Badge className="bg-success text-[#000000]">Confirmado</Badge>;
     case "agendado":
     case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
     case "realizado":

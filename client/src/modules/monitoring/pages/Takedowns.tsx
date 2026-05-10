@@ -17,7 +17,7 @@ import { formatDate } from "@/shared/lib/format-utils";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "resolvido": return <Badge className="bg-success">Resolvido</Badge>;
+    case "resolvido": return <Badge className="bg-success text-[#000000]">Resolvido</Badge>;
     case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
     case "analise": return <Badge className="bg-blue-500">Em Análise</Badge>;
     case "rejeitado": return <Badge className="bg-destructive text-destructive-foreground">Rejeitado</Badge>;

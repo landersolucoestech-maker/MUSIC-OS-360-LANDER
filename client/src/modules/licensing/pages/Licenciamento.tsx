@@ -17,7 +17,7 @@ import { formatCurrency } from "@/shared/lib/format-utils";
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "ativa": return <Badge className="bg-success">Ativa</Badge>;
+    case "ativa": return <Badge className="bg-success text-[#000000]">Ativa</Badge>;
     case "negociacao": return <Badge className="bg-warning text-warning-foreground">Em Negociação</Badge>;
     case "proposta": return <Badge className="bg-blue-500">Proposta Enviada</Badge>;
     case "expirada": return <Badge className="bg-destructive text-destructive-foreground">Expirada</Badge>;

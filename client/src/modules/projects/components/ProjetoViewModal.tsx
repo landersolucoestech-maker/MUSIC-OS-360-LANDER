@@ -34,7 +34,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
         return <Badge className="bg-warning text-warning-foreground">Registro Pendente</Badge>;
       }
       if (status === "concluido" || status?.toLowerCase().includes("conclu")) {
-        return <Badge className="bg-success">Concluído</Badge>;
+        return <Badge className="bg-success text-[#000000]">Concluído</Badge>;
       }
       if (status === "em_andamento") {
         return <Badge className="bg-yellow-500">Em Andamento</Badge>;
