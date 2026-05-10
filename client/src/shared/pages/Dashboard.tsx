@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -133,17 +133,11 @@ export default function Dashboard() {
 
   // ── Activity state ──────────────────────────────────────────────────────────
   const [activities, setActivities] = useState<ActivityItem[]>([]);
-  const [tick, setTick] = useState(0);
 
   const push = useCallback((item: Omit<ActivityItem, "id" | "timestamp">) => {
     setActivities((prev) =>
       [{ id: crypto.randomUUID(), timestamp: new Date(), ...item }, ...prev].slice(0, MAX_ITEMS),
     );
-  }, []);
-
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 30_000);
-    return () => clearInterval(id);
   }, []);
 
   // WS subscriptions
@@ -262,11 +256,9 @@ export default function Dashboard() {
     return () => handlers.forEach(({ event, fn }) => window.removeEventListener(event, fn));
   }, []);
 
-  void tick;
-
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  const contratosPorArtista = (() => {
+  const contratosPorArtista = useMemo(() => {
     const map = new Map<string, ContratoWithRelations[]>();
     for (const c of contratos) {
       if (!c.artista_id) continue;
@@ -275,24 +267,28 @@ export default function Dashboard() {
       map.set(c.artista_id, arr);
     }
     return map;
-  })();
+  }, [contratos]);
 
   const { totalArtistas, contratosAtivos, contratosVencendo, receitaMensal, eventosMes, artistasDestaque } =
     dashboardMetrics;
 
-  const today = new Date().toISOString().split("T")[0];
-  const todayDate = new Date();
-  todayDate.setHours(0, 0, 0, 0);
+  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
 
-  const eventosHoje = eventos.filter((e) => e.data_inicio === today);
+  const eventosHoje = useMemo(
+    () => eventos.filter((e) => e.data_inicio === today),
+    [eventos, today],
+  );
 
-  const artistasComEventos = artistasDestaque.map((a) => ({
-    id: a.id,
-    nome: a.nome_artistico,
-    genero: a.genero_musical || "Outro",
-    shows: a.shows,
-    receita: a.receita,
-  }));
+  const artistasComEventos = useMemo(
+    () => artistasDestaque.map((a) => ({
+      id: a.id,
+      nome: a.nome_artistico,
+      genero: a.genero_musical || "Outro",
+      shows: a.shows,
+      receita: a.receita,
+    })),
+    [artistasDestaque],
+  );
 
   if (isLoading) return <DashboardSkeleton />;
 

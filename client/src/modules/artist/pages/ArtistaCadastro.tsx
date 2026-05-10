@@ -101,11 +101,21 @@ export default function ArtistaCadastro() {
     [contratos, id],
   );
 
-  const contatosCRM = clientes.filter((c) => c.tipo_pessoa === "pessoa_fisica" || c.tipo_pessoa === "pessoa_juridica");
-  const gravadorasCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");
-  const pessoasFisicasCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_fisica");
-  const contratosDisponiveis = contratos.filter(
-    (c: any) => (c.status === "ativo" || c.status === "vencendo") && !c.artista_id,
+  const contatosCRM = useMemo(
+    () => clientes.filter((c) => c.tipo_pessoa === "pessoa_fisica" || c.tipo_pessoa === "pessoa_juridica"),
+    [clientes],
+  );
+  const gravadorasCRM = useMemo(
+    () => clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica"),
+    [clientes],
+  );
+  const pessoasFisicasCRM = useMemo(
+    () => clientes.filter((c: any) => c.tipo_pessoa === "pessoa_fisica"),
+    [clientes],
+  );
+  const contratosDisponiveis = useMemo(
+    () => contratos.filter((c: any) => (c.status === "ativo" || c.status === "vencendo") && !c.artista_id),
+    [contratos],
   );
 
   // ── 1. Informações Básicas ────────────────────────────────────────────────

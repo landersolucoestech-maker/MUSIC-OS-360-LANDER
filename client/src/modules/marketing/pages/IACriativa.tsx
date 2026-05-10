@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
@@ -59,7 +59,10 @@ export default function MarketingIACriativa() {
   const [tendencias, setTendencias] = useState<{ id: number; nome: string; crescimento: string; status: string }[]>([]);
   const [historico, setHistorico] = useState<{ id: number; data: string; artista: string; tipo: string; resultado: string }[]>([]);
 
-  const artistasOptions = artistas.map(a => ({ value: a.id, label: a.nome_artistico, genero: a.genero_musical }));
+  const artistasOptions = useMemo(
+    () => artistas.map(a => ({ value: a.id, label: a.nome_artistico, genero: a.genero_musical })),
+    [artistas],
+  );
 
   const handleGerarConteudo = async () => {
     if (!selectedArtista) {

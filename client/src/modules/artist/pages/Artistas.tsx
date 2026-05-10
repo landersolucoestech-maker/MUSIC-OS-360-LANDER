@@ -59,6 +59,15 @@ const DISTRIBUIDORAS_LABELS: Record<string, string> = Object.fromEntries(
   DISTRIBUIDORAS.map((d) => [d.id, d.label])
 );
 
+const ATIVO_STATUSES_VINCULO = new Set(["ativo", "assinado", "vigente", "vencendo"]);
+
+const PERFIL_LABELS: Record<string, string> = {
+  independente: "Independente",
+  gravadora: "Gravadora",
+  editora: "Editora",
+  com_empresario: "Com Empresário",
+};
+
 export default function Artistas() {
   const navigate = useNavigate();
   const { id: editIdFromUrl } = useParams<{ id?: string }>();
@@ -79,8 +88,6 @@ export default function Artistas() {
     }
     return map;
   }, [contratos]);
-
-  const ATIVO_STATUSES_VINCULO = new Set(["ativo", "assinado", "vigente", "vencendo"]);
 
   const getVinculoLabel = (artistaId: string): { label: string; status: string } => {
     const cs = contratosPorArtista.get(artistaId);
@@ -107,12 +114,18 @@ export default function Artistas() {
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: Artista }>({ open: false });
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
 
-  const getArtistaShows = (artistaId: string) =>
-    eventos.filter((e) => e.artista_id === artistaId && e.tipo_evento === "Show");
-  const getArtistaShowsAgendados = (artistaId: string) =>
-    eventos.filter((e) => e.artista_id === artistaId && e.tipo_evento === "Show" && (e.status === "Confirmado" || e.status === "Pendente"));
-  const getArtistaShowsRealizados = (artistaId: string) =>
-    eventos.filter((e) => e.artista_id === artistaId && e.tipo_evento === "Show" && e.status === "Realizado");
+  const showsPorArtista = useMemo(() => {
+    const map = new Map<string, { total: number; agendados: number; realizados: number }>();
+    for (const e of eventos) {
+      if (e.tipo_evento !== "Show" || !e.artista_id) continue;
+      const entry = map.get(e.artista_id) ?? { total: 0, agendados: 0, realizados: 0 };
+      entry.total++;
+      if (e.status === "Confirmado" || e.status === "Pendente") entry.agendados++;
+      if (e.status === "Realizado") entry.realizados++;
+      map.set(e.artista_id, entry);
+    }
+    return map;
+  }, [eventos]);
 
   const generosUnicos = useMemo(() => {
     const generos = todosArtistas.map((a) => a.genero_musical).filter(Boolean);
@@ -134,14 +147,7 @@ export default function Artistas() {
       return tp === "independente";
     }).length;
     return { exclusivos, parceiros, independentes };
-  }, [todosArtistas, contratosPorArtista, ATIVO_STATUSES_VINCULO]);
-
-  const PERFIL_LABELS: Record<string, string> = {
-    independente: "Independente",
-    gravadora: "Gravadora",
-    editora: "Editora",
-    com_empresario: "Com Empresário",
-  };
+  }, [todosArtistas, contratosPorArtista]);
 
   const artistasFiltrados = useMemo(() => {
     return todosArtistas.filter((artista) => {
@@ -424,9 +430,10 @@ export default function Artistas() {
           ) : (
             artistasFiltrados.map((artista) => {
               const vinculo = getVinculoLabel(artista.id);
-              const totalShows = getArtistaShows(artista.id).length;
-              const agendados = getArtistaShowsAgendados(artista.id).length;
-              const realizados = getArtistaShowsRealizados(artista.id).length;
+              const showsArtista = showsPorArtista.get(artista.id);
+              const totalShows = showsArtista?.total ?? 0;
+              const agendados = showsArtista?.agendados ?? 0;
+              const realizados = showsArtista?.realizados ?? 0;
 
               return (
                 <div key={artista.id}>
