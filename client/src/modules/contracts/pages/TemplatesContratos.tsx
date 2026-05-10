@@ -120,14 +120,17 @@ export default function TemplatesContratos() {
   const tiposUnicos = new Set(templates.map((t) => t.tipo_servico)).size;
 
   return (
-    <MainLayout title="Templates de Contratos" description="Gerencie modelos de contratos personalizáveis">
+    <MainLayout
+      title="Templates de Contratos"
+      description="Gerencie modelos de contratos personalizáveis"
+      actions={
+        <Button size="sm" className="gap-2" onClick={handleAdd} data-testid="button-novo-template">
+          <Plus className="h-4 w-4" />
+          Novo Template
+        </Button>
+      }
+    >
       <div className="space-y-6">
-        <div className="flex justify-end">
-          <Button size="sm" className="gap-2" onClick={handleAdd}>
-            <Plus className="h-4 w-4" />
-            Novo Template
-          </Button>
-        </div>
 
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
