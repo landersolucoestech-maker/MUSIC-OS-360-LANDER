@@ -3,7 +3,7 @@ import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 import { storage } from "@/shared/lib/storage";
 import { emit, DomainEvents } from "@/shared/domain-events";
-import { useTenant } from "@/shared/providers";
+import { useTenant } from "@/app/providers/TenantContext";
 import type { Obra, ObraInsert, ObraUpdate, ObraWithRelations } from "../types/catalog.types";
 
 export type { Obra, ObraInsert, ObraUpdate, ObraWithRelations };

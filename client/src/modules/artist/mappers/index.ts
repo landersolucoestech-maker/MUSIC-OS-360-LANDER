@@ -14,6 +14,8 @@ export type {
   UrlValidationState,
 } from "./artista.mapper";
 
+export type { ArtistaDistribuidoraEntry } from "@/modules/artist/types/artista.types";
+
 export {
   ESPECIALIDADES_LABELS,
   extractSpotifyId,

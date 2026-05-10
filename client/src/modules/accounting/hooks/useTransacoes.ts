@@ -1,7 +1,7 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 import { emit, DomainEvents } from "@/shared/domain-events";
-import { useTenant } from "@/shared/providers";
+import { useTenant } from "@/app/providers/TenantContext";
 import type {
   Transacao,
   TransacaoInsert,
