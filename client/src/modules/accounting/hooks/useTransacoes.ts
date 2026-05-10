@@ -1,36 +1,13 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type {
+  Transacao,
+  TransacaoInsert,
+  TransacaoUpdate,
+  TransacaoWithRelations,
+} from "../types/accounting.types";
 
-export interface Transacao {
-  id: string;
-  user_id?: string;
-  descricao: string;
-  tipo: string;
-  categoria?: string | null;
-  valor: number;
-  data: string;
-  status?: string | null;
-  artista_id?: string | null;
-  cliente_id?: string | null;
-  venda_id?: string | null;
-  origem?: string | null;
-  observacoes?: string | null;
-  conciliado?: boolean | null;
-  anexo_url?: string | null;
-  forma_pagamento?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type TransacaoInsert = Omit<Transacao, "id" | "user_id" | "created_at" | "updated_at" | keyof { [key: string]: unknown }>;
-export type TransacaoUpdate = Partial<TransacaoInsert>;
-
-export interface TransacaoWithRelations extends Transacao {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  clientes?: { id: string; nome?: string; [key: string]: unknown } | null;
-  vendas?: { id: string; [key: string]: unknown } | null;
-}
+export type { Transacao, TransacaoInsert, TransacaoUpdate, TransacaoWithRelations };
 
 export function useTransacoes() {
   const result = useDataQuery<TransacaoWithRelations>({

@@ -1,12 +1,1 @@
-import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
-
-export type ProjetoWithRelationsExtended = ProjetoWithRelations & {
-  compositor?: string | null;
-  interprete?: string | null;
-  genero?: string | null;
-  editora?: string | null;
-  progresso?: number | null;
-  gasto?: number | null;
-  nome?: string | null;
-  data_prevista_fim?: string | null;
-};
+export type { ProjetoWithRelationsExtended } from "./projetos.types";

@@ -1,26 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { FolhaPagamento, FolhaPagamentoInsert, FolhaPagamentoUpdate } from "../types/rh.types";
 
-export interface FolhaPagamento {
-  id: string;
-  user_id?: string;
-  funcionario_id?: string | null;
-  periodo?: string | null;
-  mes_referencia?: string | null;
-  salario_bruto?: number | null;
-  descontos?: number | null;
-  bonus?: number | null;
-  salario_liquido?: number | null;
-  data_pagamento?: string | null;
-  status?: string | null;
-  observacoes?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type FolhaPagamentoInsert = Omit<FolhaPagamento, "id" | "user_id" | "created_at" | "updated_at">;
-export type FolhaPagamentoUpdate = Partial<FolhaPagamentoInsert>;
+export type { FolhaPagamento, FolhaPagamentoInsert, FolhaPagamentoUpdate };
 
 export const STATUS_PAGAMENTO = [
   "pendente",

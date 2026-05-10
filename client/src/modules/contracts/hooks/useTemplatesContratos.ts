@@ -1,10 +1,12 @@
-import type { Tables, TablesInsert, TablesUpdate } from "@/shared/types/database";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type {
+  TemplateContrato,
+  TemplateContratoInsert,
+  TemplateContratoUpdate,
+} from "../types/contracts.types";
 
-export type TemplateContrato = Tables<"templates_contratos">;
-export type TemplateContratoInsert = Omit<TablesInsert<"templates_contratos">, "user_id" | "id" | "created_at" | "updated_at">;
-export type TemplateContratoUpdate = Omit<TablesUpdate<"templates_contratos">, "id" | "user_id" | "created_at" | "updated_at">;
+export type { TemplateContrato, TemplateContratoInsert, TemplateContratoUpdate };
 
 export function useTemplatesContratos() {
   const result = useDataQuery<TemplateContrato>({

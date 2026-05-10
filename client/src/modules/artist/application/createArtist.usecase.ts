@@ -12,7 +12,7 @@ import { stampTenant } from "@/shared/lib/tenant";
 import { detectDuplicate } from "@/modules/artist/domain/artista.entity";
 import { ConflictError, ValidationError } from "@/shared/lib/errors";
 import { emit, DomainEvents } from "@/shared/domain-events";
-import type { ArtistaInsert } from "@/modules/artist/types";
+import type { ArtistaInsert } from "@/modules/artist/types/artista.types";
 
 /** Erro específico de duplicata de artista. */
 export class DuplicateArtistaError extends ConflictError {

@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
-import type { Artista } from "@/modules/artist/hooks/useArtistas";
+import type { ArtistaAssinado } from "@/modules/artist/types/artista.types";
 import { storage } from "@/shared/lib/storage";
 import { QUERY_KEYS, getCacheConfig } from "@/shared/lib/query-config";
 
-export type ArtistaAssinado = Artista;
+export type { ArtistaAssinado };
 
 const cacheConfig = getCacheConfig([...QUERY_KEYS.ARTISTAS]);
 

@@ -1,28 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { Funcionario, FuncionarioInsert, FuncionarioUpdate } from "../types/rh.types";
 
-export interface Funcionario {
-  id: string;
-  user_id?: string;
-  nome_completo: string;
-  cargo?: string | null;
-  setor?: string | null;
-  salario_base?: number | null;
-  tipo_contrato?: string | null;
-  data_admissao?: string | null;
-  status?: string | null;
-  vinculo_usuario_id?: string | null;
-  email?: string | null;
-  telefone?: string | null;
-  cpf?: string | null;
-  observacoes?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type FuncionarioInsert = Omit<Funcionario, "id" | "user_id" | "created_at" | "updated_at">;
-export type FuncionarioUpdate = Partial<FuncionarioInsert>;
+export type { Funcionario, FuncionarioInsert, FuncionarioUpdate };
 
 export const SETORES = [
   "Administrativo",

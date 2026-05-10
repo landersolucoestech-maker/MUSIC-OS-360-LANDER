@@ -1,26 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { InventarioItem, InventarioInsert, InventarioUpdate } from "../types/inventory.types";
 
-export interface InventarioItem {
-  id: string;
-  user_id?: string;
-  nome: string;
-  categoria?: string | null;
-  quantidade?: number | null;
-  valor_unitario?: number | null;
-  localizacao?: string | null;
-  status?: string | null;
-  responsavel?: string | null;
-  setor?: string | null;
-  dataEntrada?: string | null;
-  observacoes?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type InventarioInsert = Omit<InventarioItem, "id" | "user_id" | "created_at" | "updated_at">;
-export type InventarioUpdate = Partial<InventarioInsert>;
+export type { InventarioItem, InventarioInsert, InventarioUpdate };
 
 export function useInventario() {
   const result = useDataQuery<InventarioItem>({

@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "lucide-react";
-import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/utils/musicaHelpers";
+import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
 
 interface ProjetoViewModalProps {
   open: boolean;

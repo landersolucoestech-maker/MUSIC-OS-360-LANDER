@@ -1,63 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { Lead, LeadInsert, LeadUpdate } from "../types/crm.types";
 
-export interface Lead {
-  id: string;
-  user_id?: string;
-  nome: string;
-  nome_contratante?: string | null;
-  sobrenome?: string | null;
-  nome_empresa?: string | null;
-  cargo?: string | null;
-  email?: string | null;
-  telefone?: string | null;
-  instagram?: string | null;
-  website?: string | null;
-  origem?: string | null;
-  origem_lead?: string | null;
-  campanha_marketing?: string | null;
-  responsavel_id?: string | null;
-  servico_interesse?: string[] | string | null;
-  servicos_interesse?: string[] | null;
-  descricao_demanda?: string | null;
-  nome_artista_banda?: string | null;
-  artista_interesse?: string | null;
-  genero_musical?: string | null;
-  cidade_artista?: string | null;
-  estado_artista?: string | null;
-  tipo_evento?: string | null;
-  data_evento?: string | null;
-  cidade_evento?: string | null;
-  estado_evento?: string | null;
-  nome_local_evento?: string | null;
-  capacidade_publico?: number | null;
-  valor_estimado_cache?: number | null;
-  status_lead?: string | null;
-  prioridade?: string | null;
-  responsavel?: string | null;
-  observacoes?: string | null;
-  observacoes_internas?: string | null;
-  tags?: string[] | null;
-  tipo_lead?: string | null;
-  cidade?: string | null;
-  estado?: string | null;
-  temperatura?: string | null;
-  temperatura_lead?: string | null;
-  probabilidade?: number | null;
-  probabilidade_fechamento?: number | null;
-  valor_estimado?: number | null;
-  orcamento_estimado?: number | null;
-  forma_pagamento?: string | null;
-  validade_proposta?: string | null;
-  metadata?: Record<string, unknown> | null;
-  data_proximo_contato?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type LeadInsert = Omit<Lead, "id" | "user_id" | "created_at" | "updated_at">;
-export type LeadUpdate = Partial<LeadInsert>;
+export type { Lead, LeadInsert, LeadUpdate };
 
 export const TIPO_LEAD_OPTIONS = [
   { value: "artista_banda", label: "Artista / Banda" },

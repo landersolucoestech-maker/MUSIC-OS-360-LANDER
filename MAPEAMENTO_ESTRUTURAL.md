@@ -868,3 +868,54 @@ client/src/test/
 - **371 → 318 ficheiros** fonte `.ts`/`.tsx`
 - `npx tsc --noEmit` → **0 erros** após todas as remoções e correcções
 - Browser console **limpo** após restart
+
+---
+
+## 23. ETAPA 4 — PADRONIZAÇÃO ARQUITECTURAL: TIPOS FORA DE HOOKS (Maio 2026)
+
+### Problema corrigido
+Tipos de domínio (`interface Foo`, `type FooInsert`, `type FooUpdate`) estavam definidos directamente dentro de hooks (`useXxx.ts`). Isto cria inversão de dependência — mappers e serviços importavam de hooks em vez de importar de uma fonte de verdade de tipos.
+
+### Padrão aplicado
+Para cada módulo:
+1. **Criado** `{module}/types/{entity}.types.ts` — source of truth para todos os tipos de domínio
+2. **Hook actualizado** para `import type { ... } from "../types/{entity}.types"` + `export type { ... }` (backward compat)
+3. Importadores existentes continuam a funcionar sem alteração (re-export transparente)
+
+### Módulos e ficheiros criados
+
+| Módulo | Ficheiro de tipos criado |
+|---|---|
+| `artist` | `artist/types/artista.types.ts` (Artista, etc.) — sessão anterior |
+| `accounting` | `accounting/types/accounting.types.ts` (Transacao, NotaFiscal) — sessão anterior |
+| `catalog` | `catalog/types/catalog.types.ts` (Obra, Fonograma) — sessão anterior |
+| `contracts` | `contracts/types/contracts.types.ts` (Contrato, TemplateContrato, etc.) |
+| `crm` | `crm/types/crm.types.ts` (Lead, Cliente, LeadInteraction) |
+| `releases` | `releases/types/index.ts` (Lancamento, Share, etc.) |
+| `marketing` | `marketing/types/marketing.types.ts` (Campanha, Conteudo, Meta) |
+| `projects` | `projects/types/projetos.types.ts` (Projeto, ProjetoWithRelations, etc.) |
+| `events` | `events/types/events.types.ts` (Evento, etc.) |
+| `licensing` | `licensing/types/licensing.types.ts` (Licenca, etc.) |
+| `monitoring` | `monitoring/types/monitoring.types.ts` (Takedown, etc.) |
+| `inventory` | `inventory/types/inventory.types.ts` (InventarioItem, etc.) |
+| `rh` | `rh/types/rh.types.ts` (Funcionario, FolhaPagamento, FeriasAusencia, DocumentoFuncionario) |
+
+### Correcções adicionais nesta etapa
+
+**`projects/types/projetos-extensions.ts`** — corrigida inversão de dependência:
+- Antes: `import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos"` (hook → types = ERRADO)
+- Depois: `export type { ProjetoWithRelationsExtended } from "./projetos.types"` (types → types = CORRECTO)
+
+**`projects/utils/musicaHelpers.ts` → `projects/lib/musica-helpers.ts`** — movido para convenção de nomenclatura correcta:
+- 3 importadores actualizados: `Projetos.tsx`, `ProjetoViewModal.tsx`, `catalog/pages/RegistroMusicas.tsx`
+- Ficheiro antigo removido; `utils/` directório limpo
+
+**`projects/mappers/index.ts`** — removido (apenas continha `export {}` — 0 importadores)
+
+### Hooks que usam `Tables<>` gerados (não alterados — correcto por definição)
+`useDeteccoes`, `useRegras`, `useRelatoriosECAD`, `useTarefasMarketing`, `useBriefings`, `useTemplatesContratos` (estes 6 hooks importam de `@/shared/types/database` — padrão correcto)
+
+### Resultado
+- `npx tsc --noEmit` → **0 erros** após todas as alterações
+- Browser console **limpo**
+- Arquitectura de dependências corrigida: `types/ → hooks → components` (antes: `hooks ↔ types` circular)

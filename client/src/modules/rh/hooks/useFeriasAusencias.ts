@@ -1,24 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { FeriasAusencia, FeriasAusenciaInsert, FeriasAusenciaUpdate } from "../types/rh.types";
 
-export interface FeriasAusencia {
-  id: string;
-  user_id?: string;
-  funcionario_id?: string | null;
-  tipo?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
-  dias_totais?: number | null;
-  status?: string | null;
-  motivo?: string | null;
-  observacoes?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type FeriasAusenciaInsert = Omit<FeriasAusencia, "id" | "user_id" | "created_at" | "updated_at">;
-export type FeriasAusenciaUpdate = Partial<FeriasAusenciaInsert>;
+export type { FeriasAusencia, FeriasAusenciaInsert, FeriasAusenciaUpdate };
 
 export const TIPOS_AUSENCIA = [
   "férias",

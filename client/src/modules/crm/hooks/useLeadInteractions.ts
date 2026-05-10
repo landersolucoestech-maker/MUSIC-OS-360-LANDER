@@ -1,18 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { LeadInteraction, LeadInteractionInsert } from "../types/crm.types";
 
-export interface LeadInteraction {
-  id: string;
-  user_id?: string;
-  lead_id?: string | null;
-  tipo_interacao?: string | null;
-  descricao?: string | null;
-  data_interacao?: string | null;
-  created_at?: string;
-  [key: string]: unknown;
-}
-
-export type LeadInteractionInsert = Omit<LeadInteraction, "id" | "user_id" | "created_at">;
+export type { LeadInteraction, LeadInteractionInsert };
 
 export const TIPO_INTERACAO_OPTIONS = [
   { value: "ligacao", label: "Ligação" },

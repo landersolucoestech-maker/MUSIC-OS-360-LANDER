@@ -1,29 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { Meta, MetaInsert, MetaUpdate, MetaWithRelations } from "../types/marketing.types";
 
-export interface Meta {
-  id: string;
-  user_id?: string;
-  artista_id?: string | null;
-  tipo_meta?: string | null;
-  descricao?: string | null;
-  valor_meta: number;
-  valor_atual: number;
-  unidade?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
-  status?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type MetaInsert = Omit<Meta, "id" | "user_id" | "created_at" | "updated_at">;
-export type MetaUpdate = Partial<MetaInsert>;
-
-export interface MetaWithRelations extends Meta {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-}
+export type { Meta, MetaInsert, MetaUpdate, MetaWithRelations };
 
 export function useMetas(artistaId?: string) {
   const result = useDataQuery<MetaWithRelations>({

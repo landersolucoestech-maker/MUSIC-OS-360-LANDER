@@ -4,7 +4,7 @@
  * Ao conectar um backend real, substitua as implementações aqui.
  */
 import { storage } from "@/shared/lib/storage";
-import type { Artista, ArtistaInsert, ArtistaUpdate } from "../types";
+import type { Artista, ArtistaInsert, ArtistaUpdate } from "../types/artista.types";
 
 export const artistaService = {
   async list(): Promise<Artista[]> {

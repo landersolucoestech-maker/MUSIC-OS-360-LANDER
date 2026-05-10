@@ -36,7 +36,7 @@ import {
   importParseElementosIA,
   projetoToObraSeed,
 } from "@/modules/catalog/mappers";
-import { parseMusicasFromProjeto } from "@/modules/projects/utils/musicaHelpers";
+import { parseMusicasFromProjeto } from "@/modules/projects/lib/musica-helpers";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistasAssinados } from "@/modules/artist/hooks/useArtistasAssinados";
 

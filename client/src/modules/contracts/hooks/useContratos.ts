@@ -1,45 +1,14 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type {
+  Contrato,
+  ContratoInsert,
+  ContratoUpdate,
+  ContratoVersao,
+  ContratoWithRelations,
+} from "../types/contracts.types";
 
-export interface ContratoVersao {
-  versao: string;
-  url: string;
-  criado_em: string;
-  notas?: string;
-  autor?: string;
-}
-
-export interface Contrato {
-  id: string;
-  user_id?: string;
-  titulo: string;
-  tipo?: string | null;
-  status?: string | null;
-  artista_id?: string | null;
-  cliente_id?: string | null;
-  lancamento_id?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
-  valor?: number | null;
-  exclusivo?: boolean | null;
-  observacoes?: string | null;
-  template_id?: string | null;
-  assinado_em?: string | null;
-  arquivo_url?: string | null;
-  autentique_doc_id?: string | null;
-  versoes?: ContratoVersao[];
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type ContratoInsert = Omit<Contrato, "id" | "user_id" | "created_at" | "updated_at">;
-export type ContratoUpdate = Partial<ContratoInsert>;
-
-export interface ContratoWithRelations extends Contrato {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  clientes?: { id: string; nome?: string; [key: string]: unknown } | null;
-}
+export type { Contrato, ContratoInsert, ContratoUpdate, ContratoVersao, ContratoWithRelations };
 
 export function useContratos() {
   const result = useDataQuery<ContratoWithRelations>({

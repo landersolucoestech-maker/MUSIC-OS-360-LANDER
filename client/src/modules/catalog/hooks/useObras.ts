@@ -2,42 +2,9 @@ import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
 import { storage } from "@/shared/lib/storage";
+import type { Obra, ObraInsert, ObraUpdate, ObraWithRelations } from "../types/catalog.types";
 
-export interface Obra {
-  id: string;
-  user_id?: string;
-  titulo: string;
-  compositor?: string | null;
-  compositores?: string | string[] | null;
-  letristas?: string | string[] | null;
-  co_compositores?: string | null;
-  detentores?: string | null;
-  editora?: string | null;
-  isrc?: string | null;
-  iswc?: string | null;
-  cod_abramus?: string | null;
-  cod_ecad?: string | null;
-  tipo?: string | null;
-  genero?: string | null;
-  status?: string | null;
-  duracao?: string | null;
-  origem_externa?: string | null;
-  origem_externa_id?: string | null;
-  origem_externa_sincronizado_em?: string | null;
-  projeto_id?: string | null;
-  artista_id?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type ObraInsert = Omit<Obra, "id" | "user_id" | "created_at" | "updated_at">;
-export type ObraUpdate = Partial<ObraInsert>;
-
-export interface ObraWithRelations extends Obra {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  projetos?: { id: string; titulo?: string; [key: string]: unknown } | null;
-}
+export type { Obra, ObraInsert, ObraUpdate, ObraWithRelations };
 
 export function useObras() {
   const queryClient = useQueryClient();

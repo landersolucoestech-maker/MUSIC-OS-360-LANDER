@@ -18,7 +18,7 @@ import { EmptyState } from "@/shared/components/EmptyState";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import type { ProjetoWithRelationsExtended } from "@/modules/projects/types/projetos-extensions";
-import { getFirstMusicaInfo, getMusicaInfo, parseMusicasFromProjeto, type MusicaData } from "@/modules/projects/utils/musicaHelpers";
+import { getFirstMusicaInfo, getMusicaInfo, parseMusicasFromProjeto, type MusicaData } from "@/modules/projects/lib/musica-helpers";
 
 const projetoColumns: CSVColumn[] = [
   { key: "titulo",          label: "Nome do Projeto" },

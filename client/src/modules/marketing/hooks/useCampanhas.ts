@@ -1,32 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { Campanha, CampanhaInsert, CampanhaUpdate, CampanhaWithRelations } from "../types/marketing.types";
 
-export interface Campanha {
-  id: string;
-  user_id?: string;
-  nome: string;
-  artista_id?: string | null;
-  status?: string | null;
-  tipo?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
-  orcamento?: number | null;
-  gasto?: number | null;
-  impressoes?: number | null;
-  cliques?: number | null;
-  conversoes?: number | null;
-  observacoes?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type CampanhaInsert = Omit<Campanha, "id" | "user_id" | "created_at" | "updated_at">;
-export type CampanhaUpdate = Partial<CampanhaInsert>;
-
-export interface CampanhaWithRelations extends Campanha {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-}
+export type { Campanha, CampanhaInsert, CampanhaUpdate, CampanhaWithRelations };
 
 export function useCampanhas() {
   const result = useDataQuery<CampanhaWithRelations>({

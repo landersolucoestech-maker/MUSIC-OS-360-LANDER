@@ -1,21 +1,8 @@
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import type { DocumentoFuncionario, DocumentoFuncionarioInsert, DocumentoFuncionarioUpdate } from "../types/rh.types";
 
-export interface DocumentoFuncionario {
-  id: string;
-  user_id?: string;
-  funcionario_id?: string | null;
-  tipo_documento?: string | null;
-  nome_arquivo?: string | null;
-  url_arquivo?: string | null;
-  descricao?: string | null;
-  created_at?: string;
-  updated_at?: string;
-  [key: string]: unknown;
-}
-
-export type DocumentoFuncionarioInsert = Omit<DocumentoFuncionario, "id" | "user_id" | "created_at" | "updated_at">;
-export type DocumentoFuncionarioUpdate = Partial<DocumentoFuncionarioInsert>;
+export type { DocumentoFuncionario, DocumentoFuncionarioInsert, DocumentoFuncionarioUpdate };
 
 export const TIPOS_DOCUMENTO = [
   "RG",

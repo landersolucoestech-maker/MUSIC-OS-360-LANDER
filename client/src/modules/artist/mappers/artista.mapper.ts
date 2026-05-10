@@ -7,7 +7,7 @@
  * ─────────────────────────────────────────────────────────────────
  */
 
-import type { Artista, ArtistaRelacionamento, ArtistaDistribuidoraEntry, ArtistaResponsavel } from "@/modules/artist/hooks/useArtistas";
+import type { Artista, ArtistaRelacionamento, ArtistaDistribuidoraEntry, ArtistaResponsavel } from "@/modules/artist/types/artista.types";
 
 // ─── Utilidades internas ──────────────────────────────────────────
 
