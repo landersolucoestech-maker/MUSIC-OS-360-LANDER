@@ -145,7 +145,7 @@ const statusLabels: Record<string, string> = {
 export function StatusBadge({ status, label, className }: StatusBadgeProps) {
   const key = status?.toLowerCase().replace(/ /g, "_") || "";
   const style = statusStyles[key] || "bg-muted text-muted-foreground border-border";
-  const displayLabel = label || statusLabels[key] || status?.replace(/_/g, " ");
+  const displayLabel = label || statusLabels[key] || status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
 
   return (
     <Badge

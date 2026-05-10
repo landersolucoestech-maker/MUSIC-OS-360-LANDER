@@ -1121,8 +1121,8 @@ export function ArtistaVisao360Modal({
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <p className="text-xs text-muted-foreground">Banco</p>
-                      <p className="text-sm font-medium capitalize">
-                        {artista.banco?.replace(/_/g, " ") || "Não informado"}
+                      <p className="text-sm font-medium">
+                        {artista.banco?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Não informado"}
                       </p>
                     </div>
                     <div>
@@ -1831,9 +1831,9 @@ export function ArtistaVisao360Modal({
                                 </span>
                                 <Badge
                                   variant="outline"
-                                  className="text-xs capitalize shrink-0"
+                                  className="text-xs shrink-0"
                                 >
-                                  {obra.status.replace(/_/g, " ")}
+                                  {obra.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1868,9 +1868,9 @@ export function ArtistaVisao360Modal({
                                 </div>
                                 <Badge
                                   variant="outline"
-                                  className="text-xs capitalize shrink-0"
+                                  className="text-xs shrink-0"
                                 >
-                                  {fono.status.replace(/_/g, " ")}
+                                  {fono.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1907,9 +1907,9 @@ export function ArtistaVisao360Modal({
                                 </div>
                                 <Badge
                                   variant="outline"
-                                  className="text-xs capitalize shrink-0"
+                                  className="text-xs shrink-0"
                                 >
-                                  {lanc.status.replace(/_/g, " ")}
+                                  {lanc.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1949,7 +1949,7 @@ export function ArtistaVisao360Modal({
                                 <Badge
                                   className={`text-xs shrink-0 ${proj.status === "concluido" ? "bg-success" : proj.status === "em_andamento" ? "bg-blue-600" : "bg-gray-600"}`}
                                 >
-                                  {proj.status.replace(/_/g, " ")}
+                                  {proj.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -2032,7 +2032,7 @@ export function ArtistaVisao360Modal({
                                 ? new Date(t.data).toLocaleDateString("pt-BR")
                                 : "—"}
                               {t.categoria &&
-                                ` · ${t.categoria.replace(/_/g, " ")}`}
+                                ` · ${t.categoria.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}`}
                             </p>
                           </div>
                           <div className="ml-4 text-right">
@@ -2042,8 +2042,8 @@ export function ArtistaVisao360Modal({
                               {t.tipo === "receita" ? "+" : "-"}
                               {formatCurrency(t.valor)}
                             </p>
-                            <p className="text-[10px] text-muted-foreground capitalize">
-                              {t.status?.replace(/_/g, " ") ?? "—"}
+                            <p className="text-[10px] text-muted-foreground">
+                              {t.status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) ?? "—"}
                             </p>
                           </div>
                         </div>

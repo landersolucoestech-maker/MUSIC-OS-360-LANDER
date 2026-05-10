@@ -21,7 +21,7 @@ const getStatusBadge = (status: string) => {
     case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
     case "analise": return <Badge className="bg-blue-500">Em Análise</Badge>;
     case "rejeitado": return <Badge className="bg-destructive text-destructive-foreground">Rejeitado</Badge>;
-    default: return <Badge variant="secondary">{status?.replace(/_/g, " ")}</Badge>;
+    default: return <Badge variant="secondary">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   }
 };
 
