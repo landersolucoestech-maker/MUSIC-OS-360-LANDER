@@ -44,20 +44,20 @@ function ps(v: unknown): string {
 }
 
 export function lancamentoToFormFields(l: Lancamento | null | undefined): LancamentoFormFields {
-  const assets = (l as any)?.assets ?? {};
-  const cron = (l as any)?.cronograma ?? {};
+  const assets = l?.assets ?? {};
+  const cron = l?.cronograma ?? {};
   return {
     projetoSeed:               "",
     titulo:                    ps(l?.titulo),
     artista_id:                ps(l?.artista_id),
     tipo:                      ps(l?.tipo),
-    codigoUPC:                 ps((l as any)?.codigo_upc ?? (l as any)?.codigoUPC ?? l?.upc),
-    genero:                    ps((l as any)?.genero),
-    idioma:                    ps((l as any)?.idioma),
+    codigoUPC:                 ps(l?.codigo_upc ?? l?.upc),
+    genero:                    ps(l?.genero),
+    idioma:                    ps(l?.idioma),
     dataLancamento:            ps(l?.data_lancamento),
     status:                    ps(l?.status) || "analise",
-    gravadora:                 ps((l as any)?.gravadora),
-    copyright:                 ps((l as any)?.copyright),
+    gravadora:                 ps(l?.gravadora),
+    copyright:                 ps(l?.copyright),
     distribuidora:             ps(l?.distribuidora) || "onerpm",
     notasDistribuicao:         ps(l?.observacoes),
     isrcGlobal:                ps(l?.isrc_global),

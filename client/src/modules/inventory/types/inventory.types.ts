@@ -1,3 +1,7 @@
+import type { InventarioStatus } from "@/shared/types/enums";
+
+export type { InventarioStatus };
+
 export interface InventarioItem {
   id: string;
   user_id?: string;
@@ -6,7 +10,7 @@ export interface InventarioItem {
   quantidade?: number | null;
   valor_unitario?: number | null;
   localizacao?: string | null;
-  status?: string | null;
+  status?: InventarioStatus | string | null;
   responsavel?: string | null;
   setor?: string | null;
   dataEntrada?: string | null;

@@ -1,3 +1,8 @@
+import type { ObraRef, FonogramaRef } from "@/shared/types/refs";
+import type { TakedownStatus } from "@/shared/types/enums";
+
+export type { TakedownStatus };
+
 export interface Takedown {
   id: string;
   user_id?: string;
@@ -7,7 +12,7 @@ export interface Takedown {
   plataforma?: string | null;
   url?: string | null;
   url_infracao?: string | null;
-  status?: string | null;
+  status?: TakedownStatus | string | null;
   motivo?: string | null;
   data_solicitacao?: string | null;
   data_conclusao?: string | null;
@@ -21,6 +26,6 @@ export type TakedownInsert = Omit<Takedown, "id" | "user_id" | "created_at" | "u
 export type TakedownUpdate = Partial<TakedownInsert>;
 
 export interface TakedownWithRelations extends Takedown {
-  obras?: { id: string; titulo?: string; [key: string]: unknown } | null;
-  fonogramas?: { id: string; titulo?: string; [key: string]: unknown } | null;
+  obras?: ObraRef | null;
+  fonogramas?: FonogramaRef | null;
 }

@@ -1,10 +1,15 @@
+import type { ArtistaRef, LancamentoRef } from "@/shared/types/refs";
+import type { CampanhaStatus, CampanhaTipo, ConteudoStatus } from "@/shared/types/enums";
+
+export type { CampanhaStatus, CampanhaTipo, ConteudoStatus };
+
 export interface Campanha {
   id: string;
   user_id?: string;
   nome: string;
   artista_id?: string | null;
-  status?: string | null;
-  tipo?: string | null;
+  status?: CampanhaStatus | string | null;
+  tipo?: CampanhaTipo | string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
   orcamento?: number | null;
@@ -22,7 +27,7 @@ export type CampanhaInsert = Omit<Campanha, "id" | "user_id" | "created_at" | "u
 export type CampanhaUpdate = Partial<CampanhaInsert>;
 
 export interface CampanhaWithRelations extends Campanha {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
 }
 
 export interface Conteudo {
@@ -33,7 +38,7 @@ export interface Conteudo {
   descricao?: string | null;
   formato?: string[] | string | null;
   plataforma?: string[] | string | null;
-  status?: string | null;
+  status?: ConteudoStatus | string | null;
   campanha_relacionada?: string | null;
   lancamento_id?: string | null;
   legenda?: string | null;
@@ -49,12 +54,7 @@ export type ConteudoInsert = Omit<Conteudo, "id" | "user_id" | "created_at" | "u
 export type ConteudoUpdate = Partial<ConteudoInsert>;
 
 export interface ConteudoWithRelations extends Conteudo {
-  lancamentos?: {
-    id: string;
-    titulo?: string;
-    artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-    [key: string]: unknown;
-  } | null;
+  lancamentos?: (LancamentoRef & { artistas?: ArtistaRef | null }) | null;
 }
 
 export interface Meta {
@@ -78,5 +78,5 @@ export type MetaInsert = Omit<Meta, "id" | "user_id" | "created_at" | "updated_a
 export type MetaUpdate = Partial<MetaInsert>;
 
 export interface MetaWithRelations extends Meta {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
 }

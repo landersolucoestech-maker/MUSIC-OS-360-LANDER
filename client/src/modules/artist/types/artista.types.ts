@@ -1,3 +1,7 @@
+import type { ArtistaStatus, ArtistaTipo, ArtistaTipoPerfil, ArtistaEspecialidade } from "@/shared/types/enums";
+
+export type { ArtistaStatus, ArtistaTipo, ArtistaTipoPerfil, ArtistaEspecialidade };
+
 export interface ArtistaDistribuidoraEntry {
   id: string;
   email: string;
@@ -27,8 +31,8 @@ export interface Artista {
   nome_artistico: string;
   nome_civil?: string | null;
   nome?: string | null;
-  tipo?: string | null;
-  status?: string | null;
+  tipo?: ArtistaTipo | string | null;
+  status?: ArtistaStatus | string | null;
   status_cadastro?: string | null;
   genero_musical?: string | null;
   email?: string | null;
@@ -67,8 +71,8 @@ export interface Artista {
   conta?: string | null;
   chave_pix?: string | null;
   titular_conta?: string | null;
-  especialidades?: string[] | null;
-  tipo_perfil?: string | null;
+  especialidades?: Array<ArtistaEspecialidade | string> | null;
+  tipo_perfil?: ArtistaTipoPerfil | string | null;
   empresario_id?: string | null;
   empresario_nome?: string | null;
   empresario_telefone?: string | null;

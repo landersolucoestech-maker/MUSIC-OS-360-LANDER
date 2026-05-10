@@ -1,3 +1,8 @@
+import type { ArtistaRef, ObraRef } from "@/shared/types/refs";
+import type { LancamentoStatus, LancamentoTipo, ShareStatus, ShareTipo, ShareDirecao } from "@/shared/types/enums";
+
+export type { LancamentoStatus, LancamentoTipo, ShareStatus, ShareTipo, ShareDirecao };
+
 export interface LancamentoAssets {
   audio_master_url?: string | null;
   capa_url?: string | null;
@@ -20,8 +25,8 @@ export interface Lancamento {
   id: string;
   user_id?: string;
   titulo: string;
-  tipo?: string | null;
-  status?: string | null;
+  tipo?: LancamentoTipo | string | null;
+  status?: LancamentoStatus | string | null;
   artista_id?: string | null;
   data_lancamento?: string | null;
   distribuidora?: string | null;
@@ -33,6 +38,14 @@ export interface Lancamento {
   notas_internas?: string | null;
   assets?: LancamentoAssets | null;
   cronograma?: LancamentoCronograma | null;
+  // Campos adicionais presentes no mock e formulário
+  genero?: string | null;
+  idioma?: string | null;
+  gravadora?: string | null;
+  copyright?: string | null;
+  obra_id?: string | null;
+  fonograma_id?: string | null;
+  codigo_upc?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
@@ -42,7 +55,7 @@ export type LancamentoInsert = Omit<Lancamento, "id" | "user_id" | "created_at" 
 export type LancamentoUpdate = Partial<LancamentoInsert>;
 
 export interface LancamentoWithRelations extends Lancamento {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
 }
 
 export interface Share {
@@ -51,9 +64,9 @@ export interface Share {
   obra_id?: string | null;
   artista_id?: string | null;
   percentual?: number | null;
-  tipo?: string | null;
-  direcao?: string | null;
-  status?: string | null;
+  tipo?: ShareTipo | string | null;
+  direcao?: ShareDirecao | string | null;
+  status?: ShareStatus | string | null;
   valor_total?: number | null;
   valor_liquidado?: number | null;
   detentor?: string | null;
@@ -66,6 +79,6 @@ export type ShareInsert = Omit<Share, "id" | "user_id" | "created_at" | "updated
 export type ShareUpdate = Partial<ShareInsert>;
 
 export interface ShareWithRelations extends Share {
-  obras?: { id: string; titulo?: string; [key: string]: unknown } | null;
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  obras?: ObraRef | null;
+  artistas?: ArtistaRef | null;
 }

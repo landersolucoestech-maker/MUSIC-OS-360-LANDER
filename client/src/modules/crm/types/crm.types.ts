@@ -1,3 +1,7 @@
+import type { LeadStatus, LeadPrioridade, LeadTemperatura, ClienteStatus } from "@/shared/types/enums";
+
+export type { LeadStatus, LeadPrioridade, LeadTemperatura, ClienteStatus };
+
 export interface Lead {
   id: string;
   user_id?: string;
@@ -29,8 +33,8 @@ export interface Lead {
   nome_local_evento?: string | null;
   capacidade_publico?: number | null;
   valor_estimado_cache?: number | null;
-  status_lead?: string | null;
-  prioridade?: string | null;
+  status_lead?: LeadStatus | string | null;
+  prioridade?: LeadPrioridade | string | null;
   responsavel?: string | null;
   observacoes?: string | null;
   observacoes_internas?: string | null;
@@ -38,8 +42,8 @@ export interface Lead {
   tipo_lead?: string | null;
   cidade?: string | null;
   estado?: string | null;
-  temperatura?: string | null;
-  temperatura_lead?: string | null;
+  temperatura?: LeadTemperatura | string | null;
+  temperatura_lead?: LeadTemperatura | string | null;
   probabilidade?: number | null;
   probabilidade_fechamento?: number | null;
   valor_estimado?: number | null;
@@ -72,9 +76,9 @@ export interface Cliente {
   cidade?: string | null;
   estado?: string | null;
   cep?: string | null;
-  status?: string | null;
+  status?: ClienteStatus | string | null;
   observacoes?: string | null;
-  temperatura?: string | null;
+  temperatura?: LeadTemperatura | string | null;
   responsavel?: string | null;
   empresa?: string | null;
   created_at?: string;

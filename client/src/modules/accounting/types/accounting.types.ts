@@ -1,12 +1,23 @@
+import type { ArtistaRef, ClienteRef } from "@/shared/types/refs";
+import type {
+  TransacaoTipo,
+  TransacaoStatus,
+  TransacaoFormaPagamento,
+  NotaFiscalStatus,
+  NotaFiscalTipo,
+} from "@/shared/types/enums";
+
+export type { TransacaoTipo, TransacaoStatus, TransacaoFormaPagamento, NotaFiscalStatus, NotaFiscalTipo };
+
 export interface Transacao {
   id: string;
   user_id?: string;
   descricao: string;
-  tipo: string;
+  tipo: TransacaoTipo | string;
   categoria?: string | null;
   valor: number;
   data: string;
-  status?: string | null;
+  status?: TransacaoStatus | string | null;
   artista_id?: string | null;
   cliente_id?: string | null;
   venda_id?: string | null;
@@ -14,7 +25,7 @@ export interface Transacao {
   observacoes?: string | null;
   conciliado?: boolean | null;
   anexo_url?: string | null;
-  forma_pagamento?: string | null;
+  forma_pagamento?: TransacaoFormaPagamento | string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
@@ -24,9 +35,9 @@ export type TransacaoInsert = Omit<Transacao, "id" | "user_id" | "created_at" | 
 export type TransacaoUpdate = Partial<TransacaoInsert>;
 
 export interface TransacaoWithRelations extends Transacao {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  clientes?: { id: string; nome?: string; [key: string]: unknown } | null;
-  vendas?: { id: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
+  clientes?: ClienteRef | null;
+  vendas?: { id: string } | null;
 }
 
 export interface NotaFiscal {
@@ -34,8 +45,8 @@ export interface NotaFiscal {
   user_id?: string;
   numero?: string | null;
   serie?: string | null;
-  tipo_nota?: string | null;
-  status?: string | null;
+  tipo_nota?: NotaFiscalTipo | string | null;
+  status?: NotaFiscalStatus | string | null;
   tomador_nome?: string | null;
   tomador_cnpj?: string | null;
   valor_total?: number | null;
@@ -55,6 +66,6 @@ export type NotaFiscalInsert = Omit<NotaFiscal, "id" | "user_id" | "created_at" 
 export type NotaFiscalUpdate = Partial<NotaFiscalInsert>;
 
 export interface NotaFiscalWithRelations extends NotaFiscal {
-  clientes?: { id: string; nome?: string; [key: string]: unknown } | null;
-  vendas?: { id: string; [key: string]: unknown } | null;
+  clientes?: ClienteRef | null;
+  vendas?: { id: string } | null;
 }

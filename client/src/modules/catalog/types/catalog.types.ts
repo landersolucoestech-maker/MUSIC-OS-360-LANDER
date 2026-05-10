@@ -1,4 +1,8 @@
 import type { Json } from "@/shared/types/database";
+import type { ArtistaRef, ProjetoRef } from "@/shared/types/refs";
+import type { ObraStatus, ObraTipo, FonogramaStatus } from "@/shared/types/enums";
+
+export type { ObraStatus, ObraTipo, FonogramaStatus };
 
 export interface Obra {
   id: string;
@@ -14,9 +18,9 @@ export interface Obra {
   iswc?: string | null;
   cod_abramus?: string | null;
   cod_ecad?: string | null;
-  tipo?: string | null;
+  tipo?: ObraTipo | string | null;
   genero?: string | null;
-  status?: string | null;
+  status?: ObraStatus | string | null;
   duracao?: string | null;
   origem_externa?: string | null;
   origem_externa_id?: string | null;
@@ -32,8 +36,8 @@ export type ObraInsert = Omit<Obra, "id" | "user_id" | "created_at" | "updated_a
 export type ObraUpdate = Partial<ObraInsert>;
 
 export interface ObraWithRelations extends Obra {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  projetos?: { id: string; titulo?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
+  projetos?: ProjetoRef | null;
 }
 
 export interface Fonograma {
@@ -45,7 +49,7 @@ export interface Fonograma {
   isrc?: string | null;
   duracao?: string | null;
   tipo?: string | null;
-  status?: string | null;
+  status?: FonogramaStatus | string | null;
   compositores?: string | null;
   interpretes?: string | null;
   produtores?: string | null;
@@ -87,5 +91,5 @@ export type FonogramaInsert = Omit<Fonograma, "id" | "user_id" | "created_at" | 
 export type FonogramaUpdate = Partial<FonogramaInsert>;
 
 export interface FonogramaWithRelations extends Fonograma {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
 }

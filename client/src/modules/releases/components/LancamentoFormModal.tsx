@@ -11,7 +11,9 @@ import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { toast } from "sonner";
 import { ChevronDown, Folder, Music, Plus, Upload, Image as ImageIcon, X, ExternalLink, AlertCircle, CheckCircle2 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import type { Lancamento } from "@/modules/releases/types";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
+import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
@@ -37,7 +39,7 @@ interface Faixa {
 interface LancamentoFormModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  lancamento?: any;
+  lancamento?: Lancamento;
   mode: "create" | "edit" | "view";
 }
 
@@ -121,12 +123,12 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
   // ── Auto-fill handlers ───────────────────────────────────────────────────
 
   const handleSelectProjeto = (projetoId: string) => {
-    const projeto = projetos.find((p: any) => p.id === projetoId);
+    const projeto: ProjetoWithRelations | undefined = projetos.find((p) => p.id === projetoId);
     if (!projeto) { setFormData(prev => ({ ...prev, projetoSeed: projetoId })); return; }
-    const seed = projetoToLancamentoSeed(projeto as any);
+    const seed = projetoToLancamentoSeed(projeto);
     // Fallback: if project has no genre, use the linked artista's genero_musical
     const rawGenero = seed.genero?.trim()
-      || artistas.find((a: any) => a.id === (projeto as any).artista_id)?.genero_musical
+      || artistas.find((a) => a.id === projeto.artista_id)?.genero_musical
       || "";
     setFormData(prev => ({
       ...prev,
@@ -136,15 +138,15 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
       genero:     !prev.genero.trim()     ? matchGenero(rawGenero) : prev.genero,
       tipo:       !prev.tipo.trim()       ? seed.tipo ?? "" : prev.tipo,
     }));
-    if ((projeto as any).descricao) {
+    if (projeto.descricao) {
       try {
-        const musicas = JSON.parse((projeto as any).descricao) as Array<{
+        const musicas = JSON.parse(projeto.descricao) as Array<{
           nome?: string; compositores?: string[]; interpretes?: string[];
           produtores?: string[]; isrc?: string; letra?: string;
         }>;
         if (musicas.length > 0) {
-          const artistaNome = (projeto as any).artista_id
-            ? artistas.find((a: any) => a.id === (projeto as any).artista_id)?.nome_artistico ?? ""
+          const artistaNome = projeto.artista_id
+            ? artistas.find((a) => a.id === projeto.artista_id)?.nome_artistico ?? ""
             : "";
           setFaixas(musicas.map((m, i) => ({
             id: i + 1,
@@ -164,46 +166,46 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
 
   const handleSelectObra = (obraId: string) => {
     setSelectedObraId(obraId);
-    const obra = obras.find((o: any) => o.id === obraId);
+    const obra = obras.find((o) => o.id === obraId);
     if (!obra) return;
     const compArr = splitNames(
       Array.isArray(obra.compositores) ? (obra.compositores as string[]).join(", ")
       : typeof obra.compositores === "string" ? obra.compositores
-      : (obra as any).compositor ?? ""
+      : obra.compositor ?? ""
     );
     setFormData(prev => ({
       ...prev,
-      titulo:     !prev.titulo.trim()     ? (obra as any).titulo ?? "" : prev.titulo,
-      genero:     !prev.genero.trim()     ? matchGenero((obra as any).genero ?? "") : prev.genero,
-      isrcGlobal: !prev.isrcGlobal.trim() ? (obra as any).isrc   ?? "" : prev.isrcGlobal,
+      titulo:     !prev.titulo.trim()     ? obra.titulo ?? "" : prev.titulo,
+      genero:     !prev.genero.trim()     ? matchGenero(obra.genero ?? "") : prev.genero,
+      isrcGlobal: !prev.isrcGlobal.trim() ? obra.isrc   ?? "" : prev.isrcGlobal,
     }));
     setFaixas(prev => prev.map((f, i) => i !== 0 ? f : {
       ...f,
-      titulo:       !f.titulo.trim() ? (obra as any).titulo ?? "" : f.titulo,
-      isrc:         !f.isrc.trim()   ? (obra as any).isrc   ?? "" : f.isrc,
+      titulo:       !f.titulo.trim() ? obra.titulo ?? "" : f.titulo,
+      isrc:         !f.isrc.trim()   ? obra.isrc   ?? "" : f.isrc,
       compositores: f.compositores.join("").trim() === "" ? compArr : f.compositores,
     }));
   };
 
   const handleSelectFonograma = (fonogramaId: string) => {
     setSelectedFonogramaId(fonogramaId);
-    const fono = fonogramas.find((f: any) => f.id === fonogramaId);
+    const fono = fonogramas.find((f) => f.id === fonogramaId);
     if (!fono) return;
-    const compArr  = splitNames((fono as any).compositores);
-    const interpArr = splitNames((fono as any).interpretes);
-    const prodArr  = splitNames((fono as any).produtores);
+    const compArr  = splitNames(fono.compositores ?? "");
+    const interpArr = splitNames(fono.interpretes ?? "");
+    const prodArr  = splitNames(fono.produtores ?? "");
     setFormData(prev => ({
       ...prev,
-      artista_id:  !prev.artista_id.trim()  ? (fono as any).artista_id ?? "" : prev.artista_id,
-      gravadora:   !prev.gravadora.trim()   ? (fono as any).gravadora  ?? "" : prev.gravadora,
-      isrcGlobal:  !prev.isrcGlobal.trim()  ? (fono as any).isrc       ?? "" : prev.isrcGlobal,
+      artista_id:  !prev.artista_id.trim()  ? fono.artista_id ?? "" : prev.artista_id,
+      gravadora:   !prev.gravadora.trim()   ? fono.gravadora  ?? "" : prev.gravadora,
+      isrcGlobal:  !prev.isrcGlobal.trim()  ? fono.isrc       ?? "" : prev.isrcGlobal,
     }));
     setFaixas(prev => prev.map((f, i) => i !== 0 ? f : {
       ...f,
-      titulo:       !f.titulo.trim() ? (fono as any).titulo ?? "" : f.titulo,
-      isrc:         !f.isrc.trim()   ? (fono as any).isrc   ?? "" : f.isrc,
+      titulo:       !f.titulo.trim() ? fono.titulo ?? "" : f.titulo,
+      isrc:         !f.isrc.trim()   ? fono.isrc   ?? "" : f.isrc,
       artista:      !f.artista.trim()
-        ? artistas.find((a: any) => a.id === (fono as any).artista_id)?.nome_artistico ?? f.artista
+        ? artistas.find((a) => a.id === fono.artista_id)?.nome_artistico ?? f.artista
         : f.artista,
       compositores: f.compositores.join("").trim() === "" ? compArr  : f.compositores,
       interpretes:  f.interpretes.join("").trim()  === "" ? interpArr : f.interpretes,
@@ -216,8 +218,8 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
   useEffect(() => {
     if (!open) return;
     setFormData(lancamentoToFormFields(lancamento ?? null));
-    setSelectedObraId((lancamento as any)?.obra_id ?? "");
-    setSelectedFonogramaId((lancamento as any)?.fonograma_id ?? "");
+    setSelectedObraId(lancamento?.obra_id ?? "");
+    setSelectedFonogramaId(lancamento?.fonograma_id ?? "");
     setCapaPrincipal(null);
     setFaixas([{
       id: 1, titulo: "", artista: "", isrc: "",
@@ -273,7 +275,7 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
     }
   };
 
-  const updateFaixa = (id: number, field: keyof Faixa, value: any) => {
+  const updateFaixa = (id: number, field: keyof Faixa, value: Faixa[keyof Faixa]) => {
     setFaixas(faixas.map((f) => (f.id === id ? { ...f, [field]: value } : f)));
   };
 
@@ -335,7 +337,7 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                   <SelectContent>
                     {projetos.length === 0 ? (
                       <div className="p-2 text-sm text-muted-foreground">Nenhum projeto cadastrado</div>
-                    ) : projetos.map((p: any) => (
+                    ) : projetos.map((p) => (
                       <SelectItem key={p.id} value={p.id}>
                         {p.titulo ?? p.nome}
                       </SelectItem>
@@ -377,7 +379,7 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                     <SelectContent>
                       {artistas.length === 0 ? (
                         <div className="p-2 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                      ) : artistas.map((a: any) => (
+                      ) : artistas.map((a) => (
                         <SelectItem key={a.id} value={a.id}>
                           {a.nome_artistico ?? a.nome}
                         </SelectItem>

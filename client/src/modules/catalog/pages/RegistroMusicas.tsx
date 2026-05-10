@@ -21,6 +21,7 @@ import { toast } from "sonner";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useObras, type ObraInsert } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas, type FonogramaInsert } from "@/modules/catalog/hooks/useFonogramas";
+import type { Obra, Fonograma } from "@/modules/catalog/types/catalog.types";
 import {
   normalizeStatusForDb as normStatusObraMapper,
   exportInstrumental,
@@ -69,7 +70,7 @@ export default function RegistroMusicas() {
     if (selectedObraIds.length === filteredObras.length && filteredObras.length > 0) {
       setSelectedObraIds([]);
     } else {
-      setSelectedObraIds(filteredObras.map((o: any) => o.id));
+      setSelectedObraIds(filteredObras.map((o) => o.id));
     }
   };
   const toggleSelectObra = (id: string) => setSelectedObraIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -85,7 +86,7 @@ export default function RegistroMusicas() {
     if (selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0) {
       setSelectedFonogramaIds([]);
     } else {
-      setSelectedFonogramaIds(filteredFonogramas.map((f: any) => f.id));
+      setSelectedFonogramaIds(filteredFonogramas.map((f) => f.id));
     }
   };
   const toggleSelectFonograma = (id: string) => setSelectedFonogramaIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
@@ -128,7 +129,7 @@ export default function RegistroMusicas() {
       setBulkEcadLoading(false);
     }
   };
-  const [obraModal, setObraModal] = useState<{ open: boolean; mode: "create" | "edit"; obra?: any; tipoObra?: TipoObra }>({
+  const [obraModal, setObraModal] = useState<{ open: boolean; mode: "create" | "edit"; obra?: Obra; tipoObra?: TipoObra }>({
     open: false,
     mode: "create",
     obra: undefined,
@@ -136,14 +137,14 @@ export default function RegistroMusicas() {
   });
   const [obraTipoSelectorOpen, setObraTipoSelectorOpen] = useState(false);
   const [pendingProjetoId, setPendingProjetoId] = useState<string | null>(null);
-  const [obraViewModal, setObraViewModal] = useState<{ open: boolean; obra?: any }>({ open: false });
-  const [fonogramaModal, setFonogramaModal] = useState<{ open: boolean; mode: "create" | "edit"; fonograma?: any }>({
+  const [obraViewModal, setObraViewModal] = useState<{ open: boolean; obra?: Obra }>({ open: false });
+  const [fonogramaModal, setFonogramaModal] = useState<{ open: boolean; mode: "create" | "edit"; fonograma?: Fonograma }>({
     open: false,
     mode: "create",
     fonograma: undefined
   });
-  const [fonogramaViewModal, setFonogramaViewModal] = useState<{ open: boolean; fonograma?: any }>({ open: false });
-  const [deleteModal, setDeleteModal] = useState<{ open: boolean; item?: any; type?: string }>({ open: false, item: undefined, type: undefined });
+  const [fonogramaViewModal, setFonogramaViewModal] = useState<{ open: boolean; fonograma?: Fonograma }>({ open: false });
+  const [deleteModal, setDeleteModal] = useState<{ open: boolean; item?: Obra | Fonograma; type?: string }>({ open: false, item: undefined, type: undefined });
   const [contratoModal, setContratoModal] = useState<{ open: boolean; prefill?: { titulo: string; observacoes: string } }>({ open: false });
 
   const isLoading = loadingObras || loadingFonogramas;
@@ -183,7 +184,7 @@ export default function RegistroMusicas() {
     }
 
     if (obraParam) {
-      const target = obras.find((o: any) => o.id === obraParam);
+      const target = obras.find((o) => o.id === obraParam);
       if (target) {
         setActiveTab("obras");
         setObraViewModal({ open: true, obra: target });
@@ -194,7 +195,7 @@ export default function RegistroMusicas() {
     }
 
     if (editObraParam) {
-      const target = obras.find((o: any) => o.id === editObraParam);
+      const target = obras.find((o) => o.id === editObraParam);
       if (target) {
         setActiveTab("obras");
         setObraModal({ open: true, mode: "edit", obra: target });
@@ -204,7 +205,7 @@ export default function RegistroMusicas() {
     }
 
     if (fonogramaParam) {
-      const target = fonogramas.find((f: any) => f.id === fonogramaParam);
+      const target = fonogramas.find((f) => f.id === fonogramaParam);
       if (target) {
         setActiveTab("fonogramas");
         setFonogramaModal({ open: true, mode: "edit", fonograma: target });
@@ -219,8 +220,8 @@ export default function RegistroMusicas() {
   }, [searchParams, obras, fonogramas, loadingObras, loadingFonogramas, setSearchParams]);
 
   const obrasPorId = useMemo(() => {
-    const map = new Map<string, any>();
-    for (const o of obras as any[]) { if (o.id) map.set(o.id, o); }
+    const map = new Map<string, Obra>();
+    for (const o of obras) { if (o.id) map.set(o.id, o); }
     return map;
   }, [obras]);
 
@@ -308,7 +309,7 @@ export default function RegistroMusicas() {
 
   // Filter fonogramas + sort alphabetically
   const filteredFonogramas = useMemo(() => fonogramas
-    .filter((fonograma: any) => {
+    .filter((fonograma) => {
       const matchesSearch = searchTerm === "" ||
         fonograma.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fonograma.compositores?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -324,7 +325,7 @@ export default function RegistroMusicas() {
         (fonogramaEcadFilter === "com-ecad" ? fonogramaEcadCode !== "" : fonogramaEcadCode === "");
       return matchesSearch && matchesStatus && matchesGenre && matchesObraVinculada && matchesFonogramaEcad;
     })
-    .sort((a: any, b: any) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
+    .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
   [fonogramas, searchTerm, statusFilter, genreFilter, obraVinculadaFilter, fonogramaEcadFilter, obrasPorId, collator]);
 
   const [bulkLinking, setBulkLinking] = useState(false);
@@ -348,7 +349,7 @@ export default function RegistroMusicas() {
 
   // Filter obras + sort alphabetically
   const filteredObras = useMemo(() => obras
-    .filter((obra: any) => {
+    .filter((obra) => {
       const matchesSearch = searchTerm === "" ||
         obra.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         obra.compositores?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -364,7 +365,7 @@ export default function RegistroMusicas() {
         (ecadFilter === "com-ecad" ? ecadCode !== "" : ecadCode === "");
       return matchesSearch && matchesStatus && matchesGenre && matchesProjeto && matchesEcad;
     })
-    .sort((a: any, b: any) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
+    .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
   [obras, searchTerm, statusFilter, genreFilter, projetoFilter, ecadFilter, collator]);
 
   // Distinct projetos available for the project filter:
@@ -374,8 +375,8 @@ export default function RegistroMusicas() {
     const seen = new Set<string>();
     const unique: string[] = [];
     const src = activeTab === "fonogramas"
-      ? (fonogramas as any[]).map(f => obrasPorId.get(f.obra_id)).filter(Boolean)
-      : obras as any[];
+      ? fonogramas.map(f => obrasPorId.get(f.obra_id ?? "")).filter((o): o is Obra => o != null)
+      : obras;
     for (const o of src) {
       const g: string | undefined = o.genero;
       if (!g) continue;
@@ -387,10 +388,10 @@ export default function RegistroMusicas() {
 
   const projetosDisponiveis = useMemo(() => {
     const map = new Map<string, string>();
-    allProjetos.forEach((p: any) => {
+    allProjetos.forEach((p) => {
       if (p?.id && p?.titulo) map.set(p.id, p.titulo);
     });
-    obras.forEach((o: any) => {
+    obras.forEach((o) => {
       if (o.projetos?.id && o.projetos?.titulo && !map.has(o.projetos.id)) {
         map.set(o.projetos.id, o.projetos.titulo);
       }
@@ -400,22 +401,22 @@ export default function RegistroMusicas() {
 
   // Metrics
   const pendentes = activeTab === "fonogramas" 
-    ? fonogramas.filter((f: any) => f.status === "pendente").length
-    : obras.filter((o: any) => o.status === "pendente").length;
+    ? fonogramas.filter((f) => f.status === "pendente").length
+    : obras.filter((o) => o.status === "pendente").length;
   
   const emAnalise = activeTab === "fonogramas"
-    ? fonogramas.filter((f: any) => f.status === "analise").length
-    : obras.filter((o: any) => o.status === "analise").length;
+    ? fonogramas.filter((f) => f.status === "analise").length
+    : obras.filter((o) => o.status === "analise").length;
   
   const registrados = activeTab === "fonogramas"
-    ? fonogramas.filter((f: any) => f.status === "registrado").length
-    : obras.filter((o: any) => o.status === "registrado").length;
+    ? fonogramas.filter((f) => f.status === "registrado").length
+    : obras.filter((o) => o.status === "registrado").length;
   
   const total = activeTab === "fonogramas" ? fonogramas.length : obras.length;
   const taxaAprovacao = total > 0 ? Math.round((registrados / total) * 100) : 0;
 
-  const obrasSemEcad = (obras as any[]).filter((o: any) => (o.cod_ecad ?? "").toString().trim() === "").length;
-  const fonogramasSemEcad = (fonogramas as any[]).filter((f: any) => (f.cod_ecad ?? "").toString().trim() === "").length;
+  const obrasSemEcad = obras.filter((o) => (o.cod_ecad ?? "").toString().trim() === "").length;
+  const fonogramasSemEcad = fonogramas.filter((f) => (f.cod_ecad ?? "").toString().trim() === "").length;
 
   const handleExport = () => {
     if (activeTab === "fonogramas") {
@@ -452,7 +453,7 @@ export default function RegistroMusicas() {
       if (activeTab === "fonogramas") {
         const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         const obrasPorTitulo = new Map<string, string>();
-        for (const o of obras as any[]) {
+        for (const o of obras) {
           if (o.id && o.titulo) obrasPorTitulo.set(norm(o.titulo), o.id);
         }
         for (const row of data) {
@@ -871,7 +872,7 @@ export default function RegistroMusicas() {
               <div className="space-y-2">
                 {filteredFonogramas.length > 0 ? (
                   <>
-                  {filteredFonogramas.map((fonograma: any) => (
+                  {filteredFonogramas.map((fonograma) => (
                     <div 
                       key={fonograma.id} 
                       className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
@@ -1045,7 +1046,7 @@ export default function RegistroMusicas() {
               <div className="space-y-2">
                 {filteredObras.length > 0 ? (
                   <>
-                  {filteredObras.map((obra: any) => (
+                  {filteredObras.map((obra) => (
                     <div 
                       key={obra.id} 
                       className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
@@ -1286,10 +1287,10 @@ export default function RegistroMusicas() {
                 <SelectValue placeholder="Escolha uma obra..." />
               </SelectTrigger>
               <SelectContent>
-                {(obras as any[])
+                {obras
                   .slice()
                   .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""))
-                  .map((obra: any) => (
+                  .map((obra) => (
                     <SelectItem key={obra.id} value={obra.id} data-testid={`option-obra-${obra.id}`}>
                       {obra.titulo}
                     </SelectItem>

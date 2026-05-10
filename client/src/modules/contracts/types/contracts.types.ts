@@ -1,4 +1,8 @@
 import type { Tables, TablesInsert, TablesUpdate } from "@/shared/types/database";
+import type { ArtistaRef, ClienteRef } from "@/shared/types/refs";
+import type { ContratoStatus, ContratoTipo } from "@/shared/types/enums";
+
+export type { ContratoStatus, ContratoTipo };
 
 export interface ContratoVersao {
   versao: string;
@@ -12,8 +16,8 @@ export interface Contrato {
   id: string;
   user_id?: string;
   titulo: string;
-  tipo?: string | null;
-  status?: string | null;
+  tipo?: ContratoTipo | string | null;
+  status?: ContratoStatus | string | null;
   artista_id?: string | null;
   cliente_id?: string | null;
   lancamento_id?: string | null;
@@ -36,8 +40,8 @@ export type ContratoInsert = Omit<Contrato, "id" | "user_id" | "created_at" | "u
 export type ContratoUpdate = Partial<ContratoInsert>;
 
 export interface ContratoWithRelations extends Contrato {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
-  clientes?: { id: string; nome?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
+  clientes?: ClienteRef | null;
 }
 
 export type TemplateContrato = Tables<"templates_contratos">;

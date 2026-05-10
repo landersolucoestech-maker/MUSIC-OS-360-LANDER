@@ -1,9 +1,14 @@
+import type { ArtistaRef } from "@/shared/types/refs";
+import type { EventoTipo, EventoStatus } from "@/shared/types/enums";
+
+export type { EventoTipo, EventoStatus };
+
 export interface Evento {
   id: string;
   user_id?: string;
   titulo: string;
-  tipo_evento?: string | null;
-  status?: string | null;
+  tipo_evento?: EventoTipo | string | null;
+  status?: EventoStatus | string | null;
   artista_id?: string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
@@ -26,5 +31,5 @@ export type EventoInsert = Omit<Evento, "id" | "user_id" | "created_at" | "updat
 export type EventoUpdate = Partial<EventoInsert>;
 
 export interface EventoWithRelations extends Evento {
-  artistas?: { id: string; nome_artistico?: string; [key: string]: unknown } | null;
+  artistas?: ArtistaRef | null;
 }

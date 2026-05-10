@@ -209,8 +209,8 @@ export function artistaToExportRow(a: Artista): Record<string, string> {
     "Função":                    Array.isArray(a.especialidades)
                                    ? a.especialidades.map(e => ESPECIALIDADES_LABELS[e] ?? e).join(", ")
                                    : "",
-    "Documentos Pessoais (PDF)": str((a as any).documentos_pessoais_url),
-    "Presskit / Media Kit (PDF)":str((a as any).presskit_url),
+    "Documentos Pessoais (PDF)": str(a.documentos_pessoais_url),
+    "Presskit / Media Kit (PDF)":str(a.presskit_url),
     "Biografia":                 str(a.observacoes),
     "Foto URL":                  str(a.foto_url),
     // 2. Dados Pessoais
@@ -467,12 +467,12 @@ function migrateLegatoRelacionamentos(artista: Artista): ArtistaFormRelacionamen
 
   // Distribuidoras legadas — serão atribuídas ao primeiro empresario ou gravadora
   const legacyDists = buildLegacyDistribuidoras(
-    artista.distribuidoras_selecionadas as Record<string, boolean> | null,
-    artista.distribuidoras_emails as Record<string, string> | null,
+    artista.distribuidoras_selecionadas,
+    artista.distribuidoras_emails,
   );
   const legacyEmpresaDists = buildLegacyDistribuidoras(
-    artista.distribuidoras_empresa_selecionadas as Record<string, boolean> | null,
-    artista.distribuidoras_empresa_emails as Record<string, string> | null,
+    artista.distribuidoras_empresa_selecionadas,
+    artista.distribuidoras_empresa_emails,
   );
 
   if (artista.empresario_nome) {

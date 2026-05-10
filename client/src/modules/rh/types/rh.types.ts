@@ -1,3 +1,12 @@
+import type {
+  FuncionarioStatus,
+  FuncionarioTipoContrato,
+  FeriasAusenciaTipo,
+  FeriasAusenciaStatus,
+} from "@/shared/types/enums";
+
+export type { FuncionarioStatus, FuncionarioTipoContrato, FeriasAusenciaTipo, FeriasAusenciaStatus };
+
 export interface Funcionario {
   id: string;
   user_id?: string;
@@ -5,9 +14,9 @@ export interface Funcionario {
   cargo?: string | null;
   setor?: string | null;
   salario_base?: number | null;
-  tipo_contrato?: string | null;
+  tipo_contrato?: FuncionarioTipoContrato | string | null;
   data_admissao?: string | null;
-  status?: string | null;
+  status?: FuncionarioStatus | string | null;
   vinculo_usuario_id?: string | null;
   email?: string | null;
   telefone?: string | null;
@@ -46,11 +55,11 @@ export interface FeriasAusencia {
   id: string;
   user_id?: string;
   funcionario_id?: string | null;
-  tipo?: string | null;
+  tipo?: FeriasAusenciaTipo | string | null;
   data_inicio?: string | null;
   data_fim?: string | null;
   dias_totais?: number | null;
-  status?: string | null;
+  status?: FeriasAusenciaStatus | string | null;
   motivo?: string | null;
   observacoes?: string | null;
   created_at?: string;
