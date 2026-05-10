@@ -7,7 +7,20 @@ import { Upload, FileText, CheckCircle2, XCircle, AlertTriangle, RefreshCw, Chev
 import { cn } from "@/shared/lib/utils";
 import type { ImportFormat, ImportStatus, ImportError } from "../types";
 
-const FORMAT_LABELS: Record<ImportFormat, string> = { csv: "CSV", xlsx: "Excel (XLSX)", json: "JSON", xml: "XML" };
+const FORMAT_LABELS: Record<ImportFormat, string> = {
+  csv:  "CSV",
+  xlsx: "Excel (XLSX)",
+  json: "JSON",
+  xml:  "XML",
+  ofx:  "OFX — Open Financial Exchange",
+};
+
+const MODULE_FORMATS: Partial<Record<string, ImportFormat[]>> = {
+  Financeiro: ["ofx", "csv", "xlsx"],
+};
+
+const DEFAULT_FORMATS: ImportFormat[] = ["csv", "xlsx", "json", "xml"];
+
 const MODULE_OPTIONS = ["Catálogo", "Artistas", "Contratos", "Financeiro", "Lançamentos", "Leads", "Marketing"];
 
 type Step = "upload" | "preview" | "mapping" | "importing" | "done";
@@ -61,6 +74,16 @@ export function ImportEngine({ open, onClose, onImported }: ImportEngineProps) {
   const [step, setStep] = useState<Step>("upload");
   const [format, setFormat] = useState<ImportFormat>("csv");
   const [module, setModule] = useState("Catálogo");
+
+  const availableFormats = MODULE_FORMATS[module] ?? DEFAULT_FORMATS;
+
+  function handleModuleChange(m: string) {
+    setModule(m);
+    const formats = MODULE_FORMATS[m] ?? DEFAULT_FORMATS;
+    if (!formats.includes(format)) {
+      setFormat(formats[0]);
+    }
+  }
   const [filename, setFilename] = useState("");
   const [progress, setProgress] = useState(0);
   const [errors, setErrors] = useState<ImportError[]>([]);
@@ -138,7 +161,7 @@ export function ImportEngine({ open, onClose, onImported }: ImportEngineProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-xs font-medium mb-1.5">Módulo destino</p>
-                <Select value={module} onValueChange={setModule}>
+                <Select value={module} onValueChange={handleModuleChange}>
                   <SelectTrigger className="h-9 text-sm" data-testid="import-module-select">
                     <SelectValue />
                   </SelectTrigger>
@@ -154,8 +177,8 @@ export function ImportEngine({ open, onClose, onImported }: ImportEngineProps) {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {(Object.entries(FORMAT_LABELS) as [ImportFormat, string][]).map(([k, l]) => (
-                      <SelectItem key={k} value={k}>{l}</SelectItem>
+                    {availableFormats.map(k => (
+                      <SelectItem key={k} value={k}>{FORMAT_LABELS[k]}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
