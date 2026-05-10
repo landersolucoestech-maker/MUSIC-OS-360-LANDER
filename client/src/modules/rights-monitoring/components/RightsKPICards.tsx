@@ -112,16 +112,16 @@ export function RightsKPICards({ total, confirmados, naoReportados, divergencias
       {kpis.map((kpi) => {
         const styles = variantStyles[kpi.variant];
         return (
-          <Card key={kpi.label} className="border-border/60 hover:border-border transition-colors">
+          <Card key={kpi.label} className="border-border/60 hover:border-border transition-colors duration-150">
             <CardContent className="p-4">
               <div className="flex items-start justify-between mb-3">
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide leading-tight">{kpi.label}</span>
+                <span className="stat-label">{kpi.label}</span>
                 <div className={`p-1.5 rounded-md flex-shrink-0 ${styles.icon}`}>{kpi.icon}</div>
               </div>
               <div className="space-y-1">
-                <p className="text-2xl font-bold tabular-nums leading-none">{kpi.value}</p>
+                <p className="stat-value">{kpi.value}</p>
                 {kpi.subvalue && (
-                  <p className="text-xs text-muted-foreground">{kpi.subvalue}</p>
+                  <p className="text-caption">{kpi.subvalue}</p>
                 )}
                 {kpi.trend !== undefined && (
                   <div className={`flex items-center gap-1 text-xs font-medium ${kpi.trend >= 0 ? "text-success" : "text-destructive"}`}>

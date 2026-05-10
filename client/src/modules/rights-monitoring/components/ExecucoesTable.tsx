@@ -54,16 +54,16 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-border/60">
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Música / Artista</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Origem</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Tipo</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Data / Hora</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden xl:table-cell">ISRC</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Match</th>
-            <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Valor Est.</th>
-            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-            <th className="py-3 px-4"></th>
+          <tr className="border-b border-border/60 bg-muted/20">
+            <th className="table-head-premium">Música / Artista</th>
+            <th className="table-head-premium hidden lg:table-cell">Origem</th>
+            <th className="table-head-premium hidden md:table-cell">Tipo</th>
+            <th className="table-head-premium hidden xl:table-cell">Data / Hora</th>
+            <th className="table-head-premium hidden xl:table-cell">ISRC</th>
+            <th className="table-head-premium hidden lg:table-cell">Match</th>
+            <th className="table-head-premium text-right hidden md:table-cell">Valor Est.</th>
+            <th className="table-head-premium">Status</th>
+            <th className="py-3 px-3 w-10"></th>
           </tr>
         </thead>
         <tbody className="divide-y divide-border/40">

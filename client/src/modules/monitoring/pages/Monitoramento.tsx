@@ -96,46 +96,38 @@ export default function Monitoramento() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Detecções Hoje</span>
-                <Radio className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="stat-label">Detecções Hoje</span>
+                <Radio className="h-4 w-4 text-primary" />
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{loadingDet ? "—" : totalDeteccoes}</span>
-              </div>
+              <span className="stat-value">{loadingDet ? "—" : totalDeteccoes}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Pendentes</span>
-                <Clock className="h-5 w-5 text-warning" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="stat-label">Pendentes</span>
+                <Clock className="h-4 w-4 text-warning" />
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{loadingDet ? "—" : pendentes}</span>
-              </div>
+              <span className="stat-value">{loadingDet ? "—" : pendentes}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Não Reportados</span>
-                <AlertTriangle className="h-5 w-5 text-primary" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="stat-label">Não Reportados</span>
+                <AlertTriangle className="h-4 w-4 text-destructive" />
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{loadingDet ? "—" : naoReportados}</span>
-              </div>
+              <span className="stat-value">{loadingDet ? "—" : naoReportados}</span>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Taxa de Match</span>
-                <CheckCircle className="h-5 w-5 text-success" />
+              <div className="flex items-center justify-between mb-3">
+                <span className="stat-label">Taxa de Match</span>
+                <CheckCircle className="h-4 w-4 text-success" />
               </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{loadingDet ? "—" : `${taxaMatch}%`}</span>
-              </div>
+              <span className="stat-value">{loadingDet ? "—" : `${taxaMatch}%`}</span>
             </CardContent>
           </Card>
         </div>
@@ -192,29 +184,29 @@ export default function Monitoramento() {
                 filteredDeteccoes.map((det: any) => {
                   const obra = obraMap.get(det.obra_id);
                   return (
-                    <div key={det.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border hover:bg-muted/50 transition-colors">
-                      <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <div key={det.id} className="detect-row items-center">
+                      <div className="detect-icon">
                         <Music className="h-5 w-5 text-primary" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-semibold truncate">{obra?.titulo ?? det.obra_id}</h3>
-                        <p className="text-sm text-muted-foreground">{det.plataforma}</p>
+                        <p className="text-sm font-semibold truncate text-foreground">{obra?.titulo ?? det.obra_id}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{det.plataforma}</p>
                       </div>
-                      <div className="hidden lg:flex items-center gap-6 text-sm">
+                      <div className="hidden lg:flex items-start gap-6">
                         <div>
-                          <span className="text-muted-foreground text-xs block">Período</span>
-                          <p className="font-medium">{det.periodo ? formatDate(det.periodo + "-01") : "-"}</p>
+                          <span className="info-label">Período</span>
+                          <p className="info-value">{det.periodo ? formatDate(det.periodo + "-01") : "—"}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground text-xs block">Execuções</span>
-                          <p className="font-medium">{fmt(det.quantidade ?? 0)}</p>
+                          <span className="info-label">Execuções</span>
+                          <p className="info-value tabular-nums">{fmt(det.quantidade ?? 0)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground text-xs block">Valor</span>
-                          <p className="font-medium">{fmtBRL(det.valor ?? 0)}</p>
+                          <span className="info-label">Valor</span>
+                          <p className="info-value tabular-nums">{fmtBRL(det.valor ?? 0)}</p>
                         </div>
                       </div>
-                      <div>{getStatusBadge(det.status ?? "")}</div>
+                      <div className="flex-shrink-0">{getStatusBadge(det.status ?? "")}</div>
                     </div>
                   );
                 })
@@ -243,25 +235,25 @@ export default function Monitoramento() {
             <CardContent className="space-y-4">
               {ecadPeriodos.length > 0 ? (
                 ecadPeriodos.map((periodo: any) => (
-                  <Card key={periodo.id} className="bg-muted/30">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                          <FileText className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <p className="font-semibold">Período: {periodo.periodo}</p>
-                          <p className="text-sm text-muted-foreground">
-                            {fmtBRL(periodo.valor_total ?? 0)} • {periodo.observacoes}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        {getStatusBadge(periodo.status ?? "")}
-                        <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>Ver Detalhes</Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div key={periodo.id} className="detect-row items-center">
+                    <div className="detect-icon">
+                      <FileText className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-foreground">Período: {periodo.periodo}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{periodo.observacoes}</p>
+                    </div>
+                    <div className="hidden sm:block">
+                      <span className="info-label">Valor Total</span>
+                      <p className="info-value tabular-nums">{fmtBRL(periodo.valor_total ?? 0)}</p>
+                    </div>
+                    <div className="flex items-center gap-3 flex-shrink-0">
+                      {getStatusBadge(periodo.status ?? "")}
+                      <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>
+                        Ver Detalhes
+                      </Button>
+                    </div>
+                  </div>
                 ))
               ) : (
                 <EmptyState
