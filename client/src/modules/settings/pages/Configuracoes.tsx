@@ -400,11 +400,11 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "corp_tiktok",
+      id: "tiktok_business",
       name: "TikTok Business",
       icon: "🎬",
-      status: isMarketingConnected("corp_tiktok") ? "conectado" : "desconectado",
-      description: "Conta TikTok oficial da empresa — views, seguidores, engajamento",
+      status: isMarketingConnected("tiktok_business") ? "conectado" : "desconectado",
+      description: "TikTok for Business + TikTok Ads — conta oficial, analytics, seguidores e campanhas",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -442,15 +442,6 @@ export default function Configuracoes() {
       icon: "🔍",
       status: isMarketingConnected("google_ads") ? "conectado" : "desconectado",
       description: "Search, Display e YouTube Ads — conta Google Ads da empresa",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
-      id: "tiktok_ads",
-      name: "TikTok Ads",
-      icon: "🎯",
-      status: isMarketingConnected("tiktok_ads") ? "conectado" : "desconectado",
-      description: "TikTok Ads Manager — TopView, Spark Ads e In-Feed da empresa",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -527,10 +518,9 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "meta_business", "youtube_business", "corp_tiktok", "corp_google", "corp_spotify",
+    "meta_business", "youtube_business", "tiktok_business", "corp_google", "corp_spotify",
     // Tráfego pago (contas de anúncios da empresa)
-    "google_ads", "tiktok_ads", "spotify_ads",
-    "deezer_ads", "apple_music_ads", "soundcloud_ads",
+    "google_ads", "spotify_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
   ]);
 
   // Handlers para plataformas que abrem um ConfigDialog dedicado

@@ -91,9 +91,9 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(45), endDate: daysAgo(10), updatedAt: daysAgo(10),
     },
   ],
-  tiktok_ads: [
+  tiktok_business: [
     {
-      id: "TTK-001", platform: "tiktok_ads",
+      id: "TTK-001", platform: "tiktok_business",
       name: "TopView — Lançamento Álbum", status: "active",
       objective: "Visualizações de vídeo",
       budget: 5000, budgetType: "lifetime", spent: 3_100,
@@ -102,7 +102,7 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(10), endDate: daysAgo(-5), updatedAt: daysAgo(0),
     },
     {
-      id: "TTK-002", platform: "tiktok_ads",
+      id: "TTK-002", platform: "tiktok_business",
       name: "Spark Ads — Conteúdo Orgânico", status: "active",
       objective: "Engajamento",
       budget: 60, budgetType: "daily", spent: 420,
@@ -186,16 +186,17 @@ const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
       { id: "FB-002", title: "Facebook — Show Esgotado (Vídeo)", type: "video", views: 210_000, likes: 14_700, comments: 1_900, shares: 6_200, engagementRate: 5.2, publishedAt: daysAgo(18) },
     ],
   },
-  corp_tiktok: {
-    platform: "corp_tiktok",
+  tiktok_business: {
+    platform: "tiktok_business",
     period: { from: daysAgo(30), to: daysAgo(0) },
-    impressions: 4_200_000, reach: 2_890_000,
-    engagement: 312_000, engagementRate: 7.4, clicks: 89_000,
+    impressions: 5_400_000, reach: 3_780_000,
+    engagement: 330_200, engagementRate: 6.1, clicks: 107_200,
     followers: 89_200, followersGrowth: 12_400, followersGrowthPercent: 16.1,
     views: 3_100_000, likesTotal: 248_000, commentsTotal: 31_200, sharesTotal: 32_800,
     topPosts: [
       { id: "TT-001", title: "Challenge — Conta Oficial", type: "video", views: 1_200_000, likes: 89_000, comments: 12_400, shares: 18_200, engagementRate: 9.9, publishedAt: daysAgo(5) },
       { id: "TT-002", title: "Bastidores Tour", type: "video", views: 480_000, likes: 42_000, comments: 4_800, shares: 6_700, engagementRate: 11.1, publishedAt: daysAgo(10) },
+      { id: "TTK-001", title: "TopView — Lançamento Álbum (Anúncio)", type: "video", views: 1_200_000, likes: 0, comments: 0, engagementRate: 2.7, publishedAt: daysAgo(10) },
     ],
   },
   youtube_business: {
@@ -290,12 +291,20 @@ class MockMetaBusinessProvider extends BaseMockMarketingProvider {
   }
 }
 
-class MockCorpTikTokProvider extends BaseMockMarketingProvider {
-  getPlatformId = (): MarketingPlatformId => "corp_tiktok";
+class MockTikTokBusinessProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "tiktok_business";
   getCategory   = (): MarketingCategory   => "corporate_metrics";
-  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_tiktok!; }
-  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_tiktok!.topPosts ?? []).slice(0, limit); }
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.tiktok_business!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.tiktok_business!.topPosts ?? []).slice(0, limit); }
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1000)); }
+  async getCampaigns(): Promise<ICampaign[]> { return MOCK_CAMPAIGNS.tiktok_business ?? []; }
+  async getCampaignById(id: string): Promise<ICampaign | null> {
+    return (MOCK_CAMPAIGNS.tiktok_business ?? []).find(c => c.id === id) ?? null;
+  }
+  async syncCampaigns(): Promise<ICampaignSyncResult> {
+    await new Promise(r => setTimeout(r, 1000));
+    return { synced: (MOCK_CAMPAIGNS.tiktok_business ?? []).length, updated: 1, errors: 0, lastSyncAt: new Date().toISOString() };
+  }
 }
 
 class MockYouTubeBusinessProvider extends BaseMockMarketingProvider {
@@ -390,21 +399,20 @@ class MockPaidAdsProvider extends BaseMockMarketingProvider {
 
 export const mockMarketingProviders: Record<MarketingPlatformId, IMarketingProvider> = {
   // ── Métricas Corporativas — contas oficiais da empresa
-  meta_business:     new MockMetaBusinessProvider(),
-  youtube_business:  new MockYouTubeBusinessProvider(),
-  corp_tiktok:       new MockCorpTikTokProvider(),
-  corp_spotify:      new MockCorpSpotifyProvider(),
-  corp_google:       new MockCorpGoogleProvider(),
-  corp_deezer:       new MockCorpDeezerProvider(),
-  corp_soundcloud:   new MockCorpSoundCloudProvider(),
-  corp_apple_music:  new MockCorpAppleMusicProvider(),
+  meta_business:    new MockMetaBusinessProvider(),
+  youtube_business: new MockYouTubeBusinessProvider(),
+  tiktok_business:  new MockTikTokBusinessProvider(),
+  corp_spotify:     new MockCorpSpotifyProvider(),
+  corp_google:      new MockCorpGoogleProvider(),
+  corp_deezer:      new MockCorpDeezerProvider(),
+  corp_soundcloud:  new MockCorpSoundCloudProvider(),
+  corp_apple_music: new MockCorpAppleMusicProvider(),
   // ── Tráfego Pago
-  google_ads:        new MockPaidAdsProvider("google_ads"),
-  tiktok_ads:        new MockPaidAdsProvider("tiktok_ads"),
-  spotify_ads:       new MockPaidAdsProvider("spotify_ads"),
-  deezer_ads:        new MockPaidAdsProvider("deezer_ads"),
-  apple_music_ads:   new MockPaidAdsProvider("apple_music_ads"),
-  soundcloud_ads:    new MockPaidAdsProvider("soundcloud_ads"),
+  google_ads:       new MockPaidAdsProvider("google_ads"),
+  spotify_ads:      new MockPaidAdsProvider("spotify_ads"),
+  deezer_ads:       new MockPaidAdsProvider("deezer_ads"),
+  apple_music_ads:  new MockPaidAdsProvider("apple_music_ads"),
+  soundcloud_ads:   new MockPaidAdsProvider("soundcloud_ads"),
 };
 
 export function getMockMarketingProvider(

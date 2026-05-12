@@ -42,7 +42,7 @@ export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingC
   // Métricas corporativas — contas oficiais da empresa
   meta_business:    "corporate_metrics",
   youtube_business: "corporate_metrics",
-  corp_tiktok:      "corporate_metrics",
+  tiktok_business:  "corporate_metrics",
   corp_spotify:     "corporate_metrics",
   corp_google:      "corporate_metrics",
   corp_deezer:      "corporate_metrics",
@@ -50,7 +50,6 @@ export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingC
   corp_apple_music: "corporate_metrics",
   // Tráfego pago
   google_ads:       "paid_ads",
-  tiktok_ads:       "paid_ads",
   spotify_ads:      "paid_ads",
   deezer_ads:       "paid_ads",
   apple_music_ads:  "paid_ads",
@@ -68,9 +67,9 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
     accountName: "Music Business — YouTube Studio + YouTube Ads",
     accountId:   "UCmusicbusiness123456",
   },
-  corp_tiktok: {
-    accountName: "@musicbusiness TikTok (Business)",
-    accountId:   "TT-CORP-7890123",
+  tiktok_business: {
+    accountName: "@musicbusiness TikTok for Business + TikTok Ads",
+    accountId:   "TT-BIZ-7890123",
   },
   corp_spotify: {
     accountName: "Music Business — Spotify for Artists",
@@ -95,10 +94,6 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   google_ads: {
     accountName: "Music Business Ads (MCC)",
     accountId:   "MCC-123-456-789",
-  },
-  tiktok_ads: {
-    accountName: "MusicBusiness — TikTok Ads Manager",
-    accountId:   "TT-ADV-4567890",
   },
   spotify_ads: {
     accountName: "Music Business — Spotify Ad Studio",
