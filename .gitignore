@@ -23,3 +23,17 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Test / coverage
+coverage/
+.vitest-cache/
+
+# Misc generated
+*.local
+public/mockServiceWorker.js

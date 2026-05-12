@@ -6,6 +6,7 @@
  * (TenantContext.tsx só pode exportar componentes React e hooks.)
  */
 
+import { getAccessToken } from "@/shared/lib/api-client";
 import type {
   TenantPlan,
   TenantBillingStatus,
@@ -77,14 +78,15 @@ export const ROLE_PERMISSIONS: Record<TenantRole, TenantPermissions> = {
 /** Deriva permissões do JWT real (produção). Em MOCK_MODE nunca é chamado. */
 export function getPermissionsFromToken(): TenantPermissions {
   try {
-    const token = localStorage.getItem("access_token");
+    const token = getAccessToken();
     if (!token) return ROLE_PERMISSIONS.viewer;
     const base64Payload = token.split(".")[1];
     if (!base64Payload) return ROLE_PERMISSIONS.viewer;
     const payload = JSON.parse(atob(base64Payload)) as { role?: TenantRole };
-    const role: TenantRole = payload.role && payload.role in ROLE_PERMISSIONS
-      ? payload.role
-      : "viewer";
+    const role: TenantRole =
+      payload.role && payload.role in ROLE_PERMISSIONS
+        ? payload.role
+        : "viewer";
     return ROLE_PERMISSIONS[role];
   } catch {
     return ROLE_PERMISSIONS.viewer;

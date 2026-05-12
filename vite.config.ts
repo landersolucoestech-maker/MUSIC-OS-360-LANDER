@@ -87,21 +87,55 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
-          if (id.includes("node_modules/react/") || id.includes("node_modules/react-dom/") || id.includes("node_modules/react-router")) {
-            return "vendor-react";
-          }
-          if (id.includes("node_modules/@radix-ui/") || id.includes("node_modules/lucide-react") || id.includes("node_modules/react-icons")) {
-            return "vendor-ui";
-          }
-          if (id.includes("node_modules/@tanstack/")) {
-            return "vendor-query";
-          }
-          if (id.includes("node_modules/recharts") || id.includes("node_modules/d3-")) {
-            return "vendor-charts";
-          }
-          if (id.includes("node_modules/date-fns") || id.includes("node_modules/clsx") || id.includes("node_modules/tailwind-merge") || id.includes("node_modules/class-variance-authority") || id.includes("node_modules/sonner") || id.includes("node_modules/cmdk")) {
-            return "vendor-utils";
-          }
+          // ── Vendor: core React ──────────────────────────────────────────
+          if (
+            id.includes("node_modules/react/") ||
+            id.includes("node_modules/react-dom/") ||
+            id.includes("node_modules/react-router")
+          ) return "vendor-react";
+
+          // ── Vendor: UI primitives ───────────────────────────────────────
+          if (
+            id.includes("node_modules/@radix-ui/") ||
+            id.includes("node_modules/lucide-react") ||
+            id.includes("node_modules/react-icons")
+          ) return "vendor-ui";
+
+          // ── Vendor: data-fetching ───────────────────────────────────────
+          if (id.includes("node_modules/@tanstack/")) return "vendor-query";
+
+          // ── Vendor: charts ──────────────────────────────────────────────
+          if (
+            id.includes("node_modules/recharts") ||
+            id.includes("node_modules/d3-")
+          ) return "vendor-charts";
+
+          // ── Vendor: misc utils ──────────────────────────────────────────
+          if (
+            id.includes("node_modules/date-fns") ||
+            id.includes("node_modules/clsx") ||
+            id.includes("node_modules/tailwind-merge") ||
+            id.includes("node_modules/class-variance-authority") ||
+            id.includes("node_modules/sonner") ||
+            id.includes("node_modules/cmdk")
+          ) return "vendor-utils";
+
+          // ── App: domain modules ─────────────────────────────────────────
+          if (id.includes("/modules/accounting/"))  return "mod-accounting";
+          if (id.includes("/modules/artist/"))      return "mod-artist";
+          if (id.includes("/modules/catalog/"))     return "mod-catalog";
+          if (id.includes("/modules/contracts/"))   return "mod-contracts";
+          if (id.includes("/modules/crm/"))         return "mod-crm";
+          if (id.includes("/modules/marketing/"))   return "mod-marketing";
+          if (id.includes("/modules/monitoring/"))  return "mod-monitoring";
+          if (id.includes("/modules/releases/"))    return "mod-releases";
+          if (id.includes("/modules/events/") ||
+              id.includes("/modules/inventory/") ||
+              id.includes("/modules/rh/"))          return "mod-operations";
+          if (id.includes("/modules/settings/"))    return "mod-settings";
+          if (id.includes("/modules/licensing/") ||
+              id.includes("/modules/projects/") ||
+              id.includes("/modules/leads/"))       return "mod-misc";
         },
       },
     },

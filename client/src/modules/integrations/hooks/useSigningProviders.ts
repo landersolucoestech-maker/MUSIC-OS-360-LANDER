@@ -22,11 +22,11 @@ export interface SigningProviderOption {
 }
 
 function readClicksignCreds(): boolean {
-  try { return localStorage.getItem("musicos360_clicksign_credentials") !== null; } catch { return false; }
+  try { return sessionStorage.getItem("musicos360_clicksign_credentials") !== null; } catch { return false; }
 }
 
 function readDocuSignCreds(): boolean {
-  try { return localStorage.getItem("musicos360_docusign_credentials") !== null; } catch { return false; }
+  try { return sessionStorage.getItem("musicos360_docusign_credentials") !== null; } catch { return false; }
 }
 
 /**

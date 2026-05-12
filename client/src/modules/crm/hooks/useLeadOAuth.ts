@@ -39,7 +39,7 @@ const MOCK_ACCOUNTS: Record<LeadOAuthPlatform, { accountName: string; accountId:
 
 function loadConnections(): Partial<Record<LeadOAuthPlatform, LeadOAuthConnection>> {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : {};
   } catch {
     return {};
@@ -49,7 +49,7 @@ function loadConnections(): Partial<Record<LeadOAuthPlatform, LeadOAuthConnectio
 function saveConnections(
   connections: Partial<Record<LeadOAuthPlatform, LeadOAuthConnection>>
 ): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(connections));
+  sessionStorage.setItem(STORAGE_KEY, JSON.stringify(connections));
 }
 
 export function useLeadOAuth() {

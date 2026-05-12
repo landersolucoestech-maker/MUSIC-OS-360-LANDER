@@ -1,9 +1,12 @@
 const UID = "mock-user-00000000000000000000000001";
 const OID = "mock-org-000000000000000000000000001";
-const NOW = new Date().toISOString();
 
-function d(offset: number) {
-  const dt = new Date();
+/** Fixed reference point — keeps mock dates stable across sessions. */
+const ANCHOR_DATE = new Date("2026-05-12T00:00:00.000Z");
+const NOW = ANCHOR_DATE.toISOString();
+
+function d(offset: number): string {
+  const dt = new Date(ANCHOR_DATE);
   dt.setDate(dt.getDate() + offset);
   return dt.toISOString().split("T")[0];
 }

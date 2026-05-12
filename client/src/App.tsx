@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Toaster as Sonner } from "@/shared/ui/sonner";
 import { TooltipProvider } from "@/shared/ui/tooltip";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -29,8 +29,6 @@ import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
 
 const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
-
-const queryClient = createQueryClient();
 
 const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
   <RouteErrorBoundary>
@@ -69,7 +67,9 @@ const SuperAdminRoute: SuspenseRouteComponent = ({ children }) => (
   </SuspenseRoute>
 );
 
-const App = () => (
+const App = () => {
+  const [queryClient] = useState(() => createQueryClient());
+  return (
   <ThemeProvider>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -107,6 +107,7 @@ const App = () => (
     </QueryClientProvider>
   </ErrorBoundary>
   </ThemeProvider>
-);
+  );
+};
 
 export default App;
