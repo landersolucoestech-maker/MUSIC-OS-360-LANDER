@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
+import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
@@ -175,6 +176,7 @@ export default function Configuracoes() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
+  const [leadIntegrationsOpen, setLeadIntegrationsOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
@@ -1558,6 +1560,41 @@ export default function Configuracoes() {
               </DialogContent>
             </Dialog>
 
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Users className="h-5 w-5" />
+                  Captação de Leads
+                </CardTitle>
+                <CardDescription>Webhooks e formulário público para receber leads do site e LinkedIn</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-lg border border-border overflow-hidden">
+                  <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors">
+                    <div className="p-1.5 rounded-md bg-muted shrink-0 text-base leading-none">🌐</div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">Website & LinkedIn</p>
+                      <p className="text-[10px] text-muted-foreground truncate">Formulário público de captação, webhooks e LinkedIn Lead Ads</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 shrink-0"
+                      onClick={() => setLeadIntegrationsOpen(true)}
+                      data-testid="button-lead-integrations"
+                    >
+                      Configurar
+                      <ExternalLink className="h-3 w-3" />
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <LeadIntegrationsDialog
+              open={leadIntegrationsOpen}
+              onOpenChange={setLeadIntegrationsOpen}
+            />
             <EcadConfigDialog
               open={ecadConfigOpen}
               onOpenChange={setEcadConfigOpen}
