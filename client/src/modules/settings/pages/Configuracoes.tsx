@@ -425,20 +425,11 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "youtube_business",
-      name: "YouTube Business",
-      icon: "▶️",
-      status: isMarketingConnected("youtube_business") ? "conectado" : "desconectado",
-      description: "YouTube Studio + YouTube Ads — canal oficial, analytics, inscritos e campanhas em vídeo",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
       id: "google_business",
-      name: "Google Business",
+      name: "Google & YouTube",
       icon: "🔍",
       status: isMarketingConnected("google_business") ? "conectado" : "desconectado",
-      description: "Google Analytics 4 + Search Console + Google Ads — presença web, tráfego orgânico e campanhas",
+      description: "Google Analytics 4 + Search Console + Google Ads + YouTube Studio + YouTube Ads — um único login Google",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -489,7 +480,7 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "meta_business", "youtube_business", "tiktok_business", "google_business",
+    "meta_business", "tiktok_business", "google_business",
     // Tráfego pago (contas de anúncios da empresa)
     "spotify_ads",
   ]);

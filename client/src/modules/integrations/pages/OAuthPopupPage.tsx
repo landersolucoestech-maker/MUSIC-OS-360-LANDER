@@ -99,7 +99,7 @@ const PLATFORMS: Record<string, PlatformConfig> = {
   },
   google_business: {
     name: "Google",
-    tagline: "para continuar para o Music Business",
+    tagline: "para continuar para Google & YouTube — Music Business",
     logo: "G",
     bgColor: "#ffffff",
     accentColor: "#4285F4",

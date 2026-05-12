@@ -75,7 +75,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     ],
   },
   google_business: {
-    name: "Google Business",
+    name: "Google & YouTube",
     icon: "🔍",
     buttonLabel: "Entrar com o Google",
     buttonColor: "#4285F4",
@@ -85,7 +85,9 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
       "Aceder ao Google Analytics 4 (GA4)",
       "Aceder ao Google Search Console",
       "Gerir campanhas e relatórios do Google Ads",
-      "Visualizar dados de SEO e desempenho de pesquisa",
+      "Aceder ao YouTube Studio — canal oficial e analytics",
+      "Visualizar métricas de vídeos, Shorts e inscritos",
+      "Gerir campanhas de YouTube Ads",
     ],
   },
   corp_spotify: {
