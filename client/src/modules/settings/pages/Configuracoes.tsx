@@ -41,6 +41,10 @@ import { ResendConfigDialog } from "@/modules/integrations/components/ResendConf
 import { useResendStatus } from "@/modules/integrations/hooks/useResend";
 import { AutentiqueConfigDialog } from "@/modules/integrations/components/AutentiqueConfigDialog";
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
+import { ClicksignConfigDialog } from "@/modules/integrations/components/ClicksignConfigDialog";
+import { useClicksignStatus } from "@/modules/integrations/hooks/useClicksign";
+import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSignConfigDialog";
+import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
 import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
@@ -176,6 +180,8 @@ export default function Configuracoes() {
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
   const [resendConfigOpen, setResendConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
+  const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
+  const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
   const [acrCloudConfigOpen, setAcrCloudConfigOpen] = useState(false);
 
@@ -211,6 +217,8 @@ export default function Configuracoes() {
   const { data: metaAdsStatus } = useMetaAdsStatus();
   const { data: resendStatus } = useResendStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
+  const { data: clicksignStatus } = useClicksignStatus();
+  const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
   const { data: acrCloudStatus } = useACRCloudStatus();
 
@@ -360,17 +368,19 @@ export default function Configuracoes() {
       id: "clicksign",
       name: "Clicksign",
       icon: "🖊️",
-      status: "desconectado",
+      status: clicksignStatus?.connected ? "conectado" : "desconectado",
       description: "Plataforma brasileira de assinatura eletrônica com validade jurídica",
       category: "Assinatura Digital",
+      configurable: true,
     },
     {
       id: "docusign",
       name: "DocuSign",
       icon: "📝",
-      status: "desconectado",
+      status: docusignStatus?.connected ? "conectado" : "desconectado",
       description: "Líder mundial em assinatura digital e gestão de acordos",
       category: "Assinatura Digital",
+      configurable: true,
     },
     {
       id: "spotify",
@@ -492,6 +502,8 @@ export default function Configuracoes() {
     meta_ads: () => setMetaAdsConfigOpen(true),
     resend: () => setResendConfigOpen(true),
     autentique: () => setAutentiqueConfigOpen(true),
+    clicksign: () => setClicksignConfigOpen(true),
+    docusign: () => setDocusignConfigOpen(true),
     ubc: () => setUbcConfigOpen(true),
     acrcloud: () => setAcrCloudConfigOpen(true),
   };
@@ -1626,6 +1638,14 @@ export default function Configuracoes() {
             <AutentiqueConfigDialog
               open={autentiqueConfigOpen}
               onOpenChange={setAutentiqueConfigOpen}
+            />
+            <ClicksignConfigDialog
+              open={clicksignConfigOpen}
+              onOpenChange={setClicksignConfigOpen}
+            />
+            <DocuSignConfigDialog
+              open={docusignConfigOpen}
+              onOpenChange={setDocusignConfigOpen}
             />
             <UbcConfigDialog
               open={ubcConfigOpen}
