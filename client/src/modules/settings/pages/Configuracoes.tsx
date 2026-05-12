@@ -409,11 +409,11 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "corp_youtube",
-      name: "YouTube Studio",
+      id: "youtube_business",
+      name: "YouTube Business",
       icon: "▶️",
-      status: isMarketingConnected("corp_youtube") ? "conectado" : "desconectado",
-      description: "Canal YouTube oficial da empresa — inscritos, watch time, CTR",
+      status: isMarketingConnected("youtube_business") ? "conectado" : "desconectado",
+      description: "YouTube Studio + YouTube Ads — canal oficial, analytics, inscritos e campanhas em vídeo",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -460,15 +460,6 @@ export default function Configuracoes() {
       icon: "🎧",
       status: isMarketingConnected("spotify_ads") ? "conectado" : "desconectado",
       description: "Anúncios de áudio e display no Spotify — segmentação por gênero musical",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
-      id: "youtube_ads",
-      name: "YouTube Ads",
-      icon: "📺",
-      status: isMarketingConnected("youtube_ads") ? "conectado" : "desconectado",
-      description: "TrueView, Bumper e Discovery — anúncios em vídeo no YouTube",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -536,10 +527,10 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "meta_business", "corp_tiktok", "corp_youtube", "corp_google", "corp_spotify",
+    "meta_business", "youtube_business", "corp_tiktok", "corp_google", "corp_spotify",
     // Tráfego pago (contas de anúncios da empresa)
     "google_ads", "tiktok_ads", "spotify_ads",
-    "youtube_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
+    "deezer_ads", "apple_music_ads", "soundcloud_ads",
   ]);
 
   // Handlers para plataformas que abrem um ConfigDialog dedicado

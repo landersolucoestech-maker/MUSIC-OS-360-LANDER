@@ -122,9 +122,9 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(12), endDate: daysAgo(-3), updatedAt: daysAgo(1),
     },
   ],
-  youtube_ads: [
+  youtube_business: [
     {
-      id: "YTA-001", platform: "youtube_ads",
+      id: "YTA-001", platform: "youtube_business",
       name: "TrueView — Clipe Oficial", status: "active",
       objective: "Visualizações",
       budget: 100, budgetType: "daily", spent: 700,
@@ -198,17 +198,18 @@ const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
       { id: "TT-002", title: "Bastidores Tour", type: "video", views: 480_000, likes: 42_000, comments: 4_800, shares: 6_700, engagementRate: 11.1, publishedAt: daysAgo(10) },
     ],
   },
-  corp_youtube: {
-    platform: "corp_youtube",
+  youtube_business: {
+    platform: "youtube_business",
     period: { from: daysAgo(30), to: daysAgo(0) },
-    impressions: 2_840_000, reach: 1_120_000,
-    engagement: 187_400, engagementRate: 6.6, clicks: 98_200,
+    impressions: 3_360_000, reach: 1_500_000,
+    engagement: 208_400, engagementRate: 6.2, clicks: 119_200,
     views: 1_340_000, watchTimeHours: 78_400,
     subscribers: 42_800, subscribersGrowth: 1_240,
     likesTotal: 67_200, commentsTotal: 8_900, sharesTotal: 12_400,
     topPosts: [
       { id: "YT-001", title: "Canal Oficial — Clipe Novo Single", type: "video", views: 420_000, likes: 24_800, comments: 3_200, shares: 5_100, engagementRate: 7.9, publishedAt: daysAgo(12) },
       { id: "YT-002", title: "Making Of — Álbum", type: "video", views: 180_000, likes: 9_400, comments: 1_200, shares: 2_300, engagementRate: 7.2, publishedAt: daysAgo(20) },
+      { id: "YTA-001", title: "TrueView — Clipe Oficial (Anúncio)", type: "video", views: 520_000, likes: 0, comments: 0, engagementRate: 4.0, publishedAt: daysAgo(7) },
     ],
   },
   corp_spotify: {
@@ -297,12 +298,20 @@ class MockCorpTikTokProvider extends BaseMockMarketingProvider {
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1000)); }
 }
 
-class MockCorpYouTubeProvider extends BaseMockMarketingProvider {
-  getPlatformId = (): MarketingPlatformId => "corp_youtube";
+class MockYouTubeBusinessProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "youtube_business";
   getCategory   = (): MarketingCategory   => "corporate_metrics";
-  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_youtube!; }
-  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_youtube!.topPosts ?? []).slice(0, limit); }
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.youtube_business!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.youtube_business!.topPosts ?? []).slice(0, limit); }
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1600)); }
+  async getCampaigns(): Promise<ICampaign[]> { return MOCK_CAMPAIGNS.youtube_business ?? []; }
+  async getCampaignById(id: string): Promise<ICampaign | null> {
+    return (MOCK_CAMPAIGNS.youtube_business ?? []).find(c => c.id === id) ?? null;
+  }
+  async syncCampaigns(): Promise<ICampaignSyncResult> {
+    await new Promise(r => setTimeout(r, 1200));
+    return { synced: (MOCK_CAMPAIGNS.youtube_business ?? []).length, updated: 1, errors: 0, lastSyncAt: new Date().toISOString() };
+  }
 }
 
 class MockCorpSpotifyProvider extends BaseMockMarketingProvider {
@@ -381,22 +390,21 @@ class MockPaidAdsProvider extends BaseMockMarketingProvider {
 
 export const mockMarketingProviders: Record<MarketingPlatformId, IMarketingProvider> = {
   // ── Métricas Corporativas — contas oficiais da empresa
-  meta_business:    new MockMetaBusinessProvider(),
-  corp_tiktok:      new MockCorpTikTokProvider(),
-  corp_youtube:     new MockCorpYouTubeProvider(),
-  corp_spotify:     new MockCorpSpotifyProvider(),
-  corp_google:      new MockCorpGoogleProvider(),
-  corp_deezer:      new MockCorpDeezerProvider(),
-  corp_soundcloud:  new MockCorpSoundCloudProvider(),
-  corp_apple_music: new MockCorpAppleMusicProvider(),
+  meta_business:     new MockMetaBusinessProvider(),
+  youtube_business:  new MockYouTubeBusinessProvider(),
+  corp_tiktok:       new MockCorpTikTokProvider(),
+  corp_spotify:      new MockCorpSpotifyProvider(),
+  corp_google:       new MockCorpGoogleProvider(),
+  corp_deezer:       new MockCorpDeezerProvider(),
+  corp_soundcloud:   new MockCorpSoundCloudProvider(),
+  corp_apple_music:  new MockCorpAppleMusicProvider(),
   // ── Tráfego Pago
-  google_ads:       new MockPaidAdsProvider("google_ads"),
-  tiktok_ads:       new MockPaidAdsProvider("tiktok_ads"),
-  spotify_ads:      new MockPaidAdsProvider("spotify_ads"),
-  youtube_ads:      new MockPaidAdsProvider("youtube_ads"),
-  deezer_ads:       new MockPaidAdsProvider("deezer_ads"),
-  apple_music_ads:  new MockPaidAdsProvider("apple_music_ads"),
-  soundcloud_ads:   new MockPaidAdsProvider("soundcloud_ads"),
+  google_ads:        new MockPaidAdsProvider("google_ads"),
+  tiktok_ads:        new MockPaidAdsProvider("tiktok_ads"),
+  spotify_ads:       new MockPaidAdsProvider("spotify_ads"),
+  deezer_ads:        new MockPaidAdsProvider("deezer_ads"),
+  apple_music_ads:   new MockPaidAdsProvider("apple_music_ads"),
+  soundcloud_ads:    new MockPaidAdsProvider("soundcloud_ads"),
 };
 
 export function getMockMarketingProvider(

@@ -21,8 +21,8 @@ export type MarketingPlatformId =
   // Contas oficiais da empresa/label em cada plataforma.
   // Login obrigatório para aceder analytics, gestão de página e publicações.
   | "meta_business"       // Meta Business Suite — Facebook + Instagram + Meta Ads (unificado)
+  | "youtube_business"    // YouTube Business — YouTube Studio + YouTube Ads (unificado)
   | "corp_tiktok"         // TikTok Business — conta oficial da empresa
-  | "corp_youtube"        // YouTube Studio — canal oficial da empresa
   | "corp_spotify"        // Spotify for Artists — perfil oficial da empresa
   | "corp_google"         // Google Analytics + Search Console — presença web da empresa
   | "corp_deezer"         // Deezer for Artists — presença da label no Deezer
@@ -33,7 +33,6 @@ export type MarketingPlatformId =
   | "google_ads"
   | "tiktok_ads"
   | "spotify_ads"
-  | "youtube_ads"
   | "deezer_ads"
   | "apple_music_ads"
   | "soundcloud_ads";

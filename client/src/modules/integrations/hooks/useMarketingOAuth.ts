@@ -41,8 +41,8 @@ const STORAGE_KEY = "musicos360_marketing_oauth_connections";
 export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
   // Métricas corporativas — contas oficiais da empresa
   meta_business:    "corporate_metrics",
+  youtube_business: "corporate_metrics",
   corp_tiktok:      "corporate_metrics",
-  corp_youtube:     "corporate_metrics",
   corp_spotify:     "corporate_metrics",
   corp_google:      "corporate_metrics",
   corp_deezer:      "corporate_metrics",
@@ -52,7 +52,6 @@ export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingC
   google_ads:       "paid_ads",
   tiktok_ads:       "paid_ads",
   spotify_ads:      "paid_ads",
-  youtube_ads:      "paid_ads",
   deezer_ads:       "paid_ads",
   apple_music_ads:  "paid_ads",
   soundcloud_ads:   "paid_ads",
@@ -65,13 +64,13 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
     accountName: "Music Business — Meta Business Suite (Facebook + Instagram + Ads)",
     accountId:   "META-BIZ-1234567890",
   },
+  youtube_business: {
+    accountName: "Music Business — YouTube Studio + YouTube Ads",
+    accountId:   "UCmusicbusiness123456",
+  },
   corp_tiktok: {
     accountName: "@musicbusiness TikTok (Business)",
     accountId:   "TT-CORP-7890123",
-  },
-  corp_youtube: {
-    accountName: "Music Business — YouTube Studio",
-    accountId:   "UCmusicbusiness123456",
   },
   corp_spotify: {
     accountName: "Music Business — Spotify for Artists",
@@ -104,10 +103,6 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   spotify_ads: {
     accountName: "Music Business — Spotify Ad Studio",
     accountId:   "SP-ADV-123456",
-  },
-  youtube_ads: {
-    accountName: "Music Business — YouTube Ads",
-    accountId:   "YT-ADV-789012",
   },
   deezer_ads: {
     accountName: "Music Business — Deezer Ad Manager",
