@@ -1,0 +1,59 @@
+Analise absolutamente toda a estrutura do projeto de forma profunda e minuciosa, incluindo cada pasta, arquivo, linha de código, arquitetura, organização, domains, services, hooks, components, pages, mappers, providers, middlewares, integrações, fluxos, regras de negócio, autenticação, permissões, APIs, banco de dados, tipagens, validações, performance, segurança, escalabilidade, responsividade, UX/UI, padrões utilizados e consistência geral do sistema.
+
+A análise deve ser 100% precisa, técnica, completa e altamente detalhada, sem respostas superficiais, genéricas ou baseadas em suposição. Identifique qualquer erro, inconsistência, código redundante, falha arquitetural, má prática, gargalo, vulnerabilidade, problema de tipagem, quebra de padrão, risco de escalabilidade, problema de performance ou qualquer ponto que precise de correção, refatoração ou melhoria.
+
+Quero um relatório técnico completo contendo:
+
+Estrutura geral do projeto
+Qualidade da arquitetura
+Fluxo de dados e responsabilidades
+Organização das pastas
+Acoplamento e desacoplamento
+Padronização do código
+Qualidade das integrações
+Segurança da aplicação
+Performance
+Escalabilidade
+Qualidade do frontend e backend
+Consistência entre domains/services/hooks/components
+Qualidade das abstrações
+Possíveis bugs e riscos futuros
+Melhorias recomendadas
+Correções obrigatórias
+O que está bem implementado
+O que está errado
+O que precisa ser refeito
+O que pode ser otimizado
+
+Além disso, gere um resumo executivo extremamente completo e detalhado ao final da análise.
+
+Também identifiquei que a página de integrações não foi atualizada conforme todas as integrações já definidas anteriormente. Verifique isso e atualize toda a estrutura necessária relacionada às integrações do sistema.
+
+As integrações que devem existir no sistema incluem:
+
+Autentique
+Clicksign
+DocuSign
+Spotify
+YouTube
+Deezer
+SoundCloud
+Apple Music
+Meta Ads
+ECAD
+Abramus
+UBC
+Resend
+Cloudflare R2
+
+O Google Drive deve ser completamente removido da arquitetura, integrações, serviços, providers, storage e qualquer dependência relacionada, pois será substituído integralmente pelo Cloudflare R2.
+
+Importante:
+
+Alguns serviços exigirão autenticação via conta do próprio usuário do sistema (OAuth/token/account connection).
+Valide se o fluxo atual suporta múltiplas contas conectadas.
+Verifique armazenamento seguro de tokens e credenciais.
+Analise renovação de tokens, webhooks, callbacks e sincronização de dados.
+Verifique separação correta entre providers, adapters, gateways e services.
+Analise se a arquitetura atual suporta expansão futura de integrações sem alto acoplamento.
+Identifique qualquer problema estrutural relacionado às integrações atuais e futuras.
