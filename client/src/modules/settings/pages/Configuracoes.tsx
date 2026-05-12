@@ -43,12 +43,8 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
-import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
-import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
-import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
-import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
-import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
-import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
+import { PaidAdsIntegrationsDialog } from "@/modules/integrations/components/PaidAdsIntegrationsDialog";
+import { usePaidAdsOAuth, type PaidAdsPlatform } from "@/modules/integrations/hooks/usePaidAdsOAuth";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -183,9 +179,8 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
-  const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
-  const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
-  const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
+  const [paidAdsOpen, setPaidAdsOpen] = useState(false);
+  const [paidAdsInitialTab, setPaidAdsInitialTab] = useState<PaidAdsPlatform>("meta_ads");
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -221,9 +216,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { data: metaAdsStatus } = useMetaAdsStatus();
-  const { data: googleAdsStatus } = useGoogleAdsStatus();
-  const { data: tiktokAdsStatus } = useTikTokAdsStatus();
+  const { isConnected: isPaidAdsConnected } = usePaidAdsOAuth();
   const { data: nfeStatus } = useNfeStatus();
 
   // Estados para aba de Usuários
@@ -399,8 +392,8 @@ export default function Configuracoes() {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
-      status: metaAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Facebook & Instagram Ads — conecte a sua conta Business para gerir campanhas",
+      status: isPaidAdsConnected("meta_ads") ? "conectado" : "desconectado",
+      description: "Facebook & Instagram Ads — entre com a sua conta Business para gerir campanhas",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
     },
@@ -408,8 +401,8 @@ export default function Configuracoes() {
       id: "google_ads",
       name: "Google Ads",
       icon: "🔍",
-      status: googleAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Search, Display e YouTube Ads — autentique a sua conta Google Ads",
+      status: isPaidAdsConnected("google_ads") ? "conectado" : "desconectado",
+      description: "Search, Display e YouTube Ads — entre com a sua conta Google Ads",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
     },
@@ -417,8 +410,8 @@ export default function Configuracoes() {
       id: "tiktok_ads",
       name: "TikTok Ads",
       icon: "🎯",
-      status: tiktokAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "TikTok Ads Manager — impulsionamento e geração de leads via conta autenticada",
+      status: isPaidAdsConnected("tiktok_ads") ? "conectado" : "desconectado",
+      description: "TikTok Ads Manager — entre com a sua conta TikTok Ads para gerir campanhas",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
     },
@@ -487,9 +480,9 @@ export default function Configuracoes() {
     ecad:            () => setEcadConfigOpen(true),
     abramus:         () => setAbramusConfigOpen(true),
     ubc:             () => setUbcConfigOpen(true),
-    meta_ads:        () => setMetaAdsConfigOpen(true),
-    google_ads:      () => setGoogleAdsConfigOpen(true),
-    tiktok_ads:      () => setTiktokAdsConfigOpen(true),
+    meta_ads:        () => { setPaidAdsInitialTab("meta_ads");   setPaidAdsOpen(true); },
+    google_ads:      () => { setPaidAdsInitialTab("google_ads"); setPaidAdsOpen(true); },
+    tiktok_ads:      () => { setPaidAdsInitialTab("tiktok_ads"); setPaidAdsOpen(true); },
     nfe:             () => setNfeConfigOpen(true),
     website_linkedin: () => setLeadIntegrationsOpen(true),
   };
@@ -1592,9 +1585,10 @@ export default function Configuracoes() {
               open={abramusConfigOpen}
               onOpenChange={setAbramusConfigOpen}
             />
-            <MetaAdsConfigDialog
-              open={metaAdsConfigOpen}
-              onOpenChange={setMetaAdsConfigOpen}
+            <PaidAdsIntegrationsDialog
+              open={paidAdsOpen}
+              onOpenChange={setPaidAdsOpen}
+              initialTab={paidAdsInitialTab}
             />
             <AutentiqueConfigDialog
               open={autentiqueConfigOpen}
@@ -1612,14 +1606,7 @@ export default function Configuracoes() {
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
             />
-            <GoogleAdsConfigDialog
-              open={googleAdsConfigOpen}
-              onOpenChange={setGoogleAdsConfigOpen}
-            />
-            <TikTokAdsConfigDialog
-              open={tiktokAdsConfigOpen}
-              onOpenChange={setTiktokAdsConfigOpen}
-            />
+
             <NfeConfigDialog
               open={nfeConfigOpen}
               onOpenChange={setNfeConfigOpen}
