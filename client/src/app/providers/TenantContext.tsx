@@ -131,6 +131,32 @@ export interface Tenant {
   };
 }
 
+// ─── RBAC util — derivar permissões do JWT real (produção) ────────────────────
+//
+// Em MOCK_MODE o tenant usa ROLE_PERMISSIONS.owner para demonstração completa.
+// Em produção, chamar getPermissionsFromToken() para obter o role real do JWT.
+// NOTA BUG #3: nunca hardcodar owner em produção — usar getPermissionsFromToken.
+
+function getPermissionsFromToken(): TenantPermissions {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) return ROLE_PERMISSIONS.viewer;
+    // Decode sem verificar assinatura (verificação é feita no backend)
+    const base64Payload = token.split(".")[1];
+    if (!base64Payload) return ROLE_PERMISSIONS.viewer;
+    const payload = JSON.parse(atob(base64Payload)) as { role?: TenantRole };
+    const role: TenantRole = payload.role && payload.role in ROLE_PERMISSIONS
+      ? payload.role
+      : "viewer";
+    return ROLE_PERMISSIONS[role];
+  } catch {
+    return ROLE_PERMISSIONS.viewer;
+  }
+}
+
+// Exportada para uso em testes e inicialização real do tenant
+export { getPermissionsFromToken };
+
 // ─── Mock tenant — Gravadora Exemplo Ltda ─────────────────────────────────────
 
 const MOCK_TENANT: Tenant = {

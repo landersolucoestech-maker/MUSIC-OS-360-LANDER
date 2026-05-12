@@ -1,0 +1,1228 @@
+═══════════════════════════════════════════════════════════════════════════════
+ MUSIC OS 360 — PROMPT DEFINITIVO ULTRA-COMPLETO v2.0
+ ERP Musical SaaS para Gravadoras, Produtoras e Editoras
+ Auditado contra código real · Zero margem de erro · Maio 2026
+═══════════════════════════════════════════════════════════════════════════════
+
+ÍNDICE
+======
+BLOCO 01 · Identidade do Sistema e Utilizadores
+BLOCO 02 · Stack Técnica Definitiva (confirmada por auditoria de código)
+BLOCO 03 · Inventário Completo de Ficheiros (estado real)
+BLOCO 04 · 9 Bugs Críticos com Ficheiro + Linha + Código de Correcção
+BLOCO 05 · Arquitectura RBAC (dois sistemas — reconciliação obrigatória)
+BLOCO 06 · Base de Dados: TABLE_ENDPOINT + PENDING_TABLES + Schema Prisma
+BLOCO 07 · WebSocket — Eventos e Payloads
+BLOCO 08 · Document Engine v2 (módulo implementado — estado e integração)
+BLOCO 09 · Todas as Integrações (código + credenciais + endpoints)
+BLOCO 10 · 38 Variáveis de Ambiente (formato exacto)
+BLOCO 11 · 35 Fases de Execução (código pronto a executar)
+BLOCO 12 · 20 Regras Absolutas de Execução
+BLOCO 13 · Ordem de Criação de Contas (com links directos)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 01 — IDENTIDADE DO SISTEMA E UTILIZADORES
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+NOME: MUSIC OS 360
+TIPO: ERP Musical SaaS Multi-tenant
+
+QUEM USA O SISTEMA:
+  · Gravadoras (independentes e majors)
+  · Produtoras musicais
+  · Editoras musicais (publishing/direitos autorais)
+
+QUEM NÃO USA O SISTEMA:
+  · Distribuidoras NÃO são tenants/utilizadores
+  · Distribuidoras (DistroKid, TuneCore, ONErpm, Believe, CD Baby) são
+    ALVOS DE INTEGRAÇÃO — o sistema envia lançamentos para elas via API,
+    eliminando o login manual em cada plataforma.
+
+FUNÇÃO DA DISTRIBUIÇÃO NO SISTEMA:
+  Simplificação de fluxo de trabalho: a gravadora/produtora/editora
+  distribui os lançamentos musicais de DENTRO do MUSIC OS 360, sem
+  precisar fazer login em cada distribuidora separadamente.
+  A distribuidora recebe os metadados e assets via API.
+
+MODELO DE NEGÓCIO:
+  · SaaS com planos mensais via Stripe (Starter / Professional / Enterprise)
+  · Multi-tenant: cada cliente é um tenant isolado com org_id próprio
+  · Whitelabel opcional para grandes clientes
+  · Billing em BRL (Brasil)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 02 — STACK TÉCNICA DEFINITIVA (IMUTÁVEL)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+AVISO CRÍTICO: Next.js NÃO é parte desta stack. Nunca foi, nunca será.
+Qualquer prompt que mencione Next.js está ERRADO e deve ser corrigido.
+
+FRONTEND (client/)
+──────────────────
+Framework:      React 18.3.1 + Vite 5.4.19
+Linguagem:      TypeScript (strict mode)
+Estilo:         Tailwind CSS + shadcn/ui (Radix UI)
+Formulários:    React Hook Form + Zod
+Estado HTTP:    TanStack Query v5 (React Query)
+Roteamento:     React Router v6 (createBrowserRouter)
+Realtime:       Socket.IO client v4
+Icons:          Lucide React
+Toasts:         Sonner
+Deploy:         Vercel
+Testes:         Vitest + Testing Library
+
+BACKEND (server/) — A CRIAR NO RAILWAY
+───────────────────────────────────────
+Framework:      NestJS v10 (Node.js 20 LTS)
+Linguagem:      TypeScript (strict)
+ORM:            Prisma 5 + Prisma Client
+Banco:          Neon (PostgreSQL 15 serverless)
+Cache:          Upstash Redis (REST API via @upstash/redis)
+Filas:          BullMQ + Railway Redis (ioredis)
+Auth:           JWT próprio (jsonwebtoken) + Clerk webhook sync
+Storage:        Cloudflare R2 (@aws-sdk/client-s3)
+PDF:            Puppeteer v21 (chromium headless — APENAS server-side)
+Templates:      Handlebars v4
+Email:          Resend SDK
+Socket:         Socket.IO server v4 + Redis adapter
+Deploy:         Railway
+Process:        Single process (sem clustering na MVP)
+
+INFRAESTRUTURA
+──────────────
+DNS + CDN:      Cloudflare (proxy ON para todos os subdomínios)
+CI/CD:          GitHub Actions (lint → test → build → deploy)
+Monitoring:     Sentry (dois projectos: frontend + backend)
+Analytics:      PostHog (product analytics do sistema)
+Domínio:        musicos360.com.br
+  Frontend:     app.musicos360.com.br → Vercel
+  Backend:      backend.musicos360.com.br → Railway
+  Email:        noreply@musicos360.com.br → Resend (DKIM via Cloudflare)
+
+REGRA ABSOLUTA DE MODELO IA:
+  ERRADO: "gpt-5-mini" (modelo não existe — causa erro 404 na OpenAI)
+  CORRECTO: "gpt-4o-mini" (rápido, barato, existe)
+  PREMIUM: "gpt-4o" (mais capaz, mais caro, existe)
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 03 — INVENTÁRIO COMPLETO DE FICHEIROS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TOTAL REAL: 81.049 linhas reais · 650+ ficheiros · 191 ficheiros stub (export {})
+
+MÓDULOS DO FRONTEND (client/src/modules/)
+─────────────────────────────────────────
+accounting/     → Financeiro, Contabilidade, NotaFiscal
+admin/          → AdminDashboard, AdminAudit, AdminClients, AdminSettings,
+                  AdminPlans, AdminSupport
+ai/             → AIOrchestrator (248L), AIAnalytics (232L), AIJobQueue (231L),
+                  AIWorker (170L), TenantMemory, 5 providers reais
+artist/         → Artistas, ArtistaCadastro
+auth/           → Auth, Register, ArtistaSignupPublic
+catalog/        → RegistroMusicas
+contracts/      → Contratos, TemplatesContratos ⛔ MÓDULO V1 — NÃO ALTERAR
+contracts-v2/   → DocumentEngine, TemplateBuilder ✅ NOVO — implementado
+crm/            → CRM, LeadCapture
+dashboard/      → Dashboard
+events/         → Agenda
+integrations/   → (sem páginas próprias — providers e adapters)
+inventory/      → Inventario
+licensing/      → Licenciamento
+marketing/      → Metricas, IACriativa, Campanhas, Tarefas, Briefing,
+                  Calendario, VisaoGeral
+                  mockAnalytics.ts: 947L de dados fictícios ⚠️
+monitoring/     → Monitoramento, Takedowns
+projects/       → Projetos
+releases/       → Lancamentos, GestaoShares ⛔ PROTEGIDO — NUNCA ALTERAR
+reports/        → Relatorios
+rh/             → RH
+settings/       → Configuracoes, Usuarios, Perfil, Aparencia
+support/        → SupportDashboard, SupportTickets, SupportChat (hardcoded),
+                  SupportKnowledge, SupportStatus, SupportRequests,
+                  SupportTicketDetail
+
+SHARED (client/src/shared/)
+───────────────────────────
+analytics/         → stub (export {})
+auth/              → stub
+components/        → RequirePermission.tsx (REAL), MainLayout, PageHeader, etc.
+constants/         → real
+data/              → real
+design-system/     → 16 subdirs: tokens, colors, spacing, typography, etc.
+                     TODOS com 5-9 linhas reais — stubs com comentários
+domain-events/     → events.ts (real — eventos de domínio)
+feature-flags/     → stub (export {})
+governance/        → 7 ficheiros: entities, flows, modules, naming, permissions,
+                     states — todos stubs com documentação
+hooks/             → useCanAccess.ts (real, PERMISSION_MATRIX),
+                     useHasRole.ts (real, AppRole),
+                     useRealtimeSync.ts (45L real),
+                     useWsEvent.ts (real), etc.
+infrastructure/    → ProtectedRoute.tsx (real), AdminRoute.tsx (real),
+                     RealtimeLayer.tsx (real — WS events já mapeados)
+integrations/      → 10 adapters reais (31-66L cada) + 10 mock providers reais
+                     (51-205L cada) + stubs sentry/posthog/stripe/etc.
+lib/               → api-client.ts (real — TABLE_ENDPOINT + PENDING_TABLES),
+                     storage.ts (378L real), ws-client.ts (54L real),
+                     query-config.ts (real — QUERY_KEYS completos), env.ts, etc.
+observability/     → stub
+pages/             → Landing.tsx (240L real)
+permissions/       → stub (export {})
+realtime/          → stub
+schemas/           → real (Zod schemas partilhados)
+storage/           → stub
+tenant/            → stub
+testing/           → real
+types/             → database.ts, enums.ts, refs.ts (todos reais)
+ui/                → shadcn components (alert, badge, button, card, dialog,
+                     form, input, select, sheet, switch, tabs, textarea, etc.)
+utils/             → real
+
+APP (client/src/app/)
+─────────────────────
+boot/              → real
+config/            → real
+guards/            → SuperAdminGuard.tsx (real — usa useHasRole/AppRole)
+initialization/    → real
+layouts/           → real
+providers/         → AuthContext.tsx (real), TenantContext.tsx (real — bug),
+                     QueryProvider.tsx, ThemeProvider.tsx, etc.
+router/            → real
+routes/            → contracts.routes.tsx, e outros por módulo
+state/             → real
+index.ts           → real
+main.tsx           → 5 LINHAS REAIS (sem nenhuma inicialização)
+
+INFRASTRUCTURE STUBS (client/src/infrastructure/)
+──────────────────────────────────────────────────
+ai/, api/, auth/, cache/, database/, integrations/, logging/,
+monitoring/, queue/, redis/, storage/, telemetry/, websocket/, workers/
+→ TODOS com 7 linhas reais — stubs com comentários explicativos
+
+WORKERS STUBS (client/src/workers/)
+─────────────────────────────────────
+ai/ (6L), processing/ (5L), integrations/ (5L), webhooks/ (5L),
+analytics/ (5L), automations/ (5L), index.ts (12L)
+→ TODOS stubs — lógica real será no backend NestJS
+
+BACKEND (server/) — NÃO EXISTE AINDA
+───────────────────────────────────────
+Apenas ficheiros de contratos-v2 criados nesta sessão:
+  server/src/modules/contracts-v2/ (12 ficheiros TypeScript)
+  server/prisma/schema-contracts-v2.prisma
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 04 — 9 BUGS CRÍTICOS (FICHEIRO + LINHA + CÓDIGO EXACTO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+BUG #1 — Modelo OpenAI inexistente (CRÍTICO — quebra a IA toda)
+───────────────────────────────────────────────────────────────
+FICHEIRO: vite.config.ts (raiz do projecto)
+LINHA:    36
+
+CÓDIGO ACTUAL (errado):
+  model: "gpt-5-mini",
+
+CÓDIGO CORRECTO:
+  model: "gpt-4o-mini",
+
+CONTEXTO: Este bug faz com que QUALQUER chamada de IA no modo de desenvolvimento
+retorne erro 404 da API da OpenAI. O modelo gpt-5-mini não existe.
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #2 — main.tsx com 5 linhas — zero inicializações (CRÍTICO)
+────────────────────────────────────────────────────────────────
+FICHEIRO: client/src/main.tsx
+ESTADO ACTUAL (5 linhas, literalmente isto):
+  import { createRoot } from "react-dom/client";
+  import App from "./App.tsx";
+  import "./index.css";
+  createRoot(document.getElementById("root")!).render(<App />);
+
+PROBLEMA: Sem Sentry.init → erros não são reportados.
+          Sem PostHog.init → analytics de produto não funciona.
+          Sem socket init → WebSocket nunca conecta antes do primeiro componente.
+
+CÓDIGO CORRECTO a substituir:
+```typescript
+import { createRoot } from "react-dom/client";
+import * as Sentry from "@sentry/react";
+import posthog from "posthog-js";
+import App from "./App.tsx";
+import "./index.css";
+import { MOCK_MODE } from "@/shared/lib/env";
+
+// ── Sentry (error monitoring) ─────────────────────────────────────────────
+if (!MOCK_MODE && import.meta.env.VITE_SENTRY_DSN) {
+  Sentry.init({
+    dsn:         import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.MODE,
+    release:     import.meta.env.VITE_APP_VERSION,
+    tracesSampleRate:   0.1,
+    replaysSessionSampleRate: 0.05,
+    replaysOnErrorSampleRate:  1.0,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+  });
+}
+
+// ── PostHog (product analytics) ───────────────────────────────────────────
+if (!MOCK_MODE && import.meta.env.VITE_POSTHOG_KEY) {
+  posthog.init(import.meta.env.VITE_POSTHOG_KEY, {
+    api_host:           "https://app.posthog.com",
+    capture_pageview:    true,
+    capture_pageleave:   true,
+    autocapture:         false,  // manual tracking only
+    session_recording:   { maskAllInputs: true },
+  });
+}
+
+createRoot(document.getElementById("root")!).render(<App />);
+```
+
+INSTALAR DEPENDÊNCIAS:
+  npm install @sentry/react posthog-js
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #3 — RBAC completamente inactivo — MOCK_TENANT com owner sempre (CRÍTICO)
+──────────────────────────────────────────────────────────────────────────────
+FICHEIRO: client/src/app/providers/TenantContext.tsx
+LINHA:    136-146
+
+CÓDIGO ACTUAL (errado):
+  const MOCK_TENANT: Tenant = {
+    ...
+    permissions: ROLE_PERMISSIONS.owner,   // ← SEMPRE owner, independente do role
+  };
+
+PROBLEMA: RequirePermission chama hasPermission() que verifica as permissions
+do tenant. Se permissions = ROLE_PERMISSIONS.owner, hasPermission() retorna
+true PARA QUALQUER MÓDULO E QUALQUER ACÇÃO. O RBAC está inactivo.
+
+CÓDIGO CORRECTO:
+```typescript
+// Em TenantContext.tsx, na função que inicializa o tenant:
+// ANTES de chamar setTenant, ler o role do JWT e usar as permissões correctas:
+
+import { jwtDecode } from "jwt-decode";
+
+function getPermissionsFromToken(): TenantPermissions {
+  try {
+    const token = localStorage.getItem("access_token");
+    if (!token) return ROLE_PERMISSIONS.viewer;
+    const decoded = jwtDecode<{ role: TenantRole }>(token);
+    return ROLE_PERMISSIONS[decoded.role] ?? ROLE_PERMISSIONS.viewer;
+  } catch {
+    return ROLE_PERMISSIONS.viewer;
+  }
+}
+
+const MOCK_TENANT: Tenant = {
+  id:    "mock-org-001",
+  name:  "Gravadora Demo",
+  slug:  "gravadora-demo",
+  role:  "owner",
+  // Derivar permissions do role real, não hardcodar owner:
+  permissions: ROLE_PERMISSIONS.owner,  // manter para mock
+  ...
+};
+
+// Na inicialização real (quando backend existir):
+// permissions: getPermissionsFromToken()
+```
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #4 — Dois sistemas RBAC incompatíveis coexistindo (ESTRUTURAL)
+────────────────────────────────────────────────────────────────────
+
+SISTEMA A — TenantContext (5 roles):
+  FICHEIRO: client/src/app/providers/TenantContext.tsx linha 13
+  type TenantRole = "owner" | "admin" | "manager" | "editor" | "viewer"
+  Usado por: RequirePermission.tsx → hasPermission()
+
+SISTEMA B — useHasRole (12 roles):
+  FICHEIRO: client/src/shared/hooks/useHasRole.ts linhas 6-36
+  type AppRole = "super_admin" | "tenant_owner" | "admin" | "financeiro" |
+                 "juridico" | "artista" | ...12 roles totais
+  Usado por: SuperAdminGuard.tsx, useCanAccess.ts, AdminRoute.tsx
+
+PROBLEMA: Os dois sistemas têm tipos diferentes, hierarquias diferentes,
+e não comunicam entre si. Um utilizador pode passar pelo Sistema A mas
+falhar no Sistema B (ou vice-versa).
+
+SOLUÇÃO:
+  · Sistema A (TenantContext) = roles INTERNOS ao tenant (o que o utilizador
+    pode fazer DENTRO da organização). Manter como está.
+  · Sistema B (useHasRole/AppRole) = roles GLOBAIS da plataforma (super_admin,
+    tenant_owner). Manter separado.
+  · NUNCA usar Sistema B para controlar acesso a funcionalidades de tenant.
+  · SuperAdminGuard usa Sistema B para /admin/* — correcto.
+  · RequirePermission usa Sistema A para módulos de negócio — correcto.
+  · Não misturar os dois.
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #5 — Feature gate de IA ausente (SEGURANÇA)
+─────────────────────────────────────────────────
+FICHEIRO: client/src/modules/marketing/pages/IACriativa.tsx
+LINHA:    1 (começa directamente com imports — sem nenhum guard)
+
+PROBLEMA: IACriativa.tsx não verifica tenant.features.aiFeatures antes
+de renderizar. Qualquer utilizador autenticado vê a IA.
+
+CÓDIGO CORRECTO a adicionar no início do componente:
+```typescript
+import { useTenant } from "@/app/providers/TenantContext";
+
+export default function IACriativa() {
+  const { tenant } = useTenant();
+
+  // Feature gate — verificar antes de qualquer renderização
+  if (!tenant?.features?.aiFeatures) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <Sparkles className="h-12 w-12 text-muted-foreground/30" />
+          <h2 className="text-lg font-semibold">IA Criativa não disponível</h2>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">
+            A IA Criativa está disponível nos planos Professional e Enterprise.
+          </p>
+          <Button onClick={() => window.location.href = "/settings/billing"}>
+            Ver Planos
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
+
+  // ... resto do componente
+}
+```
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #6 — openai em dependencies (deve ser devDependencies)
+────────────────────────────────────────────────────────────
+FICHEIRO: package.json (raiz do projecto)
+PROBLEMA: openai está em "dependencies" mas só é usado no vite.config.ts
+(middleware de desenvolvimento). Em produção (Vercel), não deve fazer parte
+do bundle final.
+
+CORRECÇÃO:
+  Mover "openai" de "dependencies" para "devDependencies":
+  npm install -D openai
+  (ou editar manualmente o package.json)
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #7 — Boundary violations (importações cruzadas entre módulos)
+──────────────────────────────────────────────────────────────────
+FICHEIRO 1: (verificar localização exacta)
+  FinanceChart.tsx importa de modules/accounting/
+  → Deve estar EM accounting/components/FinanceChart.tsx
+  → Mover o ficheiro e actualizar todos os imports
+
+FICHEIRO 2: (verificar localização exacta)
+  Auditoria.tsx importa de modules/reports/
+  → Deve estar EM admin/pages/Auditoria.tsx
+  → Mover o ficheiro e actualizar todos os imports
+
+PRINCÍPIO: Cada módulo é dono dos seus componentes. Módulo X não pode
+importar componentes internos do módulo Y. Apenas shared/ é partilhado.
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #8 — SupportChat com respostas hardcoded
+──────────────────────────────────────────────
+FICHEIRO: client/src/modules/support/pages/SupportChat.tsx
+PROBLEMA: O chat de suporte tem respostas fixas no código, não conectadas
+a nenhum backend real. Utilizadores que usam o chat recebem respostas
+pré-programadas sem saber que é mock.
+
+CORRECÇÃO IMEDIATA (sem backend):
+  Adicionar badge visível: "⚠️ Modo de demonstração — respostas automáticas"
+  
+CORRECÇÃO FINAL (com backend):
+  Conectar ao endpoint POST /api/support/chat que usa OpenAI + contexto
+  da documentação do produto.
+
+─────────────────────────────────────────────────────────────────────────────
+
+BUG #9 — mockAnalytics.ts com 947 linhas de dados fictícios
+────────────────────────────────────────────────────────────
+FICHEIRO: client/src/modules/marketing/data/mockAnalytics.ts
+TAMANHO:  947 linhas de dados fictícios (streams, views, earnings fabricados)
+
+PROBLEMA: Estes dados são exibidos em Metricas.tsx como se fossem dados
+reais de plataformas. Utilizadores podem tomar decisões baseadas em dados
+fabricados sem saber.
+
+CORRECÇÃO IMEDIATA:
+  Em Metricas.tsx, adicionar Alert visível no topo:
+```typescript
+import { Alert, AlertDescription } from "@/shared/ui/alert";
+import { AlertTriangle } from "lucide-react";
+
+// No início do componente, antes dos dados:
+<Alert className="mb-4 border-amber-200 bg-amber-50 dark:bg-amber-950">
+  <AlertTriangle className="h-4 w-4 text-amber-600" />
+  <AlertDescription className="text-amber-700 dark:text-amber-300">
+    <strong>Dados simulados.</strong> Configure as integrações com Spotify,
+    YouTube e Instagram para ver métricas reais.{" "}
+    <a href="/settings/integrations" className="underline font-medium">
+      Configurar integrações →
+    </a>
+  </AlertDescription>
+</Alert>
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 05 — ARQUITECTURA RBAC COMPLETA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+SISTEMA A — Roles de Tenant (controlo de módulos de negócio)
+──────────────────────────────────────────────────────────────
+FICHEIRO: client/src/app/providers/TenantContext.tsx linha 13
+
+type TenantRole = "owner" | "admin" | "manager" | "editor" | "viewer"
+
+PERMISSÕES POR MÓDULO (PERMISSION_MATRIX completo):
+──────────────────────────────────────────────────
+Módulos controlados: catalog, contracts, accounting, artists, crm,
+                     marketing, rh, settings, admin, audit
+
+Actions disponíveis: read, write, delete, export
+
+  owner:   TUDO em todos os módulos (billing, exclusão, super config)
+  admin:   TUDO exceto billing management
+  manager: TUDO exceto audit (read-only) e settings (read-only)
+  editor:  read + write + export em todos (sem delete, sem audit, sem settings)
+  viewer:  read-only em todos (sem audit, sem settings)
+
+COMO USAR NO CÓDIGO:
+```typescript
+// Componente protegido:
+<RequirePermission module="accounting" action="write">
+  <Button>Nova Transação</Button>
+</RequirePermission>
+
+// Hook:
+const canDelete = useHasPermission("contracts", "delete");
+
+// Módulos disponíveis (TenantModuleKey):
+"catalog" | "contracts" | "accounting" | "artists" | "crm" |
+"marketing" | "rh" | "settings" | "admin" | "audit"
+```
+
+SISTEMA B — Roles Globais da Plataforma (controlo administrativo)
+───────────────────────────────────────────────────────────────────
+FICHEIRO: client/src/shared/hooks/useHasRole.ts linhas 6-36
+
+type AppRole = "super_admin" | "tenant_owner" | "admin" |
+               "financeiro" | "juridico" | "artista" | ...
+
+HIERARQUIA (número menor = mais poder):
+  super_admin:    0  → acesso total à plataforma
+  tenant_owner:   1  → dono do tenant
+  admin:          2  → admin do tenant
+  juridico:       3  → jurídico/contratos
+  financeiro:     4  → financeiro
+  artista:        5  → artista (acesso limitado)
+  (outros roles expandidos conforme necessário)
+
+COMO USAR:
+```typescript
+// Guard de rota:
+<AdminRoute>  // só super_admin e tenant_owner
+  <AdminDashboard />
+</AdminRoute>
+
+// Hook:
+const isAdmin = useHasRole("admin");       // true para admin OU acima
+const isSuperAdmin = useHasRole("super_admin"); // só super_admin
+```
+
+JWT CLAIMS OBRIGATÓRIOS (backend deve emitir com EXACTAMENTE estes campos):
+```typescript
+interface JwtPayload {
+  sub:         string;       // user UUID
+  email:       string;
+  role:        TenantRole;   // "owner"|"admin"|"manager"|"editor"|"viewer"
+  app_role?:   AppRole;      // "super_admin"|"tenant_owner"|etc. (opcional)
+  org_id:      string;       // tenant UUID
+  org_slug:    string;       // tenant slug
+  plan:        string;       // "starter"|"professional"|"enterprise"
+  iat:         number;
+  exp:         number;
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 06 — BASE DE DADOS COMPLETA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+TABLE_ENDPOINT — Tabelas com endpoints backend confirmados
+──────────────────────────────────────────────────────────
+FICHEIRO: client/src/shared/lib/api-client.ts
+
+artistas              → GET/POST/PATCH/DELETE /artists
+obras                 → GET/POST/PATCH/DELETE /works
+fonogramas            → GET/POST/PATCH/DELETE /phonograms
+shares                → GET/POST/PATCH/DELETE /shares
+contratos             → GET/POST/PATCH/DELETE /contracts
+transacoes            → GET/POST/PATCH/DELETE /transactions
+leads                 → GET/POST/PATCH/DELETE /leads
+clientes              → GET/POST/PATCH/DELETE /clients
+contatos              → GET/POST/PATCH/DELETE /contacts
+campanhas             → GET/POST/PATCH/DELETE /campaigns
+conteudos             → GET/POST/PATCH/DELETE /contents
+briefings             → GET/POST/PATCH/DELETE /briefings
+tarefas_marketing     → GET/POST/PATCH/DELETE /marketing-tasks
+monitoramentos        → GET/POST/PATCH/DELETE /monitors
+takedowns             → GET/POST/PATCH/DELETE /takedowns
+regras_financeiras    → GET/POST/PATCH/DELETE /rules
+projetos              → GET/POST/PATCH/DELETE /projects
+eventos               → GET/POST/PATCH/DELETE /events
+inventario            → GET/POST/PATCH/DELETE /inventory
+licencas              → GET/POST/PATCH/DELETE /licenses
+funcionarios          → GET/POST/PATCH/DELETE /employees
+folha_pagamento       → GET/POST/PATCH/DELETE /payroll
+afastamentos          → GET/POST/PATCH/DELETE /leave
+ferias_ausencias      → GET/POST/PATCH/DELETE /leave  (mesmo endpoint)
+regras                → GET/POST/PATCH/DELETE /rules
+usuarios              → GET/POST/PATCH/DELETE /users
+roles                 → GET /roles
+org_members           → GET /users  (filtrado por org)
+
+PENDING_TABLES — Tabelas sem backend (frontend usa mock + console.warn)
+───────────────────────────────────────────────────────────────────────
+templates_contratos    → Task #535 — a criar: GET/POST /contract-templates
+metas_artistas         → Task pendente — a criar: GET/POST /artist-goals
+lead_interactions      → Task pendente — a criar: GET/POST /lead-interactions
+lancamentos            → Task #538 — a criar: GET/POST /financial-entries
+notas_fiscais          → Task #538 — a criar: GET/POST /invoices
+documentos_funcionario → Task pendente — a criar: GET/POST /hr-documents
+relatorios_ecad        → Task pendente — a criar: GET/POST /ecad-reports
+deteccoes              → Task pendente — a criar: GET/POST /content-detections
+permissions            → Task #537 — a criar: GET /permissions
+
+NOVAS TABELAS — Document Engine v2 (já no schema-contracts-v2.prisma)
+──────────────────────────────────────────────────────────────────────
+document_templates_v2       → modelos de documentos com Handlebars
+document_template_versions_v2 → histórico de versões de templates
+documents_v2                → documentos gerados
+document_signers_v2         → signatários de cada documento
+document_logs_v2            → auditoria de eventos
+document_webhooks_v2        → eventos de webhook recebidos
+contract_reports_v2         → relatórios gerados
+
+SCHEMA PRISMA COMPLETO — MODELOS PRINCIPAIS
+──────────────────────────────────────────────
+(ficheiro a criar: server/prisma/schema.prisma)
+
+```prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── CORE ──────────────────────────────────────────────────────────────────────
+
+model Organization {
+  id         String   @id @default(uuid())
+  name       String
+  slug       String   @unique
+  plan       String   @default("starter")
+  status     String   @default("active")
+  config     Json?
+  features   Json?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  users         OrgMember[]
+  artistas      Artista[]
+  obras         Obra[]
+  fonogramas    Fonograma[]
+  shares        Share[]
+  contratos     Contrato[]
+  clientes      Cliente[]
+  contatos      Contato[]
+  leads         Lead[]
+  transacoes    Transacao[]
+  projetos      Projeto[]
+  eventos       Evento[]
+  licencas      Licenca[]
+  funcionarios  Funcionario[]
+
+  @@map("organizations")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  clerk_id   String   @unique
+  email      String   @unique
+  name       String?
+  avatar_url String?
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  memberships OrgMember[]
+
+  @@map("users")
+}
+
+model OrgMember {
+  id         String   @id @default(uuid())
+  org_id     String
+  user_id    String
+  role       String   @default("viewer")
+  created_at DateTime @default(now())
+
+  org  Organization @relation(fields: [org_id], references: [id])
+  user User         @relation(fields: [user_id], references: [id])
+
+  @@unique([org_id, user_id])
+  @@map("org_members")
+}
+
+// ── ARTISTAS ──────────────────────────────────────────────────────────────────
+
+model Artista {
+  id               String   @id @default(uuid())
+  org_id           String
+  nome_artistico   String
+  nome_real        String?
+  status           String   @default("ativo")
+  tipo             String?
+  cpf              String?
+  cnpj             String?
+  email            String?
+  telefone         String?
+  foto_url         String?
+  bio              String?
+  generos          String[]
+  distribuidoras   Json?
+  relacionamentos  Json?
+  responsaveis     Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  org       Organization @relation(fields: [org_id], references: [id])
+  obras     Obra[]
+  fonogramas Fonograma[]
+  shares    Share[]
+  contratos Contrato[]
+
+  @@index([org_id])
+  @@map("artistas")
+}
+
+// ── CATÁLOGO ──────────────────────────────────────────────────────────────────
+
+model Obra {
+  id          String   @id @default(uuid())
+  org_id      String
+  artista_id  String?
+  titulo      String
+  iswc        String?
+  tipo        String?
+  status      String   @default("ativo")
+  duracao     Int?
+  genero      String?
+  idioma      String?
+  letra       String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org     Organization @relation(fields: [org_id], references: [id])
+  artista Artista?     @relation(fields: [artista_id], references: [id])
+  fonogramas Fonograma[]
+  shares  Share[]
+
+  @@index([org_id])
+  @@map("obras")
+}
+
+model Fonograma {
+  id          String   @id @default(uuid())
+  org_id      String
+  obra_id     String?
+  artista_id  String?
+  titulo      String
+  isrc        String?
+  status      String   @default("ativo")
+  duracao     Int?
+  audio_url   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org     Organization @relation(fields: [org_id], references: [id])
+  obra    Obra?         @relation(fields: [obra_id], references: [id])
+  artista Artista?      @relation(fields: [artista_id], references: [id])
+
+  @@index([org_id])
+  @@map("fonogramas")
+}
+
+model Share {
+  id              String   @id @default(uuid())
+  org_id          String
+  obra_id         String?
+  artista_id      String?
+  titular_nome    String
+  titular_email   String?
+  tipo            String
+  percentual      Float
+  direcao         String   @default("entrada")
+  status          String   @default("ativo")
+  data_inicio     String?
+  data_fim        String?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  org     Organization @relation(fields: [org_id], references: [id])
+  obra    Obra?         @relation(fields: [obra_id], references: [id])
+  artista Artista?      @relation(fields: [artista_id], references: [id])
+
+  @@index([org_id])
+  @@map("shares")
+}
+
+// ── CONTRATOS V1 (não alterar) ────────────────────────────────────────────────
+
+model Contrato {
+  id               String   @id @default(uuid())
+  org_id           String
+  artista_id       String?
+  cliente_id       String?
+  titulo           String
+  tipo             String?
+  status           String   @default("rascunho")
+  valor            Float?
+  exclusivo        Boolean?
+  data_inicio      String?
+  data_fim         String?
+  template_id      String?
+  autentique_doc_id String?
+  arquivo_url      String?
+  assinado_em      String?
+  observacoes      String?
+  versoes          Json?
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+
+  org     Organization @relation(fields: [org_id], references: [id])
+  artista Artista?      @relation(fields: [artista_id], references: [id])
+
+  @@index([org_id])
+  @@map("contratos")
+}
+
+// ── FINANCEIRO ────────────────────────────────────────────────────────────────
+
+model Transacao {
+  id            String   @id @default(uuid())
+  org_id        String
+  tipo          String
+  status        String   @default("pendente")
+  valor         Float
+  descricao     String?
+  categoria     String?
+  artista_id    String?
+  projeto_id    String?
+  data          String
+  forma_pagamento String?
+  comprovante_url String?
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("transacoes")
+}
+
+// ── CRM ──────────────────────────────────────────────────────────────────────
+
+model Lead {
+  id           String   @id @default(uuid())
+  org_id       String
+  nome         String
+  email        String?
+  telefone     String?
+  status       String   @default("novo")
+  prioridade   String   @default("media")
+  temperatura  String   @default("morno")
+  valor        Float?
+  origem       String?
+  notas        String?
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("leads")
+}
+
+model Cliente {
+  id          String   @id @default(uuid())
+  org_id      String
+  nome        String
+  email       String?
+  telefone    String?
+  status      String   @default("ativo")
+  segmento    String?
+  cnpj        String?
+  cpf         String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("clientes")
+}
+
+model Contato {
+  id          String   @id @default(uuid())
+  org_id      String
+  nome        String
+  email       String?
+  telefone    String?
+  cargo       String?
+  empresa     String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("contatos")
+}
+
+// ── PROJETOS ──────────────────────────────────────────────────────────────────
+
+model Projeto {
+  id          String   @id @default(uuid())
+  org_id      String
+  titulo      String
+  tipo        String?
+  status      String   @default("planejamento")
+  artista_id  String?
+  data_inicio String?
+  data_fim    String?
+  orcamento   Float?
+  descricao   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("projetos")
+}
+
+// ── EVENTOS / AGENDA ──────────────────────────────────────────────────────────
+
+model Evento {
+  id          String   @id @default(uuid())
+  org_id      String
+  titulo      String
+  tipo        String?
+  status      String   @default("agendado")
+  data_inicio DateTime
+  data_fim    DateTime?
+  local       String?
+  artista_id  String?
+  descricao   String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("eventos")
+}
+
+// ── LICENCIAMENTO ─────────────────────────────────────────────────────────────
+
+model Licenca {
+  id          String   @id @default(uuid())
+  org_id      String
+  obra_id     String?
+  titulo      String
+  tipo        String?
+  status      String   @default("ativo")
+  licenciante String?
+  licenciado  String?
+  valor       Float?
+  territorio  String?
+  data_inicio String?
+  data_fim    String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("licencas")
+}
+
+// ── RH ───────────────────────────────────────────────────────────────────────
+
+model Funcionario {
+  id           String   @id @default(uuid())
+  org_id       String
+  nome         String
+  cargo        String?
+  email        String?
+  cpf          String?
+  data_admissao String?
+  salario      Float?
+  status       String   @default("ativo")
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
+  org Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("funcionarios")
+}
+
+// ── MONITORING ────────────────────────────────────────────────────────────────
+
+model Monitor {
+  id          String   @id @default(uuid())
+  org_id      String
+  titulo      String
+  plataforma  String?
+  url         String?
+  status      String   @default("ativo")
+  frequencia  String?
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([org_id])
+  @@map("monitoramentos")
+}
+
+model Takedown {
+  id          String   @id @default(uuid())
+  org_id      String
+  titulo      String
+  plataforma  String?
+  url_infratora String?
+  status      String   @default("em_analise")
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  @@index([org_id])
+  @@map("takedowns")
+}
+
+// ── AUDITORIA ─────────────────────────────────────────────────────────────────
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  org_id      String
+  user_id     String?
+  evento      String
+  entidade    String?
+  entidade_id String?
+  dados       Json?
+  ip          String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+
+  @@index([org_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 07 — WEBSOCKET EVENTS (CATÁLOGO COMPLETO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CONEXÃO (client/src/shared/lib/ws-client.ts — 54 linhas reais):
+```typescript
+// O cliente Socket.IO conecta ao backend com JWT no handshake
+_socket = io(WS_URL, {
+  auth:                { token },  // JWT access_token
+  transports:          ['websocket', 'polling'],
+  reconnectionAttempts: 5,
+  reconnectionDelay:    2_000,
+  timeout:             10_000,
+});
+```
+
+EVENTOS QUE O BACKEND DEVE EMITIR (já mapeados em RealtimeLayer.tsx):
+```typescript
+// Artistas
+"artist.created"   → payload: { id, nome_artistico, org_id }
+"artist.updated"   → payload: { id, nome_artistico, org_id }
+"artist.deleted"   → payload: { id, org_id }
+
+// Catálogo
+"catalog.music.registered"     → payload: { id, titulo, isrc, org_id }
+"catalog.phonogram.registered" → payload: { id, titulo, isrc, org_id }
+
+// Contratos
+"contract.created" → payload: { id, titulo, artista_id, org_id }
+"contract.updated" → payload: { id, titulo, artista_id, valor, org_id }
+"contract.signed"  → payload: { id, titulo, assinado_em, org_id }
+
+// CRM
+"crm.lead.captured"   → payload: { id, nome, email, org_id }
+"crm.lead.converted"  → payload: { id, nome, valor, org_id }
+
+// Financeiro
+"finance.transaction.created"  → payload: { id, tipo, valor, org_id }
+"finance.transaction.updated"  → payload: { id, tipo, valor, org_id }
+"finance.calculated"           → payload: { periodo, total, org_id }
+
+// Auditoria
+"audit.entry.created"  → payload: { id, evento, entidade, user_id, org_id }
+```
+
+QUERY INVALIDATION — RealtimeSync já mapeado (useRealtimeSync.ts, 45L):
+  artist.created/updated/deleted → invalida ["artistas"]
+  catalog.*                      → invalida ["obras"], ["fonogramas"]
+  contract.*                     → invalida ["contratos"]
+  crm.*                          → invalida ["leads"]
+  finance.*                      → invalida ["transacoes"]
+
+BACKEND — implementar no NestJS:
+```typescript
+// server/src/modules/websocket/ws.gateway.ts
+@WebSocketGateway({ cors: { origin: process.env.FRONTEND_URL } })
+export class WsGateway {
+  @WebSocketServer() server: Server;
+
+  // Emitir evento para todos os clientes do mesmo tenant:
+  emitToOrg(orgId: string, event: string, data: unknown) {
+    this.server.to(`org:${orgId}`).emit(event, data);
+  }
+
+  // No handleConnection: validar JWT + join room
+  async handleConnection(client: Socket) {
+    const token = client.handshake.auth.token;
+    const payload = this.jwtService.verify(token);
+    client.join(`org:${payload.org_id}`);
+    client.data.org_id = payload.org_id;
+    client.data.user_id = payload.sub;
+  }
+}
+```
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 08 — DOCUMENT ENGINE V2 (ESTADO ACTUAL + INTEGRAÇÃO)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+STATUS: Implementado e pronto para integração.
+
+FICHEIROS CRIADOS (17 frontend + 12 backend):
+  Frontend (client/src/modules/contracts-v2/):
+    types/index.ts           (476L — todos os tipos TypeScript)
+    lib/schemas.ts           (167L — Zod schemas dos 7 steps)
+    hooks/useDocumentEngine.ts (533L — CRUD + hooks de API)
+    components/wizard/DocumentWizard.tsx  (271L — wizard 7 etapas)
+    components/wizard/steps/WizardSteps.tsx (545L — todos os steps)
+    components/timeline/DocumentTimeline.tsx (145L)
+    components/shared/DocumentStatusBadge.tsx (66L)
+    pages/DocumentEngine.tsx (619L — página principal)
+    pages/TemplateBuilder.tsx (544L — editor de templates)
+    + 8 ficheiros de re-export e barrel
+
+  Backend (server/src/modules/contracts-v2/):
+    engines/template.engine.ts    (178L — Handlebars + 10 helpers)
+    engines/variable.engine.ts    (208L — CPF/CNPJ/ISRC validation)
+    engines/pdf.engine.ts         (326L — Puppeteer + anchor detection)
+    engines/signature.engine.ts   (336L — ISignatureProvider abstraction)
+    providers/autentique/autentique.provider.ts (357L — GraphQL)
+    webhooks/webhook.controller.ts (83L — POST /webhooks/autentique)
+    webhooks/webhook.service.ts   (267L — event processing)
+    workflow/workflow.engine.ts   (329L — 9 post-signature actions)
+    storage/storage.engine.ts     (185L — R2 paths + upload/download)
+    contracts-v2.controller.ts    (208L — 16 REST endpoints)
+    contracts-v2.service.ts       (412L — business logic orchestrator)
+    contracts-v2.module.ts         (56L — NestJS module)
+
+PASSOS DE INTEGRAÇÃO:
+```bash
+# 1. Adicionar modelos ao schema.prisma
+cat server/prisma/schema-contracts-v2.prisma >> server/prisma/schema.prisma
+
+# 2. Migrar banco
+cd server && npx prisma migrate dev --name contracts-v2
+
+# 3. Adicionar ao AppModule
+# Em server/src/app.module.ts:
+import { ContractsV2Module } from "./modules/contracts-v2/contracts-v2.module";
+@Module({ imports: [..., ContractsV2Module] })
+
+# 4. Instalar dependências do backend
+npm install puppeteer handlebars form-data @aws-sdk/client-s3 \
+            @aws-sdk/s3-request-presigner
+npm install --save-dev @types/handlebars
+
+# 5. Adicionar rotas no frontend
+# Em client/src/app/routes/index.tsx:
+import { contractsV2Routes } from "./contracts-v2.routes";
+// Adicionar ao router: ...contractsV2Routes(SuspenseWrapper)
+
+# 6. Adicionar item no sidebar de navegação
+{ label: "Contratos v2", path: "/contratos-v2", icon: FileSignature }
+```
+
+PROVIDER DE ASSINATURA — COMO TROCAR:
+```typescript
+// server/src/modules/contracts-v2/contracts-v2.module.ts
+// Linha: { provide: SIGNATURE_PROVIDER, useClass: AutentiqueProvider }
+// Para mudar → apenas alterar a linha acima. ZERO refactoring no core.
+
+// Clicksign:  useClass: ClicksignProvider
+// DocuSign:   useClass: DocuSignProvider
+// D4Sign:     useClass: D4SignProvider
+```
+
+ÂNCORAS DE ASSINATURA (detectadas automaticamente pelo PDF Engine):
+  [ASSIN_ARTISTA]     → role: "artista"
+  [ASSIN_LABEL]       → role: "label"
+  [ASSIN_TESTEMUNHA]  → role: "testemunha"
+  [ASSIN_PROCURADOR]  → role: "procurador"
+  [ASSIN_PRODUTOR]    → role: "produtor"
+  [ASSIN_ADVOGADO]    → role: "advogado"
+
+HELPERS HANDLEBARS DISPONÍVEIS:
+  {{currency valor "BRL"}}     → R$ 5.000,00
+  {{date_br data}}             → 01/01/2025
+  {{date_ext data}}            → 1 de janeiro de 2025
+  {{{bold texto}}}             → <strong>texto</strong>
+  {{percentage royalty}}       → 15,00%
+  {{{nl2br texto}}}            → quebras → <br>
+  {{uppercase nome}}           → NOME EM MAIÚSCULAS
+  {{#if (eq tipo "exclusivo")}} ... {{/if}}
+  {{#if (gt percentual 50)}}   ... {{/if}}
+
+WORKFLOW ENGINE — 9 ACÇÕES PÓS-ASSINATURA:
+  activate_contract      → muda status para "ativo"
+  release_distribution   → libera distribuição do release vinculado
+  activate_royalties     → activa splits/royalties no sistema
+  link_splits            → cria registos na tabela shares
+  update_release_status  → actualiza status do lançamento vinculado
+  send_notification      → email via Resend para todas as partes
+  create_transaction     → cria transação financeira
+  generate_statement     → gera PDF de statement de royalties
+  notify_webhook         → HTTP POST para URL configurada

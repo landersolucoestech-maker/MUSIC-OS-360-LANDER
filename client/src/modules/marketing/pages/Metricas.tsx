@@ -2,6 +2,7 @@ import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +14,7 @@ import {
   BarChart2, DollarSign, MousePointer, Music2,
   ChevronDown,
   LayoutGrid, FileSpreadsheet, FileText,
-  Play, ThumbsUp, MessageCircle, Share2, Zap,
+  Play, ThumbsUp, MessageCircle, Share2, Zap, AlertTriangle,
 } from "lucide-react";
 import { SiYoutube, SiGoogleads, SiInstagram, SiTiktok, SiSpotify } from "react-icons/si";
 import { cn } from "@/shared/lib/utils";
@@ -520,6 +521,17 @@ export default function MarketingMetricas() {
       actions={<ExportButton />}
     >
       <div className="space-y-8">
+
+        {/* BUG #9 FIX: Alerta de dados simulados */}
+        <Alert className="border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800">
+          <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+          <AlertDescription className="text-amber-700 dark:text-amber-300">
+            <strong>Dados simulados.</strong> Configure as integrações com Spotify, YouTube e Instagram para ver métricas reais.{" "}
+            <a href="/settings/integrations" className="underline font-medium">
+              Configurar integrações →
+            </a>
+          </AlertDescription>
+        </Alert>
 
         {/* 1 — Performance analítica */}
         <section>

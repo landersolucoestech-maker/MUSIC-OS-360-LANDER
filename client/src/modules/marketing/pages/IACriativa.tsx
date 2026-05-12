@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useMarketingAI, ContentType } from "@/modules/marketing/hooks/useMarketingAI";
+import { useTenant } from "@/app/providers/TenantContext";
 
 // Estado inicial do chat
 const chatInicial = [
@@ -37,9 +38,10 @@ type Ideia = {
 };
 
 export default function MarketingIACriativa() {
+  const { tenant } = useTenant();
   const { artistas } = useArtistas();
   const { generateContent, isGenerating } = useMarketingAI();
-  
+
   const [activeTab, setActiveTab] = useState("gerador");
   const [generatedContent, setGeneratedContent] = useState<string>("");
   const [ideiasGeradas, setIdeiasGeradas] = useState<Ideia[]>([]);
@@ -63,6 +65,24 @@ export default function MarketingIACriativa() {
     () => artistas.map(a => ({ value: a.id, label: a.nome_artistico, genero: a.genero_musical })),
     [artistas],
   );
+
+  // Feature gate — todos os hooks acima já foram chamados (Rules of Hooks OK)
+  if (!tenant?.features?.aiFeatures) {
+    return (
+      <MainLayout>
+        <div className="flex flex-col items-center justify-center h-64 gap-4">
+          <Sparkles className="h-12 w-12 text-muted-foreground/30" />
+          <h2 className="text-lg font-semibold">IA Criativa não disponível</h2>
+          <p className="text-sm text-muted-foreground text-center max-w-sm">
+            A IA Criativa está disponível nos planos Professional e Enterprise.
+          </p>
+          <Button onClick={() => window.location.href = "/settings/billing"}>
+            Ver Planos
+          </Button>
+        </div>
+      </MainLayout>
+    );
+  }
 
   const handleGerarConteudo = async () => {
     if (!selectedArtista) {

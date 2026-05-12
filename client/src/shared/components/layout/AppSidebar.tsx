@@ -50,6 +50,7 @@ import {
   ServerCrash,
   Inbox,
   Mic2,
+  FileSignature,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -109,6 +110,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { title: "Contratos",        href: "/contratos",  icon: FileText,      featureFlag: "moduleContracts" },
+  { title: "Contratos v2",    href: "/contratos-v2", icon: FileSignature, featureFlag: "moduleContracts" },
   {
     title: "Financeiro",
     icon: DollarSign,

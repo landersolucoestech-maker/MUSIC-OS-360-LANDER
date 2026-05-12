@@ -25,6 +25,7 @@ import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
 import { contractsRoutes } from "@/app/routes/contracts.routes";
+import { contractsV2Routes } from "@/app/routes/contracts-v2.routes";
 import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
 
@@ -94,6 +95,7 @@ const App = () => (
                 {settingsRoutes(ProtectedRoute)}
                 {operationsRoutes(ProtectedRoute)}
                 {contractsRoutes(ProtectedRoute)}
+                {contractsV2Routes(ProtectedRoute)}
                 {adminRoutes(SuspenseRoute, SuperAdminRoute)}
                 {reportsRoutes(ProtectedRoute)}
                 {supportRoutes(ProtectedRoute)}

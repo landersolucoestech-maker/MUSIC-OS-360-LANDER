@@ -3,11 +3,12 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
+import { Alert, AlertDescription } from "@/shared/ui/alert";
 import { cn } from "@/shared/lib/utils";
 import { useChatRooms, useChatMessages } from "../hooks/useSupport";
 import {
   Send, MessagesSquare, User, Shield, Circle,
-  Smile, Paperclip, X, FileText,
+  Smile, Paperclip, X, FileText, AlertTriangle,
 } from "lucide-react";
 
 const AGENT_REPLIES = [
@@ -249,6 +250,13 @@ export default function SupportChat() {
 
   return (
     <MainLayout title="Chat ao Vivo" description="Atendimento em tempo real">
+      {/* BUG #8 FIX: Banner de modo de demonstração — respostas são automáticas */}
+      <Alert className="mb-4 border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800">
+        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+        <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+          <strong>⚠️ Modo de demonstração</strong> — respostas automáticas. Configure o backend para atendimento real.
+        </AlertDescription>
+      </Alert>
       <div
         className="rounded-2xl border border-border/60 bg-card overflow-hidden animate-fade-in"
         style={{ height: "calc(100vh - 160px)" }}
