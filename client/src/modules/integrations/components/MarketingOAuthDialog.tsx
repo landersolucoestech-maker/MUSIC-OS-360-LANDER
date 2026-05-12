@@ -1,11 +1,12 @@
 /**
  * modules/integrations/components/MarketingOAuthDialog.tsx
  *
- * Dialog OAuth simulado para plataformas de Marketing Digital.
- * Fluxo: Permissões → Login (e-mail + senha) → Conectando → Sucesso.
+ * Abre um popup do browser com a página de login da plataforma (/oauth/:platform).
+ * Após o utilizador fazer login no popup, este envia um postMessage de sucesso,
+ * o dialog recebe, conecta e fecha.
  */
 
-import { useState } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -15,9 +16,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Input } from "@/shared/ui/input";
-import { Label } from "@/shared/ui/label";
-import { Loader2, Check, ShieldCheck, Eye, EyeOff, Lock, Mail } from "lucide-react";
+import { Loader2, Check, ShieldCheck, ExternalLink } from "lucide-react";
 import type { MarketingPlatformId } from "@/shared/integrations/contracts/marketing.contract";
 
 // ─── Metadados por plataforma ─────────────────────────────────────────────────
@@ -30,18 +29,16 @@ interface PlatformMeta {
   buttonTextColor: string;
   scopes: string[];
   authProvider: string;
-  loginLabel: string;
 }
 
 const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   meta_business: {
     name: "Meta Business Suite",
     icon: "📘",
-    buttonLabel: "Entrar no Facebook",
+    buttonLabel: "Entrar com o Facebook",
     buttonColor: "#1877F2",
     buttonTextColor: "#ffffff",
     authProvider: "Facebook / Meta",
-    loginLabel: "E-mail ou número de telemóvel",
     scopes: [
       "Aceder a métricas do Facebook e Instagram",
       "Gerir campanhas e conjuntos de anúncios do Meta Ads",
@@ -56,7 +53,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#4285F4",
     buttonTextColor: "#ffffff",
     authProvider: "Google",
-    loginLabel: "E-mail ou número de telefone",
     scopes: [
       "Aceder ao analytics e relatórios do canal YouTube",
       "Visualizar métricas de vídeos e Shorts",
@@ -71,7 +67,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#010101",
     buttonTextColor: "#ffffff",
     authProvider: "TikTok",
-    loginLabel: "E-mail / utilizador / telefone",
     scopes: [
       "Aceder a métricas e analytics do TikTok Business",
       "Visualizar insights de audiência e tendências",
@@ -86,7 +81,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#4285F4",
     buttonTextColor: "#ffffff",
     authProvider: "Google",
-    loginLabel: "E-mail ou número de telefone",
     scopes: [
       "Aceder ao Google Analytics 4 (GA4)",
       "Aceder ao Google Search Console",
@@ -99,9 +93,8 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     icon: "🎧",
     buttonLabel: "Entrar no Spotify",
     buttonColor: "#1DB954",
-    buttonTextColor: "#ffffff",
+    buttonTextColor: "#000000",
     authProvider: "Spotify",
-    loginLabel: "E-mail ou nome de utilizador",
     scopes: [
       "Aceder ao Spotify for Artists da conta da empresa",
       "Visualizar streams, ouvintes mensais e tendências",
@@ -115,7 +108,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#FF0092",
     buttonTextColor: "#ffffff",
     authProvider: "Deezer",
-    loginLabel: "E-mail",
     scopes: [
       "Aceder ao Deezer for Artists da conta da empresa",
       "Visualizar streams e dados de audiência",
@@ -128,7 +120,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#FF5500",
     buttonTextColor: "#ffffff",
     authProvider: "SoundCloud",
-    loginLabel: "E-mail",
     scopes: [
       "Aceder ao perfil SoundCloud Pro da empresa",
       "Visualizar reproduções, seguidores e tendências",
@@ -141,7 +132,6 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#555555",
     buttonTextColor: "#ffffff",
     authProvider: "Apple",
-    loginLabel: "Apple ID (e-mail)",
     scopes: [
       "Aceder ao Apple Music for Artists",
       "Visualizar streams e dados de audiência no ecossistema Apple",
@@ -152,9 +142,8 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     icon: "🎧",
     buttonLabel: "Entrar no Spotify",
     buttonColor: "#1DB954",
-    buttonTextColor: "#ffffff",
+    buttonTextColor: "#000000",
     authProvider: "Spotify",
-    loginLabel: "E-mail ou nome de utilizador",
     scopes: [
       "Aceder ao Spotify Ad Studio",
       "Gerir campanhas de áudio e display",
@@ -168,11 +157,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#FF0092",
     buttonTextColor: "#ffffff",
     authProvider: "Deezer",
-    loginLabel: "E-mail",
-    scopes: [
-      "Aceder ao Deezer Ad Manager",
-      "Gerir campanhas de áudio",
-    ],
+    scopes: ["Aceder ao Deezer Ad Manager", "Gerir campanhas de áudio"],
   },
   apple_music_ads: {
     name: "Apple Music Ads",
@@ -181,11 +166,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#555555",
     buttonTextColor: "#ffffff",
     authProvider: "Apple",
-    loginLabel: "Apple ID (e-mail)",
-    scopes: [
-      "Aceder ao Apple Music Ads",
-      "Gerir campanhas no ecossistema Apple",
-    ],
+    scopes: ["Aceder ao Apple Music Ads", "Gerir campanhas no ecossistema Apple"],
   },
   soundcloud_ads: {
     name: "SoundCloud Ads",
@@ -194,17 +175,18 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     buttonColor: "#FF5500",
     buttonTextColor: "#ffffff",
     authProvider: "SoundCloud",
-    loginLabel: "E-mail",
-    scopes: [
-      "Aceder ao SoundCloud Ads",
-      "Gerir campanhas de áudio",
-    ],
+    scopes: ["Aceder ao SoundCloud Ads", "Gerir campanhas de áudio"],
   },
 };
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
-type OAuthStep = "permissions" | "login" | "connecting" | "success";
+type DialogStep = "permissions" | "waiting" | "success";
+
+interface OAuthMessage {
+  type: "musicos360_oauth_success";
+  platform: string;
+}
 
 interface Props {
   open: boolean;
@@ -216,72 +198,101 @@ interface Props {
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }: Props) {
-  const [step, setStep] = useState<OAuthStep>("permissions");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [loginError, setLoginError] = useState("");
+  const [step, setStep] = useState<DialogStep>("permissions");
+  const popupRef = useRef<Window | null>(null);
 
   const meta = PLATFORM_META[platform];
 
-  const handleClose = (val: boolean) => {
-    if (!val && (step === "connecting")) return;
-    onOpenChange(val);
-    if (!val) {
-      setTimeout(() => {
+  const handleSuccess = useCallback(async () => {
+    setStep("success");
+    await onConnect(platform, meta?.scopes ?? []);
+    setTimeout(() => {
+      onOpenChange(false);
+      setTimeout(() => setStep("permissions"), 300);
+    }, 1800);
+  }, [platform, meta, onConnect, onOpenChange]);
+
+  // Escuta o postMessage do popup
+  useEffect(() => {
+    if (!open) return;
+
+    const handler = (event: MessageEvent<OAuthMessage>) => {
+      if (
+        event.data?.type === "musicos360_oauth_success" &&
+        event.data?.platform === platform
+      ) {
+        popupRef.current = null;
+        handleSuccess();
+      }
+    };
+
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [open, platform, handleSuccess]);
+
+  // Polling: detecta se o popup foi fechado manualmente sem login
+  useEffect(() => {
+    if (step !== "waiting") return;
+    const interval = setInterval(() => {
+      if (popupRef.current && popupRef.current.closed) {
+        popupRef.current = null;
         setStep("permissions");
-        setEmail("");
-        setPassword("");
-        setLoginError("");
-        setShowPassword(false);
-      }, 300);
+      }
+    }, 500);
+    return () => clearInterval(interval);
+  }, [step]);
+
+  const openPopup = () => {
+    const url = `/oauth/${platform}`;
+    const w = 480;
+    const h = 600;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(
+      url,
+      `musicos360_oauth_${platform}`,
+      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+    if (popup) {
+      popupRef.current = popup;
+      setStep("waiting");
     }
   };
 
-  const handleLogin = async () => {
-    setLoginError("");
-    if (!email.trim()) { setLoginError("Introduza o e-mail ou utilizador."); return; }
-    if (!password) { setLoginError("Introduza a senha."); return; }
-    setStep("connecting");
-    try {
-      await onConnect(platform, meta.scopes);
-      setStep("success");
-      setTimeout(() => {
-        handleClose(false);
-      }, 1800);
-    } catch {
-      setStep("login");
-      setLoginError("Não foi possível conectar. Verifique as credenciais.");
+  const handleClose = (val: boolean) => {
+    if (!val && step === "waiting") {
+      popupRef.current?.close();
+      popupRef.current = null;
     }
+    onOpenChange(val);
+    if (!val) setTimeout(() => setStep("permissions"), 300);
   };
 
   if (!meta) return null;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-sm p-0 overflow-hidden" data-testid={`dialog-oauth-${platform}`}>
+      <DialogContent className="sm:max-w-md p-0 overflow-hidden" data-testid={`dialog-oauth-${platform}`}>
 
-        {/* ── Cabeçalho com cor da plataforma ── */}
+        {/* Cabeçalho com cor da plataforma */}
         <div
           className="px-5 py-4 flex items-center gap-3"
           style={{ backgroundColor: meta.buttonColor }}
         >
           <span className="text-2xl leading-none">{meta.icon}</span>
-          <div>
-            <DialogHeader>
-              <DialogTitle className="text-sm font-semibold" style={{ color: meta.buttonTextColor }}>
-                {meta.name}
-              </DialogTitle>
-              <DialogDescription className="text-[11px] opacity-80" style={{ color: meta.buttonTextColor }}>
-                Autenticação via {meta.authProvider}
-              </DialogDescription>
-            </DialogHeader>
-          </div>
+          <DialogHeader>
+            <DialogTitle className="text-sm font-semibold" style={{ color: meta.buttonTextColor }}>
+              {meta.name}
+            </DialogTitle>
+            <DialogDescription className="text-[11px] opacity-80" style={{ color: meta.buttonTextColor }}>
+              Autenticação via {meta.authProvider}
+            </DialogDescription>
+          </DialogHeader>
         </div>
 
         <div className="px-5 pb-5 pt-4 space-y-4">
 
-          {/* ── PASSO 1: Permissões ── */}
+          {/* PASSO 1: Permissões */}
           {step === "permissions" && (
             <>
               <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
@@ -304,7 +315,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
                 Pode revogar o acesso a qualquer momento.
               </p>
 
-              <div className="flex gap-2">
+              <div className="flex gap-2 pt-1">
                 <Button
                   variant="outline"
                   size="sm"
@@ -315,110 +326,45 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
                 </Button>
                 <Button
                   size="sm"
-                  className="flex-1 h-8 text-xs font-medium"
-                  style={{ backgroundColor: meta.buttonColor, color: meta.buttonTextColor, borderColor: meta.buttonColor }}
-                  onClick={() => setStep("login")}
-                  data-testid={`button-oauth-continue-${platform}`}
+                  className="flex-1 h-8 text-xs font-semibold gap-1.5"
+                  style={{
+                    backgroundColor: meta.buttonColor,
+                    color: meta.buttonTextColor,
+                    borderColor: meta.buttonColor,
+                  }}
+                  onClick={openPopup}
+                  data-testid={`button-oauth-open-${platform}`}
                 >
-                  Continuar
-                </Button>
-              </div>
-            </>
-          )}
-
-          {/* ── PASSO 2: Login ── */}
-          {step === "login" && (
-            <>
-              <div className="space-y-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="oauth-email" className="text-xs font-medium">
-                    {meta.loginLabel}
-                  </Label>
-                  <div className="relative">
-                    <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      id="oauth-email"
-                      type="text"
-                      placeholder={meta.loginLabel}
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="pl-8 h-8 text-xs"
-                      autoComplete="username"
-                      data-testid={`input-oauth-email-${platform}`}
-                      onKeyDown={(e) => e.key === "Enter" && document.getElementById("oauth-password")?.focus()}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-1.5">
-                  <Label htmlFor="oauth-password" className="text-xs font-medium">
-                    Senha
-                  </Label>
-                  <div className="relative">
-                    <Lock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                    <Input
-                      id="oauth-password"
-                      type={showPassword ? "text" : "password"}
-                      placeholder="Senha"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      className="pl-8 pr-8 h-8 text-xs"
-                      autoComplete="current-password"
-                      data-testid={`input-oauth-password-${platform}`}
-                      onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword((v) => !v)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
-                      tabIndex={-1}
-                    >
-                      {showPassword ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
-                {loginError && (
-                  <p className="text-xs text-destructive">{loginError}</p>
-                )}
-              </div>
-
-              <div className="flex gap-2 pt-1">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="flex-1 h-8 text-xs"
-                  onClick={() => { setStep("permissions"); setLoginError(""); }}
-                >
-                  Voltar
-                </Button>
-                <Button
-                  size="sm"
-                  className="flex-1 h-8 text-xs font-semibold"
-                  style={{ backgroundColor: meta.buttonColor, color: meta.buttonTextColor, borderColor: meta.buttonColor }}
-                  onClick={handleLogin}
-                  data-testid={`button-oauth-login-${platform}`}
-                >
+                  <ExternalLink className="h-3.5 w-3.5" />
                   {meta.buttonLabel}
                 </Button>
               </div>
             </>
           )}
 
-          {/* ── PASSO 3: Conectando ── */}
-          {step === "connecting" && (
-            <div className="flex flex-col items-center justify-center py-6 gap-3">
+          {/* PASSO 2: Aguardando popup */}
+          {step === "waiting" && (
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm font-medium">A autenticar com {meta.authProvider}…</p>
+              <p className="text-sm font-medium">Janela de login aberta</p>
               <p className="text-xs text-muted-foreground text-center">
-                A verificar credenciais e autorizar acesso.
+                Complete o login na janela do {meta.authProvider} que foi aberta.
+                <br />Não feche esta janela.
               </p>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs mt-2"
+                onClick={() => { popupRef.current?.focus(); }}
+              >
+                Reabrir janela de login
+              </Button>
             </div>
           )}
 
-          {/* ── PASSO 4: Sucesso ── */}
+          {/* PASSO 3: Sucesso */}
           {step === "success" && (
-            <div className="flex flex-col items-center justify-center py-6 gap-3">
+            <div className="flex flex-col items-center justify-center py-8 gap-3">
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <Check className="h-6 w-6 text-primary" />
               </div>

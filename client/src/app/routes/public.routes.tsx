@@ -14,10 +14,12 @@ const Register = lazy(() => import("@/modules/auth/pages/Register"));
 const ArtistaSignupPublic = lazy(() => import("@/modules/auth/pages/ArtistaSignupPublic"));
 const LeadCapture = lazy(() => import("@/modules/crm/pages/LeadCapture"));
 const NotFound = lazy(() => import("@/shared/pages/NotFound"));
+const OAuthPopupPage = lazy(() => import("@/modules/integrations/pages/OAuthPopupPage"));
 
 export function publicRoutes(S: SuspenseRouteComponent) {
   return (
     <>
+      <Route path="/oauth/:platform" element={<S><OAuthPopupPage /></S>} />
       <Route path="/auth" element={<S><Auth /></S>} />
       <Route path="/register" element={<S><Register /></S>} />
       <Route path="/captar" element={<S><LeadCapture /></S>} />
