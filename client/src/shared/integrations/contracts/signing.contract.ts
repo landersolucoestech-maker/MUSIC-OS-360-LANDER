@@ -53,6 +53,11 @@ export interface SigningDocument {
   document_url: string;
   /** URL do PDF assinado (disponível após conclusão) */
   signed_document_url?: string | null;
+  /**
+   * Link de acesso ao envelope de assinatura no provedor (enviado aos signatários).
+   * Disponível imediatamente após createDocument.
+   */
+  signing_url?: string | null;
   /** ID do contrato local associado */
   contrato_id?: string;
 }

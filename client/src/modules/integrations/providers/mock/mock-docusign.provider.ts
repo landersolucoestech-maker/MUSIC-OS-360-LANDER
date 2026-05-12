@@ -1,10 +1,8 @@
 /**
- * integrations/providers/mock/mock-signing.provider.ts
+ * integrations/providers/mock/mock-docusign.provider.ts
  *
- * Implementação mock de ISigningProvider.
- * Em modo standalone: simula envio e estado de documentos.
- *
- * MIGRAÇÃO FUTURA: substituir por AutentiqueSigningProvider (GraphQL API via backend).
+ * Mock DocuSign signing provider — same contract as MockSigningProvider
+ * but branded as DocuSign for UI/logging purposes.
  */
 
 import type {
@@ -21,42 +19,42 @@ function makeDoc(
   params: CreateSigningDocumentParams,
   status: SigningStatus = "pending"
 ): SigningDocument {
-  const id = `mock_doc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  const id = `docusign_doc_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
   const now = new Date().toISOString();
   return {
     id,
-    external_id:          `autentique_${id}`,
-    title:                params.title,
+    external_id:         `docusign_${id}`,
+    title:               params.title,
     status,
-    signers:              params.signers.map((s) => ({
+    signers:             params.signers.map((s) => ({
       ...s,
       signature_url: null,
       signed_at:     null,
     })),
-    created_at:           now,
-    updated_at:           now,
-    expires_at:           params.expires_at ?? new Date(Date.now() + 30 * 86400_000).toISOString(),
-    completed_at:         null,
-    document_url:         params.document.startsWith("http") ? params.document : "#mock-pdf",
-    signed_document_url:  null,
-    signing_url:          `https://app.autentique.com.br/documento/assinar/${id}`,
-    contrato_id:          params.contrato_id,
+    created_at:          now,
+    updated_at:          now,
+    expires_at:          params.expires_at ?? new Date(Date.now() + 30 * 86400_000).toISOString(),
+    completed_at:        null,
+    document_url:        params.document.startsWith("http") ? params.document : "#mock-pdf",
+    signed_document_url: null,
+    signing_url:         `https://demo.docusign.net/Signing/MTRedeem/v1/${id}`,
+    contrato_id:         params.contrato_id,
   };
 }
 
-export class MockSigningProvider implements ISigningProvider {
+export class MockDocuSignProvider implements ISigningProvider {
   async createDocument(params: CreateSigningDocumentParams): Promise<SigningDocument> {
     const doc = makeDoc(params);
     _documents.set(doc.id, doc);
     console.info(
-      `[MockSigningProvider] createDocument "${params.title}" → ${doc.id} (${params.signers.length} signers)`
+      `[MockDocuSignProvider] createDocument "${params.title}" → ${doc.id} (${params.signers.length} signatários)`
     );
     return doc;
   }
 
   async getDocument(documentId: string): Promise<SigningDocument> {
     const doc = _documents.get(documentId);
-    if (!doc) throw new Error(`[MockSigningProvider] documento não encontrado: ${documentId}`);
+    if (!doc) throw new Error(`[MockDocuSignProvider] documento não encontrado: ${documentId}`);
     return doc;
   }
 
@@ -77,15 +75,15 @@ export class MockSigningProvider implements ISigningProvider {
       doc.updated_at = new Date().toISOString();
       _documents.set(documentId, doc);
     }
-    console.info(`[MockSigningProvider] cancelDocument → ${documentId}`);
+    console.info(`[MockDocuSignProvider] cancelDocument → ${documentId}`);
   }
 
   async resendInvite(documentId: string, signerEmail: string): Promise<void> {
-    console.info(`[MockSigningProvider] resendInvite → ${documentId} → ${signerEmail}`);
+    console.info(`[MockDocuSignProvider] resendInvite → ${documentId} → ${signerEmail}`);
   }
 
   async handleWebhook(event: SigningWebhookEvent): Promise<void> {
-    console.info(`[MockSigningProvider] handleWebhook → ${event.type} | doc: ${event.document_id}`);
+    console.info(`[MockDocuSignProvider] handleWebhook → ${event.type} | doc: ${event.document_id}`);
     const doc = _documents.get(event.document_id);
     if (!doc) return;
 
@@ -102,8 +100,9 @@ export class MockSigningProvider implements ISigningProvider {
   }
 
   async verifyConnection(): Promise<boolean> {
-    return true;
+    const raw = localStorage.getItem("musicos360_docusign_credentials");
+    return raw !== null;
   }
 }
 
-export const mockSigningProvider = new MockSigningProvider();
+export const mockDocuSignProvider = new MockDocuSignProvider();

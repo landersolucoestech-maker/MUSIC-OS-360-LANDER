@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { VinculadoDocument } from "@/modules/contracts/types/document-types";
 
 const MOCK_DOCUMENTS: VinculadoDocument[] = [
@@ -9,6 +9,7 @@ const MOCK_DOCUMENTS: VinculadoDocument[] = [
     title: "Contrato de Gravação — MC Levi",
     status: "signed",
     content_html: "<p>Contrato assinado.</p>",
+    signing_provider: "autentique",
     variables: { NOME_ARTISTA: "MC Levi", ROYALTY: "15" },
     signers: [
       { id: "sgn-001", document_id: "doc-001", role: "artista", name: "MC Levi",           email: "mc.levi@email.com",       status: "signed", signed_at: "2026-03-15T14:22:00.000Z" },
@@ -30,6 +31,7 @@ const MOCK_DOCUMENTS: VinculadoDocument[] = [
     title: "Contrato de Show — Ana Lima / São Paulo",
     status: "pending_signature",
     content_html: "<p>Aguardando assinaturas.</p>",
+    signing_provider: "clicksign",
     variables: { NOME_ARTISTA: "Ana Lima", DATA_SHOW: "2026-06-15", LOCAL_SHOW: "Vibra São Paulo", CACHE: "35000" },
     signers: [
       { id: "sgn-003", document_id: "doc-002", role: "artista", name: "Ana Lima",          email: "ana.lima@email.com",      status: "signed",  signed_at: "2026-05-10T09:00:00.000Z" },
@@ -56,6 +58,12 @@ function loadDocuments(): VinculadoDocument[] {
   }
 }
 
+function saveDocuments(docs: VinculadoDocument[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+  } catch { /* ignore */ }
+}
+
 export const CONTRACTS_DOC_KEYS = {
   documents: ["contracts", "documents"] as const,
 };
@@ -65,5 +73,26 @@ export function useDocuments() {
     queryKey: CONTRACTS_DOC_KEYS.documents,
     queryFn:  async (): Promise<VinculadoDocument[]> => loadDocuments(),
     staleTime: 1000 * 30,
+  });
+}
+
+export function useSaveDocument() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (doc: VinculadoDocument): Promise<VinculadoDocument> => {
+      const existing = loadDocuments();
+      const idx = existing.findIndex((d) => d.id === doc.id);
+      let updated: VinculadoDocument[];
+      if (idx >= 0) {
+        updated = existing.map((d) => (d.id === doc.id ? doc : d));
+      } else {
+        updated = [doc, ...existing];
+      }
+      saveDocuments(updated);
+      return doc;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: CONTRACTS_DOC_KEYS.documents });
+    },
   });
 }

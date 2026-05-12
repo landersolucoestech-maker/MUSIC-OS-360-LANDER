@@ -1,33 +1,36 @@
 /**
  * integrations/adapters/signing.adapter.ts
  *
- * Adapter de assinatura digital — selecciona MockSigningProvider (standalone)
- * ou AutentiqueSigningProvider (produção — GraphQL API via backend).
+ * Adapter de assinatura digital — seleciona o provider correto
+ * com base no ID do provedor especificado pelo chamador.
  *
- * REGRA: o frontend NUNCA chama a API Autentique directamente.
- * Em produção, todas as operações passam pelo backend (tokens server-side).
- * Webhooks de assinatura são processados exclusivamente no backend.
+ * Providers suportados (mock mode):
+ *   - "autentique"  → MockSigningProvider (padrão)
+ *   - "clicksign"   → MockClicksignProvider (requer credenciais em localStorage)
+ *   - "docusign"    → MockDocuSignProvider  (requer credenciais em localStorage)
+ *
+ * REGRA: o frontend NUNCA chama APIs externas de assinatura directamente.
+ * Em produção, todas as operações passam pelo backend.
  *
  * Uso:
- *   import { signingAdapter } from "@/modules/integrations/adapters/signing.adapter";
- *   const doc = await signingAdapter.createDocument({ title, document, signers });
+ *   import { resolveSigningAdapter } from "@/modules/integrations/adapters/signing.adapter";
+ *   const adapter = resolveSigningAdapter("clicksign");
+ *   const doc = await adapter.createDocument({ title, document, signers });
  */
 
 import type { ISigningProvider } from "@/modules/integrations/dto";
-import { MOCK_MODE } from "@/shared/lib/env";
-import { mockSigningProvider } from "@/modules/integrations/providers";
+import { mockSigningProvider }    from "@/modules/integrations/providers/mock/mock-signing.provider";
+import { mockClicksignProvider }  from "@/modules/integrations/providers/mock/mock-clicksign.provider";
+import { mockDocuSignProvider }   from "@/modules/integrations/providers/mock/mock-docusign.provider";
 
-function resolveSigningProvider(): ISigningProvider {
-  if (MOCK_MODE) return mockSigningProvider;
+export type SigningProviderId = "autentique" | "clicksign" | "docusign";
 
-  // PRODUÇÃO: AutentiqueSigningProvider via backend:
-  //   POST /api/signing/documents           → backend cria documento no Autentique
-  //   GET  /api/signing/documents/:id       → backend consulta estado
-  //   POST /api/signing/documents/:id/cancel → backend cancela
-  //   Webhook POST /webhooks/autentique     → backend processa; frontend subscreve via polling
-  // import { BackendSigningProvider } from "@/modules/integrations/providers/backend/backend-signing.provider";
-  // return new BackendSigningProvider();
-  return mockSigningProvider;
+export function resolveSigningAdapter(provider: SigningProviderId = "autentique"): ISigningProvider {
+  switch (provider) {
+    case "clicksign": return mockClicksignProvider;
+    case "docusign":  return mockDocuSignProvider;
+    default:          return mockSigningProvider;
+  }
 }
 
-export const signingAdapter: ISigningProvider = resolveSigningProvider();
+export const signingAdapter: ISigningProvider = mockSigningProvider;

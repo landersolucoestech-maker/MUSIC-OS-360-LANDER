@@ -43,6 +43,8 @@ export interface DocumentLog {
   user_id?: string;
 }
 
+export type SigningProviderLabel = "autentique" | "clicksign" | "docusign";
+
 export interface VinculadoDocument {
   id: string;
   org_id: string;
@@ -54,6 +56,7 @@ export interface VinculadoDocument {
   autentique_doc_id?: string;
   artista_id?: string;
   contract_id?: string;
+  signing_provider?: SigningProviderLabel;
   variables: Record<string, string>;
   signers: DocumentSigner[];
   logs: DocumentLog[];
