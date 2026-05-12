@@ -170,7 +170,8 @@ export default function Configuracoes() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [marketingOpen, setMarketingOpen] = useState(false);
+  const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [websiteLeadOpen, setWebsiteLeadOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
@@ -212,7 +213,11 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { isConnected: isMarketingConnected } = useMarketingOAuth();
+  const {
+    isConnected: isMarketingConnected,
+    connect: connectMarketing,
+    disconnect: disconnectMarketing,
+  } = useMarketingOAuth();
   const { data: nfeStatus } = useNfeStatus();
 
   // Estados para aba de Usuários
@@ -494,16 +499,6 @@ export default function Configuracoes() {
       category: "Marketing Digital",
       configurable: true,
     },
-    // ── Website & Outros
-    {
-      id: "website",
-      name: "Website & Landing Pages",
-      icon: "🌐",
-      status: "desconectado" as const,
-      description: "Formulário público de captação, embed iFrame, API directa e sistemas de conversão",
-      category: "Marketing Digital",
-      configurable: true,
-    },
     // ── Fiscal ────────────────────────────────────────────────────────────────
     {
       id: "nfe",
@@ -515,12 +510,13 @@ export default function Configuracoes() {
       configurable: true,
     },
     // ── Captação de Leads ─────────────────────────────────────────────────────
+    // Integração via snippet de código (pixel JS + webhook + iframe) — sem OAuth.
     {
-      id: "website_linkedin",
-      name: "Website & LinkedIn",
+      id: "website_leads",
+      name: "Website / Captação de Leads",
       icon: "🌐",
       status: "desconectado" as const,
-      description: "Formulário público de captação, iframe embed, webhooks e LinkedIn Lead Ads",
+      description: "Pixel JS + webhook + iframe embed para captar leads do seu site directo no CRM",
       category: "Captação de Leads",
       configurable: true,
     },
@@ -535,27 +531,23 @@ export default function Configuracoes() {
     { id: "somvibe", name: "SomVibe", initials: "SV", color: "bg-primary", description: "Distribuidora brasileira independente com foco no mercado nacional" },
   ];
 
+  // IDs das plataformas corporativas de Marketing Digital (OAuth inline, sem modal separado)
+  const MARKETING_PLATFORM_IDS = new Set<string>([
+    "corp_instagram", "corp_tiktok", "corp_youtube", "corp_spotify",
+    "meta_ads", "google_ads", "tiktok_ads", "spotify_ads",
+    "youtube_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
+  ]);
+
+  // Handlers para plataformas que abrem um ConfigDialog dedicado
   const integrationConfigHandlers: Record<string, () => void> = {
-    autentique:      () => setAutentiqueConfigOpen(true),
-    clicksign:       () => setClicksignConfigOpen(true),
-    docusign:        () => setDocusignConfigOpen(true),
-    ecad:            () => setEcadConfigOpen(true),
-    abramus:         () => setAbramusConfigOpen(true),
-    ubc:             () => setUbcConfigOpen(true),
-    corp_instagram:  () => setMarketingOpen(true),
-    corp_tiktok:     () => setMarketingOpen(true),
-    corp_youtube:    () => setMarketingOpen(true),
-    corp_spotify:    () => setMarketingOpen(true),
-    meta_ads:        () => setMarketingOpen(true),
-    google_ads:      () => setMarketingOpen(true),
-    tiktok_ads:      () => setMarketingOpen(true),
-    spotify_ads:     () => setMarketingOpen(true),
-    youtube_ads:     () => setMarketingOpen(true),
-    deezer_ads:      () => setMarketingOpen(true),
-    apple_music_ads: () => setMarketingOpen(true),
-    soundcloud_ads:  () => setMarketingOpen(true),
-    website:         () => setMarketingOpen(true),
-    nfe:             () => setNfeConfigOpen(true),
+    autentique:    () => setAutentiqueConfigOpen(true),
+    clicksign:     () => setClicksignConfigOpen(true),
+    docusign:      () => setDocusignConfigOpen(true),
+    ecad:          () => setEcadConfigOpen(true),
+    abramus:       () => setAbramusConfigOpen(true),
+    ubc:           () => setUbcConfigOpen(true),
+    website_leads: () => setWebsiteLeadOpen(true),
+    nfe:           () => setNfeConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1474,7 +1466,7 @@ export default function Configuracoes() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Marketing Digital", "Fiscal"].map((category) => {
+                  {["Assinatura Digital", "Direitos Autorais", "Marketing Digital", "Fiscal", "Captação de Leads"].map((category) => {
                     const items = integracoes.filter((i) => i.category === category);
                     if (items.length === 0) return null;
                     return (
@@ -1486,6 +1478,8 @@ export default function Configuracoes() {
                         </div>
                         <div className="divide-y divide-border/50">
                           {items.map((integracao) => {
+                            const isMarketingPlatform = MARKETING_PLATFORM_IDS.has(integracao.id);
+                            const isConnecting = connectingPlatform === integracao.id;
                             const handler = integrationConfigHandlers[integracao.id];
                             const isConfigurable = Boolean(handler);
                             return (
@@ -1507,21 +1501,61 @@ export default function Configuracoes() {
                                     notices={integracao.notices}
                                     testIdPrefix={`badge-integration-${integracao.id}`}
                                   />
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 text-xs gap-1"
-                                    onClick={handler}
-                                    disabled={!isConfigurable}
-                                    data-testid={`button-integration-${integracao.id}`}
-                                  >
-                                    {isConfigurable
-                                      ? integracao.status === "conectado"
-                                        ? "Gerenciar"
-                                        : "Conectar"
-                                      : "Em breve"}
-                                    <ExternalLink className="h-3 w-3" />
-                                  </Button>
+                                  {isMarketingPlatform ? (
+                                    isConnecting ? (
+                                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled data-testid={`button-integration-${integracao.id}`}>
+                                        <Loader2 className="h-3 w-3 animate-spin" />
+                                        Conectando...
+                                      </Button>
+                                    ) : integracao.status === "conectado" ? (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                        onClick={() => {
+                                          disconnectMarketing(integracao.id as MarketingPlatformId);
+                                          toast.success(`${integracao.name} desconectado.`);
+                                        }}
+                                        data-testid={`button-integration-${integracao.id}`}
+                                      >
+                                        <Unplug className="h-3 w-3" />
+                                        Desconectar
+                                      </Button>
+                                    ) : (
+                                      <Button
+                                        variant="outline"
+                                        size="sm"
+                                        className="h-7 text-xs gap-1"
+                                        onClick={() => {
+                                          setConnectingPlatform(integracao.id);
+                                          connectMarketing(integracao.id as MarketingPlatformId, [])
+                                            .then(() => toast.success(`${integracao.name} conectado com sucesso.`))
+                                            .catch(() => toast.error(`Erro ao conectar ${integracao.name}.`))
+                                            .finally(() => setConnectingPlatform(null));
+                                        }}
+                                        data-testid={`button-integration-${integracao.id}`}
+                                      >
+                                        Conectar
+                                        <ExternalLink className="h-3 w-3" />
+                                      </Button>
+                                    )
+                                  ) : (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1"
+                                      onClick={handler}
+                                      disabled={!isConfigurable}
+                                      data-testid={`button-integration-${integracao.id}`}
+                                    >
+                                      {isConfigurable
+                                        ? integracao.status === "conectado"
+                                          ? "Gerenciar"
+                                          : "Configurar"
+                                        : "Em breve"}
+                                      <ExternalLink className="h-3 w-3" />
+                                    </Button>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -1644,10 +1678,67 @@ export default function Configuracoes() {
               </DialogContent>
             </Dialog>
 
-            <MarketingIntegrationsDialog
-              open={marketingOpen}
-              onOpenChange={setMarketingOpen}
-            />
+            {/* Dialog — Website / Captação de Leads (snippet de código, sem OAuth) */}
+            <Dialog open={websiteLeadOpen} onOpenChange={setWebsiteLeadOpen}>
+              <DialogContent className="max-w-2xl">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    🌐 Website / Captação de Leads
+                  </DialogTitle>
+                  <DialogDescription>
+                    Cole os snippets abaixo no seu site para captar leads directamente no CRM. Não é necessário login — a integração funciona via código.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-5 pt-2">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Pixel JavaScript (head do site)</Label>
+                    <div className="relative">
+                      <Textarea
+                        readOnly
+                        rows={4}
+                        className="font-mono text-xs bg-muted/40 resize-none pr-16"
+                        value={`<!-- MUSIC OS 360 — Lead Capture Pixel -->\n<script>\n  (function(m,o,s,i,c){m[c]=m[c]||function(){(m[c].q=m[c].q||[]).push(arguments)};var t=o.createElement(s);t.async=1;t.src=i;o.head.appendChild(t);})(window,document,'script','https://cdn.musicos360.com/pixel.js','mos360');\n  mos360('init', 'ORG_musicos360_abc123');\n</script>`}
+                      />
+                      <Button size="sm" variant="outline" className="absolute top-2 right-2 h-7 text-xs" onClick={() => { navigator.clipboard.writeText(`<!-- MUSIC OS 360 — Lead Capture Pixel -->\n<script>\n  (function(m,o,s,i,c){m[c]=m[c]||function(){(m[c].q=m[c].q||[]).push(arguments)};var t=o.createElement(s);t.async=1;t.src=i;o.head.appendChild(t);})(window,document,'script','https://cdn.musicos360.com/pixel.js','mos360');\n  mos360('init', 'ORG_musicos360_abc123');\n</script>`); toast.success("Pixel copiado!"); }}>
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Embed iFrame (formulário de captação)</Label>
+                    <div className="relative">
+                      <Textarea
+                        readOnly
+                        rows={3}
+                        className="font-mono text-xs bg-muted/40 resize-none pr-16"
+                        value={`<iframe src="https://app.musicos360.com/forms/lead/ORG_musicos360_abc123" width="100%" height="480" frameborder="0" allow="clipboard-write" loading="lazy"></iframe>`}
+                      />
+                      <Button size="sm" variant="outline" className="absolute top-2 right-2 h-7 text-xs" onClick={() => { navigator.clipboard.writeText(`<iframe src="https://app.musicos360.com/forms/lead/ORG_musicos360_abc123" width="100%" height="480" frameborder="0" allow="clipboard-write" loading="lazy"></iframe>`); toast.success("iFrame copiado!"); }}>
+                        Copiar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">Webhook URL (POST para receber leads externos)</Label>
+                    <div className="relative">
+                      <Input
+                        readOnly
+                        className="font-mono text-xs bg-muted/40 pr-16"
+                        value="https://api.musicos360.com/webhooks/leads/ORG_musicos360_abc123"
+                      />
+                      <Button size="sm" variant="outline" className="absolute top-1/2 -translate-y-1/2 right-2 h-7 text-xs" onClick={() => { navigator.clipboard.writeText("https://api.musicos360.com/webhooks/leads/ORG_musicos360_abc123"); toast.success("Webhook URL copiada!"); }}>
+                        Copiar
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">Envie um POST com <code className="bg-muted px-1 rounded text-[10px]">{"{ name, email, phone?, message? }"}</code> — os leads chegam directamente no CRM.</p>
+                  </div>
+                  <div className="flex justify-end pt-1">
+                    <Button variant="outline" onClick={() => setWebsiteLeadOpen(false)}>Fechar</Button>
+                  </div>
+                </div>
+              </DialogContent>
+            </Dialog>
+
             <EcadConfigDialog
               open={ecadConfigOpen}
               onOpenChange={setEcadConfigOpen}
