@@ -30,7 +30,6 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
-import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
@@ -45,24 +44,12 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
-import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
-import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
 import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
 import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
 import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
-import { SpotifyConfigDialog } from "@/modules/integrations/components/SpotifyConfigDialog";
-import { useSpotifyStatus } from "@/modules/integrations/hooks/useSpotify";
-import { YouTubeConfigDialog } from "@/modules/integrations/components/YouTubeConfigDialog";
-import { useYouTubeStatus } from "@/modules/integrations/hooks/useYouTube";
-import { DeezerConfigDialog } from "@/modules/integrations/components/DeezerConfigDialog";
-import { useDeezerStatus } from "@/modules/integrations/hooks/useDeezer";
-import { SoundCloudConfigDialog } from "@/modules/integrations/components/SoundCloudConfigDialog";
-import { useSoundCloudStatus } from "@/modules/integrations/hooks/useSoundCloud";
-import { AppleMusicConfigDialog } from "@/modules/integrations/components/AppleMusicConfigDialog";
-import { useAppleMusicStatus } from "@/modules/integrations/hooks/useAppleMusic";
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -188,7 +175,6 @@ export default function Configuracoes() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [leadIntegrationsOpen, setLeadIntegrationsOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
@@ -199,12 +185,6 @@ export default function Configuracoes() {
   const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
   const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
-  const [acrCloudConfigOpen, setAcrCloudConfigOpen] = useState(false);
-  const [spotifyConfigOpen, setSpotifyConfigOpen] = useState(false);
-  const [youtubeConfigOpen, setYoutubeConfigOpen] = useState(false);
-  const [deezerConfigOpen, setDeezerConfigOpen] = useState(false);
-  const [soundcloudConfigOpen, setSoundcloudConfigOpen] = useState(false);
-  const [appleMusicConfigOpen, setAppleMusicConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
   const [distributorConnections, setDistributorConnections] = useState<Record<string, { username: string }>>(() => {
@@ -243,12 +223,6 @@ export default function Configuracoes() {
   const { data: googleAdsStatus } = useGoogleAdsStatus();
   const { data: tiktokAdsStatus } = useTikTokAdsStatus();
   const { data: nfeStatus } = useNfeStatus();
-  const { data: acrCloudStatus } = useACRCloudStatus();
-  const { data: spotifyStatus } = useSpotifyStatus();
-  const { data: youtubeStatus } = useYouTubeStatus();
-  const { data: deezerStatus } = useDeezerStatus();
-  const { data: soundcloudStatus } = useSoundCloudStatus();
-  const { data: appleMusicStatus } = useAppleMusicStatus();
 
   // Estados para aba de Usuários
   const [usuarioFormModal, setUsuarioFormModal] = useState<{ open: boolean; mode: "create" | "edit"; usuario?: Usuario }>({ open: false, mode: "create" });
@@ -411,51 +385,6 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "spotify",
-      name: "Spotify",
-      icon: "🎵",
-      status: spotifyStatus?.connected ? "conectado" : "desconectado",
-      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "youtube",
-      name: "YouTube Music",
-      icon: "▶️",
-      status: youtubeStatus?.connected ? "conectado" : "desconectado",
-      description: "Métricas de visualizações, receita e crescimento de canal",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "deezer",
-      name: "Deezer",
-      icon: "🎶",
-      status: deezerStatus?.connected ? "conectado" : "desconectado",
-      description: "Relatórios de streams e royalties da plataforma Deezer",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "soundcloud",
-      name: "SoundCloud",
-      icon: "☁️",
-      status: soundcloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Estatísticas de reprodução e engajamento no SoundCloud",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
-      id: "apple_music",
-      name: "Apple Music",
-      icon: "🍎",
-      status: appleMusicStatus?.connected ? "conectado" : "desconectado",
-      description: "Dados de streams e relatórios do Apple Music Connect",
-      category: "Streaming",
-      configurable: true,
-    },
-    {
       id: "ecad",
       name: "ECAD",
       icon: "📊",
@@ -519,15 +448,6 @@ export default function Configuracoes() {
       category: "Fiscal",
       configurable: true,
     },
-    {
-      id: "acrcloud",
-      name: "ACRCloud",
-      icon: "🎧",
-      status: acrCloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Monitoramento musical por fingerprint de áudio — identifica execuções em rádio, TV, streaming e vídeo",
-      category: "Monitoramento Musical",
-      configurable: true,
-    },
   ];
 
   const DISTRIBUTORS = [
@@ -550,12 +470,6 @@ export default function Configuracoes() {
     google_ads: () => setGoogleAdsConfigOpen(true),
     tiktok_ads: () => setTiktokAdsConfigOpen(true),
     nfe: () => setNfeConfigOpen(true),
-    acrcloud: () => setAcrCloudConfigOpen(true),
-    spotify: () => setSpotifyConfigOpen(true),
-    youtube: () => setYoutubeConfigOpen(true),
-    deezer: () => setDeezerConfigOpen(true),
-    soundcloud: () => setSoundcloudConfigOpen(true),
-    apple_music: () => setAppleMusicConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1472,68 +1386,69 @@ export default function Configuracoes() {
                 </CardTitle>
                 <CardDescription>Conecte serviços externos para automatizar processos</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal", "Monitoramento Musical"].map((category) => {
-                  const items = integracoes.filter((i) => i.category === category);
-                  if (items.length === 0) return null;
-                  return (
-                    <div key={category}>
-                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-                        {category}
-                      </p>
-                      <div className="space-y-2">
-                        {items.map((integracao) => {
-                          const handler = integrationConfigHandlers[integracao.id];
-                          const isConfigurable = Boolean(handler);
-                          return (
-                            <div
-                              key={integracao.id}
-                              className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
-                              data-testid={`integration-row-${integracao.id}`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-2xl">
+              <CardContent className="space-y-4">
+                <div className="rounded-lg border border-border overflow-hidden">
+                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal"].map((category) => {
+                    const items = integracoes.filter((i) => i.category === category);
+                    if (items.length === 0) return null;
+                    return (
+                      <div key={category}>
+                        <div className="px-4 py-2 bg-muted/40 border-b border-border/50">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            {category}
+                          </p>
+                        </div>
+                        <div className="divide-y divide-border/50">
+                          {items.map((integracao) => {
+                            const handler = integrationConfigHandlers[integracao.id];
+                            const isConfigurable = Boolean(handler);
+                            return (
+                              <div
+                                key={integracao.id}
+                                className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
+                                data-testid={`integration-row-${integracao.id}`}
+                              >
+                                <div className="p-1.5 rounded-md bg-muted shrink-0 text-base leading-none">
                                   {integracao.icon}
                                 </div>
-                                <div>
-                                  <p className="font-medium">{integracao.name}</p>
-                                  <p className="text-sm text-muted-foreground">{integracao.description}</p>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-xs font-medium text-foreground">{integracao.name}</p>
+                                  <p className="text-[10px] text-muted-foreground truncate">{integracao.description}</p>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <IntegrationStatusBadges
+                                    status={integracao.status}
+                                    notices={integracao.notices}
+                                    testIdPrefix={`badge-integration-${integracao.id}`}
+                                  />
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs gap-1"
+                                    onClick={handler}
+                                    disabled={!isConfigurable}
+                                    data-testid={`button-integration-${integracao.id}`}
+                                  >
+                                    {isConfigurable
+                                      ? integracao.status === "conectado"
+                                        ? "Gerenciar"
+                                        : "Conectar"
+                                      : "Em breve"}
+                                    <ExternalLink className="h-3 w-3" />
+                                  </Button>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-3">
-                                <IntegrationStatusBadges
-                                  status={integracao.status}
-                                  notices={integracao.notices}
-                                  testIdPrefix={`badge-integration-${integracao.id}`}
-                                />
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={handler}
-                                  disabled={!isConfigurable}
-                                  data-testid={`button-integration-${integracao.id}`}
-                                >
-                                  {isConfigurable
-                                    ? integracao.status === "conectado"
-                                      ? "Gerenciar"
-                                      : "Conectar"
-                                    : "Em breve"}
-                                  <ExternalLink className="h-3 w-3 ml-2" />
-                                </Button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
 
-                <Separator className="my-6" />
-
-                <div className="text-center py-4">
-                  <p className="text-muted-foreground mb-4">Não encontrou a integração que precisa?</p>
-                  <Button variant="outline">
+                <div className="flex items-center justify-between pt-1">
+                  <p className="text-xs text-muted-foreground">Não encontrou a integração que precisa?</p>
+                  <Button variant="outline" size="sm" className="h-7 text-xs">
                     Solicitar Nova Integração
                   </Button>
                 </div>
@@ -1643,32 +1558,6 @@ export default function Configuracoes() {
               </DialogContent>
             </Dialog>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Captação de Leads
-                </CardTitle>
-                <CardDescription>Configure webhooks para receber leads automaticamente de plataformas de anúncios e formulários do site</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
-                  <div>
-                    <p className="font-medium">Facebook, Instagram, Google Ads, TikTok, LinkedIn e Website</p>
-                    <p className="text-sm text-muted-foreground">Fluxo OAuth nativo por plataforma, webhooks alternativos e formulário público de captação</p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={() => setLeadIntegrationsOpen(true)} data-testid="button-lead-integrations">
-                    Configurar
-                    <ExternalLink className="h-3 w-3 ml-2" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <LeadIntegrationsDialog
-              open={leadIntegrationsOpen}
-              onOpenChange={setLeadIntegrationsOpen}
-            />
             <EcadConfigDialog
               open={ecadConfigOpen}
               onOpenChange={setEcadConfigOpen}
@@ -1708,30 +1597,6 @@ export default function Configuracoes() {
             <NfeConfigDialog
               open={nfeConfigOpen}
               onOpenChange={setNfeConfigOpen}
-            />
-            <ACRCloudConfigDialog
-              open={acrCloudConfigOpen}
-              onOpenChange={setAcrCloudConfigOpen}
-            />
-            <SpotifyConfigDialog
-              open={spotifyConfigOpen}
-              onOpenChange={setSpotifyConfigOpen}
-            />
-            <YouTubeConfigDialog
-              open={youtubeConfigOpen}
-              onOpenChange={setYoutubeConfigOpen}
-            />
-            <DeezerConfigDialog
-              open={deezerConfigOpen}
-              onOpenChange={setDeezerConfigOpen}
-            />
-            <SoundCloudConfigDialog
-              open={soundcloudConfigOpen}
-              onOpenChange={setSoundcloudConfigOpen}
-            />
-            <AppleMusicConfigDialog
-              open={appleMusicConfigOpen}
-              onOpenChange={setAppleMusicConfigOpen}
             />
           </TabsContent>
 

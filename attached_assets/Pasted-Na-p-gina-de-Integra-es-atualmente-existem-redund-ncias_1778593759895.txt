@@ -1,0 +1,70 @@
+Na página de Integrações atualmente existem redundâncias conceituais e problemas de categorização que precisam ser corrigidos.
+
+A seção que contém:
+
+* Meta Ads
+* Google Ads
+* TikTok Ads
+
+junto da área:
+
+“Captação de Leads — Configure webhooks para receber leads automaticamente de plataformas de anúncios e formulários do site: Facebook, Instagram, Google Ads, TikTok, LinkedIn e Website”
+
+gera duplicação desnecessária de plataformas e confusão estrutural.
+
+Facebook/Instagram, Google e TikTok já estão sendo representados na camada de anúncios/tráfego pago, portanto não faz sentido repetir essas mesmas plataformas novamente na seção de captação de leads como se fossem integrações distintas. O ideal é unificar o conceito em uma arquitetura centralizada de mídia paga + captação.
+
+Além disso, o visual da listagem de integrações deve seguir o mesmo padrão visual da página de Relatórios, mantendo consistência de UI/UX, hierarquia visual e organização modular do sistema.
+
+Outro ponto importante:
+
+As integrações exibidas atualmente na página de Integrações estão conceitualmente incorretas.
+
+Plataformas de streaming não devem ser tratadas como integrações diretas de distribuição ou sincronização de catálogo dentro dessa área.
+
+As métricas de streaming devem ser obtidas através do link individual de cada artista cadastrado no formulário/perfil do artista dentro do sistema. Ou seja:
+
+* o sistema deve consumir e centralizar métricas vinculadas ao perfil do artista;
+* não deve existir uma “integração direta de streaming” exposta na página de integrações para o usuário final.
+
+Além disso, integrações como:
+
+* Spotify Ads
+* YouTube Ads
+* Deezer Ads
+* SoundCloud Ads
+* Apple Music Ads
+* Meta Ads
+* Google Ads
+
+não devem ser categorizadas como “integrações de streaming”.
+
+A categorização correta é:
+
+* Tráfego Pago
+* Campanhas
+* Mídia
+* Ads
+* Performance Marketing
+
+O funcionamento correto dessa arquitetura é:
+
+* cada usuário/empresa conecta sua própria conta de anúncios;
+* a autenticação ocorre diretamente pela conta oficial da plataforma via OAuth;
+* o sistema atua apenas como painel centralizador de campanhas, métricas, automações e gestão de mídia paga.
+
+Também é importante remover da interface pública integrações internas de infraestrutura/backend, como:
+
+* Cloudflare R2
+* ACRCloud
+* Resend
+
+Essas ferramentas pertencem à camada operacional do sistema e não devem aparecer para o usuário final na página de Integrações.
+
+Além disso, a arquitetura já deve ser preparada desde agora para futuras integrações como:
+
+* DocuSign
+* Clicksign
+* emissão de NF-e
+
+No caso da NF-e, a autenticação e emissão devem ocorrer utilizando exclusivamente as credenciais, certificados e configurações fiscais da própria empresa/usuário, respeitando individualização tributária, segurança e isolamento operacional entre contas.
