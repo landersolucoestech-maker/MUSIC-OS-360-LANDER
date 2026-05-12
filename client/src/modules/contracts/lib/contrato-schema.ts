@@ -1,12 +1,13 @@
 import { z } from "zod";
 
-export const SIGNER_ROLES = ["artista", "label", "produtor"] as const;
+export const SIGNER_ROLES = ["artista", "label", "produtor", "empresario"] as const;
 export type ContratoSignerRole = typeof SIGNER_ROLES[number];
 
 export const SIGNER_ROLE_LABEL: Record<ContratoSignerRole, string> = {
-  artista:  "Artista",
-  label:    "Gravadora / Label",
-  produtor: "Produtor",
+  artista:    "Artista",
+  label:      "Gravadora / Label",
+  produtor:   "Produtor",
+  empresario: "Empresário",
 };
 
 export const contratoSignerSchema = z.object({
