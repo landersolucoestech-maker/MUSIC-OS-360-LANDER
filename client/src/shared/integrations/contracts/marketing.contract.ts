@@ -20,18 +20,16 @@ export type MarketingPlatformId =
   // ── Métricas Corporativas ─────────────────────────────────────────────────
   // Contas oficiais da empresa/label em cada plataforma.
   // Login obrigatório para aceder analytics, gestão de página e publicações.
-  | "corp_instagram"      // Instagram Business — conta oficial da empresa
+  | "meta_business"       // Meta Business Suite — Facebook + Instagram + Meta Ads (unificado)
   | "corp_tiktok"         // TikTok Business — conta oficial da empresa
   | "corp_youtube"        // YouTube Studio — canal oficial da empresa
   | "corp_spotify"        // Spotify for Artists — perfil oficial da empresa
-  | "corp_facebook"       // Facebook Business / Meta Business Suite — página da empresa
   | "corp_google"         // Google Analytics + Search Console — presença web da empresa
   | "corp_deezer"         // Deezer for Artists — presença da label no Deezer
   | "corp_soundcloud"     // SoundCloud Pro — perfil oficial da label
   | "corp_apple_music"    // Apple Music for Artists — presença da label no Apple Music
   // ── Tráfego Pago ─────────────────────────────────────────────────────────
   // Contas de anúncios pagos da empresa. Login obrigatório.
-  | "meta_ads"
   | "google_ads"
   | "tiktok_ads"
   | "spotify_ads"

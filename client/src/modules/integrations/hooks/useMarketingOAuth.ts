@@ -8,11 +8,10 @@
  *     SoundCloud) → automáticas via links do cadastro do artista. SEM integração manual aqui.
  *
  *   · Este hook trata APENAS contas corporativas da empresa/label/publisher:
- *       corp_instagram   — conta Instagram oficial da empresa
+ *       meta_business    — Meta Business Suite (Facebook + Instagram + Meta Ads — unificado)
  *       corp_tiktok      — conta TikTok oficial da empresa
  *       corp_youtube     — canal YouTube oficial da empresa
  *       corp_spotify     — perfil Spotify oficial da empresa
- *       meta_ads         — Meta Ads (Facebook + Instagram Ads)
  *       google_ads       — Google Ads
  *       tiktok_ads       — TikTok Ads Manager
  *       spotify_ads      — Spotify Ad Studio
@@ -41,17 +40,15 @@ const STORAGE_KEY = "musicos360_marketing_oauth_connections";
 
 export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
   // Métricas corporativas — contas oficiais da empresa
-  corp_instagram:   "corporate_metrics",
+  meta_business:    "corporate_metrics",
   corp_tiktok:      "corporate_metrics",
   corp_youtube:     "corporate_metrics",
   corp_spotify:     "corporate_metrics",
-  corp_facebook:    "corporate_metrics",
   corp_google:      "corporate_metrics",
   corp_deezer:      "corporate_metrics",
   corp_soundcloud:  "corporate_metrics",
   corp_apple_music: "corporate_metrics",
   // Tráfego pago
-  meta_ads:         "paid_ads",
   google_ads:       "paid_ads",
   tiktok_ads:       "paid_ads",
   spotify_ads:      "paid_ads",
@@ -64,9 +61,9 @@ export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingC
 // ─── Contas mock (simulam dados reais após OAuth) ─────────────────────────────
 
 const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountId: string }> = {
-  corp_instagram: {
-    accountName: "@musicbusiness_oficial (Business)",
-    accountId:   "IG_CORP_987654321",
+  meta_business: {
+    accountName: "Music Business — Meta Business Suite (Facebook + Instagram + Ads)",
+    accountId:   "META-BIZ-1234567890",
   },
   corp_tiktok: {
     accountName: "@musicbusiness TikTok (Business)",
@@ -79,10 +76,6 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   corp_spotify: {
     accountName: "Music Business — Spotify for Artists",
     accountId:   "SP-CORP-456789",
-  },
-  corp_facebook: {
-    accountName: "Music Business — Facebook Page",
-    accountId:   "FB-PAGE-1234567890",
   },
   corp_google: {
     accountName: "Music Business — Google Analytics 4",
@@ -99,10 +92,6 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   corp_apple_music: {
     accountName: "Music Business — Apple Music for Artists",
     accountId:   "AM-ARTIST-901234",
-  },
-  meta_ads: {
-    accountName: "Music Business — Meta Business Suite",
-    accountId:   "act_9012345678",
   },
   google_ads: {
     accountName: "Music Business Ads (MCC)",

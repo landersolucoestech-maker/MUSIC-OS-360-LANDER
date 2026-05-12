@@ -391,20 +391,11 @@ export default function Configuracoes() {
     // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
     // ── Métricas corporativas — contas oficiais da empresa (login obrigatório)
     {
-      id: "corp_instagram",
-      name: "Instagram Business",
-      icon: "📸",
-      status: isMarketingConnected("corp_instagram") ? "conectado" : "desconectado",
-      description: "Conta Instagram oficial da empresa — analytics, alcance, reels, stories",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
-      id: "corp_facebook",
-      name: "Facebook Business",
-      icon: "🔵",
-      status: isMarketingConnected("corp_facebook") ? "conectado" : "desconectado",
-      description: "Página Facebook oficial da empresa — Meta Business Suite, analytics e publicações",
+      id: "meta_business",
+      name: "Meta Business Suite",
+      icon: "🔷",
+      status: isMarketingConnected("meta_business") ? "conectado" : "desconectado",
+      description: "Facebook + Instagram + Meta Ads — métricas, publicações, campanhas e analytics da empresa",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -445,15 +436,6 @@ export default function Configuracoes() {
       configurable: true,
     },
     // ── Tráfego pago corporativo
-    {
-      id: "meta_ads",
-      name: "Meta Ads",
-      icon: "📣",
-      status: isMarketingConnected("meta_ads") ? "conectado" : "desconectado",
-      description: "Facebook + Instagram Ads — gira campanhas da conta Business da empresa",
-      category: "Marketing Digital",
-      configurable: true,
-    },
     {
       id: "google_ads",
       name: "Google Ads",
@@ -554,10 +536,9 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "corp_instagram", "corp_facebook", "corp_tiktok", "corp_youtube",
-    "corp_google", "corp_spotify",
+    "meta_business", "corp_tiktok", "corp_youtube", "corp_google", "corp_spotify",
     // Tráfego pago (contas de anúncios da empresa)
-    "meta_ads", "google_ads", "tiktok_ads", "spotify_ads",
+    "google_ads", "tiktok_ads", "spotify_ads",
     "youtube_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
   ]);
 

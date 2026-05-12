@@ -33,9 +33,9 @@ function daysAgo(n: number): string {
 // ─── Dados mock de campanhas (Tráfego Pago) ───────────────────────────────────
 
 const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
-  meta_ads: [
+  meta_business: [
     {
-      id: "META-001", platform: "meta_ads",
+      id: "META-001", platform: "meta_business",
       name: "Lançamento Álbum — Novembro 2025", status: "active",
       objective: "Reconhecimento de marca",
       budget: 3500, budgetType: "lifetime", spent: 2180,
@@ -44,7 +44,7 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(22), endDate: daysAgo(-8), updatedAt: daysAgo(1),
     },
     {
-      id: "META-002", platform: "meta_ads",
+      id: "META-002", platform: "meta_business",
       name: "Show São Paulo — Remarketing", status: "active",
       objective: "Tráfego para site",
       budget: 150, budgetType: "daily", spent: 1_050,
@@ -53,7 +53,7 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(7), updatedAt: daysAgo(0),
     },
     {
-      id: "META-003", platform: "meta_ads",
+      id: "META-003", platform: "meta_business",
       name: "Pré-save Single — Captação", status: "paused",
       objective: "Conversões",
       budget: 2000, budgetType: "lifetime", spent: 890,
@@ -171,18 +171,19 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
 // ─── Dados mock de métricas (Métricas Corporativas) ───────────────────────────
 
 const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
-  corp_instagram: {
-    platform: "corp_instagram",
+  meta_business: {
+    platform: "meta_business",
     period: { from: daysAgo(30), to: daysAgo(0) },
-    impressions: 1_890_000, reach: 678_000,
-    engagement: 94_200, engagementRate: 5.0, clicks: 42_100,
-    followers: 128_400, followersGrowth: 3_420, followersGrowthPercent: 2.7,
-    likesTotal: 72_000, commentsTotal: 8_400, sharesTotal: 6_800, savesTotal: 7_000,
+    impressions: 3_730_000, reach: 1_298_000,
+    engagement: 168_400, engagementRate: 4.5, clicks: 80_500,
+    followers: 217_600, followersGrowth: 4_840, followersGrowthPercent: 2.3,
+    likesTotal: 114_100, commentsTotal: 15_200, sharesTotal: 32_100, savesTotal: 7_000,
     storiesImpressions: 420_000, reelsViews: 890_000,
     topPosts: [
-      { id: "IG-001", title: "Teaser Clipe — Conta Oficial", type: "reel", views: 340_000, likes: 28_100, comments: 2_400, shares: 4_200, engagementRate: 10.2, publishedAt: daysAgo(8) },
-      { id: "IG-002", title: "BTS Estúdio", type: "carousel", views: 89_000, likes: 12_400, comments: 1_100, engagementRate: 15.2, publishedAt: daysAgo(14) },
-      { id: "IG-003", title: "Capa Álbum — Arte Final", type: "image", views: 67_000, likes: 18_900, comments: 1_800, engagementRate: 30.9, publishedAt: daysAgo(18) },
+      { id: "IG-001", title: "Instagram — Teaser Clipe (Conta Oficial)", type: "reel", views: 340_000, likes: 28_100, comments: 2_400, shares: 4_200, engagementRate: 10.2, publishedAt: daysAgo(8) },
+      { id: "FB-001", title: "Facebook — Lançamento Álbum", type: "image", views: 0, likes: 18_200, comments: 2_400, shares: 8_900, engagementRate: 5.8, publishedAt: daysAgo(9) },
+      { id: "IG-002", title: "Instagram — BTS Estúdio", type: "carousel", views: 89_000, likes: 12_400, comments: 1_100, engagementRate: 15.2, publishedAt: daysAgo(14) },
+      { id: "FB-002", title: "Facebook — Show Esgotado (Vídeo)", type: "video", views: 210_000, likes: 14_700, comments: 1_900, shares: 6_200, engagementRate: 5.2, publishedAt: daysAgo(18) },
     ],
   },
   corp_tiktok: {
@@ -218,18 +219,6 @@ const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
     streams: 1_200_000, followers: 31_400, followersGrowth: 890,
     topPosts: [
       { id: "SP-001", title: "Monthly Listeners — Top Playlist", type: "image", views: 0, likes: 12_400, comments: 0, engagementRate: 3.2, publishedAt: daysAgo(7) },
-    ],
-  },
-  corp_facebook: {
-    platform: "corp_facebook",
-    period: { from: daysAgo(30), to: daysAgo(0) },
-    impressions: 1_840_000, reach: 620_000,
-    engagement: 74_200, engagementRate: 4.0, clicks: 38_400,
-    followers: 89_200, followersGrowth: 1_420,
-    likesTotal: 42_100, commentsTotal: 6_800, sharesTotal: 25_300,
-    topPosts: [
-      { id: "FB-001", title: "Publicação — Lançamento Álbum", type: "image", views: 0, likes: 18_200, comments: 2_400, shares: 8_900, engagementRate: 5.8, publishedAt: daysAgo(9) },
-      { id: "FB-002", title: "Vídeo — Show Esgotado", type: "video", views: 210_000, likes: 14_700, comments: 1_900, shares: 6_200, engagementRate: 5.2, publishedAt: daysAgo(18) },
     ],
   },
   corp_google: {
@@ -284,12 +273,20 @@ abstract class BaseMockMarketingProvider implements IMarketingProvider {
 
 // ─── Providers de Métricas Corporativas ──────────────────────────────────────
 
-class MockCorpInstagramProvider extends BaseMockMarketingProvider {
-  getPlatformId = (): MarketingPlatformId => "corp_instagram";
+class MockMetaBusinessProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "meta_business";
   getCategory   = (): MarketingCategory   => "corporate_metrics";
-  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_instagram!; }
-  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_instagram!.topPosts ?? []).slice(0, limit); }
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.meta_business!; }
+  async getTopContent(limit = 4): Promise<ITopPost[]> { return (MOCK_METRICS.meta_business!.topPosts ?? []).slice(0, limit); }
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1200)); }
+  async getCampaigns(): Promise<ICampaign[]> { return MOCK_CAMPAIGNS.meta_business ?? []; }
+  async getCampaignById(id: string): Promise<ICampaign | null> {
+    return (MOCK_CAMPAIGNS.meta_business ?? []).find(c => c.id === id) ?? null;
+  }
+  async syncCampaigns(): Promise<ICampaignSyncResult> {
+    await new Promise(r => setTimeout(r, 1200));
+    return { synced: (MOCK_CAMPAIGNS.meta_business ?? []).length, updated: 1, errors: 0, lastSyncAt: new Date().toISOString() };
+  }
 }
 
 class MockCorpTikTokProvider extends BaseMockMarketingProvider {
@@ -314,14 +311,6 @@ class MockCorpSpotifyProvider extends BaseMockMarketingProvider {
   async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_spotify!; }
   async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_spotify!.topPosts ?? []).slice(0, limit); }
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1100)); }
-}
-
-class MockCorpFacebookProvider extends BaseMockMarketingProvider {
-  getPlatformId = (): MarketingPlatformId => "corp_facebook";
-  getCategory   = (): MarketingCategory   => "corporate_metrics";
-  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_facebook!; }
-  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_facebook!.topPosts ?? []).slice(0, limit); }
-  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1300)); }
 }
 
 class MockCorpGoogleProvider extends BaseMockMarketingProvider {
@@ -392,17 +381,15 @@ class MockPaidAdsProvider extends BaseMockMarketingProvider {
 
 export const mockMarketingProviders: Record<MarketingPlatformId, IMarketingProvider> = {
   // ── Métricas Corporativas — contas oficiais da empresa
-  corp_instagram:   new MockCorpInstagramProvider(),
+  meta_business:    new MockMetaBusinessProvider(),
   corp_tiktok:      new MockCorpTikTokProvider(),
   corp_youtube:     new MockCorpYouTubeProvider(),
   corp_spotify:     new MockCorpSpotifyProvider(),
-  corp_facebook:    new MockCorpFacebookProvider(),
   corp_google:      new MockCorpGoogleProvider(),
   corp_deezer:      new MockCorpDeezerProvider(),
   corp_soundcloud:  new MockCorpSoundCloudProvider(),
   corp_apple_music: new MockCorpAppleMusicProvider(),
   // ── Tráfego Pago
-  meta_ads:         new MockPaidAdsProvider("meta_ads"),
   google_ads:       new MockPaidAdsProvider("google_ads"),
   tiktok_ads:       new MockPaidAdsProvider("tiktok_ads"),
   spotify_ads:      new MockPaidAdsProvider("spotify_ads"),
