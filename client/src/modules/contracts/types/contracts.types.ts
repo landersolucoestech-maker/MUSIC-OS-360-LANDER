@@ -13,6 +13,8 @@ export interface ContratoVersao {
   autor?: string;
 }
 
+export type SigningPlatform = "autentique" | "clicksign" | "docusign";
+
 export interface Contrato {
   id: string;
   user_id?: string;
@@ -31,6 +33,7 @@ export interface Contrato {
   assinado_em?: string | null;
   arquivo_url?: string | null;
   autentique_doc_id?: string | null;
+  signing_platform?: SigningPlatform | null;
   versoes?: ContratoVersao[];
   signers?: ContratoSigner[];
   created_at?: string;

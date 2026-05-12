@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 import {
   FileText, Clock, CheckCircle, Upload, Download, Plus, Search,
   FileStack, Loader2, MoreHorizontal, Eye, Pencil, Trash2, X, DollarSign,
@@ -58,6 +59,7 @@ export default function Contratos() {
   const [searchTerm, setSearchTerm] = useState("");
   const [typeFilter, setTypeFilter] = useState("all-type");
   const [statusFilter, setStatusFilter] = useState("all-status");
+  const [platformFilter, setPlatformFilter] = useState("all-platform");
 
   const filteredContratos = contratos.filter((contrato) => {
     const matchesSearch =
@@ -66,10 +68,13 @@ export default function Contratos() {
       contrato.artistas?.nome_artistico?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === "all-type" || contrato.tipo === typeFilter;
     const matchesStatus = statusFilter === "all-status" || contrato.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+    const matchesPlatform =
+      platformFilter === "all-platform" ||
+      (platformFilter === "none" ? !contrato.signing_platform : contrato.signing_platform === platformFilter);
+    return matchesSearch && matchesType && matchesStatus && matchesPlatform;
   });
 
-  const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status";
+  const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || platformFilter !== "all-platform";
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredContratos.length && filteredContratos.length > 0) {
@@ -91,6 +96,7 @@ export default function Contratos() {
     setSearchTerm("");
     setTypeFilter("all-type");
     setStatusFilter("all-status");
+    setPlatformFilter("all-platform");
   };
 
   const handleExport = () => exportToCSV(contratos, contratoColumns, "contratos");
@@ -263,6 +269,18 @@ export default function Contratos() {
               <SelectItem value="cancelado">Cancelado</SelectItem>
             </SelectContent>
           </Select>
+          <Select value={platformFilter} onValueChange={setPlatformFilter}>
+            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border" data-testid="select-platform-filter">
+              <SelectValue placeholder="Plataforma" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all-platform">Todas as plataformas</SelectItem>
+              <SelectItem value="autentique">Autentique</SelectItem>
+              <SelectItem value="clicksign">Clicksign</SelectItem>
+              <SelectItem value="docusign">DocuSign</SelectItem>
+              <SelectItem value="none">Sem plataforma</SelectItem>
+            </SelectContent>
+          </Select>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={handleClearFilters}>
               <X className="h-3 w-3" />
@@ -345,6 +363,9 @@ export default function Contratos() {
                         {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "Sem vínculo"}
                       </p>
                     </div>
+
+                    {/* Signing platform */}
+                    <SigningPlatformBadge platform={contrato.signing_platform} />
 
                     {/* Status */}
                     <StatusBadge status={contrato.status} />

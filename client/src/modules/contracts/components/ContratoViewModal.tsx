@@ -17,6 +17,7 @@ import { useDocuments } from "@/modules/contracts/hooks/useDocuments";
 import { DocumentStatusBadge, SignerStatusBadge } from "@/modules/contracts/components/DocumentStatusBadge";
 import { DocumentTimeline } from "@/modules/contracts/components/DocumentTimeline";
 import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
+import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 
 interface ContratoViewModalProps {
   open: boolean;
@@ -68,6 +69,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
               </DialogTitle>
               <div className="flex items-center gap-2 mt-1 flex-wrap">
                 <StatusBadge status={contrato.status} />
+                <SigningPlatformBadge platform={contrato.signing_platform} />
                 {expirando && (
                   <Badge className="bg-warning/10 text-warning border-warning/20 text-[11px] border gap-1">
                     <AlertCircle className="h-3 w-3" />
@@ -132,13 +134,16 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                 </div>
               )}
 
-              {contrato.autentique_doc_id && (
+              {contrato.signing_platform && (
                 <div className="flex items-center gap-2 p-3 bg-success/5 border border-success/20 rounded-lg">
                   <Info className="h-4 w-4 text-success shrink-0" />
-                  <p className="text-xs text-success">
-                    Documento enviado via Autentique — ID:{" "}
-                    <span className="font-mono">{contrato.autentique_doc_id}</span>
-                  </p>
+                  <div className="flex-1 text-xs text-success">
+                    <span>Assinado digitalmente via </span>
+                    <SigningPlatformBadge platform={contrato.signing_platform} className="inline-flex align-middle" />
+                    {contrato.autentique_doc_id && (
+                      <span className="ml-1">— ID: <span className="font-mono">{contrato.autentique_doc_id}</span></span>
+                    )}
+                  </div>
                 </div>
               )}
             </TabsContent>
