@@ -19,10 +19,6 @@ import {
   ChevronUp,
 } from "lucide-react";
 import {
-  SiFacebook,
-  SiInstagram,
-  SiGoogleads,
-  SiTiktok,
   SiLinkedin,
 } from "react-icons/si";
 import { toast } from "sonner";
@@ -38,10 +34,6 @@ const EDGE_FUNCTION_BASE =
   "https://configure-seu-backend.example.com/functions/v1/lead-capture";
 
 const WEBHOOK_URLS: Record<string, string> = {
-  facebook: `${EDGE_FUNCTION_BASE}?source=facebook_ads`,
-  instagram: `${EDGE_FUNCTION_BASE}?source=instagram_ads`,
-  google_ads: `${EDGE_FUNCTION_BASE}?source=google_ads`,
-  tiktok: `${EDGE_FUNCTION_BASE}?source=tiktok_ads`,
   linkedin: `${EDGE_FUNCTION_BASE}?source=linkedin_ads`,
   website: `${EDGE_FUNCTION_BASE}?source=website`,
 };
@@ -283,6 +275,8 @@ export function LeadIntegrationsDialog({
     toast.info(`${OAUTH_PLATFORM_CONFIGS[platform].label} desconectado.`);
   };
 
+  // Apenas LinkedIn — Facebook/Instagram/Google/TikTok pertencem à secção
+  // "Tráfego Pago / Campanhas" nas Integrações, não aqui.
   const adPlatforms: {
     key: LeadOAuthPlatform;
     label: string;
@@ -290,60 +284,6 @@ export function LeadIntegrationsDialog({
     webhookSteps: string[];
     payloadExample?: string;
   }[] = [
-    {
-      key: "facebook",
-      label: "Facebook",
-      Icon: SiFacebook,
-      webhookSteps: [
-        "Acesse o Meta Business Suite e vá em Configurações > Integrações de Leads.",
-        "Clique em \"Conectar CRM\" ou \"Adicionar Webhook\".",
-        "Cole a Webhook URL no campo de URL de destino.",
-        "No campo \"Verify Token\", insira o valor da sua LEAD_CAPTURE_API_KEY.",
-        "Selecione os eventos \"leadgen\" para receber notificações.",
-        "Salve e teste a integração enviando um lead de teste pelo Meta.",
-      ],
-      payloadExample: `{\n  "entry": [{\n    "changes": [{\n      "value": {\n        "leadgen_id": "...",\n        "field_data": [\n          { "name": "full_name", "values": ["João Silva"] },\n          { "name": "email", "values": ["joao@email.com"] },\n          { "name": "phone_number", "values": ["+5511999999999"] }\n        ]\n      }\n    }]\n  }]\n}`,
-    },
-    {
-      key: "instagram",
-      label: "Instagram",
-      Icon: SiInstagram,
-      webhookSteps: [
-        "O Instagram Lead Ads utiliza a mesma plataforma Meta Business Suite.",
-        "Acesse Configurações > Integrações de Leads no Meta Business Suite.",
-        "Cole a Webhook URL específica do Instagram.",
-        "Use a URL do Instagram para que os leads sejam identificados com origem correta.",
-        "Certifique-se de que sua página do Instagram esteja vinculada à conta Business.",
-        "Teste enviando um lead pelo formulário de teste do Meta.",
-      ],
-    },
-    {
-      key: "google_ads",
-      label: "Google",
-      Icon: SiGoogleads,
-      webhookSteps: [
-        "Acesse o Google Ads e vá em Ferramentas > Extensões de Formulário de Lead.",
-        "Crie ou edite uma extensão de formulário de lead.",
-        "Na seção \"Entrega de dados do lead\", selecione \"Webhook\".",
-        "Cole a Webhook URL e configure a chave de API no header x-api-key.",
-        "Salve e publique a extensão de formulário.",
-      ],
-      payloadExample: `{\n  "lead_form_submission": {\n    "lead_form_id": "...",\n    "lead_form_name": "...",\n    "user_column_data": [\n      { "column_name": "Full Name", "string_value": "João Silva" },\n      { "column_name": "Email", "string_value": "joao@email.com" },\n      { "column_name": "Phone Number", "string_value": "+5511999999999" }\n    ]\n  }\n}`,
-    },
-    {
-      key: "tiktok",
-      label: "TikTok",
-      Icon: SiTiktok,
-      webhookSteps: [
-        "Acesse o TikTok Ads Manager e vá em Ferramentas > Lead Generation.",
-        "Crie ou edite um formulário de geração de leads.",
-        "Na aba \"Entrega de Leads\", ative a integração CRM via webhook.",
-        "Cole a Webhook URL e configure o token de autenticação.",
-        "Teste o formulário enviando um lead de teste no Ads Manager.",
-        "Os leads aparecerão no CRM com origem \"TikTok Ads\".",
-      ],
-      payloadExample: `{\n  "lead_id": "...",\n  "advertiser_id": "...",\n  "form_id": "...",\n  "fields": [\n    { "name": "FULL_NAME", "value": "João Silva" },\n    { "name": "EMAIL", "value": "joao@email.com" },\n    { "name": "PHONE_NUMBER", "value": "+5511999999999" }\n  ]\n}`,
-    },
     {
       key: "linkedin",
       label: "LinkedIn",
@@ -373,9 +313,9 @@ export function LeadIntegrationsDialog({
             </DialogTitle>
           </DialogHeader>
 
-          <Tabs defaultValue="facebook" className="w-full">
+          <Tabs defaultValue="linkedin" className="w-full">
             <TabsList
-              className="grid w-full grid-cols-6"
+              className="grid w-full grid-cols-2"
               data-testid="tabs-integrations"
             >
               {adPlatforms.map(({ key, label, Icon }) => (

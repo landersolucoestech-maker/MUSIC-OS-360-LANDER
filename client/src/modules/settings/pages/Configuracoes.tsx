@@ -43,6 +43,12 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
+import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
+import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
+import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
+import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
+import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -177,6 +183,9 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
+  const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
+  const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -208,12 +217,11 @@ export default function Configuracoes() {
 
   const { data: abramusStatus } = useAbramusStatus();
   const { data: ecadStatus } = useEcadStatus();
-  const { data: metaAdsStatus } = useMetaAdsStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { data: acrcloudStatus } = useACRCloudStatus();
+  const { data: metaAdsStatus } = useMetaAdsStatus();
   const { data: googleAdsStatus } = useGoogleAdsStatus();
   const { data: tiktokAdsStatus } = useTikTokAdsStatus();
   const { data: nfeStatus } = useNfeStatus();
@@ -318,29 +326,6 @@ export default function Configuracoes() {
     );
   };
 
-  const metaAdsNotices: IntegrationNotice[] = [];
-  if (!metaAdsStatus?.connected && !metaAdsStatus?.has_token) {
-    if (metaAdsStatus?.global_fallback_status === "valid") {
-      metaAdsNotices.push({
-        id: "global-fallback",
-        label: "Token global",
-        tooltip:
-          "Esta organização ainda usa o token global compartilhado (META_ACCESS_TOKEN). Configure credenciais próprias para isolar acessos por conta.",
-        variant: "warning",
-      });
-    } else if (metaAdsStatus?.global_fallback_status === "invalid") {
-      metaAdsNotices.push({
-        id: "global-fallback-invalid",
-        label: "Token global inválido",
-        tooltip:
-          metaAdsStatus.global_fallback_error
-            ? `O token global compartilhado (META_ACCESS_TOKEN) está expirado ou inválido: ${metaAdsStatus.global_fallback_error}. Configure credenciais próprias.`
-            : "O token global compartilhado (META_ACCESS_TOKEN) está expirado ou inválido. Configure credenciais próprias para esta organização.",
-        variant: "destructive",
-      });
-    }
-  }
-
   const integracoes: Array<{
     id: string;
     name: string;
@@ -351,12 +336,13 @@ export default function Configuracoes() {
     configurable?: boolean;
     notices?: IntegrationNotice[];
   }> = [
+    // ── Assinatura Digital ────────────────────────────────────────────────────
     {
       id: "autentique",
       name: "Autentique",
       icon: "✍️",
       status: autentiqueStatus?.connected ? "conectado" : "desconectado",
-      description: "Envio e acompanhamento de contratos com assinatura digital",
+      description: "Assinatura eletrônica brasileira — envio e acompanhamento de contratos",
       category: "Assinatura Digital",
       configurable: true,
     },
@@ -378,6 +364,7 @@ export default function Configuracoes() {
       category: "Assinatura Digital",
       configurable: true,
     },
+    // ── Direitos Autorais ─────────────────────────────────────────────────────
     {
       id: "ecad",
       name: "ECAD",
@@ -405,32 +392,25 @@ export default function Configuracoes() {
       category: "Direitos Autorais",
       configurable: true,
     },
-    {
-      id: "acrcloud",
-      name: "ACRCloud",
-      icon: "📡",
-      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Monitoramento musical por fingerprint · Alertas de uso · Relatórios de execução",
-      category: "Monitoramento Musical",
-      configurable: true,
-    },
+    // ── Tráfego Pago / Campanhas ──────────────────────────────────────────────
+    // Cada empresa autentica a sua própria conta de anúncios via OAuth.
+    // O sistema centraliza métricas, campanhas e automações de mídia paga.
     {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
       status: metaAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Campanhas de tráfego pago do Facebook e Instagram Ads — autenticação OAuth com a sua conta",
-      category: "Tráfego Pago / Anúncios",
+      description: "Facebook & Instagram Ads — conecte a sua conta Business para gerir campanhas",
+      category: "Tráfego Pago / Campanhas",
       configurable: true,
-      notices: metaAdsNotices,
     },
     {
       id: "google_ads",
       name: "Google Ads",
       icon: "🔍",
       status: googleAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Search, Display e YouTube Ads — conecte a sua conta Google Ads para gerir campanhas pagas",
-      category: "Tráfego Pago / Anúncios",
+      description: "Search, Display e YouTube Ads — autentique a sua conta Google Ads",
+      category: "Tráfego Pago / Campanhas",
       configurable: true,
     },
     {
@@ -438,25 +418,54 @@ export default function Configuracoes() {
       name: "TikTok Ads",
       icon: "🎯",
       status: tiktokAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Campanhas no TikTok Ads Manager — impulsionamento e leads via conta autenticada",
-      category: "Tráfego Pago / Anúncios",
+      description: "TikTok Ads Manager — impulsionamento e geração de leads via conta autenticada",
+      category: "Tráfego Pago / Campanhas",
       configurable: true,
     },
+    {
+      id: "spotify_ads",
+      name: "Spotify Ads",
+      icon: "🎵",
+      status: "desconectado" as const,
+      description: "Spotify Ad Studio — campanhas de áudio e display para ouvintes da plataforma",
+      category: "Tráfego Pago / Campanhas",
+      configurable: false,
+    },
+    {
+      id: "youtube_ads",
+      name: "YouTube Ads",
+      icon: "▶️",
+      status: "desconectado" as const,
+      description: "YouTube Ads via Google — pre-roll, bumper ads e campanhas de discovery",
+      category: "Tráfego Pago / Campanhas",
+      configurable: false,
+    },
+    {
+      id: "deezer_ads",
+      name: "Deezer Ads",
+      icon: "🎶",
+      status: "desconectado" as const,
+      description: "Deezer Ad Manager — anúncios de áudio para ouvintes do plano gratuito",
+      category: "Tráfego Pago / Campanhas",
+      configurable: false,
+    },
+    // ── Fiscal ────────────────────────────────────────────────────────────────
     {
       id: "nfe",
       name: "NF-e / Nota Fiscal",
       icon: "🧾",
       status: nfeStatus?.connected ? "conectado" : "desconectado",
-      description: "Emissão de Nota Fiscal Eletrônica com certificado digital e credenciais SEFAZ da própria empresa",
+      description: "Emissão de NF-e com certificado digital e credenciais SEFAZ da sua empresa",
       category: "Fiscal",
       configurable: true,
     },
+    // ── Captação de Leads ─────────────────────────────────────────────────────
     {
       id: "website_linkedin",
       name: "Website & LinkedIn",
       icon: "🌐",
       status: "desconectado" as const,
-      description: "Formulário público de captação, webhooks e LinkedIn Lead Ads",
+      description: "Formulário público de captação, iframe embed, webhooks e LinkedIn Lead Ads",
       category: "Captação de Leads",
       configurable: true,
     },
@@ -472,17 +481,16 @@ export default function Configuracoes() {
   ];
 
   const integrationConfigHandlers: Record<string, () => void> = {
-    ecad: () => setEcadConfigOpen(true),
-    abramus: () => setAbramusConfigOpen(true),
-    ubc: () => setUbcConfigOpen(true),
-    acrcloud: () => setAcrcloudConfigOpen(true),
-    autentique: () => setAutentiqueConfigOpen(true),
-    clicksign: () => setClicksignConfigOpen(true),
-    docusign: () => setDocusignConfigOpen(true),
-    meta_ads: () => setMetaAdsConfigOpen(true),
-    google_ads: () => setGoogleAdsConfigOpen(true),
-    tiktok_ads: () => setTiktokAdsConfigOpen(true),
-    nfe: () => setNfeConfigOpen(true),
+    autentique:      () => setAutentiqueConfigOpen(true),
+    clicksign:       () => setClicksignConfigOpen(true),
+    docusign:        () => setDocusignConfigOpen(true),
+    ecad:            () => setEcadConfigOpen(true),
+    abramus:         () => setAbramusConfigOpen(true),
+    ubc:             () => setUbcConfigOpen(true),
+    meta_ads:        () => setMetaAdsConfigOpen(true),
+    google_ads:      () => setGoogleAdsConfigOpen(true),
+    tiktok_ads:      () => setTiktokAdsConfigOpen(true),
+    nfe:             () => setNfeConfigOpen(true),
     website_linkedin: () => setLeadIntegrationsOpen(true),
   };
 
@@ -1402,7 +1410,7 @@ export default function Configuracoes() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Monitoramento Musical", "Tráfego Pago / Anúncios", "Fiscal", "Captação de Leads"].map((category) => {
+                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Campanhas", "Fiscal", "Captação de Leads"].map((category) => {
                     const items = integracoes.filter((i) => i.category === category);
                     if (items.length === 0) return null;
                     return (
@@ -1603,10 +1611,6 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
-            />
-            <ACRCloudConfigDialog
-              open={acrcloudConfigOpen}
-              onOpenChange={setAcrcloudConfigOpen}
             />
             <GoogleAdsConfigDialog
               open={googleAdsConfigOpen}
