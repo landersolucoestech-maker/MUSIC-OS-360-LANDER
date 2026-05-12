@@ -5,9 +5,29 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
-import { Copy, Check, Globe, ExternalLink } from "lucide-react";
-import { SiFacebook, SiInstagram, SiGoogleads } from "react-icons/si";
+import { Separator } from "@/shared/ui/separator";
+import {
+  Copy,
+  Check,
+  Globe,
+  ExternalLink,
+  CheckCircle2,
+  Unplug,
+  Plug,
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
+import {
+  SiFacebook,
+  SiInstagram,
+  SiGoogleads,
+  SiTiktok,
+  SiLinkedin,
+} from "react-icons/si";
 import { toast } from "sonner";
+import { OAuthConnectDialog, OAUTH_PLATFORM_CONFIGS } from "./OAuthConnectDialog";
+import { useLeadOAuth, type LeadOAuthPlatform } from "../hooks/useLeadOAuth";
 
 interface LeadIntegrationsDialogProps {
   open: boolean;
@@ -17,10 +37,12 @@ interface LeadIntegrationsDialogProps {
 const EDGE_FUNCTION_BASE =
   "https://configure-seu-backend.example.com/functions/v1/lead-capture";
 
-const WEBHOOK_URLS = {
+const WEBHOOK_URLS: Record<string, string> = {
   facebook: `${EDGE_FUNCTION_BASE}?source=facebook_ads`,
   instagram: `${EDGE_FUNCTION_BASE}?source=instagram_ads`,
   google_ads: `${EDGE_FUNCTION_BASE}?source=google_ads`,
+  tiktok: `${EDGE_FUNCTION_BASE}?source=tiktok_ads`,
+  linkedin: `${EDGE_FUNCTION_BASE}?source=linkedin_ads`,
   website: `${EDGE_FUNCTION_BASE}?source=website`,
 };
 
@@ -50,7 +72,11 @@ function CopyField({ label, value }: { label: string; value: string }) {
           onClick={handleCopy}
           data-testid={`button-copy-${label.toLowerCase().replace(/\s/g, "-")}`}
         >
-          {copied ? <Check className="h-4 w-4 text-success" /> : <Copy className="h-4 w-4" />}
+          {copied ? (
+            <Check className="h-4 w-4 text-success" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
         </Button>
       </div>
     </div>
@@ -62,7 +88,10 @@ function StepList({ steps }: { steps: string[] }) {
     <ol className="space-y-2 text-sm text-muted-foreground">
       {steps.map((step, i) => (
         <li key={i} className="flex gap-2">
-          <Badge variant="secondary" className="h-5 w-5 flex-shrink-0 flex items-center justify-center text-[10px] rounded-full p-0">
+          <Badge
+            variant="secondary"
+            className="h-5 w-5 flex-shrink-0 flex items-center justify-center text-[10px] rounded-full p-0"
+          >
             {i + 1}
           </Badge>
           <span>{step}</span>
@@ -72,150 +101,373 @@ function StepList({ steps }: { steps: string[] }) {
   );
 }
 
-export function LeadIntegrationsDialog({ open, onOpenChange }: LeadIntegrationsDialogProps) {
-  const publicFormUrl = `${window.location.origin}/captar`;
+interface OAuthConnectionCardProps {
+  platform: LeadOAuthPlatform;
+  onConnectClick: () => void;
+  onDisconnect: () => void;
+  accountName?: string;
+  accountId?: string;
+  connectedAt?: string;
+  isConnected: boolean;
+  Icon: React.ComponentType<{ className?: string }>;
+}
 
-  const embeddableSnippet = `<iframe src="${publicFormUrl}" width="100%" height="600" frameborder="0" style="border:none;border-radius:8px;"></iframe>`;
+function OAuthConnectionCard({
+  platform,
+  onConnectClick,
+  onDisconnect,
+  accountName,
+  accountId,
+  connectedAt,
+  isConnected,
+  Icon,
+}: OAuthConnectionCardProps) {
+  const config = OAUTH_PLATFORM_CONFIGS[platform];
+
+  if (isConnected) {
+    return (
+      <div
+        className={`rounded-lg border p-4 ${config.bgColor} ${config.borderColor} space-y-3`}
+        data-testid={`card-oauth-connected-${platform}`}
+      >
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-success" />
+            <span className="text-sm font-semibold text-success">Conta conectada</span>
+          </div>
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <div className="h-1.5 w-1.5 rounded-full bg-success" />
+            Ativo
+          </Badge>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Icon className={`h-3.5 w-3.5 ${config.textColor}`} />
+            <span className="text-sm font-medium">{accountName}</span>
+          </div>
+          {accountId && (
+            <p className="text-[11px] text-muted-foreground font-mono ml-5">
+              ID: {accountId}
+            </p>
+          )}
+          {connectedAt && (
+            <p className="text-[11px] text-muted-foreground ml-5">
+              Conectado em:{" "}
+              {new Date(connectedAt).toLocaleDateString("pt-BR", {
+                day: "2-digit",
+                month: "2-digit",
+                year: "numeric",
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </p>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-xs"
+            onClick={onConnectClick}
+            data-testid={`button-oauth-reconnect-${platform}`}
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            Reconectar
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2 text-xs text-destructive border-destructive/30 hover:bg-destructive/10"
+            onClick={onDisconnect}
+            data-testid={`button-oauth-disconnect-${platform}`}
+          >
+            <Unplug className="h-3.5 w-3.5" />
+            Desconectar
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto" data-testid="dialog-lead-integrations">
-        <DialogHeader>
-          <DialogTitle data-testid="text-dialog-title">Integrações de Captação de Leads</DialogTitle>
-        </DialogHeader>
+    <div
+      className="rounded-lg border border-dashed border-muted-foreground/30 p-4 space-y-3 bg-muted/20"
+      data-testid={`card-oauth-disconnected-${platform}`}
+    >
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${config.bgColor} ${config.borderColor} border`}>
+            <Icon className={`h-3.5 w-3.5 ${config.textColor}`} />
+          </div>
+          <div>
+            <p className="text-sm font-medium">{config.label}</p>
+            <p className="text-[11px] text-muted-foreground">Não conectado</p>
+          </div>
+        </div>
+        <Button
+          size="sm"
+          className="gap-2 text-xs"
+          style={{ backgroundColor: config.color }}
+          onClick={onConnectClick}
+          data-testid={`button-oauth-connect-${platform}`}
+        >
+          <Plug className="h-3.5 w-3.5" />
+          Conectar via OAuth
+        </Button>
+      </div>
+      <p className="text-xs text-muted-foreground">{config.description}</p>
+    </div>
+  );
+}
 
-        <div className="space-y-4">
-          <Card className="border-warning/30 bg-warning/5">
-            <CardContent className="p-4 space-y-2">
-              <p className="text-xs text-warning">
-                <strong>Integração desativada — backend não configurado.</strong>{" "}
-                As URLs abaixo são apenas exemplos. Para receber leads via webhook,
-                configure um backend que receba e persista os leads.
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">API Key</span>
-                <Badge variant="secondary" className="text-[10px]">Obrigatório</Badge>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Todas as requisições devem incluir o header <code className="bg-muted px-1 rounded text-[11px]">x-api-key</code> com o valor configurado no seu backend.
-              </p>
-              <CopyField label="Header" value="x-api-key: SUA_CHAVE_API" />
-            </CardContent>
-          </Card>
+interface WebhookSectionProps {
+  platform: string;
+  children?: React.ReactNode;
+}
+
+function WebhookSection({ platform, children }: WebhookSectionProps) {
+  const [expanded, setExpanded] = useState(false);
+  const url = WEBHOOK_URLS[platform];
+
+  return (
+    <div className="space-y-3">
+      <button
+        type="button"
+        className="flex w-full items-center justify-between text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+        data-testid={`button-toggle-webhook-${platform}`}
+      >
+        <span>Configuração alternativa via Webhook</span>
+        {expanded ? (
+          <ChevronUp className="h-3.5 w-3.5" />
+        ) : (
+          <ChevronDown className="h-3.5 w-3.5" />
+        )}
+      </button>
+
+      {expanded && (
+        <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-150">
+          <p className="text-xs text-muted-foreground">
+            Se preferir não usar OAuth, pode configurar manualmente um webhook no painel da plataforma para enviar leads ao endpoint abaixo.
+          </p>
+          <CopyField label="Webhook URL" value={url} />
+          {children}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function LeadIntegrationsDialog({
+  open,
+  onOpenChange,
+}: LeadIntegrationsDialogProps) {
+  const publicFormUrl = `${window.location.origin}/captar`;
+  const embeddableSnippet = `<iframe src="${publicFormUrl}" width="100%" height="600" frameborder="0" style="border:none;border-radius:8px;"></iframe>`;
+
+  const { connect, disconnect, getConnection, isConnected } = useLeadOAuth();
+  const [oauthDialog, setOauthDialog] = useState<LeadOAuthPlatform | null>(null);
+
+  const handleConnectSuccess = async (
+    platform: LeadOAuthPlatform,
+    scopes: string[]
+  ) => {
+    await connect(platform, scopes);
+    toast.success(`${OAUTH_PLATFORM_CONFIGS[platform].label} conectado com sucesso!`);
+  };
+
+  const handleDisconnect = (platform: LeadOAuthPlatform) => {
+    disconnect(platform);
+    toast.info(`${OAUTH_PLATFORM_CONFIGS[platform].label} desconectado.`);
+  };
+
+  const adPlatforms: {
+    key: LeadOAuthPlatform;
+    label: string;
+    Icon: React.ComponentType<{ className?: string }>;
+    webhookSteps: string[];
+    payloadExample?: string;
+  }[] = [
+    {
+      key: "facebook",
+      label: "Facebook",
+      Icon: SiFacebook,
+      webhookSteps: [
+        "Acesse o Meta Business Suite e vá em Configurações > Integrações de Leads.",
+        "Clique em \"Conectar CRM\" ou \"Adicionar Webhook\".",
+        "Cole a Webhook URL no campo de URL de destino.",
+        "No campo \"Verify Token\", insira o valor da sua LEAD_CAPTURE_API_KEY.",
+        "Selecione os eventos \"leadgen\" para receber notificações.",
+        "Salve e teste a integração enviando um lead de teste pelo Meta.",
+      ],
+      payloadExample: `{\n  "entry": [{\n    "changes": [{\n      "value": {\n        "leadgen_id": "...",\n        "field_data": [\n          { "name": "full_name", "values": ["João Silva"] },\n          { "name": "email", "values": ["joao@email.com"] },\n          { "name": "phone_number", "values": ["+5511999999999"] }\n        ]\n      }\n    }]\n  }]\n}`,
+    },
+    {
+      key: "instagram",
+      label: "Instagram",
+      Icon: SiInstagram,
+      webhookSteps: [
+        "O Instagram Lead Ads utiliza a mesma plataforma Meta Business Suite.",
+        "Acesse Configurações > Integrações de Leads no Meta Business Suite.",
+        "Cole a Webhook URL específica do Instagram.",
+        "Use a URL do Instagram para que os leads sejam identificados com origem correta.",
+        "Certifique-se de que sua página do Instagram esteja vinculada à conta Business.",
+        "Teste enviando um lead pelo formulário de teste do Meta.",
+      ],
+    },
+    {
+      key: "google_ads",
+      label: "Google",
+      Icon: SiGoogleads,
+      webhookSteps: [
+        "Acesse o Google Ads e vá em Ferramentas > Extensões de Formulário de Lead.",
+        "Crie ou edite uma extensão de formulário de lead.",
+        "Na seção \"Entrega de dados do lead\", selecione \"Webhook\".",
+        "Cole a Webhook URL e configure a chave de API no header x-api-key.",
+        "Salve e publique a extensão de formulário.",
+      ],
+      payloadExample: `{\n  "lead_form_submission": {\n    "lead_form_id": "...",\n    "lead_form_name": "...",\n    "user_column_data": [\n      { "column_name": "Full Name", "string_value": "João Silva" },\n      { "column_name": "Email", "string_value": "joao@email.com" },\n      { "column_name": "Phone Number", "string_value": "+5511999999999" }\n    ]\n  }\n}`,
+    },
+    {
+      key: "tiktok",
+      label: "TikTok",
+      Icon: SiTiktok,
+      webhookSteps: [
+        "Acesse o TikTok Ads Manager e vá em Ferramentas > Lead Generation.",
+        "Crie ou edite um formulário de geração de leads.",
+        "Na aba \"Entrega de Leads\", ative a integração CRM via webhook.",
+        "Cole a Webhook URL e configure o token de autenticação.",
+        "Teste o formulário enviando um lead de teste no Ads Manager.",
+        "Os leads aparecerão no CRM com origem \"TikTok Ads\".",
+      ],
+      payloadExample: `{\n  "lead_id": "...",\n  "advertiser_id": "...",\n  "form_id": "...",\n  "fields": [\n    { "name": "FULL_NAME", "value": "João Silva" },\n    { "name": "EMAIL", "value": "joao@email.com" },\n    { "name": "PHONE_NUMBER", "value": "+5511999999999" }\n  ]\n}`,
+    },
+    {
+      key: "linkedin",
+      label: "LinkedIn",
+      Icon: SiLinkedin,
+      webhookSteps: [
+        "Acesse o LinkedIn Campaign Manager e selecione sua conta.",
+        "Vá em Recursos da Conta > Integrações de Geração de Leads.",
+        "Clique em \"Adicionar integração\" e selecione \"Webhook genérico\".",
+        "Cole a Webhook URL e adicione o header de autenticação x-api-key.",
+        "Associe formulários de Lead Gen Forms à integração criada.",
+        "Publique e teste com o formulário de preview do Campaign Manager.",
+      ],
+      payloadExample: `{\n  "leadGenFormResponse": {\n    "leadGenFormUrn": "urn:li:leadGenForm:...",\n    "submittedAt": 1700000000000,\n    "fieldValues": [\n      { "questionUrn": "...", "answer": { "values": ["João Silva"] } },\n      { "questionUrn": "...", "answer": { "values": ["joao@email.com"] } }\n    ]\n  }\n}`,
+    },
+  ];
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
+          className="max-w-2xl max-h-[88vh] overflow-y-auto"
+          data-testid="dialog-lead-integrations"
+        >
+          <DialogHeader>
+            <DialogTitle data-testid="text-dialog-title">
+              Integrações de Captação de Leads
+            </DialogTitle>
+          </DialogHeader>
 
           <Tabs defaultValue="facebook" className="w-full">
-            <TabsList className="grid w-full grid-cols-4" data-testid="tabs-integrations">
-              <TabsTrigger value="facebook" className="gap-1 text-xs" data-testid="tab-facebook">
-                <SiFacebook className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Facebook</span>
-              </TabsTrigger>
-              <TabsTrigger value="instagram" className="gap-1 text-xs" data-testid="tab-instagram">
-                <SiInstagram className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Instagram</span>
-              </TabsTrigger>
-              <TabsTrigger value="google" className="gap-1 text-xs" data-testid="tab-google">
-                <SiGoogleads className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Google Ads</span>
-              </TabsTrigger>
-              <TabsTrigger value="website" className="gap-1 text-xs" data-testid="tab-website">
+            <TabsList
+              className="grid w-full grid-cols-6"
+              data-testid="tabs-integrations"
+            >
+              {adPlatforms.map(({ key, label, Icon }) => (
+                <TabsTrigger
+                  key={key}
+                  value={key}
+                  className="gap-1 text-xs relative"
+                  data-testid={`tab-${key}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{label}</span>
+                  {isConnected(key) && (
+                    <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-success border border-background" />
+                  )}
+                </TabsTrigger>
+              ))}
+              <TabsTrigger
+                value="website"
+                className="gap-1 text-xs"
+                data-testid="tab-website"
+              >
                 <Globe className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">Website</span>
+                <span className="hidden sm:inline">Site</span>
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="facebook" className="space-y-4 mt-4" data-testid="content-facebook">
-              <CopyField label="Webhook URL (Facebook)" value={WEBHOOK_URLS.facebook} />
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Como configurar no Meta Business Suite</h4>
-                <StepList steps={[
-                  "Acesse o Meta Business Suite e vá em Configurações > Integrações de Leads.",
-                  "Clique em \"Conectar CRM\" ou \"Adicionar Webhook\".",
-                  "Cole a Webhook URL acima no campo de URL de destino.",
-                  "No campo \"Verify Token\", insira o valor da sua LEAD_CAPTURE_API_KEY.",
-                  "Selecione os eventos \"leadgen\" para receber notificações de novos leads.",
-                  "Salve e teste a integração enviando um lead de teste pela ferramenta do Meta.",
-                  "Os leads aparecerão automaticamente nesta página com origem \"Facebook Ads\".",
-                ]} />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-xs font-semibold text-muted-foreground">Formato esperado do payload</h4>
-                <pre className="bg-muted p-3 rounded-md text-[11px] overflow-x-auto">
-{`{
-  "entry": [{
-    "changes": [{
-      "value": {
-        "leadgen_id": "...",
-        "field_data": [
-          { "name": "full_name", "values": ["João Silva"] },
-          { "name": "email", "values": ["joao@email.com"] },
-          { "name": "phone_number", "values": ["+5511999999999"] }
-        ]
-      }
-    }]
-  }]
-}`}
-                </pre>
-              </div>
-            </TabsContent>
+            {adPlatforms.map(
+              ({ key, Icon, webhookSteps, payloadExample }) => {
+                const conn = getConnection(key);
+                return (
+                  <TabsContent
+                    key={key}
+                    value={key}
+                    className="space-y-4 mt-4"
+                    data-testid={`content-${key}`}
+                  >
+                    <OAuthConnectionCard
+                      platform={key}
+                      Icon={Icon}
+                      isConnected={isConnected(key)}
+                      accountName={conn?.accountName}
+                      accountId={conn?.accountId}
+                      connectedAt={conn?.connectedAt}
+                      onConnectClick={() => setOauthDialog(key)}
+                      onDisconnect={() => handleDisconnect(key)}
+                    />
 
-            <TabsContent value="instagram" className="space-y-4 mt-4" data-testid="content-instagram">
-              <CopyField label="Webhook URL (Instagram)" value={WEBHOOK_URLS.instagram} />
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Como configurar para Instagram Lead Ads</h4>
-                <StepList steps={[
-                  "O Instagram Lead Ads utiliza a mesma plataforma Meta Business Suite.",
-                  "Acesse Configurações > Integrações de Leads no Meta Business Suite.",
-                  "O processo é idêntico ao Facebook — cole a Webhook URL acima.",
-                  "Use a URL específica do Instagram para que os leads sejam identificados com origem \"Instagram Ads\".",
-                  "Certifique-se de que sua página do Instagram esteja vinculada à sua conta Business.",
-                  "Crie um formulário de leads no Gerenciador de Anúncios vinculado ao Instagram.",
-                  "Teste enviando um lead pelo formulário de teste do Meta.",
-                ]} />
-              </div>
-            </TabsContent>
+                    {isConnected(key) && (
+                      <Card className="border-success/20 bg-success/5">
+                        <CardContent className="p-3">
+                          <p className="text-xs text-success">
+                            <strong>Sincronização ativa.</strong> Os leads desta plataforma estão a ser importados automaticamente via API OAuth — não é necessário configurar webhooks manualmente.
+                          </p>
+                        </CardContent>
+                      </Card>
+                    )}
 
-            <TabsContent value="google" className="space-y-4 mt-4" data-testid="content-google">
-              <CopyField label="Webhook URL (Google Ads)" value={WEBHOOK_URLS.google_ads} />
-              <div className="space-y-2">
-                <h4 className="text-sm font-semibold">Como configurar no Google Ads</h4>
-                <StepList steps={[
-                  "Acesse o Google Ads e vá em Ferramentas e Configurações > Extensões de Formulário de Lead.",
-                  "Crie ou edite uma extensão de formulário de lead.",
-                  "Na seção \"Entrega de dados do lead\", selecione \"Webhook\".",
-                  "Cole a Webhook URL acima e configure a chave de API no header x-api-key.",
-                  "No Google Ads, configure a chave/token com o valor da sua LEAD_CAPTURE_API_KEY.",
-                  "Salve e publique a extensão de formulário.",
-                  "Teste com um lead de teste — ele aparecerá com origem \"Google Ads\".",
-                ]} />
-              </div>
-              <div className="space-y-1">
-                <h4 className="text-xs font-semibold text-muted-foreground">Formato esperado do payload</h4>
-                <pre className="bg-muted p-3 rounded-md text-[11px] overflow-x-auto">
-{`{
-  "lead_form_submission": {
-    "lead_form_id": "...",
-    "lead_form_name": "...",
-    "user_column_data": [
-      { "column_name": "Full Name", "string_value": "João Silva" },
-      { "column_name": "Email", "string_value": "joao@email.com" },
-      { "column_name": "Phone Number", "string_value": "+5511999999999" }
-    ]
-  }
-}`}
-                </pre>
-              </div>
-            </TabsContent>
+                    <Separator />
 
-            <TabsContent value="website" className="space-y-4 mt-4" data-testid="content-website">
+                    <WebhookSection platform={key}>
+                      <div className="space-y-2">
+                        <h4 className="text-xs font-semibold">
+                          Passos de configuração
+                        </h4>
+                        <StepList steps={webhookSteps} />
+                      </div>
+                      {payloadExample && (
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-semibold text-muted-foreground">
+                            Formato esperado do payload
+                          </h4>
+                          <pre className="bg-muted p-3 rounded-md text-[11px] overflow-x-auto whitespace-pre-wrap">
+                            {payloadExample}
+                          </pre>
+                        </div>
+                      )}
+                    </WebhookSection>
+                  </TabsContent>
+                );
+              }
+            )}
+
+            <TabsContent
+              value="website"
+              className="space-y-4 mt-4"
+              data-testid="content-website"
+            >
               <div className="space-y-4">
                 <div className="space-y-2">
                   <h4 className="text-sm font-semibold">Formulário Público</h4>
                   <p className="text-xs text-muted-foreground">
-                    Um formulário pronto para captar leads diretamente pelo seu site ou landing page.
+                    Um formulário pronto para captar leads directamente pelo seu site ou landing page.
                   </p>
                   <CopyField label="URL do Formulário" value={publicFormUrl} />
                   <Button
@@ -239,32 +491,36 @@ export function LeadIntegrationsDialog({ open, onOpenChange }: LeadIntegrationsD
                 </div>
 
                 <div className="space-y-2">
-                  <h4 className="text-sm font-semibold">API Direta</h4>
+                  <h4 className="text-sm font-semibold">API Directa</h4>
                   <p className="text-xs text-muted-foreground">
-                    Envie leads diretamente via API usando o endpoint abaixo.
+                    Envie leads directamente via API usando o endpoint abaixo.
                   </p>
                   <CopyField label="Webhook URL (Website)" value={WEBHOOK_URLS.website} />
                   <div className="space-y-1">
-                    <h4 className="text-xs font-semibold text-muted-foreground">Exemplo de requisição</h4>
+                    <h4 className="text-xs font-semibold text-muted-foreground">
+                      Exemplo de requisição
+                    </h4>
                     <pre className="bg-muted p-3 rounded-md text-[11px] overflow-x-auto">
-{`curl -X POST "${WEBHOOK_URLS.website}" \\
-  -H "Content-Type: application/json" \\
-  -H "x-api-key: SUA_CHAVE_API" \\
-  -d '{
-    "nome": "João Silva",
-    "email": "joao@email.com",
-    "telefone": "+5511999999999",
-    "servico": "show_booking",
-    "mensagem": "Tenho interesse em contratar um show"
-  }'`}
+                      {`curl -X POST "${WEBHOOK_URLS.website}" \\\n  -H "Content-Type: application/json" \\\n  -H "x-api-key: SUA_CHAVE_API" \\\n  -d '{\n    "nome": "João Silva",\n    "email": "joao@email.com",\n    "telefone": "+5511999999999",\n    "servico": "show_booking",\n    "mensagem": "Tenho interesse em contratar um show"\n  }'`}
                     </pre>
                   </div>
                 </div>
               </div>
             </TabsContent>
           </Tabs>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {oauthDialog && (
+        <OAuthConnectDialog
+          open={oauthDialog !== null}
+          onOpenChange={(v) => {
+            if (!v) setOauthDialog(null);
+          }}
+          platform={oauthDialog}
+          onSuccess={handleConnectSuccess}
+        />
+      )}
+    </>
   );
 }

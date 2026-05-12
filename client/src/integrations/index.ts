@@ -1,61 +1,18 @@
 /**
- * integrations/index.ts
+ * integrations/index.ts — COMPATIBILITY BARREL
  *
- * Barrel raiz da camada de integrações do MUSIC OS 360.
+ * ATENÇÃO: Esta pasta foi consolidada em client/src/modules/integrations/.
+ * Este ficheiro existe APENAS para compatibilidade de imports legados.
+ * Importe sempre de "@/modules/integrations/" em novo código.
  *
- * HIERARQUIA (do mais interno para o mais externo):
- *
- *   dto/        — interfaces de contrato (IAuthProvider, IEmailProvider, …)
- *   providers/  — implementações (mock + futuras reais)
- *   adapters/   — selecção de provider conforme MOCK_MODE (ponto de entrada dos módulos)
- *   clients/    — stubs de clientes HTTP de terceiros (documentação server-side)
- *   webhooks/   — contratos/tipos de webhooks (processados exclusivamente no backend)
- *   services/   — orquestração multi-adapter (signing + notifications)
- *   mappers/    — transformações entidade ↔ DTO
- *
- * REGRA DE IMPORTAÇÃO para módulos de domínio:
- *
- *   ✅  import { authAdapter }        from "@/integrations/adapters";
- *   ✅  import { signingService }     from "@/integrations/services";
- *   ✅  import { contratoMapper }     from "@/integrations/mappers";
- *   ❌  import { mockAuthProvider }   from "@/integrations/providers";  // proibido fora de adapters/
- *   ❌  import posthog from "posthog-js";                               // proibido — usar analyticsAdapter
- *   ❌  import * as Sentry from "@sentry/react";                        // proibido — usar errorMonitorAdapter
+ * Toda a infraestrutura de integrações (providers, adapters, clients,
+ * services, mappers, webhooks, DTOs) vive agora em:
+ *   client/src/modules/integrations/
  */
 
-/* Adapters — ponto de entrada principal para módulos */
-export {
-  authAdapter,
-  emailAdapter,
-  storageAdapter,
-  paymentsAdapter,
-  signingAdapter,
-  analyticsAdapter,
-  errorMonitorAdapter,
-  getStreamingAdapter,
-  getAdsAdapter,
-  getRightsAdapter,
-  chatAdapter,
-} from "./adapters";
-
-/* Services — orquestração multi-adapter */
-export {
-  signingService,
-  notificationsService,
-} from "./services";
-export type {
-  SendForSigningInput,
-  SendForSigningResult,
-  SendUserInviteInput,
-  SendContratoExpiryAlertInput,
-  SendLancamentoStatusInput,
-} from "./services";
-
-/* Mappers — transformações entidade ↔ DTO */
-export { contratoMapper, transacaoMapper } from "./mappers";
-export type { ContratoEntity, TransacaoEntity, OfxEntry, TransacaoCsvRow } from "./mappers";
-
-/* DTOs — interfaces de contrato (para implementações de providers reais) */
+export * from "@/modules/integrations/adapters";
+export * from "@/modules/integrations/services";
+export * from "@/modules/integrations/mappers";
 export type {
   IAuthProvider,
   IEmailProvider,
@@ -71,12 +28,10 @@ export type {
   StreamingPlatformId,
   AdsPlatformId,
   RightsEntityId,
-} from "./dto";
-
-/* Webhooks — tipos (documentação — processados exclusivamente no backend) */
+} from "@/modules/integrations/dto";
 export type {
   StripeWebhookEvent,
   StripeWebhookPayload,
   AutentiqueWebhookEvent,
   AutentiqueWebhookPayload,
-} from "./webhooks";
+} from "@/modules/integrations/webhooks";

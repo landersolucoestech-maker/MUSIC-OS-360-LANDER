@@ -18,7 +18,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { mockMusicMonitoringProvider } from "@/integrations/providers/mock/mock-music-monitoring.provider";
+import { mockMusicMonitoringProvider } from "@/modules/integrations/providers/mock/mock-music-monitoring.provider";
 import type {
   FingerprintInput,
   FingerprintResult,

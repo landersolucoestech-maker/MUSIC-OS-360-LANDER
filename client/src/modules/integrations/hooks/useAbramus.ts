@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
-import { mockAbramusProvider } from "@/integrations/providers/mock/mock-rights.provider";
+import { mockAbramusProvider } from "@/modules/integrations/providers/mock/mock-rights.provider";
 import type {
   RegisterObraInput,
   RegisterFonogramaInput,
