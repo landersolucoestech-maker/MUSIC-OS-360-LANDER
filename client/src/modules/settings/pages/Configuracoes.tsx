@@ -459,33 +459,6 @@ export default function Configuracoes() {
       category: "Marketing Digital",
       configurable: true,
     },
-    {
-      id: "deezer_ads",
-      name: "Deezer Ads",
-      icon: "🎶",
-      status: isMarketingConnected("deezer_ads") ? "conectado" : "desconectado",
-      description: "Deezer Ad Manager — áudio e banner para ouvintes segmentados",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
-      id: "apple_music_ads",
-      name: "Apple Music Ads",
-      icon: "🍎",
-      status: isMarketingConnected("apple_music_ads") ? "conectado" : "desconectado",
-      description: "Apple Music + App Store Search Ads — fãs no ecossistema Apple",
-      category: "Marketing Digital",
-      configurable: true,
-    },
-    {
-      id: "soundcloud_ads",
-      name: "SoundCloud Ads",
-      icon: "☁️",
-      status: isMarketingConnected("soundcloud_ads") ? "conectado" : "desconectado",
-      description: "SoundCloud Ads — audiências indie e underground",
-      category: "Marketing Digital",
-      configurable: true,
-    },
     // ── Fiscal ────────────────────────────────────────────────────────────────
     {
       id: "nfe",
@@ -525,7 +498,7 @@ export default function Configuracoes() {
     // Métricas corporativas (contas oficiais da empresa)
     "meta_business", "youtube_business", "tiktok_business", "google_business", "corp_spotify",
     // Tráfego pago (contas de anúncios da empresa)
-    "spotify_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
+    "spotify_ads",
   ]);
 
   // Handlers para plataformas que abrem um ConfigDialog dedicado
