@@ -440,15 +440,6 @@ export default function Configuracoes() {
       category: "Marketing Digital",
       configurable: true,
     },
-    {
-      id: "corp_spotify",
-      name: "Spotify for Artists",
-      icon: "🎵",
-      status: isMarketingConnected("corp_spotify") ? "conectado" : "desconectado",
-      description: "Perfil Spotify oficial da empresa — streams, ouvintes mensais, análise de fãs",
-      category: "Marketing Digital",
-      configurable: true,
-    },
     // ── Tráfego pago corporativo
     {
       id: "spotify_ads",
@@ -496,7 +487,7 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "meta_business", "youtube_business", "tiktok_business", "google_business", "corp_spotify",
+    "meta_business", "youtube_business", "tiktok_business", "google_business",
     // Tráfego pago (contas de anúncios da empresa)
     "spotify_ads",
   ]);
