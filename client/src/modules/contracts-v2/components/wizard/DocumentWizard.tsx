@@ -111,21 +111,32 @@ function StepIndicator({ current, steps }: { current: WizardStep; steps: WizardS
 
 // ─── DocumentWizard ───────────────────────────────────────────────────────────
 
-const INITIAL_STATE: WizardState = {
-  step:      "template",
-  template:  undefined,
-  variables: {},
-  signers:   [],
-  title:     "",
-};
-
 interface DocumentWizardProps {
   onComplete?: (docId: string) => void;
+  initialContractId?: string;
+  initialTitulo?: string;
+  initialArtistaId?: string;
 }
 
-export function DocumentWizard({ onComplete }: DocumentWizardProps) {
+export function DocumentWizard({
+  onComplete,
+  initialContractId,
+  initialTitulo,
+  initialArtistaId,
+}: DocumentWizardProps) {
   const navigate      = useNavigate();
   const createMut     = useCreateDocument();
+
+  const INITIAL_STATE: WizardState = {
+    step:        "template",
+    template:    undefined,
+    variables:   {},
+    signers:     [],
+    title:       initialTitulo ?? "",
+    artista_id:  initialArtistaId,
+    contract_id: initialContractId,
+  };
+
   const [state, setState] = useState<WizardState>(INITIAL_STATE);
   const [error, setError] = useState<string | null>(null);
 
@@ -180,7 +191,7 @@ export function DocumentWizard({ onComplete }: DocumentWizardProps) {
 
   const handleBack = () => {
     if (isFirst) {
-      navigate("/contratos-v2");
+      navigate("/contratos");
       return;
     }
     const prevStep = STEP_ORDER[currentIdx - 1];
@@ -266,10 +277,10 @@ export function DocumentWizard({ onComplete }: DocumentWizardProps) {
           </Button>
           <Button
             size="sm"
-            onClick={() => navigate("/contratos-v2")}
+            onClick={() => navigate("/contratos")}
             data-testid="wizard-btn-list"
           >
-            Ver lista de documentos
+            Ver contratos
           </Button>
         </div>
       )}
