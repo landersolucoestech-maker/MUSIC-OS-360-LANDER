@@ -1,0 +1,222 @@
+IMPLEMENTAR ACRCloud COMO INFRAESTRUTURA BACKEND NATIVA DO MUSIC OS 360 — PROIBIDO EXPOR NO FRONTEND
+
+OBJETIVO
+Implementar o ACRCloud como serviço interno do backend do Music OS 360, utilizando exclusivamente as credenciais da empresa/plataforma.
+
+O usuário NÃO deve:
+- criar conta ACRCloud;
+- fazer login ACRCloud;
+- visualizar API Keys;
+- visualizar Host;
+- visualizar Secret;
+- acessar SDK diretamente;
+- consumir API diretamente pelo frontend.
+
+Toda comunicação com ACRCloud deve ocorrer EXCLUSIVAMENTE no backend/server-side.
+
+======================================================================
+ARQUITETURA OBRIGATÓRIA
+======================================================================
+
+FLUXO CORRETO:
+
+Frontend Music OS 360
+    ↓
+API Interna Music OS 360
+    ↓
+Backend/Server
+    ↓
+ACRCloud API
+    ↓
+Backend processa resposta
+    ↓
+Frontend recebe apenas resultado tratado
+
+PROIBIDO:
+Frontend → ACRCloud diretamente
+
+PROIBIDO:
+- chamadas fetch para domínio acrcloud.com no frontend;
+- SDK ACRCloud no frontend;
+- variáveis NEXT_PUBLIC_;
+- exposição de tokens;
+- exposição de host;
+- uso client-side.
+
+======================================================================
+IMPLEMENTAÇÃO BACKEND OBRIGATÓRIA
+======================================================================
+
+Criar módulo backend:
+
+/server/integrations/acrcloud/
+/backend/services/acrcloud/
+/api/internal/acrcloud/
+
+Implementar:
+
+- serviço de autenticação;
+- assinatura HMAC;
+- geração de timestamp;
+- upload/processamento;
+- reconhecimento de áudio;
+- tratamento de erros;
+- logs;
+- rate limit;
+- cache;
+- fila opcional.
+
+======================================================================
+VARIÁVEIS DE AMBIENTE
+======================================================================
+
+ARMAZENAR SOMENTE NO BACKEND:
+
+ACRCLOUD_HOST=
+ACRCLOUD_ACCESS_KEY=
+ACRCLOUD_ACCESS_SECRET=
+ACRCLOUD_BUCKET_NAME=
+
+PROIBIDO:
+NEXT_PUBLIC_ACRCLOUD_*
+
+NUNCA enviar essas variáveis para:
+- browser;
+- client bundle;
+- React state;
+- localStorage;
+- sessionStorage;
+- HTML renderizado.
+
+======================================================================
+FUNCIONALIDADES
+======================================================================
+
+Implementar funções backend:
+
+1. recognizeAudio()
+- reconhecimento musical;
+- fingerprint;
+- identificação de faixa.
+
+2. detectCopyright()
+- verificação de possível uso protegido.
+
+3. analyzeCatalog()
+- análise de catálogo interno.
+
+4. monitorTrackUsage()
+- monitoramento de uso musical.
+
+5. detectAIMusic()
+- preparado para expansão futura.
+
+======================================================================
+ENDPOINTS INTERNOS
+======================================================================
+
+Criar endpoints internos próprios do Music OS 360:
+
+POST /api/acrcloud/recognize
+POST /api/acrcloud/copyright
+POST /api/acrcloud/catalog
+POST /api/acrcloud/monitor
+
+Esses endpoints:
+- recebem arquivo/link do frontend;
+- processam no backend;
+- enviam ao ACRCloud;
+- retornam apenas resultado tratado.
+
+======================================================================
+FRONTEND — COMPORTAMENTO CORRETO
+======================================================================
+
+O frontend deve exibir apenas:
+
+- botão "Reconhecer Música"
+- botão "Verificar Copyright"
+- botão "Analisar Faixa"
+- botão "Monitorar Música"
+
+SEM:
+- login ACRCloud;
+- modal ACRCloud;
+- popup externo;
+- OAuth;
+- redirect;
+- iframe;
+- conexão direta.
+
+O frontend deve chamar APENAS:
+- /api/acrcloud/*
+
+Nunca chamar:
+- api.acrcloud.com
+- domains externos ACRCloud
+- SDK client-side
+
+======================================================================
+SEGURANÇA OBRIGATÓRIA
+======================================================================
+
+Implementar:
+
+- rate limit por usuário;
+- limite mensal;
+- logs de consumo;
+- auditoria;
+- retry controlado;
+- timeout;
+- validação MIME;
+- limite de tamanho de upload;
+- fila assíncrona para arquivos pesados.
+
+======================================================================
+REGRAS ABSOLUTAS
+======================================================================
+
+NÃO criar:
+- login ACRCloud;
+- integração OAuth;
+- botão "Conectar ACRCloud";
+- painel de credenciais;
+- configuração manual do usuário.
+
+ACRCloud deve funcionar como:
+- infraestrutura interna;
+- serviço invisível;
+- engine nativa do Music OS 360.
+
+======================================================================
+MODO SAAS
+======================================================================
+
+Toda cobrança e consumo devem ser controlados pelo Music OS 360.
+
+Implementar arquitetura preparada para:
+- créditos;
+- consumo mensal;
+- planos;
+- billing;
+- limites por assinatura.
+
+======================================================================
+VALIDAÇÃO FINAL OBRIGATÓRIA
+======================================================================
+
+Antes de finalizar, verificar:
+
+[ ] Nenhuma chamada ACRCloud ocorre no frontend
+[ ] Nenhuma credencial foi exposta
+[ ] Nenhuma variável NEXT_PUBLIC foi criada
+[ ] Nenhum SDK client-side foi instalado
+[ ] Toda integração ocorre server-side
+[ ] Frontend consome apenas API interna
+[ ] Sistema está preparado para SaaS escalável
+[ ] Código segue arquitetura enterprise
+[ ] Não existe login ACRCloud para usuário final
+[ ] Não existe modal de conexão ACRCloud
+
+SE QUALQUER ITEM ACIMA FOR VIOLADO:
+A IMPLEMENTAÇÃO ESTÁ ERRADA.

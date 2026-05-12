@@ -200,6 +200,7 @@ export default function Configuracoes() {
     try { return JSON.parse(localStorage.getItem(DIST_STORAGE_KEY) || "{}"); } catch { return {}; }
   });
   const distPopupRef = useRef<Window | null>(null);
+  const nfePopupRef  = useRef<Window | null>(null);
 
   const handleDistOAuthSuccess = useCallback((distId: string) => {
     const email = DIST_MOCK_EMAILS[distId] ?? `musicbusiness@${distId}.com`;
@@ -209,14 +210,22 @@ export default function Configuracoes() {
     toast.success("Distribuidora conectada com sucesso.");
   }, [distributorConnections]);
 
-  // Listener postMessage — popup OAuth distribuidora envia musicos360_oauth_success
+  // Listener postMessage — popup OAuth envia musicos360_oauth_success
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.data?.type !== "musicos360_oauth_success") return;
-      const distId = event.data?.platform as string;
-      if (!distId || !DIST_MOCK_EMAILS[distId]) return;
+      const platformId = event.data?.platform as string;
+      // NF-e popup success
+      if (platformId === "nfe") {
+        nfePopupRef.current = null;
+        setNfeConfigOpen(true); // abre dialog de configuração após autenticação
+        toast.success("SEFAZ autenticado. Configure os detalhes da NF-e.");
+        return;
+      }
+      // Distribuidora popup success
+      if (!platformId || !DIST_MOCK_EMAILS[platformId]) return;
       distPopupRef.current = null;
-      handleDistOAuthSuccess(distId);
+      handleDistOAuthSuccess(platformId);
     };
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
@@ -232,6 +241,18 @@ export default function Configuracoes() {
       `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
     );
     if (popup) distPopupRef.current = popup;
+  };
+
+  const openNfePopup = () => {
+    const w = 480; const h = 640;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(
+      "/oauth/nfe",
+      "musicos360_oauth_nfe",
+      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+    if (popup) nfePopupRef.current = popup;
   };
 
   const handleDistDisconnect = (id: string) => {
@@ -525,7 +546,7 @@ export default function Configuracoes() {
     ubc:           () => setUbcConfigOpen(true),
     acrcloud:      () => setAcrcloudConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
-    nfe:           () => setNfeConfigOpen(true),
+    nfe:           () => openNfePopup(),
   };
 
   const handleSaveProfile = () => {
