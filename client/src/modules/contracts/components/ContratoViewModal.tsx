@@ -6,7 +6,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent } from "@/shared/ui/card";
 import {
-  FileText, ExternalLink, Send, History, Music, Clock, AlertCircle, Info, User, PenLine, CheckCircle2, MailCheck,
+  FileText, ExternalLink, History, Music, Clock, AlertCircle, Info, User, PenLine, CheckCircle2, MailCheck, PencilLine,
 } from "lucide-react";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
@@ -16,15 +16,16 @@ import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { useDocuments } from "@/modules/contracts-v2/hooks/useDocumentEngine";
 import { DocumentStatusBadge, SignerStatusBadge } from "@/modules/contracts-v2/components/shared/DocumentStatusBadge";
 import { DocumentTimeline } from "@/modules/contracts-v2/components/timeline/DocumentTimeline";
-import { SIGNER_ROLE_LABEL } from "@/modules/contracts-v2/types";
+import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
 
 interface ContratoViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   contrato?: ContratoWithRelations;
+  onEdit?: () => void;
 }
 
-export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoViewModalProps) {
+export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: ContratoViewModalProps) {
   const { lancamentos } = useLancamentos();
   const navigate = useNavigate();
   const { data: allDocuments = [] } = useDocuments();
@@ -32,6 +33,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
   if (!contrato) return null;
 
   const vinculadoDoc = allDocuments.find((d) => d.contract_id === contrato.id);
+  const contratoSigners = Array.isArray(contrato.signers) ? contrato.signers : [];
 
   const lancamentoVinculado: LancamentoWithRelations | undefined = contrato.lancamento_id
     ? lancamentos.find((l) => l.id === contrato.lancamento_id)
@@ -50,15 +52,6 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
   const diasRestantes = dataFim
     ? Math.ceil((dataFim.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
     : null;
-
-  function handleIniciarAssinatura() {
-    const params = new URLSearchParams();
-    params.set("contract_id", contrato!.id);
-    if (contrato!.titulo) params.set("titulo", contrato!.titulo);
-    if (contrato!.artista_id) params.set("artista_id", contrato!.artista_id);
-    onOpenChange(false);
-    navigate(`/contratos/assinatura/novo?${params.toString()}`);
-  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,7 +90,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
           <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 shrink-0">
             {[
               { value: "informacoes", label: "Informações" },
-              { value: "assinatura",  label: "Assinatura Digital" },
+              { value: "assinatura",  label: `Assinatura${contratoSigners.length > 0 ? ` (${contratoSigners.length})` : ""}` },
               { value: "arquivo",     label: "Arquivo" },
               { value: "versoes",     label: `Versões${versoes.length > 0 ? ` (${versoes.length})` : ""}` },
               { value: "lancamento",  label: "Lançamento" },
@@ -152,33 +145,86 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
 
             {/* ── Assinatura Digital ── */}
             <TabsContent value="assinatura" className="p-6 mt-0 space-y-5" data-testid="tab-content-assinatura">
-              {vinculadoDoc ? (
+              {/* Signatários do contrato (inline, do formulário) */}
+              {contratoSigners.length > 0 ? (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    Signatários ({contratoSigners.length})
+                  </p>
+                  <div className="space-y-2">
+                    {contratoSigners.map((signer, idx) => (
+                      <div
+                        key={idx}
+                        className="flex items-center gap-3 p-3 bg-card border border-border rounded-lg"
+                        data-testid={`signer-view-row-${idx}`}
+                      >
+                        <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
+                          <User className="h-3.5 w-3.5 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{signer.name}</p>
+                          <p className="text-xs text-muted-foreground flex items-center gap-1">
+                            <MailCheck className="h-3 w-3" />
+                            {signer.email}
+                          </p>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-normal shrink-0">
+                          {SIGNER_ROLE_LABEL[signer.role]}
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-14 text-center">
+                  <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+                    <PenLine className="h-8 w-8 text-muted-foreground/50" />
+                  </div>
+                  <p className="text-sm font-semibold mb-1">Nenhum signatário definido</p>
+                  <p className="text-xs text-muted-foreground mb-5 max-w-xs">
+                    Adicione os signatários directamente no formulário de edição do contrato.
+                  </p>
+                  {onEdit && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => { onOpenChange(false); onEdit(); }}
+                      data-testid="button-edit-to-add-signers"
+                    >
+                      <PencilLine className="h-3.5 w-3.5" />
+                      Editar Contrato
+                    </Button>
+                  )}
+                </div>
+              )}
+
+              {/* Se existir documento vinculado via wizard (legado), mostra status + timeline */}
+              {vinculadoDoc && (
                 <>
-                  {/* Status geral */}
-                  <div className="flex items-center gap-3 p-4 bg-muted/20 border border-border rounded-lg">
-                    <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <PenLine className="h-4.5 w-4.5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{vinculadoDoc.title}</p>
-                      <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                        <DocumentStatusBadge status={vinculadoDoc.status} />
-                        {vinculadoDoc.signed_at && (
-                          <span className="text-xs text-muted-foreground">
-                            Assinado em {new Date(vinculadoDoc.signed_at).toLocaleDateString("pt-BR")}
-                          </span>
-                        )}
+                  <div className="border-t border-border pt-5">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                      Processo de Assinatura Digital
+                    </p>
+                    <div className="flex items-center gap-3 p-4 bg-muted/20 border border-border rounded-lg mb-4">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <PenLine className="h-4.5 w-4.5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{vinculadoDoc.title}</p>
+                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                          <DocumentStatusBadge status={vinculadoDoc.status} />
+                          {vinculadoDoc.signed_at && (
+                            <span className="text-xs text-muted-foreground">
+                              Assinado em {new Date(vinculadoDoc.signed_at).toLocaleDateString("pt-BR")}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Signatários */}
-                  {vinculadoDoc.signers.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                        Signatários ({vinculadoDoc.signers.length})
-                      </p>
-                      <div className="space-y-2">
+                    {vinculadoDoc.signers.length > 0 && (
+                      <div className="space-y-2 mb-4">
                         {vinculadoDoc.signers.map((signer) => (
                           <div
                             key={signer.id}
@@ -205,46 +251,25 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <Badge variant="outline" className="text-[10px] font-normal">
-                                {SIGNER_ROLE_LABEL[signer.role]}
+                                {signer.role}
                               </Badge>
                               <SignerStatusBadge status={signer.status} />
                             </div>
                           </div>
                         ))}
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {/* Timeline de auditoria */}
-                  {vinculadoDoc.logs.length > 0 && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
-                        Histórico de eventos
-                      </p>
-                      <DocumentTimeline logs={vinculadoDoc.logs} />
-                    </div>
-                  )}
-                </>
-              ) : (
-                /* Sem documento vinculado */
-                <div className="flex flex-col items-center justify-center py-14 text-center">
-                  <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
-                    <PenLine className="h-8 w-8 text-primary" />
+                    {vinculadoDoc.logs.length > 0 && (
+                      <div>
+                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                          Histórico de eventos
+                        </p>
+                        <DocumentTimeline logs={vinculadoDoc.logs} />
+                      </div>
+                    )}
                   </div>
-                  <p className="text-sm font-semibold mb-1">Sem processo de assinatura</p>
-                  <p className="text-xs text-muted-foreground mb-5 max-w-xs">
-                    Inicie o processo para gerar o documento digital e enviar para assinatura electrónica pelos signatários.
-                  </p>
-                  <Button
-                    size="sm"
-                    className="gap-2"
-                    onClick={handleIniciarAssinatura}
-                    data-testid="button-iniciar-assinatura"
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                    Iniciar Processo de Assinatura
-                  </Button>
-                </div>
+                </>
               )}
             </TabsContent>
 
@@ -397,17 +422,6 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
           <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>
-          {!vinculadoDoc && (
-            <Button
-              size="sm"
-              className="gap-2"
-              onClick={handleIniciarAssinatura}
-              data-testid="button-footer-assinatura"
-            >
-              <Send className="h-3.5 w-3.5" />
-              Iniciar Assinatura Digital
-            </Button>
-          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

@@ -1,5 +1,25 @@
 import { z } from "zod";
 
+export const SIGNER_ROLES = ["artista", "label", "testemunha", "procurador", "produtor", "advogado"] as const;
+export type ContratoSignerRole = typeof SIGNER_ROLES[number];
+
+export const SIGNER_ROLE_LABEL: Record<ContratoSignerRole, string> = {
+  artista:    "Artista",
+  label:      "Gravadora / Label",
+  testemunha: "Testemunha",
+  procurador: "Procurador",
+  produtor:   "Produtor",
+  advogado:   "Advogado",
+};
+
+export const contratoSignerSchema = z.object({
+  name:  z.string().min(1, "Nome obrigatório"),
+  email: z.string().email("Email inválido"),
+  role:  z.enum(SIGNER_ROLES),
+});
+
+export type ContratoSigner = z.infer<typeof contratoSignerSchema>;
+
 export const contratoSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
   client_type: z.enum(["artista", "pessoa_fisica", "pessoa_juridica"], {
@@ -36,6 +56,7 @@ export const contratoSchema = z.object({
   financial_support: z.number().optional(),
   observations: z.string().optional(),
   terms: z.string().optional(),
+  signers: z.array(contratoSignerSchema).default([]),
 });
 
 export type ContratoFormData = z.infer<typeof contratoSchema>;

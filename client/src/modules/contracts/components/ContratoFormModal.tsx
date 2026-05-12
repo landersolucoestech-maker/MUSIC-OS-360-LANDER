@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { contratoSchema, type ContratoFormData } from "@/modules/contracts/lib/contrato-schema";
+import {
+  contratoSchema,
+  type ContratoFormData,
+  SIGNER_ROLES,
+  SIGNER_ROLE_LABEL,
+} from "@/modules/contracts/lib/contrato-schema";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
@@ -18,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
+import { UserPlus, X } from "lucide-react";
 
 // ── Labels ───────────────────────────────────────────────────────────────────
 const ARTISTA_SERVICE_LABELS: Record<string, string> = {
@@ -83,12 +89,17 @@ const ContractForm = ({
 
   const form = useForm<ContratoFormData>({
     resolver: zodResolver(contratoSchema),
-    defaultValues: { status: "rascunho", registry_office: false, ...initialData },
+    defaultValues: { status: "rascunho", registry_office: false, signers: [], ...initialData },
+  });
+
+  const { fields: signerFields, append: appendSigner, remove: removeSigner } = useFieldArray({
+    control: form.control,
+    name: "signers",
   });
 
   useEffect(() => {
     if (initialData) {
-      form.reset({ status: "rascunho", registry_office: false, ...initialData });
+      form.reset({ status: "rascunho", registry_office: false, signers: [], ...initialData });
     }
   }, [initialData, form]);
 
@@ -328,7 +339,6 @@ const ContractForm = ({
         <CardHeader><CardTitle>Valores</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {/* PF ou PJ: valor fixo */}
             {(form.watch("client_type") === "pessoa_juridica" || form.watch("client_type") === "pessoa_fisica") && (
               <div className="space-y-2">
                 <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
@@ -337,7 +347,6 @@ const ContractForm = ({
               </div>
             )}
 
-            {/* Artista + gestão/agenciamento/empresariamento: royalties + adiantamento */}
             {form.watch("client_type") === "artista" &&
               ["agenciamento", "gestao", "empresariamento", "empresariamento_suporte"].includes(form.watch("service_type") || "") && (
                 <>
@@ -361,7 +370,6 @@ const ContractForm = ({
                 </>
               )}
 
-            {/* Artista + produção/edição/distribuição: tipo de pagamento */}
             {form.watch("client_type") === "artista" &&
               ["producao_musical", "edicao", "distribuicao"].includes(form.watch("service_type") || "") && (
                 <>
@@ -395,7 +403,6 @@ const ContractForm = ({
                 </>
               )}
 
-            {/* Artista + audiovisual/marketing: valor fixo */}
             {form.watch("client_type") === "artista" &&
               ["producao_audiovisual", "marketing"].includes(form.watch("service_type") || "") && (
                 <div className="space-y-2">
@@ -467,6 +474,101 @@ const ContractForm = ({
         </CardContent>
       </Card>
 
+      {/* ── Signatários ── */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Signatários</CardTitle>
+            {signerFields.length < 10 && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                data-testid="button-add-signer"
+                onClick={() => appendSigner({ name: "", email: "", role: "artista" })}
+              >
+                <UserPlus className="h-3.5 w-3.5" />
+                Adicionar Signatário
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {signerFields.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center border border-dashed border-border rounded-lg">
+              <UserPlus className="h-8 w-8 text-muted-foreground/40 mb-2" />
+              <p className="text-sm text-muted-foreground">Nenhum signatário adicionado</p>
+              <p className="text-xs text-muted-foreground mt-1">Clique em "Adicionar Signatário" para definir quem deve assinar este contrato</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {signerFields.map((field, index) => (
+                <div
+                  key={field.id}
+                  className="grid grid-cols-[1fr_1fr_auto_auto] gap-2 items-start p-3 bg-muted/20 border border-border rounded-lg"
+                  data-testid={`signer-row-form-${index}`}
+                >
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Nome *</Label>
+                    <Input
+                      {...form.register(`signers.${index}.name`)}
+                      placeholder="Nome completo"
+                      className="h-8 text-sm"
+                      data-testid={`input-signer-name-${index}`}
+                    />
+                    {form.formState.errors.signers?.[index]?.name && (
+                      <p className="text-xs text-destructive">{form.formState.errors.signers[index]?.name?.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Email *</Label>
+                    <Input
+                      {...form.register(`signers.${index}.email`)}
+                      placeholder="email@exemplo.com"
+                      type="email"
+                      className="h-8 text-sm"
+                      data-testid={`input-signer-email-${index}`}
+                    />
+                    {form.formState.errors.signers?.[index]?.email && (
+                      <p className="text-xs text-destructive">{form.formState.errors.signers[index]?.email?.message}</p>
+                    )}
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">Papel</Label>
+                    <Select
+                      value={form.watch(`signers.${index}.role`)}
+                      onValueChange={(value) => form.setValue(`signers.${index}.role`, value as typeof SIGNER_ROLES[number])}
+                    >
+                      <SelectTrigger className="h-8 text-sm w-36" data-testid={`select-signer-role-${index}`}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SIGNER_ROLES.map((role) => (
+                          <SelectItem key={role} value={role}>{SIGNER_ROLE_LABEL[role]}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="pt-5">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeSigner(index)}
+                      data-testid={`button-remove-signer-${index}`}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* ── Observações e Termos ── */}
       <Card>
         <CardHeader><CardTitle>Observações e Termos</CardTitle></CardHeader>
@@ -515,6 +617,7 @@ function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData>
     end_date: c.data_fim ? new Date(c.data_fim) : undefined,
     fixed_value: c.valor ?? undefined,
     observations: c.observacoes ?? undefined,
+    signers: Array.isArray(c.signers) ? c.signers : [],
   };
 }
 
@@ -542,6 +645,7 @@ export const ContratoFormModal = ({
       arquivo_url, notas_versao, lancamento_id,
       start_date, end_date, fixed_value,
       royalties_percentage, advance_payment, financial_support, observations,
+      signers,
     } = data;
 
     const resolvedArquivoUrl = arquivo_url || (mode === "edit" && contrato ? (contrato.arquivo_url ?? null) : null);
@@ -558,6 +662,7 @@ export const ContratoFormModal = ({
       data_fim: end_date ? (end_date as Date).toISOString().split("T")[0] : null,
       valor: fixed_value || null,
       observacoes: observations || null,
+      signers: signers ?? [],
     };
 
     if (mode === "edit" && contrato) {

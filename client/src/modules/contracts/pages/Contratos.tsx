@@ -430,6 +430,7 @@ export default function Contratos() {
         open={viewModal.open}
         onOpenChange={(open) => setViewModal({ ...viewModal, open })}
         contrato={viewModal.contrato}
+        onEdit={() => setFormModal({ open: true, mode: "edit", contrato: viewModal.contrato })}
       />
       <ContratoFormModal
         open={formModal.open}
