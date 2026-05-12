@@ -1412,105 +1412,115 @@ export default function Configuracoes() {
                 </CardTitle>
                 <CardDescription>Conecte serviços externos para automatizar processos</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Marketing Digital", "Fiscal", "Captação de Leads"].map((category) => {
-                    const items = integracoes.filter((i) => i.category === category);
-                    if (items.length === 0) return null;
-                    return (
-                      <div key={category}>
-                        <div className="px-4 py-2 bg-muted/40 border-b border-border/50">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                            {category}
-                          </p>
-                        </div>
-                        <div className="divide-y divide-border/50">
-                          {items.map((integracao) => {
-                            const isMarketingPlatform = MARKETING_PLATFORM_IDS.has(integracao.id);
-                            const isConnecting = connectingPlatform === integracao.id;
-                            const handler = integrationConfigHandlers[integracao.id];
-                            const isConfigurable = Boolean(handler);
-                            return (
-                              <div
-                                key={integracao.id}
-                                className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
-                                data-testid={`integration-row-${integracao.id}`}
-                              >
-                                <div className="p-1.5 rounded-md bg-muted shrink-0 text-base leading-none">
-                                  {integracao.icon}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-xs font-medium text-foreground">{integracao.name}</p>
-                                  <p className="text-[10px] text-muted-foreground truncate">{integracao.description}</p>
-                                </div>
-                                <div className="flex items-center gap-2 shrink-0">
-                                  <IntegrationStatusBadges
-                                    status={integracao.status}
-                                    notices={integracao.notices}
-                                    testIdPrefix={`badge-integration-${integracao.id}`}
-                                  />
-                                  {isMarketingPlatform ? (
-                                    isConnecting ? (
-                                      <Button variant="outline" size="sm" className="h-7 text-xs gap-1" disabled data-testid={`button-integration-${integracao.id}`}>
-                                        <Loader2 className="h-3 w-3 animate-spin" />
-                                        Conectando...
-                                      </Button>
-                                    ) : integracao.status === "conectado" ? (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                        onClick={() => {
-                                          disconnectMarketing(integracao.id as MarketingPlatformId);
-                                          toast.success(`${integracao.name} desconectado.`);
-                                        }}
-                                        data-testid={`button-integration-${integracao.id}`}
-                                      >
-                                        <Unplug className="h-3 w-3" />
-                                        Desconectar
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-7 text-xs gap-1"
-                                        onClick={() => setOauthDialogPlatform(integracao.id as MarketingPlatformId)}
-                                        data-testid={`button-integration-${integracao.id}`}
-                                      >
-                                        Conectar
-                                        <ExternalLink className="h-3 w-3" />
-                                      </Button>
-                                    )
-                                  ) : (
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="h-7 text-xs gap-1"
-                                      onClick={handler}
-                                      disabled={!isConfigurable}
-                                      data-testid={`button-integration-${integracao.id}`}
-                                    >
-                                      {isConfigurable
-                                        ? integracao.status === "conectado"
-                                          ? "Gerenciar"
-                                          : "Configurar"
-                                        : "Em breve"}
-                                      <ExternalLink className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+              <CardContent className="space-y-6">
+                {[
+                  { key: "Assinatura Digital",   icon: <FileText className="h-4 w-4" /> },
+                  { key: "Direitos Autorais",     icon: <Shield className="h-4 w-4" /> },
+                  { key: "Monitoramento Musical", icon: <Music className="h-4 w-4" /> },
+                  { key: "Marketing Digital",     icon: <Zap className="h-4 w-4" /> },
+                  { key: "Fiscal",                icon: <DollarSign className="h-4 w-4" /> },
+                  { key: "Captação de Leads",     icon: <Users className="h-4 w-4" /> },
+                ].map(({ key: category, icon: catIcon }) => {
+                  const items = integracoes.filter((i) => i.category === category);
+                  if (items.length === 0) return null;
+                  return (
+                    <div key={category} className="space-y-3">
+                      {/* Cabeçalho de categoria */}
+                      <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+                        <span className="text-muted-foreground">{catIcon}</span>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                          {category}
+                        </p>
                       </div>
-                    );
-                  })}
-                </div>
 
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs text-muted-foreground">Não encontrou a integração que precisa?</p>
-                  <Button variant="outline" size="sm" className="h-7 text-xs">
+                      {/* Linhas — mesmo padrão visual de Distribuidoras */}
+                      {items.map((integracao) => {
+                        const isMarketingPlatform = MARKETING_PLATFORM_IDS.has(integracao.id);
+                        const isConnecting = connectingPlatform === integracao.id;
+                        const handler = integrationConfigHandlers[integracao.id];
+                        const isConfigurable = Boolean(handler);
+                        return (
+                          <div
+                            key={integracao.id}
+                            className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                            data-testid={`integration-row-${integracao.id}`}
+                          >
+                            {/* Esquerda: ícone + textos */}
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-muted/80 rounded-lg flex items-center justify-center text-xl shrink-0 select-none">
+                                {integracao.icon}
+                              </div>
+                              <div>
+                                <p className="font-medium">{integracao.name}</p>
+                                <p className="text-sm text-muted-foreground leading-snug">{integracao.description}</p>
+                              </div>
+                            </div>
+
+                            {/* Direita: badge + botão */}
+                            <div className="flex items-center gap-3 shrink-0 ml-4">
+                              <IntegrationStatusBadges
+                                status={integracao.status}
+                                notices={integracao.notices}
+                                testIdPrefix={`badge-integration-${integracao.id}`}
+                              />
+                              {isMarketingPlatform ? (
+                                isConnecting ? (
+                                  <Button variant="outline" size="sm" disabled data-testid={`button-integration-${integracao.id}`}>
+                                    <Loader2 className="h-3 w-3 mr-1 animate-spin" />
+                                    Conectando...
+                                  </Button>
+                                ) : integracao.status === "conectado" ? (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    onClick={() => {
+                                      disconnectMarketing(integracao.id as MarketingPlatformId);
+                                      toast.success(`${integracao.name} desconectado.`);
+                                    }}
+                                    data-testid={`button-integration-${integracao.id}`}
+                                  >
+                                    <Unplug className="h-3 w-3 mr-1" />
+                                    Desconectar
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setOauthDialogPlatform(integracao.id as MarketingPlatformId)}
+                                    data-testid={`button-integration-${integracao.id}`}
+                                  >
+                                    Conectar
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                  </Button>
+                                )
+                              ) : (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handler}
+                                  disabled={!isConfigurable}
+                                  data-testid={`button-integration-${integracao.id}`}
+                                >
+                                  {isConfigurable
+                                    ? integracao.status === "conectado"
+                                      ? "Gerenciar"
+                                      : "Configurar"
+                                    : "Em breve"}
+                                  <ExternalLink className="h-3 w-3 ml-1" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+
+                <div className="flex items-center justify-between pt-2 border-t border-border/50">
+                  <p className="text-sm text-muted-foreground">Não encontrou a integração que precisa?</p>
+                  <Button variant="outline" size="sm">
                     Solicitar Nova Integração
                   </Button>
                 </div>
