@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
@@ -95,6 +95,16 @@ const PERMISSION_MODULES = [
   { id: "musicchat", name: "MusicChat" },
 ];
 
+// E-mails mock retornados após OAuth de cada distribuidora (constante de módulo — estável entre renders)
+const DIST_MOCK_EMAILS: Record<string, string> = {
+  onerpm:    "musicbusiness@onerpm.com",
+  distrokid: "musicbusiness@distrokid.com",
+  symphonic: "musicbusiness@symphonicms.com",
+  soundon:   "musicbusiness@soundon.global",
+  musicpro:  "musicbusiness@musicpro.com",
+  somvibe:   "musicbusiness@somvibe.com.br",
+};
+
 export default function Configuracoes() {
   const { user, updatePassword } = useAuth();
   const { 
@@ -189,19 +199,39 @@ export default function Configuracoes() {
   const [distributorConnections, setDistributorConnections] = useState<Record<string, { username: string }>>(() => {
     try { return JSON.parse(localStorage.getItem(DIST_STORAGE_KEY) || "{}"); } catch { return {}; }
   });
-  const [distConnectOpen, setDistConnectOpen] = useState<string | null>(null);
-  const [distUsername, setDistUsername] = useState("");
-  const [distApiKey, setDistApiKey] = useState("");
+  const distPopupRef = useRef<Window | null>(null);
 
-  const handleDistConnect = () => {
-    if (!distConnectOpen) return;
-    const updated = { ...distributorConnections, [distConnectOpen]: { username: distUsername } };
+  const handleDistOAuthSuccess = useCallback((distId: string) => {
+    const email = DIST_MOCK_EMAILS[distId] ?? `musicbusiness@${distId}.com`;
+    const updated = { ...distributorConnections, [distId]: { username: email } };
     setDistributorConnections(updated);
     try { localStorage.setItem(DIST_STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
     toast.success("Distribuidora conectada com sucesso.");
-    setDistConnectOpen(null);
-    setDistUsername("");
-    setDistApiKey("");
+  }, [distributorConnections]);
+
+  // Listener postMessage — popup OAuth distribuidora envia musicos360_oauth_success
+  useEffect(() => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type !== "musicos360_oauth_success") return;
+      const distId = event.data?.platform as string;
+      if (!distId || !DIST_MOCK_EMAILS[distId]) return;
+      distPopupRef.current = null;
+      handleDistOAuthSuccess(distId);
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [handleDistOAuthSuccess]);
+
+  const openDistPopup = (distId: string) => {
+    const w = 480; const h = 600;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popup = window.open(
+      `/oauth/${distId}`,
+      `musicos360_oauth_${distId}`,
+      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+    );
+    if (popup) distPopupRef.current = popup;
   };
 
   const handleDistDisconnect = (id: string) => {
@@ -1576,7 +1606,7 @@ export default function Configuracoes() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => { setDistConnectOpen(dist.id); setDistUsername(""); setDistApiKey(""); }}
+                            onClick={() => openDistPopup(dist.id)}
                             data-testid={`button-dist-connect-${dist.id}`}
                           >
                             Conectar
@@ -1590,45 +1620,6 @@ export default function Configuracoes() {
               </CardContent>
             </Card>
 
-            {/* Dialog conectar distribuidora */}
-            <Dialog open={Boolean(distConnectOpen)} onOpenChange={(o) => { if (!o) { setDistConnectOpen(null); setDistUsername(""); setDistApiKey(""); } }}>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Conectar {DISTRIBUTORS.find(d => d.id === distConnectOpen)?.name}</DialogTitle>
-                  <DialogDescription>Informe as credenciais da sua conta para autorizar o envio de lançamentos.</DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4 pt-2">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dist-username">E-mail / Usuário</Label>
-                    <Input
-                      id="dist-username"
-                      placeholder="seu@email.com"
-                      value={distUsername}
-                      onChange={(e) => setDistUsername(e.target.value)}
-                      data-testid="input-dist-username"
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="dist-apikey">API Key ou Senha</Label>
-                    <Input
-                      id="dist-apikey"
-                      type="password"
-                      placeholder="••••••••••••"
-                      value={distApiKey}
-                      onChange={(e) => setDistApiKey(e.target.value)}
-                      data-testid="input-dist-apikey"
-                    />
-                  </div>
-                  <div className="flex justify-end gap-2 pt-2">
-                    <Button variant="outline" onClick={() => { setDistConnectOpen(null); setDistUsername(""); setDistApiKey(""); }}>Cancelar</Button>
-                    <Button onClick={handleDistConnect} disabled={!distUsername.trim()} data-testid="button-dist-save">
-                      <Check className="h-4 w-4 mr-1" />
-                      Conectar
-                    </Button>
-                  </div>
-                </div>
-              </DialogContent>
-            </Dialog>
 
             {/* Dialog — Website / Captação de Leads (snippet de código, sem OAuth) */}
             <Dialog open={websiteLeadOpen} onOpenChange={setWebsiteLeadOpen}>
