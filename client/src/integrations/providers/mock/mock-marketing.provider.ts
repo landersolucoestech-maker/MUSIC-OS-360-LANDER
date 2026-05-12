@@ -62,9 +62,9 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(15), endDate: daysAgo(2), updatedAt: daysAgo(2),
     },
   ],
-  google_ads: [
+  google_business: [
     {
-      id: "GAD-001", platform: "google_ads",
+      id: "GAD-001", platform: "google_business",
       name: "Search — Contratação Shows Brasil", status: "active",
       objective: "Leads",
       budget: 200, budgetType: "daily", spent: 4_200,
@@ -73,7 +73,7 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(21), updatedAt: daysAgo(0),
     },
     {
-      id: "GAD-002", platform: "google_ads",
+      id: "GAD-002", platform: "google_business",
       name: "YouTube — Videoclipe Promoção", status: "active",
       objective: "Visualizações",
       budget: 80, budgetType: "daily", spent: 1_120,
@@ -82,7 +82,7 @@ const MOCK_CAMPAIGNS: Partial<Record<MarketingPlatformId, ICampaign[]>> = {
       startDate: daysAgo(14), updatedAt: daysAgo(0),
     },
     {
-      id: "GAD-003", platform: "google_ads",
+      id: "GAD-003", platform: "google_business",
       name: "Display — Brand Awareness Q4", status: "ended",
       objective: "Reconhecimento",
       budget: 1500, budgetType: "lifetime", spent: 1_500,
@@ -223,13 +223,14 @@ const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
       { id: "SP-001", title: "Monthly Listeners — Top Playlist", type: "image", views: 0, likes: 12_400, comments: 0, engagementRate: 3.2, publishedAt: daysAgo(7) },
     ],
   },
-  corp_google: {
-    platform: "corp_google",
+  google_business: {
+    platform: "google_business",
     period: { from: daysAgo(30), to: daysAgo(0) },
-    impressions: 3_200_000, reach: 1_480_000,
-    engagement: 128_000, engagementRate: 4.0, clicks: 84_600,
+    impressions: 4_090_000, reach: 1_569_000,
+    engagement: 149_300, engagementRate: 3.6, clicks: 105_900,
     topPosts: [
-      { id: "GA-001", title: "Página Home — Sessões Orgânicas", type: "image", views: 48_200, likes: 0, comments: 0, engagementRate: 3.1, publishedAt: daysAgo(1) },
+      { id: "GA-001", title: "Página Home — Sessões Orgânicas (Analytics)", type: "image", views: 48_200, likes: 0, comments: 0, engagementRate: 3.1, publishedAt: daysAgo(1) },
+      { id: "GAD-001", title: "Search — Contratação Shows Brasil (Ads)", type: "image", views: 89_000, likes: 0, comments: 0, engagementRate: 7.1, publishedAt: daysAgo(21) },
     ],
   },
   corp_deezer: {
@@ -331,12 +332,20 @@ class MockCorpSpotifyProvider extends BaseMockMarketingProvider {
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1100)); }
 }
 
-class MockCorpGoogleProvider extends BaseMockMarketingProvider {
-  getPlatformId = (): MarketingPlatformId => "corp_google";
+class MockGoogleBusinessProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "google_business";
   getCategory   = (): MarketingCategory   => "corporate_metrics";
-  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_google!; }
-  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_google!.topPosts ?? []).slice(0, limit); }
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.google_business!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.google_business!.topPosts ?? []).slice(0, limit); }
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 900)); }
+  async getCampaigns(): Promise<ICampaign[]> { return MOCK_CAMPAIGNS.google_business ?? []; }
+  async getCampaignById(id: string): Promise<ICampaign | null> {
+    return (MOCK_CAMPAIGNS.google_business ?? []).find(c => c.id === id) ?? null;
+  }
+  async syncCampaigns(): Promise<ICampaignSyncResult> {
+    await new Promise(r => setTimeout(r, 1000));
+    return { synced: (MOCK_CAMPAIGNS.google_business ?? []).length, updated: 1, errors: 0, lastSyncAt: new Date().toISOString() };
+  }
 }
 
 class MockCorpDeezerProvider extends BaseMockMarketingProvider {
@@ -402,13 +411,12 @@ export const mockMarketingProviders: Record<MarketingPlatformId, IMarketingProvi
   meta_business:    new MockMetaBusinessProvider(),
   youtube_business: new MockYouTubeBusinessProvider(),
   tiktok_business:  new MockTikTokBusinessProvider(),
+  google_business:  new MockGoogleBusinessProvider(),
   corp_spotify:     new MockCorpSpotifyProvider(),
-  corp_google:      new MockCorpGoogleProvider(),
   corp_deezer:      new MockCorpDeezerProvider(),
   corp_soundcloud:  new MockCorpSoundCloudProvider(),
   corp_apple_music: new MockCorpAppleMusicProvider(),
   // ── Tráfego Pago
-  google_ads:       new MockPaidAdsProvider("google_ads"),
   spotify_ads:      new MockPaidAdsProvider("spotify_ads"),
   deezer_ads:       new MockPaidAdsProvider("deezer_ads"),
   apple_music_ads:  new MockPaidAdsProvider("apple_music_ads"),

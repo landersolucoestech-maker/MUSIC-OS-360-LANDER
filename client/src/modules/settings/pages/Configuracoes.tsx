@@ -43,6 +43,8 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
+import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -178,6 +180,7 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -213,6 +216,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: acrcloudStatus } = useACRCloudStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
@@ -386,6 +390,16 @@ export default function Configuracoes() {
       category: "Direitos Autorais",
       configurable: true,
     },
+    // ── Monitoramento Musical ──────────────────────────────────────────────────
+    {
+      id: "acrcloud",
+      name: "ACRCloud",
+      icon: "📡",
+      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Fingerprint de áudio — monitoramento de execuções em rádio, TV, streaming e vídeo",
+      category: "Monitoramento Musical",
+      configurable: true,
+    },
     // ── Marketing Digital — contas corporativas (métricas + tráfego pago) ──────
     // Todas as plataformas coexistem num único ecossistema operacional.
     // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
@@ -418,11 +432,11 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "corp_google",
-      name: "Google Analytics",
+      id: "google_business",
+      name: "Google Business",
       icon: "🔍",
-      status: isMarketingConnected("corp_google") ? "conectado" : "desconectado",
-      description: "Google Analytics 4 + Search Console — presença web e tráfego orgânico da empresa",
+      status: isMarketingConnected("google_business") ? "conectado" : "desconectado",
+      description: "Google Analytics 4 + Search Console + Google Ads — presença web, tráfego orgânico e campanhas",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -436,15 +450,6 @@ export default function Configuracoes() {
       configurable: true,
     },
     // ── Tráfego pago corporativo
-    {
-      id: "google_ads",
-      name: "Google Ads",
-      icon: "🔍",
-      status: isMarketingConnected("google_ads") ? "conectado" : "desconectado",
-      description: "Search, Display e YouTube Ads — conta Google Ads da empresa",
-      category: "Marketing Digital",
-      configurable: true,
-    },
     {
       id: "spotify_ads",
       name: "Spotify Ad Studio",
@@ -518,9 +523,9 @@ export default function Configuracoes() {
   // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
     // Métricas corporativas (contas oficiais da empresa)
-    "meta_business", "youtube_business", "tiktok_business", "corp_google", "corp_spotify",
+    "meta_business", "youtube_business", "tiktok_business", "google_business", "corp_spotify",
     // Tráfego pago (contas de anúncios da empresa)
-    "google_ads", "spotify_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
+    "spotify_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
   ]);
 
   // Handlers para plataformas que abrem um ConfigDialog dedicado
@@ -531,6 +536,7 @@ export default function Configuracoes() {
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
+    acrcloud:      () => setAcrcloudConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => setNfeConfigOpen(true),
   };
@@ -1747,6 +1753,10 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <ACRCloudConfigDialog
+              open={acrcloudConfigOpen}
+              onOpenChange={setAcrcloudConfigOpen}
             />
 
             <NfeConfigDialog

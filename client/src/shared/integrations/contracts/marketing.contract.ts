@@ -23,14 +23,13 @@ export type MarketingPlatformId =
   | "meta_business"       // Meta Business Suite — Facebook + Instagram + Meta Ads (unificado)
   | "youtube_business"    // YouTube Business — YouTube Studio + YouTube Ads (unificado)
   | "tiktok_business"     // TikTok Business — TikTok for Business + TikTok Ads (unificado)
+  | "google_business"     // Google Business — Analytics 4 + Search Console + Google Ads (unificado)
   | "corp_spotify"        // Spotify for Artists — perfil oficial da empresa
-  | "corp_google"         // Google Analytics + Search Console — presença web da empresa
   | "corp_deezer"         // Deezer for Artists — presença da label no Deezer
   | "corp_soundcloud"     // SoundCloud Pro — perfil oficial da label
   | "corp_apple_music"    // Apple Music for Artists — presença da label no Apple Music
   // ── Tráfego Pago ─────────────────────────────────────────────────────────
   // Contas de anúncios pagos da empresa. Login obrigatório.
-  | "google_ads"
   | "spotify_ads"
   | "deezer_ads"
   | "apple_music_ads"
