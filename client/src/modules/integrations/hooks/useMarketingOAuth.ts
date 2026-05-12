@@ -1,13 +1,29 @@
 /**
  * modules/integrations/hooks/useMarketingOAuth.ts
  *
- * Hook OAuth unificado para todas as integrações de Marketing Digital.
- * Substitui useLeadOAuth + usePaidAdsOAuth no contexto de Configuracoes.tsx.
+ * Hook OAuth unificado para integrações de Marketing Digital — contas corporativas.
+ *
+ * ARQUITECTURA CORRECTA:
+ *   · Plataformas de ARTISTAS (Instagram, TikTok, Spotify, YouTube, Deezer, Apple Music,
+ *     SoundCloud) → automáticas via links do cadastro do artista. SEM integração manual aqui.
+ *
+ *   · Este hook trata APENAS contas corporativas da empresa/label/publisher:
+ *       corp_instagram   — conta Instagram oficial da empresa
+ *       corp_tiktok      — conta TikTok oficial da empresa
+ *       corp_youtube     — canal YouTube oficial da empresa
+ *       corp_spotify     — perfil Spotify oficial da empresa
+ *       meta_ads         — Meta Ads (Facebook + Instagram Ads)
+ *       google_ads       — Google Ads
+ *       tiktok_ads       — TikTok Ads Manager
+ *       spotify_ads      — Spotify Ad Studio
+ *       youtube_ads      — YouTube Ads (Google)
+ *       deezer_ads       — Deezer Ad Manager
+ *       apple_music_ads  — Apple Music for Artists (ads)
+ *       soundcloud_ads   — SoundCloud Ads
  *
  * Categorias:
- *   Tráfego Pago   → meta_ads | google_ads | tiktok_ads
- *   Captação Leads → linkedin | facebook_leads
- *   Métricas       → youtube_analytics | instagram_insights | tiktok_analytics
+ *   corporate_metrics — analytics das contas oficiais da empresa
+ *   paid_ads          — plataformas de tráfego pago
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -21,22 +37,44 @@ export type { MarketingPlatformId };
 
 const STORAGE_KEY = "musicos360_marketing_oauth_connections";
 
-// ─── Metadata por plataforma ──────────────────────────────────────────────────
+// ─── Categoria por plataforma ────────────────────────────────────────────────
 
 export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
-  meta_ads:           "paid_traffic",
-  google_ads:         "paid_traffic",
-  tiktok_ads:         "paid_traffic",
-  linkedin:           "lead_capture",
-  facebook_leads:     "lead_capture",
-  youtube_analytics:  "metrics",
-  instagram_insights: "metrics",
-  tiktok_analytics:   "metrics",
+  // Métricas corporativas
+  corp_instagram:  "corporate_metrics",
+  corp_tiktok:     "corporate_metrics",
+  corp_youtube:    "corporate_metrics",
+  corp_spotify:    "corporate_metrics",
+  // Tráfego pago
+  meta_ads:        "paid_ads",
+  google_ads:      "paid_ads",
+  tiktok_ads:      "paid_ads",
+  spotify_ads:     "paid_ads",
+  youtube_ads:     "paid_ads",
+  deezer_ads:      "paid_ads",
+  apple_music_ads: "paid_ads",
+  soundcloud_ads:  "paid_ads",
 };
 
-// ─── Mock accounts (simulam dados reais após OAuth) ───────────────────────────
+// ─── Contas mock (simulam dados reais após OAuth) ─────────────────────────────
 
 const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountId: string }> = {
+  corp_instagram: {
+    accountName: "@musicbusiness_oficial (Business)",
+    accountId:   "IG_CORP_987654321",
+  },
+  corp_tiktok: {
+    accountName: "@musicbusiness TikTok (Business)",
+    accountId:   "TT-CORP-7890123",
+  },
+  corp_youtube: {
+    accountName: "Music Business — YouTube Studio",
+    accountId:   "UCmusicbusiness123456",
+  },
+  corp_spotify: {
+    accountName: "Music Business — Spotify for Artists",
+    accountId:   "SP-CORP-456789",
+  },
   meta_ads: {
     accountName: "Music Business — Meta Business Suite",
     accountId:   "act_9012345678",
@@ -46,28 +84,28 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
     accountId:   "MCC-123-456-789",
   },
   tiktok_ads: {
-    accountName: "MusicBusiness TikTok Ads Manager",
+    accountName: "MusicBusiness — TikTok Ads Manager",
     accountId:   "TT-ADV-4567890",
   },
-  linkedin: {
-    accountName: "Music Business — LinkedIn Campaign Manager",
-    accountId:   "LI-ORG-456321",
+  spotify_ads: {
+    accountName: "Music Business — Spotify Ad Studio",
+    accountId:   "SP-ADV-123456",
   },
-  facebook_leads: {
-    accountName: "Music Business — Meta Lead Ads",
-    accountId:   "act_8823456789",
+  youtube_ads: {
+    accountName: "Music Business — YouTube Ads",
+    accountId:   "YT-ADV-789012",
   },
-  youtube_analytics: {
-    accountName: "Music Business — YouTube Studio",
-    accountId:   "UCmusicbusiness123456",
+  deezer_ads: {
+    accountName: "Music Business — Deezer Ad Manager",
+    accountId:   "DZ-ADV-345678",
   },
-  instagram_insights: {
-    accountName: "@musicbusiness_oficial",
-    accountId:   "IG_987654321",
+  apple_music_ads: {
+    accountName: "Music Business — Apple Music for Artists",
+    accountId:   "AM-ADV-901234",
   },
-  tiktok_analytics: {
-    accountName: "MusicBusiness TikTok Creator",
-    accountId:   "TT-CRT-7890123",
+  soundcloud_ads: {
+    accountName: "Music Business — SoundCloud Ads",
+    accountId:   "SC-ADV-567890",
   },
 };
 
@@ -101,16 +139,14 @@ export function useMarketingOAuth() {
     saveConnections(connections);
   }, [connections]);
 
-  /** Simula o fluxo OAuth: abre popup → retorna token → armazena conexão */
+  /** Simula fluxo OAuth: popup → token → armazena conexão (~1.8s delay) */
   const connect = useCallback(
     async (platform: MarketingPlatformId, scopes: string[]): Promise<void> => {
       return new Promise((resolve) => {
         setTimeout(() => {
           const mock = MOCK_ACCOUNTS[platform];
-          const now = new Date().toISOString();
-          const expiresAt = new Date(
-            Date.now() + 60 * 24 * 3600 * 1000
-          ).toISOString();
+          const now  = new Date().toISOString();
+          const expiresAt = new Date(Date.now() + 60 * 24 * 3600 * 1000).toISOString();
 
           setConnections((prev) => ({
             ...prev,
@@ -122,7 +158,7 @@ export function useMarketingOAuth() {
               connectedAt: now,
               expiresAt,
               scopes,
-              category:    MARKETING_PLATFORM_CATEGORY[platform],
+              category: MARKETING_PLATFORM_CATEGORY[platform],
             } satisfies IMarketingOAuthConnection,
           }));
           resolve();
@@ -152,7 +188,7 @@ export function useMarketingOAuth() {
     [connections]
   );
 
-  /** Devolve todas as conexões de uma categoria */
+  /** Todas as conexões de uma categoria */
   const getConnectionsByCategory = useCallback(
     (category: MarketingCategory): IMarketingOAuthConnection[] =>
       Object.values(connections).filter(
@@ -171,6 +207,13 @@ export function useMarketingOAuth() {
     [connections]
   );
 
+  /** Total de plataformas conectadas */
+  const totalConnected = useCallback(
+    (): number =>
+      Object.values(connections).filter((c) => c?.connected).length,
+    [connections]
+  );
+
   return {
     connections,
     connect,
@@ -179,5 +222,6 @@ export function useMarketingOAuth() {
     isConnected,
     getConnectionsByCategory,
     connectedCountByCategory,
+    totalConnected,
   };
 }

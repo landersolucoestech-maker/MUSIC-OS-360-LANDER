@@ -1,28 +1,38 @@
 /**
  * shared/integrations/contracts/marketing.contract.ts
  *
- * Contratos unificados para todas as integrações de Marketing Digital:
- * — Tráfego Pago (Meta Ads, Google Ads, TikTok Ads)
- * — Captação de Leads (LinkedIn, Facebook Lead Ads)
- * — Métricas & Analytics (YouTube, Instagram, TikTok Analytics)
+ * Contratos unificados para integrações de Marketing Digital — contas corporativas.
+ *
+ * ARQUITECTURA:
+ * — Plataformas dos ARTISTAS (Instagram, TikTok, Spotify, YouTube, Deezer, Apple Music,
+ *   SoundCloud) funcionam AUTOMATICAMENTE via links do cadastro do artista.
+ *   NÃO existe integração manual separada para artistas nessas plataformas.
+ *
+ * — Este módulo trata APENAS contas corporativas da empresa/label/publisher:
+ *   · Métricas Corporativas — contas analytics da empresa
+ *   · Tráfego Pago         — contas de anúncios da empresa
+ *   · Website & Outros     — formulários, landing pages, API directa
  */
 
-// ─── Tipos de plataforma ──────────────────────────────────────────────────────
+// ─── IDs de plataforma ────────────────────────────────────────────────────────
 
 export type MarketingPlatformId =
+  // Métricas Corporativas (analytics das contas oficiais da empresa)
+  | "corp_instagram"
+  | "corp_tiktok"
+  | "corp_youtube"
+  | "corp_spotify"
   // Tráfego Pago
   | "meta_ads"
   | "google_ads"
   | "tiktok_ads"
-  // Captação de Leads
-  | "linkedin"
-  | "facebook_leads"
-  // Métricas & Analytics
-  | "youtube_analytics"
-  | "instagram_insights"
-  | "tiktok_analytics";
+  | "spotify_ads"
+  | "youtube_ads"
+  | "deezer_ads"
+  | "apple_music_ads"
+  | "soundcloud_ads";
 
-export type MarketingCategory = "paid_traffic" | "lead_capture" | "metrics";
+export type MarketingCategory = "corporate_metrics" | "paid_ads";
 
 export type CampaignStatus = "active" | "paused" | "ended" | "draft" | "archived";
 
@@ -59,7 +69,7 @@ export interface ICampaignSyncResult {
   lastSyncAt: string;
 }
 
-// ─── Leads (Captação) ─────────────────────────────────────────────────────────
+// ─── Leads ────────────────────────────────────────────────────────────────────
 
 export interface ICapturedLead {
   id: string;
@@ -115,6 +125,7 @@ export interface IPlatformMetrics {
   savesTotal?: number;
   storiesImpressions?: number;
   reelsViews?: number;
+  streams?: number;
   topPosts?: ITopPost[];
 }
 
@@ -137,20 +148,13 @@ export interface IMarketingProvider {
   getPlatformId(): MarketingPlatformId;
   getCategory(): MarketingCategory;
   isConnected(): boolean;
-
-  // Tráfego Pago
   getCampaigns?(): Promise<ICampaign[]>;
   getCampaignById?(id: string): Promise<ICampaign | null>;
   syncCampaigns?(): Promise<ICampaignSyncResult>;
   pauseCampaign?(id: string): Promise<void>;
   resumeCampaign?(id: string): Promise<void>;
-
-  // Captação de Leads
   getLeads?(since?: string): Promise<ICapturedLead[]>;
   syncLeads?(): Promise<ILeadSyncResult>;
-  acknowledgeLeads?(ids: string[]): Promise<void>;
-
-  // Métricas & Analytics
   getMetrics?(period: IMetricsPeriod): Promise<IPlatformMetrics>;
   refreshMetrics?(): Promise<void>;
   getTopContent?(limit?: number): Promise<ITopPost[]>;
@@ -167,19 +171,4 @@ export interface IMarketingOAuthConnection {
   expiresAt?: string;
   scopes?: string[];
   category: MarketingCategory;
-}
-
-// ─── Configuração visual por plataforma (usada pelo dialog) ──────────────────
-
-export interface IMarketingPlatformConfig {
-  id: MarketingPlatformId;
-  label: string;
-  category: MarketingCategory;
-  description: string;
-  color: string;
-  bgColor: string;
-  borderColor: string;
-  textColor: string;
-  scopes: { key: string; label: string }[];
-  webhookSupport?: boolean;
 }

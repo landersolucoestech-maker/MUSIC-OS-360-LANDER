@@ -30,7 +30,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
-import { MarketingIntegrationsDialog, type MarketingDialogTab } from "@/modules/integrations/components/MarketingIntegrationsDialog";
+import { MarketingIntegrationsDialog } from "@/modules/integrations/components/MarketingIntegrationsDialog";
 import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
@@ -172,7 +172,6 @@ export default function Configuracoes() {
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [marketingOpen, setMarketingOpen] = useState(false);
-  const [marketingInitialTab, setMarketingInitialTab] = useState<MarketingDialogTab>("paid_traffic");
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
@@ -383,16 +382,54 @@ export default function Configuracoes() {
       category: "Direitos Autorais",
       configurable: true,
     },
-    // ── Tráfego Pago / Campanhas ──────────────────────────────────────────────
-    // Cada empresa autentica a sua própria conta de anúncios via OAuth.
-    // O sistema centraliza métricas, campanhas e automações de mídia paga.
+    // ── Marketing Digital — contas corporativas (métricas + tráfego pago) ──────
+    // Todas as plataformas coexistem num único ecossistema operacional.
+    // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
+    // ── Métricas corporativas
+    {
+      id: "corp_instagram",
+      name: "Instagram Business",
+      icon: "📸",
+      status: isMarketingConnected("corp_instagram") ? "conectado" : "desconectado",
+      description: "Analytics da conta Instagram oficial da empresa — alcance, impressões, reels, stories",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_tiktok",
+      name: "TikTok Business",
+      icon: "🎬",
+      status: isMarketingConnected("corp_tiktok") ? "conectado" : "desconectado",
+      description: "Analytics da conta TikTok oficial da empresa — views, seguidores, engajamento",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_youtube",
+      name: "YouTube Studio",
+      icon: "▶️",
+      status: isMarketingConnected("corp_youtube") ? "conectado" : "desconectado",
+      description: "Analytics do canal YouTube oficial da empresa — inscritos, watch time, CTR",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_spotify",
+      name: "Spotify for Artists",
+      icon: "🎵",
+      status: isMarketingConnected("corp_spotify") ? "conectado" : "desconectado",
+      description: "Métricas do perfil Spotify oficial da empresa — streams, ouvintes mensais",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    // ── Tráfego pago corporativo
     {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
       status: isMarketingConnected("meta_ads") ? "conectado" : "desconectado",
-      description: "Facebook & Instagram Ads — entre com a sua conta Business para gerir campanhas",
-      category: "Tráfego Pago / Campanhas",
+      description: "Facebook + Instagram Ads — gira campanhas da conta Business da empresa",
+      category: "Marketing Digital",
       configurable: true,
     },
     {
@@ -400,8 +437,8 @@ export default function Configuracoes() {
       name: "Google Ads",
       icon: "🔍",
       status: isMarketingConnected("google_ads") ? "conectado" : "desconectado",
-      description: "Search, Display e YouTube Ads — entre com a sua conta Google Ads",
-      category: "Tráfego Pago / Campanhas",
+      description: "Search, Display e YouTube Ads — conta Google Ads da empresa",
+      category: "Marketing Digital",
       configurable: true,
     },
     {
@@ -409,36 +446,64 @@ export default function Configuracoes() {
       name: "TikTok Ads",
       icon: "🎯",
       status: isMarketingConnected("tiktok_ads") ? "conectado" : "desconectado",
-      description: "TikTok Ads Manager — entre com a sua conta TikTok Ads para gerir campanhas",
-      category: "Tráfego Pago / Campanhas",
+      description: "TikTok Ads Manager — TopView, Spark Ads e In-Feed da empresa",
+      category: "Marketing Digital",
       configurable: true,
     },
     {
       id: "spotify_ads",
-      name: "Spotify Ads",
-      icon: "🎵",
-      status: "desconectado" as const,
-      description: "Spotify Ad Studio — campanhas de áudio e display para ouvintes da plataforma",
-      category: "Tráfego Pago / Campanhas",
-      configurable: false,
+      name: "Spotify Ad Studio",
+      icon: "🎧",
+      status: isMarketingConnected("spotify_ads") ? "conectado" : "desconectado",
+      description: "Anúncios de áudio e display no Spotify — segmentação por gênero musical",
+      category: "Marketing Digital",
+      configurable: true,
     },
     {
       id: "youtube_ads",
       name: "YouTube Ads",
-      icon: "▶️",
-      status: "desconectado" as const,
-      description: "YouTube Ads via Google — pre-roll, bumper ads e campanhas de discovery",
-      category: "Tráfego Pago / Campanhas",
-      configurable: false,
+      icon: "📺",
+      status: isMarketingConnected("youtube_ads") ? "conectado" : "desconectado",
+      description: "TrueView, Bumper e Discovery — anúncios em vídeo no YouTube",
+      category: "Marketing Digital",
+      configurable: true,
     },
     {
       id: "deezer_ads",
       name: "Deezer Ads",
       icon: "🎶",
+      status: isMarketingConnected("deezer_ads") ? "conectado" : "desconectado",
+      description: "Deezer Ad Manager — áudio e banner para ouvintes segmentados",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "apple_music_ads",
+      name: "Apple Music Ads",
+      icon: "🍎",
+      status: isMarketingConnected("apple_music_ads") ? "conectado" : "desconectado",
+      description: "Apple Music + App Store Search Ads — fãs no ecossistema Apple",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "soundcloud_ads",
+      name: "SoundCloud Ads",
+      icon: "☁️",
+      status: isMarketingConnected("soundcloud_ads") ? "conectado" : "desconectado",
+      description: "SoundCloud Ads — audiências indie e underground",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    // ── Website & Outros
+    {
+      id: "website",
+      name: "Website & Landing Pages",
+      icon: "🌐",
       status: "desconectado" as const,
-      description: "Deezer Ad Manager — anúncios de áudio para ouvintes do plano gratuito",
-      category: "Tráfego Pago / Campanhas",
-      configurable: false,
+      description: "Formulário público de captação, embed iFrame, API directa e sistemas de conversão",
+      category: "Marketing Digital",
+      configurable: true,
     },
     // ── Fiscal ────────────────────────────────────────────────────────────────
     {
@@ -478,11 +543,20 @@ export default function Configuracoes() {
     ecad:            () => setEcadConfigOpen(true),
     abramus:         () => setAbramusConfigOpen(true),
     ubc:             () => setUbcConfigOpen(true),
-    meta_ads:         () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
-    google_ads:       () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
-    tiktok_ads:       () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
-    nfe:              () => setNfeConfigOpen(true),
-    website_linkedin: () => { setMarketingInitialTab("lead_capture"); setMarketingOpen(true); },
+    corp_instagram:  () => setMarketingOpen(true),
+    corp_tiktok:     () => setMarketingOpen(true),
+    corp_youtube:    () => setMarketingOpen(true),
+    corp_spotify:    () => setMarketingOpen(true),
+    meta_ads:        () => setMarketingOpen(true),
+    google_ads:      () => setMarketingOpen(true),
+    tiktok_ads:      () => setMarketingOpen(true),
+    spotify_ads:     () => setMarketingOpen(true),
+    youtube_ads:     () => setMarketingOpen(true),
+    deezer_ads:      () => setMarketingOpen(true),
+    apple_music_ads: () => setMarketingOpen(true),
+    soundcloud_ads:  () => setMarketingOpen(true),
+    website:         () => setMarketingOpen(true),
+    nfe:             () => setNfeConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1401,7 +1475,7 @@ export default function Configuracoes() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Campanhas", "Fiscal", "Captação de Leads"].map((category) => {
+                  {["Assinatura Digital", "Direitos Autorais", "Marketing Digital", "Fiscal"].map((category) => {
                     const items = integracoes.filter((i) => i.category === category);
                     if (items.length === 0) return null;
                     return (
@@ -1574,7 +1648,6 @@ export default function Configuracoes() {
             <MarketingIntegrationsDialog
               open={marketingOpen}
               onOpenChange={setMarketingOpen}
-              initialTab={marketingInitialTab}
             />
             <EcadConfigDialog
               open={ecadConfigOpen}

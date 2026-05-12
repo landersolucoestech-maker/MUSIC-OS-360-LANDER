@@ -1,0 +1,125 @@
+Vou explicar pela última vez de forma objetiva, técnica e sem qualquer margem para interpretação errada.
+
+Estrutura correta das integrações e métricas
+Configuração automática via cadastro do artista
+
+As plataformas abaixo devem funcionar automaticamente através dos links informados no cadastro do artista, realizando coleta de métricas, monitoramento e analytics diretamente do perfil vinculado:
+
+Instagram
+TikTok
+Spotify
+YouTube
+Deezer
+Apple Music
+SoundCloud
+
+Ou seja:
+
+NÃO deve existir integração manual separada para artistas nessas plataformas.
+
+O sistema deve utilizar diretamente os links cadastrados no perfil do artista para:
+
+métricas
+analytics
+monitoramento
+crescimento
+engajamento
+alcance
+desempenho de conteúdo
+dados de streaming e redes sociais
+Configuração do usuário/empresa
+
+Já no ambiente do usuário/empresa, deve existir uma área própria de configurações e conexões corporativas.
+
+Essa área deve permitir:
+
+adicionar links oficiais da empresa
+conectar contas oficiais
+realizar login/autorização das plataformas
+configurar campanhas
+utilizar tráfego pago
+acessar métricas corporativas
+centralizar analytics operacionais
+Plataformas corporativas
+Métricas corporativas
+Instagram
+TikTok
+Spotify
+YouTube
+Tráfego pago corporativo
+Instagram Ads
+TikTok Ads
+Spotify Ads
+YouTube Ads
+Deezer Ads
+Apple Music Ads
+SoundCloud Ads
+Google Ads
+Outros
+Website
+páginas externas
+landing pages
+sistemas de conversão
+
+Importante:
+
+As configurações de métricas corporativas e tráfego pago devem coexistir no mesmo ambiente operacional, sem separação desnecessária entre elas.
+
+Erro grave da arquitetura atual
+
+Eu já falei diversas vezes que NÃO faz sentido separar tudo em:
+
+lista de plataformas
+aba de tráfego pago
+aba de captação de leads
+aba de métricas
+
+Essa arquitetura:
+
+fragmenta o módulo
+duplica integrações
+cria redundância operacional
+aumenta complexidade desnecessária
+piora usabilidade
+quebra o fluxo operacional
+gera experiência confusa para o usuário
+Estrutura correta do módulo Marketing
+
+O módulo Marketing deve ser totalmente UNIFICADO.
+
+Dentro do mesmo ecossistema operacional devem coexistir:
+
+métricas
+tráfego pago
+campanhas
+leads
+integrações
+analytics
+conversão
+monitoramento
+automações
+performance
+growth
+
+Tudo centralizado no mesmo módulo, compartilhando integrações, dados, métricas e fluxo operacional.
+
+Aba “Métricas” do módulo Marketing
+
+A aba de métricas NÃO deve exibir apenas dados dos artistas.
+
+Ela deve consolidar:
+
+métricas dos artistas
+métricas do usuário/empresa
+desempenho de campanhas
+dados de tráfego pago
+alcance
+conversão
+engajamento
+crescimento
+analytics gerais da operação
+performance de anúncios
+funil de aquisição
+dados consolidados das integrações
+
+Tudo precisa funcionar em um único painel inteligente, centralizado e integrado ao ecossistema completo do módulo Marketing.
