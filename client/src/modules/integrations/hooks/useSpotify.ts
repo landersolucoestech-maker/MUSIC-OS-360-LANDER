@@ -1,9 +1,9 @@
 /**
  * integrations/hooks/useSpotify.ts
  *
- * Hook stub para integração Spotify for Artists.
+ * Hook para integração Spotify for Artists.
  *
- * ESTADO ACTUAL: standalone — métricas são MOCK_DATA em ArtistaPlatformMetrics.
+ * ESTADO ACTUAL: standalone — credenciais persistidas em localStorage.
  * MIGRAÇÃO FUTURA:
  *   1. OAuth 2.0 com Spotify Web API (scope: user-read-private, playlist-read-private)
  *   2. Spotify for Artists API para métricas de streams e ouvintes
@@ -12,39 +12,103 @@
  * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider
  */
 
-import { useQuery } from "@tanstack/react-query";
-import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { disabledIntegration } from "@/shared/lib/disabled-integration";
 
-// ─── Tipos específicos do Spotify ─────────────────────────────────────────────
+const LS_KEY = "musicos360_spotify_credentials";
 
-export interface SpotifyStatus extends IntegrationRuntimeStatus {
-  integration_id: "spotify";
-  artist_id?: string | null;
-  oauth_scope?: string | null;
-  token_expires_at?: string | null;
+export interface SpotifyCredentials {
+  client_id: string;
+  client_secret: string;
+  artist_id?: string;
 }
 
-// ─── Hook de status ───────────────────────────────────────────────────────────
+export interface SpotifyStatus {
+  connected: boolean;
+  status: string;
+  has_credentials: boolean;
+  client_id?: string | null;
+  artist_id?: string | null;
+  last_error?: string | null;
+  last_checked_at: string;
+}
+
+function readCredentials(): SpotifyCredentials | null {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function useSpotifyStatus() {
   return useQuery<SpotifyStatus>({
     queryKey: ["integrations", "spotify", "status"],
-    queryFn: async (): Promise<SpotifyStatus> => ({
-      integration_id: "spotify",
-      status: "disabled",
-      connected: false,
-      artist_id: null,
-      oauth_scope: null,
-      token_expires_at: null,
-      last_error: null,
-      last_checked_at: new Date().toISOString(),
-    }),
-    staleTime: Infinity,
+    queryFn: async (): Promise<SpotifyStatus> => {
+      const creds = readCredentials();
+      if (creds?.client_id && creds?.client_secret) {
+        return {
+          connected: true,
+          status: "connected",
+          has_credentials: true,
+          client_id: creds.client_id,
+          artist_id: creds.artist_id ?? null,
+          last_error: null,
+          last_checked_at: new Date().toISOString(),
+        };
+      }
+      return {
+        connected: false,
+        status: "disconnected",
+        has_credentials: false,
+        client_id: null,
+        artist_id: null,
+        last_error: null,
+        last_checked_at: new Date().toISOString(),
+      };
+    },
+    staleTime: 0,
   });
 }
 
-// ─── Stubs desabilitados ──────────────────────────────────────────────────────
+export function useSpotifySaveCredentials() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: SpotifyCredentials) => {
+      try {
+        localStorage.setItem(LS_KEY, JSON.stringify(input));
+      } catch {
+        throw new Error("Não foi possível salvar as credenciais.");
+      }
+      return input;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "spotify", "status"] });
+      toast.success("Spotify conectado com sucesso.");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useSpotifyDeleteCredentials() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      try {
+        localStorage.removeItem(LS_KEY);
+      } catch {
+        throw new Error("Não foi possível remover as credenciais.");
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "spotify", "status"] });
+      toast.success("Spotify desconectado.");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
 
 export function useSpotifyArtistMetrics() {
   return {

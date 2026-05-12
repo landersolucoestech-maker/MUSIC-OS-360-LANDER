@@ -53,6 +53,16 @@ import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokA
 import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
+import { SpotifyConfigDialog } from "@/modules/integrations/components/SpotifyConfigDialog";
+import { useSpotifyStatus } from "@/modules/integrations/hooks/useSpotify";
+import { YouTubeConfigDialog } from "@/modules/integrations/components/YouTubeConfigDialog";
+import { useYouTubeStatus } from "@/modules/integrations/hooks/useYouTube";
+import { DeezerConfigDialog } from "@/modules/integrations/components/DeezerConfigDialog";
+import { useDeezerStatus } from "@/modules/integrations/hooks/useDeezer";
+import { SoundCloudConfigDialog } from "@/modules/integrations/components/SoundCloudConfigDialog";
+import { useSoundCloudStatus } from "@/modules/integrations/hooks/useSoundCloud";
+import { AppleMusicConfigDialog } from "@/modules/integrations/components/AppleMusicConfigDialog";
+import { useAppleMusicStatus } from "@/modules/integrations/hooks/useAppleMusic";
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -190,6 +200,11 @@ export default function Configuracoes() {
   const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
   const [acrCloudConfigOpen, setAcrCloudConfigOpen] = useState(false);
+  const [spotifyConfigOpen, setSpotifyConfigOpen] = useState(false);
+  const [youtubeConfigOpen, setYoutubeConfigOpen] = useState(false);
+  const [deezerConfigOpen, setDeezerConfigOpen] = useState(false);
+  const [soundcloudConfigOpen, setSoundcloudConfigOpen] = useState(false);
+  const [appleMusicConfigOpen, setAppleMusicConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
   const [distributorConnections, setDistributorConnections] = useState<Record<string, { username: string }>>(() => {
@@ -229,6 +244,11 @@ export default function Configuracoes() {
   const { data: tiktokAdsStatus } = useTikTokAdsStatus();
   const { data: nfeStatus } = useNfeStatus();
   const { data: acrCloudStatus } = useACRCloudStatus();
+  const { data: spotifyStatus } = useSpotifyStatus();
+  const { data: youtubeStatus } = useYouTubeStatus();
+  const { data: deezerStatus } = useDeezerStatus();
+  const { data: soundcloudStatus } = useSoundCloudStatus();
+  const { data: appleMusicStatus } = useAppleMusicStatus();
 
   // Estados para aba de Usuários
   const [usuarioFormModal, setUsuarioFormModal] = useState<{ open: boolean; mode: "create" | "edit"; usuario?: Usuario }>({ open: false, mode: "create" });
@@ -391,6 +411,51 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
+      id: "spotify",
+      name: "Spotify",
+      icon: "🎵",
+      status: spotifyStatus?.connected ? "conectado" : "desconectado",
+      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "youtube",
+      name: "YouTube Music",
+      icon: "▶️",
+      status: youtubeStatus?.connected ? "conectado" : "desconectado",
+      description: "Métricas de visualizações, receita e crescimento de canal",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "deezer",
+      name: "Deezer",
+      icon: "🎶",
+      status: deezerStatus?.connected ? "conectado" : "desconectado",
+      description: "Relatórios de streams e royalties da plataforma Deezer",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "soundcloud",
+      name: "SoundCloud",
+      icon: "☁️",
+      status: soundcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Estatísticas de reprodução e engajamento no SoundCloud",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "apple_music",
+      name: "Apple Music",
+      icon: "🍎",
+      status: appleMusicStatus?.connected ? "conectado" : "desconectado",
+      description: "Dados de streams e relatórios do Apple Music Connect",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
       id: "ecad",
       name: "ECAD",
       icon: "📊",
@@ -486,6 +551,11 @@ export default function Configuracoes() {
     tiktok_ads: () => setTiktokAdsConfigOpen(true),
     nfe: () => setNfeConfigOpen(true),
     acrcloud: () => setAcrCloudConfigOpen(true),
+    spotify: () => setSpotifyConfigOpen(true),
+    youtube: () => setYoutubeConfigOpen(true),
+    deezer: () => setDeezerConfigOpen(true),
+    soundcloud: () => setSoundcloudConfigOpen(true),
+    apple_music: () => setAppleMusicConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1642,6 +1712,26 @@ export default function Configuracoes() {
             <ACRCloudConfigDialog
               open={acrCloudConfigOpen}
               onOpenChange={setAcrCloudConfigOpen}
+            />
+            <SpotifyConfigDialog
+              open={spotifyConfigOpen}
+              onOpenChange={setSpotifyConfigOpen}
+            />
+            <YouTubeConfigDialog
+              open={youtubeConfigOpen}
+              onOpenChange={setYoutubeConfigOpen}
+            />
+            <DeezerConfigDialog
+              open={deezerConfigOpen}
+              onOpenChange={setDeezerConfigOpen}
+            />
+            <SoundCloudConfigDialog
+              open={soundcloudConfigOpen}
+              onOpenChange={setSoundcloudConfigOpen}
+            />
+            <AppleMusicConfigDialog
+              open={appleMusicConfigOpen}
+              onOpenChange={setAppleMusicConfigOpen}
             />
           </TabsContent>
 
