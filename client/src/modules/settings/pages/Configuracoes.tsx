@@ -35,8 +35,6 @@ import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusCo
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
 import { useEcadStatus } from "@/modules/integrations/hooks/useEcad";
-import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
-import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
 import { AutentiqueConfigDialog } from "@/modules/integrations/components/AutentiqueConfigDialog";
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
 import { ClicksignConfigDialog } from "@/modules/integrations/components/ClicksignConfigDialog";
@@ -45,12 +43,6 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
-import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
-import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
-import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
-import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
-import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
-import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -181,14 +173,10 @@ export default function Configuracoes() {
   const [leadIntegrationsOpen, setLeadIntegrationsOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
-  const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
-  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
-  const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
-  const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
