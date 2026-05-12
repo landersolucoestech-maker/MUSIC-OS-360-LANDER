@@ -30,8 +30,7 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
-import { MarketingIntegrationsDialog } from "@/modules/integrations/components/MarketingIntegrationsDialog";
-import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
+import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
