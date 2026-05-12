@@ -30,7 +30,8 @@ import {
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
-import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
+import { MarketingIntegrationsDialog, type MarketingDialogTab } from "@/modules/integrations/components/MarketingIntegrationsDialog";
+import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
@@ -43,8 +44,6 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
-import { PaidAdsIntegrationsDialog } from "@/modules/integrations/components/PaidAdsIntegrationsDialog";
-import { usePaidAdsOAuth, type PaidAdsPlatform } from "@/modules/integrations/hooks/usePaidAdsOAuth";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -172,15 +171,14 @@ export default function Configuracoes() {
   const [newRoleName, setNewRoleName] = useState("");
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
-  const [leadIntegrationsOpen, setLeadIntegrationsOpen] = useState(false);
+  const [marketingOpen, setMarketingOpen] = useState(false);
+  const [marketingInitialTab, setMarketingInitialTab] = useState<MarketingDialogTab>("paid_traffic");
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
-  const [paidAdsOpen, setPaidAdsOpen] = useState(false);
-  const [paidAdsInitialTab, setPaidAdsInitialTab] = useState<PaidAdsPlatform>("meta_ads");
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -216,7 +214,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { isConnected: isPaidAdsConnected } = usePaidAdsOAuth();
+  const { isConnected: isMarketingConnected } = useMarketingOAuth();
   const { data: nfeStatus } = useNfeStatus();
 
   // Estados para aba de Usuários
@@ -392,7 +390,7 @@ export default function Configuracoes() {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
-      status: isPaidAdsConnected("meta_ads") ? "conectado" : "desconectado",
+      status: isMarketingConnected("meta_ads") ? "conectado" : "desconectado",
       description: "Facebook & Instagram Ads — entre com a sua conta Business para gerir campanhas",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
@@ -401,7 +399,7 @@ export default function Configuracoes() {
       id: "google_ads",
       name: "Google Ads",
       icon: "🔍",
-      status: isPaidAdsConnected("google_ads") ? "conectado" : "desconectado",
+      status: isMarketingConnected("google_ads") ? "conectado" : "desconectado",
       description: "Search, Display e YouTube Ads — entre com a sua conta Google Ads",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
@@ -410,7 +408,7 @@ export default function Configuracoes() {
       id: "tiktok_ads",
       name: "TikTok Ads",
       icon: "🎯",
-      status: isPaidAdsConnected("tiktok_ads") ? "conectado" : "desconectado",
+      status: isMarketingConnected("tiktok_ads") ? "conectado" : "desconectado",
       description: "TikTok Ads Manager — entre com a sua conta TikTok Ads para gerir campanhas",
       category: "Tráfego Pago / Campanhas",
       configurable: true,
@@ -480,11 +478,11 @@ export default function Configuracoes() {
     ecad:            () => setEcadConfigOpen(true),
     abramus:         () => setAbramusConfigOpen(true),
     ubc:             () => setUbcConfigOpen(true),
-    meta_ads:        () => { setPaidAdsInitialTab("meta_ads");   setPaidAdsOpen(true); },
-    google_ads:      () => { setPaidAdsInitialTab("google_ads"); setPaidAdsOpen(true); },
-    tiktok_ads:      () => { setPaidAdsInitialTab("tiktok_ads"); setPaidAdsOpen(true); },
-    nfe:             () => setNfeConfigOpen(true),
-    website_linkedin: () => setLeadIntegrationsOpen(true),
+    meta_ads:         () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
+    google_ads:       () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
+    tiktok_ads:       () => { setMarketingInitialTab("paid_traffic");  setMarketingOpen(true); },
+    nfe:              () => setNfeConfigOpen(true),
+    website_linkedin: () => { setMarketingInitialTab("lead_capture"); setMarketingOpen(true); },
   };
 
   const handleSaveProfile = () => {
@@ -1573,9 +1571,10 @@ export default function Configuracoes() {
               </DialogContent>
             </Dialog>
 
-            <LeadIntegrationsDialog
-              open={leadIntegrationsOpen}
-              onOpenChange={setLeadIntegrationsOpen}
+            <MarketingIntegrationsDialog
+              open={marketingOpen}
+              onOpenChange={setMarketingOpen}
+              initialTab={marketingInitialTab}
             />
             <EcadConfigDialog
               open={ecadConfigOpen}
@@ -1584,11 +1583,6 @@ export default function Configuracoes() {
             <AbramusConfigDialog
               open={abramusConfigOpen}
               onOpenChange={setAbramusConfigOpen}
-            />
-            <PaidAdsIntegrationsDialog
-              open={paidAdsOpen}
-              onOpenChange={setPaidAdsOpen}
-              initialTab={paidAdsInitialTab}
             />
             <AutentiqueConfigDialog
               open={autentiqueConfigOpen}

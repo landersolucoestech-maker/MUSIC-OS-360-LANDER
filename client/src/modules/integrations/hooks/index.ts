@@ -55,5 +55,8 @@ export * from "./useAbramus";
 // ─── Music Monitoring (ACRCloud) ──────────────────────────────────────────────
 export * from "./useACRCloud";
 
+// ─── Marketing Digital (OAuth unificado) ─────────────────────────────────────
+export * from "./useMarketingOAuth";
+
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export * from "./useChat";
