@@ -29,6 +29,7 @@ import {
   Moon,
 } from "lucide-react";
 import { useTheme } from "@/app/providers/ThemeContext";
+import { useSyncTenantFromJWT } from "@/app/providers/TenantContext";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -219,6 +220,7 @@ export function MainLayout({
   actions,
   noPadding = false,
 }: MainLayoutProps) {
+  useSyncTenantFromJWT();
 
   return (
     <div className="flex min-h-screen w-full bg-background">

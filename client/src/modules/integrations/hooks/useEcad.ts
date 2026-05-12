@@ -38,13 +38,13 @@ interface StoredCreds {
 }
 
 function readCreds(): StoredCreds | null {
-  try { return JSON.parse(localStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
+  try { return JSON.parse(sessionStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
 }
 function writeCreds(c: StoredCreds) {
-  try { localStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  try { sessionStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
 }
 function clearCreds() {
-  try { localStorage.removeItem(CRED_KEY); } catch { /* ignore */ }
+  try { sessionStorage.removeItem(CRED_KEY); } catch { /* ignore */ }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

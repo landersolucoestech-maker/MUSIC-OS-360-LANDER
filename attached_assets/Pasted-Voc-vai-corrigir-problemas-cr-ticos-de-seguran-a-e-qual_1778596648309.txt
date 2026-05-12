@@ -1,0 +1,211 @@
+Você vai corrigir problemas críticos de segurança e qualidade no projeto MUSIC OS 360°.
+Execute EXATAMENTE como descrito. Um arquivo por vez. Não altere nada além do especificado.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 1 — RBAC: corrigir useSyncTenantFromJWT
+Arquivo: client/src/app/providers/TenantContext.tsx
+
+PASSO 1A — Adicionar import de getAccessToken no topo do arquivo (após os imports existentes):
+  import { getAccessToken } from "@/shared/lib/api-client";
+
+PASSO 1B — Substituir TODO o corpo da função useSyncTenantFromJWT pelo seguinte:
+  export function useSyncTenantFromJWT(): void {
+    const { setTenant } = useTenant();
+    useEffect(() => {
+      if (MOCK_MODE) return;
+      const token = getAccessToken();
+      if (!token) return;
+      try {
+        const parts = token.split(".");
+        if (parts.length < 2) return;
+        const decoded = JSON.parse(
+          atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+        ) as { role?: TenantRole; org_id?: string };
+        if (!decoded.role || !(decoded.role in ROLE_PERMISSIONS)) return;
+        setTenant(prev => ({
+          ...prev,
+          id:          decoded.org_id ?? prev.id,
+          permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.viewer,
+        }));
+      } catch { /* JWT inválido */ }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+  }
+
+PASSO 1C — Alterar a inicialização do useState no TenantProvider:
+  Substituir:
+    const [tenant, setTenant] = useState<Tenant>(MOCK_TENANT);
+  Por:
+    const initialTenant: Tenant = MOCK_MODE
+      ? MOCK_TENANT
+      : { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.viewer };
+    const [tenant, setTenant] = useState<Tenant>(initialTenant);
+
+PASSO 1D — Em client/src/shared/components/MainLayout.tsx, adicionar no topo do componente:
+  import { useSyncTenantFromJWT } from "@/app/providers/TenantContext";
+  // dentro do componente, primeira linha:
+  useSyncTenantFromJWT();
+
+Verificar: npm run typecheck → 0 erros. Confirmar antes de continuar.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 2 — AUTH: implementar resetPassword e updatePassword
+Arquivo: client/src/app/providers/AuthContext.tsx
+
+Substituir APENAS as duas linhas no bloco de "Real mode methods" (não tocar no mock mode):
+  const resetPassword  = async (_email: string)    => ({ error: null });
+  const updatePassword = async (_password: string) => ({ error: null });
+
+Por:
+  const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
+    try {
+      await httpPost("/auth/forgot-password", { email });
+      return { error: null };
+    } catch (err) {
+      return { error: { message: err instanceof Error ? err.message : "Erro ao solicitar redefinição de senha" } };
+    }
+  };
+
+  const updatePassword = async (password: string): Promise<{ error: AuthError | null }> => {
+    try {
+      await httpPost("/auth/reset-password", { password });
+      return { error: null };
+    } catch (err) {
+      return { error: { message: err instanceof Error ? err.message : "Erro ao atualizar senha" } };
+    }
+  };
+
+Verificar: npm run typecheck → 0 erros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 3 — SEGURANÇA: mover credenciais de integrações para sessionStorage
+Arquivos afetados (editar TODOS):
+  client/src/modules/integrations/hooks/useAbramus.ts
+  client/src/modules/integrations/hooks/useUbc.ts
+  client/src/modules/integrations/hooks/useACRCloud.ts
+  client/src/modules/integrations/hooks/useClicksign.ts
+  client/src/modules/integrations/hooks/useDocuSign.ts
+  client/src/modules/integrations/hooks/useNfe.ts
+  client/src/modules/integrations/hooks/useTikTokAds.ts
+  client/src/modules/integrations/hooks/useGoogleAds.ts
+  client/src/modules/integrations/hooks/useSpotify.ts
+  client/src/modules/integrations/hooks/useDeezer.ts
+  client/src/modules/integrations/hooks/useYouTube.ts
+  client/src/modules/integrations/hooks/useAppleMusic.ts
+  client/src/modules/integrations/hooks/useSoundCloud.ts
+  client/src/modules/integrations/hooks/useEcad.ts
+  client/src/modules/contracts/hooks/useDocuments.ts
+
+Em CADA arquivo, fazer busca e substituição global:
+  localStorage.getItem   →  sessionStorage.getItem
+  localStorage.setItem   →  sessionStorage.setItem
+  localStorage.removeItem → sessionStorage.removeItem
+
+Verificar: npm run typecheck → 0 erros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 4 — TYPESCRIPT: habilitar strict mode e corrigir erros
+Arquivo: tsconfig.app.json
+
+Substituir o bloco de flags TypeScript por:
+  "strict": true,
+  "noUnusedLocals": true,
+  "noUnusedParameters": true,
+  "noImplicitAny": true,
+  "noFallthroughCasesInSwitch": true,
+  "strictNullChecks": true,
+
+Executar: npm run typecheck
+Listar TODOS os erros. Corrigir em ordem:
+  1. Substituir `obra?: any` por `obra?: Obra` (importar tipo correto de catalog.types)
+  2. Substituir `payload as any` por type assertion adequada ou tipagem correta
+  3. Substituir funções com parâmetros `any` por tipos concretos
+  4. Para cada `as any` restante: adicionar o tipo correto ou `as unknown as TipoCorreto`
+Continuar até: npm run typecheck → 0 erros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 5 — APP: QueryClient no useState e datas fixas
+Arquivo 5A: client/src/App.tsx
+  Substituir linha: const queryClient = createQueryClient();
+  Por: remover essa linha do escopo do módulo.
+  Dentro do componente App, adicionar como primeira linha:
+    const [queryClient] = useState(() => createQueryClient());
+  Adicionar import de useState: import { Suspense, lazy, useState } from "react";
+
+Arquivo 5B: client/src/shared/data/mockData.ts
+  Substituir as 3 primeiras linhas:
+    const NOW = new Date().toISOString();
+    function d(offset: number) {
+      const dt = new Date();
+  Por:
+    const ANCHOR_DATE = new Date("2026-01-15T12:00:00.000Z");
+    const NOW = ANCHOR_DATE.toISOString();
+    function d(offset: number) {
+      const dt = new Date(ANCHOR_DATE);
+
+Verificar: npm run typecheck → 0 erros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 6 — PERFORMANCE: code splitting por módulo
+Arquivo: vite.config.ts
+
+Dentro da função manualChunks(id), APÓS o último bloco vendor existente, adicionar:
+  if (id.includes("/modules/ai/")) return "module-ai";
+  if (id.includes("/modules/accounting/")) return "module-accounting";
+  if (id.includes("/modules/artist/")) return "module-artist";
+  if (id.includes("/modules/catalog/")) return "module-catalog";
+  if (id.includes("/modules/contracts/")) return "module-contracts";
+  if (id.includes("/modules/crm/")) return "module-crm";
+  if (id.includes("/modules/marketing/")) return "module-marketing";
+  if (id.includes("/modules/monitoring/")) return "module-monitoring";
+  if (id.includes("/modules/admin/")) return "module-admin";
+  if (id.includes("/modules/settings/")) return "module-settings";
+  if (id.includes("/modules/rh/")) return "module-rh";
+  if (id.includes("/modules/releases/")) return "module-releases";
+  if (id.includes("/modules/support/")) return "module-support";
+  if (id.includes("/modules/reports/")) return "module-reports";
+  if (id.includes("/modules/projects/")) return "module-projects";
+  if (id.includes("/modules/inventory/")) return "module-inventory";
+  if (id.includes("/modules/licensing/")) return "module-licensing";
+  if (id.includes("/modules/events/")) return "module-events";
+
+Verificar: npm run build → sem erros.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 7 — TESTES: criar suítes essenciais
+Criar client/src/test/AuthContext.test.tsx com:
+  - Teste: user não é null em mock mode
+  - Teste: signIn retorna { error: null } em mock mode
+  - Teste: signOut não lança exceção
+
+Criar client/src/test/TenantContext.test.tsx com:
+  - Teste: tenant inicializa com permissions definidas
+  - Teste: canRead retorna boolean
+  - Teste: isFeatureEnabled retorna boolean
+
+Criar client/src/test/storage.test.ts com:
+  - Teste: list retorna array
+  - Teste: create + findById são consistentes
+  - Teste: update persiste mudanças
+  - Teste: delete remove o registro
+
+Verificar: npm run test → todos passando.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+BLOCO 8 — LIMPEZA FINAL
+8A: Adicionar ao .gitignore (criar se não existir):
+  attached_assets/
+  .local/
+
+8B: Em client/src/App.tsx, remover ou comentar as rotas legadas:
+  <Route path="/contratos-v2" element={<Navigate to="/contratos" replace />} />
+  <Route path="/contratos-v2/*" element={<Navigate to="/contratos" replace />} />
+
+8C: Remover a rota duplicada /dashboard (manter apenas /):
+  Remover: <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+
+VERIFICAÇÃO FINAL:
+  npm run typecheck   → 0 erros
+  npm run test        → todos passando
+  npm run build       → sem erros
+  npm run lint        → 0 erros críticos

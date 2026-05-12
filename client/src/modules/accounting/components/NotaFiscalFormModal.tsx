@@ -11,13 +11,12 @@ import { toast } from "sonner";
 import { Loader2, Upload, FileText, X, ExternalLink, Plus, Trash2, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { format, parseISO } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
 import { Badge } from "@/shared/ui/badge";
-import { isValidCpfCnpj, isValidCEP, isValidEmail, formatCpfCnpj, formatCEP, onlyDigits } from "@/shared/lib/br-validators";
+import { isValidCpfCnpj, isValidCEP, isValidEmail, formatCpfCnpj, formatCEP } from "@/shared/lib/br-validators";
 import { parseTipoOperacao, serializeTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
 import { notaFiscalSchema } from "@/modules/accounting/lib/nota-fiscal-schema";
 

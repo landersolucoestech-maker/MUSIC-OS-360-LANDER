@@ -17,7 +17,6 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
-import { FormTextarea } from "@/shared/components/FormField";
 import { RadioGroup, RadioGroupItem } from "@/shared/ui/radio-group";
 import { Switch } from "@/shared/ui/switch";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -79,7 +78,7 @@ interface ArtistNameInputProps {
   className?: string;
 }
 
-function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled, className }: ArtistNameInputProps) {
+function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, disabled }: ArtistNameInputProps) {
   const [inputText, setInputText] = useState(value);
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -287,8 +286,6 @@ export function ObraFormModal({
   const tipoObra: TipoObra = (tipoObraProp ??
     (obra?.tipo_obra as TipoObra | undefined) ??
     "referencia") as TipoObra;
-  const isAutoral = tipoObra === "autoral";
-
   const [projetoSelecionado, setProjetoSelecionado] =
     useState<ProjetoSelecionado | null>(null);
   const [buscaProjeto, setBuscaProjeto] = useState("");
@@ -371,9 +368,7 @@ export function ObraFormModal({
       setProjetoSelecionado({
         id: found.id,
         nome: found.titulo ?? (found.nome as string) ?? "",
-        artistaNome: (found.artistas?.nome_artistico ??
-          found.artistas?.nome ??
-          null) as string | null,
+        artistaNome: (found.artistas?.nome_artistico ?? null) as string | null,
       });
     } else {
       // Ainda carregando ou projeto fora do filtro — mantém ID com placeholder.
@@ -388,9 +383,7 @@ export function ObraFormModal({
       if (!buscaProjeto) return true;
       const termo = buscaProjeto.toLowerCase();
       const pNome = (p.titulo ?? (p as { nome?: string }).nome ?? "") as string;
-      const pArtistaNome = (p.artistas?.nome_artistico ??
-        p.artistas?.nome ??
-        "") as string;
+      const pArtistaNome = (p.artistas?.nome_artistico ?? "") as string;
       return (
         pNome.toLowerCase().includes(termo) ||
         pArtistaNome.toLowerCase().includes(termo)
@@ -680,10 +673,7 @@ export function ObraFormModal({
                           const pNomeDisplay = (p.titulo ??
                             (p as { nome?: string }).nome ??
                             "") as string;
-                          const pArtistaNomeDisplay = (p.artistas
-                            ?.nome_artistico ??
-                            p.artistas?.nome ??
-                            "") as string;
+                          const pArtistaNomeDisplay = (p.artistas?.nome_artistico ?? "") as string;
                           const selectProjeto = () => {
                             setProjetoSelecionado({
                               id: p.id,

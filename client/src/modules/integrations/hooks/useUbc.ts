@@ -48,19 +48,19 @@ interface StoredCreds {
 }
 
 function readCreds(): StoredCreds | null {
-  try { return JSON.parse(localStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
+  try { return JSON.parse(sessionStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
 }
 function writeCreds(c: StoredCreds) {
-  try { localStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  try { sessionStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
 }
 function clearCreds() {
-  try { localStorage.removeItem(CRED_KEY); } catch { /* ignore */ }
+  try { sessionStorage.removeItem(CRED_KEY); } catch { /* ignore */ }
 }
 function readSchedule(): UbcSyncSchedule {
-  try { return (localStorage.getItem(SCHED_KEY) as UbcSyncSchedule) || "off"; } catch { return "off"; }
+  try { return (sessionStorage.getItem(SCHED_KEY) as UbcSyncSchedule) || "off"; } catch { return "off"; }
 }
 function writeSchedule(s: UbcSyncSchedule) {
-  try { localStorage.setItem(SCHED_KEY, s); } catch { /* ignore */ }
+  try { sessionStorage.setItem(SCHED_KEY, s); } catch { /* ignore */ }
 }
 
 // ─── Types ────────────────────────────────────────────────────────────────────

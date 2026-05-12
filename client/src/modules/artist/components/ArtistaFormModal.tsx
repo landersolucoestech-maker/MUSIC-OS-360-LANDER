@@ -942,7 +942,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
 
               {(() => {
                 const distsGerais = getDistsGerais();
-                const outrosEntryGeral = distsGerais.find((d) => d.id === "outros");
                 return (
                   <div className="grid grid-cols-2 gap-x-6 gap-y-3">
                     {DISTRIBUIDORAS_OPTIONS.map((dist) => {

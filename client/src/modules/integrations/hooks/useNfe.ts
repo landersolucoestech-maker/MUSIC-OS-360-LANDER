@@ -44,7 +44,7 @@ export interface NfeStatus {
 
 function loadCredentials(): NfeCredentials | null {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = sessionStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -80,7 +80,7 @@ export function useNfeSaveCredentials() {
         ...payload,
         saved_at: new Date().toISOString(),
       };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
+      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["integrations", "nfe", "status"] });
@@ -92,7 +92,7 @@ export function useNfeDeleteCredentials() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      localStorage.removeItem(STORAGE_KEY);
+      sessionStorage.removeItem(STORAGE_KEY);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["integrations", "nfe", "status"] });

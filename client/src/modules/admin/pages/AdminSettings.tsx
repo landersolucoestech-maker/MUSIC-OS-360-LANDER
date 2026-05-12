@@ -30,10 +30,11 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 
 /* ── integration helpers ── */
 const STATUS_CFG: Record<IntegrationStatus, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
-  active:   { label: "Ativo",    color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
-  inactive: { label: "Inativo",  color: "text-white/30",    bg: "bg-white/5 border-white/10",             icon: XCircle      },
-  error:    { label: "Erro",     color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20",        icon: AlertCircle  },
-  pending:  { label: "Pendente", color: "text-yellow-400",  bg: "bg-yellow-500/10 border-yellow-500/20",  icon: Clock        },
+  active:   { label: "Ativo",      color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
+  inactive: { label: "Inativo",    color: "text-white/30",    bg: "bg-white/5 border-white/10",             icon: XCircle      },
+  disabled: { label: "Desabilitado",color: "text-white/20",   bg: "bg-white/5 border-white/5",              icon: XCircle      },
+  error:    { label: "Erro",       color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20",        icon: AlertCircle  },
+  pending:  { label: "Pendente",   color: "text-yellow-400",  bg: "bg-yellow-500/10 border-yellow-500/20",  icon: Clock        },
 };
 const CAT_LABEL: Record<string, string> = {
   payment: "Pagamento", communication: "Comunicação", analytics: "Analytics",

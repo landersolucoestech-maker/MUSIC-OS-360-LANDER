@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearchParams, useNavigate } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Music, FileText, Clock, CheckCircle, Upload, Download, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, FolderKanban, LinkIcon, Link2, Hash } from "lucide-react";
+import { Music, FileText, Clock, CheckCircle, Upload, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, LinkIcon, Link2, Hash } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { ObraFormModal, ObraTipoBadge } from "@/modules/catalog/components/ObraFormModal";
@@ -17,54 +17,23 @@ import { FonogramaViewModal } from "@/modules/catalog/components/FonogramaViewMo
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
-import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { toast } from "sonner";
 import { EmptyState } from "@/shared/components/EmptyState";
-import { useObras, type ObraInsert } from "@/modules/catalog/hooks/useObras";
-import { useFonogramas, type FonogramaInsert } from "@/modules/catalog/hooks/useFonogramas";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import type { Obra, Fonograma } from "@/modules/catalog/types/catalog.types";
-import {
-  normalizeStatusForDb as normStatusObraMapper,
-  exportInstrumental,
-  exportCriadaPorIA as exportCriadaPorIAFn,
-  exportTipoIA,
-  exportElementosIA,
-  exportParticipantes as exportParticipantesFn,
-  exportOutrosTitulos,
-  exportReferenciasConexas,
-  exportLetraCompleta,
-  importParseParticipantes,
-  importSplitArray,
-  importParseElementosIA,
-  projetoToObraSeed,
-} from "@/modules/catalog/mappers";
+import { projetoToObraSeed } from "@/modules/catalog/mappers";
 import { parseMusicasFromProjeto } from "@/modules/projects/lib/musica-helpers";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
-import { useArtistasAssinados } from "@/modules/artist/hooks/useArtistasAssinados";
 
-const normStatusObra = (val: string): string => {
-  const raw = (val || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-  if (raw === "registrado") return "registrado";
-  if (raw === "rejeitado") return "rejeitado";
-  if (raw === "em analise" || raw === "em_analise" || raw === "analise" || raw === "em analise") return "analise";
-  return "pendente";
-};
 
-const statusObraLabel = (s: string): string => {
-  if (s === "registrado") return "Registrado";
-  if (s === "analise") return "Em Análise";
-  if (s === "rejeitado") return "Rejeitado";
-  return "Pendente";
-};
 
 
 export default function RegistroMusicas() {
   const navigate = useNavigate();
-  const { obras, isLoading: loadingObras, deleteObra, addObra, bulkUpdateEcad } = useObras();
-  const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, addFonograma, updateFonograma, bulkUpdateObraId } = useFonogramas();
+  const { obras, isLoading: loadingObras, deleteObra, bulkUpdateEcad } = useObras();
+  const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, bulkUpdateObraId } = useFonogramas();
   const { projetos: allProjetos } = useProjetos();
-  const { artistas: artistasAssinados } = useArtistasAssinados();
-  
   const [activeTab, setActiveTab] = useState("obras");
   const [selectedObraIds, setSelectedObraIds] = useState<string[]>([]);
   const toggleSelectAllObras = () => {
@@ -226,85 +195,7 @@ export default function RegistroMusicas() {
     return map;
   }, [obras]);
 
-  const artistasPorId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const a of artistasAssinados) {
-      if (a.id) map.set(a.id, a.nome_artistico ?? a.id);
-    }
-    return map;
-  }, [artistasAssinados]);
 
-  const projetosPorId = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const p of allProjetos) {
-      if (p.id) map.set(p.id, p.titulo ?? p.id);
-    }
-    return map;
-  }, [allProjetos]);
-
-  const obraColumnsResolved = useMemo<CSVColumn[]>(() => {
-    return [
-      { key: "titulo",        label: "Título da Obra" },
-      { key: "tipo_obra",     label: "Tipo de Obra",                    transform: (r) => r.tipo_obra === "referencia" ? "Obra por Referência" : "Obra Autoral" },
-      { key: "artista_id",    label: "Artista Responsável",             transform: (r) => artistasPorId.get(r.artista_id as string) ?? "" },
-      { key: "projeto_id",    label: "Projeto Vinculado",               transform: (r) => projetosPorId.get(r.projeto_id as string) ?? (r.projetos as { titulo?: string } | null | undefined)?.titulo ?? "" },
-      { key: "status",        label: "Status",                          transform: (r) => statusObraLabel(r.status as string) },
-      { key: "cod_abramus",   label: "Código ABRAMUS" },
-      { key: "cod_ecad",      label: "Código ECAD" },
-      { key: "isrc",          label: "ISRC" },
-      { key: "iswc",          label: "ISWC" },
-      { key: "genero",        label: "Gênero" },
-      { key: "idioma",        label: "Idioma" },
-      { key: "duracao",       label: "Duração" },
-      { key: "instrumental",  label: "Instrumental",                    transform: exportInstrumental },
-      { key: "criada_por_ia", label: "Criada por IA",                   transform: exportCriadaPorIAFn },
-      { key: "tipo_ia",       label: "Tipo de Geração IA",              transform: exportTipoIA },
-      { key: "ia_harmonia",   label: "Elementos IA",                    transform: exportElementosIA },
-      { key: "participantes", label: "Participantes (Nome, Função, %, Link)", transform: exportParticipantesFn },
-      { key: "outros_titulos",    label: "Outros Títulos",              transform: exportOutrosTitulos },
-      { key: "referencias_conexas", label: "Referências Conectadas",   transform: exportReferenciasConexas },
-      { key: "letra_completa",label: "Letra",                           transform: exportLetraCompleta },
-    ];
-  }, [artistasPorId, projetosPorId]);
-
-  const fonogramaColumnsResolved = useMemo<CSVColumn[]>(() => {
-    type Participant = { nome?: string; percentual?: string };
-    const joinParticipacao = (r: Record<string, unknown>, cat: string): string => {
-      const p = r["participacao"] as Record<string, Participant[]> | null | undefined;
-      if (!p?.[cat]?.length) return "";
-      return p[cat]
-        .map((x) => x.nome ? `${x.nome}${x.percentual ? ` (${x.percentual}%)` : ""}` : "")
-        .filter(Boolean)
-        .join(", ");
-    };
-    return [
-      { key: "titulo",          label: "Título" },
-      { key: "status",          label: "Status",                transform: (r) => statusObraLabel(r.status as string) },
-      { key: "obra_id",         label: "Obra Vinculada",        transform: (r) => obrasPorId.get(r.obra_id as string)?.titulo ?? "" },
-      { key: "cod_abramus",     label: "Código ABRAMUS" },
-      { key: "cod_ecad",        label: "Código ECAD" },
-      { key: "agregadora",      label: "Agregadora" },
-      { key: "isrc",            label: "ISRC" },
-      { key: "criada_por_ia",   label: "Criada por IA",         transform: (r) => r.criada_por_ia ? "Sim" : "Não" },
-      { key: "instrumental",    label: "Instrumental",          transform: (r) => r.instrumental ? "Sim" : "Não" },
-      { key: "emissao",         label: "Emissão" },
-      { key: "gravacao_original", label: "Gravação Original" },
-      { key: "data_lancamento", label: "Lançamento" },
-      { key: "duracao",         label: "Duração" },
-      { key: "genero_musical",  label: "Gênero Musical" },
-      { key: "classificacao",   label: "Classificação" },
-      { key: "midia",           label: "Mídia" },
-      { key: "nacional",        label: "Nacional",              transform: (r) => r.nacional !== false ? "Sim" : "Não" },
-      { key: "pub_simultanea",  label: "Publicação Simultânea", transform: (r) => r.pub_simultanea ? "Sim" : "Não" },
-      { key: "pais_origem",     label: "País de Origem" },
-      { key: "pais_publicacao", label: "País de Publicação" },
-      { key: "gravadora",       label: "Gravadora" },
-      { key: "observacoes",     label: "Observações" },
-      { key: "participacao",    label: "Produtores Fonográficos", transform: (r) => joinParticipacao(r, "produtorFonografico") },
-      { key: "participacao",    label: "Intérpretes",             transform: (r) => joinParticipacao(r, "interprete") },
-      { key: "participacao",    label: "Músicos Acompanhantes",   transform: (r) => joinParticipacao(r, "musicoAcompanhante") },
-    ];
-  }, [obrasPorId]);
 
   const collator = useMemo(() => new Intl.Collator("pt-BR", { sensitivity: "base" }), []);
 
@@ -316,7 +207,7 @@ export default function RegistroMusicas() {
         fonograma.compositores?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all-status" ||
         fonograma.status?.toLowerCase().includes(statusFilter);
-      const obraVinculada = obrasPorId.get(fonograma.obra_id);
+      const obraVinculada = fonograma.obra_id ? obrasPorId.get(fonograma.obra_id) : undefined;
       const matchesGenre = genreFilter === "all-genre" ||
         obraVinculada?.genero?.toLowerCase() === genreFilter.toLowerCase();
       const matchesObraVinculada = obraVinculadaFilter === "all-obras" ||
@@ -353,7 +244,7 @@ export default function RegistroMusicas() {
     .filter((obra) => {
       const matchesSearch = searchTerm === "" ||
         obra.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        obra.compositores?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (Array.isArray(obra.compositores) ? obra.compositores.join(" ") : (obra.compositores ?? "")).toLowerCase().includes(searchTerm.toLowerCase()) ||
         obra.projetos?.titulo?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all-status" ||
         obra.status?.toLowerCase().includes(statusFilter);
@@ -379,7 +270,7 @@ export default function RegistroMusicas() {
       ? fonogramas.map(f => obrasPorId.get(f.obra_id ?? "")).filter((o): o is Obra => o != null)
       : obras;
     for (const o of src) {
-      const g: string | undefined = o.genero;
+      const g: string | undefined = o.genero ?? undefined;
       if (!g) continue;
       const key = g.toLowerCase();
       if (!seen.has(key)) { seen.add(key); unique.push(g.charAt(0).toUpperCase() + g.slice(1)); }
@@ -416,186 +307,6 @@ export default function RegistroMusicas() {
   const total = activeTab === "fonogramas" ? fonogramas.length : obras.length;
   const taxaAprovacao = total > 0 ? Math.round((registrados / total) * 100) : 0;
 
-  const obrasSemEcad = obras.filter((o) => (o.cod_ecad ?? "").toString().trim() === "").length;
-  const fonogramasSemEcad = fonogramas.filter((f) => (f.cod_ecad ?? "").toString().trim() === "").length;
-
-  const handleExport = () => {
-    if (activeTab === "fonogramas") {
-      exportToCSV(fonogramas, fonogramaColumnsResolved, "fonogramas");
-    } else {
-      exportToCSV(obras, obraColumnsResolved, "obras");
-    }
-  };
-
-  const handleImport = () => {
-    const col = (row: Record<string, string>, ...labels: string[]): string => {
-      for (const label of labels) {
-        if (row[label] !== undefined && row[label] !== "") return row[label];
-        const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        const t = norm(label);
-        const key = Object.keys(row).find(k => norm(k) === t);
-        if (key && row[key] !== "") return row[key];
-      }
-      return "";
-    };
-    const splitNames = (val: string): string[] =>
-      (val || "").split(",").map(s => s.replace(/\s*\(\d+\.?\d*%\)/g, "").trim()).filter(Boolean);
-    const toParticipantes = (val: string) =>
-      splitNames(val).map(nome => ({ id: crypto.randomUUID(), nome, percentual: "" }));
-    const parseBool = (val: string) => val.toLowerCase().trim() === "sim";
-
-    const headers = activeTab === "fonogramas"
-      ? ["Título", "ISRC", "Status", "Gênero Musical"]
-      : ["Título da Obra", "Status", "Artista Responsável", "Gênero"];
-
-    importCSV(async (data) => {
-      let importados = 0;
-      const obraVinculadaNaoResolvida: string[] = [];
-      if (activeTab === "fonogramas") {
-        const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        const obrasPorTitulo = new Map<string, string>();
-        for (const o of obras) {
-          if (o.id && o.titulo) obrasPorTitulo.set(norm(o.titulo), o.id);
-        }
-        for (const row of data) {
-          const titulo = col(row, "Título", "titulo", "TITULO");
-          if (!titulo) continue;
-          const obraTituloRaw = col(row, "Obra Vinculada", "obra_id");
-          const obra_id = obraTituloRaw ? (obrasPorTitulo.get(norm(obraTituloRaw)) ?? null) : null;
-          const produtoresRaw    = col(row, "Produtores Fonográficos", "produtores");
-          const interpretesRaw   = col(row, "Intérpretes", "interpretes");
-          const musicosRaw       = col(row, "Músicos Acompanhantes");
-          const participacao = {
-            produtorFonografico: toParticipantes(produtoresRaw),
-            interprete: toParticipantes(interpretesRaw),
-            musicoAcompanhante: toParticipantes(musicosRaw),
-          };
-          try {
-            const fonoPayload: FonogramaInsert = {
-              titulo,
-              obra_id,
-              status:            normStatusObra(col(row, "Status", "status")),
-              isrc:              col(row, "ISRC", "isrc") || null,
-              cod_abramus:       col(row, "Código ABRAMUS", "Cód. ABRAMUS", "cod_abramus") || null,
-              cod_ecad:          col(row, "Código ECAD", "Cód. ECAD", "cod_ecad") || null,
-              agregadora:        col(row, "Agregadora", "agregadora") || null,
-              criada_por_ia:     parseBool(col(row, "Criada por IA", "criada_por_ia")),
-              instrumental:      parseBool(col(row, "Instrumental", "instrumental")),
-              emissao:           col(row, "Emissão", "emissao") || null,
-              gravacao_original: col(row, "Gravação Original", "gravacao_original") || null,
-              data_lancamento:   col(row, "Lançamento", "data_lancamento") || null,
-              duracao:           col(row, "Duração", "duracao") || null,
-              genero_musical:    col(row, "Gênero Musical", "genero_musical") || null,
-              classificacao:     col(row, "Classificação", "classificacao") || null,
-              midia:             col(row, "Mídia", "midia") || null,
-              nacional:          col(row, "Nacional", "nacional") !== "" ? parseBool(col(row, "Nacional", "nacional")) : true,
-              pub_simultanea:    parseBool(col(row, "Publicação Simultânea", "Pub. Simultânea", "pub_simultanea")),
-              pais_origem:       col(row, "País de Origem", "pais_origem") || null,
-              pais_publicacao:   col(row, "País de Publicação", "pais_publicacao") || null,
-              gravadora:         col(row, "Gravadora", "gravadora") || null,
-              observacoes:       col(row, "Observações", "observacoes") || null,
-              participacao,
-            };
-            await addFonograma.mutateAsync(fonoPayload);
-            importados++;
-            if (obraTituloRaw && !obra_id) {
-              obraVinculadaNaoResolvida.push(`"${titulo}" (Obra Vinculada: "${obraTituloRaw}")`);
-            }
-          } catch {}
-        }
-        if (obraVinculadaNaoResolvida.length > 0) {
-          const preview = obraVinculadaNaoResolvida.slice(0, 5).join("\n");
-          const extra = obraVinculadaNaoResolvida.length > 5
-            ? `\n…e mais ${obraVinculadaNaoResolvida.length - 5} fonograma(s).`
-            : "";
-          toast.warning(
-            `${obraVinculadaNaoResolvida.length} fonograma(s) importado(s) com aviso: "Obra Vinculada" não encontrada no catálogo e foi ignorada.\n\n${preview}${extra}`,
-            { duration: 10000 }
-          );
-        }
-      } else {
-        const norm = (s: string) => s.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-        const artistasPorNome = new Map<string, string>();
-        for (const a of artistasAssinados) {
-          if (a.nome_artistico) artistasPorNome.set(norm(a.nome_artistico), a.id);
-        }
-        const projetosPorTitulo = new Map<string, string>();
-        for (const p of allProjetos) {
-          if (p.titulo) projetosPorTitulo.set(norm(p.titulo), p.id);
-        }
-        for (const row of data) {
-          const titulo = col(row, "Título da Obra", "Título", "titulo", "TITULO");
-          if (!titulo) continue;
-          const outrosTitulosRaw  = col(row, "Outros Títulos", "outros_titulos");
-          const referenciasRaw    = col(row, "Referências Conectadas", "Referências Conexas", "referencias_conexas");
-          const artistaNome       = col(row, "Artista Responsável", "artista");
-          const projetoTitulo     = col(row, "Projeto Vinculado", "projeto");
-          const elementosIARaw    = col(row, "Elementos IA", "elementos_ia");
-          const participantesRaw  = col(row, "Participantes (Nome, Função, %, Link)", "participantes");
-          try {
-            const iaVal     = col(row, "Criada por IA", "criada_por_ia");
-            const instrVal  = col(row, "Instrumental", "instrumental");
-            const tipoIAVal = col(row, "Tipo de Geração IA", "Tipo IA", "tipo_ia");
-            const artista_id = artistaNome ? (artistasPorNome.get(norm(artistaNome)) ?? null) : null;
-            const projeto_id = projetoTitulo ? (projetosPorTitulo.get(norm(projetoTitulo)) ?? null) : null;
-            const criadaPorIABool = parseBool(iaVal);
-            const outros    = importSplitArray(outrosTitulosRaw);
-            const refs      = importSplitArray(referenciasRaw);
-            const partics   = importParseParticipantes(participantesRaw);
-            const elementos = importParseElementosIA(elementosIARaw, tipoIAVal);
-            const obraPayload: ObraInsert = {
-              titulo,
-              status:       normStatusObraMapper(col(row, "Status", "status")),
-              genero:       col(row, "Gênero", "Gênero Musical", "genero") || null,
-              iswc:         col(row, "ISWC", "iswc") || null,
-              cod_abramus:  col(row, "Código ABRAMUS", "Cód. ABRAMUS", "cod_abramus") || null,
-              duracao:      col(row, "Duração", "duracao") || null,
-              artista_id,
-              projeto_id,
-              ...({
-                idioma:              col(row, "Idioma", "idioma") || null,
-                cod_ecad:            col(row, "Código ECAD", "Cód. ECAD", "cod_ecad") || null,
-                isrc:                col(row, "ISRC", "isrc") || null,
-                instrumental:        instrVal ? (parseBool(instrVal) ? "sim" : "nao") : null,
-                criada_por_ia:       criadaPorIABool,
-                criadaPorIA:         criadaPorIABool ? "sim" : "nao",
-                tipo_ia:             tipoIAVal || null,
-                tipoIA:              tipoIAVal || null,
-                ia_harmonia:         elementos.ia_harmonia,
-                iaHarmonia:          elementos.ia_harmonia,
-                ia_melodia:          elementos.ia_melodia,
-                iaMelodia:           elementos.ia_melodia,
-                ia_letra:            elementos.ia_letra,
-                iaLetra:             elementos.ia_letra,
-                participantes:       partics.length > 0 ? partics : null,
-                outros_titulos:      outros.length > 0 ? outros : null,
-                outrosTitulos:       outros.length > 0 ? outros : null,
-                referencias_conexas: refs.length > 0 ? refs : null,
-                referenciasConexas:  refs.length > 0 ? refs : null,
-                letra_completa:      col(row, "Letra", "Letra Completa", "letra_completa") || null,
-                letraCompleta:       col(row, "Letra", "Letra Completa", "letra_completa") || null,
-              } satisfies Record<string, unknown>),
-            };
-            await addObra.mutateAsync(obraPayload);
-            importados++;
-          } catch {}
-        }
-      }
-      const tipo = activeTab === "fonogramas" ? "fonograma(s)" : "obra(s)";
-      if (importados > 0) {
-        const hasWarnings = activeTab === "fonogramas" && obraVinculadaNaoResolvida.length > 0;
-        if (hasWarnings) {
-          toast.success(
-            `${importados} ${tipo} importado(s): ${importados - obraVinculadaNaoResolvida.length} sem avisos, ${obraVinculadaNaoResolvida.length} com vínculo de obra não resolvido.`
-          );
-        } else {
-          toast.success(`${importados} ${tipo} importado(s) com sucesso!`);
-        }
-      } else {
-        toast.error(`Nenhum(a) ${tipo} válido(a) encontrado(a) no arquivo`);
-      }
-    }, headers);
-  };
 
   const handleDelete = () => {
     if (deleteModal.item) {

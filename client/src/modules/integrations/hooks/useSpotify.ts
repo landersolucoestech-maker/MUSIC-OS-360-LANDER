@@ -36,7 +36,7 @@ export interface SpotifyStatus {
 
 function readCredentials(): SpotifyCredentials | null {
   try {
-    const raw = localStorage.getItem(LS_KEY);
+    const raw = sessionStorage.getItem(LS_KEY);
     return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
@@ -78,7 +78,7 @@ export function useSpotifySaveCredentials() {
   return useMutation({
     mutationFn: async (input: SpotifyCredentials) => {
       try {
-        localStorage.setItem(LS_KEY, JSON.stringify(input));
+        sessionStorage.setItem(LS_KEY, JSON.stringify(input));
       } catch {
         throw new Error("Não foi possível salvar as credenciais.");
       }
@@ -97,7 +97,7 @@ export function useSpotifyDeleteCredentials() {
   return useMutation({
     mutationFn: async () => {
       try {
-        localStorage.removeItem(LS_KEY);
+        sessionStorage.removeItem(LS_KEY);
       } catch {
         throw new Error("Não foi possível remover as credenciais.");
       }

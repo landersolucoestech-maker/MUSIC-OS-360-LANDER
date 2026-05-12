@@ -18,7 +18,7 @@ import { MOCK_TENANTS, MOCK_SUBSCRIPTIONS } from "../data/mockAdmin";
 import type { AdminTenant, TenantStatus, PlanTier } from "../types";
 import {
   Building2, Search, Users, DollarSign,
-  MoreHorizontal, Eye, Power, PowerOff, ArrowUpCircle,
+  MoreHorizontal, Eye, PowerOff, ArrowUpCircle,
   RefreshCw, ExternalLink, Calendar, CreditCard, Pencil, Trash2,
 } from "lucide-react";
 
@@ -28,10 +28,11 @@ const STATUS_STYLE: Record<TenantStatus, string> = {
   trial:     "text-blue-400 bg-blue-500/10 border-blue-500/20",
   cancelled: "text-white/30 bg-white/5 border-white/10",
   pending:   "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
+  past_due:  "text-orange-400 bg-orange-500/10 border-orange-500/20",
 };
 const STATUS_LABEL: Record<TenantStatus, string> = {
   active: "Ativo", suspended: "Suspenso", trial: "Trial",
-  cancelled: "Cancelado", pending: "Pendente",
+  cancelled: "Cancelado", pending: "Pendente", past_due: "Em atraso",
 };
 const PLAN_COLOR: Record<PlanTier, string> = {
   starter:    "text-white/50",

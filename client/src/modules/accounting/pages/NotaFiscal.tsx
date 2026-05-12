@@ -14,7 +14,6 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import {
-  DollarSign,
   FileText,
   Plus,
   Search,
@@ -95,15 +94,6 @@ export default function NotaFiscal() {
     setIsModalOpen(true);
   };
 
-  const toggleSelectAll = () => {
-    if (selectedIds.length === filteredNotas.length && filteredNotas.length > 0) {
-      setSelectedIds([]);
-    } else {
-      setSelectedIds(filteredNotas.map((n: any) => n.id));
-    }
-  };
-  const toggleSelect = (id: string) =>
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
   const handleBulkDelete = () => {
     if (selectedIds.length === 0) return;
     selectedIds.forEach(id => deleteNotaFiscal.mutate(id));

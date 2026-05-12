@@ -26,9 +26,9 @@ export function useMetas(artistaId?: string) {
     metas: result.data,
     isLoading: result.isLoading,
     error: result.error,
-    addMeta: result.create,
-    updateMeta: result.update,
-    deleteMeta: result.delete,
+    addMeta: result.create.mutateAsync.bind(result.create),
+    updateMeta: result.update.mutateAsync.bind(result.update),
+    deleteMeta: result.delete.mutateAsync.bind(result.delete),
     getMetasByArtista,
     getProgressPercent,
   };

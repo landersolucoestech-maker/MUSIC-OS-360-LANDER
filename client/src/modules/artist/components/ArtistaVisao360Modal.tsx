@@ -23,7 +23,6 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { Textarea } from "@/shared/ui/textarea";
-import { Separator } from "@/shared/ui/separator";
 import {
   Music,
   Disc,
@@ -38,12 +37,9 @@ import {
   Trash2,
   Calendar,
   User,
-  Mail,
-  Phone,
   MapPin,
   CreditCard,
   Building,
-  Share2,
   TrendingUp,
   History,
   Globe,
@@ -58,12 +54,9 @@ import {
   BarChart3,
   ImageIcon,
   Video,
-  Briefcase,
-  Headphones,
   Link2,
 } from "lucide-react";
 import { ArtistaEvolucaoSection } from "@/modules/artist/components/ArtistaEvolucaoSection";
-import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
 
 const formatDateDMY = (d?: string | null): string => {
@@ -108,83 +101,7 @@ const estagiosCarreira = [
   { nivel: 10, nome: "Lendário", descricao: "Ícone da música brasileira" },
 ];
 
-function CircularProgress({
-  value,
-  label,
-  sublabel,
-  color = "teal",
-  badge,
-}: {
-  value: number;
-  label: string;
-  sublabel?: string;
-  color?: "teal" | "green" | "amber" | "red";
-  badge?: { text: string; variant: "high" | "medium" | "low" };
-}) {
-  const colors = {
-    teal: { stroke: "stroke-teal-500", text: "text-teal-500" },
-    green: { stroke: "stroke-success", text: "text-success" },
-    amber: { stroke: "stroke-[hsl(var(--warning))]", text: "text-warning" },
-    /* intentional: SVG stroke for donut chart — CSS var cannot drive SVG stroke directly */
-    red: { stroke: "stroke-red-500", text: "text-red-500" },
-  };
-
-  const badgeColors = {
-    high: "bg-success text-success-foreground",
-    medium: "bg-warning text-warning-foreground",
-    low: "bg-destructive text-white",
-  };
-
-  const c = colors[color];
-  const radius = 36;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (value / 100) * circumference;
-
-  return (
-    <div className="flex flex-col items-center gap-1">
-      {badge && (
-        <span
-          className={`text-[10px] px-2 py-0.5 rounded-full ${badgeColors[badge.variant]}`}
-        >
-          {badge.text}
-        </span>
-      )}
-      <div className="relative w-16 h-16">
-        <svg className="w-full h-full -rotate-90" viewBox="0 0 80 80">
-          <circle
-            cx="40"
-            cy="40"
-            r={radius}
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={6}
-            className="text-muted/20"
-          />
-          <circle
-            cx="40"
-            cy="40"
-            r={radius}
-            fill="none"
-            strokeWidth={6}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            className={c.stroke}
-          />
-        </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className={`font-bold text-lg ${c.text}`}>{value}</span>
-        </div>
-      </div>
-      <span className="text-xs font-medium text-center">{label}</span>
-      {sublabel && (
-        <span className="text-[10px] text-muted-foreground text-center max-w-[70px] truncate">
-          {sublabel}
-        </span>
-      )}
-    </div>
-  );
-}
+// imports movidos para cá após remoção de CircularProgress
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
@@ -196,10 +113,7 @@ import {
   type ContratoWithRelations,
 } from "@/modules/contracts/hooks/useContratos";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import {
-  ContratoStatusBadge,
-  getContratoSituacao,
-} from "@/modules/contracts/components/ContratoStatusBadge";
+import { ContratoStatusBadge } from "@/modules/contracts/components/ContratoStatusBadge";
 
 interface Meta {
   id: number;
@@ -494,7 +408,7 @@ export function ArtistaVisao360Modal({
       status: metaForm.status,
     };
     if (editingMeta) {
-      await updateMeta(String(editingMeta.id), payload);
+      await updateMeta({ id: String(editingMeta.id), ...payload });
     } else {
       await addMeta(payload);
     }
@@ -1122,7 +1036,7 @@ export function ArtistaVisao360Modal({
                     <div>
                       <p className="text-xs text-muted-foreground">Banco</p>
                       <p className="text-sm font-medium">
-                        {artista.banco?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "Não informado"}
+                        {artista.banco?.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) || "Não informado"}
                       </p>
                     </div>
                     <div>
@@ -1833,7 +1747,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {obra.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                  {(obra.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1870,7 +1784,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {fono.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                  {(fono.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1909,7 +1823,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {lanc.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                  {(lanc.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}
@@ -1949,7 +1863,7 @@ export function ArtistaVisao360Modal({
                                 <Badge
                                   className={`text-xs shrink-0 ${proj.status === "concluido" ? "bg-success" : proj.status === "em_andamento" ? "bg-blue-600" : "bg-gray-600"}`}
                                 >
-                                  {proj.status.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                                  {(proj.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
                                 </Badge>
                               </div>
                             ))}

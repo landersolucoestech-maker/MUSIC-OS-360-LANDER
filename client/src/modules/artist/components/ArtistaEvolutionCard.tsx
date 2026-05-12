@@ -14,7 +14,7 @@ import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from "lucide-rea
 import { Card, CardContent } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-interface MetricEvolutionPoint { date: string; value?: number; streams?: number; followers?: number; saves?: number; [key: string]: unknown; }
+export interface MetricEvolutionPoint { date: string; value?: number; streams?: number; followers?: number; saves?: number; [key: string]: unknown; }
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
 
@@ -158,9 +158,9 @@ export function ArtistaEvolutionCard({
         typeof p[metric] === "number" && Number.isFinite(p[metric] as number),
       )
       .map((p) => {
-        const dt = parseISO(p.captured_at);
+        const dt = parseISO(p.date);
         return {
-          date: p.captured_at,
+          date: p.date,
           value: Number(p[metric]),
           label: format(dt, "dd/MM", { locale: ptBR }),
         };

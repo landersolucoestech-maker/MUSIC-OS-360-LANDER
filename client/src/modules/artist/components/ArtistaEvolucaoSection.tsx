@@ -16,17 +16,9 @@ import {
   computeEvolutionSummary,
   type EvolutionSummary,
   type TrendDirection,
+  type MetricEvolutionPoint,
 } from "@/modules/artist/components/ArtistaEvolutionCard";
 import { useQuery } from "@tanstack/react-query";
-
-export interface MetricEvolutionPoint {
-  date: string;
-  followers?: number | null;
-  streams?: number | null;
-  views?: number | null;
-  plays?: number | null;
-  listeners?: number | null;
-}
 
 interface ArtistaEvolucaoSectionProps {
   artista: any;

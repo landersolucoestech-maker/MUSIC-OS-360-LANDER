@@ -1,11 +1,10 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
 import {
-  AreaChart, Area, BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
   MOCK_KPIS, MOCK_REVENUE, MOCK_TENANTS, MOCK_SECURITY_EVENTS, MOCK_ADMIN_NOTIFICATIONS,
@@ -14,7 +13,6 @@ import {
   TrendingUp, TrendingDown, DollarSign, Users, Building2,
   AlertCircle, CheckCircle2, Activity, Zap,
   CreditCard, ChevronRight, ArrowUpRight, ArrowDownRight,
-  BarChart3,
 } from "lucide-react";
 
 /* ── Analytics data (merged from AdminAnalytics) ── */
@@ -24,13 +22,6 @@ const PLAN_DIST = [
   { plan: "Pro",        count: 18, color: "#8B5CF6" },
   { plan: "Enterprise", count: 7,  color: "#F59E0B" },
 ];
-const GROWTH_DATA = MOCK_REVENUE.map((r, i) => ({
-  month: r.month,
-  tenants: 45 + i * 8,
-  users: 320 + i * 62,
-  mrr: r.mrr,
-}));
-
 /* ─── helpers ─── */
 function fmt(n: number) {
   return n.toLocaleString("pt-BR");
@@ -244,19 +235,21 @@ export default function AdminDashboard() {
             </div>
             <div className="divide-y divide-white/[0.04]">
               {recentTenants.map((t) => {
-                const statusColor = {
+                const STATUS_COLOR: Record<string, string> = {
                   active: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                   suspended: "text-red-400 bg-red-500/10 border-red-500/20",
                   trial: "text-blue-400 bg-blue-500/10 border-blue-500/20",
                   cancelled: "text-white/30 bg-white/5 border-white/10",
                   pending: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
-                }[t.status];
-                const planColor = {
+                };
+                const PLAN_COLOR: Record<string, string> = {
                   starter: "text-white/40",
                   growth: "text-blue-400",
                   pro: "text-purple-400",
                   enterprise: "text-amber-400",
-                }[t.plan];
+                };
+                const statusColor = STATUS_COLOR[t.status] ?? "";
+                const planColor = PLAN_COLOR[t.plan] ?? "";
                 return (
                   <div key={t.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition-colors" data-testid={`tenant-row-${t.id}`}>
                     <div className="flex items-center gap-3">
@@ -291,18 +284,21 @@ export default function AdminDashboard() {
             </div>
             <div className="divide-y divide-white/[0.04]">
               {unreadNotifs.map((n) => {
-                const svColor = {
+                const SV_COLOR: Record<string, string> = {
                   error: "text-red-400", warning: "text-yellow-400",
                   info: "text-blue-400", success: "text-emerald-400",
-                }[n.severity];
-                const svBg = {
+                };
+                const SV_BG: Record<string, string> = {
                   error: "bg-red-500/10", warning: "bg-yellow-500/10",
                   info: "bg-blue-500/10", success: "bg-emerald-500/10",
-                }[n.severity];
-                const SvIcon = {
+                };
+                const SV_ICON: Record<string, typeof AlertCircle> = {
                   error: AlertCircle, warning: AlertCircle,
                   info: Zap, success: CheckCircle2,
-                }[n.severity];
+                };
+                const svColor = SV_COLOR[n.severity] ?? "text-white/40";
+                const svBg = SV_BG[n.severity] ?? "bg-white/5";
+                const SvIcon = SV_ICON[n.severity] ?? AlertCircle;
                 return (
                   <div key={n.id} className="flex gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors" data-testid={`notif-${n.id}`}>
                     <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", svBg)}>

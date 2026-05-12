@@ -9,8 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
-  Link as LinkIcon, Download, Plus, Search,
-  Calendar, Upload, MoreHorizontal, Eye, Pencil, Trash2, X,
+  Link as LinkIcon, Plus, Search,
+  MoreHorizontal, Eye, Pencil, Trash2, X,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
@@ -22,22 +22,12 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { StatusBadge } from "@/shared/components/StatusBadge";
-import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FinanceiroSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 
 type Transacao = Record<string, any>;
-
-const transacaoColumns: CSVColumn[] = [
-  { key: "descricao", label: "Descrição" },
-  { key: "categoria", label: "Categoria" },
-  { key: "status", label: "Status" },
-  { key: "data", label: "Data" },
-  { key: "valor", label: "Valor" },
-  { key: "tipo", label: "Tipo" },
-];
 
 export default function Financeiro() {
   const { transacoes, isLoading: transacoesLoading, deleteTransacao, addTransacao } = useTransacoes();
@@ -64,8 +54,6 @@ export default function Financeiro() {
   const [typeFilter, setTypeFilter] = useState("all-type");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [categoryFilter, setCategoryFilter] = useState("all-category");
-
-  const handleExport = () => exportToCSV(transacoes, transacaoColumns, "transacoes");
 
   const handleOFXUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -143,13 +131,13 @@ export default function Financeiro() {
     return transacoes.filter((transacao) => {
       const matchesSearch =
         transacao.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transacao.categoria.toLowerCase().includes(searchTerm.toLowerCase());
+        (transacao.categoria ?? "").toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType =
         typeFilter === "all-type" ||
         (typeFilter === "receita" && transacao.tipo === "receita") ||
         (typeFilter === "despesa" && transacao.tipo === "despesa");
-      const matchesStatus = statusFilter === "all-status" || transacao.status.toLowerCase() === statusFilter.toLowerCase();
-      const matchesCategory = categoryFilter === "all-category" || transacao.categoria.toLowerCase() === categoryFilter.toLowerCase();
+      const matchesStatus = statusFilter === "all-status" || (transacao.status ?? "").toLowerCase() === statusFilter.toLowerCase();
+      const matchesCategory = categoryFilter === "all-category" || (transacao.categoria ?? "").toLowerCase() === categoryFilter.toLowerCase();
       const matchesStartDate = !startDate || transacao.data >= startDate;
       const matchesEndDate = !endDate || transacao.data <= endDate;
       return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesStartDate && matchesEndDate;
@@ -401,7 +389,7 @@ export default function Financeiro() {
                         <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm font-mono">
                           {transacao.categoria}
                         </span>
-                        <StatusBadge status={transacao.status} />
+                        <StatusBadge status={transacao.status ?? "pendente"} />
                       </div>
                     </div>
 

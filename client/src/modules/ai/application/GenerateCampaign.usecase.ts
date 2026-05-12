@@ -61,8 +61,8 @@ export class GenerateCampaignUseCase {
   async executeSync(input: GenerateCampaignInput): Promise<GenerateCampaignResult> {
     this.validate(input);
 
-    const ctx      = this.memory.getContext(input.tenantId);
-    const language = input.language ?? ctx.preferredLanguage;
+    const ctx = this.memory.getContext(input.tenantId);
+    void ctx; // ctx used for future language/preference lookup
 
     // PaidAdsInput: platform é singular — usar a primeira plataforma da lista
     const platformMap: Record<string, PaidAdsInput["platform"]> = {

@@ -76,7 +76,7 @@ function LogsTab() {
 
 function DadosTab() {
   const navigate = useNavigate();
-  const { data, isLoading, isFetching, error, refetch } = useAudit();
+  const { data, isLoading, error, refetch } = useAudit();
 
   const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
   const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");

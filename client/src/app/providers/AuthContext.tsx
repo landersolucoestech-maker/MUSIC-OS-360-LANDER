@@ -172,8 +172,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSession(null);
   };
 
-  const resetPassword  = async (_email: string): Promise<{ error: AuthError | null }> => ({ error: null });
-  const updatePassword = async (_password: string): Promise<{ error: AuthError | null }> => ({ error: null });
+  const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
+    try {
+      await httpPost("/auth/forgot-password", { email });
+      return { error: null };
+    } catch (err) {
+      return { error: { message: err instanceof Error ? err.message : "Erro ao solicitar redefinição de senha" } };
+    }
+  };
+
+  const updatePassword = async (password: string): Promise<{ error: AuthError | null }> => {
+    try {
+      await httpPost("/auth/reset-password", { password });
+      return { error: null };
+    } catch (err) {
+      return { error: { message: err instanceof Error ? err.message : "Erro ao atualizar senha" } };
+    }
+  };
 
   return (
     <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword, updatePassword }}>

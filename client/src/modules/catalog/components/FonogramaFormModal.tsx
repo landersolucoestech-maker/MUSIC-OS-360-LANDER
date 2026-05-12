@@ -7,7 +7,6 @@ import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Switch } from "@/shared/ui/switch";
-import { FieldError } from "@/shared/components/FormField";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -569,7 +568,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
       return;
     }
 
-    const isrcJoined = joinIsrc(isrcPais, isrcRegistrante, isrcAno, isrcDesignacao);
+    const isrcJoined = joinIsrc({ pais: isrcPais, registrante: isrcRegistrante, ano: isrcAno, designacao: isrcDesignacao });
     const validation = fonogramaSchema.safeParse({
       titulo: titulo || "",
       isrc: isrcJoined || "",

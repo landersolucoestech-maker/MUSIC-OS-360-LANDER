@@ -17,8 +17,8 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import {
   Users, Phone, Mail, Sparkles, Music,
-  DollarSign, Calendar, CheckCircle, Search, PlusCircle, Pencil, Trash2,
-  MoreVertical, Upload, Download, X,
+  CheckCircle, Search, PlusCircle, Pencil, Trash2,
+  MoreVertical, X,
 } from "lucide-react";
 import { SiInstagram, SiTiktok, SiYoutube, SiSpotify, SiSoundcloud, SiApplemusic } from "react-icons/si";
 
@@ -26,39 +26,21 @@ import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
 import { useArtistasAssinados } from "@/modules/artist/hooks/useArtistasAssinados";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useMetrics } from "@/modules/dashboard/hooks/useMetrics";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
-import { formatCurrency } from "@/shared/lib/format-utils";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { ArtistasSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 import {
-  artistaToExportRow,
   importRowToArtista,
   ESPECIALIDADES_LABELS,
 } from "@/modules/artist/mappers";
-import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 
 const getXLSX = () => import("xlsx");
-
-const DISTRIBUIDORAS = [
-  { id: "onerpm",    label: "ONErpm" },
-  { id: "distrokid", label: "DistroKid" },
-  { id: "30por1",    label: "30 Por 1" },
-  { id: "symphonic", label: "Symphonic" },
-  { id: "somvibe",   label: "Somvibe" },
-  { id: "soundon",   label: "SoundOn" },
-  { id: "musicpro",  label: "MusicPro" },
-];
-const DISTRIBUIDORAS_LABELS: Record<string, string> = Object.fromEntries(
-  DISTRIBUIDORAS.map((d) => [d.id, d.label])
-);
 
 const ATIVO_STATUSES_VINCULO = new Set(["ativo", "assinado", "vigente", "vencendo"]);
 
@@ -76,7 +58,6 @@ export default function Artistas() {
   const { artistas: todosArtistas, deleteArtista, addArtista, isLoading: artistasLoading } = useArtistas();
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  const { eventos } = useEventos();
   const { contratos } = useContratos();
 
   const contratosPorArtista = useMemo(() => {
@@ -100,9 +81,7 @@ export default function Artistas() {
       : { label: "Parceiro", status: "confirmed" };
   };
 
-  const { artistasMetrics, isLoading: metricsLoading } = useMetrics();
-  const isLoading = artistasLoading || metricsLoading;
-  const metricas = artistasMetrics;
+  const isLoading = artistasLoading;
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("todos");
@@ -114,19 +93,6 @@ export default function Artistas() {
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; artista?: Artista }>({ open: false });
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: Artista }>({ open: false });
   const [selectedArtists, setSelectedArtists] = useState<string[]>([]);
-
-  const showsPorArtista = useMemo(() => {
-    const map = new Map<string, { total: number; agendados: number; realizados: number }>();
-    for (const e of eventos) {
-      if (e.tipo_evento !== "Show" || !e.artista_id) continue;
-      const entry = map.get(e.artista_id) ?? { total: 0, agendados: 0, realizados: 0 };
-      entry.total++;
-      if (e.status === "Confirmado" || e.status === "Pendente") entry.agendados++;
-      if (e.status === "Realizado") entry.realizados++;
-      map.set(e.artista_id, entry);
-    }
-    return map;
-  }, [eventos]);
 
   const generosUnicos = useMemo(() => {
     const generos = todosArtistas.map((a) => a.genero_musical).filter(Boolean);
@@ -178,27 +144,6 @@ export default function Artistas() {
     if (deleteModal.artista) {
       deleteArtista.mutate(deleteModal.artista.id);
       setDeleteModal({ open: false });
-    }
-  };
-
-  const handleExcelExport = async () => {
-    if (todosArtistas.length === 0) {
-      toast.error("Nenhum artista para exportar");
-      return;
-    }
-    try {
-      const XLSX = await getXLSX();
-      const exportData = todosArtistas.map(artistaToExportRow);
-      const worksheet = XLSX.utils.json_to_sheet(exportData);
-      worksheet["!cols"] = Object.keys(exportData[0] ?? {}).map((k) => ({
-        wch: Math.max(k.length + 2, 18),
-      }));
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Artistas");
-      XLSX.writeFile(workbook, `artistas_${new Date().toISOString().split("T")[0]}.xlsx`);
-      toast.success(`${todosArtistas.length} artista(s) exportado(s) com sucesso!`);
-    } catch {
-      toast.error("Erro ao exportar arquivo Excel");
     }
   };
 
@@ -433,10 +378,6 @@ export default function Artistas() {
           ) : (
             artistasFiltrados.map((artista) => {
               const vinculo = getVinculoLabel(artista.id);
-              const showsArtista = showsPorArtista.get(artista.id);
-              const totalShows = showsArtista?.total ?? 0;
-              const agendados = showsArtista?.agendados ?? 0;
-              const realizados = showsArtista?.realizados ?? 0;
 
               return (
                 <div key={artista.id}>

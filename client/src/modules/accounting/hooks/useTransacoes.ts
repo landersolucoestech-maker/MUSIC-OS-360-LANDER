@@ -27,7 +27,7 @@ export function useTransacoes() {
           tipo: t.tipo as "receita" | "despesa",
           valor: t.valor ?? 0,
           artista_id: t.artista_id ?? undefined,
-          projeto_id: t.projeto_id ?? undefined,
+          projeto_id: typeof t.projeto_id === "string" ? t.projeto_id : undefined,
           org_id: orgId,
         }),
       onUpdate: (t) =>
@@ -36,7 +36,7 @@ export function useTransacoes() {
           tipo: t.tipo as "receita" | "despesa",
           valor: t.valor ?? 0,
           artista_id: t.artista_id ?? undefined,
-          projeto_id: t.projeto_id ?? undefined,
+          projeto_id: typeof t.projeto_id === "string" ? t.projeto_id : undefined,
           org_id: orgId,
         }),
       onDelete: (id) =>

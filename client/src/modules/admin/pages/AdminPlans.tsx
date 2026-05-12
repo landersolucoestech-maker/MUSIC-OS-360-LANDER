@@ -11,7 +11,6 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/lib/utils";
 import { MOCK_PLANS } from "../data/mockAdmin";
 import type { AdminPlan } from "../types";
 import {

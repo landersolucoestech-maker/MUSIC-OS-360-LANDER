@@ -9,9 +9,9 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { MOCK_ADMIN_NOTIFICATIONS } from "../data/mockAdmin";
 import {
-  LayoutDashboard, Building2, CreditCard, DollarSign, Tag,
-  Users, Shield, ScrollText, Zap, Server, Bell, HeadphonesIcon,
-  Settings, BarChart3, LogOut, ChevronLeft, ChevronRight,
+  LayoutDashboard, Building2, Tag,
+  ScrollText, Bell, HeadphonesIcon,
+  Settings, LogOut, ChevronLeft, ChevronRight,
   AlertCircle, CheckCircle2, Info, AlertTriangle, ExternalLink,
   Music2,
 } from "lucide-react";
@@ -166,7 +166,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 </div>
                 {MOCK_ADMIN_NOTIFICATIONS.slice(0, 4).map((n) => (
                   <DropdownMenuItem key={n.id} className="gap-2 py-2.5 cursor-pointer">
-                    {SEVERITY_ICON[n.severity]}
+                    {SEVERITY_ICON[n.severity as keyof typeof SEVERITY_ICON]}
                     <div className="flex-1 min-w-0">
                       <p className="text-[12px] font-medium text-foreground truncate">{n.title}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{n.message}</p>

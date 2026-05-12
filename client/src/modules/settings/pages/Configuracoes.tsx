@@ -45,6 +45,8 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
+import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
 import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
 import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
@@ -184,6 +186,7 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
   const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
   const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
@@ -222,6 +225,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: acrcloudStatus } = useACRCloudStatus();
   const { data: googleAdsStatus } = useGoogleAdsStatus();
   const { data: tiktokAdsStatus } = useTikTokAdsStatus();
   const { data: nfeStatus } = useNfeStatus();
@@ -414,6 +418,15 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
+      id: "acrcloud",
+      name: "ACRCloud",
+      icon: "📡",
+      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Monitoramento musical por fingerprint · Alertas de uso · Relatórios de execução",
+      category: "Monitoramento Musical",
+      configurable: true,
+    },
+    {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
@@ -474,6 +487,7 @@ export default function Configuracoes() {
     ecad: () => setEcadConfigOpen(true),
     abramus: () => setAbramusConfigOpen(true),
     ubc: () => setUbcConfigOpen(true),
+    acrcloud: () => setAcrcloudConfigOpen(true),
     autentique: () => setAutentiqueConfigOpen(true),
     clicksign: () => setClicksignConfigOpen(true),
     docusign: () => setDocusignConfigOpen(true),
@@ -1400,7 +1414,7 @@ export default function Configuracoes() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal", "Captação de Leads"].map((category) => {
+                  {["Assinatura Digital", "Direitos Autorais", "Monitoramento Musical", "Tráfego Pago / Anúncios", "Fiscal", "Captação de Leads"].map((category) => {
                     const items = integracoes.filter((i) => i.category === category);
                     if (items.length === 0) return null;
                     return (
@@ -1601,6 +1615,10 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <ACRCloudConfigDialog
+              open={acrcloudConfigOpen}
+              onOpenChange={setAcrcloudConfigOpen}
             />
             <GoogleAdsConfigDialog
               open={googleAdsConfigOpen}

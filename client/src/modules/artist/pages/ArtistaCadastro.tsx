@@ -369,6 +369,10 @@ export default function ArtistaCadastro() {
     try {
       const camposComuns = formToArtistaPayload({
         nomeArtistico,
+        slugArtistico: "",
+        tagsMusicais: [],
+        faseCarreira: "",
+        relacionamentos: [],
         generoMusical,
         tipoArtista,
         statusArtista,

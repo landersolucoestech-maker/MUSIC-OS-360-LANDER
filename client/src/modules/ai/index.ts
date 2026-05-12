@@ -20,7 +20,7 @@
 export * from "./domain";
 
 // ── Providers ─────────────────────────────────────────────────────────────────
-export { getAIProviders } from "./providers";
+export { OpenAIProvider, ClaudeProvider, GeminiProvider, PerplexityProvider } from "./providers";
 
 // ── Orchestrator ──────────────────────────────────────────────────────────────
 export { getAIOrchestrator } from "./orchestrators";

@@ -1,6 +1,5 @@
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  ExternalLink,
   RefreshCw,
   AlertCircle,
   Headphones,
@@ -21,8 +20,10 @@ type DeezerDataError = PlatformDataError;
 type AppleMusicDataError = PlatformDataError;
 type SoundCloudDataError = PlatformDataError;
 
-const stubStatus = () => ({ data: null as null, isLoading: false, isFetching: false });
-const stubQuery = () => ({ data: null as null, isLoading: false, isFetching: false, error: null as null });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stubStatus = () => ({ data: null as any, isLoading: false, isFetching: false });
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const stubQuery = () => ({ data: null as any, isLoading: false, isFetching: false, error: null as any });
 const stubEvolution = () => ({ data: [] as { date: string; followers?: number | null }[], isLoading: false });
 
 const useSpotifyStatus = stubStatus;
@@ -109,7 +110,7 @@ export function ArtistaPlatformMetrics({
 
   const spotifyStatus = useSpotifyStatus();
   const youtubeStatus = useYouTubeStatus();
-  const appleMusicStatus = useAppleMusicStatus();
+  useAppleMusicStatus(); // keep hook call for future use
 
   const spotifyConfigured =
     spotifyStatus.data?.connected || spotifyStatus.data?.has_global_fallback;
@@ -169,7 +170,6 @@ export function ArtistaPlatformMetrics({
   const appleMusicSource = appleMusicQuery.data?.source ?? null;
   const appleMusicLatestRelease = appleMusicQuery.data?.latestRelease ?? null;
   const appleMusicGenre = appleMusicQuery.data?.primaryGenreName ?? null;
-  const appleMusicJwtConnected = appleMusicStatus.data?.connected === true;
   const soundcloudFollowers = soundcloudQuery.data?.followers_count ?? null;
   const soundcloudTracks = soundcloudQuery.data?.track_count ?? null;
 

@@ -2,7 +2,8 @@ import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
 import { MOCK_MODE } from "@/shared/lib/env";
-import { ROLE_PERMISSIONS, getPermissionsFromToken } from "./tenant-labels";
+import { ROLE_PERMISSIONS } from "./tenant-labels";
+import { getAccessToken } from "@/shared/lib/api-client";
 
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
@@ -166,7 +167,10 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
-  const [tenant, setTenant] = useState<Tenant>(MOCK_TENANT);
+  const initialTenant: Tenant = MOCK_MODE
+    ? MOCK_TENANT
+    : { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.viewer };
+  const [tenant, setTenant] = useState<Tenant>(initialTenant);
 
   const isFeatureEnabled = (flag: keyof FeatureFlags): boolean =>
     tenant.features[flag] ?? false;
@@ -202,13 +206,12 @@ export function useTenant(): TenantContextType {
  */
 export function useSyncTenantFromJWT(): void {
   const { setTenant } = useTenant();
-
   useEffect(() => {
     if (MOCK_MODE) return;
+    const token = getAccessToken();
+    if (!token) return;
     try {
-      const raw = localStorage.getItem("access_token");
-      if (!raw) return;
-      const parts = raw.split(".");
+      const parts = token.split(".");
       if (parts.length < 2) return;
       const decoded = JSON.parse(
         atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
@@ -219,7 +222,7 @@ export function useSyncTenantFromJWT(): void {
         id:          decoded.org_id ?? prev.id,
         permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.viewer,
       }));
-    } catch { /* ignore — JWT inválido ou ausente */ }
+    } catch { /* JWT inválido */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 }

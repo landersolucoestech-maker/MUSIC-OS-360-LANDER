@@ -14,8 +14,6 @@ import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
-
 import {
   TransacaoFormData,
   initialFormData,
@@ -54,7 +52,6 @@ export function TransacaoFormModal({ open, onOpenChange, transacao, mode }: Tran
   const { clientes } = useClientes();
   const { projetos } = useProjetos();
   const { eventos } = useEventos();
-  const { contratos } = useContratos();
 
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Nova Transação Financeira" : mode === "edit" ? "Editar Transação" : "Visualizar Transação";
@@ -292,13 +289,6 @@ export function TransacaoFormModal({ open, onOpenChange, transacao, mode }: Tran
     [formData.artistaVinculado, eventos]
   );
 
-  const contratosFiltrados = useMemo(() => 
-    formData.artistaVinculado 
-      ? contratos.filter(c => c.artista_id === formData.artistaVinculado)
-      : [],
-    [formData.artistaVinculado, contratos]
-  );
-
   // Cálculo de valor por parcela
   const valorParcela = useMemo(() => {
     if (formData.tipoPagamento === "parcelado" && formData.valor && formData.quantidadeParcelas) {
@@ -419,12 +409,6 @@ export function TransacaoFormModal({ open, onOpenChange, transacao, mode }: Tran
         }
       }
 
-      const dadosParaSalvar = {
-        ...formData,
-        observacao: observacaoFinal,
-      };
-
-      
       // Simular delay de API
       await new Promise(resolve => setTimeout(resolve, 500));
       
