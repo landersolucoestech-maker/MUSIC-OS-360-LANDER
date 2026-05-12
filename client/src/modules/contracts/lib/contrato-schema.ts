@@ -56,7 +56,7 @@ export const contratoSchema = z.object({
   financial_support: z.number().optional(),
   observations: z.string().optional(),
   terms: z.string().optional(),
-  signers: z.array(contratoSignerSchema).default([]),
+  signers: z.array(contratoSignerSchema).max(10, "Máximo de 10 signatários").default([]),
 });
 
 export type ContratoFormData = z.infer<typeof contratoSchema>;

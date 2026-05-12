@@ -182,7 +182,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   </div>
                   <p className="text-sm font-semibold mb-1">Nenhum signatário definido</p>
                   <p className="text-xs text-muted-foreground mb-5 max-w-xs">
-                    Adicione os signatários directamente no formulário de edição do contrato.
+                    Adicione signatários no formulário do contrato.
                   </p>
                   {onEdit && (
                     <Button
