@@ -51,7 +51,6 @@ import {
   ServerCrash,
   Inbox,
   Mic2,
-  FileSignature,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";

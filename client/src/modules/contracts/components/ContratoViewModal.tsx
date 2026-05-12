@@ -197,6 +197,11 @@ export function ContratoViewModal({ open, onOpenChange, contrato }: ContratoView
                                 <MailCheck className="h-3 w-3" />
                                 {signer.email}
                               </p>
+                              {signer.status === "signed" && signer.signed_at && (
+                                <p className="text-xs text-green-600 mt-0.5">
+                                  Assinado em {new Date(signer.signed_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                </p>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
                               <Badge variant="outline" className="text-[10px] font-normal">
