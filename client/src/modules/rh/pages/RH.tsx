@@ -47,6 +47,7 @@ import { FuncionarioFormModal } from "@/modules/rh/components/FuncionarioFormMod
 import { FolhaPagamentoFormModal } from "@/modules/rh/components/FolhaPagamentoFormModal";
 import { FeriasAusenciasFormModal } from "@/modules/rh/components/FeriasAusenciasFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
@@ -429,23 +430,25 @@ export default function RH() {
       actions={
         <div className="flex items-center gap-2">
           {activeTab !== "documentos" && (
-            <Button
-              size="sm"
-              className="gap-2"
-              onClick={
-                activeTab === "funcionarios"
-                  ? () => setFuncFormModal({ open: true, mode: "create" })
-                  : activeTab === "folha"
-                  ? () => setFolhaFormModal({ open: true, mode: "create" })
-                  : () => setFeriasFormModal({ open: true, mode: "create" })
-              }
-              data-testid="button-new-header"
-            >
-              <Plus className="h-4 w-4" />
-              {activeTab === "funcionarios" ? "Novo Funcionário"
-                : activeTab === "folha" ? "Novo Registro"
-                : "Nova Ausência"}
-            </Button>
+            <RequirePermission module="rh" action="write">
+              <Button
+                size="sm"
+                className="gap-2"
+                onClick={
+                  activeTab === "funcionarios"
+                    ? () => setFuncFormModal({ open: true, mode: "create" })
+                    : activeTab === "folha"
+                    ? () => setFolhaFormModal({ open: true, mode: "create" })
+                    : () => setFeriasFormModal({ open: true, mode: "create" })
+                }
+                data-testid="button-new-header"
+              >
+                <Plus className="h-4 w-4" />
+                {activeTab === "funcionarios" ? "Novo Funcionário"
+                  : activeTab === "folha" ? "Novo Registro"
+                  : "Nova Ausência"}
+              </Button>
+            </RequirePermission>
           )}
         </div>
       }

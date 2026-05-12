@@ -13,6 +13,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { ProjetoFormModal } from "@/modules/projects/components/ProjetoFormModal";
 import { ProjetoViewModal } from "@/modules/projects/components/ProjetoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
@@ -338,7 +339,9 @@ export default function Projetos() {
 
   const headerActions = (
     <>
-      <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Projeto</Button>
+      <RequirePermission module="projects" action="write">
+        <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Projeto</Button>
+      </RequirePermission>
     </>
   );
 

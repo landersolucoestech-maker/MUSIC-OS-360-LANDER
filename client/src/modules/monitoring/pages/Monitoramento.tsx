@@ -9,6 +9,7 @@ import { Input } from "@/shared/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, Music, X } from "lucide-react";
 import { EmptyState } from "@/shared/components/EmptyState";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
@@ -228,9 +229,11 @@ export default function Monitoramento() {
                 <CardTitle className="text-lg">Conciliação ECAD</CardTitle>
                 <CardDescription>Relatórios de royalties por período</CardDescription>
               </div>
-              <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
-                <Upload className="h-4 w-4" />Importar Relatório ECAD
-              </Button>
+              <RequirePermission module="monitoring" action="write">
+                <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
+                  <Upload className="h-4 w-4" />Importar Relatório ECAD
+                </Button>
+              </RequirePermission>
             </CardHeader>
             <CardContent className="space-y-4">
               {ecadPeriodos.length > 0 ? (

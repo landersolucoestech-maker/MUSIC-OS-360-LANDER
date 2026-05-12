@@ -15,6 +15,7 @@ import {
 } from "@/shared/ui/dropdown-menu";
 import { CampanhaFormModal } from "@/modules/marketing/components/CampanhaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -103,10 +104,12 @@ export default function MarketingCampanhas() {
       title="Campanhas de Marketing"
       description="Planeje, execute e monitore campanhas e tráfego pago"
       actions={
-        <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleNovaCampanha}>
-          <Plus className="h-3.5 w-3.5" />
-          Nova Campanha
-        </Button>
+        <RequirePermission module="marketing" action="write">
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={handleNovaCampanha}>
+            <Plus className="h-3.5 w-3.5" />
+            Nova Campanha
+          </Button>
+        </RequirePermission>
       }
     >
       <div className="space-y-6">

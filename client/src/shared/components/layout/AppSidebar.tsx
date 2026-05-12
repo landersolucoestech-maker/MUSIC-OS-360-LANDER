@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/app/providers/AuthContext";
-import { useTenant, PLAN_LABEL } from "@/app/providers/TenantContext";
+import { useTenant } from "@/app/providers/TenantContext";
+import { PLAN_LABEL } from "@/app/providers/tenant-labels";
 import { useIsAdmin } from "@/shared/hooks/useIsAdmin";
 import { useCurrentRole } from "@/shared/hooks/useHasRole";
 import {

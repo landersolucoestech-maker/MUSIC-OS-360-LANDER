@@ -12,6 +12,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { InventarioFormModal } from "@/modules/inventory/components/InventarioFormModal";
 import { InventarioViewModal } from "@/modules/inventory/components/InventarioViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
@@ -133,7 +134,9 @@ export default function Inventario() {
 
   const headerActions = (
     <>
-      <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Item</Button>
+      <RequirePermission module="inventory" action="write">
+        <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Item</Button>
+      </RequirePermission>
     </>
   );
 

@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LicencaFormModal } from "@/modules/licensing/components/LicencaFormModal";
 import { LicencaViewModal } from "@/modules/licensing/components/LicencaViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
 import { formatCurrency } from "@/shared/lib/format-utils";
@@ -86,9 +87,11 @@ export default function Licenciamento() {
   }
 
   const headerActions = (
-    <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setLicencaModal({ open: true, mode: "create" })}>
-      <Plus className="h-4 w-4" />Nova Licença
-    </Button>
+    <RequirePermission module="licensing" action="write">
+      <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setLicencaModal({ open: true, mode: "create" })}>
+        <Plus className="h-4 w-4" />Nova Licença
+      </Button>
+    </RequirePermission>
   );
 
   return (

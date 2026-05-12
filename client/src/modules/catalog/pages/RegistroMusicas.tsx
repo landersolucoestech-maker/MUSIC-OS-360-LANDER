@@ -15,6 +15,7 @@ import { ObraTipoSelectorModal, type TipoObra } from "@/modules/catalog/componen
 import { FonogramaFormModal } from "@/modules/catalog/components/FonogramaFormModal";
 import { FonogramaViewModal } from "@/modules/catalog/components/FonogramaViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { toast } from "sonner";
@@ -619,18 +620,20 @@ export default function RegistroMusicas() {
 
   const headerActions = (
     <>
-      <Button 
-        size="sm" 
-        className="gap-2 bg-primary hover:bg-primary/90 text-white"
-        onClick={() => activeTab === "fonogramas" 
-          ? setFonogramaModal({ open: true, mode: "create" }) 
-          : setObraTipoSelectorOpen(true)
-        }
-        data-testid="button-nova-obra"
-      >
-        <Plus className="h-4 w-4" />
-        {activeTab === "fonogramas" ? "Novo Fonograma" : "Nova Obra"}
-      </Button>
+      <RequirePermission module="catalog" action="write">
+        <Button 
+          size="sm" 
+          className="gap-2 bg-primary hover:bg-primary/90 text-white"
+          onClick={() => activeTab === "fonogramas" 
+            ? setFonogramaModal({ open: true, mode: "create" }) 
+            : setObraTipoSelectorOpen(true)
+          }
+          data-testid="button-nova-obra"
+        >
+          <Plus className="h-4 w-4" />
+          {activeTab === "fonogramas" ? "Novo Fonograma" : "Nova Obra"}
+        </Button>
+      </RequirePermission>
     </>
   );
 

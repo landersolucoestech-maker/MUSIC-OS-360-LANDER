@@ -1,6 +1,8 @@
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
+import { MOCK_MODE } from "@/shared/lib/env";
+import { ROLE_PERMISSIONS, getPermissionsFromToken } from "./tenant-labels";
 
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
@@ -27,25 +29,7 @@ export type TenantModuleKey =
 
 export type TenantPermissions = Record<TenantModuleKey, TenantModulePermission>;
 
-const FULL_PERMISSION: TenantModulePermission = { read: true, write: true, delete: true, export: true };
-const READ_ONLY:       TenantModulePermission = { read: true, write: false, delete: false, export: true };
-const NO_ACCESS:       TenantModulePermission = { read: false, write: false, delete: false, export: false };
-
-const MODULE_KEYS: TenantModuleKey[] = [
-  "artists", "catalog", "releases", "contracts",
-  "accounting", "crm", "marketing", "events",
-  "inventory", "rh", "monitoring", "licensing",
-  "projects", "leads", "audit", "settings",
-];
-
-/** Role-based default permissions */
-export const ROLE_PERMISSIONS: Record<TenantRole, TenantPermissions> = {
-  owner:   Object.fromEntries(MODULE_KEYS.map(k => [k, FULL_PERMISSION])) as TenantPermissions,
-  admin:   Object.fromEntries(MODULE_KEYS.map(k => [k, FULL_PERMISSION])) as TenantPermissions,
-  manager: Object.fromEntries(MODULE_KEYS.map(k => [k, k === "audit" || k === "settings" ? READ_ONLY : FULL_PERMISSION])) as TenantPermissions,
-  editor:  Object.fromEntries(MODULE_KEYS.map(k => [k, k === "audit" || k === "settings" ? NO_ACCESS : { read: true, write: true, delete: false, export: true }])) as TenantPermissions,
-  viewer:  Object.fromEntries(MODULE_KEYS.map(k => [k, k === "audit" || k === "settings" ? NO_ACCESS : READ_ONLY])) as TenantPermissions,
-};
+// ROLE_PERMISSIONS disponível em ./tenant-labels
 
 // ─── Tenant config (branding + UX per tenant) ─────────────────────────────────
 
@@ -131,31 +115,7 @@ export interface Tenant {
   };
 }
 
-// ─── RBAC util — derivar permissões do JWT real (produção) ────────────────────
-//
-// Em MOCK_MODE o tenant usa ROLE_PERMISSIONS.owner para demonstração completa.
-// Em produção, chamar getPermissionsFromToken() para obter o role real do JWT.
-// NOTA BUG #3: nunca hardcodar owner em produção — usar getPermissionsFromToken.
-
-function getPermissionsFromToken(): TenantPermissions {
-  try {
-    const token = localStorage.getItem("access_token");
-    if (!token) return ROLE_PERMISSIONS.viewer;
-    // Decode sem verificar assinatura (verificação é feita no backend)
-    const base64Payload = token.split(".")[1];
-    if (!base64Payload) return ROLE_PERMISSIONS.viewer;
-    const payload = JSON.parse(atob(base64Payload)) as { role?: TenantRole };
-    const role: TenantRole = payload.role && payload.role in ROLE_PERMISSIONS
-      ? payload.role
-      : "viewer";
-    return ROLE_PERMISSIONS[role];
-  } catch {
-    return ROLE_PERMISSIONS.viewer;
-  }
-}
-
-// Exportada para uso em testes e inicialização real do tenant
-export { getPermissionsFromToken };
+// getPermissionsFromToken disponível em ./tenant-labels
 
 // ─── Mock tenant — Gravadora Exemplo Ltda ─────────────────────────────────────
 
@@ -194,7 +154,7 @@ const MOCK_TENANT: Tenant = {
 
 interface TenantContextType {
   tenant:           Tenant;
-  setTenant:        (tenant: Tenant) => void;
+  setTenant:        React.Dispatch<React.SetStateAction<Tenant>>;
   isFeatureEnabled: (flag: keyof FeatureFlags) => boolean;
   hasPermission:    (module: TenantModuleKey, action: keyof TenantModulePermission) => boolean;
   canRead:          (module: TenantModuleKey) => boolean;
@@ -232,36 +192,37 @@ export function useTenant(): TenantContextType {
   return ctx;
 }
 
-/** Plan display labels */
-export const PLAN_LABEL: Record<TenantPlan, string> = {
-  starter:      "Starter",
-  professional: "Professional",
-  enterprise:   "Enterprise",
-};
+/**
+ * useSyncTenantFromJWT — sincroniza permissões do tenant a partir do JWT real.
+ *
+ * FASE 05: Em MOCK_MODE não faz nada (tenant usa ROLE_PERMISSIONS.owner por defeito).
+ * Em produção, lê o role e org_id do JWT e actualiza as permissões do tenant.
+ *
+ * Chamar num componente raiz (ex: AppShell) após autenticação.
+ */
+export function useSyncTenantFromJWT(): void {
+  const { setTenant } = useTenant();
 
-/** Industry display labels */
-export const INDUSTRY_LABEL: Record<TenantIndustry, string> = {
-  gravadora:     "Gravadora",
-  editora:       "Editora Musical",
-  distribuidora: "Distribuidora",
-  agencia:       "Agência Artística",
-  publisher:     "Publisher",
-  outro:         "Outro",
-};
+  useEffect(() => {
+    if (MOCK_MODE) return;
+    try {
+      const raw = localStorage.getItem("access_token");
+      if (!raw) return;
+      const parts = raw.split(".");
+      if (parts.length < 2) return;
+      const decoded = JSON.parse(
+        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
+      ) as { role?: TenantRole; org_id?: string };
+      if (!decoded.role || !(decoded.role in ROLE_PERMISSIONS)) return;
+      setTenant(prev => ({
+        ...prev,
+        id:          decoded.org_id ?? prev.id,
+        permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.viewer,
+      }));
+    } catch { /* ignore — JWT inválido ou ausente */ }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+}
 
-/** Billing status labels */
-export const BILLING_STATUS_LABEL: Record<TenantBillingStatus, string> = {
-  active:    "Ativo",
-  trial:     "Trial",
-  suspended: "Suspenso",
-  cancelled: "Cancelado",
-};
-
-/** Role labels */
-export const ROLE_LABEL: Record<TenantRole, string> = {
-  owner:   "Proprietário",
-  admin:   "Administrador",
-  manager: "Gerente",
-  editor:  "Editor",
-  viewer:  "Visualizador",
-};
+// Label constants (PLAN_LABEL, INDUSTRY_LABEL, BILLING_STATUS_LABEL, ROLE_LABEL)
+// e ROLE_PERMISSIONS disponíveis em ./tenant-labels

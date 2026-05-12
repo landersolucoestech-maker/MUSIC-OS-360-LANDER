@@ -25,6 +25,7 @@ import { CRMViewModal } from "@/modules/crm/components/CRMViewModal";
 import { LeadFormModal } from "@/modules/crm/components/LeadFormModal";
 import { LeadViewModal } from "@/modules/crm/components/LeadViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 
@@ -237,13 +238,17 @@ export default function CRM() {
         <>
           <input type="file" ref={csvInputRef} accept=".xlsx,.xls" onChange={handleExcelUpload} className="hidden" />
           {activeView === "contatos" ? (
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
-              <Plus className="h-3.5 w-3.5" /> Novo Contato
-            </Button>
+            <RequirePermission module="crm" action="write">
+              <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-novo-contato">
+                <Plus className="h-3.5 w-3.5" /> Novo Contato
+              </Button>
+            </RequirePermission>
           ) : (
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setLeadFormModal({ open: true, mode: "create" })} data-testid="button-novo-lead">
-              <Plus className="h-3.5 w-3.5" /> Novo Lead
-            </Button>
+            <RequirePermission module="crm" action="write">
+              <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setLeadFormModal({ open: true, mode: "create" })} data-testid="button-novo-lead">
+                <Plus className="h-3.5 w-3.5" /> Novo Lead
+              </Button>
+            </RequirePermission>
           )}
         </>
       }
@@ -454,23 +459,33 @@ export default function CRM() {
                               <DropdownMenuItem data-testid={`button-ver-${cliente.id}`} onClick={() => setViewModal({ open: true, cliente })}>
                                 <Eye className="h-3.5 w-3.5 mr-2" /> Abrir
                               </DropdownMenuItem>
-                              <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
-                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                              </DropdownMenuItem>
+                              <RequirePermission module="crm" action="write">
+                                <DropdownMenuItem data-testid={`button-editar-${cliente.id}`} onClick={() => setFormModal({ open: true, mode: "edit", cliente })}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                                </DropdownMenuItem>
+                              </RequirePermission>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
-                                <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
-                                <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
-                                <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
-                              </DropdownMenuItem>
+                              <RequirePermission module="crm" action="write">
+                                <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "contratante")}>
+                                  <Building2 className="h-3.5 w-3.5 mr-2 text-blue-500" /> Marcar como Contratante
+                                </DropdownMenuItem>
+                              </RequirePermission>
+                              <RequirePermission module="crm" action="write">
+                                <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "parceiro")}>
+                                  <Handshake className="h-3.5 w-3.5 mr-2 text-emerald-500" /> Marcar como Parceiro
+                                </DropdownMenuItem>
+                              </RequirePermission>
+                              <RequirePermission module="crm" action="write">
+                                <DropdownMenuItem onClick={() => handleSetSegmento(cliente.id, "fornecedor")}>
+                                  <Package className="h-3.5 w-3.5 mr-2 text-warning" /> Marcar como Fornecedor
+                                </DropdownMenuItem>
+                              </RequirePermission>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                              </DropdownMenuItem>
+                              <RequirePermission module="crm" action="delete">
+                                <DropdownMenuItem className="text-destructive focus:text-destructive" data-testid={`button-excluir-${cliente.id}`} onClick={() => setDeleteModal({ open: true, cliente })}>
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                              </RequirePermission>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
@@ -635,13 +650,17 @@ export default function CRM() {
                             <DropdownMenuItem onClick={() => setLeadViewModal({ open: true, lead })}>
                               <Eye className="h-3.5 w-3.5 mr-2" /> Abrir
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setLeadFormModal({ open: true, mode: "edit", lead })}>
-                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                            </DropdownMenuItem>
+                            <RequirePermission module="crm" action="write">
+                              <DropdownMenuItem onClick={() => setLeadFormModal({ open: true, mode: "edit", lead })}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                              </DropdownMenuItem>
+                            </RequirePermission>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteLeadModal({ open: true, lead })}>
-                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                            </DropdownMenuItem>
+                            <RequirePermission module="crm" action="delete">
+                              <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => setDeleteLeadModal({ open: true, lead })}>
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                              </DropdownMenuItem>
+                            </RequirePermission>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </div>

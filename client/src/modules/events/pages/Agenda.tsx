@@ -13,6 +13,7 @@ import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { EventoFormModal } from "@/modules/events/components/EventoFormModal";
 import { EventoViewModal } from "@/modules/events/components/EventoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { RequirePermission } from "@/shared/components/RequirePermission";
 import { toast } from "sonner";
 const getXLSX = () => import("xlsx");
 
@@ -222,9 +223,11 @@ export default function Agenda() {
         className="hidden"
         data-testid="input-excel-import"
       />
-      <Button size="sm" className="gap-2 bg-primary" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-event">
-        <Plus className="h-4 w-4" />Novo Evento
-      </Button>
+      <RequirePermission module="events" action="write">
+        <Button size="sm" className="gap-2 bg-primary" onClick={() => setFormModal({ open: true, mode: "create" })} data-testid="button-new-event">
+          <Plus className="h-4 w-4" />Novo Evento
+        </Button>
+      </RequirePermission>
     </>
   );
 
