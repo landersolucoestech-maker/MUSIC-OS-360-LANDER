@@ -31,6 +31,7 @@ import {
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
 import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
+import { MarketingOAuthDialog } from "@/modules/integrations/components/MarketingOAuthDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
@@ -173,6 +174,7 @@ export default function Configuracoes() {
   const [newRoleDescription, setNewRoleDescription] = useState("");
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [connectingPlatform, setConnectingPlatform] = useState<string | null>(null);
+  const [oauthDialogPlatform, setOauthDialogPlatform] = useState<MarketingPlatformId | null>(null);
   const [websiteLeadOpen, setWebsiteLeadOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
@@ -1481,13 +1483,7 @@ export default function Configuracoes() {
                                         variant="outline"
                                         size="sm"
                                         className="h-7 text-xs gap-1"
-                                        onClick={() => {
-                                          setConnectingPlatform(integracao.id);
-                                          connectMarketing(integracao.id as MarketingPlatformId, [])
-                                            .then(() => toast.success(`${integracao.name} conectado com sucesso.`))
-                                            .catch(() => toast.error(`Erro ao conectar ${integracao.name}.`))
-                                            .finally(() => setConnectingPlatform(null));
-                                        }}
+                                        onClick={() => setOauthDialogPlatform(integracao.id as MarketingPlatformId)}
                                         data-testid={`button-integration-${integracao.id}`}
                                       >
                                         Conectar
@@ -1722,6 +1718,19 @@ export default function Configuracoes() {
               open={acrcloudConfigOpen}
               onOpenChange={setAcrcloudConfigOpen}
             />
+
+            {oauthDialogPlatform && (
+              <MarketingOAuthDialog
+                open={Boolean(oauthDialogPlatform)}
+                onOpenChange={(val) => { if (!val) setOauthDialogPlatform(null); }}
+                platform={oauthDialogPlatform}
+                onConnect={async (platform, scopes) => {
+                  await connectMarketing(platform, scopes);
+                  toast.success(`${platform} conectado com sucesso.`);
+                  setOauthDialogPlatform(null);
+                }}
+              />
+            )}
 
             <NfeConfigDialog
               open={nfeConfigOpen}
