@@ -37,8 +37,6 @@ import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDi
 import { useEcadStatus } from "@/modules/integrations/hooks/useEcad";
 import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
 import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
-import { ResendConfigDialog } from "@/modules/integrations/components/ResendConfigDialog";
-import { useResendStatus } from "@/modules/integrations/hooks/useResend";
 import { AutentiqueConfigDialog } from "@/modules/integrations/components/AutentiqueConfigDialog";
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
 import { ClicksignConfigDialog } from "@/modules/integrations/components/ClicksignConfigDialog";
@@ -49,6 +47,12 @@ import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDial
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
 import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
 import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
+import { GoogleAdsConfigDialog } from "@/modules/integrations/components/GoogleAdsConfigDialog";
+import { useGoogleAdsStatus } from "@/modules/integrations/hooks/useGoogleAds";
+import { TikTokAdsConfigDialog } from "@/modules/integrations/components/TikTokAdsConfigDialog";
+import { useTikTokAdsStatus } from "@/modules/integrations/hooks/useTikTokAds";
+import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
+import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -178,11 +182,13 @@ export default function Configuracoes() {
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
-  const [resendConfigOpen, setResendConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [googleAdsConfigOpen, setGoogleAdsConfigOpen] = useState(false);
+  const [tiktokAdsConfigOpen, setTiktokAdsConfigOpen] = useState(false);
+  const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
   const [acrCloudConfigOpen, setAcrCloudConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -215,11 +221,13 @@ export default function Configuracoes() {
   const { data: abramusStatus } = useAbramusStatus();
   const { data: ecadStatus } = useEcadStatus();
   const { data: metaAdsStatus } = useMetaAdsStatus();
-  const { data: resendStatus } = useResendStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: googleAdsStatus } = useGoogleAdsStatus();
+  const { data: tiktokAdsStatus } = useTikTokAdsStatus();
+  const { data: nfeStatus } = useNfeStatus();
   const { data: acrCloudStatus } = useACRCloudStatus();
 
   // Estados para aba de Usuários
@@ -383,46 +391,6 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "spotify",
-      name: "Spotify",
-      icon: "🎵",
-      status: "desconectado",
-      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
-      category: "Streaming",
-    },
-    {
-      id: "youtube",
-      name: "YouTube Music",
-      icon: "▶️",
-      status: "desconectado",
-      description: "Métricas de visualizações, receita e crescimento de canal",
-      category: "Streaming",
-    },
-    {
-      id: "deezer",
-      name: "Deezer",
-      icon: "🎶",
-      status: "desconectado",
-      description: "Relatórios de streams e royalties da plataforma Deezer",
-      category: "Streaming",
-    },
-    {
-      id: "soundcloud",
-      name: "SoundCloud",
-      icon: "☁️",
-      status: "desconectado",
-      description: "Estatísticas de reprodução e engajamento no SoundCloud",
-      category: "Streaming",
-    },
-    {
-      id: "apple_music",
-      name: "Apple Music",
-      icon: "🍎",
-      status: "desconectado",
-      description: "Dados de streams e relatórios do Apple Music Connect",
-      category: "Streaming",
-    },
-    {
       id: "ecad",
       name: "ECAD",
       icon: "📊",
@@ -450,39 +418,49 @@ export default function Configuracoes() {
       configurable: true,
     },
     {
-      id: "cloudflare_r2",
-      name: "Cloudflare R2",
-      icon: "🗄️",
-      status: "desconectado",
-      description: "Armazenamento de arquivos de áudio, mídia e documentos na nuvem",
-      category: "Armazenamento",
-    },
-    {
       id: "meta_ads",
       name: "Meta Ads",
       icon: "📣",
       status: metaAdsStatus?.connected ? "conectado" : "desconectado",
-      description: "Métricas de campanhas do Facebook e Instagram Ads",
-      category: "Marketing",
+      description: "Campanhas de tráfego pago do Facebook e Instagram Ads — autenticação OAuth com a sua conta",
+      category: "Tráfego Pago / Anúncios",
       configurable: true,
       notices: metaAdsNotices,
     },
     {
-      id: "resend",
-      name: "Resend",
-      icon: "✉️",
-      status: resendStatus?.connected ? "conectado" : "desconectado",
-      description: "Envio de e-mails transacionais a partir do seu domínio",
-      category: "Email",
+      id: "google_ads",
+      name: "Google Ads",
+      icon: "🔍",
+      status: googleAdsStatus?.connected ? "conectado" : "desconectado",
+      description: "Search, Display e YouTube Ads — conecte a sua conta Google Ads para gerir campanhas pagas",
+      category: "Tráfego Pago / Anúncios",
+      configurable: true,
+    },
+    {
+      id: "tiktok_ads",
+      name: "TikTok Ads",
+      icon: "🎯",
+      status: tiktokAdsStatus?.connected ? "conectado" : "desconectado",
+      description: "Campanhas no TikTok Ads Manager — impulsionamento e leads via conta autenticada",
+      category: "Tráfego Pago / Anúncios",
+      configurable: true,
+    },
+    {
+      id: "nfe",
+      name: "NF-e / Nota Fiscal",
+      icon: "🧾",
+      status: nfeStatus?.connected ? "conectado" : "desconectado",
+      description: "Emissão de Nota Fiscal Eletrônica com certificado digital e credenciais SEFAZ da própria empresa",
+      category: "Fiscal",
       configurable: true,
     },
     {
       id: "acrcloud",
       name: "ACRCloud",
-      icon: "📡",
+      icon: "🎧",
       status: acrCloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Monitoramento musical por fingerprint — rádio, TV, streaming e vídeo",
-      category: "Monitoramento",
+      description: "Monitoramento musical por fingerprint de áudio — identifica execuções em rádio, TV, streaming e vídeo",
+      category: "Monitoramento Musical",
       configurable: true,
     },
   ];
@@ -499,12 +477,14 @@ export default function Configuracoes() {
   const integrationConfigHandlers: Record<string, () => void> = {
     ecad: () => setEcadConfigOpen(true),
     abramus: () => setAbramusConfigOpen(true),
-    meta_ads: () => setMetaAdsConfigOpen(true),
-    resend: () => setResendConfigOpen(true),
+    ubc: () => setUbcConfigOpen(true),
     autentique: () => setAutentiqueConfigOpen(true),
     clicksign: () => setClicksignConfigOpen(true),
     docusign: () => setDocusignConfigOpen(true),
-    ubc: () => setUbcConfigOpen(true),
+    meta_ads: () => setMetaAdsConfigOpen(true),
+    google_ads: () => setGoogleAdsConfigOpen(true),
+    tiktok_ads: () => setTiktokAdsConfigOpen(true),
+    nfe: () => setNfeConfigOpen(true),
     acrcloud: () => setAcrCloudConfigOpen(true),
   };
 
@@ -1423,7 +1403,7 @@ export default function Configuracoes() {
                 <CardDescription>Conecte serviços externos para automatizar processos</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                {["Assinatura Digital", "Streaming", "Direitos Autorais", "Armazenamento", "Marketing", "Email", "Monitoramento"].map((category) => {
+                {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal", "Monitoramento Musical"].map((category) => {
                   const items = integracoes.filter((i) => i.category === category);
                   if (items.length === 0) return null;
                   return (
@@ -1604,8 +1584,8 @@ export default function Configuracoes() {
               <CardContent>
                 <div className="flex items-center justify-between p-4 bg-muted/30 rounded-lg">
                   <div>
-                    <p className="font-medium">Facebook Ads, Instagram Ads, Google Ads e Website</p>
-                    <p className="text-sm text-muted-foreground">URLs de webhook, instruções de configuração e formulário público de captação</p>
+                    <p className="font-medium">Facebook, Instagram, Google Ads, TikTok, LinkedIn e Website</p>
+                    <p className="text-sm text-muted-foreground">Fluxo OAuth nativo por plataforma, webhooks alternativos e formulário público de captação</p>
                   </div>
                   <Button variant="outline" size="sm" onClick={() => setLeadIntegrationsOpen(true)} data-testid="button-lead-integrations">
                     Configurar
@@ -1631,10 +1611,6 @@ export default function Configuracoes() {
               open={metaAdsConfigOpen}
               onOpenChange={setMetaAdsConfigOpen}
             />
-            <ResendConfigDialog
-              open={resendConfigOpen}
-              onOpenChange={setResendConfigOpen}
-            />
             <AutentiqueConfigDialog
               open={autentiqueConfigOpen}
               onOpenChange={setAutentiqueConfigOpen}
@@ -1650,6 +1626,18 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <GoogleAdsConfigDialog
+              open={googleAdsConfigOpen}
+              onOpenChange={setGoogleAdsConfigOpen}
+            />
+            <TikTokAdsConfigDialog
+              open={tiktokAdsConfigOpen}
+              onOpenChange={setTiktokAdsConfigOpen}
+            />
+            <NfeConfigDialog
+              open={nfeConfigOpen}
+              onOpenChange={setNfeConfigOpen}
             />
             <ACRCloudConfigDialog
               open={acrCloudConfigOpen}
