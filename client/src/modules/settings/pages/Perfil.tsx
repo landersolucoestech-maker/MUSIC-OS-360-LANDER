@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -6,40 +6,125 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
-import { Pencil, User, Mail, Phone, Shield, Smartphone, History, Save, X } from "lucide-react";
+import { Pencil, User, Mail, Phone, Shield, Smartphone, History, Save, X, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
+import { useAuth } from "@/app/providers/AuthContext";
+
+function getInitials(name: string): string {
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
+}
 
 export default function Perfil() {
+  const { user } = useAuth();
+  const { userSettings, saveUserSettings, saving } = useUserSettings();
+
   const [isEditing, setIsEditing] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const [formData, setFormData] = useState({
-    nome: "Admin MusicOS 360",
-    email: "admin@musicos360.com",
-    telefone: "(33)99917-9552",
-    setor: "Administrativo",
-    nivelAcesso: "Administrador",
+    nome: userSettings.full_name || user?.name || "Admin MusicOS 360",
+    email: user?.email || "admin@musicos360.com",
+    telefone: userSettings.phone || "(33)99917-9552",
+    setor: userSettings.cargo || "Administrativo",
+    nivelAcesso: user?.role === "admin" ? "Administrador" : "Usuário",
   });
 
-  const handleSave = () => {
-    // Modo standalone: persistência real virá quando um backend for plugado.
-    toast.success("Perfil atualizado com sucesso!");
+  const handleSave = async () => {
+    await saveUserSettings({
+      full_name: formData.nome,
+      phone: formData.telefone,
+      cargo: formData.setor,
+    });
     setIsEditing(false);
   };
 
   const handleCancel = () => {
+    setFormData({
+      nome: userSettings.full_name || user?.name || "Admin MusicOS 360",
+      email: user?.email || "admin@musicos360.com",
+      telefone: userSettings.phone || "(33)99917-9552",
+      setor: userSettings.cargo || "Administrativo",
+      nivelAcesso: user?.role === "admin" ? "Administrador" : "Usuário",
+    });
     setIsEditing(false);
   };
+
+  const handleAvatarClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const MAX_SIZE_MB = 5;
+    if (file.size > MAX_SIZE_MB * 1024 * 1024) {
+      toast.error(`A imagem deve ter no máximo ${MAX_SIZE_MB} MB.`);
+      e.target.value = "";
+      return;
+    }
+
+    const allowed = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowed.includes(file.type)) {
+      toast.error("Formato não suportado. Use JPG, PNG, WEBP ou GIF.");
+      e.target.value = "";
+      return;
+    }
+
+    setUploadingAvatar(true);
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const dataUrl = event.target?.result as string;
+      await saveUserSettings({ avatar_url: dataUrl });
+      setUploadingAvatar(false);
+      e.target.value = "";
+    };
+    reader.onerror = () => {
+      toast.error("Erro ao ler o arquivo. Tente novamente.");
+      setUploadingAvatar(false);
+      e.target.value = "";
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = async () => {
+    await saveUserSettings({ avatar_url: "" });
+    toast.success("Avatar removido.");
+  };
+
+  const displayName = userSettings.full_name || formData.nome;
+  const avatarUrl = userSettings.avatar_url;
 
   const headerActions = isEditing ? (
     <div className="flex gap-2">
       <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleCancel}>
         <X className="h-3.5 w-3.5" /> Cancelar
       </Button>
-      <Button size="sm" className="h-8 text-xs gap-1.5 bg-success hover:bg-success/90" onClick={handleSave}>
-        <Save className="h-3.5 w-3.5" /> Salvar
+      <Button
+        size="sm"
+        className="h-8 text-xs gap-1.5 bg-success hover:bg-success/90"
+        onClick={handleSave}
+        disabled={saving}
+        data-testid="button-save-profile"
+      >
+        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+        Salvar
       </Button>
     </div>
   ) : (
-    <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setIsEditing(true)}>
+    <Button
+      size="sm"
+      className="h-8 text-xs gap-1.5"
+      onClick={() => setIsEditing(true)}
+      data-testid="button-edit-profile"
+    >
       <Pencil className="h-3.5 w-3.5" /> Editar Perfil
     </Button>
   );
@@ -54,13 +139,76 @@ export default function Perfil() {
           <Card className="lg:col-span-1">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-                <Avatar className="h-24 w-24 mb-4">
-                  <AvatarImage src="/placeholder.svg" />
-                  <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
-                    <img src="/placeholder.svg" alt="MUSIC OS 360 logo" className="h-full w-full object-cover" />
-                  </AvatarFallback>
-                </Avatar>
-                <h2 className="text-xl font-semibold">{formData.nome}</h2>
+
+                {/* Avatar com upload */}
+                <div className="relative mb-4 group">
+                  <Avatar className="h-24 w-24">
+                    {avatarUrl ? (
+                      <AvatarImage src={avatarUrl} alt={displayName} data-testid="img-avatar" />
+                    ) : null}
+                    <AvatarFallback className="bg-primary text-primary-foreground text-2xl">
+                      {getInitials(displayName) || "MO"}
+                    </AvatarFallback>
+                  </Avatar>
+
+                  {/* Overlay de upload */}
+                  <button
+                    type="button"
+                    onClick={handleAvatarClick}
+                    disabled={uploadingAvatar}
+                    data-testid="button-upload-avatar"
+                    className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                    aria-label="Alterar foto de perfil"
+                  >
+                    {uploadingAvatar ? (
+                      <Loader2 className="h-6 w-6 text-white animate-spin" />
+                    ) : (
+                      <Camera className="h-6 w-6 text-white" />
+                    )}
+                  </button>
+                </div>
+
+                {/* Input file oculto */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="hidden"
+                  data-testid="input-avatar-file"
+                  onChange={handleFileChange}
+                />
+
+                {/* Botões de acção abaixo do avatar */}
+                <div className="flex items-center gap-2 mt-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs gap-1"
+                    onClick={handleAvatarClick}
+                    disabled={uploadingAvatar}
+                    data-testid="button-change-photo"
+                  >
+                    <Camera className="h-3 w-3" />
+                    {uploadingAvatar ? "Enviando..." : "Alterar foto"}
+                  </Button>
+                  {avatarUrl && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs text-destructive hover:text-destructive"
+                      onClick={handleRemoveAvatar}
+                      disabled={uploadingAvatar}
+                      data-testid="button-remove-avatar"
+                    >
+                      <X className="h-3 w-3" />
+                      Remover
+                    </Button>
+                  )}
+                </div>
+
+                <p className="text-xs text-muted-foreground mt-2">JPG, PNG, WEBP ou GIF · Máx. 5 MB</p>
+
+                <h2 className="text-xl font-semibold mt-4">{displayName}</h2>
                 <div className="flex items-center gap-2 text-muted-foreground mt-1">
                   <Mail className="h-4 w-4" />
                   <span className="text-sm">{formData.email}</span>
@@ -103,44 +251,47 @@ export default function Perfil() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <Label>Nome Completo</Label>
-                  <Input 
-                    value={formData.nome} 
-                    readOnly={!isEditing} 
+                  <Input
+                    value={formData.nome}
+                    readOnly={!isEditing}
                     className={!isEditing ? "bg-muted" : ""}
                     onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                    data-testid="input-full-name"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>E-mail</Label>
-                  <Input 
-                    value={formData.email} 
-                    readOnly={!isEditing} 
-                    className={!isEditing ? "bg-muted" : ""}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  <Input
+                    value={formData.email}
+                    readOnly
+                    className="bg-muted"
+                    data-testid="input-email"
                   />
                 </div>
                 <div className="space-y-2">
                   <Label>Telefone</Label>
-                  <Input 
-                    value={formData.telefone} 
-                    readOnly={!isEditing} 
+                  <Input
+                    value={formData.telefone}
+                    readOnly={!isEditing}
                     className={!isEditing ? "bg-muted" : ""}
                     onChange={(e) => setFormData({ ...formData, telefone: e.target.value })}
+                    data-testid="input-phone"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Setor</Label>
-                  <Input 
-                    value={formData.setor} 
-                    readOnly={!isEditing} 
+                  <Label>Setor / Cargo</Label>
+                  <Input
+                    value={formData.setor}
+                    readOnly={!isEditing}
                     className={!isEditing ? "bg-muted" : ""}
                     onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
+                    data-testid="input-cargo"
                   />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Nível de Acesso</Label>
-                <Input value={formData.nivelAcesso} readOnly className="bg-muted" />
+                <Input value={formData.nivelAcesso} readOnly className="bg-muted" data-testid="input-nivel-acesso" />
               </div>
             </CardContent>
           </Card>
@@ -157,15 +308,24 @@ export default function Perfil() {
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors">
+              <div
+                className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                data-testid="card-alterar-senha"
+              >
                 <Shield className="h-5 w-5 text-muted-foreground" />
                 <span>Alterar Senha</span>
               </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors">
+              <div
+                className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                data-testid="card-ativar-2fa"
+              >
                 <Smartphone className="h-5 w-5 text-muted-foreground" />
                 <span>Ativar 2FA</span>
               </div>
-              <div className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors">
+              <div
+                className="flex items-center gap-3 p-4 rounded-lg border bg-card cursor-pointer hover:bg-muted/50 transition-colors"
+                data-testid="card-historico-login"
+              >
                 <History className="h-5 w-5 text-muted-foreground" />
                 <span>Histórico de Login</span>
               </div>
