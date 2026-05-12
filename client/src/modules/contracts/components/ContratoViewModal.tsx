@@ -13,9 +13,9 @@ import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancam
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
-import { useDocuments } from "@/modules/contracts-v2/hooks/useDocumentEngine";
-import { DocumentStatusBadge, SignerStatusBadge } from "@/modules/contracts-v2/components/shared/DocumentStatusBadge";
-import { DocumentTimeline } from "@/modules/contracts-v2/components/timeline/DocumentTimeline";
+import { useDocuments } from "@/modules/contracts/hooks/useDocuments";
+import { DocumentStatusBadge, SignerStatusBadge } from "@/modules/contracts/components/DocumentStatusBadge";
+import { DocumentTimeline } from "@/modules/contracts/components/DocumentTimeline";
 import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
 
 interface ContratoViewModalProps {

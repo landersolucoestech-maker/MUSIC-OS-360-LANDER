@@ -1,14 +1,5 @@
-/**
- * modules/contracts-v2/components/timeline/DocumentTimeline.tsx
- *
- * Linha do tempo de eventos de um documento — audit log visual.
- * Exibe cada DocumentLog com ícone, label e timestamp.
- */
-
 import { CheckCircle2, Clock, XCircle, Eye, Send, AlertCircle, FileText, Webhook } from "lucide-react";
-import type { DocumentLog, DocumentLogEvent } from "../../types";
-
-// ─── Event config ─────────────────────────────────────────────────────────────
+import type { DocumentLog, DocumentLogEvent } from "@/modules/contracts/types/document-types";
 
 interface EventConfig {
   icon:  React.ComponentType<{ className?: string }>;
@@ -28,8 +19,6 @@ const EVENT_CONFIG: Record<DocumentLogEvent, EventConfig> = {
   expired:            { icon: AlertCircle,  label: "Documento expirado",               color: "text-orange-600 dark:text-orange-400"},
   webhook_received:   { icon: Webhook,      label: "Webhook recebido",                 color: "text-slate-500"                      },
 };
-
-// ─── Single event row ─────────────────────────────────────────────────────────
 
 function TimelineEvent({ log, isLast }: { log: DocumentLog; isLast: boolean }) {
   const cfg  = EVENT_CONFIG[log.event] ?? EVENT_CONFIG.created;
@@ -66,8 +55,6 @@ function TimelineEvent({ log, isLast }: { log: DocumentLog; isLast: boolean }) {
     </div>
   );
 }
-
-// ─── DocumentTimeline ────────────────────────────────────────────────────────
 
 interface DocumentTimelineProps {
   logs: DocumentLog[];

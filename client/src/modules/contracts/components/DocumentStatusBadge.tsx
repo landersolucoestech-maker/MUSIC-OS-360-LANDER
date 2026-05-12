@@ -1,7 +1,7 @@
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
-import type { DocumentStatus, SignerStatus } from "../../types";
-import { DOCUMENT_STATUS_LABEL, SIGNER_STATUS_LABEL } from "../../types";
+import type { DocumentStatus, SignerStatus } from "@/modules/contracts/types/document-types";
+import { DOCUMENT_STATUS_LABEL, SIGNER_STATUS_LABEL } from "@/modules/contracts/types/document-types";
 
 interface DocumentStatusBadgeProps {
   status: DocumentStatus;
