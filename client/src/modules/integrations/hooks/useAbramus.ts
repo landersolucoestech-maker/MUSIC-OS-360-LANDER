@@ -14,7 +14,7 @@ import type {
   GenerateISRCResult,
   ArtistSearchQuery,
   ArtistSearchResult,
-} from "@/integrations/dto";
+} from "@/modules/integrations/dto";
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 const CRED_KEY = "musicos360_abramus_credentials";

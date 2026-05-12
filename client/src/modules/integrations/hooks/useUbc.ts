@@ -32,7 +32,7 @@ import type {
   GenerateISRCInput,
   GenerateISRCResult,
   ArtistSearchResult,
-} from "@/integrations/dto";
+} from "@/modules/integrations/dto";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────

@@ -30,7 +30,7 @@ import type {
   CreateMonitoringProjectInput,
   MusicSearchQuery,
   MusicSearchResult,
-} from "@/integrations/dto";
+} from "@/modules/integrations/dto";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
