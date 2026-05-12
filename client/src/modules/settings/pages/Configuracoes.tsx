@@ -64,6 +64,10 @@ import {
 import { Database, Sparkles, Package, Unplug } from "lucide-react";
 import { resetMockData } from "@/shared/data/mockData";
 
+function formatRoleName(name: string): string {
+  return name.replace(/_/g, " ");
+}
+
 const PERMISSION_TYPES: { id: string; label: string; icon?: LucideIcon }[] = [
   { id: "view", label: "Visualizar", icon: Eye },
   { id: "create", label: "+ Criar", icon: Plus },
@@ -1816,7 +1820,7 @@ export default function Configuracoes() {
                           <SelectContent>
                             {roles.length > 0 ? (
                               roles.map((role) => (
-                                <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                <SelectItem key={role.id} value={role.id}>{formatRoleName(role.name)}</SelectItem>
                               ))
                             ) : (
                               <>
@@ -1929,7 +1933,7 @@ export default function Configuracoes() {
                             <Shield className="h-4 w-4 text-muted-foreground" />
                           </div>
                           <div>
-                            <p className="font-medium text-foreground">{role.name}</p>
+                            <p className="font-medium text-foreground">{formatRoleName(role.name)}</p>
                             {role.description && (
                               <p className="text-sm text-muted-foreground">{role.description}</p>
                             )}
@@ -2019,7 +2023,7 @@ export default function Configuracoes() {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Shield className="h-5 w-5" />
-              Permissões: {selectedRole?.name}
+              Permissões: {selectedRole ? formatRoleName(selectedRole.name) : ""}
             </DialogTitle>
             <DialogDescription>
               {selectedRole?.description || "Visualize as permissões deste papel"}
