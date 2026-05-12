@@ -343,15 +343,82 @@ export default function Configuracoes() {
     icon: string;
     status: "conectado" | "desconectado";
     description: string;
+    category: string;
     configurable?: boolean;
     notices?: IntegrationNotice[];
   }> = [
+    {
+      id: "autentique",
+      name: "Autentique",
+      icon: "✍️",
+      status: autentiqueStatus?.connected ? "conectado" : "desconectado",
+      description: "Envio e acompanhamento de contratos com assinatura digital",
+      category: "Assinatura Digital",
+      configurable: true,
+    },
+    {
+      id: "clicksign",
+      name: "Clicksign",
+      icon: "🖊️",
+      status: "desconectado",
+      description: "Plataforma brasileira de assinatura eletrônica com validade jurídica",
+      category: "Assinatura Digital",
+    },
+    {
+      id: "docusign",
+      name: "DocuSign",
+      icon: "📝",
+      status: "desconectado",
+      description: "Líder mundial em assinatura digital e gestão de acordos",
+      category: "Assinatura Digital",
+    },
+    {
+      id: "spotify",
+      name: "Spotify",
+      icon: "🎵",
+      status: "desconectado",
+      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
+      category: "Streaming",
+    },
+    {
+      id: "youtube",
+      name: "YouTube Music",
+      icon: "▶️",
+      status: "desconectado",
+      description: "Métricas de visualizações, receita e crescimento de canal",
+      category: "Streaming",
+    },
+    {
+      id: "deezer",
+      name: "Deezer",
+      icon: "🎶",
+      status: "desconectado",
+      description: "Relatórios de streams e royalties da plataforma Deezer",
+      category: "Streaming",
+    },
+    {
+      id: "soundcloud",
+      name: "SoundCloud",
+      icon: "☁️",
+      status: "desconectado",
+      description: "Estatísticas de reprodução e engajamento no SoundCloud",
+      category: "Streaming",
+    },
+    {
+      id: "apple_music",
+      name: "Apple Music",
+      icon: "🍎",
+      status: "desconectado",
+      description: "Dados de streams e relatórios do Apple Music Connect",
+      category: "Streaming",
+    },
     {
       id: "ecad",
       name: "ECAD",
       icon: "📊",
       status: ecadStatus?.connected ? "conectado" : "desconectado",
       description: "Arrecadação de execução pública · Conciliação com catálogo local",
+      category: "Direitos Autorais",
       configurable: true,
     },
     {
@@ -360,7 +427,25 @@ export default function Configuracoes() {
       icon: "🎼",
       status: abramusStatus?.connected ? "conectado" : "desconectado",
       description: "Buscar e importar obras/fonogramas registrados",
+      category: "Direitos Autorais",
       configurable: true,
+    },
+    {
+      id: "ubc",
+      name: "UBC",
+      icon: "🏛️",
+      status: ubcStatus?.connected ? "conectado" : "desconectado",
+      description: "União Brasileira de Compositores — registro de obras e ISWC",
+      category: "Direitos Autorais",
+      configurable: true,
+    },
+    {
+      id: "cloudflare_r2",
+      name: "Cloudflare R2",
+      icon: "🗄️",
+      status: "desconectado",
+      description: "Armazenamento de arquivos de áudio, mídia e documentos na nuvem",
+      category: "Armazenamento",
     },
     {
       id: "meta_ads",
@@ -368,6 +453,7 @@ export default function Configuracoes() {
       icon: "📣",
       status: metaAdsStatus?.connected ? "conectado" : "desconectado",
       description: "Métricas de campanhas do Facebook e Instagram Ads",
+      category: "Marketing",
       configurable: true,
       notices: metaAdsNotices,
     },
@@ -377,22 +463,7 @@ export default function Configuracoes() {
       icon: "✉️",
       status: resendStatus?.connected ? "conectado" : "desconectado",
       description: "Envio de e-mails transacionais a partir do seu domínio",
-      configurable: true,
-    },
-    {
-      id: "autentique",
-      name: "Autentique",
-      icon: "✍️",
-      status: autentiqueStatus?.connected ? "conectado" : "desconectado",
-      description: "Envio e acompanhamento de contratos com assinatura digital",
-      configurable: true,
-    },
-    {
-      id: "ubc",
-      name: "UBC",
-      icon: "🎵",
-      status: ubcStatus?.connected ? "conectado" : "desconectado",
-      description: "União Brasileira de Compositores — registro de obras e ISWC",
+      category: "Email",
       configurable: true,
     },
     {
@@ -401,6 +472,7 @@ export default function Configuracoes() {
       icon: "📡",
       status: acrCloudStatus?.connected ? "conectado" : "desconectado",
       description: "Monitoramento musical por fingerprint — rádio, TV, streaming e vídeo",
+      category: "Monitoramento",
       configurable: true,
     },
   ];
@@ -1338,45 +1410,58 @@ export default function Configuracoes() {
                 </CardTitle>
                 <CardDescription>Conecte serviços externos para automatizar processos</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {integracoes.map((integracao) => {
-                  const handler = integrationConfigHandlers[integracao.id];
-                  const isConfigurable = Boolean(handler);
+              <CardContent className="space-y-6">
+                {["Assinatura Digital", "Streaming", "Direitos Autorais", "Armazenamento", "Marketing", "Email", "Monitoramento"].map((category) => {
+                  const items = integracoes.filter((i) => i.category === category);
+                  if (items.length === 0) return null;
                   return (
-                    <div
-                      key={integracao.id}
-                      className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
-                      data-testid={`integration-row-${integracao.id}`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-2xl">
-                          {integracao.icon}
-                        </div>
-                        <div>
-                          <p className="font-medium">{integracao.name}</p>
-                          <p className="text-sm text-muted-foreground">{integracao.description}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <IntegrationStatusBadges
-                          status={integracao.status}
-                          notices={integracao.notices}
-                          testIdPrefix={`badge-integration-${integracao.id}`}
-                        />
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={handler}
-                          disabled={!isConfigurable}
-                          data-testid={`button-integration-${integracao.id}`}
-                        >
-                          {isConfigurable
-                            ? integracao.status === "conectado"
-                              ? "Gerenciar"
-                              : "Conectar"
-                            : "Em breve"}
-                          <ExternalLink className="h-3 w-3 ml-2" />
-                        </Button>
+                    <div key={category}>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                        {category}
+                      </p>
+                      <div className="space-y-2">
+                        {items.map((integracao) => {
+                          const handler = integrationConfigHandlers[integracao.id];
+                          const isConfigurable = Boolean(handler);
+                          return (
+                            <div
+                              key={integracao.id}
+                              className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
+                              data-testid={`integration-row-${integracao.id}`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 bg-muted rounded-lg flex items-center justify-center text-2xl">
+                                  {integracao.icon}
+                                </div>
+                                <div>
+                                  <p className="font-medium">{integracao.name}</p>
+                                  <p className="text-sm text-muted-foreground">{integracao.description}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <IntegrationStatusBadges
+                                  status={integracao.status}
+                                  notices={integracao.notices}
+                                  testIdPrefix={`badge-integration-${integracao.id}`}
+                                />
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={handler}
+                                  disabled={!isConfigurable}
+                                  data-testid={`button-integration-${integracao.id}`}
+                                >
+                                  {isConfigurable
+                                    ? integracao.status === "conectado"
+                                      ? "Gerenciar"
+                                      : "Conectar"
+                                    : "Em breve"}
+                                  <ExternalLink className="h-3 w-3 ml-2" />
+                                </Button>
+                              </div>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   );
