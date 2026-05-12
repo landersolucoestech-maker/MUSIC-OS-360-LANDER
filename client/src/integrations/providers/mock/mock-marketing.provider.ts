@@ -220,6 +220,57 @@ const MOCK_METRICS: Partial<Record<MarketingPlatformId, IPlatformMetrics>> = {
       { id: "SP-001", title: "Monthly Listeners — Top Playlist", type: "image", views: 0, likes: 12_400, comments: 0, engagementRate: 3.2, publishedAt: daysAgo(7) },
     ],
   },
+  corp_facebook: {
+    platform: "corp_facebook",
+    period: { from: daysAgo(30), to: daysAgo(0) },
+    impressions: 1_840_000, reach: 620_000,
+    engagement: 74_200, engagementRate: 4.0, clicks: 38_400,
+    followers: 89_200, followersGrowth: 1_420,
+    likesTotal: 42_100, commentsTotal: 6_800, sharesTotal: 25_300,
+    topPosts: [
+      { id: "FB-001", title: "Publicação — Lançamento Álbum", type: "image", views: 0, likes: 18_200, comments: 2_400, shares: 8_900, engagementRate: 5.8, publishedAt: daysAgo(9) },
+      { id: "FB-002", title: "Vídeo — Show Esgotado", type: "video", views: 210_000, likes: 14_700, comments: 1_900, shares: 6_200, engagementRate: 5.2, publishedAt: daysAgo(18) },
+    ],
+  },
+  corp_google: {
+    platform: "corp_google",
+    period: { from: daysAgo(30), to: daysAgo(0) },
+    impressions: 3_200_000, reach: 1_480_000,
+    engagement: 128_000, engagementRate: 4.0, clicks: 84_600,
+    topPosts: [
+      { id: "GA-001", title: "Página Home — Sessões Orgânicas", type: "image", views: 48_200, likes: 0, comments: 0, engagementRate: 3.1, publishedAt: daysAgo(1) },
+    ],
+  },
+  corp_deezer: {
+    platform: "corp_deezer",
+    period: { from: daysAgo(30), to: daysAgo(0) },
+    impressions: 420_000, reach: 180_000,
+    engagement: 21_400, engagementRate: 4.9, clicks: 9_800,
+    streams: 380_000, followers: 12_800, followersGrowth: 340,
+    topPosts: [
+      { id: "DZ-001", title: "Top Faixas — Deezer Flow", type: "image", views: 0, likes: 5_200, comments: 0, engagementRate: 2.8, publishedAt: daysAgo(5) },
+    ],
+  },
+  corp_soundcloud: {
+    platform: "corp_soundcloud",
+    period: { from: daysAgo(30), to: daysAgo(0) },
+    impressions: 290_000, reach: 118_000,
+    engagement: 14_800, engagementRate: 5.1, clicks: 7_200,
+    streams: 240_000, followers: 8_900, followersGrowth: 210,
+    topPosts: [
+      { id: "SC-001", title: "Upload — Track Exclusiva SoundCloud", type: "image", views: 0, likes: 3_800, comments: 420, engagementRate: 4.9, publishedAt: daysAgo(11) },
+    ],
+  },
+  corp_apple_music: {
+    platform: "corp_apple_music",
+    period: { from: daysAgo(30), to: daysAgo(0) },
+    impressions: 680_000, reach: 290_000,
+    engagement: 32_400, engagementRate: 4.8, clicks: 16_800,
+    streams: 520_000, followers: 19_200, followersGrowth: 580,
+    topPosts: [
+      { id: "AM-001", title: "Artist Page — Apple Music for Artists", type: "image", views: 0, likes: 9_100, comments: 0, engagementRate: 3.6, publishedAt: daysAgo(4) },
+    ],
+  },
 };
 
 // ─── Classe base ──────────────────────────────────────────────────────────────
@@ -265,6 +316,46 @@ class MockCorpSpotifyProvider extends BaseMockMarketingProvider {
   async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1100)); }
 }
 
+class MockCorpFacebookProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "corp_facebook";
+  getCategory   = (): MarketingCategory   => "corporate_metrics";
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_facebook!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_facebook!.topPosts ?? []).slice(0, limit); }
+  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1300)); }
+}
+
+class MockCorpGoogleProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "corp_google";
+  getCategory   = (): MarketingCategory   => "corporate_metrics";
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_google!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_google!.topPosts ?? []).slice(0, limit); }
+  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 900)); }
+}
+
+class MockCorpDeezerProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "corp_deezer";
+  getCategory   = (): MarketingCategory   => "corporate_metrics";
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_deezer!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_deezer!.topPosts ?? []).slice(0, limit); }
+  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1000)); }
+}
+
+class MockCorpSoundCloudProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "corp_soundcloud";
+  getCategory   = (): MarketingCategory   => "corporate_metrics";
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_soundcloud!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_soundcloud!.topPosts ?? []).slice(0, limit); }
+  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 800)); }
+}
+
+class MockCorpAppleMusicProvider extends BaseMockMarketingProvider {
+  getPlatformId = (): MarketingPlatformId => "corp_apple_music";
+  getCategory   = (): MarketingCategory   => "corporate_metrics";
+  async getMetrics(_p?: IMetricsPeriod): Promise<IPlatformMetrics> { return MOCK_METRICS.corp_apple_music!; }
+  async getTopContent(limit = 3): Promise<ITopPost[]> { return (MOCK_METRICS.corp_apple_music!.topPosts ?? []).slice(0, limit); }
+  async refreshMetrics(): Promise<void> { await new Promise(r => setTimeout(r, 1400)); }
+}
+
 // ─── Providers de Tráfego Pago ────────────────────────────────────────────────
 
 class MockPaidAdsProvider extends BaseMockMarketingProvider {
@@ -300,20 +391,25 @@ class MockPaidAdsProvider extends BaseMockMarketingProvider {
 // ─── Registry & factory ───────────────────────────────────────────────────────
 
 export const mockMarketingProviders: Record<MarketingPlatformId, IMarketingProvider> = {
-  // Métricas corporativas
-  corp_instagram:  new MockCorpInstagramProvider(),
-  corp_tiktok:     new MockCorpTikTokProvider(),
-  corp_youtube:    new MockCorpYouTubeProvider(),
-  corp_spotify:    new MockCorpSpotifyProvider(),
-  // Tráfego pago
-  meta_ads:        new MockPaidAdsProvider("meta_ads"),
-  google_ads:      new MockPaidAdsProvider("google_ads"),
-  tiktok_ads:      new MockPaidAdsProvider("tiktok_ads"),
-  spotify_ads:     new MockPaidAdsProvider("spotify_ads"),
-  youtube_ads:     new MockPaidAdsProvider("youtube_ads"),
-  deezer_ads:      new MockPaidAdsProvider("deezer_ads"),
-  apple_music_ads: new MockPaidAdsProvider("apple_music_ads"),
-  soundcloud_ads:  new MockPaidAdsProvider("soundcloud_ads"),
+  // ── Métricas Corporativas — contas oficiais da empresa
+  corp_instagram:   new MockCorpInstagramProvider(),
+  corp_tiktok:      new MockCorpTikTokProvider(),
+  corp_youtube:     new MockCorpYouTubeProvider(),
+  corp_spotify:     new MockCorpSpotifyProvider(),
+  corp_facebook:    new MockCorpFacebookProvider(),
+  corp_google:      new MockCorpGoogleProvider(),
+  corp_deezer:      new MockCorpDeezerProvider(),
+  corp_soundcloud:  new MockCorpSoundCloudProvider(),
+  corp_apple_music: new MockCorpAppleMusicProvider(),
+  // ── Tráfego Pago
+  meta_ads:         new MockPaidAdsProvider("meta_ads"),
+  google_ads:       new MockPaidAdsProvider("google_ads"),
+  tiktok_ads:       new MockPaidAdsProvider("tiktok_ads"),
+  spotify_ads:      new MockPaidAdsProvider("spotify_ads"),
+  youtube_ads:      new MockPaidAdsProvider("youtube_ads"),
+  deezer_ads:       new MockPaidAdsProvider("deezer_ads"),
+  apple_music_ads:  new MockPaidAdsProvider("apple_music_ads"),
+  soundcloud_ads:   new MockPaidAdsProvider("soundcloud_ads"),
 };
 
 export function getMockMarketingProvider(

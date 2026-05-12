@@ -40,20 +40,25 @@ const STORAGE_KEY = "musicos360_marketing_oauth_connections";
 // ─── Categoria por plataforma ────────────────────────────────────────────────
 
 export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingCategory> = {
-  // Métricas corporativas
-  corp_instagram:  "corporate_metrics",
-  corp_tiktok:     "corporate_metrics",
-  corp_youtube:    "corporate_metrics",
-  corp_spotify:    "corporate_metrics",
+  // Métricas corporativas — contas oficiais da empresa
+  corp_instagram:   "corporate_metrics",
+  corp_tiktok:      "corporate_metrics",
+  corp_youtube:     "corporate_metrics",
+  corp_spotify:     "corporate_metrics",
+  corp_facebook:    "corporate_metrics",
+  corp_google:      "corporate_metrics",
+  corp_deezer:      "corporate_metrics",
+  corp_soundcloud:  "corporate_metrics",
+  corp_apple_music: "corporate_metrics",
   // Tráfego pago
-  meta_ads:        "paid_ads",
-  google_ads:      "paid_ads",
-  tiktok_ads:      "paid_ads",
-  spotify_ads:     "paid_ads",
-  youtube_ads:     "paid_ads",
-  deezer_ads:      "paid_ads",
-  apple_music_ads: "paid_ads",
-  soundcloud_ads:  "paid_ads",
+  meta_ads:         "paid_ads",
+  google_ads:       "paid_ads",
+  tiktok_ads:       "paid_ads",
+  spotify_ads:      "paid_ads",
+  youtube_ads:      "paid_ads",
+  deezer_ads:       "paid_ads",
+  apple_music_ads:  "paid_ads",
+  soundcloud_ads:   "paid_ads",
 };
 
 // ─── Contas mock (simulam dados reais após OAuth) ─────────────────────────────
@@ -74,6 +79,26 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   corp_spotify: {
     accountName: "Music Business — Spotify for Artists",
     accountId:   "SP-CORP-456789",
+  },
+  corp_facebook: {
+    accountName: "Music Business — Facebook Page",
+    accountId:   "FB-PAGE-1234567890",
+  },
+  corp_google: {
+    accountName: "Music Business — Google Analytics 4",
+    accountId:   "GA4-G-XXXXXX123",
+  },
+  corp_deezer: {
+    accountName: "Music Business — Deezer for Artists",
+    accountId:   "DZ-ARTIST-789012",
+  },
+  corp_soundcloud: {
+    accountName: "Music Business — SoundCloud Pro",
+    accountId:   "SC-PRO-345678",
+  },
+  corp_apple_music: {
+    accountName: "Music Business — Apple Music for Artists",
+    accountId:   "AM-ARTIST-901234",
   },
   meta_ads: {
     accountName: "Music Business — Meta Business Suite",

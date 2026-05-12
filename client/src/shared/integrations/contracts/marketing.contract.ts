@@ -17,12 +17,20 @@
 // ─── IDs de plataforma ────────────────────────────────────────────────────────
 
 export type MarketingPlatformId =
-  // Métricas Corporativas (analytics das contas oficiais da empresa)
-  | "corp_instagram"
-  | "corp_tiktok"
-  | "corp_youtube"
-  | "corp_spotify"
-  // Tráfego Pago
+  // ── Métricas Corporativas ─────────────────────────────────────────────────
+  // Contas oficiais da empresa/label em cada plataforma.
+  // Login obrigatório para aceder analytics, gestão de página e publicações.
+  | "corp_instagram"      // Instagram Business — conta oficial da empresa
+  | "corp_tiktok"         // TikTok Business — conta oficial da empresa
+  | "corp_youtube"        // YouTube Studio — canal oficial da empresa
+  | "corp_spotify"        // Spotify for Artists — perfil oficial da empresa
+  | "corp_facebook"       // Facebook Business / Meta Business Suite — página da empresa
+  | "corp_google"         // Google Analytics + Search Console — presença web da empresa
+  | "corp_deezer"         // Deezer for Artists — presença da label no Deezer
+  | "corp_soundcloud"     // SoundCloud Pro — perfil oficial da label
+  | "corp_apple_music"    // Apple Music for Artists — presença da label no Apple Music
+  // ── Tráfego Pago ─────────────────────────────────────────────────────────
+  // Contas de anúncios pagos da empresa. Login obrigatório.
   | "meta_ads"
   | "google_ads"
   | "tiktok_ads"

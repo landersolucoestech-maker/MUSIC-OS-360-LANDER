@@ -43,6 +43,8 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
+import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -178,6 +180,7 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -213,6 +216,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: acrcloudStatus } = useACRCloudStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
@@ -386,16 +390,35 @@ export default function Configuracoes() {
       category: "Direitos Autorais",
       configurable: true,
     },
+    // ── Monitoramento Musical ─────────────────────────────────────────────────
+    {
+      id: "acrcloud",
+      name: "ACRCloud",
+      icon: "🎙️",
+      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Fingerprint de áudio — monitoramento de execuções em rádio, TV, streaming e vídeo",
+      category: "Monitoramento Musical",
+      configurable: true,
+    },
     // ── Marketing Digital — contas corporativas (métricas + tráfego pago) ──────
     // Todas as plataformas coexistem num único ecossistema operacional.
     // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
-    // ── Métricas corporativas
+    // ── Métricas corporativas — contas oficiais da empresa (login obrigatório)
     {
       id: "corp_instagram",
       name: "Instagram Business",
       icon: "📸",
       status: isMarketingConnected("corp_instagram") ? "conectado" : "desconectado",
-      description: "Analytics da conta Instagram oficial da empresa — alcance, impressões, reels, stories",
+      description: "Conta Instagram oficial da empresa — analytics, alcance, reels, stories",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_facebook",
+      name: "Facebook Business",
+      icon: "🔵",
+      status: isMarketingConnected("corp_facebook") ? "conectado" : "desconectado",
+      description: "Página Facebook oficial da empresa — Meta Business Suite, analytics e publicações",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -404,7 +427,7 @@ export default function Configuracoes() {
       name: "TikTok Business",
       icon: "🎬",
       status: isMarketingConnected("corp_tiktok") ? "conectado" : "desconectado",
-      description: "Analytics da conta TikTok oficial da empresa — views, seguidores, engajamento",
+      description: "Conta TikTok oficial da empresa — views, seguidores, engajamento",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -413,7 +436,16 @@ export default function Configuracoes() {
       name: "YouTube Studio",
       icon: "▶️",
       status: isMarketingConnected("corp_youtube") ? "conectado" : "desconectado",
-      description: "Analytics do canal YouTube oficial da empresa — inscritos, watch time, CTR",
+      description: "Canal YouTube oficial da empresa — inscritos, watch time, CTR",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_google",
+      name: "Google Analytics",
+      icon: "🔍",
+      status: isMarketingConnected("corp_google") ? "conectado" : "desconectado",
+      description: "Google Analytics 4 + Search Console — presença web e tráfego orgânico da empresa",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -422,7 +454,34 @@ export default function Configuracoes() {
       name: "Spotify for Artists",
       icon: "🎵",
       status: isMarketingConnected("corp_spotify") ? "conectado" : "desconectado",
-      description: "Métricas do perfil Spotify oficial da empresa — streams, ouvintes mensais",
+      description: "Perfil Spotify oficial da empresa — streams, ouvintes mensais, análise de fãs",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_deezer",
+      name: "Deezer for Artists",
+      icon: "🎶",
+      status: isMarketingConnected("corp_deezer") ? "conectado" : "desconectado",
+      description: "Presença da label no Deezer — streams, seguidores e analytics de catálogo",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_soundcloud",
+      name: "SoundCloud Pro",
+      icon: "☁️",
+      status: isMarketingConnected("corp_soundcloud") ? "conectado" : "desconectado",
+      description: "Perfil SoundCloud oficial da label — plays, seguidores, analytics",
+      category: "Marketing Digital",
+      configurable: true,
+    },
+    {
+      id: "corp_apple_music",
+      name: "Apple Music for Artists",
+      icon: "🍎",
+      status: isMarketingConnected("corp_apple_music") ? "conectado" : "desconectado",
+      description: "Presença da label no Apple Music — streams, Shazams, analytics de catálogo",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -532,8 +591,13 @@ export default function Configuracoes() {
   ];
 
   // IDs das plataformas corporativas de Marketing Digital (OAuth inline, sem modal separado)
+  // Inclui TODAS as contas da empresa — métricas + tráfego pago.
+  // Artistas funcionam automaticamente via links do cadastro: NÃO estão aqui.
   const MARKETING_PLATFORM_IDS = new Set<string>([
-    "corp_instagram", "corp_tiktok", "corp_youtube", "corp_spotify",
+    // Métricas corporativas (contas oficiais da empresa)
+    "corp_instagram", "corp_facebook", "corp_tiktok", "corp_youtube",
+    "corp_google", "corp_spotify", "corp_deezer", "corp_soundcloud", "corp_apple_music",
+    // Tráfego pago (contas de anúncios da empresa)
     "meta_ads", "google_ads", "tiktok_ads", "spotify_ads",
     "youtube_ads", "deezer_ads", "apple_music_ads", "soundcloud_ads",
   ]);
@@ -546,6 +610,7 @@ export default function Configuracoes() {
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
+    acrcloud:      () => setAcrcloudConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => setNfeConfigOpen(true),
   };
@@ -1762,6 +1827,10 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <ACRCloudConfigDialog
+              open={acrcloudConfigOpen}
+              onOpenChange={setAcrcloudConfigOpen}
             />
 
             <NfeConfigDialog
