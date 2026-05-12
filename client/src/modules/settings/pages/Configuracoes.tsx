@@ -450,6 +450,15 @@ export default function Configuracoes() {
       category: "Fiscal",
       configurable: true,
     },
+    {
+      id: "website_linkedin",
+      name: "Website & LinkedIn",
+      icon: "🌐",
+      status: "desconectado" as const,
+      description: "Formulário público de captação, webhooks e LinkedIn Lead Ads",
+      category: "Captação de Leads",
+      configurable: true,
+    },
   ];
 
   const DISTRIBUTORS = [
@@ -472,6 +481,7 @@ export default function Configuracoes() {
     google_ads: () => setGoogleAdsConfigOpen(true),
     tiktok_ads: () => setTiktokAdsConfigOpen(true),
     nfe: () => setNfeConfigOpen(true),
+    website_linkedin: () => setLeadIntegrationsOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1390,7 +1400,7 @@ export default function Configuracoes() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="rounded-lg border border-border overflow-hidden">
-                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal"].map((category) => {
+                  {["Assinatura Digital", "Direitos Autorais", "Tráfego Pago / Anúncios", "Fiscal", "Captação de Leads"].map((category) => {
                     const items = integracoes.filter((i) => i.category === category);
                     if (items.length === 0) return null;
                     return (
@@ -1453,37 +1463,6 @@ export default function Configuracoes() {
                   <Button variant="outline" size="sm" className="h-7 text-xs">
                     Solicitar Nova Integração
                   </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Users className="h-5 w-5" />
-                  Captação de Leads
-                </CardTitle>
-                <CardDescription>Webhooks e formulário público para receber leads do site e LinkedIn</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="rounded-lg border border-border overflow-hidden">
-                  <div className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors">
-                    <div className="p-1.5 rounded-md bg-muted shrink-0 text-base leading-none">🌐</div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">Website & LinkedIn</p>
-                      <p className="text-[10px] text-muted-foreground truncate">Formulário público de captação, webhooks e LinkedIn Lead Ads</p>
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1 shrink-0"
-                      onClick={() => setLeadIntegrationsOpen(true)}
-                      data-testid="button-lead-integrations"
-                    >
-                      Configurar
-                      <ExternalLink className="h-3 w-3" />
-                    </Button>
-                  </div>
                 </div>
               </CardContent>
             </Card>
