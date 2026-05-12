@@ -33,6 +33,8 @@ import { Textarea } from "@/shared/ui/textarea";
 import { LeadIntegrationsDialog } from "@/modules/crm/components/LeadIntegrationsDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
+import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
+import { useEcadStatus } from "@/modules/integrations/hooks/useEcad";
 import { MetaAdsConfigDialog } from "@/modules/marketing/components/MetaAdsConfigDialog";
 import { useMetaAdsStatus } from "@/modules/marketing/hooks/useMetaAds";
 import { ResendConfigDialog } from "@/modules/integrations/components/ResendConfigDialog";
@@ -170,6 +172,7 @@ export default function Configuracoes() {
   const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [leadIntegrationsOpen, setLeadIntegrationsOpen] = useState(false);
   const [abramusConfigOpen, setAbramusConfigOpen] = useState(false);
+  const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
   const [resendConfigOpen, setResendConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
@@ -204,6 +207,7 @@ export default function Configuracoes() {
   };
 
   const { data: abramusStatus } = useAbramusStatus();
+  const { data: ecadStatus } = useEcadStatus();
   const { data: metaAdsStatus } = useMetaAdsStatus();
   const { data: resendStatus } = useResendStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
@@ -342,7 +346,14 @@ export default function Configuracoes() {
     configurable?: boolean;
     notices?: IntegrationNotice[];
   }> = [
-    { id: "ecad", name: "ECAD", icon: "📊", status: "desconectado", description: "Integração com relatórios ECAD" },
+    {
+      id: "ecad",
+      name: "ECAD",
+      icon: "📊",
+      status: ecadStatus?.connected ? "conectado" : "desconectado",
+      description: "Arrecadação de execução pública · Conciliação com catálogo local",
+      configurable: true,
+    },
     {
       id: "abramus",
       name: "ABRAMUS",
@@ -404,6 +415,7 @@ export default function Configuracoes() {
   ];
 
   const integrationConfigHandlers: Record<string, () => void> = {
+    ecad: () => setEcadConfigOpen(true),
     abramus: () => setAbramusConfigOpen(true),
     meta_ads: () => setMetaAdsConfigOpen(true),
     resend: () => setResendConfigOpen(true),
@@ -1509,6 +1521,10 @@ export default function Configuracoes() {
             <LeadIntegrationsDialog
               open={leadIntegrationsOpen}
               onOpenChange={setLeadIntegrationsOpen}
+            />
+            <EcadConfigDialog
+              open={ecadConfigOpen}
+              onOpenChange={setEcadConfigOpen}
             />
             <AbramusConfigDialog
               open={abramusConfigOpen}
