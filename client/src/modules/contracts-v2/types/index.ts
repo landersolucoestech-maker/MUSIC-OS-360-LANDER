@@ -11,10 +11,7 @@ export type DocumentStatus =
 export type SignerRole =
   | "artista"
   | "label"
-  | "testemunha"
-  | "procurador"
-  | "produtor"
-  | "advogado";
+  | "produtor";
 
 export type SignerStatus = "pending" | "signed" | "rejected" | "expired";
 
@@ -192,12 +189,9 @@ export const SIGNER_STATUS_LABEL: Record<SignerStatus, string> = {
 };
 
 export const SIGNER_ROLE_LABEL: Record<SignerRole, string> = {
-  artista:    "Artista",
-  label:      "Gravadora / Label",
-  testemunha: "Testemunha",
-  procurador: "Procurador",
-  produtor:   "Produtor",
-  advogado:   "Advogado",
+  artista:  "Artista",
+  label:    "Gravadora / Label",
+  produtor: "Produtor",
 };
 
 export const TEMPLATE_CATEGORY_LABEL: Record<TemplateCategory, string> = {
