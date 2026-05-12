@@ -39,6 +39,10 @@ import { ResendConfigDialog } from "@/modules/integrations/components/ResendConf
 import { useResendStatus } from "@/modules/integrations/hooks/useResend";
 import { AutentiqueConfigDialog } from "@/modules/integrations/components/AutentiqueConfigDialog";
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
+import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
+import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
+import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -169,6 +173,8 @@ export default function Configuracoes() {
   const [metaAdsConfigOpen, setMetaAdsConfigOpen] = useState(false);
   const [resendConfigOpen, setResendConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
+  const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [acrCloudConfigOpen, setAcrCloudConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
   const [distributorConnections, setDistributorConnections] = useState<Record<string, { username: string }>>(() => {
@@ -201,6 +207,8 @@ export default function Configuracoes() {
   const { data: metaAdsStatus } = useMetaAdsStatus();
   const { data: resendStatus } = useResendStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
+  const { data: ubcStatus } = useUbcStatus();
+  const { data: acrCloudStatus } = useACRCloudStatus();
 
   // Estados para aba de Usuários
   const [usuarioFormModal, setUsuarioFormModal] = useState<{ open: boolean; mode: "create" | "edit"; usuario?: Usuario }>({ open: false, mode: "create" });
@@ -368,7 +376,22 @@ export default function Configuracoes() {
       description: "Envio e acompanhamento de contratos com assinatura digital",
       configurable: true,
     },
-    { id: "google", name: "Google Drive", icon: "📁", status: "desconectado", description: "Backup automático de documentos" },
+    {
+      id: "ubc",
+      name: "UBC",
+      icon: "🎵",
+      status: ubcStatus?.connected ? "conectado" : "desconectado",
+      description: "União Brasileira de Compositores — registro de obras e ISWC",
+      configurable: true,
+    },
+    {
+      id: "acrcloud",
+      name: "ACRCloud",
+      icon: "📡",
+      status: acrCloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Monitoramento musical por fingerprint — rádio, TV, streaming e vídeo",
+      configurable: true,
+    },
   ];
 
   const DISTRIBUTORS = [
@@ -385,6 +408,8 @@ export default function Configuracoes() {
     meta_ads: () => setMetaAdsConfigOpen(true),
     resend: () => setResendConfigOpen(true),
     autentique: () => setAutentiqueConfigOpen(true),
+    ubc: () => setUbcConfigOpen(true),
+    acrcloud: () => setAcrCloudConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1500,6 +1525,14 @@ export default function Configuracoes() {
             <AutentiqueConfigDialog
               open={autentiqueConfigOpen}
               onOpenChange={setAutentiqueConfigOpen}
+            />
+            <UbcConfigDialog
+              open={ubcConfigOpen}
+              onOpenChange={setUbcConfigOpen}
+            />
+            <ACRCloudConfigDialog
+              open={acrCloudConfigOpen}
+              onOpenChange={setAcrCloudConfigOpen}
             />
           </TabsContent>
 

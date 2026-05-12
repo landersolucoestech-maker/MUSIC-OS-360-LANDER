@@ -2,6 +2,19 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { toast } from "sonner";
 import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
+import { mockAbramusProvider } from "@/integrations/providers/mock/mock-rights.provider";
+import type {
+  RegisterObraInput,
+  RegisterFonogramaInput,
+  RegistrationResult,
+  RegistrationHistoryEntry,
+  GenerateISWCInput,
+  GenerateISWCResult,
+  GenerateISRCInput,
+  GenerateISRCResult,
+  ArtistSearchQuery,
+  ArtistSearchResult,
+} from "@/integrations/dto";
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
 const CRED_KEY = "musicos360_abramus_credentials";
@@ -468,6 +481,154 @@ export function useAbramusSetSchedule() {
     },
     onError: (err: Error) => {
       toast.error(err.message);
+    },
+  });
+}
+
+// ─── Pesquisa de artistas ─────────────────────────────────────────────────────
+
+export function useAbramusSearchArtists(query: string) {
+  const trimmed = query.trim();
+  return useQuery<ArtistSearchResult[]>({
+    queryKey: ["abramus", "search-artists", trimmed],
+    queryFn: async () => {
+      const creds = readCreds();
+      if (!creds) return [];
+      return mockAbramusProvider.searchArtists({ query: trimmed, limit: 10 });
+    },
+    enabled: trimmed.length >= 2,
+    staleTime: 30_000,
+  });
+}
+
+// ─── Histórico de registro ────────────────────────────────────────────────────
+
+export function useAbramusRegistrationHistory(kind: AbramusKind, localId: string) {
+  return useQuery<RegistrationHistoryEntry[]>({
+    queryKey: ["abramus", "registration-history", kind, localId],
+    queryFn: async () => {
+      const creds = readCreds();
+      if (!creds) return [];
+      const rightsKind = kind === "obras" ? "obra" : "fonograma";
+      return mockAbramusProvider.getRegistrationHistory(rightsKind, localId);
+    },
+    enabled: Boolean(localId),
+    staleTime: 60_000,
+  });
+}
+
+// ─── Registro de obras ────────────────────────────────────────────────────────
+
+export function useAbramusRegisterObra() {
+  const queryClient = useQueryClient();
+  return useMutation<RegistrationResult, Error, RegisterObraInput>({
+    mutationFn: async (input) => {
+      const creds = readCreds();
+      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      return mockAbramusProvider.registerObra(input);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["obras"] });
+      queryClient.invalidateQueries({ queryKey: ["abramus", "registration-history"] });
+      // Atualiza a obra local com o ISWC gerado
+      if (data.iswc) {
+        const obras = (MOCK_DATA["obras"] ?? []) as Array<Record<string, unknown>>;
+        const idx = obras.findIndex((o) => o.id === data.local_id);
+        if (idx >= 0) {
+          obras[idx] = { ...obras[idx], iswc: data.iswc, cod_abramus: data.external_id, status: "registrado" };
+          saveMockData();
+        }
+      }
+      toast.success(`Obra registrada na ABRAMUS. Código: ${data.code}${data.iswc ? ` | ISWC: ${data.iswc}` : ""}`);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao registrar obra: ${err.message}`);
+    },
+  });
+}
+
+// ─── Registro de fonogramas ───────────────────────────────────────────────────
+
+export function useAbramusRegisterFonograma() {
+  const queryClient = useQueryClient();
+  return useMutation<RegistrationResult, Error, RegisterFonogramaInput>({
+    mutationFn: async (input) => {
+      const creds = readCreds();
+      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      return mockAbramusProvider.registerFonograma(input);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["fonogramas"] });
+      queryClient.invalidateQueries({ queryKey: ["abramus", "registration-history"] });
+      // Atualiza o fonograma local com o ISRC gerado
+      if (data.isrc) {
+        const fonogramas = (MOCK_DATA["fonogramas"] ?? []) as Array<Record<string, unknown>>;
+        const idx = fonogramas.findIndex((f) => f.id === data.local_id);
+        if (idx >= 0) {
+          fonogramas[idx] = { ...fonogramas[idx], isrc: data.isrc, cod_abramus: data.external_id, status: "registrado" };
+          saveMockData();
+        }
+      }
+      toast.success(`Fonograma registrado na ABRAMUS. Código: ${data.code}${data.isrc ? ` | ISRC: ${data.isrc}` : ""}`);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao registrar fonograma: ${err.message}`);
+    },
+  });
+}
+
+// ─── Geração de ISWC ─────────────────────────────────────────────────────────
+
+export function useAbramusGenerateISWC() {
+  const queryClient = useQueryClient();
+  return useMutation<GenerateISWCResult, Error, GenerateISWCInput>({
+    mutationFn: async (input) => {
+      const creds = readCreds();
+      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      return mockAbramusProvider.generateISWC(input);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["obras"] });
+      // Atualiza a obra local com o ISWC
+      const obras = (MOCK_DATA["obras"] ?? []) as Array<Record<string, unknown>>;
+      const idx = obras.findIndex((o) => o.id === data.local_obra_id);
+      if (idx >= 0) {
+        obras[idx] = { ...obras[idx], iswc: data.iswc };
+        saveMockData();
+      }
+      const sourceLabel = data.source === "existing" ? "ISWC existente confirmado" : "ISWC gerado";
+      toast.success(`${sourceLabel}: ${data.iswc}`);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao gerar ISWC: ${err.message}`);
+    },
+  });
+}
+
+// ─── Geração de ISRC ─────────────────────────────────────────────────────────
+
+export function useAbramusGenerateISRC() {
+  const queryClient = useQueryClient();
+  return useMutation<GenerateISRCResult, Error, GenerateISRCInput>({
+    mutationFn: async (input) => {
+      const creds = readCreds();
+      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      return mockAbramusProvider.generateISRC(input);
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["fonogramas"] });
+      // Atualiza o fonograma local com o ISRC
+      const fonogramas = (MOCK_DATA["fonogramas"] ?? []) as Array<Record<string, unknown>>;
+      const idx = fonogramas.findIndex((f) => f.id === data.local_fonograma_id);
+      if (idx >= 0) {
+        fonogramas[idx] = { ...fonogramas[idx], isrc: data.isrc };
+        saveMockData();
+      }
+      const sourceLabel = data.source === "existing" ? "ISRC existente confirmado" : "ISRC gerado";
+      toast.success(`${sourceLabel}: ${data.isrc}`);
+    },
+    onError: (err) => {
+      toast.error(`Erro ao gerar ISRC: ${err.message}`);
     },
   });
 }

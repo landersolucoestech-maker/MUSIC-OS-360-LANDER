@@ -118,6 +118,16 @@ export type {
   RightsRegistrationStatus,
   RightsSearchQuery,
   RightsSearchResult,
+  ArtistSearchQuery,
+  ArtistSearchResult,
+  RegisterObraInput,
+  RegisterFonogramaInput,
+  RegistrationResult,
+  RegistrationHistoryEntry,
+  GenerateISWCInput,
+  GenerateISWCResult,
+  GenerateISRCInput,
+  GenerateISRCResult,
   ArrecadacaoTipo,
   ArrecadacaoEntry,
   ArrecadacaoSummary,
@@ -125,7 +135,38 @@ export type {
   IRightsProvider,
 } from "@/shared/integrations/contracts/rights.contract";
 
-export { arrecadacaoStorageKey } from "@/shared/integrations/contracts/rights.contract";
+export {
+  arrecadacaoStorageKey,
+  generateMockISWC,
+  generateMockISRC,
+} from "@/shared/integrations/contracts/rights.contract";
+
+// ── Music Monitoring (ACRCloud) ───────────────────────────────────────────────
+export type {
+  MonitoringSourceType,
+  FingerprintInput,
+  FingerprintMatch,
+  FingerprintResult,
+  PlayReport,
+  PlayReportQuery,
+  PlayReportSummary,
+  AlertSeverity,
+  AlertType,
+  MonitoringAlert,
+  MonitoringProject,
+  CreateMonitoringProjectInput,
+  MusicSearchQuery,
+  MusicSearchResult,
+  IMusicMonitoringProvider,
+} from "@/shared/integrations/contracts/music-monitoring.contract";
+
+export {
+  MONITORING_SOURCE_LABELS,
+  ALERT_TYPE_LABELS,
+  playReportsStorageKey,
+  MONITORING_PROJECTS_KEY,
+  MONITORING_ALERTS_KEY,
+} from "@/shared/integrations/contracts/music-monitoring.contract";
 
 // ── Chat (MusicChat) ──────────────────────────────────────────────────────────
 export type {

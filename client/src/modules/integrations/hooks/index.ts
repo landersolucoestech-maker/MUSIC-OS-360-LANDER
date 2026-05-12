@@ -4,17 +4,18 @@
  * Barrel de todos os hooks de integração.
  *
  * Organização por categoria:
- *   - Auth          → useClerk
- *   - Storage       → useR2
- *   - Email         → useResend (existente)
- *   - Payments      → useStripe
- *   - Signing       → useAutentique (existente)
- *   - Monitoring    → usePostHog, useSentry
- *   - Streaming/Ads → useSpotify, useYouTube, useTikTok,
- *                     useInstagram, useGoogleAds,
- *                     useDeezer, useAppleMusic, useSoundCloud
- *   - Rights        → useEcad, useUbc, useAbramus (existente)
- *   - Chat          → useChat
+ *   - Auth              → useClerk
+ *   - Storage           → useR2
+ *   - Email             → useResend
+ *   - Payments          → useStripe
+ *   - Signing           → useAutentique
+ *   - App Monitoring    → usePostHog, useSentry
+ *   - Streaming/Ads     → useSpotify, useYouTube, useTikTok,
+ *                         useInstagram, useGoogleAds,
+ *                         useDeezer, useAppleMusic, useSoundCloud
+ *   - Rights            → useEcad, useUbc, useAbramus
+ *   - Music Monitoring  → useACRCloud
+ *   - Chat              → useChat
  */
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ export * from "./useStripe";
 // ─── Signing ──────────────────────────────────────────────────────────────────
 export * from "./useAutentique";
 
-// ─── Monitoring ───────────────────────────────────────────────────────────────
+// ─── App Monitoring ───────────────────────────────────────────────────────────
 export * from "./usePostHog";
 export * from "./useSentry";
 
@@ -46,10 +47,13 @@ export * from "./useDeezer";
 export * from "./useAppleMusic";
 export * from "./useSoundCloud";
 
-// ─── Rights ───────────────────────────────────────────────────────────────────
+// ─── Rights (ECAD · UBC · ABRAMUS) ───────────────────────────────────────────
 export * from "./useEcad";
 export * from "./useUbc";
 export * from "./useAbramus";
+
+// ─── Music Monitoring (ACRCloud) ──────────────────────────────────────────────
+export * from "./useACRCloud";
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export * from "./useChat";

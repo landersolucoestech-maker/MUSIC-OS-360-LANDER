@@ -42,6 +42,8 @@ export type IntegrationId =
   | "ecad"
   | "ubc"
   | "abramus"
+  // Monitoramento musical (fingerprint)
+  | "acrcloud"
   // Comunicação interna
   | "chat";
 
@@ -56,6 +58,7 @@ export type IntegrationCategory =
   | "monitoring"
   | "streaming"
   | "rights"
+  | "music-monitoring"
   | "chat";
 
 // ─── Status ──────────────────────────────────────────────────────────────────
