@@ -1,0 +1,17 @@
+{
+  "name": "@music-os-360/shared-zod",
+  "version": "0.0.1",
+  "description": "Schemas Zod reutilizáveis entre frontend e backend",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

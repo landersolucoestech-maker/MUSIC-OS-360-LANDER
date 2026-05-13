@@ -1,0 +1,61 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: musicos360-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: musicos360_dev
+      POSTGRES_USER: musicos360
+      POSTGRES_PASSWORD: musicos360_dev_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U musicos360 -d musicos360_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-queue:
+    image: redis:7-alpine
+    container_name: musicos360-redis-queue
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes --requirepass musicos360_redis_dev
+    volumes:
+      - redis_queue_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "musicos360_redis_dev", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis-ui:
+    image: redis/redisinsight:latest
+    container_name: musicos360-redis-ui
+    restart: unless-stopped
+    ports:
+      - "8001:5540"
+    depends_on:
+      redis-queue:
+        condition: service_healthy
+
+  mailhog:
+    image: mailhog/mailhog:latest
+    container_name: musicos360-mailhog
+    restart: unless-stopped
+    ports:
+      - "1025:1025"
+      - "8025:8025"
+
+volumes:
+  postgres_data:
+  redis_queue_data:
+
+networks:
+  default:
+    name: musicos360-network

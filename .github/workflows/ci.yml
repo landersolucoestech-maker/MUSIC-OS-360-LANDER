@@ -2,9 +2,9 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging, develop]
   pull_request:
-    branches: [main]
+    branches: [main, staging]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -23,6 +23,42 @@ jobs:
           cache: 'npm'
       - run: npm ci
       - run: npm run lint
+
+  typecheck-api:
+    name: TypeCheck API (NestJS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: cd apps/api && npm ci
+      - run: cd apps/api && npx tsc --noEmit
+
+  build-api:
+    name: Build API
+    needs: [typecheck-api]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      NODE_ENV: test
+      PORT: 3001
+      DATABASE_URL: postgresql://test:test@localhost:5432/test
+      CORS_ORIGINS: http://localhost:5000
+      ENCRYPTION_KEY: '0000000000000000000000000000000000000000000000000000000000000000'
+      ENCRYPTION_IV_SECRET: test_placeholder
+      CLERK_SECRET_KEY: sk_test_placeholder
+      CLERK_WEBHOOK_SECRET: whsec_placeholder
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: cd apps/api && npm ci
+      - run: cd apps/api && npm run build --if-present
 
   test:
     name: Testes (vitest + cobertura)
