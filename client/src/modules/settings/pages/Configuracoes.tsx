@@ -1781,9 +1781,11 @@ export default function Configuracoes() {
                 cancelled: { label: "Cancelado", variant: "destructive" },
               };
               const statusInfo = STATUS_LABELS[billing.status] ?? STATUS_LABELS["active"];
-              const seatsPercent = billing.seats > 0 ? Math.round((billing.seatsUsed / billing.seats) * 100) : 0;
-              const renewalDate  = billing.currentPeriodEnd
-                ? format(new Date(billing.currentPeriodEnd), "dd/MM/yyyy", { locale: ptBR })
+              const seatsPercent = billing.seats > 0 ? Math.min(100, Math.round((billing.seatsUsed / billing.seats) * 100)) : 0;
+              const seatsAvailable = Math.max(0, billing.seats - billing.seatsUsed);
+              const renewalDateObj = billing.currentPeriodEnd ? new Date(billing.currentPeriodEnd) : null;
+              const renewalDate  = renewalDateObj && !isNaN(renewalDateObj.getTime())
+                ? format(renewalDateObj, "dd/MM/yyyy", { locale: ptBR })
                 : "—";
 
               const MOCK_INVOICES = [
@@ -1884,7 +1886,7 @@ export default function Configuracoes() {
                         </div>
                         <Progress value={seatsPercent} className="h-2" data-testid="billing-seats-progress" />
                         <div className="text-xs text-muted-foreground">
-                          {billing.seats - billing.seatsUsed} assento{billing.seats - billing.seatsUsed !== 1 ? "s" : ""} disponível{billing.seats - billing.seatsUsed !== 1 ? "s" : ""}
+                          {seatsAvailable} assento{seatsAvailable !== 1 ? "s" : ""} disponível{seatsAvailable !== 1 ? "s" : ""}
                         </div>
                         {seatsPercent >= 80 && (
                           <div className="flex items-center gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs">
