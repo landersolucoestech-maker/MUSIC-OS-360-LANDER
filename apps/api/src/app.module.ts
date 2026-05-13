@@ -1,34 +1,48 @@
+/**
+ * app.module.ts
+ *
+ * Módulo raiz do MUSIC OS 360 API.
+ * BullMQ configurado com REDIS_QUEUE_URL — infraestrutura de filas enterprise.
+ */
+
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
-import { validateEnv } from './core/config/env.schema';
+import { BullModule } from '@nestjs/bullmq';
 import { HealthModule } from './modules/health/health.module';
+import { QueueModule } from './queues/queue.module';
+import { validateEnv } from './core/config/env.schema';
 
 @Module({
   imports: [
-    // Configuração global com validação Zod no boot
+    // ── Configuração de ambiente ─────────────────────────────────────────────
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
-      envFilePath: ['.env.local', '.env'],
     }),
 
-    // Rate limiting global (ThrottlerModule — Upstash substituirá em Fase 3)
-    ThrottlerModule.forRoot([
-      {
-        name: 'short',
-        ttl: 60_000,
-        limit: 100,
+    // ── BullMQ — filas enterprise-ready ─────────────────────────────────────
+    BullModule.forRoot({
+      connection: {
+        url: process.env.REDIS_QUEUE_URL,
+        maxRetriesPerRequest: null,
+        enableReadyCheck: false,
       },
-      {
-        name: 'long',
-        ttl: 3_600_000,
-        limit: 1000,
+      defaultJobOptions: {
+        attempts: 3,
+        removeOnComplete: 100,
+        removeOnFail: 1000,
+        backoff: {
+          type: 'exponential',
+          delay: 3000,
+        },
       },
-    ]),
+    }),
 
-    // Módulos de negócio
+    // ── Módulos de infraestrutura ────────────────────────────────────────────
     HealthModule,
+
+    // ── Filas ────────────────────────────────────────────────────────────────
+    QueueModule,
   ],
 })
 export class AppModule {}
