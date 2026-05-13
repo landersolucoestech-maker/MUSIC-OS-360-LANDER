@@ -26,10 +26,13 @@ import {
   Bell, Mail, Calendar, Clock, Key, Smartphone, Eye, EyeOff,
   Sun, Moon, Monitor, Check, ExternalLink, RefreshCw, Trash2,
   Music, FileText, DollarSign, Users, Loader2, Search, UserCog,
-  Send, X, ChevronRight, Plus, Pencil, Download, CheckCircle, LucideIcon, Settings
+  Send, X, ChevronRight, Plus, Pencil, Download, CheckCircle, LucideIcon, Settings,
+  CreditCard, Crown, Receipt, Package, TrendingUp, AlertCircle
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
+import { Progress } from "@/shared/ui/progress";
+import { useTenant } from "@/app/providers";
 import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { MarketingOAuthDialog } from "@/modules/integrations/components/MarketingOAuthDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
@@ -63,7 +66,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog";
-import { Database, Sparkles, Package, Unplug } from "lucide-react";
+import { Database, Sparkles, Unplug } from "lucide-react";
 import { resetMockData } from "@/shared/data/mockData";
 
 function formatRoleName(name: string): string {
@@ -110,6 +113,7 @@ const DIST_MOCK_EMAILS: Record<string, string> = {
 };
 
 export default function Configuracoes() {
+  const { tenant } = useTenant();
   const { user, updatePassword } = useAuth();
   const { 
     userSettings, 
@@ -674,6 +678,10 @@ export default function Configuracoes() {
             <TabsTrigger value="integracoes" className="flex items-center gap-2">
               <Link className="h-4 w-4" />
               Integrações
+            </TabsTrigger>
+            <TabsTrigger value="billing" className="flex items-center gap-2">
+              <CreditCard className="h-4 w-4" />
+              Billing
             </TabsTrigger>
             <TabsTrigger value="usuarios" className="flex items-center gap-2">
               <UserCog className="h-4 w-4" />
@@ -1753,6 +1761,299 @@ export default function Configuracoes() {
               open={nfeConfigOpen}
               onOpenChange={setNfeConfigOpen}
             />
+          </TabsContent>
+
+          {/* Billing */}
+          <TabsContent value="billing" className="mt-6 space-y-6">
+            {(() => {
+              const billing = tenant.billing;
+              const plan    = tenant.plan;
+
+              const PLAN_LABELS: Record<string, string> = {
+                starter:      "Starter",
+                professional: "Professional",
+                enterprise:   "Enterprise",
+              };
+              const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+                active:    { label: "Ativo",     variant: "default"     },
+                trial:     { label: "Trial",     variant: "secondary"   },
+                suspended: { label: "Suspenso",  variant: "destructive" },
+                cancelled: { label: "Cancelado", variant: "destructive" },
+              };
+              const statusInfo = STATUS_LABELS[billing.status] ?? STATUS_LABELS["active"];
+              const seatsPercent = billing.seats > 0 ? Math.round((billing.seatsUsed / billing.seats) * 100) : 0;
+              const renewalDate  = billing.currentPeriodEnd
+                ? format(new Date(billing.currentPeriodEnd), "dd/MM/yyyy", { locale: ptBR })
+                : "—";
+
+              const MOCK_INVOICES = [
+                { id: "INV-2026-05", date: "01/05/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+                { id: "INV-2026-04", date: "01/04/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+                { id: "INV-2026-03", date: "01/03/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+                { id: "INV-2026-02", date: "01/02/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+                { id: "INV-2026-01", date: "01/01/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+                { id: "INV-2025-12", date: "01/12/2025", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
+              ];
+
+              const PLANS = [
+                {
+                  id:    "starter",
+                  name:  "Starter",
+                  price: "R$ 390/mês",
+                  features: ["Até 3 usuários", "100 artistas", "Catálogo ilimitado", "Suporte por email"],
+                },
+                {
+                  id:    "professional",
+                  name:  "Professional",
+                  price: "R$ 790/mês",
+                  features: ["Até 10 usuários", "Artistas ilimitados", "Integrações avançadas", "Suporte prioritário"],
+                },
+                {
+                  id:    "enterprise",
+                  name:  "Enterprise",
+                  price: "R$ 1.490/mês",
+                  features: ["Usuários ilimitados", "Multi-tenant", "SSO + SAML", "SLA dedicado + onboarding"],
+                },
+              ];
+
+              return (
+                <>
+                  {/* ── Plano Atual + Seats ─────────────────────────────────────────────── */}
+                  <div className="grid gap-6 md:grid-cols-2">
+                    {/* Plano Atual */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Crown className="h-4 w-4 text-primary" />
+                          Plano Atual
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <span className="text-2xl font-bold">{PLAN_LABELS[plan] ?? plan}</span>
+                          <Badge variant={statusInfo.variant} data-testid="billing-status-badge">
+                            {statusInfo.label}
+                          </Badge>
+                        </div>
+                        <Separator />
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between text-muted-foreground">
+                            <span className="flex items-center gap-1.5">
+                              <Calendar className="h-3.5 w-3.5" />
+                              Próxima renovação
+                            </span>
+                            <span className="font-medium text-foreground">{renewalDate}</span>
+                          </div>
+                          {billing.subscriptionId && (
+                            <div className="flex justify-between text-muted-foreground">
+                              <span>ID da subscrição</span>
+                              <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{billing.subscriptionId}</code>
+                            </div>
+                          )}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2"
+                          onClick={() => toast.info("Contacte o suporte para gerir a subscrição: suporte@musicos360.com.br")}
+                          data-testid="button-manage-plan"
+                        >
+                          <CreditCard className="h-3.5 w-3.5" />
+                          Gerir Subscrição
+                        </Button>
+                      </CardContent>
+                    </Card>
+
+                    {/* Uso de Seats */}
+                    <Card>
+                      <CardHeader className="pb-3">
+                        <CardTitle className="flex items-center gap-2 text-base">
+                          <Users className="h-4 w-4 text-primary" />
+                          Uso de Assentos
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="flex items-end justify-between">
+                          <div>
+                            <span className="text-3xl font-bold" data-testid="billing-seats-used">{billing.seatsUsed}</span>
+                            <span className="text-muted-foreground text-sm ml-1">/ {billing.seats} assentos</span>
+                          </div>
+                          <span className={`text-sm font-medium ${seatsPercent >= 90 ? "text-destructive" : seatsPercent >= 70 ? "text-amber-600 dark:text-amber-400" : "text-emerald-600 dark:text-emerald-400"}`}>
+                            {seatsPercent}% utilizado
+                          </span>
+                        </div>
+                        <Progress value={seatsPercent} className="h-2" data-testid="billing-seats-progress" />
+                        <div className="text-xs text-muted-foreground">
+                          {billing.seats - billing.seatsUsed} assento{billing.seats - billing.seatsUsed !== 1 ? "s" : ""} disponível{billing.seats - billing.seatsUsed !== 1 ? "s" : ""}
+                        </div>
+                        {seatsPercent >= 80 && (
+                          <div className="flex items-center gap-2 p-2.5 rounded-md bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 text-xs">
+                            <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                            Próximo do limite — considere fazer upgrade.
+                          </div>
+                        )}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full gap-2"
+                          onClick={() => toast.info("Contacte o suporte para adicionar mais assentos: suporte@musicos360.com.br")}
+                          data-testid="button-add-seats"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          Adicionar Assentos
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  </div>
+
+                  {/* ── Método de Pagamento ─────────────────────────────────────────────── */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <CreditCard className="h-4 w-4 text-primary" />
+                        Método de Pagamento
+                      </CardTitle>
+                      <CardDescription>Cartão guardado para cobranças automáticas</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center justify-between p-4 rounded-lg border bg-muted/30">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-8 bg-gradient-to-br from-blue-600 to-blue-800 rounded-md flex items-center justify-center">
+                            <span className="text-white text-[9px] font-bold tracking-wider">VISA</span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">•••• •••• •••• 4242</p>
+                            <p className="text-xs text-muted-foreground">Expira 12/2027</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">Principal</Badge>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toast.info("Contacte o suporte para actualizar o cartão: suporte@musicos360.com.br")}
+                            data-testid="button-update-payment"
+                          >
+                            Alterar
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ── Histórico de Faturas ────────────────────────────────────────────── */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <Receipt className="h-4 w-4 text-primary" />
+                        Histórico de Faturas
+                      </CardTitle>
+                      <CardDescription>Faturas dos últimos 12 meses</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="rounded-md border overflow-hidden">
+                        <table className="w-full text-sm">
+                          <thead>
+                            <tr className="bg-muted/50 border-b">
+                              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Fatura</th>
+                              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Data</th>
+                              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Valor</th>
+                              <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">Status</th>
+                              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground"></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {MOCK_INVOICES.map((inv, idx) => (
+                              <tr key={inv.id} className={`border-b last:border-0 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
+                                <td className="px-4 py-3">
+                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{inv.id}</code>
+                                </td>
+                                <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
+                                <td className="px-4 py-3 text-right font-medium">{inv.amount}</td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className={`text-xs font-medium ${inv.statusColor}`}>{inv.status}</span>
+                                </td>
+                                <td className="px-4 py-3 text-right">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-7 px-2 gap-1 text-xs"
+                                    onClick={() => toast.info(`Download de ${inv.id} não disponível em modo de demonstração.`)}
+                                    data-testid={`button-download-invoice-${inv.id}`}
+                                  >
+                                    <Download className="h-3 w-3" />
+                                    PDF
+                                  </Button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* ── Comparação de Planos / Upgrade ─────────────────────────────────── */}
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-base">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        Planos Disponíveis
+                      </CardTitle>
+                      <CardDescription>Compare os planos e faça upgrade quando estiver pronto</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid gap-4 sm:grid-cols-3">
+                        {PLANS.map((p) => {
+                          const isCurrent = p.id === plan;
+                          return (
+                            <div
+                              key={p.id}
+                              className={`relative rounded-xl border p-5 space-y-4 transition-all ${
+                                isCurrent
+                                  ? "border-primary bg-primary/5 ring-1 ring-primary"
+                                  : "border-border hover:border-muted-foreground/40"
+                              }`}
+                            >
+                              {isCurrent && (
+                                <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                                  <Badge className="text-[10px] px-2 py-0.5">Plano Actual</Badge>
+                                </div>
+                              )}
+                              <div>
+                                <div className="flex items-center gap-2 mb-1">
+                                  <Package className="h-4 w-4 text-primary" />
+                                  <span className="font-semibold">{p.name}</span>
+                                </div>
+                                <p className="text-lg font-bold text-primary">{p.price}</p>
+                              </div>
+                              <ul className="space-y-1.5">
+                                {p.features.map((f) => (
+                                  <li key={f} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                    <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                    {f}
+                                  </li>
+                                ))}
+                              </ul>
+                              <Button
+                                size="sm"
+                                variant={isCurrent ? "outline" : "default"}
+                                className="w-full"
+                                disabled={isCurrent}
+                                onClick={() => !isCurrent && toast.info("Contacte o suporte para fazer upgrade: suporte@musicos360.com.br")}
+                                data-testid={`button-plan-${p.id}`}
+                              >
+                                {isCurrent ? "Plano Actual" : "Fazer Upgrade"}
+                              </Button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </>
+              );
+            })()}
           </TabsContent>
 
           {/* Usuários */}
