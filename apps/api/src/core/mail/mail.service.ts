@@ -151,6 +151,72 @@ export class MailService {
     });
   }
 
+  // ─── Métodos de template HTML (usados pelo EmailProcessor) ──────────────────
+
+  welcomeHtml(name: string): string {
+    const appUrl = this.config.get<string>('APP_URL') ?? 'https://musicos360.com.br';
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
+        <p>Olá, <strong>${name}</strong>!</p>
+        <p>A sua conta está pronta. Acesse a plataforma:</p>
+        <a href="${appUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          Acessar MUSIC OS 360
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360 — Enterprise Music Management SaaS</p>
+      </div>
+    `;
+  }
+
+  contractExpiringHtml(contractTitle: string, daysLeft: number): string {
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
+        <p>⚠️ O contrato <strong>${contractTitle}</strong> vence em <strong>${daysLeft} dias</strong>.</p>
+        <p>Acesse a plataforma para tomar as providências necessárias.</p>
+        <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
+      </div>
+    `;
+  }
+
+  contractSignedHtml(contractTitle: string): string {
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
+        <p>✅ O contrato <strong>${contractTitle}</strong> foi assinado com sucesso.</p>
+        <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
+      </div>
+    `;
+  }
+
+  paymentFailedHtml(plan: string): string {
+    const appUrl = this.config.get<string>('APP_URL') ?? 'https://musicos360.com.br';
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
+        <p>⚠️ O pagamento da sua assinatura <strong>${plan}</strong> falhou.</p>
+        <p>Acesse o portal de billing para actualizar o método de pagamento:</p>
+        <a href="${appUrl}/configuracoes/billing" style="display:inline-block;padding:12px 24px;background:#dc2626;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          Actualizar Pagamento
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
+      </div>
+    `;
+  }
+
+  inviteHtml(orgName: string, inviteUrl: string): string {
+    return `
+      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
+        <p>Você foi convidado para a organização <strong>${orgName}</strong> no MUSIC OS 360.</p>
+        <a href="${inviteUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          Aceitar Convite
+        </a>
+        <p style="color:#6b7280;font-size:12px;margin-top:32px">Se não esperava este convite, ignore este email.</p>
+      </div>
+    `;
+  }
+
   async sendTakedownConfirmation(to: string, trackTitle: string, platform: string): Promise<MailResult> {
     return this.send({
       to,

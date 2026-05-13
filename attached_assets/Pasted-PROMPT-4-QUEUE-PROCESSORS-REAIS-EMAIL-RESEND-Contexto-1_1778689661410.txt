@@ -1,0 +1,289 @@
+PROMPT 4 — QUEUE PROCESSORS REAIS + EMAIL RESEND
+Contexto:
+- 11 filas declaradas no BullMQ
+- Apenas EmailProcessor existe mas não envia emails de verdade
+- MailService existe e usa Resend via fetch
+- Outros 10 processors estão ausentes
+
+OBJETIVO: Implementar processors funcionais para as 5 filas prioritárias
+e fazer o EmailProcessor enviar emails reais via Resend.
+
+═══════════════════════════════════════════════
+PARTE 1 — CORRIGIR EMAIL PROCESSOR PARA USAR RESEND
+═══════════════════════════════════════════════
+
+Substituir apps/api/src/queues/processors/email.processor.ts completamente.
+O processor atual tem Logger.log() em vez de chamadas reais.
+
+O novo processor deve:
+1. Injetar MailService
+2. Em cada case, chamar this.mailService.send() de verdade
+
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger }    from '@nestjs/common';
+import { Job }                   from 'bullmq';
+import { QUEUE_NAMES }           from '../queue.constants';
+import { MailService }           from '../../core/mail/mail.service';
+
+@Processor(QUEUE_NAMES.EMAILS)
+@Injectable()
+export class EmailProcessor extends WorkerHost {
+  private readonly logger = new Logger(EmailProcessor.name);
+
+  constructor(private readonly mail: MailService) { super(); }
+
+  async process(job: Job): Promise<void> {
+    this.logger.log(`Processando email job: ${job.name} / ${job.id}`);
+
+    switch (job.name) {
+      case 'welcome':
+        await this.mail.send({
+          to:      job.data.email,
+          subject: 'Bem-vindo ao MUSIC OS 360°',
+          html:    this.mail.welcomeHtml(job.data.name),
+        });
+        break;
+
+      case 'contract_expiring':
+        await this.mail.send({
+          to:      job.data.recipientEmail,
+          subject: `⚠️ Contrato vencendo em ${job.data.daysLeft} dias: ${job.data.contractTitle}`,
+          html:    this.mail.contractExpiringHtml(job.data.contractTitle, job.data.daysLeft),
+        });
+        break;
+
+      case 'contract_signed':
+        await this.mail.send({
+          to:      job.data.recipientEmail,
+          subject: `✅ Contrato assinado: ${job.data.contractTitle}`,
+          html:    this.mail.contractSignedHtml(job.data.contractTitle),
+        });
+        break;
+
+      case 'payment_failed':
+        await this.mail.send({
+          to:      job.data.email,
+          subject: '⚠️ Falha no pagamento da sua assinatura MUSIC OS 360°',
+          html:    this.mail.paymentFailedHtml(job.data.plan),
+        });
+        break;
+
+      case 'invite':
+        await this.mail.send({
+          to:      job.data.email,
+          subject: `Convite para ${job.data.orgName} no MUSIC OS 360°`,
+          html:    this.mail.inviteHtml(job.data.orgName, job.data.inviteUrl),
+        });
+        break;
+
+      default:
+        this.logger.warn(`Tipo de email desconhecido: ${job.name}`);
+    }
+
+    this.logger.log(`Email enviado com sucesso: ${job.name}`);
+  }
+}
+
+Atualizar apps/api/src/core/mail/mail.service.ts para expor métodos HTML:
+
+Adicionar os métodos de template HTML como métodos públicos da classe
+(welcomeHtml, contractExpiringHtml, contractSignedHtml, paymentFailedHtml, inviteHtml)
+para serem chamados pelo processor.
+
+═══════════════════════════════════════════════
+PARTE 2 — NOTIFICATIONS PROCESSOR
+═══════════════════════════════════════════════
+
+Criar apps/api/src/queues/processors/notifications.processor.ts:
+
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Job }  from 'bullmq';
+import { eq }   from 'drizzle-orm';
+import { QUEUE_NAMES }           from '../queue.constants';
+import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
+import { notifications }         from '../../database/schema';
+import { WsGateway }             from '../../core/websocket/ws.gateway';
+
+export interface NotificationJobData {
+  tenantId:  string;
+  userId:    string;
+  title:     string;
+  body?:     string;
+  type:      string;
+  entity?:   string;
+  entityId?: string;
+}
+
+@Processor(QUEUE_NAMES.NOTIFICATIONS)
+@Injectable()
+export class NotificationsProcessor extends WorkerHost {
+  private readonly logger = new Logger(NotificationsProcessor.name);
+
+  constructor(
+    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
+    private readonly ws: WsGateway,
+  ) { super(); }
+
+  async process(job: Job<NotificationJobData>): Promise<void> {
+    const d = job.data;
+
+    // 1. Persistir no banco
+    const [notification] = await this.db
+      .insert(notifications)
+      .values({
+        tenant_id: d.tenantId,
+        user_id:   d.userId,
+        title:     d.title,
+        body:      d.body,
+        type:      d.type,
+        entity:    d.entity,
+        entity_id: d.entityId,
+      })
+      .returning();
+
+    // 2. Enviar via WebSocket (se usuário online)
+    await this.ws.sendToUser(d.tenantId, d.userId, 'notification:new', {
+      id:         notification.id,
+      title:      notification.title,
+      body:       notification.body,
+      type:       notification.type,
+      created_at: notification.created_at,
+    });
+
+    this.logger.log(`Notificação entregue: ${d.userId} — ${d.title}`);
+  }
+}
+
+═══════════════════════════════════════════════
+PARTE 3 — AI JOBS PROCESSOR
+═══════════════════════════════════════════════
+
+Criar apps/api/src/queues/processors/ai-jobs.processor.ts:
+
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger }    from '@nestjs/common';
+import { Job }                   from 'bullmq';
+import { QUEUE_NAMES }           from '../queue.constants';
+import { AIService }             from '../../modules/ai/ai.service';
+import { WsGateway }             from '../../core/websocket/ws.gateway';
+
+@Processor(QUEUE_NAMES.AI_JOBS)
+@Injectable()
+export class AIJobsProcessor extends WorkerHost {
+  private readonly logger = new Logger(AIJobsProcessor.name);
+
+  constructor(
+    private readonly ai: AIService,
+    private readonly ws: WsGateway,
+  ) { super(); }
+
+  async process(job: Job): Promise<void> {
+    this.logger.log(`Processando AI job: ${job.id}`);
+
+    const result = await this.ai.generate({
+      tenantId: job.data.tenantId,
+      userId:   job.data.userId,
+      ...job.data,
+    });
+
+    // Notificar via WebSocket que o job foi concluído
+    await this.ws.sendToUser(
+      job.data.tenantId,
+      job.data.userId,
+      'ai:job:completed',
+      {
+        jobId:   job.id,
+        content: result.content,
+        skill:   job.data.skill,
+      },
+    );
+  }
+}
+
+═══════════════════════════════════════════════
+PARTE 4 — CLERK SYNC PROCESSOR
+═══════════════════════════════════════════════
+
+Criar apps/api/src/queues/processors/clerk-sync.processor.ts:
+
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Injectable, Logger }    from '@nestjs/common';
+import { Job }                   from 'bullmq';
+import { QUEUE_NAMES }           from '../queue.constants';
+import { ClerkSyncService }      from '../../modules/auth/clerk-sync.service';
+
+@Processor(QUEUE_NAMES.CLERK_SYNC)
+@Injectable()
+export class ClerkSyncProcessor extends WorkerHost {
+  private readonly logger = new Logger(ClerkSyncProcessor.name);
+
+  constructor(private readonly clerkSync: ClerkSyncService) { super(); }
+
+  async process(job: Job): Promise<void> {
+    this.logger.log(`Processando Clerk sync: ${job.data.type}`);
+    await this.clerkSync.process(job.data);
+  }
+}
+
+Atualizar clerk-webhook.controller.ts para enfileirar em vez de processar sync:
+Ao receber webhook válido, fazer:
+  await this.clerkSyncQueue.add(event.type, event, {
+    jobId: event.id,  // idempotência
+    attempts: 3,
+    backoff: { type: 'exponential', delay: 2000 },
+  });
+
+═══════════════════════════════════════════════
+PARTE 5 — REGISTRAR PROCESSORS NO QUEUE.MODULE.TS
+═══════════════════════════════════════════════
+
+Atualizar apps/api/src/queues/queue.module.ts para incluir
+todos os novos processors nos providers e exportar os services:
+
+providers: [
+  EmailProcessor,
+  NotificationsProcessor,
+  AIJobsProcessor,
+  ClerkSyncProcessor,
+  EmailQueueService,
+  NotificationsQueueService,  // criar
+  AIJobsQueueService,         // criar
+],
+exports: [
+  BullModule,
+  EmailQueueService,
+  NotificationsQueueService,
+  AIJobsQueueService,
+],
+
+═══════════════════════════════════════════════
+PARTE 6 — CRIAR NOTIFICATION QUEUE SERVICE
+═══════════════════════════════════════════════
+
+Criar apps/api/src/queues/services/notifications-queue.service.ts:
+
+import { Injectable } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
+import { QUEUE_NAMES } from '../queue.constants';
+import type { NotificationJobData } from '../processors/notifications.processor';
+
+@Injectable()
+export class NotificationsQueueService {
+  constructor(
+    @InjectQueue(QUEUE_NAMES.NOTIFICATIONS)
+    private readonly queue: Queue,
+  ) {}
+
+  async enqueue(data: NotificationJobData): Promise<void> {
+    await this.queue.add('send', data, {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 1000 },
+    });
+  }
+}
+
+Usar NotificationsQueueService em todos os services que precisam
+notificar usuários (contracts, billing, support-tickets, etc).
+Exemplo: ao criar contrato, enfileirar notificação para o artista.

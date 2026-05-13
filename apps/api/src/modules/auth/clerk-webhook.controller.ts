@@ -1,7 +1,8 @@
 /**
  * modules/auth/clerk-webhook.controller.ts
  *
- * Endpoint de webhook Clerk — recebe eventos de org/user e sincroniza no banco.
+ * Endpoint de webhook Clerk — recebe eventos de org/user e encaminha
+ * para a fila BullMQ "clerk-sync" (processamento assíncrono com retry).
  * Rota pública (sem autenticação): POST /webhooks/clerk
  * Verificação de assinatura HMAC via svix.
  */
@@ -15,11 +16,13 @@ import {
   Logger,
   RawBodyRequest,
 } from '@nestjs/common';
-import { Webhook } from 'svix';
-import { ConfigService } from '@nestjs/config';
-import { Public } from '../../core/decorators/public.decorator';
-import { ClerkSyncService } from './clerk-sync.service';
-import type { Request } from 'express';
+import { InjectQueue }    from '@nestjs/bullmq';
+import { Queue }          from 'bullmq';
+import { Webhook }        from 'svix';
+import { ConfigService }  from '@nestjs/config';
+import { Public }         from '../../core/decorators/public.decorator';
+import { QUEUE_NAMES }    from '../../queues/queue.constants';
+import type { Request }   from 'express';
 
 @Controller('webhooks/clerk')
 export class ClerkWebhookController {
@@ -27,7 +30,8 @@ export class ClerkWebhookController {
 
   constructor(
     private readonly config: ConfigService,
-    private readonly clerkSync: ClerkSyncService,
+    @InjectQueue(QUEUE_NAMES.CLERK_SYNC)
+    private readonly clerkQueue: Queue,
   ) {}
 
   @Post()
@@ -40,30 +44,38 @@ export class ClerkWebhookController {
   ): Promise<{ received: boolean }> {
     const secret = this.config.get<string>('CLERK_WEBHOOK_SECRET') ?? '';
 
-    if (secret === 'whsec_placeholder') {
-      this.logger.warn('CLERK_WEBHOOK_SECRET não configurado — aceitando sem verificação (dev)');
-      const body = (req as Request & { body: Record<string, unknown> }).body;
-      await this.clerkSync.process(body as Record<string, unknown>);
-      return { received: true };
-    }
-
-    const wh = new Webhook(secret);
     let event: Record<string, unknown>;
 
-    try {
-      const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(req.body));
-      event = wh.verify(rawBody, {
-        'svix-id':        svixId,
-        'svix-timestamp': svixTimestamp,
-        'svix-signature': svixSignature,
-      }) as Record<string, unknown>;
-    } catch (err) {
-      this.logger.error(`Assinatura Clerk inválida: ${(err as Error).message}`);
-      throw new BadRequestException('Assinatura do webhook Clerk inválida');
+    if (secret === 'whsec_placeholder' || !secret) {
+      this.logger.warn('CLERK_WEBHOOK_SECRET não configurado — aceitando sem verificação (dev)');
+      event = (req as Request & { body: Record<string, unknown> }).body;
+    } else {
+      const wh = new Webhook(secret);
+      try {
+        const rawBody = req.rawBody ?? Buffer.from(JSON.stringify(req.body));
+        event = wh.verify(rawBody, {
+          'svix-id':        svixId,
+          'svix-timestamp': svixTimestamp,
+          'svix-signature': svixSignature,
+        }) as Record<string, unknown>;
+      } catch (err) {
+        this.logger.error(`Assinatura Clerk inválida: ${(err as Error).message}`);
+        throw new BadRequestException('Assinatura do webhook Clerk inválida');
+      }
     }
 
-    this.logger.log(`Clerk webhook recebido: ${String(event['type'])}`);
-    await this.clerkSync.process(event);
+    const eventType = String(event['type'] ?? 'unknown');
+    this.logger.log(`Clerk webhook recebido: ${eventType} — enfileirando`);
+
+    await this.clerkQueue.add(
+      'clerk-event',
+      { event },
+      {
+        jobId:    `clerk:${eventType}:${String(event['id'] ?? Date.now())}`,
+        attempts: 3,
+        backoff:  { type: 'exponential', delay: 2000 },
+      },
+    );
 
     return { received: true };
   }

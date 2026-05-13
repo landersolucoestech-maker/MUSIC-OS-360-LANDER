@@ -2,16 +2,16 @@
  * queues/processors/email.processor.ts
  *
  * Processor BullMQ para a fila "emails".
- * Cada job é processado com logs estruturados e tipagem estrita.
- *
- * Em produção, substituir os Logger.log() pelas chamadas reais ao
- * Resend (ou outro provider de email) via EmailService injectado.
+ * Envia emails reais via Resend (através do MailService).
+ * Se RESEND_API_KEY não estiver configurada, MailService.send() retorna
+ * { skipped: true } sem lançar excepção — comportamento gracioso em dev.
  */
 
 import { Processor, WorkerHost } from '@nestjs/bullmq';
-import { Logger } from '@nestjs/common';
-import { Job } from 'bullmq';
+import { Injectable, Logger }    from '@nestjs/common';
+import { Job }                   from 'bullmq';
 import { QUEUE_NAMES, EMAIL_JOB_NAMES } from '../queue.constants';
+import { MailService }           from '../../core/mail/mail.service';
 
 // ─── Payloads tipados por job ─────────────────────────────────────────────────
 
@@ -28,10 +28,19 @@ export interface PasswordResetEmailPayload {
 }
 
 export interface ContractExpiryEmailPayload {
-  tenantId:     string;
-  contractId:   string;
-  artistName:   string;
-  expiresAt:    string;
+  tenantId:       string;
+  contractId:     string;
+  contractTitle?: string;
+  artistName:     string;
+  expiresAt:      string;
+  daysLeft?:      number;
+  recipientEmail: string;
+}
+
+export interface ContractSignedEmailPayload {
+  tenantId:       string;
+  contractId:     string;
+  contractTitle:  string;
   recipientEmail: string;
 }
 
@@ -40,6 +49,12 @@ export interface InviteUserEmailPayload {
   inviterName: string;
   email:       string;
   inviteLink:  string;
+  orgName?:    string;
+}
+
+export interface PaymentFailedEmailPayload {
+  email: string;
+  plan:  string;
 }
 
 export interface MonitoringAlertEmailPayload {
@@ -55,96 +70,97 @@ export type EmailJobPayload =
   | WelcomeEmailPayload
   | PasswordResetEmailPayload
   | ContractExpiryEmailPayload
+  | ContractSignedEmailPayload
   | InviteUserEmailPayload
+  | PaymentFailedEmailPayload
   | MonitoringAlertEmailPayload;
 
 // ─── Processor ────────────────────────────────────────────────────────────────
 
 @Processor(QUEUE_NAMES.EMAILS)
+@Injectable()
 export class EmailProcessor extends WorkerHost {
   private readonly logger = new Logger(EmailProcessor.name);
 
+  constructor(private readonly mail: MailService) { super(); }
+
   async process(job: Job<EmailJobPayload>): Promise<void> {
-    this.logger.log(
-      `[emails] processando job="${job.name}" id=${job.id} attempt=${job.attemptsMade + 1}`,
-    );
+    this.logger.log(`[emails] job="${job.name}" id=${job.id} attempt=${job.attemptsMade + 1}`);
 
     switch (job.name) {
-      case EMAIL_JOB_NAMES.WELCOME:
-        await this.handleWelcome(job as Job<WelcomeEmailPayload>);
+      // ── Novos jobs tipados ────────────────────────────────────────────────
+      case 'welcome':
+      case EMAIL_JOB_NAMES.WELCOME: {
+        const d = job.data as WelcomeEmailPayload;
+        await this.mail.send({
+          to:      d.email,
+          subject: 'Bem-vindo ao MUSIC OS 360°',
+          html:    this.mail.welcomeHtml(d.name),
+        });
         break;
+      }
 
-      case EMAIL_JOB_NAMES.PASSWORD_RESET:
-        await this.handlePasswordReset(job as Job<PasswordResetEmailPayload>);
+      case 'contract_expiring':
+      case EMAIL_JOB_NAMES.CONTRACT_EXPIRY: {
+        const d = job.data as ContractExpiryEmailPayload;
+        const title    = d.contractTitle ?? `Contrato ${d.contractId}`;
+        const daysLeft = d.daysLeft ?? 0;
+        await this.mail.send({
+          to:      d.recipientEmail,
+          subject: `⚠️ Contrato vencendo em ${daysLeft} dias: ${title}`,
+          html:    this.mail.contractExpiringHtml(title, daysLeft),
+        });
         break;
+      }
 
-      case EMAIL_JOB_NAMES.CONTRACT_EXPIRY:
-        await this.handleContractExpiry(job as Job<ContractExpiryEmailPayload>);
+      case 'contract_signed': {
+        const d = job.data as ContractSignedEmailPayload;
+        await this.mail.send({
+          to:      d.recipientEmail,
+          subject: `✅ Contrato assinado: ${d.contractTitle}`,
+          html:    this.mail.contractSignedHtml(d.contractTitle),
+        });
         break;
+      }
 
-      case EMAIL_JOB_NAMES.INVITE_USER:
-        await this.handleInviteUser(job as Job<InviteUserEmailPayload>);
+      case 'payment_failed': {
+        const d = job.data as PaymentFailedEmailPayload;
+        await this.mail.send({
+          to:      d.email,
+          subject: '⚠️ Falha no pagamento da sua assinatura MUSIC OS 360°',
+          html:    this.mail.paymentFailedHtml(d.plan),
+        });
         break;
+      }
 
-      case EMAIL_JOB_NAMES.MONITORING_ALERT:
-        await this.handleMonitoringAlert(job as Job<MonitoringAlertEmailPayload>);
+      case 'invite':
+      case EMAIL_JOB_NAMES.INVITE_USER: {
+        const d = job.data as InviteUserEmailPayload;
+        await this.mail.send({
+          to:      d.email,
+          subject: `Convite para ${d.orgName ?? 'MUSIC OS 360°'}`,
+          html:    this.mail.inviteHtml(d.orgName ?? 'MUSIC OS 360°', d.inviteLink),
+        });
         break;
+      }
+
+      case EMAIL_JOB_NAMES.PASSWORD_RESET: {
+        const d = job.data as PasswordResetEmailPayload;
+        await this.mail.sendPasswordReset(d.email, d.resetLink);
+        break;
+      }
+
+      case EMAIL_JOB_NAMES.MONITORING_ALERT: {
+        const d = job.data as MonitoringAlertEmailPayload;
+        await this.mail.sendTakedownConfirmation(d.recipientEmail, d.trackTitle, d.platform);
+        break;
+      }
 
       default:
         this.logger.warn(`[emails] job desconhecido: "${job.name}" — ignorado`);
+        return;
     }
 
-    this.logger.log(`[emails] job="${job.name}" id=${job.id} concluído`);
-  }
-
-  // ── Handlers individuais ────────────────────────────────────────────────────
-
-  private async handleWelcome(job: Job<WelcomeEmailPayload>): Promise<void> {
-    const { email, name, tenantId, userId } = job.data;
-    this.logger.log(
-      `[emails/welcome] → para=${email} nome="${name}" tenant=${tenantId} user=${userId}`,
-    );
-    // TODO (produção): await this.emailService.sendWelcome({ email, name });
-  }
-
-  private async handlePasswordReset(
-    job: Job<PasswordResetEmailPayload>,
-  ): Promise<void> {
-    const { email, resetLink } = job.data;
-    this.logger.log(
-      `[emails/password-reset] → para=${email} link=${resetLink}`,
-    );
-    // TODO (produção): await this.emailService.sendPasswordReset({ email, resetLink });
-  }
-
-  private async handleContractExpiry(
-    job: Job<ContractExpiryEmailPayload>,
-  ): Promise<void> {
-    const { contractId, artistName, expiresAt, recipientEmail } = job.data;
-    this.logger.log(
-      `[emails/contract-expiry] → para=${recipientEmail} artista="${artistName}" contrato=${contractId} expira=${expiresAt}`,
-    );
-    // TODO (produção): await this.emailService.sendContractExpiry({ ... });
-  }
-
-  private async handleInviteUser(
-    job: Job<InviteUserEmailPayload>,
-  ): Promise<void> {
-    const { email, inviterName, inviteLink } = job.data;
-    this.logger.log(
-      `[emails/invite-user] → para=${email} convidado por="${inviterName}" link=${inviteLink}`,
-    );
-    // TODO (produção): await this.emailService.sendInvite({ ... });
-  }
-
-  private async handleMonitoringAlert(
-    job: Job<MonitoringAlertEmailPayload>,
-  ): Promise<void> {
-    const { recipientEmail, alertType, trackTitle, platform, detectedAt } =
-      job.data;
-    this.logger.log(
-      `[emails/monitoring-alert] → para=${recipientEmail} tipo=${alertType} faixa="${trackTitle}" plataforma=${platform} detectado=${detectedAt}`,
-    );
-    // TODO (produção): await this.emailService.sendMonitoringAlert({ ... });
+    this.logger.log(`[emails] job="${job.name}" id=${job.id} enviado`);
   }
 }
