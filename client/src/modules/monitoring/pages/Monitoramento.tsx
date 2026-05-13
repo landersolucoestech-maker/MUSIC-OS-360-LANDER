@@ -8,6 +8,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, Music, X } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
@@ -181,39 +182,37 @@ export default function Monitoramento() {
                 <Button variant="outline" size="icon"><RefreshCw className="h-4 w-4" /></Button>
               </div>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="pt-0">
               {filteredDeteccoes.length > 0 ? (
-                filteredDeteccoes.map((det: any) => {
-                  const obra = obraMap.get(det.obra_id);
-                  return (
-                    <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
-                    <div key={det.id} className="detect-row items-center">
-                      <div className="detect-icon">
-                        <Music className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold truncate text-foreground">{obra?.titulo ?? det.obra_id}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{det.plataforma}</p>
-                      </div>
-                      <div className="hidden lg:flex items-start gap-6">
-                        <div>
-                          <span className="info-label">Período</span>
-                          <p className="info-value">{det.periodo ? formatDate(det.periodo + "-01") : "—"}</p>
-                        </div>
-                        <div>
-                          <span className="info-label">Execuções</span>
-                          <p className="info-value tabular-nums">{fmt(det.quantidade ?? 0)}</p>
-                        </div>
-                        <div>
-                          <span className="info-label">Valor</span>
-                          <p className="info-value tabular-nums">{fmtBRL(det.valor ?? 0)}</p>
-                        </div>
-                      </div>
-                      <div className="flex-shrink-0">{getStatusBadge(det.status ?? "")}</div>
-                    </div>
-                    </FeatureGate>
-                  );
-                })
+                <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Obra</TableHead>
+                        <TableHead>Plataforma</TableHead>
+                        <TableHead>Período</TableHead>
+                        <TableHead className="text-right">Execuções</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredDeteccoes.map((det: any) => {
+                        const obra = obraMap.get(det.obra_id);
+                        return (
+                          <TableRow key={det.id}>
+                            <TableCell className="font-medium">{obra?.titulo ?? det.obra_id}</TableCell>
+                            <TableCell className="text-muted-foreground">{det.plataforma || "—"}</TableCell>
+                            <TableCell className="text-sm">{det.periodo ? formatDate(det.periodo + "-01") : "—"}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{fmt(det.quantidade ?? 0)}</TableCell>
+                            <TableCell className="text-right font-mono text-sm">{fmtBRL(det.valor ?? 0)}</TableCell>
+                            <TableCell>{getStatusBadge(det.status ?? "")}</TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </FeatureGate>
               ) : (
                 <EmptyState
                   icon={Radio}
@@ -238,29 +237,34 @@ export default function Monitoramento() {
                 </Button>
               </RequirePermission>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="pt-0">
               {ecadPeriodos.length > 0 ? (
-                ecadPeriodos.map((periodo: any) => (
-                  <div key={periodo.id} className="detect-row items-center">
-                    <div className="detect-icon">
-                      <FileText className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-foreground">Período: {periodo.periodo}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">{periodo.observacoes}</p>
-                    </div>
-                    <div className="hidden sm:block">
-                      <span className="info-label">Valor Total</span>
-                      <p className="info-value tabular-nums">{fmtBRL(periodo.valor_total ?? 0)}</p>
-                    </div>
-                    <div className="flex items-center gap-3 flex-shrink-0">
-                      {getStatusBadge(periodo.status ?? "")}
-                      <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>
-                        Ver Detalhes
-                      </Button>
-                    </div>
-                  </div>
-                ))
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Período</TableHead>
+                      <TableHead>Observações</TableHead>
+                      <TableHead className="text-right">Valor Total</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ecadPeriodos.map((periodo: any) => (
+                      <TableRow key={periodo.id}>
+                        <TableCell className="font-medium">{periodo.periodo}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm max-w-[260px] truncate">{periodo.observacoes || "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-sm">{fmtBRL(periodo.valor_total ?? 0)}</TableCell>
+                        <TableCell>{getStatusBadge(periodo.status ?? "")}</TableCell>
+                        <TableCell className="text-right">
+                          <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>
+                            Ver Detalhes
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               ) : (
                 <EmptyState
                   icon={FileText}

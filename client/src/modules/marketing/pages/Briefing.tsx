@@ -9,6 +9,7 @@ import {
   MoreHorizontal, Pencil, Trash2, Plus, X, List,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { BriefingFormModal } from "@/modules/marketing/components/BriefingFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -148,53 +149,58 @@ export default function MarketingBriefing() {
           </CardHeader>
           <CardContent className="pt-0">
             {filteredBriefings.length > 0 ? (
-              <div className="divide-y divide-border/60">
-                {filteredBriefings.map((briefing: any) => (
-                  <div
-                    key={briefing.id}
-                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
-                    data-testid={`row-briefing-${briefing.id}`}
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <FileEdit className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium leading-tight">{briefing.titulo}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {briefing.prioridade && (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredBriefings.map((briefing: any) => (
+                    <TableRow key={briefing.id} data-testid={`row-briefing-${briefing.id}`}>
+                      <TableCell className="font-medium">{briefing.titulo}</TableCell>
+                      <TableCell className="text-muted-foreground text-xs max-w-[260px] truncate">{briefing.descricao || "—"}</TableCell>
+                      <TableCell>
+                        {briefing.prioridade ? (
                           <span className={cn(
-                            "text-[10px] border px-1.5 py-0.5 rounded-sm",
+                            "text-[10px] border px-1.5 py-0.5 rounded-sm capitalize",
                             briefing.prioridade === "alta"  ? "border-primary/40 text-primary" :
                             briefing.prioridade === "media" ? "border-warning/40 text-warning" :
                             "border-success/40 text-success"
                           )}>
                             {briefing.prioridade}
                           </span>
-                        )}
-                        <StatusBadge status={briefing.status} />
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(briefing)}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteModal({ open: true, briefing })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell><StatusBadge status={briefing.status} /></TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-acoes-briefing-${briefing.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(briefing)}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteModal({ open: true, briefing })}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <EmptyState
                 icon={FileEdit}

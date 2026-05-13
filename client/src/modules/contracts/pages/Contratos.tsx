@@ -15,6 +15,7 @@ import {
   AlertCircle, PenLine,
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -308,128 +309,102 @@ export default function Contratos() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {/* Bulk select bar */}
-            {contratos.length > 0 && (
+            {selectedIds.length > 0 && (
               <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <Checkbox
-                  checked={selectedIds.length === filteredContratos.length && filteredContratos.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                />
-                <span className="text-xs text-muted-foreground flex-1">
-                  {selectedIds.length > 0
-                    ? `${selectedIds.length} selecionado(s)`
-                    : "Selecionar todos"}
-                </span>
-                {selectedIds.length > 0 && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    className="h-7 text-xs gap-1.5"
-                    onClick={handleBulkDelete}
-                    data-testid="button-bulk-delete"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
-                  </Button>
-                )}
+                <span className="text-xs text-muted-foreground flex-1">{selectedIds.length} selecionado(s)</span>
+                <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
+                </Button>
               </div>
             )}
 
             {filteredContratos.length > 0 ? (
-              <div className="divide-y divide-border/60">
-                {filteredContratos.map((contrato) => (
-                  <div
-                    key={contrato.id}
-                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
-                    data-testid={`row-contrato-${contrato.id}`}
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(contrato.id)}
-                      onCheckedChange={() => toggleSelect(contrato.id)}
-                      className="shrink-0"
-                    />
-
-                    {/* Icon */}
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <FileText className="h-4 w-4 text-primary" />
-                    </div>
-
-                    {/* Main info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium text-foreground leading-tight truncate">
-                        {contrato.titulo}
-                      </h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "Sem vínculo"}
-                      </p>
-                    </div>
-
-                    {/* Signing platform */}
-                    <SigningPlatformBadge platform={contrato.signing_platform} />
-
-                    {/* Status */}
-                    <StatusBadge status={contrato.status} />
-                    {(() => {
-                      const end = contrato.data_fim ? new Date(contrato.data_fim) : null;
-                      if (!end) return null;
-                      const diff = Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-                      if (diff < 0 || diff > 30) return null;
-                      return (
-                        <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-warning border border-warning/20 bg-warning/10 rounded-sm px-1.5 py-0.5 font-medium">
-                          <AlertCircle className="h-3 w-3" />
-                          {diff}d
-                        </span>
-                      );
-                    })()}
-
-                    {/* Period + Value */}
-                    <div className="hidden lg:flex items-center gap-8 text-xs shrink-0">
-                      <div>
-                        <p className="text-muted-foreground mb-0.5">Período</p>
-                        <p className="font-medium text-foreground font-mono">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedIds.length === filteredContratos.length && filteredContratos.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Artista / Cliente</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Plataforma</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Período</TableHead>
+                    <TableHead>Valor</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredContratos.map((contrato) => {
+                    const end = contrato.data_fim ? new Date(contrato.data_fim) : null;
+                    const diff = end ? Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
+                    const nearExpiry = diff !== null && diff >= 0 && diff <= 30;
+                    return (
+                      <TableRow key={contrato.id} data-testid={`row-contrato-${contrato.id}`}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(contrato.id)}
+                            onCheckedChange={() => toggleSelect(contrato.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{contrato.titulo}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">
+                          {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—"}
+                        </TableCell>
+                        <TableCell className="capitalize text-sm">{contrato.tipo || "—"}</TableCell>
+                        <TableCell><SigningPlatformBadge platform={contrato.signing_platform} /></TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5">
+                            <StatusBadge status={contrato.status} />
+                            {nearExpiry && (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-warning border border-warning/20 bg-warning/10 rounded-sm px-1.5 py-0.5 font-medium">
+                                <AlertCircle className="h-3 w-3" />{diff}d
+                              </span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs">
                           {formatDate(contrato.data_inicio)} – {formatDate(contrato.data_fim)}
-                        </p>
-                      </div>
-                      {contrato.valor && (
-                        <div>
-                          <p className="text-muted-foreground mb-0.5">Valor</p>
-                          <p className="font-medium text-foreground font-mono">{formatCurrency(contrato.valor)}</p>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setViewModal({ open: true, contrato })}>
-                          <Eye className="h-3.5 w-3.5 mr-2" />
-                          Ver
-                        </DropdownMenuItem>
-                        <RequirePermission module="contracts" action="write">
-                          <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", contrato })}>
-                            <Pencil className="h-3.5 w-3.5 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                        </RequirePermission>
-                        <RequirePermission module="contracts" action="delete">
-                          <DropdownMenuItem
-                            onClick={() => setDeleteModal({ open: true, contrato })}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </RequirePermission>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {contrato.valor ? formatCurrency(contrato.valor) : "—"}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-acoes-contrato-${contrato.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setViewModal({ open: true, contrato })}>
+                                <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                              </DropdownMenuItem>
+                              <RequirePermission module="contracts" action="write">
+                                <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", contrato })}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                                </DropdownMenuItem>
+                              </RequirePermission>
+                              <RequirePermission module="contracts" action="delete">
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteModal({ open: true, contrato })}
+                                  className="text-destructive focus:text-destructive"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                              </RequirePermission>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             ) : (
               <EmptyState
                 icon={FileText}

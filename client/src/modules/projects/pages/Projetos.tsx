@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Clock, TrendingUp, FileText, LayoutGrid, Search, Play, FolderKanban, Loader2, Upload, Download, Plus, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ProjetoFormModal } from "@/modules/projects/components/ProjetoFormModal";
 import { ProjetoViewModal } from "@/modules/projects/components/ProjetoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -487,105 +488,80 @@ export default function Projetos() {
           </CardHeader>
           <CardContent>
 
-            <div className="space-y-2">
-              {filteredProjects.length > 0 ? (
-                <>
-                  <div className="flex items-center gap-4 px-3 pb-2 border-b border-border">
-                    <Checkbox
-                      checked={selectedIds.length === filteredProjects.length && filteredProjects.length > 0}
-                      onCheckedChange={toggleSelectAll}
-                      data-testid="checkbox-select-all"
-                      aria-label="Selecionar todos"
-                    />
-                    <span className="text-xs text-muted-foreground">
-                      {selectedIds.length > 0
-                        ? `${selectedIds.length} selecionado(s)`
-                        : "Selecionar todos"}
-                    </span>
-                  </div>
-                {filteredProjects.map((project) => (
-                  <div 
-                    key={project.id} 
-                    className={`flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-3 rounded ${selectedIds.includes(project.id) ? "bg-muted/20" : ""}`}
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(project.id)}
-                      onCheckedChange={() => toggleSelect(project.id)}
-                      data-testid={`checkbox-select-${project.id}`}
-                      aria-label={`Selecionar ${project.titulo}`}
-                    />
-                    <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                      <Play className="h-4 w-4 text-white ml-0.5" />
-                    </div>
-                    
-                    <div className="min-w-[180px] max-w-[200px]">
-                      <span className="font-medium block truncate">{project.titulo}</span>
-                      <div className="mt-1">{getStatusBadge(project.status)}</div>
-                    </div>
-
-                    <div className="hidden md:flex items-center gap-6 text-sm flex-1">
-                      {(() => {
-                        const info = getFirstMusicaInfo(project);
-                        return (
-                          <>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Compositores</span>
-                              <span className="truncate block" data-testid={`text-compositores-${project.id}`}>{info.compositores || "-"}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Intérpretes</span>
-                              <span className="truncate block" data-testid={`text-interpretes-${project.id}`}>{info.interpretes || "-"}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Produtor</span>
-                              <span className="truncate block" data-testid={`text-produtor-${project.id}`}>{info.produtores || "-"}</span>
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <span className="text-muted-foreground text-xs block">Gênero</span>
-                              <span className="truncate block capitalize" data-testid={`text-genero-${project.id}`}>{info.genero || "-"}</span>
-                            </div>
-                          </>
-                        );
-                      })()}
-                    </div>
-
-                    <div className="flex-shrink-0 flex flex-col items-center">
-                      <span className="text-xs text-muted-foreground mb-1">Ações</span>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" data-testid={`button-actions-${project.id}`}>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setViewModal({ open: true, projeto: project })} data-testid={`button-view-${project.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            Ver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", projeto: project })} data-testid={`button-edit-${project.id}`}>
-                            <Pencil className="h-4 w-4 mr-2" />
-                            Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setDeleteModal({ open: true, projeto: project })} className="text-destructive" data-testid={`button-delete-${project.id}`}>
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                ))}
-                </>
-              ) : (
-                <EmptyState
-                  icon={FolderKanban}
-                  title="Nenhum projeto cadastrado"
-                  description="Comece criando seu primeiro projeto musical"
-                  actionLabel="Novo Projeto"
-                  onAction={() => setFormModal({ open: true, mode: "create" })}
-                />
-              )}
-            </div>
+            {filteredProjects.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedIds.length === filteredProjects.length && filteredProjects.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Artista</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Gênero</TableHead>
+                    <TableHead>Compositores</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredProjects.map((project) => {
+                    const info = getFirstMusicaInfo(project);
+                    return (
+                      <TableRow key={project.id} data-testid={`row-projeto-${project.id}`} className={selectedIds.includes(project.id) ? "bg-muted/20" : ""}>
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.includes(project.id)}
+                            onCheckedChange={() => toggleSelect(project.id)}
+                            data-testid={`checkbox-select-${project.id}`}
+                            aria-label={`Selecionar ${project.titulo}`}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">{project.titulo}</TableCell>
+                        <TableCell className="text-muted-foreground text-sm">{project.artistas?.nome_artistico || "—"}</TableCell>
+                        <TableCell className="capitalize text-sm">{project.tipo || "—"}</TableCell>
+                        <TableCell>{getStatusBadge(project.status)}</TableCell>
+                        <TableCell className="capitalize text-sm" data-testid={`text-genero-${project.id}`}>{info.genero || "—"}</TableCell>
+                        <TableCell className="text-sm max-w-[160px] truncate" data-testid={`text-compositores-${project.id}`}>{info.compositores || "—"}</TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-actions-${project.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setViewModal({ open: true, projeto: project })} data-testid={`button-view-${project.id}`}>
+                                <Eye className="h-4 w-4 mr-2" /> Ver
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", projeto: project })} data-testid={`button-edit-${project.id}`}>
+                                <Pencil className="h-4 w-4 mr-2" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setDeleteModal({ open: true, projeto: project })} className="text-destructive" data-testid={`button-delete-${project.id}`}>
+                                <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            ) : (
+              <EmptyState
+                icon={FolderKanban}
+                title="Nenhum projeto cadastrado"
+                description="Comece criando seu primeiro projeto musical"
+                actionLabel="Novo Projeto"
+                onAction={() => setFormModal({ open: true, mode: "create" })}
+              />
+            )}
           </CardContent>
         </Card>
       </div>

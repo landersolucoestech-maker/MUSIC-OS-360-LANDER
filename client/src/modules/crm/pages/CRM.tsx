@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   Users, Plus, Phone, Mail, Search, Eye,
   Pencil, Trash2, UserCheck, FileText,
@@ -354,11 +355,11 @@ export default function CRM() {
               </span>
             </div>
 
-            {/* Cards */}
+            {/* Table */}
             {clientesLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-20 rounded-2xl bg-muted/40 animate-pulse border border-border/40" />
+                  <div key={i} className="h-12 rounded bg-muted/40 animate-pulse border border-border/40" />
                 ))}
               </div>
             ) : filteredClientes.length === 0 ? (
@@ -370,85 +371,82 @@ export default function CRM() {
                 onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
               />
             ) : (
-              <div className="space-y-3">
-                {filteredClientes.map((cliente) => {
-                  const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
-                  const situacao = getContratoSituacao(clienteContratos);
-                  return (
-                    <div
-                      key={cliente.id}
-                      data-testid={`row-contato-${cliente.id}`}
-                      className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-primary/30 hover:shadow-sm transition-all duration-200"
-                    >
-                      <div className="flex items-center gap-6 min-w-0">
-
-                        {/* BLOCO 1 — avatar + nome + categoria + cidade */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <Avatar className="h-10 w-10 shrink-0 rounded-xl">
-                            <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-xs font-bold rounded-xl">
-                              {getInitials(cliente.nome)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="min-w-0">
-                            <h3
-                              className="font-semibold text-sm leading-snug cursor-pointer hover:text-primary transition-colors truncate"
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Segmento</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Cidade</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead>Contrato</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredClientes.map((cliente) => {
+                    const clienteContratos = contratosPorCliente.get(cliente.id) ?? [];
+                    const situacao = getContratoSituacao(clienteContratos);
+                    return (
+                      <TableRow key={cliente.id} data-testid={`row-contato-${cliente.id}`}>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Avatar className="h-7 w-7 shrink-0 rounded-lg">
+                              <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold rounded-lg">
+                                {getInitials(cliente.nome)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span
+                              className="font-medium text-sm cursor-pointer hover:text-primary transition-colors"
                               data-testid={`text-nome-${cliente.id}`}
                               onClick={() => setViewModal({ open: true, cliente })}
                             >
                               {cliente.nome}
-                            </h3>
-                            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                              {(cliente.categoria || cliente.segmento) && (
-                                <Badge variant="outline" className={cn(
-                                  "text-[10px] px-1.5 py-0 h-4 border font-medium",
-                                  cliente.categoria
-                                    ? "bg-primary/10 text-primary border-primary/20"
-                                    : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
-                                )}>
-                                  {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
-                                </Badge>
-                              )}
-                              {cliente.cidade && (
-                                <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                  <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                  {cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}
-                                </span>
-                              )}
-                            </div>
+                            </span>
                           </div>
-                        </div>
-
-                        {/* BLOCO 2 — telefone + email */}
-                        <div className="hidden md:flex flex-col gap-0.5 shrink-0">
-                          {cliente.telefone ? (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1">
-                              <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
-                            </span>
-                          ) : <span className="text-xs text-muted-foreground">—</span>}
-                          {cliente.email && (
-                            <span className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] truncate">
-                              <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
-                            </span>
-                          )}
-                        </div>
-
-                        {/* BLOCO 3 — responsável + cargo */}
-                        <div className="hidden lg:flex flex-col gap-0.5 shrink-0 min-w-[120px]">
-                          {cliente.responsavel ? (
-                            <>
-                              <span className="text-xs font-medium text-foreground truncate">{cliente.responsavel}</span>
-                              <span className="text-[11px] text-muted-foreground">
-                                {cliente.responsavel_email || "Responsável"}
+                        </TableCell>
+                        <TableCell>
+                          {(cliente.categoria || cliente.segmento) ? (
+                            <Badge variant="outline" className={cn(
+                              "text-[10px] px-1.5 py-0 h-5 border font-medium",
+                              cliente.categoria
+                                ? "bg-primary/10 text-primary border-primary/20"
+                                : SEGMENTO_COLOR[cliente.segmento] || "bg-muted text-muted-foreground border-border"
+                            )}>
+                              {cliente.categoria || SEGMENTO_LABEL[cliente.segmento] || cliente.segmento}
+                            </Badge>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex flex-col gap-0.5">
+                            {cliente.telefone && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                <Phone className="h-3 w-3 shrink-0" />{cliente.telefone}
                               </span>
-                            </>
-                          ) : (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </div>
-
-                        {/* BLOCO 4 — status + ações */}
-                        <div className="flex items-center gap-2 shrink-0">
+                            )}
+                            {cliente.email && (
+                              <span className="text-xs text-muted-foreground flex items-center gap-1 max-w-[180px] truncate">
+                                <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{cliente.email}</span>
+                              </span>
+                            )}
+                            {!cliente.telefone && !cliente.email && "—"}
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {cliente.cidade ? (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3 w-3 shrink-0" />
+                              {cliente.cidade}{cliente.estado ? `/${cliente.estado}` : ""}
+                            </span>
+                          ) : "—"}
+                        </TableCell>
+                        <TableCell className="text-sm">
+                          {cliente.responsavel || "—"}
+                        </TableCell>
+                        <TableCell>
                           <ContratoStatusBadge situacao={situacao} data-testid={`badge-contrato-${cliente.id}`} />
+                        </TableCell>
+                        <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-menu-${cliente.id}`}>
@@ -488,13 +486,12 @@ export default function CRM() {
                               </RequirePermission>
                             </DropdownMenuContent>
                           </DropdownMenu>
-                        </div>
-
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             )}
           </>
         )}
@@ -541,11 +538,11 @@ export default function CRM() {
               </span>
             </div>
 
-            {/* Lead Cards */}
+            {/* Lead Table */}
             {leadsLoading ? (
               <div className="space-y-3">
                 {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="h-20 rounded-2xl bg-muted/40 animate-pulse border border-border/40" />
+                  <div key={i} className="h-12 rounded bg-muted/40 animate-pulse border border-border/40" />
                 ))}
               </div>
             ) : filteredLeads.length === 0 ? (
@@ -557,89 +554,84 @@ export default function CRM() {
                 onAction={hasLeadFilters ? undefined : () => setLeadFormModal({ open: true, mode: "create" })}
               />
             ) : (
-              <div className="space-y-3">
-                {filteredLeads.map((lead: any) => (
-                  <div
-                    key={lead.id}
-                    data-testid={`row-lead-${lead.id}`}
-                    className="group bg-card border border-border/60 rounded-2xl p-5 hover:border-orange-500/30 hover:shadow-sm transition-all duration-200"
-                  >
-                    <div className="flex items-center gap-6 min-w-0">
-
-                      {/* BLOCO 1 — avatar + nome + pipeline + cidade */}
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        <Avatar className="h-10 w-10 shrink-0 rounded-xl">
-                          <AvatarFallback className="bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs font-bold rounded-xl">
-                            {getInitials(lead.nome_contratante || "?")}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="min-w-0">
-                          <h3
-                            className="font-semibold text-sm leading-snug cursor-pointer hover:text-orange-500 transition-colors truncate"
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Etapa Pipeline</TableHead>
+                    <TableHead>Contato</TableHead>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Cidade</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredLeads.map((lead: any) => (
+                    <TableRow key={lead.id} data-testid={`row-lead-${lead.id}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Avatar className="h-7 w-7 shrink-0 rounded-lg">
+                            <AvatarFallback className="bg-orange-500/10 border border-orange-500/20 text-orange-500 text-[10px] font-bold rounded-lg">
+                              {getInitials(lead.nome_contratante || "?")}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span
+                            className="font-medium text-sm cursor-pointer hover:text-orange-500 transition-colors"
                             data-testid={`text-lead-nome-${lead.id}`}
                             onClick={() => setLeadViewModal({ open: true, lead })}
                           >
                             {lead.nome_contratante}{lead.sobrenome ? ` ${lead.sobrenome}` : ""}
-                          </h3>
-                          <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
-                            {lead.status_lead && (
-                              <Badge variant="outline" className={cn(
-                                "text-[10px] px-1.5 py-0 h-4 border font-medium",
-                                STATUS_LEAD_COLOR[lead.status_lead] || "bg-muted text-muted-foreground border-border"
-                              )}>
-                                {STATUS_LEAD_LABEL[lead.status_lead] || lead.status_lead}
-                              </Badge>
-                            )}
-                            {lead.cidade_evento && (
-                              <span className="text-[11px] text-muted-foreground flex items-center gap-0.5">
-                                <MapPin className="h-2.5 w-2.5 shrink-0" />
-                                {lead.cidade_evento}{lead.estado_evento ? `/${lead.estado_evento}` : ""}
-                              </span>
-                            )}
-                          </div>
+                          </span>
                         </div>
-                      </div>
-
-                      {/* BLOCO 2 — telefone + email */}
-                      <div className="hidden md:flex flex-col gap-0.5 shrink-0">
-                        {lead.telefone ? (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            <Phone className="h-3 w-3 shrink-0" />{lead.telefone}
-                          </span>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
-                        {lead.email && (
-                          <span className="text-xs text-muted-foreground flex items-center gap-1 max-w-[200px] truncate">
-                            <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{lead.email}</span>
-                          </span>
-                        )}
-                      </div>
-
-                      {/* BLOCO 3 — empresa + tipo evento */}
-                      <div className="hidden lg:flex flex-col gap-0.5 shrink-0 min-w-[120px]">
-                        {lead.nome_empresa ? (
-                          <>
-                            <span className="text-xs font-medium text-foreground truncate">{lead.nome_empresa}</span>
-                            <span className="text-[11px] text-muted-foreground truncate">
-                              {lead.tipo_evento || lead.cargo || "Empresa"}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </div>
-
-                      {/* BLOCO 4 — prioridade + ações */}
-                      <div className="flex items-center gap-2 shrink-0">
-                        {lead.prioridade && (
+                      </TableCell>
+                      <TableCell>
+                        {lead.status_lead ? (
                           <Badge variant="outline" className={cn(
-                            "text-[10px] px-1.5 h-5 border font-medium hidden sm:flex",
+                            "text-[10px] px-1.5 py-0 h-5 border font-medium",
+                            STATUS_LEAD_COLOR[lead.status_lead] || "bg-muted text-muted-foreground border-border"
+                          )}>
+                            {STATUS_LEAD_LABEL[lead.status_lead] || lead.status_lead}
+                          </Badge>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-0.5">
+                          {lead.telefone && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1">
+                              <Phone className="h-3 w-3 shrink-0" />{lead.telefone}
+                            </span>
+                          )}
+                          {lead.email && (
+                            <span className="text-xs text-muted-foreground flex items-center gap-1 max-w-[180px] truncate">
+                              <Mail className="h-3 w-3 shrink-0" /><span className="truncate">{lead.email}</span>
+                            </span>
+                          )}
+                          {!lead.telefone && !lead.email && "—"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm">{lead.nome_empresa || "—"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {lead.cidade_evento ? (
+                          <span className="flex items-center gap-1">
+                            <MapPin className="h-3 w-3 shrink-0" />
+                            {lead.cidade_evento}{lead.estado_evento ? `/${lead.estado_evento}` : ""}
+                          </span>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {lead.prioridade ? (
+                          <Badge variant="outline" className={cn(
+                            "text-[10px] px-1.5 h-5 border font-medium",
                             lead.prioridade === "alta" ? "bg-destructive/10 text-destructive border-destructive/20" :
                             lead.prioridade === "media" ? "bg-warning/10 text-warning border-warning/20" :
                             "bg-muted text-muted-foreground border-border"
                           )}>
                             {lead.prioridade === "alta" ? "Alta" : lead.prioridade === "media" ? "Média" : "Baixa"}
                           </Badge>
-                        )}
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-menu-lead-${lead.id}`}>
@@ -663,12 +655,11 @@ export default function CRM() {
                             </RequirePermission>
                           </DropdownMenuContent>
                         </DropdownMenu>
-                      </div>
-
-                    </div>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </>
         )}

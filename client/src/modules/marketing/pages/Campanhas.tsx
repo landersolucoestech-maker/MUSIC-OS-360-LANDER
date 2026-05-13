@@ -13,6 +13,7 @@ import {
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CampanhaFormModal } from "@/modules/marketing/components/CampanhaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
@@ -182,74 +183,81 @@ export default function MarketingCampanhas() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {filteredCampanhas.length > 0 && (
+            {selectedIds.length > 0 && (
               <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <Checkbox
-                  checked={selectedIds.length === filteredCampanhas.length && filteredCampanhas.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  data-testid="checkbox-select-all"
-                />
-                <span className="text-xs text-muted-foreground flex-1">
-                  {selectedIds.length > 0 ? `${selectedIds.length} selecionada(s)` : "Selecionar todas"}
-                </span>
-                {selectedIds.length > 0 && (
-                  <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
-                  </Button>
-                )}
+                <span className="text-xs text-muted-foreground flex-1">{selectedIds.length} selecionada(s)</span>
+                <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
+                </Button>
               </div>
             )}
 
             {filteredCampanhas.length > 0 ? (
-              <div className="divide-y divide-border/60">
-                {filteredCampanhas.map((campanha: any) => (
-                  <div
-                    key={campanha.id}
-                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
-                    data-testid={`row-campanha-${campanha.id}`}
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(campanha.id)}
-                      onCheckedChange={() => toggleSelect(campanha.id)}
-                      data-testid={`checkbox-campanha-${campanha.id}`}
-                      className="shrink-0"
-                    />
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
-                      <Target className="h-4 w-4 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium leading-tight">{campanha.nome}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {campanha.plataforma && (
-                          <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedIds.length === filteredCampanhas.length && filteredCampanhas.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Plataforma</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Budget</TableHead>
+                    <TableHead>Gasto</TableHead>
+                    <TableHead>Cliques</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredCampanhas.map((campanha: any) => (
+                    <TableRow key={campanha.id} data-testid={`row-campanha-${campanha.id}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(campanha.id)}
+                          onCheckedChange={() => toggleSelect(campanha.id)}
+                          data-testid={`checkbox-campanha-${campanha.id}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium">{campanha.nome}</TableCell>
+                      <TableCell>
+                        {campanha.plataforma ? (
+                          <span className="text-xs text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
                             {campanha.plataforma}
                           </span>
-                        )}
-                        <StatusBadge status={campanha.status} />
-                      </div>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(campanha)}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteModal({ open: true, campanha })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell><StatusBadge status={campanha.status} /></TableCell>
+                      <TableCell className="font-mono text-sm">{campanha.budget ? formatCurrency(campanha.budget) : "—"}</TableCell>
+                      <TableCell className="font-mono text-sm">{campanha.gasto ? formatCurrency(campanha.gasto) : "—"}</TableCell>
+                      <TableCell className="font-mono text-sm">{campanha.cliques?.toLocaleString("pt-BR") || "—"}</TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-acoes-campanha-${campanha.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(campanha)}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteModal({ open: true, campanha })}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <EmptyState
                 icon={Target}

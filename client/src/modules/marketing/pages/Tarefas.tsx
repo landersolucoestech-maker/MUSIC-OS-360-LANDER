@@ -6,6 +6,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Clock, FileText, CheckCircle, Target, Search, Check, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { TarefaMarketingFormModal } from "@/modules/marketing/components/TarefaMarketingFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -160,71 +161,64 @@ export default function MarketingTarefas() {
           </CardHeader>
           <CardContent className="pt-0">
             {filteredTarefas.length > 0 ? (
-              <div className="divide-y divide-border/60">
-                {filteredTarefas.map((tarefa: any) => (
-                  <div
-                    key={tarefa.id}
-                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
-                    data-testid={`row-tarefa-${tarefa.id}`}
-                  >
-                    {/* Icon */}
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      tarefa.status === "concluida"
-                        ? "bg-success/10 border border-success/20"
-                        : "bg-primary/10 border border-primary/20"
-                    )}>
-                      {tarefa.status === "concluida"
-                        ? <Check className="h-4 w-4 text-success" />
-                        : <Clock className="h-4 w-4 text-primary" />
-                      }
-                    </div>
-
-                    {/* Info */}
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium leading-tight">{tarefa.titulo}</h3>
-                      <div className="flex items-center gap-2 mt-1">
-                        {tarefa.categoria && (
-                          <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTarefas.map((tarefa: any) => (
+                    <TableRow key={tarefa.id} data-testid={`row-tarefa-${tarefa.id}`}>
+                      <TableCell className="font-medium">{tarefa.titulo}</TableCell>
+                      <TableCell>
+                        {tarefa.categoria ? (
+                          <span className="text-xs text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm">
                             {tarefa.categoria}
                           </span>
-                        )}
-                        {tarefa.prioridade && (
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {tarefa.prioridade ? (
                           <span className={cn(
-                            "text-[10px] border px-1.5 py-0.5 rounded-sm",
-                            tarefa.prioridade === "alta"   ? "border-primary/40 text-primary" :
-                            tarefa.prioridade === "media"  ? "border-warning/40 text-warning" :
+                            "text-[10px] border px-1.5 py-0.5 rounded-sm capitalize",
+                            tarefa.prioridade === "alta"  ? "border-primary/40 text-primary" :
+                            tarefa.prioridade === "media" ? "border-warning/40 text-warning" :
                             "border-success/40 text-success"
                           )}>
                             {tarefa.prioridade}
                           </span>
-                        )}
-                        <StatusBadge status={tarefa.status} />
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEdit(tarefa)}>
-                          <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => setDeleteModal({ open: true, tarefa })}
-                          className="text-destructive focus:text-destructive"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
+                        ) : "—"}
+                      </TableCell>
+                      <TableCell><StatusBadge status={tarefa.status} /></TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-acoes-tarefa-${tarefa.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEdit(tarefa)}>
+                              <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteModal({ open: true, tarefa })}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <EmptyState
                 icon={FileText}

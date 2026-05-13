@@ -9,9 +9,12 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import { Progress } from "@/shared/ui/progress";
+import { Checkbox } from "@/shared/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import {
   Music, Radio, Clock, Eye, AlertTriangle, Upload, Download, Plus, Search,
-  Loader2, Disc, Trash2, LayoutGrid, List, Calendar,
+  Loader2, Disc, Trash2, LayoutGrid, List, Calendar, MoreHorizontal, Pencil,
 } from "lucide-react";
 import { SiSpotify, SiApplemusic, SiYoutubemusic } from "react-icons/si";
 import { LancamentoFormModal } from "@/modules/releases/components/LancamentoFormModal";
@@ -514,29 +517,91 @@ export default function Lancamentos() {
                 <CardTitle className="text-lg">Lista de Lançamentos</CardTitle>
                 <CardDescription>Acompanhe todos os seus lançamentos musicais</CardDescription>
               </div>
-              {lancamentos.length > 0 && (
-                <div className="flex items-center gap-2">
-                  <div
-                    className="w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer"
-                    onClick={toggleSelectAll}
-                  >
-                    {selectedIds.length === filteredReleases.length && filteredReleases.length > 0 && <div className="w-2.5 h-2.5 rounded-sm bg-primary" />}
-                  </div>
-                  <span className="text-sm text-muted-foreground">Selecionar Todos</span>
-                  {selectedIds.length > 0 && (
-                    <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                      <Trash2 className="h-3.5 w-3.5" />
-                      Excluir ({selectedIds.length})
-                    </Button>
-                  )}
-                </div>
+              {selectedIds.length > 0 && (
+                <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir ({selectedIds.length})
+                </Button>
               )}
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-0">
               {filteredReleases.length > 0 ? (
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  {filteredReleases.map(renderCard)}
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[36px]">
+                        <Checkbox
+                          checked={selectedIds.length === filteredReleases.length && filteredReleases.length > 0}
+                          onCheckedChange={toggleSelectAll}
+                          data-testid="checkbox-select-all"
+                          aria-label="Selecionar todos"
+                        />
+                      </TableHead>
+                      <TableHead>Título</TableHead>
+                      <TableHead>Artista</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Distribuidora</TableHead>
+                      <TableHead>Data Lançamento</TableHead>
+                      <TableHead>Assets</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredReleases.map((release: any) => {
+                      const artista = getArtistaById(release.artista_id);
+                      const pct = calcAssetsPct(release);
+                      return (
+                        <TableRow key={release.id} data-testid={`row-lancamento-${release.id}`} className={selectedIds.includes(release.id) ? "bg-muted/20" : ""}>
+                          <TableCell>
+                            <Checkbox
+                              checked={selectedIds.includes(release.id)}
+                              onCheckedChange={() => toggleSelect(release.id)}
+                              data-testid={`checkbox-lancamento-${release.id}`}
+                              aria-label={`Selecionar ${release.titulo}`}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium" data-testid={`text-lancamento-titulo-${release.id}`}>{release.titulo}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm" data-testid={`text-lancamento-artista-${release.id}`}>{artista?.nome_artistico || "—"}</TableCell>
+                          <TableCell>
+                            <Badge className={`text-white text-[10px] no-default-hover-elevate no-default-active-elevate ${release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600"}`}>
+                              {release.tipo === "single" ? "Single" : release.tipo === "ep" ? "EP" : "Álbum"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{release.distribuidora || "—"}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground">{release.data_lancamento ? new Date(release.data_lancamento).toLocaleDateString("pt-BR") : "—"}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2 min-w-[80px]">
+                              <Progress value={pct} className="h-1.5 flex-1" />
+                              <span className={`text-[10px] font-medium tabular-nums ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>{pct}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell><StatusBadge status={release.status} /></TableCell>
+                          <TableCell className="text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-acoes-lancamento-${release.id}`}>
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setViewModal({ open: true, lancamento: release })} data-testid={`button-ver-lancamento-${release.id}`}>
+                                  <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", lancamento: release })} data-testid={`button-editar-lancamento-${release.id}`}>
+                                  <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setDeleteModal({ open: true, lancamento: release })} className="text-destructive focus:text-destructive" data-testid={`button-excluir-lancamento-${release.id}`}>
+                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
               ) : (
                 <EmptyState
                   icon={Radio}
