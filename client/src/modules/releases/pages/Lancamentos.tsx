@@ -9,7 +9,6 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import { Progress } from "@/shared/ui/progress";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   Music, Radio, Clock, Eye, AlertTriangle, Upload, Download, Plus, Search,
   Loader2, Disc, Trash2, LayoutGrid, List, Calendar,
@@ -220,6 +219,91 @@ export default function Lancamentos() {
       </Button>
     </>
   );
+
+  // ── Render card (list view) ─────────────────────────────────────────────
+  const renderCard = (release: any) => {
+    const artista = getArtistaById(release.artista_id);
+    const tipoBadgeColor = release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
+    const generos = artista?.genero_musical ? [artista.genero_musical] : [];
+    const pct = calcAssetsPct(release);
+    return (
+      <Card key={release.id} data-testid={`card-lancamento-${release.id}`} className="bg-muted/30 border-border overflow-hidden flex flex-col">
+        <div className="relative">
+          <div className="absolute top-3 left-3 z-10">
+            <div
+              className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer bg-background/50 ${selectedIds.includes(release.id) ? 'bg-primary border-primary' : ''}`}
+              onClick={(e) => { e.stopPropagation(); toggleSelect(release.id); }}
+              data-testid={`checkbox-lancamento-${release.id}`}
+            >
+              {selectedIds.includes(release.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+            </div>
+          </div>
+          <div className="absolute top-3 right-3 z-10">
+            <StatusBadge status={release.status} />
+          </div>
+          <div className="aspect-square bg-muted flex items-center justify-center">
+            <Music className="h-16 w-16 text-primary/50" />
+          </div>
+        </div>
+        <CardContent className="p-4 flex flex-col flex-1">
+          <div className="mb-1">
+            <h3 className="font-bold text-foreground text-sm uppercase truncate" data-testid={`text-lancamento-titulo-${release.id}`}>{release.titulo}</h3>
+            <p className="text-muted-foreground text-xs" data-testid={`text-lancamento-artista-${release.id}`}>{artista?.nome_artistico || "-"}</p>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap mb-2">
+            <Badge className={`${tipoBadgeColor} text-white text-[10px] no-default-hover-elevate no-default-active-elevate`}>
+              {release.tipo === "single" ? "Single" : release.tipo === "ep" ? "EP" : "Album"}
+            </Badge>
+            {generos.map((g, i) => (
+              <Badge key={i} className="bg-success text-success-foreground text-[10px] no-default-hover-elevate no-default-active-elevate">
+                {g}
+              </Badge>
+            ))}
+          </div>
+          <div className="mb-3">
+            <div className="flex items-center justify-between mb-1">
+              <span className="text-[10px] text-muted-foreground">Assets</span>
+              <span className={`text-[10px] font-medium ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>{pct}%</span>
+            </div>
+            <Progress value={pct} className="h-1" />
+          </div>
+          <div className="grid grid-cols-4 gap-1 text-center mb-3">
+            <div className="flex flex-col items-center gap-0.5">
+              <SiSpotify className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase">Spotify</span>
+              <span className="text-xs text-foreground">--</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <SiApplemusic className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase">Apple</span>
+              <span className="text-xs text-foreground">--</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <SiYoutubemusic className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase">YouTube</span>
+              <span className="text-xs text-foreground">--</span>
+            </div>
+            <div className="flex flex-col items-center gap-0.5">
+              <Disc className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] font-medium text-muted-foreground uppercase">Deezer</span>
+              <span className="text-xs text-foreground">--</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-auto">
+            <Button variant="outline" size="sm" className="text-xs" data-testid={`button-ver-lancamento-${release.id}`} onClick={() => setViewModal({ open: true, lancamento: release })}>
+              Ver
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs" data-testid={`button-editar-lancamento-${release.id}`} onClick={() => setFormModal({ open: true, mode: "edit", lancamento: release })}>
+              Editar
+            </Button>
+            <Button variant="outline" size="sm" className="text-xs text-destructive" data-testid={`button-excluir-lancamento-${release.id}`} onClick={() => setDeleteModal({ open: true, lancamento: release })}>
+              Excluir
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  };
 
   // ── Render kanban card ──────────────────────────────────────────────────
   const renderKanbanCard = (release: any) => {
@@ -447,86 +531,19 @@ export default function Lancamentos() {
                 </div>
               )}
             </CardHeader>
-            <CardContent className="p-0">
+            <CardContent>
               {filteredReleases.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-8"></TableHead>
-                        <TableHead>Título / Artista</TableHead>
-                        <TableHead>Tipo</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Assets</TableHead>
-                        <TableHead>Plataformas</TableHead>
-                        <TableHead className="text-right">Ações</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredReleases.map((release) => {
-                        const artista = getArtistaById(release.artista_id);
-                        const tipoBadgeColor = release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
-                        const pct = calcAssetsPct(release);
-                        return (
-                          <TableRow key={release.id} data-testid={`card-lancamento-${release.id}`}>
-                            <TableCell className="py-3">
-                              <div
-                                className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer bg-background/50 ${selectedIds.includes(release.id) ? "bg-primary border-primary" : ""}`}
-                                onClick={(e) => { e.stopPropagation(); toggleSelect(release.id); }}
-                                data-testid={`checkbox-lancamento-${release.id}`}
-                              >
-                                {selectedIds.includes(release.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <p className="font-semibold text-sm text-foreground leading-tight" data-testid={`text-lancamento-titulo-${release.id}`}>{release.titulo}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5" data-testid={`text-lancamento-artista-${release.id}`}>{artista?.nome_artistico || "-"}</p>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <Badge className={`${tipoBadgeColor} text-white text-[10px] no-default-hover-elevate no-default-active-elevate`}>
-                                {release.tipo === "single" ? "Single" : release.tipo === "ep" ? "EP" : "Album"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <StatusBadge status={release.status} />
-                            </TableCell>
-                            <TableCell className="py-3 min-w-[100px]">
-                              <div className="flex items-center gap-2">
-                                <Progress value={pct} className="h-1.5 flex-1" />
-                                <span className={`text-[10px] font-medium tabular-nums ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>{pct}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3">
-                              <div className="flex items-center gap-2">
-                                <SiSpotify className="h-3.5 w-3.5 text-muted-foreground" title="Spotify" />
-                                <SiApplemusic className="h-3.5 w-3.5 text-muted-foreground" title="Apple Music" />
-                                <SiYoutubemusic className="h-3.5 w-3.5 text-muted-foreground" title="YouTube Music" />
-                                <Disc className="h-3.5 w-3.5 text-muted-foreground" title="Deezer" />
-                              </div>
-                            </TableCell>
-                            <TableCell className="py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <Button variant="outline" size="sm" className="text-xs h-7" data-testid={`button-ver-lancamento-${release.id}`} onClick={() => setViewModal({ open: true, lancamento: release })}>Ver</Button>
-                                <Button variant="outline" size="sm" className="text-xs h-7" data-testid={`button-editar-lancamento-${release.id}`} onClick={() => setFormModal({ open: true, mode: "edit", lancamento: release })}>Editar</Button>
-                                <Button variant="outline" size="sm" className="text-xs h-7 text-destructive" data-testid={`button-excluir-lancamento-${release.id}`} onClick={() => setDeleteModal({ open: true, lancamento: release })}>Excluir</Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  {filteredReleases.map(renderCard)}
                 </div>
               ) : (
-                <div className="p-6">
-                  <EmptyState
-                    icon={Radio}
-                    title="Nenhum lançamento encontrado"
-                    description="Tente ajustar os filtros ou crie um novo lançamento"
-                    actionLabel="Novo Lançamento"
-                    onAction={() => setFormModal({ open: true, mode: "create" })}
-                  />
-                </div>
+                <EmptyState
+                  icon={Radio}
+                  title="Nenhum lançamento encontrado"
+                  description="Tente ajustar os filtros ou crie um novo lançamento"
+                  actionLabel="Novo Lançamento"
+                  onAction={() => setFormModal({ open: true, mode: "create" })}
+                />
               )}
             </CardContent>
           </Card>
