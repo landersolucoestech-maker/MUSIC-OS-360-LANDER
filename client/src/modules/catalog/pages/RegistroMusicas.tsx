@@ -841,11 +841,11 @@ export default function RegistroMusicas() {
                 <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
                   <button 
                     onClick={toggleSelectAllFonogramas}
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                       selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0 ? 'bg-primary border-primary' : 'border-primary'
                     }`}
                   >
-                    {selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0 && <div className="w-2 h-2 bg-white rounded-full" />}
+                    {selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0 && <div className="w-2 h-2 bg-white rounded-sm" />}
                   </button>
                   <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
                   {selectedFonogramaIds.length > 0 && (
@@ -878,11 +878,11 @@ export default function RegistroMusicas() {
                       className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
                     >
                       <button 
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedFonogramaIds.includes(fonograma.id) ? 'bg-primary border-primary' : ''}`}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedFonogramaIds.includes(fonograma.id) ? 'bg-primary border-primary' : ''}`}
                         onClick={(e) => { e.stopPropagation(); toggleSelectFonograma(fonograma.id); }}
                         data-testid={`checkbox-fonograma-${fonograma.id}`}
                       >
-                        {selectedFonogramaIds.includes(fonograma.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                        {selectedFonogramaIds.includes(fonograma.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
                       </button>
                       
                       <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
@@ -1021,11 +1021,11 @@ export default function RegistroMusicas() {
                 <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
                   <button 
                     onClick={toggleSelectAllObras}
-                    className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
                       selectedObraIds.length === filteredObras.length && filteredObras.length > 0 ? 'bg-primary border-primary' : 'border-primary'
                     }`}
                   >
-                    {selectedObraIds.length === filteredObras.length && filteredObras.length > 0 && <div className="w-2 h-2 bg-white rounded-full" />}
+                    {selectedObraIds.length === filteredObras.length && filteredObras.length > 0 && <div className="w-2 h-2 bg-white rounded-sm" />}
                   </button>
                   <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
                   {selectedObraIds.length > 0 && (
@@ -1052,11 +1052,11 @@ export default function RegistroMusicas() {
                       className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
                     >
                       <button 
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedObraIds.includes(obra.id) ? 'bg-primary border-primary' : ''}`}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedObraIds.includes(obra.id) ? 'bg-primary border-primary' : ''}`}
                         onClick={(e) => { e.stopPropagation(); toggleSelectObra(obra.id); }}
                         data-testid={`checkbox-obra-${obra.id}`}
                       >
-                        {selectedObraIds.includes(obra.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                        {selectedObraIds.includes(obra.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
                       </button>
                       
                       <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">

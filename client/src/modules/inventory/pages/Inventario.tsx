@@ -165,8 +165,8 @@ export default function Inventario() {
           <CardContent className="space-y-4">
             {inventario.length > 0 && (
               <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
-                <div className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer" onClick={toggleSelectAll}>
-                  {selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                <div className="w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer" onClick={toggleSelectAll}>
+                  {selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0 && <div className="w-2.5 h-2.5 rounded-sm bg-primary" />}
                 </div>
                 <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
                 {selectedIds.length > 0 && (
@@ -182,8 +182,8 @@ export default function Inventario() {
               <div className="space-y-3">
                 {filteredEquipamentos.map((item: any) => (
                   <div key={item.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors" data-testid={`card-inventario-${item.id}`}>
-                    <div className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(item.id) ? 'bg-primary' : ''}`} onClick={() => toggleSelect(item.id)}>
-                      {selectedIds.includes(item.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+                    <div className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(item.id) ? 'bg-primary' : ''}`} onClick={() => toggleSelect(item.id)}>
+                      {selectedIds.includes(item.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
                     </div>
                     <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shrink-0"><Monitor className="h-5 w-5 text-white" /></div>
                     <div className="min-w-[160px] flex-1">

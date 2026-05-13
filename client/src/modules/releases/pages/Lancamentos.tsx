@@ -231,11 +231,11 @@ export default function Lancamentos() {
         <div className="relative">
           <div className="absolute top-3 left-3 z-10">
             <div
-              className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer bg-background/50 ${selectedIds.includes(release.id) ? 'bg-primary border-primary' : ''}`}
+              className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer bg-background/50 ${selectedIds.includes(release.id) ? 'bg-primary border-primary' : ''}`}
               onClick={(e) => { e.stopPropagation(); toggleSelect(release.id); }}
               data-testid={`checkbox-lancamento-${release.id}`}
             >
-              {selectedIds.includes(release.id) && <div className="w-2 h-2 bg-white rounded-full" />}
+              {selectedIds.includes(release.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
             </div>
           </div>
           <div className="absolute top-3 right-3 z-10">
@@ -517,10 +517,10 @@ export default function Lancamentos() {
               {lancamentos.length > 0 && (
                 <div className="flex items-center gap-2">
                   <div
-                    className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer"
+                    className="w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer"
                     onClick={toggleSelectAll}
                   >
-                    {selectedIds.length === filteredReleases.length && filteredReleases.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                    {selectedIds.length === filteredReleases.length && filteredReleases.length > 0 && <div className="w-2.5 h-2.5 rounded-sm bg-primary" />}
                   </div>
                   <span className="text-sm text-muted-foreground">Selecionar Todos</span>
                   {selectedIds.length > 0 && (
