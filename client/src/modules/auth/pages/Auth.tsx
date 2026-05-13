@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link } from "react-router-dom";
+import { useNavigate, useSearchParams, Link, Navigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -89,6 +89,8 @@ type AuthMode = "login" | "signup" | "forgot" | "reset";
 // ─── Custom auth form (NestJS JWT / mock mode) ────────────────────────────────
 
 export default function Auth() {
+  // Em modo mock/standalone: redirecionar directamente para o dashboard
+  if (MOCK_MODE) return <Navigate to="/" replace />;
   // Quando Clerk está activo, renderizar directamente o componente Clerk
   if (useClerkMode) return <ClerkSignInPage />;
 
