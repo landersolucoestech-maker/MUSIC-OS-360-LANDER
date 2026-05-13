@@ -1,0 +1,460 @@
+PROMPT 5 — TESTES BACKEND + CI/CD DEPLOY
+Contexto:
+- Zero arquivos .spec.ts em apps/api/
+- CI só tem lint + typecheck + build
+- Nenhum deploy automatizado existe
+- Meta: 80% de cobertura mínima
+
+OBJETIVO: Testes essenciais + CI/CD de deploy real.
+
+═══════════════════════════════════════════════
+PARTE 1 — SETUP DE TESTES NO BACKEND
+═══════════════════════════════════════════════
+
+Instalar dependências em apps/api/:
+
+npm install -D jest @types/jest ts-jest supertest @types/supertest
+
+Criar apps/api/jest.config.ts:
+
+import type { Config } from 'jest';
+
+const config: Config = {
+  moduleFileExtensions: ['js', 'json', 'ts'],
+  rootDir: 'src',
+  testRegex: '.*\\.spec\\.ts$',
+  transform: { '^.+\\.(t|j)s$': 'ts-jest' },
+  collectCoverageFrom: ['**/*.(t|j)s'],
+  coverageDirectory: '../coverage',
+  testEnvironment: 'node',
+  coverageThreshold: {
+    global: {
+      branches: 70,
+      functions: 75,
+      lines: 80,
+      statements: 80,
+    },
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
+  },
+};
+
+export default config;
+
+Atualizar apps/api/package.json scripts:
+"test": "jest",
+"test:watch": "jest --watch",
+"test:coverage": "jest --coverage",
+"test:e2e": "jest --config ./test/jest-e2e.ts"
+
+═══════════════════════════════════════════════
+PARTE 2 — TESTES UNITÁRIOS OBRIGATÓRIOS
+═══════════════════════════════════════════════
+
+Criar os seguintes arquivos de teste:
+
+─── 1. EncryptionService ─────────────────────────────────────────────────
+apps/api/src/core/security/encryption.service.spec.ts:
+
+describe('EncryptionService', () => {
+  let service: EncryptionService;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        EncryptionService,
+        { provide: ConfigService, useValue: {
+          get: (key: string) => key === 'ENCRYPTION_KEY'
+            ? '0'.repeat(64) : undefined,
+        }},
+      ],
+    }).compile();
+    service = module.get<EncryptionService>(EncryptionService);
+  });
+
+  it('deve criptografar e descriptografar corretamente', () => {
+    const original = '123.456.789-09';
+    const encrypted = service.encrypt(original);
+    expect(encrypted).not.toBe(original);
+    expect(encrypted).toContain(':'); // formato iv:tag:cipher
+    const decrypted = service.decrypt(encrypted);
+    expect(decrypted).toBe(original);
+  });
+
+  it('deve retornar null para encryptNullable(null)', () => {
+    expect(service.encryptNullable(null)).toBeNull();
+    expect(service.encryptNullable(undefined)).toBeNull();
+  });
+
+  it('deve retornar null para decryptNullable(null)', () => {
+    expect(service.decryptNullable(null)).toBeNull();
+  });
+
+  it('duas criptografias do mesmo valor devem ser diferentes (IV aleatório)', () => {
+    const enc1 = service.encrypt('test');
+    const enc2 = service.encrypt('test');
+    expect(enc1).not.toBe(enc2);
+    expect(service.decrypt(enc1)).toBe('test');
+    expect(service.decrypt(enc2)).toBe('test');
+  });
+});
+
+─── 2. ArtistsService ────────────────────────────────────────────────────
+apps/api/src/modules/artists/artists.service.spec.ts:
+
+describe('ArtistsService', () => {
+  let service: ArtistsService;
+  let mockDb: any;
+
+  const TENANT_ID = 'tenant-test-uuid';
+
+  beforeEach(async () => {
+    // Mock do Drizzle DB
+    const mockQuery = {
+      select: jest.fn().mockReturnThis(),
+      from:   jest.fn().mockReturnThis(),
+      where:  jest.fn().mockReturnThis(),
+      limit:  jest.fn().mockReturnThis(),
+      offset: jest.fn().mockReturnThis(),
+      orderBy: jest.fn().mockReturnThis(),
+      insert:  jest.fn().mockReturnThis(),
+      values:  jest.fn().mockReturnThis(),
+      returning: jest.fn().mockResolvedValue([{
+        id: 'art-1',
+        tenant_id: TENANT_ID,
+        nome_artistico: 'Artista Teste',
+        tipo: 'solo',
+        status: 'ativo',
+      }]),
+      update: jest.fn().mockReturnThis(),
+      set:    jest.fn().mockReturnThis(),
+    };
+    mockDb = mockQuery;
+
+    const module = await Test.createTestingModule({
+      providers: [
+        ArtistsService,
+        { provide: DRIZZLE_DB, useValue: mockDb },
+        { provide: EncryptionService, useValue: {
+          encryptNullable: (v: string | null) => v ? `enc:${v}` : null,
+          decryptNullable: (v: string | null) => v?.replace('enc:', '') ?? null,
+        }},
+      ],
+    }).compile();
+
+    service = module.get<ArtistsService>(ArtistsService);
+  });
+
+  it('deve criptografar CPF ao criar artista', async () => {
+    const dto = {
+      nome_artistico: 'Teste',
+      tipo: 'solo' as const,
+      cpf_cnpj: '123.456.789-09',
+      email: 'test@test.com',
+    };
+
+    await service.create(TENANT_ID, 'user-1', dto);
+
+    const insertCall = mockDb.values.mock.calls[0][0];
+    expect(insertCall.cpf_cnpj_encrypted).toBe('enc:123.456.789-09');
+    expect(insertCall.cpf_cnpj).toBeUndefined();
+    expect(insertCall.email_encrypted).toBe('enc:test@test.com');
+    expect(insertCall.email).toBeUndefined();
+  });
+
+  it('deve filtrar deleted_at IS NULL na listagem', async () => {
+    await service.list(TENANT_ID, { offset: 0, limit: 10 });
+    // Verificar que a query inclui filtro de deleted_at
+    // (via inspeção dos args passados para where())
+    expect(mockDb.where).toHaveBeenCalled();
+  });
+
+  it('deve fazer soft delete (deleted_at) em vez de DELETE', async () => {
+    mockDb.limit.mockResolvedValueOnce([{ id: 'art-1', tenant_id: TENANT_ID }]);
+    await service.softDelete(TENANT_ID, 'art-1');
+    const setCall = mockDb.set.mock.calls[0][0];
+    expect(setCall).toHaveProperty('deleted_at');
+    expect(setCall.deleted_at).toBeInstanceOf(Date);
+  });
+});
+
+─── 3. ClerkAuthGuard ────────────────────────────────────────────────────
+apps/api/src/core/guards/clerk-auth.guard.spec.ts:
+
+describe('ClerkAuthGuard', () => {
+  let guard: ClerkAuthGuard;
+
+  beforeEach(async () => {
+    const module = await Test.createTestingModule({
+      providers: [
+        ClerkAuthGuard,
+        { provide: ConfigService, useValue: {
+          get: () => 'sk_test_placeholder',
+        }},
+        Reflector,
+      ],
+    }).compile();
+
+    guard = module.get<ClerkAuthGuard>(ClerkAuthGuard);
+  });
+
+  it('deve permitir rotas marcadas com @Public()', async () => {
+    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(true) };
+    (guard as any).reflector = reflector;
+
+    const context = {
+      getHandler: jest.fn(),
+      getClass:   jest.fn(),
+      switchToHttp: () => ({ getRequest: () => ({}) }),
+    } as any;
+
+    expect(await guard.canActivate(context)).toBe(true);
+  });
+
+  it('deve lançar UnauthorizedException sem token', async () => {
+    const reflector = { getAllAndOverride: jest.fn().mockReturnValue(false) };
+    (guard as any).reflector = reflector;
+
+    const context = {
+      getHandler: jest.fn(),
+      getClass:   jest.fn(),
+      switchToHttp: () => ({
+        getRequest: () => ({
+          headers: {},
+          cookies: {},
+        }),
+      }),
+    } as any;
+
+    await expect(guard.canActivate(context))
+      .rejects.toThrow(UnauthorizedException);
+  });
+});
+
+─── 4. Tenant Isolation (crítico para segurança) ─────────────────────────
+apps/api/src/modules/artists/tenant-isolation.spec.ts:
+
+describe('Tenant Isolation — Artists', () => {
+  it('deve retornar apenas artistas do tenant correto', async () => {
+    // Dado: 2 artistas com tenant_ids diferentes no mock DB
+    // Quando: service.list('tenant-A') é chamado
+    // Então: apenas o artista do tenant-A é retornado
+    // (verificar que a query WHERE inclui tenant_id = 'tenant-A')
+  });
+
+  it('findById de outro tenant deve lançar NotFoundException', async () => {
+    // Dado: artista pertencente a tenant-B
+    // Quando: service.findById('tenant-A', 'id-do-artista-B')
+    // Então: NotFoundException
+  });
+
+  it('update de outro tenant deve lançar NotFoundException', async () => {
+    // Similar ao acima para updates
+  });
+});
+
+═══════════════════════════════════════════════
+PARTE 3 — ATUALIZAR CI.YML COM TESTES REAIS
+═══════════════════════════════════════════════
+
+Substituir .github/workflows/ci.yml completamente:
+
+name: CI
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npm run lint
+
+  typecheck-api:
+    name: TypeCheck API
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: cd apps/api && npm ci
+      - run: cd apps/api && npx tsc --noEmit
+
+  typecheck-web:
+    name: TypeCheck Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npm run typecheck
+
+  test-api:
+    name: Testes Backend
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      PORT: 3001
+      NEON_DATABASE_URL: ${{ secrets.NEON_TEST_DATABASE_URL }}
+      REDIS_QUEUE_URL: redis://localhost:6379
+      CLERK_SECRET_KEY: sk_test_placeholder
+      CLERK_WEBHOOK_SECRET: whsec_placeholder
+      ENCRYPTION_KEY: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      ENCRYPTION_IV_SECRET: test_iv_placeholder_32chars_here
+      CORS_ORIGINS: http://localhost:5000
+    services:
+      redis:
+        image: redis:7-alpine
+        ports: ['6379:6379']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: cd apps/api && npm ci
+      - run: cd apps/api && npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-coverage
+          path: apps/api/coverage/
+
+  test-web:
+    name: Testes Frontend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci
+      - run: npm run test:coverage
+
+  build:
+    name: Build
+    needs: [lint, typecheck-api, typecheck-web, test-api, test-web]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci && cd apps/api && npm ci
+      - run: cd apps/api && npm run build
+      - run: npm run build:web
+
+═══════════════════════════════════════════════
+PARTE 4 — DEPLOY STAGING
+═══════════════════════════════════════════════
+
+Criar .github/workflows/deploy-staging.yml:
+
+name: Deploy Staging
+
+on:
+  push:
+    branches: [staging]
+
+jobs:
+  deploy:
+    name: Deploy → Staging
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci && cd apps/api && npm ci
+
+      - name: Build API
+        run: cd apps/api && npm run build
+
+      - name: Deploy API → Railway Staging
+        run: npx @railway/cli deploy --service=music-os-360-api-staging
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_STAGING }}
+
+      - name: Run Drizzle Migrations (Staging)
+        run: cd apps/api && npx drizzle-kit migrate
+        env:
+          NEON_DATABASE_DIRECT_URL: ${{ secrets.NEON_STAGING_DIRECT_URL }}
+
+      - name: Deploy Frontend → Vercel Staging
+        run: npx vercel --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_TEAM }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke Tests Staging
+        run: |
+          sleep 30
+          curl -f ${{ secrets.STAGING_API_URL }}/api/v1/health
+          echo "✅ Staging OK"
+
+═══════════════════════════════════════════════
+PARTE 5 — DEPLOY PRODUÇÃO
+═══════════════════════════════════════════════
+
+Criar .github/workflows/deploy-production.yml:
+
+name: Deploy Production
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  deploy:
+    name: Deploy → Production
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20', cache: 'npm' }
+      - run: npm ci && cd apps/api && npm ci
+
+      - name: Build API
+        run: cd apps/api && npm run build
+
+      - name: Deploy API → Railway Production
+        run: npx @railway/cli deploy --service=music-os-360-api
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN_PRODUCTION }}
+
+      - name: Run Drizzle Migrations (Production)
+        run: cd apps/api && npx drizzle-kit migrate
+        env:
+          NEON_DATABASE_DIRECT_URL: ${{ secrets.NEON_PRODUCTION_DIRECT_URL }}
+
+      - name: Deploy Frontend → Vercel Production
+        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }} --scope=${{ secrets.VERCEL_TEAM }}
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      - name: Smoke Tests Production
+        run: |
+          sleep 45
+          curl -f ${{ secrets.PRODUCTION_API_URL }}/api/v1/health
+          echo "✅ Production OK"
+
+      - name: Notificar Sentry de novo release
+        run: |
+          npx @sentry/cli releases new ${{ github.ref_name }}
+          npx @sentry/cli releases finalize ${{ github.ref_name }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_PROJECT }}
