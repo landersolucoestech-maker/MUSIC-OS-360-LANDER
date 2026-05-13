@@ -8,6 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Music, FileText, Clock, CheckCircle, Upload, Download, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, LinkIcon, Link2, Hash, FolderKanban } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { ObraFormModal, ObraTipoBadge } from "@/modules/catalog/components/ObraFormModal";
 import { ObraViewModal } from "@/modules/catalog/components/ObraViewModal";
@@ -869,142 +870,123 @@ export default function RegistroMusicas() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                {filteredFonogramas.length > 0 ? (
-                  <>
-                  {filteredFonogramas.map((fonograma) => (
-                    <div 
-                      key={fonograma.id} 
-                      className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
-                    >
-                      <button 
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedFonogramaIds.includes(fonograma.id) ? 'bg-primary border-primary' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); toggleSelectFonograma(fonograma.id); }}
-                        data-testid={`checkbox-fonograma-${fonograma.id}`}
-                      >
-                        {selectedFonogramaIds.includes(fonograma.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                      </button>
-                      
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                        <Disc className="h-4 w-4 text-white" />
-                      </div>
-                      
-                      <div className="min-w-[160px] max-w-[200px]">
-                        <span className="font-medium block truncate" data-testid={`text-fonograma-titulo-${fonograma.id}`}>{fonograma.titulo}</span>
-                        <div className="mt-1 flex flex-wrap gap-1 items-center">
-                          <Badge 
-                            className={`text-xs ${
-                              fonograma.status === "registrado" 
-                                ? "bg-success hover:bg-success/90 text-success-foreground" 
-                                : fonograma.status === "analise"
-                                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                : "bg-primary hover:bg-primary text-white"
-                            }`}
-                          >
-                            {fonograma.status === "registrado" ? "Registrado" : fonograma.status === "analise" ? "Em Análise" : "Pendente"}
-                          </Badge>
-                          {!fonograma.obra_id && (
-                            <Badge
-                              className="text-xs bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/40 hover:bg-yellow-500/20 gap-1"
-                              data-testid={`badge-sem-obra-${fonograma.id}`}
+              {filteredFonogramas.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Título / Status</TableHead>
+                        <TableHead>Cód. ABRAMUS</TableHead>
+                        <TableHead>Cód. ECAD</TableHead>
+                        <TableHead>ISRC</TableHead>
+                        <TableHead>Compositores</TableHead>
+                        <TableHead>Intérpretes</TableHead>
+                        <TableHead>Produtor</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredFonogramas.map((fonograma) => (
+                        <TableRow key={fonograma.id}>
+                          <TableCell className="py-3">
+                            <button
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedFonogramaIds.includes(fonograma.id) ? "bg-primary border-primary" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); toggleSelectFonograma(fonograma.id); }}
+                              data-testid={`checkbox-fonograma-${fonograma.id}`}
                             >
-                              <LinkIcon className="h-3 w-3" />
-                              Sem obra vinculada
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="hidden md:flex items-center gap-4 text-sm flex-1">
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Cód. ABRAMUS</span>
-                          <span className="truncate block">{fonograma.cod_abramus || "-"}</span>
-                        </div>
-                        <div className="w-32">
-                          <span className="text-muted-foreground text-xs block mb-1">Cód. ECAD</span>
-                          {fonograma.cod_ecad ? (
-                            <Badge
-                              className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono"
-                              data-testid={`badge-ecad-registrado-${fonograma.id}`}
-                            >
-                              {fonograma.cod_ecad}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-muted-foreground border-border"
-                              data-testid={`badge-ecad-missing-${fonograma.id}`}
-                            >
-                              Sem ECAD
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="w-28">
-                          <span className="text-muted-foreground text-xs block">ISRC</span>
-                          <span className="truncate block">{fonograma.isrc || "-"}</span>
-                        </div>
-                        <div className="w-28">
-                          <span className="text-muted-foreground text-xs block">Compositores</span>
-                          <span className="truncate block">{fonograma.compositores || "-"}</span>
-                        </div>
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Intérpretes</span>
-                          <span className="truncate block">{fonograma.interpretes || "-"}</span>
-                        </div>
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Produtor</span>
-                          <span className="truncate block">{fonograma.produtores || "-"}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex-shrink-0 flex flex-col items-center">
-                        <span className="text-xs text-muted-foreground mb-1">Ações</span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setFonogramaViewModal({ open: true, fonograma })}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setFonogramaModal({ open: true, mode: "edit", fonograma })}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={fonograma.status === "analise"}
-                              title={fonograma.status === "analise" ? "Fonograma em análise — aguarde a conclusão antes de criar um lançamento" : undefined}
-                              onClick={() => navigate("/lancamentos")}
-                            >
-                              <Upload className="h-4 w-4 mr-2" />
-                              Fazer Lançamento
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => setDeleteModal({ open: true, item: fonograma, type: "fonograma" })}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                  </>
-                ) : (
-                  <EmptyState
-                    icon={Disc}
-                    title="Nenhum fonograma cadastrado"
-                    description="Comece registrando seu primeiro fonograma"
-                    actionLabel="Novo Fonograma"
-                    onAction={() => setFonogramaModal({ open: true, mode: "create" })}
-                  />
-                )}
-              </div>
+                              {selectedFonogramaIds.includes(fonograma.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+                            </button>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className="font-medium block truncate" data-testid={`text-fonograma-titulo-${fonograma.id}`}>{fonograma.titulo}</span>
+                            <div className="mt-1 flex flex-wrap gap-1 items-center">
+                              <Badge
+                                className={`text-xs ${
+                                  fonograma.status === "registrado"
+                                    ? "bg-success hover:bg-success/90 text-success-foreground"
+                                    : fonograma.status === "analise"
+                                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                    : "bg-primary hover:bg-primary text-white"
+                                }`}
+                              >
+                                {fonograma.status === "registrado" ? "Registrado" : fonograma.status === "analise" ? "Em Análise" : "Pendente"}
+                              </Badge>
+                              {!fonograma.obra_id && (
+                                <Badge
+                                  className="text-xs bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/40 hover:bg-yellow-500/20 gap-1"
+                                  data-testid={`badge-sem-obra-${fonograma.id}`}
+                                >
+                                  <LinkIcon className="h-3 w-3" />
+                                  Sem obra vinculada
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 text-sm">{fonograma.cod_abramus || "-"}</TableCell>
+                          <TableCell className="py-3">
+                            {fonograma.cod_ecad ? (
+                              <Badge className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono" data-testid={`badge-ecad-registrado-${fonograma.id}`}>
+                                {fonograma.cod_ecad}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-muted-foreground border-border" data-testid={`badge-ecad-missing-${fonograma.id}`}>
+                                Sem ECAD
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm font-mono">{fonograma.isrc || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[140px] truncate">{fonograma.compositores || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate">{fonograma.interpretes || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate">{fonograma.produtores || "-"}</TableCell>
+                          <TableCell className="py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setFonogramaViewModal({ open: true, fonograma })}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Ver
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setFonogramaModal({ open: true, mode: "edit", fonograma })}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={fonograma.status === "analise"}
+                                  title={fonograma.status === "analise" ? "Fonograma em análise — aguarde a conclusão antes de criar um lançamento" : undefined}
+                                  onClick={() => navigate("/lancamentos")}
+                                >
+                                  <Upload className="h-4 w-4 mr-2" />
+                                  Fazer Lançamento
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteModal({ open: true, item: fonograma, type: "fonograma" })}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Disc}
+                  title="Nenhum fonograma cadastrado"
+                  description="Comece registrando seu primeiro fonograma"
+                  actionLabel="Novo Fonograma"
+                  onAction={() => setFonogramaModal({ open: true, mode: "create" })}
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -1043,137 +1025,118 @@ export default function RegistroMusicas() {
                 </div>
               )}
 
-              <div className="space-y-2">
-                {filteredObras.length > 0 ? (
-                  <>
-                  {filteredObras.map((obra) => (
-                    <div 
-                      key={obra.id} 
-                      className="flex items-center gap-4 py-3 border-b border-border last:border-b-0 hover:bg-muted/30 transition-colors px-2 rounded"
-                    >
-                      <button 
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedObraIds.includes(obra.id) ? 'bg-primary border-primary' : ''}`}
-                        onClick={(e) => { e.stopPropagation(); toggleSelectObra(obra.id); }}
-                        data-testid={`checkbox-obra-${obra.id}`}
-                      >
-                        {selectedObraIds.includes(obra.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                      </button>
-                      
-                      <div className="w-10 h-10 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
-                        <Music className="h-4 w-4 text-white" />
-                      </div>
-                      
-                      <div className="min-w-[160px] max-w-[180px]">
-                        <span className="font-medium block truncate" data-testid={`text-obra-titulo-${obra.id}`}>{obra.titulo}</span>
-                        <div className="mt-1 flex flex-wrap gap-1 items-center">
-                          <Badge 
-                            className={`text-xs ${
-                              obra.status === "registrado" 
-                                ? "bg-success hover:bg-success/90 text-success-foreground" 
-                                : obra.status === "analise"
-                                ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                : "bg-primary hover:bg-primary text-white"
-                            }`}
-                          >
-                            {obra.status === "registrado" ? "Registrado" : obra.status === "analise" ? "Em Análise" : "Pendente"}
-                          </Badge>
-                          <ObraTipoBadge tipo={obra.tipo_obra} />
-                        </div>
-                      </div>
-
-                      <div className="hidden md:flex items-center gap-4 text-sm flex-1">
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Cód. ABRAMUS</span>
-                          <span className="truncate block">{obra.cod_abramus || "-"}</span>
-                        </div>
-                        <div className="w-32">
-                          <span className="text-muted-foreground text-xs block mb-1">Cód. ECAD</span>
-                          {obra.cod_ecad ? (
-                            <Badge
-                              className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono"
-                              data-testid={`badge-ecad-registrado-${obra.id}`}
+              {filteredObras.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Título / Status / Tipo</TableHead>
+                        <TableHead>Cód. ABRAMUS</TableHead>
+                        <TableHead>Cód. ECAD</TableHead>
+                        <TableHead>ISWC</TableHead>
+                        <TableHead>Compositores</TableHead>
+                        <TableHead>Editora</TableHead>
+                        <TableHead>Gênero</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredObras.map((obra) => (
+                        <TableRow key={obra.id}>
+                          <TableCell className="py-3">
+                            <button
+                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedObraIds.includes(obra.id) ? "bg-primary border-primary" : ""}`}
+                              onClick={(e) => { e.stopPropagation(); toggleSelectObra(obra.id); }}
+                              data-testid={`checkbox-obra-${obra.id}`}
                             >
-                              {obra.cod_ecad}
-                            </Badge>
-                          ) : (
-                            <Badge
-                              variant="outline"
-                              className="text-xs text-muted-foreground border-border"
-                              data-testid={`badge-ecad-missing-${obra.id}`}
-                            >
-                              Sem ECAD
-                            </Badge>
-                          )}
-                        </div>
-                        <div className="w-28">
-                          <span className="text-muted-foreground text-xs block">ISWC</span>
-                          <span className="truncate block">{obra.iswc || "-"}</span>
-                        </div>
-                        <div className="w-28">
-                          <span className="text-muted-foreground text-xs block">Compositores</span>
-                          <span className="truncate block">{obra.compositores || "-"}</span>
-                        </div>
-                        <div className="w-24">
-                          <span className="text-muted-foreground text-xs block">Editora</span>
-                          <span className="truncate block">{obra.editora || "-"}</span>
-                        </div>
-                        <div className="w-20">
-                          <span className="text-muted-foreground text-xs block">Gênero</span>
-                          <span className="truncate block">{obra.genero || "-"}</span>
-                        </div>
-                      </div>
-
-                      <div className="flex-shrink-0 flex flex-col items-center">
-                        <span className="text-xs text-muted-foreground mb-1">Ações</span>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setObraViewModal({ open: true, obra })}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setObraModal({ open: true, mode: "edit", obra })}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              disabled={obra.status === "analise"}
-                              title={obra.status === "analise" ? "Obra em análise — aguarde a conclusão antes de registrar um fonograma" : undefined}
-                              onClick={() => {
-                                setActiveTab("fonogramas");
-                                setFonogramaModal({ open: true, mode: "create", fonograma: { obra_id: obra.id } });
-                              }}
-                            >
-                              <Disc className="h-4 w-4 mr-2" />
-                              Registrar Fonograma
-                            </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => setDeleteModal({ open: true, item: obra, type: "obra" })}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </div>
-                  ))}
-                  </>
-                ) : (
-                  <EmptyState
-                    icon={Music}
-                    title="Nenhuma obra cadastrada"
-                    description="Comece registrando sua primeira obra musical"
-                    actionLabel="Nova Obra"
-                    onAction={() => setObraTipoSelectorOpen(true)}
-                  />
-                )}
-              </div>
+                              {selectedObraIds.includes(obra.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+                            </button>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <span className="font-medium block truncate" data-testid={`text-obra-titulo-${obra.id}`}>{obra.titulo}</span>
+                            <div className="mt-1 flex flex-wrap gap-1 items-center">
+                              <Badge
+                                className={`text-xs ${
+                                  obra.status === "registrado"
+                                    ? "bg-success hover:bg-success/90 text-success-foreground"
+                                    : obra.status === "analise"
+                                    ? "bg-amber-500 hover:bg-amber-600 text-white"
+                                    : "bg-primary hover:bg-primary text-white"
+                                }`}
+                              >
+                                {obra.status === "registrado" ? "Registrado" : obra.status === "analise" ? "Em Análise" : "Pendente"}
+                              </Badge>
+                              <ObraTipoBadge tipo={obra.tipo_obra} />
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3 text-sm">{obra.cod_abramus || "-"}</TableCell>
+                          <TableCell className="py-3">
+                            {obra.cod_ecad ? (
+                              <Badge className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono" data-testid={`badge-ecad-registrado-${obra.id}`}>
+                                {obra.cod_ecad}
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-xs text-muted-foreground border-border" data-testid={`badge-ecad-missing-${obra.id}`}>
+                                Sem ECAD
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="py-3 text-sm font-mono">{obra.iswc || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[140px] truncate">{obra.compositores || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate">{obra.editora || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{obra.genero || "-"}</TableCell>
+                          <TableCell className="py-3 text-right">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => setObraViewModal({ open: true, obra })}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  Ver
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setObraModal({ open: true, mode: "edit", obra })}>
+                                  <Pencil className="h-4 w-4 mr-2" />
+                                  Editar
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  disabled={obra.status === "analise"}
+                                  title={obra.status === "analise" ? "Obra em análise — aguarde a conclusão antes de registrar um fonograma" : undefined}
+                                  onClick={() => {
+                                    setActiveTab("fonogramas");
+                                    setFonogramaModal({ open: true, mode: "create", fonograma: { obra_id: obra.id } });
+                                  }}
+                                >
+                                  <Disc className="h-4 w-4 mr-2" />
+                                  Registrar Fonograma
+                                </DropdownMenuItem>
+                                <DropdownMenuItem
+                                  onClick={() => setDeleteModal({ open: true, item: obra, type: "obra" })}
+                                  className="text-destructive"
+                                >
+                                  <Trash2 className="h-4 w-4 mr-2" />
+                                  Excluir
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              ) : (
+                <EmptyState
+                  icon={Music}
+                  title="Nenhuma obra cadastrada"
+                  description="Comece registrando sua primeira obra musical"
+                  actionLabel="Nova Obra"
+                  onAction={() => setObraTipoSelectorOpen(true)}
+                />
+              )}
             </CardContent>
           </Card>
         )}

@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Calendar, CheckCircle, Clock, Users, Upload, Download, Plus, Search, MapPin, Loader2, Eye, Pencil, Trash2, Music, DollarSign, MoreHorizontal } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
@@ -15,7 +16,6 @@ import { EventoViewModal } from "@/modules/events/components/EventoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { toast } from "sonner";
-import { FeatureGate } from '@/shared/components/FeatureGate';
 const getXLSX = () => import("xlsx");
 
 type Evento = Record<string, any>;
@@ -377,96 +377,90 @@ export default function Agenda() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {filteredEventos.map((evento) => {
-                const artista = getArtistaById(evento.artista_id);
-                return (
-                  <FeatureGate feature="moduleEvents" featureName="Agenda & Eventos">
-                  <Card key={evento.id} data-testid={`card-evento-${evento.id}`}>
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-4 flex-wrap">
-                        <div
-                          className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer shrink-0 ${selectedIds.includes(evento.id) ? 'bg-primary' : ''}`}
-                          onClick={(e) => { e.stopPropagation(); toggleSelect(evento.id); }}
-                          data-testid={`checkbox-evento-${evento.id}`}
-                        >
-                          {selectedIds.includes(evento.id) && <div className="w-2 h-2 bg-white rounded-full" />}
-                        </div>
-                        <div className="w-10 h-10 bg-primary rounded-md flex items-center justify-center shrink-0">
-                          <Calendar className="h-5 w-5 text-primary-foreground" />
-                        </div>
-
-                        <div className="min-w-[160px] flex-1">
-                          <h3 className="font-semibold" data-testid={`text-evento-titulo-${evento.id}`}>{evento.titulo}</h3>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
-                            <Badge variant="outline" className="text-xs">{tipoEventoLabels[evento.tipo_evento] || evento.tipo_evento || "evento"}</Badge>
-                            {getStatusBadge(evento.status)}
-                          </div>
-                        </div>
-
-                        <div className="hidden md:block text-sm shrink-0">
-                          <span className="text-muted-foreground text-xs">Artista</span>
-                          <div className="flex items-center gap-1.5">
-                            <Music className="h-3.5 w-3.5 text-muted-foreground" />
-                            <p className="font-medium" data-testid={`text-evento-artista-${evento.id}`}>{artista?.nome_artistico || "-"}</p>
-                          </div>
-                        </div>
-
-                        <div className="hidden lg:flex items-center gap-6 text-sm shrink-0">
-                          <div>
-                            <span className="text-muted-foreground text-xs">Data</span>
-                            <p className="font-medium" data-testid={`text-evento-data-${evento.id}`}>{formatDate(evento.data_inicio)}</p>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground text-xs">Horário</span>
-                            <p className="font-medium" data-testid={`text-evento-horario-${evento.id}`}>{evento.horario_inicio || "-"}</p>
-                          </div>
-                        </div>
-
-                        <div className="hidden xl:block text-sm shrink-0">
-                          <span className="text-muted-foreground text-xs">Local</span>
-                          <div className="flex items-center gap-1.5">
-                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                            <p className="font-medium" data-testid={`text-evento-local-${evento.id}`}>{evento.local || "-"}</p>
-                          </div>
-                        </div>
-
-                        {evento.valor_cache != null && (
-                          <div className="hidden xl:block text-sm shrink-0">
-                            <span className="text-muted-foreground text-xs">Cachê</span>
-                            <p className="font-semibold text-success" data-testid={`text-evento-cache-${evento.id}`}>{formatCurrency(evento.valor_cache)}</p>
-                          </div>
-                        )}
-
-
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" data-testid={`button-menu-evento-${evento.id}`}>
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem data-testid={`button-ver-evento-${evento.id}`} onClick={() => setViewModal({ open: true, evento })}>
-                              <Eye className="h-4 w-4 mr-2" />
-                              Ver
-                            </DropdownMenuItem>
-                            <DropdownMenuItem data-testid={`button-editar-evento-${evento.id}`} onClick={() => setFormModal({ open: true, mode: "edit", evento })}>
-                              <Pencil className="h-4 w-4 mr-2" />
-                              Editar
-                            </DropdownMenuItem>
-                            <DropdownMenuItem data-testid={`button-excluir-evento-${evento.id}`} className="text-destructive" onClick={() => setDeleteModal({ open: true, evento })}>
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Excluir
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
-                    </CardContent>
-                  </Card>
-                  </FeatureGate>
-                );
-              })}
-            </div>
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-8"></TableHead>
+                        <TableHead>Título / Tipo</TableHead>
+                        <TableHead>Artista</TableHead>
+                        <TableHead>Data</TableHead>
+                        <TableHead>Horário</TableHead>
+                        <TableHead>Local</TableHead>
+                        <TableHead>Cachê</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredEventos.map((evento) => {
+                        const artista = getArtistaById(evento.artista_id);
+                        return (
+                          <TableRow key={evento.id} data-testid={`card-evento-${evento.id}`}>
+                            <TableCell className="py-3">
+                              <div
+                                className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(evento.id) ? "bg-primary" : ""}`}
+                                onClick={(e) => { e.stopPropagation(); toggleSelect(evento.id); }}
+                                data-testid={`checkbox-evento-${evento.id}`}
+                              >
+                                {selectedIds.includes(evento.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <p className="font-semibold text-sm text-foreground" data-testid={`text-evento-titulo-${evento.id}`}>{evento.titulo}</p>
+                              <Badge variant="outline" className="text-[10px] mt-1">{tipoEventoLabels[evento.tipo_evento] || evento.tipo_evento || "evento"}</Badge>
+                            </TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-1.5">
+                                <Music className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-sm" data-testid={`text-evento-artista-${evento.id}`}>{artista?.nome_artistico || "-"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 text-sm" data-testid={`text-evento-data-${evento.id}`}>{formatDate(evento.data_inicio)}</TableCell>
+                            <TableCell className="py-3 text-sm" data-testid={`text-evento-horario-${evento.id}`}>{evento.horario_inicio || "-"}</TableCell>
+                            <TableCell className="py-3">
+                              <div className="flex items-center gap-1.5">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                <span className="text-sm" data-testid={`text-evento-local-${evento.id}`}>{evento.local || "-"}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="py-3 text-sm font-medium text-success" data-testid={`text-evento-cache-${evento.id}`}>
+                              {evento.valor_cache != null ? formatCurrency(evento.valor_cache) : "-"}
+                            </TableCell>
+                            <TableCell className="py-3">{getStatusBadge(evento.status)}</TableCell>
+                            <TableCell className="py-3 text-right">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" data-testid={`button-menu-evento-${evento.id}`}>
+                                    <MoreHorizontal className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem data-testid={`button-ver-evento-${evento.id}`} onClick={() => setViewModal({ open: true, evento })}>
+                                    <Eye className="h-4 w-4 mr-2" />
+                                    Ver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem data-testid={`button-editar-evento-${evento.id}`} onClick={() => setFormModal({ open: true, mode: "edit", evento })}>
+                                    <Pencil className="h-4 w-4 mr-2" />
+                                    Editar
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem data-testid={`button-excluir-evento-${evento.id}`} className="text-destructive" onClick={() => setDeleteModal({ open: true, evento })}>
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Excluir
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
           )}
         </div>
       </div>
