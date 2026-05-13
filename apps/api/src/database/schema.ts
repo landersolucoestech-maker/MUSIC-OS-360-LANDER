@@ -219,6 +219,31 @@ export const notifications = pgTable('notifications', {
   index('notifications_created_idx').on(t.createdAt),
 ]);
 
+// ─── Uploads ──────────────────────────────────────────────────────────────────
+
+export const uploads = pgTable('uploads', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId:       varchar('user_id', { length: 255 }).notNull(),
+  fileId:       varchar('file_id', { length: 255 }).notNull().unique(),
+  originalName: varchar('original_name', { length: 500 }).notNull(),
+  mimeType:     varchar('mime_type', { length: 255 }).notNull(),
+  sizeBytes:    integer('size_bytes').notNull(),
+  r2Key:        text('r2_key').notNull(),
+  category:     varchar('category', { length: 50 }).notNull(),
+  entity:       varchar('entity', { length: 100 }),
+  entityId:     varchar('entity_id', { length: 255 }),
+  status:       varchar('status', { length: 50 }).notNull().default('pending'),
+  confirmedAt:  timestamp('confirmed_at'),
+  metadata:     jsonb('metadata').default({}),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('uploads_tenant_idx').on(t.tenantId),
+  index('uploads_file_id_idx').on(t.fileId),
+  index('uploads_entity_idx').on(t.entity, t.entityId),
+  index('uploads_status_idx').on(t.status),
+]);
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export type Tenant       = typeof tenants.$inferSelect;
@@ -239,3 +264,5 @@ export type AuditLog         = typeof auditLogs.$inferSelect;
 export type NewAuditLog      = typeof auditLogs.$inferInsert;
 export type Notification     = typeof notifications.$inferSelect;
 export type NewNotification  = typeof notifications.$inferInsert;
+export type Upload           = typeof uploads.$inferSelect;
+export type NewUpload        = typeof uploads.$inferInsert;

@@ -30,6 +30,7 @@ import { ContractsModule }      from './modules/contracts/contracts.module';
 import { TransactionsModule }   from './modules/transactions/transactions.module';
 import { WsModule }             from './core/websocket/ws.module';
 import { NotificationsModule }  from './modules/notifications/notifications.module';
+import { UploadsModule }        from './modules/uploads/uploads.module';
 import { ClerkAuthGuard }       from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
@@ -89,6 +90,7 @@ import { RolesGuard }           from './core/guards/roles.guard';
     ContractsModule,
     TransactionsModule,
     NotificationsModule,
+    UploadsModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

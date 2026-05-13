@@ -5,7 +5,7 @@
  * Operações: upload, presigned URL, delete, exists, list.
  */
 
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -15,7 +15,34 @@ import {
   GetObjectCommand,
 } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { randomUUID }    from 'crypto';
 import { R2_CLIENT, R2_BUCKET, R2_PUBLIC_URL } from './storage.module';
+
+// ─── MIME validation ──────────────────────────────────────────────────────────
+
+const ALLOWED_MIMES = {
+  documents: [
+    'application/pdf',
+    'application/msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  ],
+  images:       ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  audio:        ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/mp4'],
+  spreadsheets: [
+    'application/vnd.ms-excel',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'text/csv',
+  ],
+} as const;
+
+const MAX_SIZES_MB: Record<UploadCategory, number> = {
+  documents:    50,
+  images:       10,
+  audio:        500,
+  spreadsheets: 20,
+};
+
+export type UploadCategory = keyof typeof ALLOWED_MIMES;
 
 export interface UploadOptions {
   key:         string;
@@ -64,6 +91,60 @@ export class StorageService {
       : `r2://${this.r2Bucket}/${options.key}`;
     this.logger.log(`Upload concluído: ${options.key}`);
     return url;
+  }
+
+  async createPresignedUpload(params: {
+    tenantId:   string;
+    userId:     string;
+    category:   UploadCategory;
+    fileName:   string;
+    mimeType:   string;
+    sizeBytes:  number;
+    entity?:    string;
+    entityId?:  string;
+  }): Promise<{ presignedUrl: string; key: string; fileId: string }> {
+    const client = this.getClient();
+
+    // Validação MIME
+    const allowedList = ALLOWED_MIMES[params.category] as readonly string[];
+    if (!allowedList.includes(params.mimeType)) {
+      throw new BadRequestException(`Tipo de arquivo não permitido: ${params.mimeType}`);
+    }
+
+    // Validação tamanho
+    const maxBytes = MAX_SIZES_MB[params.category] * 1024 * 1024;
+    if (params.sizeBytes > maxBytes) {
+      throw new BadRequestException(
+        `Arquivo muito grande. Máximo: ${MAX_SIZES_MB[params.category]}MB`,
+      );
+    }
+
+    // Path com isolamento de tenant
+    const fileId       = randomUUID();
+    const safeFileName = params.fileName.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const key          = `tenants/${params.tenantId}/${params.category}/${fileId}/${safeFileName}`;
+
+    const command = new PutObjectCommand({
+      Bucket:        this.r2Bucket,
+      Key:           key,
+      ContentType:   params.mimeType,
+      ContentLength: params.sizeBytes,
+      Metadata: {
+        tenant_id:     params.tenantId,
+        user_id:       params.userId,
+        original_name: params.fileName,
+        entity:        params.entity   ?? '',
+        entity_id:     params.entityId ?? '',
+      },
+    });
+
+    const presignedUrl = await getSignedUrl(client, command, { expiresIn: 300 });
+    this.logger.log(`Presigned upload gerado: ${key}`);
+    return { presignedUrl, key, fileId };
+  }
+
+  async createDownloadUrl(key: string, expiresInSeconds = 3600): Promise<string> {
+    return this.getPresignedUrl({ key, expiresIn: expiresInSeconds });
   }
 
   async getPresignedUrl(options: PresignedUrlOptions): Promise<string> {
