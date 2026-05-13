@@ -117,18 +117,6 @@ jobs:
             --name music-os-360-staging \
             2>&1 | tee /tmp/vercel-output.txt
           echo "VERCEL_URL=$(tail -1 /tmp/vercel-output.txt)" >> "$GITHUB_ENV"
-      - name: Comentar URL de preview no PR
-        if: github.event_name == 'pull_request'
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: `🚀 **Deploy Staging**: ${process.env.VERCEL_URL}`
-            })
-
   smoke-test-staging:
     name: Smoke Test Staging
     needs: [migrate-staging, deploy-web-vercel]
