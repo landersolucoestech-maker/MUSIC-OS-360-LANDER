@@ -22,6 +22,7 @@ import { MetricCard } from "@/shared/components/MetricCard";
 import { useCampanhas } from "@/modules/marketing/hooks/useCampanhas";
 import { toast } from "sonner";
 import { formatCurrency } from "@/shared/lib/format-utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 export default function MarketingCampanhas() {
   const { campanhas, isLoading, deleteCampanha } = useCampanhas();
@@ -100,6 +101,7 @@ export default function MarketingCampanhas() {
   }
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout
       title="Campanhas de Marketing"
       description="Planeje, execute e monitore campanhas e tráfego pago"
@@ -274,5 +276,6 @@ export default function MarketingCampanhas() {
         onConfirm={handleDelete}
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

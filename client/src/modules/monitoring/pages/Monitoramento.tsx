@@ -13,6 +13,7 @@ import { RequirePermission } from "@/shared/components/RequirePermission";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 const getStatusBadge = (status: string) => {
   const s = status?.toLowerCase();
@@ -185,6 +186,7 @@ export default function Monitoramento() {
                 filteredDeteccoes.map((det: any) => {
                   const obra = obraMap.get(det.obra_id);
                   return (
+                    <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
                     <div key={det.id} className="detect-row items-center">
                       <div className="detect-icon">
                         <Music className="h-5 w-5 text-primary" />
@@ -209,6 +211,7 @@ export default function Monitoramento() {
                       </div>
                       <div className="flex-shrink-0">{getStatusBadge(det.status ?? "")}</div>
                     </div>
+                    </FeatureGate>
                   );
                 })
               ) : (

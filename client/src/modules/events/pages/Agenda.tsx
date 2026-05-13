@@ -15,6 +15,7 @@ import { EventoViewModal } from "@/modules/events/components/EventoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { toast } from "sonner";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 const getXLSX = () => import("xlsx");
 
 type Evento = Record<string, any>;
@@ -380,6 +381,7 @@ export default function Agenda() {
               {filteredEventos.map((evento) => {
                 const artista = getArtistaById(evento.artista_id);
                 return (
+                  <FeatureGate feature="moduleEvents" featureName="Agenda & Eventos">
                   <Card key={evento.id} data-testid={`card-evento-${evento.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-center gap-4 flex-wrap">
@@ -461,6 +463,7 @@ export default function Agenda() {
                       </div>
                     </CardContent>
                   </Card>
+                  </FeatureGate>
                 );
               })}
             </div>

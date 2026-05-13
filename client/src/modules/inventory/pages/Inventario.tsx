@@ -17,6 +17,7 @@ import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useInventario } from "@/modules/inventory/hooks/useInventario";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 const inventarioColumns: CSVColumn[] = [
   { key: "setor", label: "Setor" },
@@ -141,6 +142,7 @@ export default function Inventario() {
   );
 
   return (
+    <FeatureGate feature="moduleInventory" featureName="Estoque & Inventário">
     <MainLayout title="Inventário" description="Controle de equipamentos e patrimônio" actions={headerActions}>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -262,5 +264,6 @@ export default function Inventario() {
       <InventarioFormModal open={formModal.open} onOpenChange={(open) => setFormModal({ ...formModal, open })} item={formModal.item} mode={formModal.mode} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Item" description={`Tem certeza que deseja excluir "${deleteModal.item?.nome}"?`} onConfirm={handleDelete} />
     </MainLayout>
+    </FeatureGate>
   );
 }

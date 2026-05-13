@@ -45,9 +45,9 @@ export class NotificationsService {
 
   /** Lista notificações paginadas do tenant (opcionalmente filtra por userId). */
   async list(tenantId: string, userId: string | undefined, query: PaginationDto) {
-    const conditions: SQL[] = [eq(notifications.tenantId, tenantId)];
+    const conditions: SQL[] = [eq(notifications.tenant_id, tenantId)];
 
-    if (userId) conditions.push(eq(notifications.userId, userId));
+    if (userId) conditions.push(eq(notifications.user_id, userId));
 
     const where = and(...conditions);
 
@@ -56,7 +56,7 @@ export class NotificationsService {
         .select()
         .from(notifications)
         .where(where)
-        .orderBy(desc(notifications.createdAt))
+        .orderBy(desc(notifications.created_at))
         .offset(query.offset ?? 0)
         .limit(query.limit ?? 20),
       this.db
@@ -78,9 +78,9 @@ export class NotificationsService {
       .from(notifications)
       .where(
         and(
-          eq(notifications.tenantId, tenantId),
-          eq(notifications.userId, userId),
-          isNull(notifications.readAt),
+          eq(notifications.tenant_id, tenantId),
+          eq(notifications.user_id, userId),
+          isNull(notifications.read_at),
         ),
       );
 
@@ -92,15 +92,15 @@ export class NotificationsService {
     const [existing] = await this.db
       .select()
       .from(notifications)
-      .where(and(eq(notifications.tenantId, tenantId), eq(notifications.id, id)))
+      .where(and(eq(notifications.tenant_id, tenantId), eq(notifications.id, id)))
       .limit(1);
 
     if (!existing) throw new NotFoundException('Notificação não encontrada');
 
     const [updated] = await this.db
       .update(notifications)
-      .set({ readAt: new Date() })
-      .where(and(eq(notifications.tenantId, tenantId), eq(notifications.id, id)))
+      .set({ read_at: new Date() })
+      .where(and(eq(notifications.tenant_id, tenantId), eq(notifications.id, id)))
       .returning();
 
     return updated;
@@ -110,12 +110,12 @@ export class NotificationsService {
   async markAllRead(tenantId: string, userId: string): Promise<{ updated: number }> {
     const result = await this.db
       .update(notifications)
-      .set({ readAt: new Date() })
+      .set({ read_at: new Date() })
       .where(
         and(
-          eq(notifications.tenantId, tenantId),
-          eq(notifications.userId, userId),
-          isNull(notifications.readAt),
+          eq(notifications.tenant_id, tenantId),
+          eq(notifications.user_id, userId),
+          isNull(notifications.read_at),
         ),
       )
       .returning();

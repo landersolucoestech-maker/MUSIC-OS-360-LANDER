@@ -10,6 +10,7 @@ import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { exportToCSV } from "@/shared/lib/csv";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -268,6 +269,7 @@ export default function Contabilidade() {
   const plEmpresaProps = { receitasPorCategoria, despesasPorCategoria, totalReceitas, totalDespesas, lucroLiquido, margemLiquida };
 
   return (
+    <FeatureGate feature="moduleAccounting" featureName="Contabilidade">
     <MainLayout
       title="Contabilidade"
       actions={
@@ -481,5 +483,6 @@ export default function Contabilidade() {
 
       </div>
     </MainLayout>
+    </FeatureGate>
   );
 }

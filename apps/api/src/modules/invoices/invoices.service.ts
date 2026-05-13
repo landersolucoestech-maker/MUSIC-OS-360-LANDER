@@ -39,14 +39,14 @@ export class InvoicesService {
   async create(tenantId: string, userId: string, dto: CreateInvoiceDto): Promise<Invoice> {
     const [row] = await this.db.insert(invoices).values({
       tenant_id:             tenantId,
-      tipo:                  dto.tipo,
-      valor:                 String(dto.valor),
-      numero:                dto.numero          ?? null,
-      tomador_nome:          dto.tomadorNome      ?? null,
-      tomador_doc_encrypted: dto.tomadorDoc       ?? null,
-      descricao:             dto.descricao        ?? null,
-      data_emissao:          dto.dataEmissao      ? new Date(dto.dataEmissao)  : null,
-      data_vencimento:       dto.dataVencimento   ? new Date(dto.dataVencimento) : null,
+      tipo:                  dto.type,
+      valor:                 dto.amount != null ? String(dto.amount) : '0',
+      numero:                dto.number        ?? null,
+      tomador_nome:          dto.recipientName ?? null,
+      tomador_doc_encrypted: dto.recipientDoc  ?? null,
+      descricao:             null,
+      data_emissao:          dto.issuedAt ? new Date(dto.issuedAt) : null,
+      data_vencimento:       dto.dueAt    ? new Date(dto.dueAt)    : null,
       metadata:              dto.metadata ?? {},
       created_by:            userId,
     }).returning();
@@ -56,16 +56,14 @@ export class InvoicesService {
   async update(tenantId: string, userId: string, id: string, dto: UpdateInvoiceDto): Promise<Invoice> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(invoices).set({
-      ...(dto.status         != null && { status:                dto.status }),
-      ...(dto.numero         != null && { numero:                dto.numero }),
-      ...(dto.valor          != null && { valor:                 String(dto.valor) }),
-      ...(dto.tomadorNome    != null && { tomador_nome:          dto.tomadorNome }),
-      ...(dto.tomadorDoc     != null && { tomador_doc_encrypted: dto.tomadorDoc }),
-      ...(dto.descricao      != null && { descricao:             dto.descricao }),
-      ...(dto.dataEmissao    != null && { data_emissao:          new Date(dto.dataEmissao) }),
-      ...(dto.dataVencimento != null && { data_vencimento:       new Date(dto.dataVencimento) }),
-      ...(dto.arquivoUrl     != null && { arquivo_url:           dto.arquivoUrl }),
-      ...(dto.metadata       != null && { metadata:              dto.metadata }),
+      ...(dto.status        != null && { status:                dto.status }),
+      ...(dto.number        != null && { numero:                dto.number }),
+      ...(dto.amount        != null && { valor:                 String(dto.amount) }),
+      ...(dto.recipientName != null && { tomador_nome:          dto.recipientName }),
+      ...(dto.recipientDoc  != null && { tomador_doc_encrypted: dto.recipientDoc }),
+      ...(dto.issuedAt      != null && { data_emissao:          new Date(dto.issuedAt) }),
+      ...(dto.dueAt         != null && { data_vencimento:       new Date(dto.dueAt) }),
+      ...(dto.metadata      != null && { metadata:              dto.metadata }),
       updated_at: new Date(),
     }).where(and(eq(invoices.tenant_id, tenantId), eq(invoices.id, id), isNull(invoices.deleted_at)))
       .returning();

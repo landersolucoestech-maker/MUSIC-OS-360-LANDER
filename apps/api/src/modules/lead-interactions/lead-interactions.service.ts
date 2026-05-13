@@ -28,8 +28,8 @@ export class LeadInteractionsService {
     const [row] = await this.db.insert(leadInteractions).values({
       tenant_id:  tenantId,
       lead_id:    dto.leadId,
-      tipo:       dto.tipo,
-      descricao:  dto.descricao ?? null,
+      tipo:       dto.type,
+      descricao:  dto.notes ?? null,
       data:       new Date(),
       created_by: userId,
     }).returning();

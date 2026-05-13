@@ -15,6 +15,7 @@ import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
 import { formatCurrency } from "@/shared/lib/format-utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -95,6 +96,7 @@ export default function Licenciamento() {
   );
 
   return (
+    <FeatureGate feature="moduleLicensing" featureName="Licenciamento" requiredPlan="enterprise">
     <MainLayout title="Licenciamento" description="Gestão de licenças e sincronização" actions={headerActions}>
       <div className="space-y-6">
 
@@ -245,5 +247,6 @@ export default function Licenciamento() {
       <LicencaViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} licenca={viewModal.licenca} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Licença" description={`Tem certeza que deseja excluir "${deleteModal.licenca?.tipo_uso}"?`} onConfirm={handleDelete} />
     </MainLayout>
+    </FeatureGate>
   );
 }

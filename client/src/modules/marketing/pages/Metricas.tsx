@@ -27,6 +27,7 @@ import {
   fmtNum, type MonthlyPoint,
 } from "@/modules/marketing/data/mockAnalytics";
 import { formatCurrency } from "@/shared/lib/format-utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type PlatformId = "overview" | "youtube" | "tiktok" | "instagram" | "google" | "spotify";
@@ -515,6 +516,7 @@ export default function MarketingMetricas() {
   );
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout
       title="Métricas & Performance"
       description="Monitoramento consolidado de plataformas, campanhas e audiência digital"
@@ -546,5 +548,6 @@ export default function MarketingMetricas() {
 
       </div>
     </MainLayout>
+    </FeatureGate>
   );
 }

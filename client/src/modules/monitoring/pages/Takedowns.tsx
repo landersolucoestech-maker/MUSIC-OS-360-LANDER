@@ -14,6 +14,7 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useTakedowns } from "@/modules/monitoring/hooks/useTakedowns";
 import { formatDate } from "@/shared/lib/format-utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -101,6 +102,7 @@ export default function Takedowns() {
   );
 
   return (
+    <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
     <MainLayout title="Takedowns" description="Gerencie solicitações de remoção e claims" actions={headerActions}>
       <div className="space-y-6">
 
@@ -227,5 +229,6 @@ export default function Takedowns() {
       <TakedownViewModal open={viewModal.open} onOpenChange={(open) => setViewModal({ ...viewModal, open })} takedown={viewModal.takedown} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Takedown" description={`Tem certeza que deseja excluir "${deleteModal.takedown?.titulo}"?`} onConfirm={handleDelete} />
     </MainLayout>
+    </FeatureGate>
   );
 }

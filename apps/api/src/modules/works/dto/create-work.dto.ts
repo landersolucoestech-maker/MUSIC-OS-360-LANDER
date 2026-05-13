@@ -1,12 +1,16 @@
-import { IsString, IsOptional, IsInt, IsArray, IsObject, MaxLength, Min, Max } from 'class-validator';
-import { Type } from 'class-transformer';
+import { IsString, IsOptional, IsArray, IsObject, MaxLength } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateWorkDto {
   @ApiProperty({ example: 'Noite Estrelada' })
   @IsString()
   @MaxLength(500)
-  title!: string;
+  titulo!: string;
+
+  @ApiPropertyOptional({ example: 'composicao' })
+  @IsOptional()
+  @IsString()
+  tipo?: string;
 
   @ApiPropertyOptional({ example: 'T-034.521.489-2' })
   @IsOptional()
@@ -14,24 +18,37 @@ export class CreateWorkDto {
   @MaxLength(20)
   iswc?: string;
 
+  @ApiPropertyOptional({ example: 'BR-AB1-24-00001' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  isrc?: string;
+
   @ApiPropertyOptional({ example: 'MPB' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  genre?: string;
+  genero?: string;
 
-  @ApiPropertyOptional({ example: 2024 })
-  @IsOptional()
-  @Type(() => Number)
-  @IsInt()
-  @Min(1900)
-  @Max(2100)
-  year?: number;
-
-  @ApiPropertyOptional({ example: 'active' })
+  @ApiPropertyOptional({ example: 'pendente' })
   @IsOptional()
   @IsString()
-  status?: string = 'active';
+  status?: string;
+
+  @ApiPropertyOptional({ example: 'João Silva' })
+  @IsOptional()
+  @IsString()
+  compositor?: string;
+
+  @ApiPropertyOptional({ type: [Object] })
+  @IsOptional()
+  @IsArray()
+  compositores?: Record<string, unknown>[];
+
+  @ApiPropertyOptional({ example: 'Editora XYZ' })
+  @IsOptional()
+  @IsString()
+  editora?: string;
 
   @ApiPropertyOptional({ type: [Object] })
   @IsOptional()

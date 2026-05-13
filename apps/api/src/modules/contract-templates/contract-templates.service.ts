@@ -41,10 +41,10 @@ export class ContractTemplatesService {
   async create(tenantId: string, userId: string, dto: CreateContractTemplateDto): Promise<ContractTemplate> {
     const [row] = await this.db.insert(contractTemplates).values({
       tenant_id:  tenantId,
-      titulo:     dto.titulo,
-      tipo:       dto.tipo,
-      conteudo:   dto.conteudo ?? '',
-      variaveis:  dto.variaveis ?? [],
+      titulo:     dto.title,
+      tipo:       dto.type,
+      conteudo:   dto.content   ?? '',
+      variaveis:  dto.variables ?? [],
       ativo:      true,
       created_by: userId,
     }).returning();
@@ -54,11 +54,11 @@ export class ContractTemplatesService {
   async update(tenantId: string, userId: string, id: string, dto: UpdateContractTemplateDto): Promise<ContractTemplate> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(contractTemplates).set({
-      ...(dto.titulo    != null && { titulo:    dto.titulo }),
-      ...(dto.tipo      != null && { tipo:      dto.tipo }),
-      ...(dto.conteudo  != null && { conteudo:  dto.conteudo }),
-      ...(dto.variaveis != null && { variaveis: dto.variaveis }),
-      ...(dto.ativo     != null && { ativo:     dto.ativo }),
+      ...(dto.title     != null && { titulo:    dto.title }),
+      ...(dto.type      != null && { tipo:      dto.type }),
+      ...(dto.content   != null && { conteudo:  dto.content }),
+      ...(dto.variables != null && { variaveis: dto.variables }),
+      ...(dto.status    != null && { ativo:     dto.status === 'active' }),
       updated_at: new Date(),
     }).where(and(eq(contractTemplates.tenant_id, tenantId), eq(contractTemplates.id, id), isNull(contractTemplates.deleted_at)))
       .returning();

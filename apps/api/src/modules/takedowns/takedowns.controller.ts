@@ -18,7 +18,7 @@ export class TakedownsController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('editor') @Audit('takedown.created') @ApiOperation({ summary: 'Criar takedown' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateTakedownDto) { return this.svc.create(t.id, dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateTakedownDto) { return this.svc.create(t.id, u?.sub ?? '', dto); }
 
   @Patch(':id') @RequireRole('editor') @Audit('takedown.updated') @ApiOperation({ summary: 'Actualizar takedown' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateTakedownDto) { return this.svc.update(t.id, id, dto); }

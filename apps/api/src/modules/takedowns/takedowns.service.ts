@@ -40,14 +40,14 @@ export class TakedownsService {
   async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<Takedown> {
     const [row] = await this.db.insert(takedowns).values({
       tenant_id:  tenantId,
-      titulo:     dto.title,
+      titulo:     dto.platform,
       plataforma: dto.platform,
-      url:        dto.url       ?? null,
-      obra_id:    dto.workId    ?? null,
-      artista_id: dto.artistId  ?? null,
-      motivo:     dto.reason    ?? null,
+      url:        null,
+      obra_id:    dto.trackId ?? null,
+      artista_id: null,
+      motivo:     dto.reason   ?? null,
       status:     'pendente',
-      metadata:   dto.metadata  ?? {},
+      metadata:   dto.metadata ?? {},
       created_by: userId,
     }).returning();
     return row;
@@ -56,13 +56,11 @@ export class TakedownsService {
   async update(tenantId: string, id: string, dto: UpdateTakedownDto): Promise<Takedown> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(takedowns).set({
-      ...(dto.title    != null && { titulo:     dto.title }),
-      ...(dto.platform != null && { plataforma: dto.platform }),
-      ...(dto.url      != null && { url:        dto.url }),
-      ...(dto.reason   != null && { motivo:     dto.reason }),
-      ...(dto.response != null && { resposta:   dto.response }),
-      ...(dto.status   != null && { status:     dto.status }),
-      ...(dto.metadata != null && { metadata:   dto.metadata }),
+      ...(dto.platform   != null && { plataforma: dto.platform }),
+      ...(dto.reason     != null && { motivo:     dto.reason }),
+      ...(dto.status     != null && { status:     dto.status }),
+      ...(dto.resolvedAt != null && { updated_at: new Date(dto.resolvedAt) }),
+      ...(dto.metadata   != null && { metadata:   dto.metadata }),
       updated_at: new Date(),
     }).where(and(eq(takedowns.tenant_id, tenantId), eq(takedowns.id, id), isNull(takedowns.deleted_at)))
       .returning();

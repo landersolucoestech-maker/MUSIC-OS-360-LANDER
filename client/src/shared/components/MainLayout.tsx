@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "@/app/providers/ThemeContext";
 import { useSyncTenantFromJWT } from "@/app/providers/TenantContext";
+import { TrialBanner } from "@/shared/components/TrialBanner";
 
 interface MainLayoutProps {
   children: React.ReactNode;
@@ -282,6 +283,8 @@ export function MainLayout({
             <TopbarUserMenu />
           </div>
         </header>
+
+        <TrialBanner />
 
         {/* ── Content ────────────────────────────────────────────────────── */}
         <main className={cn(

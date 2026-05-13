@@ -40,14 +40,14 @@ export class CampaignsService {
   async create(tenantId: string, userId: string, dto: CreateCampaignDto): Promise<Campaign> {
     const [row] = await this.db.insert(campaigns).values({
       tenant_id:   tenantId,
-      nome:        dto.nome,
-      tipo:        dto.tipo,
+      nome:        dto.title,
+      tipo:        dto.type,
       artista_id:  dto.artistId  ?? null,
-      orcamento:   dto.orcamento != null ? String(dto.orcamento) : null,
-      objetivo:    dto.objetivo  ?? null,
-      data_inicio: dto.dataInicio ? new Date(dto.dataInicio) : null,
-      data_fim:    dto.dataFim    ? new Date(dto.dataFim)    : null,
-      metadata:    dto.metadata  ?? {},
+      orcamento:   dto.budget != null ? String(dto.budget) : null,
+      objetivo:    null,
+      data_inicio: dto.startsAt ? new Date(dto.startsAt) : null,
+      data_fim:    dto.endsAt   ? new Date(dto.endsAt)   : null,
+      metadata:    dto.metadata ?? {},
       created_by:  userId,
       updated_by:  userId,
     }).returning();
@@ -57,15 +57,14 @@ export class CampaignsService {
   async update(tenantId: string, userId: string, id: string, dto: UpdateCampaignDto): Promise<Campaign> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(campaigns).set({
-      ...(dto.nome       != null && { nome:        dto.nome }),
-      ...(dto.tipo       != null && { tipo:        dto.tipo }),
-      ...(dto.status     != null && { status:      dto.status }),
-      ...(dto.artistId   != null && { artista_id:  dto.artistId }),
-      ...(dto.orcamento  != null && { orcamento:   String(dto.orcamento) }),
-      ...(dto.objetivo   != null && { objetivo:    dto.objetivo }),
-      ...(dto.dataInicio != null && { data_inicio: new Date(dto.dataInicio) }),
-      ...(dto.dataFim    != null && { data_fim:    new Date(dto.dataFim) }),
-      ...(dto.metadata   != null && { metadata:    dto.metadata }),
+      ...(dto.title    != null && { nome:        dto.title }),
+      ...(dto.type     != null && { tipo:        dto.type }),
+      ...(dto.status   != null && { status:      dto.status }),
+      ...(dto.artistId != null && { artista_id:  dto.artistId }),
+      ...(dto.budget   != null && { orcamento:   String(dto.budget) }),
+      ...(dto.startsAt != null && { data_inicio: new Date(dto.startsAt) }),
+      ...(dto.endsAt   != null && { data_fim:    new Date(dto.endsAt) }),
+      ...(dto.metadata != null && { metadata:    dto.metadata }),
       updated_at: new Date(),
       updated_by: userId,
     }).where(and(eq(campaigns.tenant_id, tenantId), eq(campaigns.id, id), isNull(campaigns.deleted_at)))

@@ -17,14 +17,14 @@ export class AutentiqueService {
 
   private async getToken(tenantId: string): Promise<string> {
     const [row] = await this.db.select().from(integrations)
-      .where(and(eq(integrations.tenantId, tenantId), eq(integrations.provider, 'autentique')))
+      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, 'autentique')))
       .limit(1);
 
-    if (!row?.credentialsEncrypted) {
+    if (!row?.credentials_encrypted) {
       throw new Error('Autentique não configurado para este tenant');
     }
 
-    const creds = this.encryption.decrypt(row.credentialsEncrypted);
+    const creds = this.encryption.decrypt(row.credentials_encrypted);
     return (JSON.parse(creds) as { api_token: string }).api_token;
   }
 
@@ -67,8 +67,8 @@ export class AutentiqueService {
     const docId = data.data.createDocument.id as string;
 
     await this.db.update(contracts)
-      .set({ status: 'aguardando_assinatura', metadata: { autentiqueDocId: docId, signingPlatform: 'autentique' }, updatedAt: new Date() })
-      .where(and(eq(contracts.id, params.contractId), eq(contracts.tenantId, params.tenantId)));
+      .set({ status: 'aguardando_assinatura', autentique_doc_id: docId, signing_platform: 'autentique', updated_at: new Date() })
+      .where(and(eq(contracts.id, params.contractId), eq(contracts.tenant_id, params.tenantId)));
 
     this.logger.log(`Autentique: documento ${docId} enviado para assinatura`);
     return { documentId: docId };
@@ -85,25 +85,25 @@ export class AutentiqueService {
 
     if (contract) {
       await this.db.update(contracts)
-        .set({ status: 'assinado', updatedAt: new Date() })
+        .set({ status: 'assinado', updated_at: new Date() })
         .where(eq(contracts.id, contract.id));
       this.logger.log(`Contrato assinado via Autentique: ${docId}`);
     }
   }
 
   async configure(tenantId: string, apiToken: string): Promise<void> {
-    const credentialsEncrypted = this.encryption.encrypt(JSON.stringify({ api_token: apiToken }));
+    const credentials_encrypted = this.encryption.encrypt(JSON.stringify({ api_token: apiToken }));
     const [existing] = await this.db.select().from(integrations)
-      .where(and(eq(integrations.tenantId, tenantId), eq(integrations.provider, 'autentique')))
+      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, 'autentique')))
       .limit(1);
 
     if (existing) {
       await this.db.update(integrations)
-        .set({ credentialsEncrypted, status: 'connected', failureCount: 0, updatedAt: new Date() })
+        .set({ credentials_encrypted, status: 'connected', failure_count: 0, updated_at: new Date() })
         .where(eq(integrations.id, existing.id));
     } else {
       await this.db.insert(integrations).values({
-        tenantId, provider: 'autentique', status: 'connected', credentialsEncrypted,
+        tenant_id: tenantId, provider: 'autentique', status: 'connected', credentials_encrypted,
       });
     }
   }

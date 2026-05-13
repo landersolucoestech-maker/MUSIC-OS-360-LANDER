@@ -58,14 +58,14 @@ export class NotificationsProcessor extends WorkerHost {
     const [created] = await this.db
       .insert(notifications)
       .values({
-        tenantId: d.tenantId,
-        userId:   d.userId   ?? null,
-        title:    d.title,
-        body:     d.body     ?? null,
-        type:     d.type,
-        entity:   d.entity   ?? null,
-        entityId: d.entityId ?? null,
-        metadata: d.metadata ?? {},
+        tenant_id: d.tenantId,
+        user_id:   d.userId   ?? '',
+        title:     d.title,
+        body:      d.body     ?? null,
+        type:      d.type,
+        entity:    d.entity   ?? null,
+        entity_id: d.entityId ?? null,
+        metadata:  d.metadata ?? {},
       })
       .returning();
 
@@ -76,8 +76,8 @@ export class NotificationsProcessor extends WorkerHost {
       body:       created.body,
       type:       created.type,
       entity:     created.entity,
-      entityId:   created.entityId,
-      createdAt:  created.createdAt,
+      entityId:   created.entity_id,
+      createdAt:  created.created_at,
     };
 
     if (d.userId) {

@@ -24,6 +24,7 @@ import {
 } from "../services/mock-data";
 import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs, getCatalogArtistas } from "../services/catalog-lookup";
 import type { RightsExecution } from "../types";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria";
 
@@ -576,6 +577,7 @@ export default function RightsMonitoring() {
                     {MOCK_ECAD_PERIODOS.map(p => {
                       const cfg = STATUS_ECAD[p.status] ?? { label: p.status, className: "bg-muted text-muted-foreground border-border" };
                       return (
+                        <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
                         <tr key={p.id} className="hover:bg-muted/30 transition-colors">
                           <td className="py-3 px-4 font-semibold">{p.periodo}</td>
                           <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">
@@ -591,6 +593,7 @@ export default function RightsMonitoring() {
                           </td>
                           <td className="py-3 px-4 text-xs text-muted-foreground hidden lg:table-cell">{p.observacoes}</td>
                         </tr>
+                        </FeatureGate>
                       );
                     })}
                   </tbody>

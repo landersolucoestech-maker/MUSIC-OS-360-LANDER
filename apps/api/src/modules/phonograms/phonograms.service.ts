@@ -55,20 +55,17 @@ export class PhonogramsService {
     const [created] = await this.db
       .insert(phonograms)
       .values({
-        tenant_id:    tenantId,
-        obra_id:      dto.workId    ?? null,
-        artista_id:   dto.artistId  ?? null,
-        titulo:       dto.titulo,
-        tipo:         dto.tipo      ?? 'gravacao',
-        isrc:         dto.isrc      ?? null,
-        duracao:      dto.duracao   ?? null,
-        status:       dto.status    ?? 'pendente',
-        compositores: dto.compositores ?? null,
-        interpretes:  dto.interpretes  ?? null,
-        produtores:   dto.produtores   ?? null,
-        metadata:     dto.metadata ?? {},
-        created_by:   userId,
-        updated_by:   userId,
+        tenant_id:  tenantId,
+        obra_id:    dto.workId   ?? null,
+        artista_id: dto.artistId ?? null,
+        titulo:     dto.title,
+        tipo:       'gravacao',
+        isrc:       dto.isrc     ?? null,
+        duracao:    dto.duration != null ? String(dto.duration) : null,
+        status:     dto.status   ?? 'pendente',
+        metadata:   dto.metadata ?? {},
+        created_by: userId,
+        updated_by: userId,
       })
       .returning();
 
@@ -81,17 +78,13 @@ export class PhonogramsService {
     const [updated] = await this.db
       .update(phonograms)
       .set({
-        ...(dto.titulo        != null && { titulo:        dto.titulo }),
-        ...(dto.tipo          != null && { tipo:          dto.tipo }),
-        ...(dto.workId        != null && { obra_id:       dto.workId }),
-        ...(dto.artistId      != null && { artista_id:    dto.artistId }),
-        ...(dto.isrc          != null && { isrc:          dto.isrc }),
-        ...(dto.duracao       != null && { duracao:       dto.duracao }),
-        ...(dto.status        != null && { status:        dto.status }),
-        ...(dto.compositores  != null && { compositores:  dto.compositores }),
-        ...(dto.interpretes   != null && { interpretes:   dto.interpretes }),
-        ...(dto.produtores    != null && { produtores:    dto.produtores }),
-        ...(dto.metadata      != null && { metadata:      dto.metadata }),
+        ...(dto.title    != null && { titulo:     dto.title }),
+        ...(dto.workId   != null && { obra_id:    dto.workId }),
+        ...(dto.artistId != null && { artista_id: dto.artistId }),
+        ...(dto.isrc     != null && { isrc:       dto.isrc }),
+        ...(dto.duration != null && { duracao:    String(dto.duration) }),
+        ...(dto.status   != null && { status:     dto.status }),
+        ...(dto.metadata != null && { metadata:   dto.metadata }),
         updated_at: new Date(),
         updated_by: userId,
       })

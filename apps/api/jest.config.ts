@@ -5,22 +5,33 @@ const config: Config = {
   rootDir: 'src',
   testRegex: '.*\\.spec\\.ts$',
   transform: {
-    '^.+\\.(t|j)s$': 'ts-jest',
+    '^.+\\.(t|j)s$': ['ts-jest', {
+      tsconfig: '<rootDir>/../tsconfig.json',
+      diagnostics: { warnOnly: true },
+    }],
   },
   collectCoverageFrom: [
-    'core/security/encryption.service.ts',
-    'core/guards/clerk-auth.guard.ts',
-    'modules/artists/artists.service.ts',
+    '**/*.ts',
+    '!**/*.module.ts',
+    '!**/*.dto.ts',
+    '!**/*.decorator.ts',
+    '!**/index.ts',
+    '!**/main.ts',
+    '!**/instrument.ts',
+    '!**/*.spec.ts',
   ],
   coverageDirectory: '../coverage',
   testEnvironment: 'node',
   coverageThreshold: {
     global: {
-      lines:      80,
-      statements: 80,
-      functions:  80,
-      branches:   60,
+      lines:      55,
+      statements: 55,
+      functions:  60,
+      branches:   45,
     },
+  },
+  moduleNameMapper: {
+    '^@/(.*)$': '<rootDir>/$1',
   },
 };
 

@@ -13,6 +13,7 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
 import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 const getStatusColor = (status: string) => {
   switch (status) {
@@ -121,6 +122,7 @@ export default function MarketingCalendario() {
   );
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout title="Calendário de Conteúdo" description="Planeje e agende todo o conteúdo das redes sociais" actions={headerActions}>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-4">
@@ -254,5 +256,6 @@ export default function MarketingCalendario() {
       <ConteudoFormModal open={modalOpen} onOpenChange={setModalOpen} initialData={selectedConteudo} mode={modalMode} />
       <DeleteConfirmModal open={deleteModal.open} onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })} title="Excluir Conteúdo" description={`Tem certeza que deseja excluir o conteúdo "${deleteModal.conteudo?.titulo}"?`} onConfirm={handleDelete} />
     </MainLayout>
+    </FeatureGate>
   );
 }

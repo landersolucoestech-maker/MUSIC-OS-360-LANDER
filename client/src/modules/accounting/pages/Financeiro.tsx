@@ -26,6 +26,7 @@ import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FinanceiroSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 type Transacao = Record<string, any>;
 
@@ -179,6 +180,7 @@ export default function Financeiro() {
   if (isLoading) return <FinanceiroSkeleton />;
 
   return (
+    <FeatureGate feature="moduleAccounting" featureName="Financeiro">
     <MainLayout
       title="Accounting"
       description="Controle financeiro e fluxo de caixa"
@@ -462,5 +464,6 @@ export default function Financeiro() {
         onConfirm={handleDelete}
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

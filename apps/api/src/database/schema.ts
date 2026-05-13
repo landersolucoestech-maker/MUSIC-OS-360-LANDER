@@ -677,6 +677,142 @@ export const aiJobs = pgTable('ai_jobs', {
   index('ai_jobs_created_idx').on(t.created_at),
 ]);
 
+// ─── Artist Goals (metas_artistas) ────────────────────────────────────────────
+export const artistGoals = pgTable('artist_goals', {
+  id:          uuid('id').primaryKey().defaultRandom(),
+  tenant_id:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  artista_id:  uuid('artista_id').notNull().references(() => artists.id, { onDelete: 'cascade' }),
+  titulo:      varchar('titulo', { length: 255 }).notNull(),
+  tipo:        varchar('tipo', { length: 100 }).notNull(),
+  meta_valor:  decimal('meta_valor', { precision: 15, scale: 2 }),
+  valor_atual: decimal('valor_atual', { precision: 15, scale: 2 }).notNull().default('0'),
+  status:      varchar('status', { length: 50 }).notNull().default('em_andamento'),
+  periodo:     varchar('periodo', { length: 50 }).notNull().default('mensal'),
+  data_inicio: timestamp('data_inicio'),
+  data_fim:    timestamp('data_fim'),
+  metadata:    jsonb('metadata').default({}),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:  timestamp('deleted_at'),
+  created_by:  varchar('created_by', { length: 255 }),
+}, (t) => [
+  index('artist_goals_tenant_idx').on(t.tenant_id),
+  index('artist_goals_artista_idx').on(t.artista_id),
+]);
+
+// ─── Content Detections (deteccoes) ───────────────────────────────────────────
+export const contentDetections = pgTable('content_detections', {
+  id:               uuid('id').primaryKey().defaultRandom(),
+  tenant_id:        uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  obra_id:          uuid('obra_id').references(() => works.id, { onDelete: 'set null' }),
+  artista_id:       uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  plataforma:       varchar('plataforma', { length: 100 }).notNull(),
+  titulo_detectado: varchar('titulo_detectado', { length: 500 }),
+  url:              text('url'),
+  score:            decimal('score', { precision: 5, scale: 4 }),
+  status:           varchar('status', { length: 50 }).notNull().default('pendente'),
+  tipo:             varchar('tipo', { length: 100 }).notNull().default('uso_nao_autorizado'),
+  detectado_em:     timestamp('detectado_em').defaultNow(),
+  metadata:         jsonb('metadata').default({}),
+  created_at:       timestamp('created_at').notNull().defaultNow(),
+  updated_at:       timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:       timestamp('deleted_at'),
+}, (t) => [
+  index('detections_tenant_idx').on(t.tenant_id),
+  index('detections_status_idx').on(t.status),
+]);
+
+// ─── ECAD Reports (relatorios_ecad) ───────────────────────────────────────────
+export const ecadReports = pgTable('ecad_reports', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  obra_id:       uuid('obra_id').references(() => works.id, { onDelete: 'set null' }),
+  periodo:       varchar('periodo', { length: 20 }).notNull(),
+  tipo:          varchar('tipo', { length: 100 }).notNull(),
+  valor_bruto:   decimal('valor_bruto', { precision: 15, scale: 2 }),
+  valor_liquido: decimal('valor_liquido', { precision: 15, scale: 2 }),
+  status:        varchar('status', { length: 50 }).notNull().default('pendente'),
+  arquivo_url:   text('arquivo_url'),
+  metadata:      jsonb('metadata').default({}),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+  updated_at:    timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:    timestamp('deleted_at'),
+  created_by:    varchar('created_by', { length: 255 }),
+}, (t) => [
+  index('ecad_reports_tenant_idx').on(t.tenant_id),
+  index('ecad_reports_periodo_idx').on(t.periodo),
+]);
+
+// ─── Employees (funcionarios) ─────────────────────────────────────────────────
+export const employees = pgTable('employees', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  tenant_id:          uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  nome:               varchar('nome', { length: 255 }).notNull(),
+  cargo:              varchar('cargo', { length: 255 }),
+  departamento:       varchar('departamento', { length: 100 }),
+  tipo_contrato:      varchar('tipo_contrato', { length: 100 }).notNull().default('clt'),
+  status:             varchar('status', { length: 50 }).notNull().default('ativo'),
+  email_encrypted:    text('email_encrypted'),
+  telefone_encrypted: text('telefone_encrypted'),
+  cpf_encrypted:      text('cpf_encrypted'),
+  salario:            decimal('salario', { precision: 15, scale: 2 }),
+  data_admissao:      timestamp('data_admissao'),
+  data_demissao:      timestamp('data_demissao'),
+  documentos:         jsonb('documentos').default([]),
+  metadata:           jsonb('metadata').default({}),
+  created_at:         timestamp('created_at').notNull().defaultNow(),
+  updated_at:         timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:         timestamp('deleted_at'),
+  created_by:         varchar('created_by', { length: 255 }),
+}, (t) => [
+  index('employees_tenant_idx').on(t.tenant_id),
+  index('employees_status_idx').on(t.status),
+]);
+
+// ─── Payroll (folha_pagamento) ────────────────────────────────────────────────
+export const payrollEntries = pgTable('payroll_entries', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  tenant_id:       uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  employee_id:     uuid('employee_id').notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  competencia:     varchar('competencia', { length: 7 }).notNull(),
+  salario_bruto:   decimal('salario_bruto', { precision: 15, scale: 2 }).notNull(),
+  descontos:       decimal('descontos', { precision: 15, scale: 2 }).notNull().default('0'),
+  salario_liquido: decimal('salario_liquido', { precision: 15, scale: 2 }).notNull(),
+  status:          varchar('status', { length: 50 }).notNull().default('pendente'),
+  arquivo_url:     text('arquivo_url'),
+  pago_em:         timestamp('pago_em'),
+  metadata:        jsonb('metadata').default({}),
+  created_at:      timestamp('created_at').notNull().defaultNow(),
+  updated_at:      timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:      timestamp('deleted_at'),
+}, (t) => [
+  index('payroll_tenant_idx').on(t.tenant_id),
+  index('payroll_employee_idx').on(t.employee_id),
+  uniqueIndex('payroll_competencia_idx').on(t.employee_id, t.competencia),
+]);
+
+// ─── Leave Requests (afastamentos) ────────────────────────────────────────────
+export const leaveRequests = pgTable('leave_requests', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  employee_id:   uuid('employee_id').notNull().references(() => employees.id, { onDelete: 'cascade' }),
+  tipo:          varchar('tipo', { length: 100 }).notNull(),
+  status:        varchar('status', { length: 50 }).notNull().default('pendente'),
+  data_inicio:   timestamp('data_inicio').notNull(),
+  data_fim:      timestamp('data_fim').notNull(),
+  motivo:        text('motivo'),
+  aprovado_por:  varchar('aprovado_por', { length: 255 }),
+  documento_url: text('documento_url'),
+  metadata:      jsonb('metadata').default({}),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+  updated_at:    timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:    timestamp('deleted_at'),
+  created_by:    varchar('created_by', { length: 255 }),
+}, (t) => [
+  index('leave_tenant_idx').on(t.tenant_id),
+  index('leave_employee_idx').on(t.employee_id),
+]);
+
 // ─── Type exports ─────────────────────────────────────────────────────────────
 export type Organization        = typeof organizations.$inferSelect;
 export type Tenant              = typeof tenants.$inferSelect;
@@ -707,3 +843,9 @@ export type OAuthConnection     = typeof oauthConnections.$inferSelect;
 export type WebhookEvent        = typeof webhookEvents.$inferSelect;
 export type AuditLog            = typeof auditLogs.$inferSelect;
 export type AIJob               = typeof aiJobs.$inferSelect;
+export type ArtistGoal          = typeof artistGoals.$inferSelect;
+export type ContentDetection    = typeof contentDetections.$inferSelect;
+export type EcadReport          = typeof ecadReports.$inferSelect;
+export type Employee            = typeof employees.$inferSelect;
+export type PayrollEntry        = typeof payrollEntries.$inferSelect;
+export type LeaveRequest        = typeof leaveRequests.$inferSelect;

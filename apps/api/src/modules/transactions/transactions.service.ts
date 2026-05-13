@@ -55,18 +55,18 @@ export class TransactionsService {
     const [created] = await this.db
       .insert(transactions)
       .values({
-        tenant_id:       tenantId,
-        artista_id:      dto.artistId    ?? null,
-        tipo:            dto.tipo,
-        categoria:       dto.categoria,
-        valor:           dto.valor,
-        descricao:       dto.descricao   ?? null,
-        status:          dto.status      ?? 'pendente',
-        referencia:      dto.referencia  ?? null,
-        data:            dto.data        ? new Date(dto.data) : new Date(),
-        metadata:        dto.metadata    ?? {},
-        created_by:      userId,
-        updated_by:      userId,
+        tenant_id:  tenantId,
+        artista_id: dto.artistId   ?? null,
+        tipo:       dto.type,
+        categoria:  dto.category,
+        valor:      dto.amount,
+        descricao:  dto.description ?? null,
+        status:     dto.status      ?? 'pendente',
+        referencia: dto.referenceId ?? null,
+        data:       dto.occurredAt  ? new Date(dto.occurredAt) : new Date(),
+        metadata:   dto.metadata    ?? {},
+        created_by: userId,
+        updated_by: userId,
       })
       .returning();
 
@@ -79,15 +79,15 @@ export class TransactionsService {
     const [updated] = await this.db
       .update(transactions)
       .set({
-        ...(dto.tipo       != null && { tipo:       dto.tipo }),
-        ...(dto.categoria  != null && { categoria:  dto.categoria }),
-        ...(dto.valor      != null && { valor:      dto.valor }),
-        ...(dto.descricao  != null && { descricao:  dto.descricao }),
-        ...(dto.status     != null && { status:     dto.status }),
-        ...(dto.artistId   != null && { artista_id: dto.artistId }),
-        ...(dto.referencia != null && { referencia: dto.referencia }),
-        ...(dto.data       != null && { data:       new Date(dto.data) }),
-        ...(dto.metadata   != null && { metadata:   dto.metadata }),
+        ...(dto.type        != null && { tipo:       dto.type }),
+        ...(dto.category    != null && { categoria:  dto.category }),
+        ...(dto.amount      != null && { valor:      dto.amount }),
+        ...(dto.description != null && { descricao:  dto.description }),
+        ...(dto.status      != null && { status:     dto.status }),
+        ...(dto.artistId    != null && { artista_id: dto.artistId }),
+        ...(dto.referenceId != null && { referencia: dto.referenceId }),
+        ...(dto.occurredAt  != null && { data:       new Date(dto.occurredAt) }),
+        ...(dto.metadata    != null && { metadata:   dto.metadata }),
         updated_at: new Date(),
         updated_by: userId,
       })

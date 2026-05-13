@@ -72,6 +72,7 @@ import {
 } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import type { DocumentoFuncionario } from "@/modules/rh/hooks/useDocumentosFuncionario";
 import { Label } from "@/shared/ui/label";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 const funcionarioColumns: CSVColumn[] = [
   { key: "nome_completo", label: "Nome Completo" },
   { key: "cpf", label: "CPF" },
@@ -424,6 +425,7 @@ export default function RH() {
   }
 
   return (
+    <FeatureGate feature="moduleRh" featureName="Recursos Humanos">
     <MainLayout
       title="Recursos Humanos"
       description="Gestão de funcionários, folha de pagamento, férias e documentos"
@@ -1124,5 +1126,6 @@ export default function RH() {
         description={`Tem certeza que deseja excluir o documento "${docDeleteModal.documento?.nome_arquivo}"? Esta ação não pode ser desfeita.`}
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

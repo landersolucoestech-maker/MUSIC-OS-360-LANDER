@@ -40,15 +40,15 @@ export class EventsService {
   async create(tenantId: string, userId: string, dto: CreateEventDto): Promise<Event> {
     const [row] = await this.db.insert(events).values({
       tenant_id:   tenantId,
-      titulo:      dto.titulo,
-      tipo:        dto.tipo,
-      artista_id:  dto.artistId   ?? null,
-      local:       dto.local      ?? null,
-      data:        dto.data       ? new Date(dto.data) : new Date(),
-      valor:       dto.valor      != null ? String(dto.valor) : null,
-      observacoes: dto.observacoes ?? null,
-      status:      dto.status     ?? 'agendado',
-      metadata:    dto.metadata   ?? {},
+      titulo:      dto.title,
+      tipo:        dto.type,
+      artista_id:  dto.artistId ?? null,
+      local:       dto.venue    ?? null,
+      data:        dto.startsAt ? new Date(dto.startsAt) : new Date(),
+      valor:       null,
+      observacoes: null,
+      status:      'agendado',
+      metadata:    dto.metadata ?? {},
       created_by:  userId,
       updated_by:  userId,
     }).returning();
@@ -58,15 +58,13 @@ export class EventsService {
   async update(tenantId: string, userId: string, id: string, dto: UpdateEventDto): Promise<Event> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(events).set({
-      ...(dto.titulo      != null && { titulo:      dto.titulo }),
-      ...(dto.tipo        != null && { tipo:        dto.tipo }),
-      ...(dto.status      != null && { status:      dto.status }),
-      ...(dto.artistId    != null && { artista_id:  dto.artistId }),
-      ...(dto.local       != null && { local:       dto.local }),
-      ...(dto.data        != null && { data:        new Date(dto.data) }),
-      ...(dto.valor       != null && { valor:       String(dto.valor) }),
-      ...(dto.observacoes != null && { observacoes: dto.observacoes }),
-      ...(dto.metadata    != null && { metadata:    dto.metadata }),
+      ...(dto.title    != null && { titulo:     dto.title }),
+      ...(dto.type     != null && { tipo:       dto.type }),
+      ...(dto.status   != null && { status:     dto.status }),
+      ...(dto.artistId != null && { artista_id: dto.artistId }),
+      ...(dto.venue    != null && { local:      dto.venue }),
+      ...(dto.startsAt != null && { data:       new Date(dto.startsAt) }),
+      ...(dto.metadata != null && { metadata:   dto.metadata }),
       updated_at: new Date(),
       updated_by: userId,
     }).where(and(eq(events.tenant_id, tenantId), eq(events.id, id), isNull(events.deleted_at)))

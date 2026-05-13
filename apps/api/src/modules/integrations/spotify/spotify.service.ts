@@ -76,21 +76,21 @@ export class SpotifyService {
   private async upsertConnection(tenantId: string, userId: string, tokens: any): Promise<void> {
     const expiresAt = new Date(Date.now() + (tokens.expires_in as number) * 1000);
     const [existing] = await this.db.select().from(oauthConnections)
-      .where(and(eq(oauthConnections.tenantId, tenantId), eq(oauthConnections.userId, userId), eq(oauthConnections.provider, 'spotify')))
+      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.user_id, userId), eq(oauthConnections.provider, 'spotify')))
       .limit(1);
 
     if (existing) {
       await this.db.update(oauthConnections).set({
-        accessTokenEncrypted:  this.encryption.encrypt(tokens.access_token),
-        refreshTokenEncrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : existing.refreshTokenEncrypted,
-        expiresAt,
-        updatedAt: new Date(),
+        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+        refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : existing.refresh_token_encrypted,
+        expires_at:  expiresAt,
+        updated_at:  new Date(),
       }).where(eq(oauthConnections.id, existing.id));
     } else {
       await this.db.insert(oauthConnections).values({
-        tenantId, userId, provider: 'spotify', expiresAt,
-        accessTokenEncrypted:  this.encryption.encrypt(tokens.access_token),
-        refreshTokenEncrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : null,
+        tenant_id: tenantId, user_id: userId, provider: 'spotify', expires_at: expiresAt,
+        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+        refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : null,
         scopes: 'user-read-private user-read-email',
       });
     }
@@ -98,20 +98,20 @@ export class SpotifyService {
 
   async getValidToken(tenantId: string): Promise<string | null> {
     const [conn] = await this.db.select().from(oauthConnections)
-      .where(and(eq(oauthConnections.tenantId, tenantId), eq(oauthConnections.provider, 'spotify')))
+      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.provider, 'spotify')))
       .limit(1);
     if (!conn) return null;
 
-    if (conn.expiresAt && conn.expiresAt < new Date()) {
+    if (conn.expires_at && conn.expires_at < new Date()) {
       return this.refreshToken(conn);
     }
-    return this.encryption.decrypt(conn.accessTokenEncrypted);
+    return this.encryption.decrypt(conn.access_token_encrypted);
   }
 
   private async refreshToken(conn: OAuthConnection): Promise<string> {
     const clientId     = process.env['SPOTIFY_CLIENT_ID']     ?? '';
     const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
-    const refreshToken = this.encryption.decrypt(conn.refreshTokenEncrypted ?? '');
+    const refreshToken = this.encryption.decrypt(conn.refresh_token_encrypted ?? '');
 
     const res  = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
@@ -124,9 +124,9 @@ export class SpotifyService {
     const data = await res.json() as any;
 
     await this.db.update(oauthConnections).set({
-      accessTokenEncrypted: this.encryption.encrypt(data.access_token),
-      expiresAt:            new Date(Date.now() + data.expires_in * 1000),
-      updatedAt:            new Date(),
+      access_token_encrypted: this.encryption.encrypt(data.access_token),
+      expires_at:             new Date(Date.now() + data.expires_in * 1000),
+      updated_at:             new Date(),
     }).where(eq(oauthConnections.id, conn.id));
 
     return data.access_token as string;
@@ -134,6 +134,6 @@ export class SpotifyService {
 
   async disconnect(tenantId: string, userId: string): Promise<void> {
     await this.db.delete(oauthConnections)
-      .where(and(eq(oauthConnections.tenantId, tenantId), eq(oauthConnections.userId, userId), eq(oauthConnections.provider, 'spotify')));
+      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.user_id, userId), eq(oauthConnections.provider, 'spotify')));
   }
 }

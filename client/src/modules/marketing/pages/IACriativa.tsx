@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useMarketingAI, ContentType } from "@/modules/marketing/hooks/useMarketingAI";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 // Estado inicial do chat
 const chatInicial = [
   { role: "assistant", content: "Olá! Sou seu assistente de marketing musical. Como posso ajudar hoje?" },
@@ -118,6 +119,7 @@ export default function MarketingIACriativa() {
   };
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout
       title="IA Criativa Inteligente"
       description="Acelere a criação e otimização com IA integrada à estratégia e análise de resultados"
@@ -1287,5 +1289,6 @@ export default function MarketingIACriativa() {
         </Tabs>
       </div>
     </MainLayout>
+    </FeatureGate>
   );
 }

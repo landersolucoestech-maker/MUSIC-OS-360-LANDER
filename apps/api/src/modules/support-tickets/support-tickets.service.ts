@@ -48,7 +48,7 @@ export class SupportTicketsService {
       category:      dto.category     ?? null,
       status:        'open',
       created_by:    userId,
-      tags:          dto.tags         ?? [],
+      tags:          [],
       metadata:      dto.metadata     ?? {},
     }).returning();
     return row;
@@ -62,7 +62,6 @@ export class SupportTicketsService {
       ...(dto.priority    != null && { priority:    dto.priority }),
       ...(dto.category    != null && { category:    dto.category }),
       ...(dto.status      != null && { status:      dto.status }),
-      ...(dto.assignedTo  != null && { assigned_to: dto.assignedTo }),
       ...(dto.resolvedAt  != null && { resolved_at: new Date(dto.resolvedAt) }),
       ...(dto.metadata    != null && { metadata:    dto.metadata }),
       updated_at: new Date(),

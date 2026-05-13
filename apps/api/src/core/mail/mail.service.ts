@@ -155,17 +155,21 @@ export class MailService {
 
   welcomeHtml(name: string): string {
     const appUrl = this.config.get<string>('APP_URL') ?? 'https://musicos360.com.br';
-    return `
-      <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
-        <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-        <p>Olá, <strong>${name}</strong>!</p>
-        <p>A sua conta está pronta. Acesse a plataforma:</p>
-        <a href="${appUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
-          Acessar MUSIC OS 360
-        </a>
-        <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360 — Enterprise Music Management SaaS</p>
-      </div>
-    `;
+    return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head><meta charset="UTF-8"><title>Bem-vindo ao MUSIC OS 360</title></head>
+<body>
+  <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
+    <h1 style="color:#1d4ed8">MUSIC OS 360</h1>
+    <p>Olá, <strong>${name}</strong>!</p>
+    <p>A sua conta está pronta. Acesse a plataforma:</p>
+    <a href="${appUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+      Acessar MUSIC OS 360
+    </a>
+    <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360 — Enterprise Music Management SaaS</p>
+  </div>
+</body>
+</html>`;
   }
 
   contractExpiringHtml(contractTitle: string, daysLeft: number): string {

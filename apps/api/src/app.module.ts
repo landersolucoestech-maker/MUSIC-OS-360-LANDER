@@ -49,6 +49,10 @@ import { SupportTicketsModule }    from './modules/support-tickets/support-ticke
 import { IntegrationsModule }      from './modules/integrations/integrations.module';
 import { AIModule }                from './modules/ai/ai.module';
 import { BillingModule }           from './modules/billing/billing.module';
+import { ArtistGoalsModule }       from './modules/artist-goals/artist-goals.module';
+import { ContentDetectionsModule } from './modules/content-detections/content-detections.module';
+import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
+import { HrModule }                from './modules/hr/hr.module';
 import { ClerkAuthGuard }          from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
@@ -93,7 +97,7 @@ import { RolesGuard }           from './core/guards/roles.guard';
           if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(err.code ?? '')) {
             // log limpo sem stack trace em dev
             if (process.env.NODE_ENV !== 'production') {
-              process.stdout.write(`[BullMQ Redis] ${err.code}: ${err.hostname ?? err.message?.split('\n')[0]}\n`);
+              process.stdout.write(`[BullMQ Redis] ${err.code}: ${(err as any).hostname ?? err.message?.split('\n')[0]}\n`);
             }
           }
         });
@@ -157,6 +161,12 @@ import { RolesGuard }           from './core/guards/roles.guard';
 
     // ── Módulos FASE 6 — Stripe Billing ──────────────────────────────────────
     BillingModule,
+
+    // ── Módulos FASE 10 — Artist Goals / Content Detections / ECAD / HR ──────
+    ArtistGoalsModule,
+    ContentDetectionsModule,
+    EcadReportsModule,
+    HrModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

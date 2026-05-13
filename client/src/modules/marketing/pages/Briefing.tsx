@@ -16,6 +16,7 @@ import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { useBriefings } from "@/modules/marketing/hooks/useBriefings";
 import { cn } from "@/shared/lib/utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 export default function MarketingBriefing() {
   const { briefings, isLoading, deleteBriefing } = useBriefings();
@@ -74,6 +75,7 @@ export default function MarketingBriefing() {
   }
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout
       title="Central de Briefing"
       description="Gerencie briefings e diretrizes para campanhas de marketing"
@@ -224,5 +226,6 @@ export default function MarketingBriefing() {
         onConfirm={handleDelete}
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

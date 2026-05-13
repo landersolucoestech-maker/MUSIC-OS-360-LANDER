@@ -13,6 +13,7 @@ import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
 import { useTarefasMarketing } from "@/modules/marketing/hooks/useTarefasMarketing";
 import { cn } from "@/shared/lib/utils";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 export default function MarketingTarefas() {
   const { tarefas, isLoading, deleteTarefa } = useTarefasMarketing();
@@ -75,6 +76,7 @@ export default function MarketingTarefas() {
   }
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout
       title="Gestão de Tarefas"
       description="Organize e acompanhe todas as tarefas de marketing"
@@ -249,5 +251,6 @@ export default function MarketingTarefas() {
         onConfirm={handleDelete}
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

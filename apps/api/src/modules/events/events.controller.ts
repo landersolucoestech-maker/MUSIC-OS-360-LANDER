@@ -18,10 +18,10 @@ export class EventsController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('editor') @Audit('event.created') @ApiOperation({ summary: 'Criar evento' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateEventDto) { return this.svc.create(t.id, dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateEventDto) { return this.svc.create(t.id, u?.sub ?? '', dto); }
 
   @Patch(':id') @RequireRole('editor') @Audit('event.updated') @ApiOperation({ summary: 'Actualizar evento' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEventDto) { return this.svc.update(t.id, id, dto); }
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateEventDto) { return this.svc.update(t.id, u?.sub ?? '', id, dto); }
 
   @Delete(':id') @RequireRole('manager') @Audit('event.deleted') @ApiOperation({ summary: 'Cancelar evento' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }

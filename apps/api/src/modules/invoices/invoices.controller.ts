@@ -20,10 +20,10 @@ export class InvoicesController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('editor') @Audit('invoice.created') @ApiOperation({ summary: 'Criar nota fiscal' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateInvoiceDto) { return this.svc.create(t.id, dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateInvoiceDto) { return this.svc.create(t.id, u?.sub ?? '', dto); }
 
   @Patch(':id') @RequireRole('editor') @Audit('invoice.updated') @ApiOperation({ summary: 'Actualizar nota fiscal' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateInvoiceDto) { return this.svc.update(t.id, id, dto); }
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateInvoiceDto) { return this.svc.update(t.id, u?.sub ?? '', id, dto); }
 
   @Delete(':id') @RequireRole('manager') @Audit('invoice.deleted') @ApiOperation({ summary: 'Cancelar nota fiscal' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }

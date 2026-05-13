@@ -33,16 +33,16 @@ export class ContractTemplatesController {
   @RequireRole('editor')
   @Audit('contract_template.created')
   @ApiOperation({ summary: 'Criar template' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateContractTemplateDto) {
-    return this.svc.create(t.id, dto);
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateContractTemplateDto) {
+    return this.svc.create(t.id, u?.sub ?? '', dto);
   }
 
   @Patch(':id')
   @RequireRole('editor')
   @Audit('contract_template.updated')
   @ApiOperation({ summary: 'Actualizar template' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContractTemplateDto) {
-    return this.svc.update(t.id, id, dto);
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContractTemplateDto) {
+    return this.svc.update(t.id, u?.sub ?? '', id, dto);
   }
 
   @Delete(':id')

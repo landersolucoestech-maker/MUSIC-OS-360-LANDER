@@ -18,10 +18,10 @@ export class CampaignsController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('editor') @Audit('campaign.created') @ApiOperation({ summary: 'Criar campanha' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateCampaignDto) { return this.svc.create(t.id, dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateCampaignDto) { return this.svc.create(t.id, u?.sub ?? '', dto); }
 
   @Patch(':id') @RequireRole('editor') @Audit('campaign.updated') @ApiOperation({ summary: 'Actualizar campanha' })
-  update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCampaignDto) { return this.svc.update(t.id, id, dto); }
+  update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCampaignDto) { return this.svc.update(t.id, u?.sub ?? '', id, dto); }
 
   @Delete(':id') @RequireRole('manager') @Audit('campaign.deleted') @ApiOperation({ summary: 'Cancelar campanha' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }

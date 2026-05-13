@@ -59,17 +59,17 @@ export class UploadsController {
     });
 
     await this.db.insert(schema.uploads).values({
-      tenantId:     tenant.id,
-      userId:       user.userId,
-      fileId,
-      originalName: dto.fileName,
-      mimeType:     dto.mimeType,
-      sizeBytes:    dto.sizeBytes,
-      r2Key:        key,
-      category:     dto.category,
-      entity:       dto.entity   ?? null,
-      entityId:     dto.entityId ?? null,
-      status:       'pending',
+      tenant_id:     tenant.id,
+      user_id:       user.userId,
+      file_id:       fileId,
+      original_name: dto.fileName,
+      mime_type:     dto.mimeType,
+      size_bytes:    dto.sizeBytes,
+      r2_key:        key,
+      category:      dto.category,
+      entity:        dto.entity   ?? null,
+      entity_id:     dto.entityId ?? null,
+      status:        'pending',
     });
 
     this.logger.log(`Presign registado: ${fileId} / tenant ${tenant.id}`);
@@ -89,8 +89,8 @@ export class UploadsController {
       .from(schema.uploads)
       .where(
         and(
-          eq(schema.uploads.fileId,   fileId),
-          eq(schema.uploads.tenantId, tenant.id),
+          eq(schema.uploads.file_id,   fileId),
+          eq(schema.uploads.tenant_id, tenant.id),
         ),
       )
       .limit(1);
@@ -99,7 +99,7 @@ export class UploadsController {
 
     const [updated] = await this.db
       .update(schema.uploads)
-      .set({ status: 'confirmed', confirmedAt: new Date() })
+      .set({ status: 'confirmed', confirmed_at: new Date() })
       .where(eq(schema.uploads.id, row.id))
       .returning();
 
@@ -120,15 +120,15 @@ export class UploadsController {
       .from(schema.uploads)
       .where(
         and(
-          eq(schema.uploads.fileId,   fileId),
-          eq(schema.uploads.tenantId, tenant.id),
+          eq(schema.uploads.file_id,   fileId),
+          eq(schema.uploads.tenant_id, tenant.id),
         ),
       )
       .limit(1);
 
     if (!row) throw new NotFoundException('Arquivo não encontrado');
 
-    const url = await this.storage.createDownloadUrl(row.r2Key, 3600);
+    const url = await this.storage.createDownloadUrl(row.r2_key, 3600);
     return { url, expiresIn: 3600 };
   }
 }

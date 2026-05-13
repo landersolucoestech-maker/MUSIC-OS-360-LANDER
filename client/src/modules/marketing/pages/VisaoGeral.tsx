@@ -11,6 +11,7 @@ import { useBriefings } from "@/modules/marketing/hooks/useBriefings";
 import { useTarefasMarketing } from "@/modules/marketing/hooks/useTarefasMarketing";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { MetricCard } from "@/shared/components/MetricCard";
+import { FeatureGate } from '@/shared/components/FeatureGate';
 
 export default function MarketingVisaoGeral() {
   const { campanhas, isLoading: loadingCampanhas } = useCampanhas();
@@ -56,6 +57,7 @@ export default function MarketingVisaoGeral() {
   ];
 
   return (
+    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
     <MainLayout title="Visão Geral" description="Cockpit estratégico de marketing">
       <div className="space-y-6">
         {/* ── KPI Stats ── */}
@@ -235,5 +237,6 @@ export default function MarketingVisaoGeral() {
         </div>
       </div>
     </MainLayout>
+    </FeatureGate>
   );
 }
