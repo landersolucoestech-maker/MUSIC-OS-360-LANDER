@@ -16,15 +16,21 @@ import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
 import { Reflector } from '@nestjs/core';
 import { validateEnv } from './core/config/env.schema';
-import { DatabaseModule } from './database/database.module';
-import { CacheModule } from './cache/cache.module';
-import { StorageModule } from './storage/storage.module';
-import { HealthModule } from './modules/health/health.module';
-import { QueueModule } from './queues/queue.module';
-import { AuthModule } from './modules/auth/auth.module';
-import { ClerkAuthGuard } from './core/guards/clerk-auth.guard';
-import { TenantGuard } from './core/guards/tenant.guard';
-import { RolesGuard } from './core/guards/roles.guard';
+import { DatabaseModule }       from './database/database.module';
+import { CacheModule }          from './cache/cache.module';
+import { StorageModule }        from './storage/storage.module';
+import { HealthModule }         from './modules/health/health.module';
+import { QueueModule }          from './queues/queue.module';
+import { AuthModule }           from './modules/auth/auth.module';
+import { CoreModule }           from './core/core.module';
+import { ArtistsModule }        from './modules/artists/artists.module';
+import { WorksModule }          from './modules/works/works.module';
+import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
+import { ContractsModule }      from './modules/contracts/contracts.module';
+import { TransactionsModule }   from './modules/transactions/transactions.module';
+import { ClerkAuthGuard }       from './core/guards/clerk-auth.guard';
+import { TenantGuard }          from './core/guards/tenant.guard';
+import { RolesGuard }           from './core/guards/roles.guard';
 
 @Module({
   imports: [
@@ -61,14 +67,22 @@ import { RolesGuard } from './core/guards/roles.guard';
       },
     }),
 
-    // ── Módulos de domínio ────────────────────────────────────────────────────
-    HealthModule,
+    // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
+    CoreModule,
 
     // ── Auth (Clerk JWT + Webhook Sync) ───────────────────────────────────────
     AuthModule,
 
     // ── Filas ─────────────────────────────────────────────────────────────────
     QueueModule,
+
+    // ── Módulos de domínio ────────────────────────────────────────────────────
+    HealthModule,
+    ArtistsModule,
+    WorksModule,
+    PhonogramsModule,
+    ContractsModule,
+    TransactionsModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

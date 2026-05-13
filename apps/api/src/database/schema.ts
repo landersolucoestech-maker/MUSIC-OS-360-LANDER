@@ -177,6 +177,27 @@ export const transactions = pgTable('transactions', {
   index('transactions_occurred_idx').on(t.occurredAt),
 ]);
 
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+
+export const auditLogs = pgTable('audit_logs', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenantId:   uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
+  userId:     uuid('user_id').references(() => users.id,   { onDelete: 'set null' }),
+  action:     varchar('action', { length: 100 }).notNull(),
+  entity:     varchar('entity', { length: 100 }).notNull(),
+  entityId:   varchar('entity_id', { length: 255 }),
+  before:     jsonb('before'),
+  after:      jsonb('after'),
+  ipAddress:  varchar('ip_address', { length: 45 }),
+  userAgent:  text('user_agent'),
+  requestId:  varchar('request_id', { length: 255 }),
+  createdAt:  timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('audit_tenant_idx').on(t.tenantId),
+  index('audit_entity_idx').on(t.entity, t.entityId),
+  index('audit_created_idx').on(t.createdAt),
+]);
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export type Tenant       = typeof tenants.$inferSelect;
@@ -193,3 +214,5 @@ export type Contract     = typeof contracts.$inferSelect;
 export type NewContract  = typeof contracts.$inferInsert;
 export type Transaction  = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
+export type AuditLog     = typeof auditLogs.$inferSelect;
+export type NewAuditLog  = typeof auditLogs.$inferInsert;
