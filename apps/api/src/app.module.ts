@@ -29,9 +29,24 @@ import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
 import { ContractsModule }      from './modules/contracts/contracts.module';
 import { TransactionsModule }   from './modules/transactions/transactions.module';
 import { WsModule }             from './core/websocket/ws.module';
-import { NotificationsModule }  from './modules/notifications/notifications.module';
-import { UploadsModule }        from './modules/uploads/uploads.module';
-import { ClerkAuthGuard }       from './core/guards/clerk-auth.guard';
+import { NotificationsModule }     from './modules/notifications/notifications.module';
+import { UploadsModule }           from './modules/uploads/uploads.module';
+import { ContractTemplatesModule } from './modules/contract-templates/contract-templates.module';
+import { InvoicesModule }          from './modules/invoices/invoices.module';
+import { ClientsModule }           from './modules/clients/clients.module';
+import { LeadsModule }             from './modules/leads/leads.module';
+import { LeadInteractionsModule }  from './modules/lead-interactions/lead-interactions.module';
+import { CampaignsModule }         from './modules/campaigns/campaigns.module';
+import { BriefingsModule }         from './modules/briefings/briefings.module';
+import { EventsModule }            from './modules/events/events.module';
+import { ProjectsModule }          from './modules/projects/projects.module';
+import { TakedownsModule }         from './modules/takedowns/takedowns.module';
+import { SharesModule }            from './modules/shares/shares.module';
+import { ReleasesModule }          from './modules/releases/releases.module';
+import { UsersModule }             from './modules/users/users.module';
+import { AuditLogModule }          from './modules/audit-log/audit-log.module';
+import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
+import { ClerkAuthGuard }          from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
 
@@ -91,6 +106,23 @@ import { RolesGuard }           from './core/guards/roles.guard';
     TransactionsModule,
     NotificationsModule,
     UploadsModule,
+
+    // ── Módulos FASE 3 ────────────────────────────────────────────────────────
+    ContractTemplatesModule,
+    InvoicesModule,
+    ClientsModule,
+    LeadsModule,
+    LeadInteractionsModule,
+    CampaignsModule,
+    BriefingsModule,
+    EventsModule,
+    ProjectsModule,
+    TakedownsModule,
+    SharesModule,
+    ReleasesModule,
+    UsersModule,
+    AuditLogModule,
+    SupportTicketsModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas
