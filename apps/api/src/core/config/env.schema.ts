@@ -6,15 +6,17 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3001),
 
-  // Database (Neon PostgreSQL)
-  DATABASE_URL: z.string().min(1, 'DATABASE_URL é obrigatório'),
-  DATABASE_DIRECT_URL: z.string().optional(),
+  // Database (Replit built-in PostgreSQL — não usar directamente no NestJS)
+  DATABASE_URL: z.string().optional(),
 
-  // Redis (Railway — BullMQ Queues)
+  // Database (Neon PostgreSQL — usar no NestJS/Drizzle)
+  NEON_DATABASE_URL: z.string().optional(),
+  NEON_DATABASE_DIRECT_URL: z.string().optional(),
+
+  // Redis (Railway — BullMQ Queues via ioredis)
   REDIS_QUEUE_URL: z.string().default('redis://localhost:6379'),
-  REDIS_QUEUE_PASSWORD: z.string().optional(),
 
-  // Redis (Upstash — Cache / Rate Limit)
+  // Redis (Upstash — Cache / Rate Limit via REST API)
   UPSTASH_REDIS_URL: z.string().optional(),
   UPSTASH_REDIS_TOKEN: z.string().optional(),
 
@@ -43,11 +45,11 @@ const envSchema = z.object({
   STRIPE_PRICE_PROFESSIONAL: z.string().optional(),
   STRIPE_PRICE_ENTERPRISE: z.string().optional(),
 
-  // Cloudflare R2
+  // Cloudflare R2 (S3-compatible)
   R2_ACCOUNT_ID: z.string().optional(),
   R2_ACCESS_KEY: z.string().optional(),
   R2_SECRET_KEY: z.string().optional(),
-  R2_BUCKET_NAME: z.string().optional(),
+  R2_BUCKET_NAME: z.string().default('music-os-360'),
   R2_PUBLIC_URL: z.string().optional(),
 
   // AI

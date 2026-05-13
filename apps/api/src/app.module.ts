@@ -2,25 +2,41 @@
  * app.module.ts
  *
  * Módulo raiz do MUSIC OS 360 API.
- * BullMQ configurado com REDIS_QUEUE_URL — infraestrutura de filas enterprise.
+ * Infraestrutura completa:
+ *   - Neon PostgreSQL (Drizzle ORM)
+ *   - Upstash Redis (cache / rate-limit)
+ *   - Cloudflare R2 (file storage)
+ *   - BullMQ + Railway Redis (filas assíncronas)
  */
 
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { validateEnv } from './core/config/env.schema';
+import { DatabaseModule } from './database/database.module';
+import { CacheModule } from './cache/cache.module';
+import { StorageModule } from './storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueueModule } from './queues/queue.module';
-import { validateEnv } from './core/config/env.schema';
 
 @Module({
   imports: [
-    // ── Configuração de ambiente ─────────────────────────────────────────────
+    // ── Ambiente ─────────────────────────────────────────────────────────────
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
     }),
 
-    // ── BullMQ — filas enterprise-ready ─────────────────────────────────────
+    // ── Neon PostgreSQL (Drizzle ORM) ─────────────────────────────────────────
+    DatabaseModule,
+
+    // ── Upstash Redis (cache / rate-limit) ────────────────────────────────────
+    CacheModule,
+
+    // ── Cloudflare R2 (file storage) ──────────────────────────────────────────
+    StorageModule,
+
+    // ── BullMQ — filas enterprise-ready (Railway Redis) ───────────────────────
     BullModule.forRoot({
       connection: {
         url: process.env.REDIS_QUEUE_URL,
@@ -38,10 +54,10 @@ import { validateEnv } from './core/config/env.schema';
       },
     }),
 
-    // ── Módulos de infraestrutura ────────────────────────────────────────────
+    // ── Módulos de domínio ────────────────────────────────────────────────────
     HealthModule,
 
-    // ── Filas ────────────────────────────────────────────────────────────────
+    // ── Filas ─────────────────────────────────────────────────────────────────
     QueueModule,
   ],
 })
