@@ -1,0 +1,937 @@
+FASE 7 — INTEGRAÇÕES REAIS
+Depende de: Fases 3 e 4 completas
+Prioridade de implementação baseada em valor de negócio:
+
+7.1 — ACRCloud (monitoramento de música)
+typescript// apps/api/src/modules/integrations/acrcloud/acrcloud.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { ConfigService }      from '@nestjs/config';
+import * as crypto            from 'crypto';
+
+@Injectable()
+export class ACRCloudService {
+  private readonly logger = new Logger(ACRCloudService.name);
+
+  constructor(private config: ConfigService) {}
+
+  // HMAC real — server-side exclusivamente
+  private buildSignature(method: string, uri: string, timestamp: number): string {
+    const secret    = this.config.get<string>('ACRCLOUD_ACCESS_SECRET')!;
+    const stringToSign = [
+      method,
+      uri,
+      this.config.get('ACRCLOUD_ACCESS_KEY'),
+      'audio',
+      '1',
+      String(timestamp),
+    ].join('\n');
+
+    return crypto
+      .createHmac('sha1', secret)
+      .update(stringToSign)
+      .digest('base64');
+  }
+
+  async recognize(audioBase64: string): Promise<ACRCloudResult> {
+    const host      = this.config.get<string>('ACRCLOUD_HOST')!;
+    const key       = this.config.get<string>('ACRCLOUD_ACCESS_KEY')!;
+    const timestamp = Math.floor(Date.now() / 1000);
+    const signature = this.buildSignature('POST', '/v1/identify', timestamp);
+
+    const formData = new FormData();
+    formData.append('sample', Buffer.from(audioBase64, 'base64'), {
+      filename:    'sample.mp3',
+      contentType: 'audio/mpeg',
+    } as any);
+    formData.append('access_key',  key);
+    formData.append('data_type',   'audio');
+    formData.append('signature_version', '1');
+    formData.append('signature',   signature);
+    formData.append('timestamp',   String(timestamp));
+
+    const res  = await fetch(`https://${host}/v1/identify`, {
+      method: 'POST',
+      body:   formData,
+    });
+    const data = await res.json();
+
+    if (data.status?.code !== 0) {
+      throw new Error(`ACRCloud erro: ${data.status?.msg}`);
+    }
+
+    const music = data.metadata?.music?.[0];
+    return {
+      title:      music?.title,
+      artist:     music?.artists?.[0]?.name,
+      album:      music?.album?.name,
+      isrc:       music?.external_ids?.isrc,
+      confidence: music?.score / 100,
+    };
+  }
+}
+
+interface ACRCloudResult {
+  title?:      string;
+  artist?:     string;
+  album?:      string;
+  isrc?:       string;
+  confidence?: number;
+}
+
+7.2 — Autentique (assinatura digital)
+typescript// apps/api/src/modules/integrations/autentique/autentique.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService }      from '../../../core/database/prisma.service';
+import { EncryptionService }  from '../../../core/security/encryption.service';
+
+const AUTENTIQUE_API = 'https://api.autentique.com.br/v2';
+
+@Injectable()
+export class AutentiqueService {
+  private readonly logger = new Logger(AutentiqueService.name);
+
+  constructor(
+    private prisma:     PrismaService,
+    private encryption: EncryptionService,
+  ) {}
+
+  private async getToken(tenantId: string): Promise<string> {
+    const integration = await this.prisma.integration.findUnique({
+      where: { tenant_id_provider: { tenant_id: tenantId, provider: 'autentique' } },
+    });
+    if (!integration?.credentials_encrypted) {
+      throw new Error('Autentique não configurado para este tenant');
+    }
+    const creds = this.encryption.decrypt(
+      JSON.stringify(integration.credentials_encrypted)
+    );
+    return JSON.parse(creds).api_token;
+  }
+
+  async sendForSignature(params: {
+    tenantId:   string;
+    contractId: string;
+    name:       string;
+    fileBase64: string;
+    signers:    Array<{ name: string; email: string }>;
+  }): Promise<{ documentId: string }> {
+    const token = await this.getToken(params.tenantId);
+
+    const mutation = `
+      mutation CreateDocument($document: DocumentInput!, $signers: [SignerInput!]!) {
+        createDocument(document: $document, signers: $signers) {
+          id
+          name
+        }
+      }
+    `;
+
+    const res = await fetch(`${AUTENTIQUE_API}/graphql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        query: mutation,
+        variables: {
+          document: { name: params.name, content_base64: params.fileBase64 },
+          signers:  params.signers.map(s => ({
+            name:   s.name,
+            email:  s.email,
+            action: 'SIGN',
+          })),
+        },
+      }),
+    });
+
+    const data = await res.json();
+    if (data.errors) throw new Error(data.errors[0].message);
+
+    const docId = data.data.createDocument.id;
+
+    // Atualizar contrato com ID do documento Autentique
+    await this.prisma.contract.updateMany({
+      where: { id: params.contractId },
+      data: {
+        autentique_doc_id: docId,
+        status:            'aguardando_assinatura',
+        signing_platform:  'autentique',
+      },
+    });
+
+    return { documentId: docId };
+  }
+
+  async handleWebhook(tenantId: string, payload: any): Promise<void> {
+    if (payload.event !== 'document.signed') return;
+
+    await this.prisma.contract.updateMany({
+      where: { autentique_doc_id: payload.document_id },
+      data:  { status: 'assinado' },
+    });
+
+    this.logger.log(`Contrato assinado via Autentique: ${payload.document_id}`);
+  }
+}
+
+7.3 — Spotify (métricas de streaming)
+typescript// apps/api/src/modules/integrations/spotify/spotify.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService }      from '../../../core/database/prisma.service';
+import { EncryptionService }  from '../../../core/security/encryption.service';
+import { InjectQueue }        from '@nestjs/bullmq';
+import { Queue }              from 'bullmq';
+import { QUEUES }             from '../../../core/queue/queue.constants';
+
+@Injectable()
+export class SpotifyService {
+  private readonly logger = new Logger(SpotifyService.name);
+  private readonly BASE   = 'https://api.spotify.com/v1';
+
+  constructor(
+    private prisma:     PrismaService,
+    private encryption: EncryptionService,
+    @InjectQueue(QUEUES.STREAMING_SYNC) private syncQueue: Queue,
+  ) {}
+
+  // URL de autorização OAuth
+  getAuthUrl(tenantId: string, userId: string): string {
+    const state  = Buffer.from(JSON.stringify({ tenantId, userId })).toString('base64');
+    const scopes = 'user-read-private user-read-email';
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id:     process.env.SPOTIFY_CLIENT_ID!,
+      scope:         scopes,
+      redirect_uri:  process.env.SPOTIFY_REDIRECT_URI!,
+      state,
+    });
+    return `https://accounts.spotify.com/authorize?${params}`;
+  }
+
+  // Callback OAuth — troca code por tokens
+  async handleCallback(code: string, state: string): Promise<void> {
+    const { tenantId, userId } = JSON.parse(
+      Buffer.from(state, 'base64').toString('utf-8'),
+    );
+
+    const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(
+          `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+        ).toString('base64')}`,
+      },
+      body: new URLSearchParams({
+        code,
+        redirect_uri:  process.env.SPOTIFY_REDIRECT_URI!,
+        grant_type:    'authorization_code',
+      }),
+    });
+
+    const tokens = await tokenRes.json();
+
+    // Salvar tokens criptografados
+    await this.prisma.oAuthConnection.upsert({
+      where: {
+        tenant_id_provider_user_id: { tenant_id: tenantId, provider: 'spotify', user_id: userId },
+      },
+      create: {
+        tenant_id:               tenantId,
+        user_id:                 userId,
+        provider:                'spotify',
+        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+        refresh_token_encrypted: this.encryption.encryptNullable(tokens.refresh_token),
+        expires_at:              new Date(Date.now() + tokens.expires_in * 1000),
+      },
+      update: {
+        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+        refresh_token_encrypted: this.encryption.encryptNullable(tokens.refresh_token),
+        expires_at:              new Date(Date.now() + tokens.expires_in * 1000),
+      },
+    });
+
+    // Agendar sync inicial
+    await this.syncQueue.add('spotify:sync', { tenantId, userId }, { delay: 1000 });
+  }
+
+  // Sync de métricas de artista (executado pelo worker)
+  async syncArtistMetrics(tenantId: string, artistId: string): Promise<void> {
+    const artist = await this.prisma.artist.findFirst({
+      where: { id: artistId, tenant_id: tenantId },
+    });
+    if (!artist?.spotify_artist_id) return;
+
+    const token = await this.getValidToken(tenantId);
+    if (!token) return;
+
+    const res     = await fetch(`${this.BASE}/artists/${artist.spotify_artist_id}`, {
+      headers: { 'Authorization': `Bearer ${token}` },
+    });
+    const data    = await res.json();
+
+    // Salvar métricas (futura tabela streaming_metrics)
+    this.logger.log(
+      `Spotify sync: ${data.name} — ${data.followers?.total?.toLocaleString()} followers`,
+    );
+  }
+
+  private async getValidToken(tenantId: string): Promise<string | null> {
+    const conn = await this.prisma.oAuthConnection.findFirst({
+      where: { tenant_id: tenantId, provider: 'spotify' },
+    });
+    if (!conn) return null;
+
+    // Refresh se expirado
+    if (conn.expires_at && conn.expires_at < new Date()) {
+      return this.refreshToken(conn);
+    }
+
+    return this.encryption.decrypt(conn.access_token_encrypted);
+  }
+
+  private async refreshToken(conn: any): Promise<string> {
+    const refreshToken = this.encryption.decrypt(conn.refresh_token_encrypted);
+
+    const res   = await fetch('https://accounts.spotify.com/api/token', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(
+          `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
+        ).toString('base64')}`,
+      },
+      body: new URLSearchParams({
+        grant_type:    'refresh_token',
+        refresh_token: refreshToken,
+      }),
+    });
+    const data  = await res.json();
+
+    await this.prisma.oAuthConnection.update({
+      where: { id: conn.id },
+      data: {
+        access_token_encrypted: this.encryption.encrypt(data.access_token),
+        expires_at:             new Date(Date.now() + data.expires_in * 1000),
+      },
+    });
+
+    return data.access_token;
+  }
+}
+Implementar da mesma forma para cada integração restante:
+
+PRIORIDADE 1 (MVP):
+  ✅ ACRCloud  — HMAC real, recognize, monitor
+  ✅ Autentique — OAuth, send for signature, webhook
+  ✅ Spotify   — OAuth, token refresh, artist metrics sync job
+
+PRIORIDADE 2:
+  YouTube      — OAuth real, channel metrics, sync job diário
+  Deezer       — API pública (sem OAuth), metrics sync
+  Abramus      — API REST, sync de ISRC/ISWC, regras de direito autoral
+
+PRIORIDADE 3:
+  Clicksign    — OAuth, document send, webhook
+  DocuSign     — OAuth, envelope send, webhook
+  Meta Ads     — OAuth, campaigns sync, pixel
+  Google Ads   — OAuth, campaigns sync
+  TikTok Ads   — OAuth, campaigns sync
+
+CADA integração deve ter obrigatoriamente:
+  - IntegrationsController com rotas /integrations/:provider/auth
+                                      /integrations/:provider/callback
+                                      /integrations/:provider/sync
+                                      /integrations/:provider/disconnect
+  - Tokens OAuth criptografados com EncryptionService no banco
+  - Job de sync agendado via BullMQ (QUEUES.INTEGRATIONS_SYNC)
+  - Retry com backoff em falhas de API externa
+  - Circuit breaker após 5 falhas consecutivas
+  - Mock providers do frontend substituídos progressivamente
+Critério de conclusão da Fase 7:
+
+✅ ACRCloud identifica música via API real com HMAC server-side
+✅ Autentique envia contrato para assinatura e recebe confirmação via webhook
+✅ Spotify OAuth conecta e salva tokens criptografados no banco
+✅ Mock providers desativados para as integrações implementadas
+
+
+FASE 8 — AI GATEWAY SERVER-SIDE REAL
+Depende de: Fases 3 e 4 completas
+Entregáveis:
+
+AI Gateway NestJS substituindo o server/ai-proxy.ts atual
+Suporte real a OpenAI, Claude e Gemini com fallback automático
+Streaming via WebSocket
+Cost tracking e rate limiting por tenant
+AI jobs via BullMQ para requests longos
+
+
+bashcd apps/api
+npm install openai @anthropic-ai/sdk @google/generative-ai
+typescript// apps/api/src/modules/ai/ai.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import OpenAI     from 'openai';
+import Anthropic  from '@anthropic-ai/sdk';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { ConfigService }    from '@nestjs/config';
+import { PrismaService }    from '../../core/database/prisma.service';
+import { RateLimitService } from '../../core/security/rate-limit.service';
+import { WsGateway }        from '../../core/websocket/ws.gateway';
+import { InjectQueue }      from '@nestjs/bullmq';
+import { Queue }            from 'bullmq';
+import { QUEUES }           from '../../core/queue/queue.constants';
+
+const SYSTEM_PROMPT = `Você é um assistente especializado em música e indústria fonográfica brasileira.
+Responda sempre em Português do Brasil. Seja conciso, profissional e direto.
+Não use asteriscos para negrito nem markdown. Use texto simples.`;
+
+const COST_PER_TOKEN: Record<string, { input: number; output: number }> = {
+  'gpt-4o':              { input: 0.000005,   output: 0.000015   },
+  'gpt-4o-mini':         { input: 0.00000015, output: 0.0000006  },
+  'claude-3-5-sonnet':   { input: 0.000003,   output: 0.000015   },
+  'claude-3-5-haiku':    { input: 0.0000008,  output: 0.000004   },
+  'gemini-1-5-pro':      { input: 0.00000125, output: 0.000005   },
+  'gemini-1-5-flash':    { input: 0.000000075, output: 0.0000003 },
+};
+
+export type AIProvider = 'openai' | 'claude' | 'gemini';
+
+export interface AIGenerateParams {
+  tenantId:  string;
+  userId:    string;
+  provider:  AIProvider;
+  model:     string;
+  prompt:    string;
+  skill:     string;
+  stream?:   boolean;
+  maxTokens?: number;
+}
+
+@Injectable()
+export class AIService {
+  private readonly logger = new Logger(AIService.name);
+  private openai:   OpenAI;
+  private anthropic: Anthropic;
+  private gemini:   GoogleGenerativeAI;
+
+  constructor(
+    private config:     ConfigService,
+    private prisma:     PrismaService,
+    private rateLimit:  RateLimitService,
+    private ws:         WsGateway,
+    @InjectQueue(QUEUES.AI_JOBS) private aiQueue: Queue,
+  ) {
+    this.openai    = new OpenAI({ apiKey: config.get('OPENAI_API_KEY') });
+    this.anthropic = new Anthropic({ apiKey: config.get('ANTHROPIC_API_KEY') });
+    this.gemini    = new GoogleGenerativeAI(config.get('GOOGLE_AI_API_KEY')!);
+  }
+
+  async generate(params: AIGenerateParams) {
+    // Rate limiting por tenant para AI
+    await this.rateLimit.check('ai', params.tenantId);
+
+    const startMs = Date.now();
+    let content   = '';
+    let usage     = { input_tokens: 0, output_tokens: 0 };
+
+    try {
+      if (params.provider === 'openai') {
+        const res = await this.openai.chat.completions.create({
+          model:      params.model,
+          messages:   [
+            { role: 'system', content: SYSTEM_PROMPT },
+            { role: 'user',   content: params.prompt },
+          ],
+          max_tokens: params.maxTokens ?? 1024,
+        });
+        content              = res.choices[0]?.message?.content ?? '';
+        usage.input_tokens   = res.usage?.prompt_tokens     ?? 0;
+        usage.output_tokens  = res.usage?.completion_tokens ?? 0;
+
+      } else if (params.provider === 'claude') {
+        const res = await this.anthropic.messages.create({
+          model:      params.model,
+          max_tokens: params.maxTokens ?? 1024,
+          system:     SYSTEM_PROMPT,
+          messages:   [{ role: 'user', content: params.prompt }],
+        });
+        content              = res.content[0]?.type === 'text' ? res.content[0].text : '';
+        usage.input_tokens   = res.usage.input_tokens;
+        usage.output_tokens  = res.usage.output_tokens;
+
+      } else if (params.provider === 'gemini') {
+        const model = this.gemini.getGenerativeModel({ model: params.model });
+        const res   = await model.generateContent(
+          `${SYSTEM_PROMPT}\n\n${params.prompt}`,
+        );
+        content              = res.response.text();
+        usage.input_tokens   = res.response.usageMetadata?.promptTokenCount     ?? 0;
+        usage.output_tokens  = res.response.usageMetadata?.candidatesTokenCount ?? 0;
+      }
+
+      // Calcular custo
+      const rates   = COST_PER_TOKEN[params.model] ?? { input: 0, output: 0 };
+      const costUsd = usage.input_tokens * rates.input + usage.output_tokens * rates.output;
+      const latency = Date.now() - startMs;
+
+      // Registrar no banco para cost tracking
+      await this.prisma.aIJob.create({
+        data: {
+          tenant_id:    params.tenantId,
+          user_id:      params.userId,
+          provider:     params.provider,
+          model:        params.model,
+          skill:        params.skill,
+          prompt:       params.prompt,
+          result:       content,
+          status:       'completed',
+          input_tokens:  usage.input_tokens,
+          output_tokens: usage.output_tokens,
+          cost_usd:     costUsd,
+          latency_ms:   latency,
+          completed_at: new Date(),
+        },
+      });
+
+      return { content, usage, latencyMs: latency, costUsd };
+
+    } catch (err) {
+      this.logger.error(`AI generation failed: ${(err as Error).message}`);
+
+      // Tentar fallback para outro provider
+      if (params.provider !== 'openai') {
+        this.logger.warn(`Fallback para OpenAI após falha em ${params.provider}`);
+        return this.generate({ ...params, provider: 'openai', model: 'gpt-4o-mini' });
+      }
+
+      throw err;
+    }
+  }
+
+  // Streaming via WebSocket — para requests longos
+  async generateStream(params: AIGenerateParams & { socketId: string }) {
+    const { tenantId, userId, socketId } = params;
+    await this.rateLimit.check('ai', tenantId);
+
+    const stream = await this.openai.chat.completions.create({
+      model:      params.model,
+      messages:   [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user',   content: params.prompt },
+      ],
+      max_tokens: params.maxTokens ?? 1024,
+      stream:     true,
+    });
+
+    let fullContent = '';
+    for await (const chunk of stream) {
+      const delta = chunk.choices[0]?.delta?.content ?? '';
+      if (delta) {
+        fullContent += delta;
+        // Enviar chunk via WebSocket ao usuário
+        await this.ws.sendToUser(tenantId, userId, 'ai:stream:chunk', {
+          socketId,
+          delta,
+          done: false,
+        });
+      }
+    }
+
+    await this.ws.sendToUser(tenantId, userId, 'ai:stream:chunk', {
+      socketId,
+      delta: '',
+      done:  true,
+    });
+
+    return { content: fullContent };
+  }
+}
+
+// apps/api/src/modules/ai/ai.controller.ts
+@Controller('ai')
+@UseGuards(ClerkAuthGuard, TenantGuard)
+@ApiBearerAuth()
+@ApiTags('AI')
+export class AIController {
+  constructor(private aiService: AIService) {}
+
+  @Post('generate')
+  @ApiOperation({ summary: 'Gerar conteúdo com IA' })
+  generate(
+    @CurrentTenant() tenant: any,
+    @CurrentUser()   user: any,
+    @Body()          dto: AIGenerateDto,
+  ) {
+    return this.aiService.generate({
+      tenantId: tenant.id,
+      userId:   user.userId,
+      ...dto,
+    });
+  }
+
+  @Post('generate/stream')
+  @ApiOperation({ summary: 'Gerar conteúdo com streaming via WebSocket' })
+  generateStream(
+    @CurrentTenant() tenant: any,
+    @CurrentUser()   user: any,
+    @Body()          dto: AIGenerateDto & { socketId: string },
+  ) {
+    return this.aiService.generateStream({
+      tenantId: tenant.id,
+      userId:   user.userId,
+      ...dto,
+    });
+  }
+}
+Critério de conclusão da Fase 8:
+
+✅ POST /api/v1/ai/generate com provider=claude gera resposta real via Anthropic
+✅ POST /api/v1/ai/generate com provider=openai gera resposta real via OpenAI
+✅ Fallback automático para OpenAI quando Claude falha
+✅ Streaming entrega chunks via WebSocket em tempo real
+✅ Cost tracking registrado no banco para cada request
+✅ server/ai-proxy.ts original pode ser removido
+
+
+FASE 9 — RESEND + POSTHOG + SENTRY
+Depende de: Fase 4 completa
+
+9.1 — Resend (email transacional)
+bashcd apps/api && npm install resend
+typescript// apps/api/src/core/mail/mail.service.ts
+import { Injectable, Logger } from '@nestjs/common';
+import { Resend }             from 'resend';
+import { ConfigService }      from '@nestjs/config';
+import { InjectQueue }        from '@nestjs/bullmq';
+import { Queue }              from 'bullmq';
+import { QUEUES }             from '../queue/queue.constants';
+
+export interface SendEmailParams {
+  to:       string | string[];
+  subject:  string;
+  html:     string;
+  from?:    string;
+  replyTo?: string;
+}
+
+@Injectable()
+export class MailService {
+  private readonly resend: Resend;
+  private readonly logger  = new Logger(MailService.name);
+  private readonly FROM:   string;
+
+  constructor(
+    private config: ConfigService,
+    @InjectQueue(QUEUES.EMAILS) private emailQueue: Queue,
+  ) {
+    this.resend = new Resend(this.config.get<string>('RESEND_API_KEY'));
+    this.FROM   = this.config.get<string>('RESEND_FROM_EMAIL')!;
+  }
+
+  // Envio síncrono (para testes ou emails críticos)
+  async send(params: SendEmailParams) {
+    try {
+      const result = await this.resend.emails.send({
+        from:     params.from ?? this.FROM,
+        to:       params.to,
+        subject:  params.subject,
+        html:     params.html,
+        reply_to: params.replyTo,
+      });
+      this.logger.log(`Email enviado: ${result.data?.id}`);
+      return result;
+    } catch (err) {
+      this.logger.error(`Falha no envio de email: ${(err as Error).message}`);
+      throw err;
+    }
+  }
+
+  // Envio assíncrono via fila (padrão recomendado)
+  async enqueue(params: SendEmailParams & { type: string }) {
+    await this.emailQueue.add(params.type, params, {
+      attempts: 3,
+      backoff:  { type: 'exponential', delay: 5000 },
+    });
+  }
+
+  // Templates prontos
+  async sendWelcome(to: string, name: string) {
+    await this.enqueue({
+      type:    'welcome',
+      to,
+      subject: 'Bem-vindo ao MUSIC OS 360°',
+      html:    this.welcomeTemplate(name),
+    });
+  }
+
+  async sendContractSigned(to: string, contractTitle: string) {
+    await this.enqueue({
+      type:    'contract_signed',
+      to,
+      subject: `Contrato assinado: ${contractTitle}`,
+      html:    this.contractSignedTemplate(contractTitle),
+    });
+  }
+
+  async sendContractExpiring(to: string, contractTitle: string, daysLeft: number) {
+    await this.enqueue({
+      type:    'contract_expiring',
+      to,
+      subject: `⚠️ Contrato vencendo em ${daysLeft} dias: ${contractTitle}`,
+      html:    this.contractExpiringTemplate(contractTitle, daysLeft),
+    });
+  }
+
+  async sendPaymentFailed(to: string, planName: string) {
+    await this.enqueue({
+      type:    'payment_failed',
+      to,
+      subject: '⚠️ Falha no pagamento da sua assinatura',
+      html:    this.paymentFailedTemplate(planName),
+    });
+  }
+
+  async sendOrgInvite(to: string, orgName: string, inviteUrl: string) {
+    await this.enqueue({
+      type:    'org_invite',
+      to,
+      subject: `Convite para entrar em ${orgName}`,
+      html:    this.inviteTemplate(orgName, inviteUrl),
+    });
+  }
+
+  // Templates HTML (manter simples e compatíveis com email clients)
+  private welcomeTemplate(name: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h1 style="color: #1a1a2e;">Bem-vindo ao MUSIC OS 360°, ${name}!</h1>
+        <p>Sua plataforma de gestão musical enterprise está pronta.</p>
+        <p>Acesse agora e comece a cadastrar seus artistas e catálogo.</p>
+        <a href="${process.env.APP_URL}" 
+           style="background: #6366f1; color: white; padding: 12px 24px; 
+                  border-radius: 6px; text-decoration: none; display: inline-block;">
+          Acessar plataforma
+        </a>
+      </div>`;
+  }
+
+  private contractSignedTemplate(title: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a2e;">✅ Contrato Assinado</h2>
+        <p>O contrato <strong>${title}</strong> foi assinado por todas as partes.</p>
+        <p>Acesse o MUSIC OS 360° para visualizar o documento assinado.</p>
+      </div>`;
+  }
+
+  private contractExpiringTemplate(title: string, days: number): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #f59e0b;">⚠️ Contrato Vencendo</h2>
+        <p>O contrato <strong>${title}</strong> vence em <strong>${days} dias</strong>.</p>
+        <p>Acesse o MUSIC OS 360° para renovar ou encerrar o contrato.</p>
+      </div>`;
+  }
+
+  private paymentFailedTemplate(plan: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #ef4444;">⚠️ Falha no Pagamento</h2>
+        <p>Não conseguimos processar o pagamento do plano <strong>${plan}</strong>.</p>
+        <p>Atualize seu método de pagamento para evitar interrupção do serviço.</p>
+        <a href="${process.env.APP_URL}/configuracoes/billing"
+           style="background: #ef4444; color: white; padding: 12px 24px;
+                  border-radius: 6px; text-decoration: none; display: inline-block;">
+          Atualizar pagamento
+        </a>
+      </div>`;
+  }
+
+  private inviteTemplate(orgName: string, inviteUrl: string): string {
+    return `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #1a1a2e;">Convite para ${orgName}</h2>
+        <p>Você foi convidado para colaborar no MUSIC OS 360°.</p>
+        <a href="${inviteUrl}"
+           style="background: #6366f1; color: white; padding: 12px 24px;
+                  border-radius: 6px; text-decoration: none; display: inline-block;">
+          Aceitar convite
+        </a>
+      </div>`;
+  }
+}
+
+9.2 — PostHog (analytics)
+bashcd apps/api && npm install posthog-node
+cd apps/web && npm install posthog-js  # já pode estar instalado
+typescript// apps/api/src/core/analytics/posthog.service.ts
+import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { PostHog } from 'posthog-node';
+import { ConfigService } from '@nestjs/config';
+
+@Injectable()
+export class PostHogService implements OnModuleDestroy {
+  private readonly client: PostHog | null = null;
+
+  constructor(private config: ConfigService) {
+    const key = config.get<string>('POSTHOG_API_KEY');
+    if (key) {
+      this.client = new PostHog(key, {
+        host:          config.get<string>('POSTHOG_HOST') ?? 'https://app.posthog.com',
+        flushAt:       20,
+        flushInterval: 10000,
+      });
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.client?.shutdown();
+  }
+
+  track(params: {
+    distinctId: string;
+    event:      string;
+    properties?: Record<string, unknown>;
+  }) {
+    if (!this.client) return;
+    this.client.capture({
+      distinctId: params.distinctId,
+      event:      params.event,
+      properties: params.properties,
+    });
+  }
+
+  identify(params: {
+    distinctId: string;
+    properties: Record<string, unknown>;
+  }) {
+    if (!this.client) return;
+    this.client.identify({
+      distinctId: params.distinctId,
+      properties: params.properties,
+    });
+  }
+
+  // Eventos de negócio críticos
+  trackArtistCreated(userId: string, tenantId: string) {
+    this.track({ distinctId: userId, event: 'artist.created', properties: { tenantId } });
+  }
+
+  trackContractSigned(userId: string, tenantId: string, contractType: string) {
+    this.track({ distinctId: userId, event: 'contract.signed',
+      properties: { tenantId, contractType } });
+  }
+
+  trackPlanUpgraded(userId: string, tenantId: string, from: string, to: string) {
+    this.track({ distinctId: userId, event: 'billing.plan_upgraded',
+      properties: { tenantId, from, to } });
+  }
+
+  trackAIGeneration(userId: string, tenantId: string, provider: string, skill: string) {
+    this.track({ distinctId: userId, event: 'ai.generation.completed',
+      properties: { tenantId, provider, skill } });
+  }
+
+  trackIntegrationConnected(userId: string, tenantId: string, provider: string) {
+    this.track({ distinctId: userId, event: 'integration.connected',
+      properties: { tenantId, provider } });
+  }
+}
+typescript// apps/web/src/main.tsx — adicionar PostHog no frontend
+import posthog from 'posthog-js';
+
+const POSTHOG_KEY = import.meta.env.VITE_POSTHOG_KEY;
+if (POSTHOG_KEY && import.meta.env.PROD) {
+  posthog.init(POSTHOG_KEY, {
+    api_host:          'https://app.posthog.com',
+    capture_pageview:  true,
+    capture_pageleave: true,
+    autocapture:       true,
+  });
+}
+
+9.3 — Sentry (monitoramento)
+bashcd apps/api && npm install @sentry/nestjs @sentry/profiling-node
+cd apps/web && npm install @sentry/react   # já pode estar instalado
+typescript// apps/api/src/instrument.ts — IMPORTAR ANTES de qualquer outro módulo
+import * as Sentry from '@sentry/nestjs';
+import { nodeProfilingIntegration } from '@sentry/profiling-node';
+
+Sentry.init({
+  dsn:          process.env.SENTRY_DSN,
+  environment:  process.env.NODE_ENV,
+  integrations: [nodeProfilingIntegration()],
+  tracesSampleRate:   1.0,
+  profilesSampleRate: 1.0,
+  enabled: process.env.NODE_ENV === 'production',
+});
+
+// apps/api/src/main.ts — adicionar no topo
+import './instrument';
+
+// apps/api/src/core/filters/global-exception.filter.ts
+import { ExceptionFilter, Catch, ArgumentsHost, HttpException, Logger } from '@nestjs/common';
+import * as Sentry from '@sentry/nestjs';
+import { Response } from 'express';
+
+@Catch()
+export class GlobalExceptionFilter implements ExceptionFilter {
+  private readonly logger = new Logger('ExceptionFilter');
+
+  catch(exception: unknown, host: ArgumentsHost) {
+    const ctx    = host.switchToHttp();
+    const res    = ctx.getResponse<Response>();
+    const req    = ctx.getRequest();
+    const status = exception instanceof HttpException
+      ? exception.getStatus()
+      : 500;
+
+    // Log Sentry apenas para erros 5xx não esperados
+    if (status >= 500) {
+      Sentry.captureException(exception, {
+        extra: {
+          url:    req.url,
+          method: req.method,
+          body:   req.body,
+        },
+      });
+      this.logger.error(`${req.method} ${req.url} → ${status}`, (exception as Error).stack);
+    }
+
+    const message = exception instanceof HttpException
+      ? exception.getResponse()
+      : { message: 'Erro interno do servidor' };
+
+    res.status(status).json({
+      ...(typeof message === 'object' ? message : { message }),
+      statusCode: status,
+      timestamp:  new Date().toISOString(),
+      path:       req.url,
+    });
+  }
+}
+typescript// apps/web/src/main.tsx — Sentry no frontend
+import * as Sentry from '@sentry/react';
+
+if (import.meta.env.VITE_SENTRY_DSN && import.meta.env.PROD) {
+  Sentry.init({
+    dsn:              import.meta.env.VITE_SENTRY_DSN,
+    environment:      import.meta.env.MODE,
+    tracesSampleRate: 0.1,
+    replaysSessionSampleRate: 0.1,
+    replaysOnErrorSampleRate: 1.0,
+    integrations: [
+      Sentry.browserTracingIntegration(),
+      Sentry.replayIntegration(),
+    ],
+  });
+}
+Critério de conclusão da Fase 9:
+
+✅ Email de boas-vindas enviado via Resend ao criar conta
+✅ Email de contrato assinado disparado pelo webhook Autentique
+✅ PostHog registra eventos de negócio no backend e de UX no frontend
+✅ Sentry captura exceções 5xx com contexto completo de request
+✅ Sentry alerta configurado para error rate > 1%
