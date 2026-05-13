@@ -44,6 +44,8 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
+import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
+import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -194,6 +196,7 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
+  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -270,6 +273,7 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: acrcloudStatus } = useACRCloudStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
@@ -494,6 +498,16 @@ export default function Configuracoes() {
       category: "Fiscal",
       configurable: true,
     },
+    // ── Monitoramento Musical ─────────────────────────────────────────────────
+    {
+      id: "acrcloud",
+      name: "ACRCloud",
+      icon: "📡",
+      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Motor de fingerprint de áudio · Identificação de execuções · Alertas de uso · Infraestrutura da plataforma",
+      category: "Monitoramento Musical",
+      configurable: true,
+    },
     // ── Captação de Leads ─────────────────────────────────────────────────────
     // Integração via snippet de código (pixel JS + webhook + iframe) — sem OAuth.
     {
@@ -534,6 +548,7 @@ export default function Configuracoes() {
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
+    acrcloud:      () => setAcrcloudConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => openNfePopup(),
   };
@@ -1715,6 +1730,10 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <ACRCloudConfigDialog
+              open={acrcloudConfigOpen}
+              onOpenChange={setAcrcloudConfigOpen}
             />
 
             {oauthDialogPlatform && (

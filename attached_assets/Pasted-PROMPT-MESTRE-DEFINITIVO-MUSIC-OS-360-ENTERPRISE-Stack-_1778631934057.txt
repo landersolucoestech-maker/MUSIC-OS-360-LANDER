@@ -1,0 +1,1570 @@
+PROMPT MESTRE DEFINITIVO — MUSIC OS 360° ENTERPRISE
+Stack: Vite React (mantido) + NestJS + PostgreSQL Neon + Stack Completa
+Sem Docker. Desenvolvimento direto contra serviços cloud.
+
+CONTEXTO ABSOLUTO DO PROJETO
+O MUSIC OS 360° é um ERP Musical SaaS multi-tenant atualmente implementado como frontend Vite + React puro, 100% em mock mode (localStorage + dados seed em memória). Possui ~107K linhas TypeScript, 22 módulos de negócio, arquitetura modular sólida, 9 tabelas marcadas como PENDING sem backend, todas as integrações simuladas, zero persistência real, zero autenticação real, zero backend funcional.
+O objetivo é transformar isso em plataforma SaaS enterprise real.
+DECISÕES ARQUITETURAIS IMUTÁVEIS:
+
+Frontend: Vite + React permanece como está — estrutura, UX, visual e módulos preservados integralmente
+A flag VITE_USE_MOCK=true mantém tudo funcionando enquanto o backend é construído fase a fase
+A transição mock → real acontece módulo por módulo, nunca tudo de uma vez
+Sem Docker em nenhuma etapa — desenvolvimento direto contra serviços cloud
+Sem Next.js — Vite permanece para sempre neste escopo
+
+
+STACK DEFINITIVA E IMUTÁVEL
+MONOREPO:
+├── apps/
+│   ├── web/    → Frontend Vite+React (movido do raiz, sem alteração interna)
+│   └── api/    → Backend NestJS (criado do zero)
+├── packages/
+│   ├── shared-types/
+│   └── shared-zod/
+└── infra/
+    └── scripts/  (scripts de setup, SEM docker-compose)
+CamadaTecnologiaServiçoUso em DevFrontendVite + React 18Vercelnpm run dev localBackendNestJS 10 + Node 20Railwaynpm run dev localORMPrisma 5——BancoPostgreSQL 16Neon (branch dev)Neon gratuito diretoCache / Rate LimitRedis RESTUpstashUpstash free tier diretoFilasRedis + BullMQRailway RedisRailway Redis diretoStorageR2Cloudflare R2Bucket de dev separadoAuthClerkClerkApp dev do ClerkPagamentosStripeStripeModo test keyEmailResendResendModo test (sem envio real)AnalyticsPostHogPostHogProjeto devMonitoramentoSentrySentryProjeto devRealtimeSocket.IO + Redis Pub/SubRailwayVia Railway RedisCI/CDGitHub ActionsGitHub—
+PROIBIÇÕES ABSOLUTAS:
+
+❌ Docker em qualquer forma — nem Compose, nem containers, nem imagens
+❌ Banco de dados local — sempre Neon (branch dev separado de produção)
+❌ Redis local — sempre Upstash (cache) ou Railway Redis (filas)
+❌ Supabase, Firebase, PlanetScale ou qualquer BaaS
+❌ Alterar estrutura interna de apps/web/src/
+❌ Alterar UX/UI sem necessidade técnica documentada
+❌ Hard delete — sempre soft delete com deleted_at
+❌ Armazenar CPF, CNPJ, tokens OAuth sem criptografia AES-256-GCM
+❌ Implementar fases em paralelo — execução sequencial obrigatória
+
+
+CONFIGURAÇÃO DE DESENVOLVIMENTO SEM DOCKER
+Todo o stack de desenvolvimento usa serviços cloud diretamente:
+
+1. BANCO DE DADOS (Neon):
+   - Criar projeto no Neon: https://neon.tech
+   - Criar branch "dev" separado da main
+   - DATABASE_URL=postgresql://... (branch dev do Neon)
+   - DATABASE_DIRECT_URL=postgresql://... (para migrations Prisma)
+   - Neon fornece connection pooling nativo — não precisa de nada local
+
+2. CACHE E RATE LIMITING (Upstash):
+   - Criar database Redis no Upstash: https://upstash.com
+   - Usar REST API do Upstash (funciona em qualquer ambiente sem instalação)
+   - UPSTASH_REDIS_URL=https://...
+   - UPSTASH_REDIS_TOKEN=...
+
+3. FILAS BULLMQ (Railway Redis):
+   - Criar serviço Redis no Railway: https://railway.app
+   - REDIS_QUEUE_URL=redis://...
+   - BullMQ conecta diretamente ao Railway Redis em dev
+
+4. STORAGE (Cloudflare R2):
+   - Criar bucket "musicos360-dev" no R2
+   - Separado do bucket de produção
+   - R2_BUCKET_NAME=musicos360-dev
+
+5. AUTH (Clerk):
+   - Criar application em modo development no Clerk
+   - Chaves de test nunca enviam emails reais
+
+6. EMAIL (Resend):
+   - Usar domínio de test do Resend em dev
+   - Emails ficam no log, não são entregues
+
+RESULTADO: `npm run dev` no backend conecta direto a todos os serviços cloud.
+Zero instalação local além de Node.js e npm.
+
+FASE 0 — FUNDAÇÃO: MONOREPO + AMBIENTE + CI/CD
+Pré-requisito para todas as fases
+Entregáveis:
+
+Monorepo Turborepo com frontend intacto
+Backend NestJS base rodando localmente contra serviços cloud
+Variáveis de ambiente validadas no boot
+CI/CD base no GitHub Actions
+Scripts de setup sem Docker
+
+
+0.1 — Turborepo Setup
+bash# Na raiz do repositório atual:
+npm install turbo --save-dev
+
+# Mover frontend para apps/web/ preservando TUDO internamente
+mkdir -p apps/web apps/api packages/shared-types packages/shared-zod
+
+# Mover arquivos do frontend (adaptar conforme estrutura real do repo)
+mv client/       apps/web/src/     # ou src/ se já estiver assim
+mv package.json  apps/web/package.json
+mv vite.config.ts apps/web/vite.config.ts
+mv tailwind.config.ts apps/web/tailwind.config.ts
+mv tsconfig*.json apps/web/
+mv postcss.config.js apps/web/
+mv components.json apps/web/
+mv vitest.config.ts apps/web/
+mv eslint.config.js apps/web/
+mv index.html apps/web/     # ajustar se client/index.html
+
+# VALIDAÇÃO OBRIGATÓRIA — frontend deve funcionar identicamente:
+cd apps/web && npm install && npm run dev
+# Deve iniciar em http://localhost:5000 com MOCK_MODE ativo
+# Todos os 22 módulos devem funcionar normalmente
+cd ../..
+turbo.json na raiz:
+json{
+  "$schema": "https://turbo.build/schema.json",
+  "pipeline": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": ["dist/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": { "outputs": [] },
+    "typecheck": { "outputs": [] },
+    "test": { "outputs": ["coverage/**"] },
+    "test:coverage": { "outputs": ["coverage/**"] }
+  }
+}
+package.json raiz:
+json{
+  "name": "music-os-360-monorepo",
+  "private": true,
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "dev": "turbo run dev",
+    "dev:web": "turbo run dev --filter=web",
+    "dev:api": "turbo run dev --filter=api",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "turbo": "latest",
+    "prettier": "^3.0.0"
+  }
+}
+
+0.2 — Script de setup sem Docker
+bash# infra/scripts/setup-dev.sh
+#!/bin/bash
+set -e
+
+echo "🎵 MUSIC OS 360° — Setup Ambiente Dev (sem Docker)"
+echo ""
+
+# 1. Verificar Node.js
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 20 ]; then
+  echo "❌ Node.js 20+ obrigatório. Atual: $(node -v)"
+  exit 1
+fi
+echo "✅ Node.js $(node -v)"
+
+# 2. Copiar .env de exemplo
+if [ ! -f apps/api/.env ]; then
+  cp apps/api/.env.example apps/api/.env
+  echo "📋 apps/api/.env criado — preencha com suas credenciais cloud"
+fi
+
+if [ ! -f apps/web/.env ]; then
+  cp apps/web/.env.example apps/web/.env
+  echo "📋 apps/web/.env criado"
+fi
+
+# 3. Instalar dependências
+echo "📦 Instalando dependências..."
+npm install
+
+# 4. Verificar conexões com serviços cloud
+echo ""
+echo "🔍 Verificando conexões cloud..."
+cd apps/api
+
+# Testar Neon
+if npx prisma db execute --stdin <<< "SELECT 1" > /dev/null 2>&1; then
+  echo "✅ Neon PostgreSQL conectado"
+else
+  echo "❌ Neon não conectou — verifique DATABASE_URL no .env"
+  exit 1
+fi
+
+# 5. Rodar migrations
+echo "🗄️ Aplicando migrations Prisma..."
+npx prisma migrate dev --name init
+
+# 6. Seed de dev
+echo "🌱 Populando banco com dados de desenvolvimento..."
+npx prisma db seed
+
+cd ../..
+
+echo ""
+echo "✅ Setup completo! Para iniciar:"
+echo ""
+echo "  Backend:   cd apps/api && npm run dev   → http://localhost:3001"
+echo "  Frontend:  cd apps/web && npm run dev   → http://localhost:5000"
+echo "  Swagger:   http://localhost:3001/docs"
+echo ""
+echo "Serviços cloud em uso (sem Docker):"
+echo "  PostgreSQL → Neon (branch dev)"
+echo "  Redis Filas → Railway Redis"
+echo "  Redis Cache → Upstash"
+echo "  Storage → Cloudflare R2 (bucket dev)"
+
+0.3 — Variáveis de ambiente com validação Zod
+apps/api/.env.example:
+bash# ─────────────────────────────────────────
+# MUSIC OS 360° — Backend Environment
+# Todos os serviços são cloud. Sem instalação local.
+# ─────────────────────────────────────────
+
+NODE_ENV=development
+PORT=3001
+
+# ── NEON POSTGRESQL ───────────────────────
+# Obter em: https://neon.tech → seu projeto → branch "dev"
+DATABASE_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/musicos360?sslmode=require
+# Para migrations (conexão direta, sem pooler)
+DATABASE_DIRECT_URL=postgresql://user:pass@ep-xxx.us-east-2.aws.neon.tech/musicos360?sslmode=require
+
+# ── RAILWAY REDIS (FILAS BULLMQ) ──────────
+# Obter em: https://railway.app → seu projeto → Redis service
+REDIS_QUEUE_URL=redis://default:password@containers-xxx.railway.app:6379
+
+# ── UPSTASH REDIS (CACHE + RATE LIMIT) ───
+# Obter em: https://upstash.com → seu database Redis
+UPSTASH_REDIS_URL=https://xxx.upstash.io
+UPSTASH_REDIS_TOKEN=AXxx...
+
+# ── CORS ──────────────────────────────────
+CORS_ORIGINS=http://localhost:5000
+
+# ── CRIPTOGRAFIA ──────────────────────────
+# Gerar com: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+ENCRYPTION_KEY=sua_chave_hex_64_chars_aqui
+ENCRYPTION_IV_SECRET=seu_iv_secret_minimo_32_chars_aqui
+
+# ── CLERK ─────────────────────────────────
+# Obter em: https://clerk.com → seu app → API Keys
+CLERK_SECRET_KEY=sk_test_...
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# ── STRIPE ────────────────────────────────
+# Obter em: https://stripe.com → Developers → API Keys (test mode)
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_STARTER=price_...
+STRIPE_PRICE_PROFESSIONAL=price_...
+STRIPE_PRICE_ENTERPRISE=price_...
+
+# ── CLOUDFLARE R2 ─────────────────────────
+# Obter em: https://dash.cloudflare.com → R2 → Manage R2 API Tokens
+R2_ACCOUNT_ID=seu_account_id
+R2_ACCESS_KEY=sua_access_key
+R2_SECRET_KEY=sua_secret_key
+R2_BUCKET_NAME=musicos360-dev
+R2_PUBLIC_URL=https://pub-xxx.r2.dev
+
+# ── IA ────────────────────────────────────
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_AI_API_KEY=AIza...
+
+# ── RESEND ────────────────────────────────
+# Obter em: https://resend.com → API Keys
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=noreply@musicos360.com.br
+
+# ── MONITORAMENTO ─────────────────────────
+SENTRY_DSN=https://xxx@sentry.io/xxx
+POSTHOG_API_KEY=phc_...
+POSTHOG_HOST=https://app.posthog.com
+apps/api/src/core/config/env.schema.ts:
+typescriptimport { z } from 'zod';
+
+const envSchema = z.object({
+  NODE_ENV: z.enum(['development', 'staging', 'production', 'test'])
+    .default('development'),
+  PORT: z.coerce.number().default(3001),
+
+  // Neon PostgreSQL
+  DATABASE_URL: z.string()
+    .url()
+    .refine(url => url.includes('neon.tech') || url.includes('localhost') || process.env.NODE_ENV === 'test',
+      'Use Neon PostgreSQL. Sem banco local.'),
+  DATABASE_DIRECT_URL: z.string().url().optional(),
+
+  // Redis
+  REDIS_QUEUE_URL: z.string().min(1, 'REDIS_QUEUE_URL obrigatório (Railway Redis)'),
+  UPSTASH_REDIS_URL: z.string().url().optional(),
+  UPSTASH_REDIS_TOKEN: z.string().optional(),
+
+  // Auth
+  CLERK_SECRET_KEY: z.string().startsWith('sk_', 'CLERK_SECRET_KEY inválida'),
+  CLERK_WEBHOOK_SECRET: z.string().startsWith('whsec_'),
+
+  // CORS
+  CORS_ORIGINS: z.string().default('http://localhost:5000'),
+
+  // Criptografia
+  ENCRYPTION_KEY: z.string()
+    .length(64, 'ENCRYPTION_KEY deve ter exatamente 64 chars hex (32 bytes = 256 bits)'),
+  ENCRYPTION_IV_SECRET: z.string().min(32),
+
+  // Stripe
+  STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+
+  // Cloudflare R2
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_ACCESS_KEY: z.string().optional(),
+  R2_SECRET_KEY: z.string().optional(),
+  R2_BUCKET_NAME: z.string().optional(),
+  R2_PUBLIC_URL: z.string().optional(),
+
+  // IA
+  OPENAI_API_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
+  GOOGLE_AI_API_KEY: z.string().optional(),
+
+  // Email
+  RESEND_API_KEY: z.string().optional(),
+  RESEND_FROM_EMAIL: z.string().email().default('noreply@musicos360.com.br'),
+
+  // Monitoramento
+  SENTRY_DSN: z.string().url().optional(),
+  POSTHOG_API_KEY: z.string().optional(),
+});
+
+export type EnvConfig = z.infer<typeof envSchema>;
+
+export function validateEnv(config: Record<string, unknown>): EnvConfig {
+  const result = envSchema.safeParse(config);
+  if (!result.success) {
+    console.error('\n❌ ERRO: Variáveis de ambiente inválidas ou ausentes:\n');
+    result.error.issues.forEach(issue => {
+      console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+    });
+    console.error('\nVerifique seu apps/api/.env\n');
+    process.exit(1);
+  }
+  return result.data;
+}
+
+0.4 — NestJS App base
+apps/api/src/main.ts:
+typescriptimport { NestFactory } from '@nestjs/core';
+import { ValidationPipe, Logger } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import helmet from 'helmet';
+import compression from 'compression';
+import { AppModule } from './app.module';
+import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
+import { TransformInterceptor } from './core/interceptors/transform.interceptor';
+import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
+
+async function bootstrap() {
+  const logger = new Logger('Bootstrap');
+
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true,
+  });
+
+  app.use(helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'https:'],
+        scriptSrc: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  }));
+
+  app.use(compression());
+
+  app.enableCors({
+    origin: (origin, callback) => {
+      const allowed = (process.env.CORS_ORIGINS ?? 'http://localhost:5000').split(',');
+      if (!origin || allowed.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error(`CORS bloqueado: ${origin}`));
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Tenant-ID', 'X-Request-ID'],
+  });
+
+  app.setGlobalPrefix('api/v1');
+
+  app.useGlobalPipes(new ValidationPipe({
+    whitelist: true,
+    forbidNonWhitelisted: true,
+    transform: true,
+  }));
+
+  app.useGlobalFilters(new GlobalExceptionFilter());
+  app.useGlobalInterceptors(new TransformInterceptor(), new LoggingInterceptor());
+
+  // Swagger apenas em dev e staging
+  if (process.env.NODE_ENV !== 'production') {
+    const config = new DocumentBuilder()
+      .setTitle('MUSIC OS 360° API')
+      .setDescription('Enterprise Music Management SaaS API')
+      .setVersion('1.0')
+      .addBearerAuth()
+      .build();
+    SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, config), {
+      swaggerOptions: { persistAuthorization: true },
+    });
+  }
+
+  app.enableShutdownHooks();
+
+  const port = process.env.PORT ?? 3001;
+  await app.listen(port);
+  logger.log(`🎵 MUSIC OS 360° API → http://localhost:${port}`);
+  logger.log(`📚 Swagger → http://localhost:${port}/docs`);
+}
+
+bootstrap().catch(err => {
+  console.error('Falha crítica no bootstrap:', err);
+  process.exit(1);
+});
+
+0.5 — GitHub Actions (sem Docker)
+yaml# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+    branches: [main, staging, develop]
+  pull_request:
+    branches: [main, staging]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-typecheck:
+    name: Lint + TypeCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx turbo run lint typecheck
+
+  test-backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    env:
+      NODE_ENV: test
+      # Neon branch de teste (separado do dev)
+      DATABASE_URL: ${{ secrets.NEON_TEST_DATABASE_URL }}
+      DATABASE_DIRECT_URL: ${{ secrets.NEON_TEST_DIRECT_URL }}
+      # Upstash (o mesmo de dev serve para test)
+      UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+      UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN }}
+      # Railway Redis para filas
+      REDIS_QUEUE_URL: ${{ secrets.RAILWAY_REDIS_TEST_URL }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY_TEST }}
+      CLERK_WEBHOOK_SECRET: ${{ secrets.CLERK_WEBHOOK_SECRET_TEST }}
+      ENCRYPTION_KEY: ${{ secrets.TEST_ENCRYPTION_KEY }}
+      ENCRYPTION_IV_SECRET: ${{ secrets.TEST_IV_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - name: Aplicar migrations no banco de teste
+        run: cd apps/api && npx prisma migrate deploy
+      - name: Rodar testes do backend
+        run: npx turbo run test --filter=api
+
+  test-frontend:
+    name: Frontend Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx turbo run test --filter=web
+
+  build:
+    name: Build
+    needs: [lint-typecheck, test-backend, test-frontend]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+      - run: npx turbo run build
+
+# .github/workflows/deploy-production.yml
+name: Deploy Production
+
+on:
+  push:
+    tags: ['v*.*.*']
+
+jobs:
+  deploy:
+    name: Deploy → Railway + Vercel
+    runs-on: ubuntu-latest
+    environment: production
+    needs: [] # CI deve ter passado antes do tag
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      - run: npm ci
+
+      - name: Deploy Backend → Railway
+        run: npx @railway/cli up --service=api
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        working-directory: apps/api
+
+      - name: Deploy Frontend → Vercel
+        run: npx vercel --prod --token=${{ secrets.VERCEL_TOKEN }}
+        working-directory: apps/web
+
+      - name: Smoke test pós-deploy
+        run: |
+          sleep 20
+          curl -f ${{ secrets.PRODUCTION_API_URL }}/api/v1/health || exit 1
+          echo "✅ API respondendo em produção"
+Critério de conclusão da Fase 0:
+
+✅ cd apps/web && npm run dev funciona igual ao estado original
+✅ cd apps/api && npm run dev inicia sem erros
+✅ GET http://localhost:3001/api/v1/health retorna { status: "ok" }
+✅ Backend conecta ao Neon, Upstash e Railway Redis diretamente
+✅ CI passa em PR de teste
+
+
+FASE 1 — SCHEMA PRISMA ENTERPRISE + NEON
+Depende de: Fase 0 completa
+Entregáveis:
+
+Schema Prisma completo mapeando todos os 22 módulos do frontend
+Migrations aplicadas no branch dev do Neon
+Seed de desenvolvimento replicando os mock data do frontend
+PrismaService com middleware multi-tenant automático
+EncryptionService AES-256-GCM para dados sensíveis
+
+
+1.1 — Neon: branches por ambiente
+bash# Criar branches no Neon Dashboard (https://neon.tech):
+# main     → produção (nunca tocar manualmente)
+# staging  → ambiente de staging
+# dev      → desenvolvimento local
+# test     → CI/CD (reset automático a cada pipeline)
+
+# apps/api/.env
+DATABASE_URL=postgresql://...@ep-xxx.us-east-2.aws.neon.tech/musicos360?sslmode=require&pgbouncer=true
+# Conexão direta para migrations (sem PgBouncer)
+DATABASE_DIRECT_URL=postgresql://...@ep-xxx.us-east-2.aws.neon.tech/musicos360?sslmode=require
+
+# apps/api/prisma/schema.prisma
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+1.2 — Schema Prisma completo
+prisma// apps/api/prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DATABASE_DIRECT_URL")
+}
+
+// ═══════════════════════════════════════════
+// MULTI-TENANCY
+// ═══════════════════════════════════════════
+
+model Organization {
+  id             String    @id @default(uuid())
+  clerk_org_id   String    @unique
+  name           String
+  slug           String    @unique
+  plan           String    @default("starter")
+  billing_status String    @default("trial")
+  industry       String    @default("gravadora")
+  cnpj_encrypted String?
+  phone          String?
+  address        Json?
+  config         Json?
+  metadata       Json?
+  created_at     DateTime  @default(now())
+  updated_at     DateTime  @updatedAt
+  deleted_at     DateTime?
+
+  tenant        Tenant?
+  members       OrgMember[]
+  subscriptions BillingSubscription[]
+
+  @@map("organizations")
+}
+
+model Tenant {
+  id           String    @id @default(uuid())
+  org_id       String    @unique
+  clerk_org_id String    @unique
+  name         String
+  slug         String    @unique
+  plan         String    @default("starter")
+  features     Json
+  settings     Json?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime  @updatedAt
+  deleted_at   DateTime?
+
+  organization Organization @relation(fields: [org_id], references: [id])
+  members      OrgMember[]
+
+  @@index([clerk_org_id])
+  @@map("tenants")
+}
+
+model OrgMember {
+  id            String    @id @default(uuid())
+  org_id        String
+  tenant_id     String
+  clerk_user_id String
+  email         String
+  full_name     String?
+  role          String    @default("viewer")
+  is_active     Boolean   @default(true)
+  invited_at    DateTime?
+  joined_at     DateTime?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+
+  organization Organization @relation(fields: [org_id], references: [id])
+  tenant       Tenant       @relation(fields: [tenant_id], references: [id])
+  member_roles MemberRole[]
+
+  @@unique([tenant_id, clerk_user_id])
+  @@index([tenant_id])
+  @@index([clerk_user_id])
+  @@map("org_members")
+}
+
+// ═══════════════════════════════════════════
+// RBAC
+// ═══════════════════════════════════════════
+
+model Permission {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  module      String
+  action      String
+  description String?
+  created_at  DateTime @default(now())
+
+  role_permissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model Role {
+  id         String    @id @default(uuid())
+  tenant_id  String?
+  name       String
+  label      String
+  is_system  Boolean   @default(false)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+
+  permissions RolePermission[]
+  members     MemberRole[]
+
+  @@unique([tenant_id, name])
+  @@index([tenant_id])
+  @@map("roles")
+}
+
+model RolePermission {
+  role_id       String
+  permission_id String
+
+  role       Role       @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permission_id], references: [id], onDelete: Cascade)
+
+  @@id([role_id, permission_id])
+  @@map("role_permissions")
+}
+
+model MemberRole {
+  member_id String
+  role_id   String
+  tenant_id String
+
+  member OrgMember @relation(fields: [member_id], references: [id], onDelete: Cascade)
+  role   Role      @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@id([member_id, role_id])
+  @@index([tenant_id])
+  @@map("member_roles")
+}
+
+// ═══════════════════════════════════════════
+// ARTISTAS
+// ═══════════════════════════════════════════
+
+model Artist {
+  id                        String    @id @default(uuid())
+  tenant_id                 String
+  nome_artistico            String
+  nome_civil                String?
+  tipo                      String
+  status                    String    @default("em_negociacao")
+  status_cadastro           String    @default("ativo")
+  genero_musical            String?
+  email_encrypted           String?
+  telefone_encrypted        String?
+  cpf_cnpj_encrypted        String?
+  foto_url                  String?
+  banner_url                String?
+  galeria_urls              Json?
+  video_apresentacao_url    String?
+  documentos                Json?
+  observacoes               String?
+  manager_nome              String?
+  manager_contato_encrypted String?
+  produtor_executivo        String?
+  agencia_booking           String?
+  label_parceira            String?
+  especialidades            Json?
+  spotify_artist_id         String?
+  youtube_channel_id        String?
+  deezer_url                String?
+  apple_music_url           String?
+  soundcloud_url            String?
+  contrato_id               String?
+  org_slug                  String?
+  metadata                  Json?
+  created_at                DateTime  @default(now())
+  updated_at                DateTime  @updatedAt
+  deleted_at                DateTime?
+  created_by                String?
+  updated_by                String?
+
+  works      Work[]
+  phonograms Phonogram[]
+  contracts  Contract[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([tenant_id, deleted_at])
+  @@map("artists")
+}
+
+// ═══════════════════════════════════════════
+// CATÁLOGO
+// ═══════════════════════════════════════════
+
+model Work {
+  id                             String    @id @default(uuid())
+  tenant_id                      String
+  titulo                         String
+  compositor                     String?
+  compositores                   String?
+  co_compositores                String?
+  detentores                     String?
+  editora                        String?
+  isrc                           String?
+  iswc                           String?
+  cod_abramus                    String?
+  cod_ecad                       String?
+  tipo                           String
+  genero                         String?
+  status                         String    @default("pendente")
+  duracao                        String?
+  origem_externa                 String?
+  origem_externa_id              String?
+  origem_externa_sincronizado_em DateTime?
+  metadata                       Json?
+  created_at                     DateTime  @default(now())
+  updated_at                     DateTime  @updatedAt
+  deleted_at                     DateTime?
+  created_by                     String?
+  updated_by                     String?
+
+  phonograms Phonogram[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([isrc])
+  @@index([iswc])
+  @@map("works")
+}
+
+model Phonogram {
+  id                             String    @id @default(uuid())
+  tenant_id                      String
+  titulo                         String
+  obra_id                        String?
+  artista_id                     String?
+  isrc                           String?
+  duracao                        String?
+  tipo                           String
+  status                         String    @default("pendente")
+  compositores                   String?
+  interpretes                    String?
+  produtores                     String?
+  gravadora                      String?
+  cod_abramus                    String?
+  cod_ecad                       String?
+  origem_externa                 String?
+  origem_externa_id              String?
+  origem_externa_sincronizado_em DateTime?
+  metadata                       Json?
+  created_at                     DateTime  @default(now())
+  updated_at                     DateTime  @updatedAt
+  deleted_at                     DateTime?
+  created_by                     String?
+  updated_by                     String?
+
+  work   Work?   @relation(fields: [obra_id], references: [id])
+  artist Artist? @relation(fields: [artista_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([obra_id])
+  @@index([artista_id])
+  @@index([isrc])
+  @@map("phonograms")
+}
+
+// ═══════════════════════════════════════════
+// CONTRATOS
+// ═══════════════════════════════════════════
+
+model Contract {
+  id                String    @id @default(uuid())
+  tenant_id         String
+  titulo            String
+  tipo              String
+  status            String    @default("rascunho")
+  artista_id        String?
+  cliente_id        String?
+  lancamento_id     String?
+  data_inicio       DateTime?
+  data_fim          DateTime?
+  valor             Decimal?  @db.Decimal(15, 2)
+  exclusivo         Boolean   @default(false)
+  observacoes       String?
+  arquivo_url       String?
+  autentique_doc_id String?
+  signing_platform  String?
+  versoes           Json?
+  metadata          Json?
+  created_at        DateTime  @default(now())
+  updated_at        DateTime  @updatedAt
+  deleted_at        DateTime?
+  created_by        String?
+  updated_by        String?
+
+  artist Artist? @relation(fields: [artista_id], references: [id])
+  client Client? @relation(fields: [cliente_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@index([artista_id])
+  @@index([cliente_id])
+  @@index([data_fim])
+  @@map("contracts")
+}
+
+model ContractTemplate {
+  id         String    @id @default(uuid())
+  tenant_id  String
+  titulo     String
+  tipo       String
+  conteudo   String    @db.Text
+  variaveis  Json?
+  ativo      Boolean   @default(true)
+  created_at DateTime  @default(now())
+  updated_at DateTime  @updatedAt
+  deleted_at DateTime?
+  created_by String?
+
+  @@index([tenant_id])
+  @@map("contract_templates")
+}
+
+// ═══════════════════════════════════════════
+// FINANCEIRO
+// ═══════════════════════════════════════════
+
+model Transaction {
+  id              String    @id @default(uuid())
+  tenant_id       String
+  tipo            String
+  categoria       String
+  descricao       String?
+  valor           Decimal   @db.Decimal(15, 2)
+  data            DateTime
+  status          String    @default("pendente")
+  artista_id      String?
+  contrato_id     String?
+  projeto_id      String?
+  referencia      String?
+  comprovante_url String?
+  metadata        Json?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime  @updatedAt
+  deleted_at      DateTime?
+  created_by      String?
+  updated_by      String?
+
+  @@index([tenant_id])
+  @@index([tenant_id, data])
+  @@index([tenant_id, tipo])
+  @@map("transactions")
+}
+
+model Invoice {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  numero                String?
+  tipo                  String
+  status                String    @default("pendente")
+  prestador_id          String?
+  tomador_nome          String?
+  tomador_doc_encrypted String?
+  valor                 Decimal   @db.Decimal(15, 2)
+  descricao             String?
+  data_emissao          DateTime?
+  data_vencimento       DateTime?
+  arquivo_url           String?
+  metadata              Json?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime?
+  created_by            String?
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("invoices")
+}
+
+// ═══════════════════════════════════════════
+// CRM
+// ═══════════════════════════════════════════
+
+model Client {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  nome               String
+  segmento           String?
+  tipo_pessoa        String
+  cpf_cnpj_encrypted String?
+  responsavel        String?
+  email_encrypted    String?
+  telefone_encrypted String?
+  endereco           String?
+  cidade             String?
+  estado             String?
+  status             String    @default("ativo")
+  observacoes        String?
+  metadata           Json?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+  created_by         String?
+  updated_by         String?
+
+  leads     Lead[]
+  contracts Contract[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("clients")
+}
+
+model Lead {
+  id                 String    @id @default(uuid())
+  tenant_id          String
+  cliente_id         String?
+  nome               String
+  email_encrypted    String?
+  telefone_encrypted String?
+  empresa            String?
+  status             String    @default("novo")
+  score              Int       @default(0)
+  fonte              String?
+  pipeline_stage     String?
+  metadata           Json?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+  deleted_at         DateTime?
+  created_by         String?
+  updated_by         String?
+
+  client       Client?          @relation(fields: [cliente_id], references: [id])
+  interactions LeadInteraction[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("leads")
+}
+
+model LeadInteraction {
+  id          String   @id @default(uuid())
+  tenant_id   String
+  lead_id     String
+  tipo        String
+  descricao   String?
+  data        DateTime @default(now())
+  created_by  String?
+  created_at  DateTime @default(now())
+
+  lead Lead @relation(fields: [lead_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([lead_id])
+  @@map("lead_interactions")
+}
+
+// ═══════════════════════════════════════════
+// MARKETING + OPERAÇÕES
+// ═══════════════════════════════════════════
+
+model Campaign {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  nome        String
+  tipo        String
+  status      String    @default("rascunho")
+  objetivo    String?
+  orcamento   Decimal?  @db.Decimal(15, 2)
+  data_inicio DateTime?
+  data_fim    DateTime?
+  artista_id  String?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+
+  @@index([tenant_id])
+  @@map("campaigns")
+}
+
+model Briefing {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  titulo      String
+  descricao   String?
+  artista_id  String?
+  campanha_id String?
+  status      String    @default("rascunho")
+  prazo       DateTime?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+
+  @@index([tenant_id])
+  @@map("briefings")
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  titulo      String
+  tipo        String
+  status      String    @default("agendado")
+  data        DateTime
+  local       String?
+  artista_id  String?
+  valor       Decimal?  @db.Decimal(15, 2)
+  observacoes String?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+
+  @@index([tenant_id])
+  @@index([tenant_id, data])
+  @@map("events")
+}
+
+model Project {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  nome        String
+  tipo        String
+  status      String    @default("planejamento")
+  artista_id  String?
+  data_inicio DateTime?
+  data_fim    DateTime?
+  orcamento   Decimal?  @db.Decimal(15, 2)
+  descricao   String?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+  updated_by  String?
+
+  @@index([tenant_id])
+  @@map("projects")
+}
+
+model Takedown {
+  id          String    @id @default(uuid())
+  tenant_id   String
+  titulo      String
+  plataforma  String
+  url         String?
+  status      String    @default("pendente")
+  obra_id     String?
+  artista_id  String?
+  motivo      String?
+  resposta    String?
+  metadata    Json?
+  created_at  DateTime  @default(now())
+  updated_at  DateTime  @updatedAt
+  deleted_at  DateTime?
+  created_by  String?
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("takedowns")
+}
+
+// ═══════════════════════════════════════════
+// INTEGRAÇÕES + WEBHOOKS
+// ═══════════════════════════════════════════
+
+model Integration {
+  id                    String    @id @default(uuid())
+  tenant_id             String
+  provider              String
+  type                  String
+  status                String    @default("inactive")
+  credentials_encrypted Json?
+  config                Json?
+  last_sync_at          DateTime?
+  expires_at            DateTime?
+  metadata              Json?
+  created_at            DateTime  @default(now())
+  updated_at            DateTime  @updatedAt
+  deleted_at            DateTime?
+
+  @@unique([tenant_id, provider])
+  @@index([tenant_id])
+  @@map("integrations")
+}
+
+model OAuthConnection {
+  id                     String    @id @default(uuid())
+  tenant_id              String
+  user_id                String
+  provider               String
+  access_token_encrypted String
+  refresh_token_encrypted String?
+  token_type             String?
+  scope                  String?
+  expires_at             DateTime?
+  external_user_id       String?
+  metadata               Json?
+  created_at             DateTime  @default(now())
+  updated_at             DateTime  @updatedAt
+
+  @@unique([tenant_id, provider, user_id])
+  @@index([tenant_id, provider])
+  @@map("oauth_connections")
+}
+
+model WebhookEvent {
+  id           String    @id @default(uuid())
+  tenant_id    String?
+  provider     String
+  event_type   String
+  external_id  String?   @unique
+  payload      Json
+  status       String    @default("pending")
+  processed_at DateTime?
+  error        String?
+  retry_count  Int       @default(0)
+  created_at   DateTime  @default(now())
+
+  @@index([provider, event_type])
+  @@index([status])
+  @@index([tenant_id])
+  @@map("webhook_events")
+}
+
+// ═══════════════════════════════════════════
+// SUPORTE + NOTIFICAÇÕES
+// ═══════════════════════════════════════════
+
+model SupportTicket {
+  id            String    @id @default(uuid())
+  tenant_id     String
+  ticket_number String    @unique
+  subject       String
+  description   String    @db.Text
+  status        String    @default("open")
+  priority      String    @default("medium")
+  category      String?
+  created_by    String
+  assigned_to   String?
+  sla_deadline  DateTime?
+  resolved_at   DateTime?
+  tags          Json?
+  metadata      Json?
+  created_at    DateTime  @default(now())
+  updated_at    DateTime  @updatedAt
+  deleted_at    DateTime?
+
+  messages SupportMessage[]
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String   @id @default(uuid())
+  ticket_id   String
+  author_id   String
+  content     String   @db.Text
+  is_internal Boolean  @default(false)
+  metadata    Json?
+  created_at  DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticket_id], references: [id])
+
+  @@index([ticket_id])
+  @@map("support_messages")
+}
+
+model Notification {
+  id         String    @id @default(uuid())
+  tenant_id  String
+  user_id    String
+  title      String
+  body       String?
+  type       String
+  entity     String?
+  entity_id  String?
+  read_at    DateTime?
+  metadata   Json?
+  created_at DateTime  @default(now())
+
+  @@index([tenant_id, user_id])
+  @@index([tenant_id, user_id, read_at])
+  @@map("notifications")
+}
+
+// ═══════════════════════════════════════════
+// BILLING + STORAGE + IA + AUDITORIA
+// ═══════════════════════════════════════════
+
+model BillingSubscription {
+  id                 String    @id @default(uuid())
+  org_id             String
+  stripe_customer_id String    @unique
+  stripe_sub_id      String?   @unique
+  plan               String
+  status             String    @default("trial")
+  trial_ends_at      DateTime?
+  current_period_end DateTime?
+  seats              Int       @default(3)
+  seats_used         Int       @default(1)
+  metadata           Json?
+  created_at         DateTime  @default(now())
+  updated_at         DateTime  @updatedAt
+
+  organization Organization @relation(fields: [org_id], references: [id])
+
+  @@index([org_id])
+  @@map("billing_subscriptions")
+}
+
+model Upload {
+  id            String    @id @default(uuid())
+  tenant_id     String
+  user_id       String
+  filename      String
+  original_name String
+  mime_type     String
+  size_bytes    BigInt
+  r2_key        String    @unique
+  r2_url        String?
+  entity        String?
+  entity_id     String?
+  metadata      Json?
+  created_at    DateTime  @default(now())
+  deleted_at    DateTime?
+
+  @@index([tenant_id])
+  @@index([entity, entity_id])
+  @@map("uploads")
+}
+
+model AIJob {
+  id           String    @id @default(uuid())
+  tenant_id    String
+  user_id      String
+  provider     String
+  model        String
+  skill        String
+  prompt       String    @db.Text
+  result       String?   @db.Text
+  status       String    @default("pending")
+  input_tokens  Int?
+  output_tokens Int?
+  cost_usd     Decimal?  @db.Decimal(10, 6)
+  latency_ms   Int?
+  error        String?
+  metadata     Json?
+  created_at   DateTime  @default(now())
+  completed_at DateTime?
+
+  @@index([tenant_id])
+  @@index([tenant_id, status])
+  @@map("ai_jobs")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  tenant_id  String?
+  user_id    String?
+  action     String
+  entity     String
+  entity_id  String?
+  before     Json?
+  after      Json?
+  ip_address String?
+  user_agent String?
+  request_id String?
+  metadata   Json?
+  created_at DateTime @default(now())
+
+  @@index([tenant_id])
+  @@index([tenant_id, entity])
+  @@index([user_id])
+  @@index([created_at])
+  @@map("audit_logs")
+}
+1.3 — PrismaService com middleware multi-tenant automático
+typescript// apps/api/src/core/database/prisma.service.ts
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
+import { PrismaClient } from '@prisma/client';
+
+// Modelos que exigem tenant_id em TODA operação
+const TENANT_SCOPED_MODELS = new Set([
+  'Artist', 'Work', 'Phonogram', 'Contract', 'ContractTemplate',
+  'Transaction', 'Invoice', 'Client', 'Lead', 'LeadInteraction',
+  'Campaign', 'Briefing', 'Event', 'Project', 'Takedown',
+  'Integration', 'SupportTicket', 'Notification', 'Upload', 'AIJob',
+]);
+
+@Injectable()
+export class PrismaService extends PrismaClient implements OnModuleInit, OnModuleDestroy {
+  private readonly logger = new Logger(PrismaService.name);
+
+  constructor() {
+    super({
+      log: process.env.NODE_ENV === 'development'
+        ? [{ emit: 'event', level: 'query' }]
+        : ['error'],
+    });
+  }
+
+  async onModuleInit() {
+    await this.$connect();
+    this.logger.log('Conectado ao Neon PostgreSQL');
+
+    if (process.env.NODE_ENV === 'development') {
+      (this.$on as any)('query', (e: { duration: number; query: string }) => {
+        if (e.duration > 500) {
+          this.logger.warn(`Query lenta (${e.duration}ms): ${e.query.slice(0, 150)}`);
+        }
+      });
+    }
+  }
+
+  async onModuleDestroy() {
+    await this.$disconnect();
+  }
+
+  /**
+   * OBRIGATÓRIO para toda operação de negócio.
+   * Injeta tenant_id automaticamente e filtra deleted_at.
+   * Previne IDOR ao nível do ORM.
+   */
+  forTenant(tenantId: string) {
+    return this.$extends({
+      query: {
+        $allModels: {
+          async findMany({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              args.where = { ...args.where, tenant_id: tenantId, deleted_at: null };
+            }
+            return query(args);
+          },
+          async findFirst({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              args.where = { ...args.where, tenant_id: tenantId, deleted_at: null };
+            }
+            return query(args);
+          },
+          async findUnique({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              args.where = { ...args.where, tenant_id: tenantId };
+            }
+            return query(args);
+          },
+          async create({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              args.data = { ...args.data, tenant_id: tenantId };
+            }
+            return query(args);
+          },
+          async update({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              // Força verificação de tenant no WHERE — anti-IDOR
+              args.where = { ...args.where, tenant_id: tenantId };
+            }
+            return query(args);
+          },
+          async updateMany({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              args.where = { ...args.where, tenant_id: tenantId };
+            }
+            return query(args);
+          },
+          async delete({ args, query, model }: any) {
+            if (TENANT_SCOPED_MODELS.has(model)) {
+              // Soft delete automático
+              return (query as any)({
+                ...args,
+                data: { deleted_at: new Date() },
+              });
+            }
+            return query(args);
+          },
+        },
+      },
+    });
+  }
+}
+1.4 — EncryptionService AES-256-GCM
+typescript// apps/api/src/core/security/encryption.service.ts
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
+
+@Injectable()
+export class EncryptionService implements OnModuleInit {
+  private key: Buffer;
+  private readonly algorithm = 'aes-256-gcm';
+
+  constructor(private config: ConfigService) {}
+
+  onModuleInit() {
+    const hexKey = this.config.get<string>('ENCRYPTION_KEY')!;
+    this.key = Buffer.from(hexKey, 'hex');
+    if (this.key.length !== 32) {
+      throw new Error('ENCRYPTION_KEY deve representar 32 bytes (64 chars hex)');
+    }
+  }
+
+  encrypt(plaintext: string): string {
+    const iv = randomBytes(16);
+    const cipher = createCipheriv(this.algorithm, this.key, iv);
+    const encrypted = Buffer.concat([cipher.update(plaintext, 'utf8'), cipher.final()]);
+    const authTag = cipher.getAuthTag();
+    return `${iv.toString('hex')}:${authTag.toString('hex')}:${encrypted.toString('hex')}`;
+  }
+
+  decrypt(ciphertext: string): string {
+    const [ivHex, tagHex, encHex] = ciphertext.split(':');
+    const decipher = createDecipheriv(
+      this.algorithm,
+      this.key,
+      Buffer.from(ivHex, 'hex'),
+    );
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return decipher.update(Buffer.from(encHex, 'hex')) + decipher.final('utf8');
+  }
+
+  encryptNullable(value: string | null | undefined): string | null {
+    return value ? this.encrypt(value) : null;
+  }
+
+  decryptNullable(value: string | null | undefined): string | null {
+    return value ? this.decrypt(value) : null;
+  }
+}
+Critério de conclusão da Fase 1:
+
+✅ npx prisma migrate dev aplica todas as migrations no Neon sem erro
+✅ npx prisma db seed popula o banco dev com equivalente ao mock atual
+✅ npx prisma studio abre e mostra todas as tabelas com dados
+✅ PrismaService.forTenant() injeta tenant_id automaticamente em todos os modelos
+✅ EncryptionService criptografa/descriptografa CPF corretamente
+
+
+FASE 2 — AUTH CLERK
+FASE 3 — API REST COMPLETA
+FASE 4 — BULLMQ + SOCKET.IO
+FASE 5 — CLOUDFLARE R2
+FASE 6 — STRIPE BILLING
+FASE 7 — INTEGRAÇÕES REAIS
+FASE 8 — AI GATEWAY
+FASE 9 — RESEND + POSTHOG + SENTRY
+FASE 10 — TESTES + HARDENING + GO-LIVE
+(Fases 2–10 idênticas à versão anterior — sem nenhuma menção a Docker em nenhuma delas)
+
+REGRAS ABSOLUTAS
+
+Sem Docker — desenvolvimento contra serviços cloud diretamente Docker é proibido remova qualquer relação
+Sequencial — cada fase validada antes de avançar
+VITE_USE_MOCK=true no frontend até Fase 3 validada end-to-end
+Zero quebra de frontend em qualquer PR
+Criptografia obrigatória — CPF, CNPJ, tokens OAuth sempre AES-256-GCM
+Soft delete universal — nunca DELETE SQL em entidades de negócio
+PrismaService.forTenant() obrigatório em toda operação de negócio
+Auditoria automática em todo POST, PATCH, DELETE
+Cobertura 80% validada no CI antes de qualquer deploy para produção
+Secrets separados por ambiente — dev, staging e produção com chaves distintas
