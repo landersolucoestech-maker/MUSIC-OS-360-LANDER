@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
 import { MOCK_SUPPORT_TICKETS } from "../data/mockAdmin";
 import type { TicketStatus, TicketPriority } from "../types";
@@ -95,35 +96,35 @@ export default function AdminSupport() {
         </div>
 
         <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-white/[0.06] hover:bg-transparent">
                 {["#", "Assunto", "Tenant", "Prioridade", "Status", "Atribuído", "Criado"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</th>
+                  <TableHead key={h} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((t) => {
                 const sc = STATUS_CFG[t.status];
                 const pc = PRIORITY_CFG[t.priority];
                 return (
-                  <tr key={t.id} className="hover:bg-white/[0.02] transition-colors" data-testid={`ticket-${t.id}`}>
-                    <td className="px-4 py-3.5 font-mono text-[11px] text-white/25">#{t.id.slice(-4)}</td>
-                    <td className="px-4 py-3.5">
+                  <TableRow key={t.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`ticket-${t.id}`}>
+                    <TableCell className="py-3.5 font-mono text-[11px] text-white/25">#{t.id.slice(-4)}</TableCell>
+                    <TableCell className="py-3.5">
                       <p className="text-[13px] font-medium text-white">{t.subject}</p>
                       <p className="text-[11px] text-white/35 mt-0.5">{t.category}</p>
-                    </td>
-                    <td className="px-4 py-3.5 text-[12px] text-white/50">{t.tenant_name}</td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5 text-[12px] text-white/50">{t.tenant_name}</TableCell>
+                    <TableCell className="py-3.5">
                       <span className={cn("text-[12px] font-semibold", pc.color)}>{pc.label}</span>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <Badge variant="outline" className={cn("text-[10.5px] border", sc.bg, sc.color)}>
                         {sc.label}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       {t.assigned_to ? (
                         <div className="flex items-center gap-1.5">
                           <HeadphonesIcon className="h-3 w-3 text-white/25" />
@@ -132,17 +133,17 @@ export default function AdminSupport() {
                       ) : (
                         <span className="text-[11.5px] text-white/20">—</span>
                       )}
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <div className="flex items-center gap-1 text-[11.5px] text-white/30">
                         <Clock className="h-3 w-3" />{fmtDate(t.created_at)}
                       </div>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
           {filtered.length === 0 && (
             <div className="py-16 flex flex-col items-center gap-3">
               <HeadphonesIcon className="h-8 w-8 text-white/10" />

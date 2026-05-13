@@ -11,6 +11,7 @@ import { Switch } from "@/shared/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { toast } from "sonner";
 import { useAuth } from "@/app/providers/AuthContext";
 import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
@@ -1954,28 +1955,28 @@ export default function Configuracoes() {
                     </CardHeader>
                     <CardContent>
                       <div className="rounded-md border overflow-hidden">
-                        <table className="w-full text-sm">
-                          <thead>
-                            <tr className="bg-muted/50 border-b">
-                              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Fatura</th>
-                              <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Data</th>
-                              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Valor</th>
-                              <th className="text-center px-4 py-2.5 font-medium text-muted-foreground">Status</th>
-                              <th className="text-right px-4 py-2.5 font-medium text-muted-foreground"></th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {MOCK_INVOICES.map((inv, idx) => (
-                              <tr key={inv.id} className={`border-b last:border-0 ${idx % 2 === 0 ? "" : "bg-muted/20"}`}>
-                                <td className="px-4 py-3">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Fatura</TableHead>
+                              <TableHead>Data</TableHead>
+                              <TableHead className="text-right">Valor</TableHead>
+                              <TableHead className="text-center">Status</TableHead>
+                              <TableHead className="text-right"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {MOCK_INVOICES.map((inv) => (
+                              <TableRow key={inv.id}>
+                                <TableCell>
                                   <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{inv.id}</code>
-                                </td>
-                                <td className="px-4 py-3 text-muted-foreground">{inv.date}</td>
-                                <td className="px-4 py-3 text-right font-medium">{inv.amount}</td>
-                                <td className="px-4 py-3 text-center">
+                                </TableCell>
+                                <TableCell className="text-muted-foreground">{inv.date}</TableCell>
+                                <TableCell className="text-right font-medium">{inv.amount}</TableCell>
+                                <TableCell className="text-center">
                                   <span className={`text-xs font-medium ${inv.statusColor}`}>{inv.status}</span>
-                                </td>
-                                <td className="px-4 py-3 text-right">
+                                </TableCell>
+                                <TableCell className="text-right">
                                   <Button
                                     variant="ghost"
                                     size="sm"
@@ -1986,11 +1987,11 @@ export default function Configuracoes() {
                                     <Download className="h-3 w-3" />
                                     Baixar
                                   </Button>
-                                </td>
-                              </tr>
+                                </TableCell>
+                              </TableRow>
                             ))}
-                          </tbody>
-                        </table>
+                          </TableBody>
+                        </Table>
                       </div>
                     </CardContent>
                   </Card>

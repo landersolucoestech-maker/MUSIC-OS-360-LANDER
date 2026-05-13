@@ -6,6 +6,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { Label } from "@/shared/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
@@ -454,41 +455,60 @@ export default function SupportTickets() {
             </div>
           ) : (
             <>
-              <div className="divide-y divide-border/60">
-                {visible.map((ticket) => (
-                  <button
-                    key={ticket.id}
-                    className="w-full flex items-center gap-4 px-5 py-4 hover:bg-muted/40 transition-colors group text-left"
-                    onClick={() => setActiveTicket(ticket)}
-                    data-testid={`row-ticket-${ticket.id}`}
-                  >
-                    <div className={cn("h-2 w-2 rounded-full shrink-0 mt-0.5", PRIORITY_DOT[ticket.priority])} />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-0.5">
-                        <span className="text-[11px] font-mono text-muted-foreground">{ticket.ticket_number}</span>
-                        <Badge variant="outline" className={cn("text-[10px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
-                          {TICKET_STATUS_LABELS[ticket.status]}
-                        </Badge>
-                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
-                          {TICKET_PRIORITY_LABELS[ticket.priority]}
-                        </Badge>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nº</TableHead>
+                    <TableHead>Assunto</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Prioridade</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Criado por</TableHead>
+                    <TableHead>Atribuído a</TableHead>
+                    <TableHead>Atualizado em</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visible.map((ticket) => (
+                    <TableRow
+                      key={ticket.id}
+                      className="cursor-pointer hover:bg-muted/40 transition-colors"
+                      onClick={() => setActiveTicket(ticket)}
+                      data-testid={`row-ticket-${ticket.id}`}
+                    >
+                      <TableCell className="font-mono text-[11px] text-muted-foreground">{ticket.ticket_number}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <div className={cn("h-2 w-2 rounded-full shrink-0", PRIORITY_DOT[ticket.priority])} />
+                          <span className="text-sm font-medium text-foreground truncate max-w-[260px]">{ticket.subject}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
                           {TICKET_CATEGORY_LABELS[ticket.category]}
                         </Badge>
-                      </div>
-                      <p className="text-[13px] font-medium text-foreground truncate group-hover:text-primary transition-colors">
-                        {ticket.subject}
-                      </p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        {ticket.created_by}
-                        {ticket.assigned_to && <> · <UserCheck className="h-3 w-3 inline mr-0.5" />{ticket.assigned_to}</>}
-                        {" · "}{formatDate(ticket.updated_at)}
-                      </p>
-                    </div>
-                    <ChevronDown className="h-4 w-4 text-muted-foreground/30 -rotate-90 group-hover:text-primary transition-colors shrink-0" />
-                  </button>
-                ))}
-              </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
+                          {TICKET_PRIORITY_LABELS[ticket.priority]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className={cn("text-[10px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
+                          {TICKET_STATUS_LABELS[ticket.status]}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{ticket.created_by}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {ticket.assigned_to
+                          ? <span className="flex items-center gap-1"><UserCheck className="h-3 w-3" />{ticket.assigned_to}</span>
+                          : "—"}
+                      </TableCell>
+                      <TableCell className="text-[11px] text-muted-foreground">{formatDate(ticket.updated_at)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
 
               {hasMore && (
                 <div className="px-5 py-4 border-t border-border/60 text-center">

@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Upload, Download, FilePen, Trash2, LogIn, ShieldCheck, Search, CheckCircle2, XCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { AuditLogEntry } from "../types";
@@ -101,56 +102,56 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden">
-        <table className="w-full text-xs">
-          <thead className="bg-muted/50 border-b border-border">
-            <tr>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Data / Hora</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Ação</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Módulo</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Descrição</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Usuário</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Registros</th>
-              <th className="px-4 py-2.5 text-left font-medium text-muted-foreground uppercase tracking-wider">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border/50">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="text-xs uppercase tracking-wider">Data / Hora</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Ação</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Módulo</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Usuário</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Registros</TableHead>
+              <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">Nenhum registro encontrado</td>
-              </tr>
+              <TableRow>
+                <TableCell colSpan={7} className="py-8 text-center text-muted-foreground">Nenhum registro encontrado</TableCell>
+              </TableRow>
             ) : filtered.map(e => {
               const ac = ACTION_CONFIG[e.action];
               const sc = STATUS_CONFIG[e.status];
               const ActionIcon = ac.icon;
               const StatusIcon = sc.icon;
               return (
-                <tr key={e.id} className="hover:bg-muted/20 transition-colors" data-testid={`audit-row-${e.id}`}>
-                  <td className="px-4 py-3 font-mono text-muted-foreground whitespace-nowrap">{formatDate(e.createdAt)}</td>
-                  <td className="px-4 py-3">
+                <TableRow key={e.id} data-testid={`audit-row-${e.id}`}>
+                  <TableCell className="text-xs py-3 font-mono text-muted-foreground whitespace-nowrap">{formatDate(e.createdAt)}</TableCell>
+                  <TableCell className="text-xs py-3">
                     <span className={cn("flex items-center gap-1.5 font-medium", ac.color)}>
                       <ActionIcon className="h-3.5 w-3.5 shrink-0" />
                       {ac.label}
                     </span>
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="text-xs py-3">
                     <Badge variant="outline" className="text-[10px]">{e.module}</Badge>
-                  </td>
-                  <td className="px-4 py-3 max-w-[260px] truncate text-foreground">{e.description}</td>
-                  <td className="px-4 py-3 text-muted-foreground whitespace-nowrap">{e.user}</td>
-                  <td className="px-4 py-3 font-mono text-center">
+                  </TableCell>
+                  <TableCell className="text-xs py-3 max-w-[260px] truncate text-foreground">{e.description}</TableCell>
+                  <TableCell className="text-xs py-3 text-muted-foreground whitespace-nowrap">{e.user}</TableCell>
+                  <TableCell className="text-xs py-3 font-mono text-center">
                     {e.recordCount != null ? e.recordCount : <span className="text-muted-foreground">—</span>}
-                  </td>
-                  <td className="px-4 py-3">
+                  </TableCell>
+                  <TableCell className="text-xs py-3">
                     <Badge className={cn("text-[10px] border flex items-center gap-1 w-fit", sc.cls)}>
                       <StatusIcon className="h-2.5 w-2.5" />
                       {sc.label}
                     </Badge>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
         {filtered.length > 0 && (
           <div className="px-4 py-2.5 border-t border-border bg-muted/30 text-[10px] text-muted-foreground">
             {filtered.length} de {entries.length} registros

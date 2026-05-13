@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Upload, FileText, CheckCircle2, XCircle, AlertTriangle, RefreshCw, ChevronRight } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import type { ImportFormat, ImportStatus, ImportError } from "../types";
@@ -218,24 +219,24 @@ export function ImportEngine({ open, onClose, onImported }: ImportEngineProps) {
             <div>
               <p className="text-xs font-medium mb-2">Preview dos dados</p>
               <div className="overflow-x-auto rounded-lg border border-border">
-                <table className="w-full text-xs">
-                  <thead className="bg-muted/50">
-                    <tr>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
                       {MOCK_PREVIEW_ROWS[0].map(h => (
-                        <th key={h} className="px-3 py-2 text-left font-medium text-muted-foreground uppercase tracking-wider">{h}</th>
+                        <TableHead key={h} className="text-xs font-medium uppercase tracking-wider">{h}</TableHead>
                       ))}
-                    </tr>
-                  </thead>
-                  <tbody>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {MOCK_PREVIEW_ROWS.slice(1).map((row, i) => (
-                      <tr key={i} className="border-t border-border/50 hover:bg-muted/20">
+                      <TableRow key={i}>
                         {row.map((cell, j) => (
-                          <td key={j} className={cn("px-3 py-2 font-mono", !cell && "text-muted-foreground italic")}>{cell || "—"}</td>
+                          <TableCell key={j} className={cn("text-xs py-2 font-mono", !cell && "text-muted-foreground italic")}>{cell || "—"}</TableCell>
                         ))}
-                      </tr>
+                      </TableRow>
                     ))}
-                  </tbody>
-                </table>
+                  </TableBody>
+                </Table>
               </div>
             </div>
             <div className="flex justify-between gap-3">

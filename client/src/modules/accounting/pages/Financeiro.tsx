@@ -7,6 +7,7 @@ import { Input } from "@/shared/ui/input";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
   Link as LinkIcon, Plus, Search,
@@ -324,23 +325,13 @@ export default function Financeiro() {
             </div>
           </CardHeader>
           <CardContent className="pt-0">
-            {/* Bulk select bar */}
-            {filteredTransacoes.length > 0 && (
+            {selectedIds.length > 0 && (
               <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <Checkbox
-                  checked={selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0}
-                  onCheckedChange={toggleSelectAll}
-                  data-testid="checkbox-select-all"
-                />
-                <span className="text-xs text-muted-foreground flex-1">
-                  {selectedIds.length > 0 ? `${selectedIds.length} selecionada(s)` : "Selecionar todas"}
-                </span>
-                {selectedIds.length > 0 && (
-                  <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
-                  </Button>
-                )}
+                <span className="text-xs text-muted-foreground flex-1">{selectedIds.length} selecionada(s)</span>
+                <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir ({selectedIds.length})
+                </Button>
               </div>
             )}
 
@@ -357,89 +348,90 @@ export default function Financeiro() {
                 onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
               />
             ) : (
-              <div className="divide-y divide-border/60">
-                {filteredTransacoes.map((transacao) => (
-                  <div
-                    key={transacao.id}
-                    className="flex items-center gap-4 py-3 first:pt-0 hover:bg-muted/30 -mx-1 px-1 rounded-md transition-colors"
-                    data-testid={`row-transacao-${transacao.id}`}
-                  >
-                    <Checkbox
-                      checked={selectedIds.includes(transacao.id)}
-                      onCheckedChange={() => toggleSelect(transacao.id)}
-                      data-testid={`checkbox-transacao-${transacao.id}`}
-                      className="shrink-0"
-                    />
-
-                    {/* Tipo icon */}
-                    <div className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
-                      transacao.tipo === "receita"
-                        ? "bg-success/10 border border-success/20"
-                        : "bg-destructive/10 border border-destructive/20"
-                    )}>
-                      {transacao.tipo === "receita"
-                        ? <TrendingUp className="h-4 w-4 text-success" />
-                        : <TrendingDown className="h-4 w-4 text-destructive" />
-                      }
-                    </div>
-
-                    {/* Description + badge */}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium leading-tight truncate">{transacao.descricao}</p>
-                      <div className="flex items-center gap-2 mt-1">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransacoes.map((transacao) => (
+                    <TableRow key={transacao.id} data-testid={`row-transacao-${transacao.id}`} className={selectedIds.includes(transacao.id) ? "bg-muted/20" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(transacao.id)}
+                          onCheckedChange={() => toggleSelect(transacao.id)}
+                          data-testid={`checkbox-transacao-${transacao.id}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div className={cn(
+                          "w-7 h-7 rounded-lg flex items-center justify-center",
+                          transacao.tipo === "receita"
+                            ? "bg-success/10 border border-success/20"
+                            : "bg-destructive/10 border border-destructive/20"
+                        )}>
+                          {transacao.tipo === "receita"
+                            ? <TrendingUp className="h-3.5 w-3.5 text-success" />
+                            : <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                          }
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium max-w-[200px] truncate">{transacao.descricao}</TableCell>
+                      <TableCell>
                         <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm font-mono">
                           {transacao.categoria}
                         </span>
-                        <StatusBadge status={transacao.status ?? "pendente"} />
-                      </div>
-                    </div>
-
-                    {/* Date */}
-                    <div className="hidden sm:block text-right shrink-0">
-                      <p className="text-xs text-muted-foreground mb-0.5">Data</p>
-                      <p className="text-xs font-mono text-foreground">{formatDate(transacao.data)}</p>
-                    </div>
-
-                    {/* Amount */}
-                    <div className="text-right shrink-0 min-w-[100px]">
-                      <p className={cn(
-                        "text-sm font-semibold font-mono",
+                      </TableCell>
+                      <TableCell><StatusBadge status={transacao.status ?? "pendente"} /></TableCell>
+                      <TableCell className="text-xs font-mono text-muted-foreground">{formatDate(transacao.data)}</TableCell>
+                      <TableCell className={cn(
+                        "text-right font-semibold font-mono text-sm",
                         transacao.tipo === "receita" ? "text-success" : "text-destructive"
                       )}>
                         {transacao.tipo === "receita" ? "+" : "−"}{formatCurrency(transacao.valor)}
-                      </p>
-                    </div>
-
-                    {/* Actions */}
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="sm" className="h-7 w-7 p-0 shrink-0">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setViewModal({ open: true, transacao })}>
-                          <Eye className="h-3.5 w-3.5 mr-2" /> Ver
-                        </DropdownMenuItem>
-                        <RequirePermission module="accounting" action="write">
-                          <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
-                            <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                          </DropdownMenuItem>
-                        </RequirePermission>
-                        <RequirePermission module="accounting" action="delete">
-                          <DropdownMenuItem
-                            onClick={() => setDeleteModal({ open: true, transacao })}
-                            className="text-destructive focus:text-destructive"
-                          >
-                            <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                          </DropdownMenuItem>
-                        </RequirePermission>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                ))}
-              </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setViewModal({ open: true, transacao })}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                            </DropdownMenuItem>
+                            <RequirePermission module="accounting" action="write">
+                              <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
+                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
+                              </DropdownMenuItem>
+                            </RequirePermission>
+                            <RequirePermission module="accounting" action="delete">
+                              <DropdownMenuItem onClick={() => setDeleteModal({ open: true, transacao })} className="text-destructive focus:text-destructive">
+                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
+                              </DropdownMenuItem>
+                            </RequirePermission>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </CardContent>
         </Card>

@@ -4,6 +4,7 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   ArrowLeft, CheckCircle, AlertTriangle, XCircle, Clock,
   Radio, Tv, Music, Mic2, Globe, Building2, Calendar,
@@ -387,51 +388,49 @@ export default function ExecucaoDetail() {
                   <CardDescription className="text-xs">Todas as execuções monitoradas com ISRC {exec.isrc}</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-border/60">
-                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Origem</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Tipo</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Data</th>
-                          <th className="text-right py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden sm:table-cell">Valor Est.</th>
-                          <th className="text-left py-2.5 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/40">
-                        {allDetections.map(det => {
-                          const sCfg = STATUS_CONFIG[det.status];
-                          const tCfg = TIPO_LABEL[det.tipo_execucao];
-                          const dt = fmtDateTime(det.data_hora);
-                          return (
-                            <tr
-                              key={det.id}
-                              className={`hover:bg-muted/30 transition-colors cursor-pointer ${det.id === exec.id ? "bg-primary/5" : ""}`}
-                              onClick={() => navigate(`/rights-monitoring/execucao/${det.id}`)}
-                              data-testid={`row-detection-${det.id}`}
-                            >
-                              <td className="py-2.5 px-4">
-                                <span className="text-sm">{det.origem}</span>
-                                {det.id === exec.id && <span className="ml-2 text-xs text-primary font-medium">(atual)</span>}
-                              </td>
-                              <td className="py-2.5 px-4 hidden md:table-cell">
-                                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
-                                  {tCfg.icon}{tCfg.label}
-                                </span>
-                              </td>
-                              <td className="py-2.5 px-4 text-xs text-muted-foreground hidden lg:table-cell">{dt.date} {dt.time}</td>
-                              <td className="py-2.5 px-4 text-right text-sm font-medium tabular-nums hidden sm:table-cell">{fmtBRL(det.valor_estimado)}</td>
-                              <td className="py-2.5 px-4">
-                                <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${sCfg.className}`}>
-                                  {sCfg.icon}{sCfg.label}
-                                </span>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Origem</TableHead>
+                        <TableHead className="hidden md:table-cell">Tipo</TableHead>
+                        <TableHead className="hidden lg:table-cell">Data</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell">Valor Est.</TableHead>
+                        <TableHead>Status</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {allDetections.map(det => {
+                        const sCfg = STATUS_CONFIG[det.status];
+                        const tCfg = TIPO_LABEL[det.tipo_execucao];
+                        const dt = fmtDateTime(det.data_hora);
+                        return (
+                          <TableRow
+                            key={det.id}
+                            className={`cursor-pointer ${det.id === exec.id ? "bg-primary/5" : ""}`}
+                            onClick={() => navigate(`/rights-monitoring/execucao/${det.id}`)}
+                            data-testid={`row-detection-${det.id}`}
+                          >
+                            <TableCell className="py-2.5">
+                              <span className="text-sm">{det.origem}</span>
+                              {det.id === exec.id && <span className="ml-2 text-xs text-primary font-medium">(atual)</span>}
+                            </TableCell>
+                            <TableCell className="py-2.5 hidden md:table-cell">
+                              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground bg-muted/50 px-2 py-0.5 rounded-md">
+                                {tCfg.icon}{tCfg.label}
+                              </span>
+                            </TableCell>
+                            <TableCell className="py-2.5 text-xs text-muted-foreground hidden lg:table-cell">{dt.date} {dt.time}</TableCell>
+                            <TableCell className="py-2.5 text-right text-sm font-medium tabular-nums hidden sm:table-cell">{fmtBRL(det.valor_estimado)}</TableCell>
+                            <TableCell className="py-2.5">
+                              <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-md border ${sCfg.className}`}>
+                                {sCfg.icon}{sCfg.label}
+                              </span>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
                 </CardContent>
               </Card>
             )}

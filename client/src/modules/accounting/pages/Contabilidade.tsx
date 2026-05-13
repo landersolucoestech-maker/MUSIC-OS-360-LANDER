@@ -3,6 +3,7 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   TrendingUp, TrendingDown, DollarSign, Download, Loader2, RotateCcw,
 } from "lucide-react";
@@ -122,66 +123,64 @@ function PLEmpresaTable({
         <CardDescription>Receitas e despesas por categoria no período</CardDescription>
       </CardHeader>
       <CardContent className="p-0">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border bg-muted/40">
-                <th className="text-left px-4 py-3 font-medium text-muted-foreground">Categoria</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">Valor</th>
-                <th className="text-right px-4 py-3 font-medium text-muted-foreground">% Receita</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="bg-green-500/5 border-b border-border">
-                <td colSpan={3} className="px-4 py-2 font-semibold text-green-700 dark:text-green-400 text-xs uppercase tracking-wider">Receitas</td>
-              </tr>
-              {receitasPorCategoria.map((r) => (
-                <tr key={r.categoria} className="border-b border-border/50 hover:bg-muted/20">
-                  <td className="px-4 py-2.5 pl-8 text-foreground">{catLabel(r.categoria)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(r.valor)}</td>
-                  <td className="px-4 py-2.5 text-right text-muted-foreground">
-                    {totalReceitas > 0 ? ((r.valor / totalReceitas) * 100).toFixed(1) : "0.0"}%
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-b-2 border-border bg-green-500/5">
-                <td className="px-4 py-2.5 font-bold text-foreground">Total Receitas</td>
-                <td className="px-4 py-2.5 text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</td>
-                <td className="px-4 py-2.5 text-right font-bold text-muted-foreground">100.0%</td>
-              </tr>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Categoria</TableHead>
+              <TableHead className="text-right">Valor</TableHead>
+              <TableHead className="text-right">% Receita</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            <TableRow className="bg-green-500/5">
+              <TableCell colSpan={3} className="font-semibold text-green-700 dark:text-green-400 text-xs uppercase tracking-wider">Receitas</TableCell>
+            </TableRow>
+            {receitasPorCategoria.map((r) => (
+              <TableRow key={r.categoria}>
+                <TableCell className="pl-8 text-foreground">{catLabel(r.categoria)}</TableCell>
+                <TableCell className="text-right font-mono text-green-600 dark:text-green-400">{formatCurrency(r.valor)}</TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {totalReceitas > 0 ? ((r.valor / totalReceitas) * 100).toFixed(1) : "0.0"}%
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className="bg-green-500/5 border-b-2">
+              <TableCell className="font-bold text-foreground">Total Receitas</TableCell>
+              <TableCell className="text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</TableCell>
+              <TableCell className="text-right font-bold text-muted-foreground">100.0%</TableCell>
+            </TableRow>
 
-              <tr className="bg-red-500/5 border-b border-border">
-                <td colSpan={3} className="px-4 py-2 font-semibold text-destructive text-xs uppercase tracking-wider">Despesas</td>
-              </tr>
-              {despesasPorCategoria.map((d) => (
-                <tr key={d.categoria} className="border-b border-border/50 hover:bg-muted/20">
-                  <td className="px-4 py-2.5 pl-8 text-foreground">{catLabel(d.categoria)}</td>
-                  <td className="px-4 py-2.5 text-right font-mono text-destructive">({formatCurrency(d.valor)})</td>
-                  <td className="px-4 py-2.5 text-right text-muted-foreground">
-                    {totalReceitas > 0 ? ((d.valor / totalReceitas) * 100).toFixed(1) : "0.0"}%
-                  </td>
-                </tr>
-              ))}
-              <tr className="border-b-2 border-border bg-red-500/5">
-                <td className="px-4 py-2.5 font-bold text-foreground">Total Despesas</td>
-                <td className="px-4 py-2.5 text-right font-bold font-mono text-destructive">({formatCurrency(totalDespesas)})</td>
-                <td className="px-4 py-2.5 text-right font-bold text-muted-foreground">
-                  {totalReceitas > 0 ? ((totalDespesas / totalReceitas) * 100).toFixed(1) : "0.0"}%
-                </td>
-              </tr>
+            <TableRow className="bg-red-500/5">
+              <TableCell colSpan={3} className="font-semibold text-destructive text-xs uppercase tracking-wider">Despesas</TableCell>
+            </TableRow>
+            {despesasPorCategoria.map((d) => (
+              <TableRow key={d.categoria}>
+                <TableCell className="pl-8 text-foreground">{catLabel(d.categoria)}</TableCell>
+                <TableCell className="text-right font-mono text-destructive">({formatCurrency(d.valor)})</TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {totalReceitas > 0 ? ((d.valor / totalReceitas) * 100).toFixed(1) : "0.0"}%
+                </TableCell>
+              </TableRow>
+            ))}
+            <TableRow className="bg-red-500/5 border-b-2">
+              <TableCell className="font-bold text-foreground">Total Despesas</TableCell>
+              <TableCell className="text-right font-bold font-mono text-destructive">({formatCurrency(totalDespesas)})</TableCell>
+              <TableCell className="text-right font-bold text-muted-foreground">
+                {totalReceitas > 0 ? ((totalDespesas / totalReceitas) * 100).toFixed(1) : "0.0"}%
+              </TableCell>
+            </TableRow>
 
-              <tr className={`border-t-2 border-border ${lucroLiquido >= 0 ? "bg-primary/5" : "bg-destructive/5"}`}>
-                <td className="px-4 py-3 font-bold text-lg text-foreground">Lucro Líquido</td>
-                <td className={`px-4 py-3 text-right font-bold font-mono text-lg ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
-                  {lucroLiquido >= 0 ? "" : "("}{formatCurrency(Math.abs(lucroLiquido))}{lucroLiquido < 0 ? ")" : ""}
-                </td>
-                <td className={`px-4 py-3 text-right font-bold ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
-                  {margemLiquida.toFixed(1)}%
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+            <TableRow className={lucroLiquido >= 0 ? "bg-primary/5 border-t-2" : "bg-destructive/5 border-t-2"}>
+              <TableCell className="font-bold text-lg text-foreground">Lucro Líquido</TableCell>
+              <TableCell className={`text-right font-bold font-mono text-lg ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
+                {lucroLiquido >= 0 ? "" : "("}{formatCurrency(Math.abs(lucroLiquido))}{lucroLiquido < 0 ? ")" : ""}
+              </TableCell>
+              <TableCell className={`text-right font-bold ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
+                {margemLiquida.toFixed(1)}%
+              </TableCell>
+            </TableRow>
+          </TableBody>
+        </Table>
       </CardContent>
     </Card>
   );
@@ -301,33 +300,31 @@ export default function Contabilidade() {
                 <CardTitle className="text-lg">P&amp;L por Projeto</CardTitle>
                 <CardDescription>Resultado por lançamento e operação</CardDescription>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto max-h-64 overflow-y-auto">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted/90 z-10">
-                      <tr className="border-b border-border">
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Nome do Projeto</th>
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Categoria</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Receitas</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Despesas</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Resultado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plPorProjeto.map((p) => (
-                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/20">
-                          <td className="px-4 py-2 font-medium text-foreground max-w-xs truncate">{p.nome}</td>
-                          <td className="px-4 py-2 text-muted-foreground text-xs">{catLabel(p.categoria)}</td>
-                          <td className="px-4 py-2 text-right font-mono text-green-600 dark:text-green-400 text-xs">{p.receita > 0 ? formatCurrency(p.receita) : "—"}</td>
-                          <td className="px-4 py-2 text-right font-mono text-destructive text-xs">{p.despesa > 0 ? `(${formatCurrency(p.despesa)})` : "—"}</td>
-                          <td className={`px-4 py-2 text-right font-bold font-mono text-xs ${p.resultado >= 0 ? "text-primary" : "text-destructive"}`}>
-                            {p.resultado >= 0 ? "+" : ""}{formatCurrency(p.resultado)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+              <CardContent className="p-0 max-h-64 overflow-y-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome do Projeto</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead className="text-right">Receitas</TableHead>
+                      <TableHead className="text-right">Despesas</TableHead>
+                      <TableHead className="text-right">Resultado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plPorProjeto.map((p) => (
+                      <TableRow key={p.id}>
+                        <TableCell className="font-medium max-w-xs truncate">{p.nome}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs">{catLabel(p.categoria)}</TableCell>
+                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400 text-xs">{p.receita > 0 ? formatCurrency(p.receita) : "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-destructive text-xs">{p.despesa > 0 ? `(${formatCurrency(p.despesa)})` : "—"}</TableCell>
+                        <TableCell className={`text-right font-bold font-mono text-xs ${p.resultado >= 0 ? "text-primary" : "text-destructive"}`}>
+                          {p.resultado >= 0 ? "+" : ""}{formatCurrency(p.resultado)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
 
@@ -338,34 +335,32 @@ export default function Contabilidade() {
                 <CardDescription>Resultado por artista no período</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40">
-                        <th className="text-left px-4 py-2.5 font-medium text-muted-foreground">Artista</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Receitas</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Despesas</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Resultado</th>
-                        <th className="text-right px-4 py-2.5 font-medium text-muted-foreground">Margem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plPorArtista.map((a) => (
-                        <tr key={a.id} className="border-b border-border/50 hover:bg-muted/20">
-                          <td className="px-4 py-2 font-medium text-foreground">{a.nome}</td>
-                          <td className="px-4 py-2 text-right font-mono text-green-600 dark:text-green-400 text-xs">{a.totalRec > 0 ? formatCurrency(a.totalRec) : "—"}</td>
-                          <td className="px-4 py-2 text-right font-mono text-destructive text-xs">{a.totalDes > 0 ? `(${formatCurrency(a.totalDes)})` : "—"}</td>
-                          <td className={`px-4 py-2 text-right font-bold font-mono text-xs ${a.lucro >= 0 ? "text-primary" : "text-destructive"}`}>
-                            {a.lucro >= 0 ? "+" : ""}{formatCurrency(a.lucro)}
-                          </td>
-                          <td className={`px-4 py-2 text-right text-xs ${a.margem >= 0 ? "text-primary" : "text-destructive"}`}>
-                            {a.margem.toFixed(1)}%
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Artista</TableHead>
+                      <TableHead className="text-right">Receitas</TableHead>
+                      <TableHead className="text-right">Despesas</TableHead>
+                      <TableHead className="text-right">Resultado</TableHead>
+                      <TableHead className="text-right">Margem</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plPorArtista.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-medium">{a.nome}</TableCell>
+                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400 text-xs">{a.totalRec > 0 ? formatCurrency(a.totalRec) : "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-destructive text-xs">{a.totalDes > 0 ? `(${formatCurrency(a.totalDes)})` : "—"}</TableCell>
+                        <TableCell className={`text-right font-bold font-mono text-xs ${a.lucro >= 0 ? "text-primary" : "text-destructive"}`}>
+                          {a.lucro >= 0 ? "+" : ""}{formatCurrency(a.lucro)}
+                        </TableCell>
+                        <TableCell className={`text-right text-xs ${a.margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                          {a.margem.toFixed(1)}%
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
@@ -383,40 +378,38 @@ export default function Contabilidade() {
                 <CardDescription>Resultado financeiro por lançamento e operação</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40">
-                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Nome do Projeto</th>
-                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Categoria</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Receitas</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Despesas</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Resultado</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plPorProjeto.map((p) => (
-                        <tr key={p.id} className="border-b border-border/50 hover:bg-muted/20" data-testid={`row-projeto-${p.id}`}>
-                          <td className="px-4 py-2.5 font-medium text-foreground max-w-xs truncate">{p.nome}</td>
-                          <td className="px-4 py-2.5 text-muted-foreground">{catLabel(p.categoria)}</td>
-                          <td className="px-4 py-2.5 text-right font-mono text-green-600 dark:text-green-400">{p.receita > 0 ? formatCurrency(p.receita) : "—"}</td>
-                          <td className="px-4 py-2.5 text-right font-mono text-destructive">{p.despesa > 0 ? `(${formatCurrency(p.despesa)})` : "—"}</td>
-                          <td className={`px-4 py-2.5 text-right font-bold font-mono ${p.resultado >= 0 ? "text-primary" : "text-destructive"}`}>
-                            {p.resultado >= 0 ? "+" : ""}{formatCurrency(p.resultado)}
-                          </td>
-                        </tr>
-                      ))}
-                      <tr className="border-t-2 border-border bg-muted/40">
-                        <td className="px-4 py-3 font-bold text-foreground" colSpan={2}>Total Geral</td>
-                        <td className="px-4 py-3 text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</td>
-                        <td className="px-4 py-3 text-right font-bold font-mono text-destructive">({formatCurrency(totalDespesas)})</td>
-                        <td className={`px-4 py-3 text-right font-bold font-mono ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
-                          {lucroLiquido >= 0 ? "+" : ""}{formatCurrency(lucroLiquido)}
-                        </td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome do Projeto</TableHead>
+                      <TableHead>Categoria</TableHead>
+                      <TableHead className="text-right">Receitas</TableHead>
+                      <TableHead className="text-right">Despesas</TableHead>
+                      <TableHead className="text-right">Resultado</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plPorProjeto.map((p) => (
+                      <TableRow key={p.id} data-testid={`row-projeto-${p.id}`}>
+                        <TableCell className="font-medium max-w-xs truncate">{p.nome}</TableCell>
+                        <TableCell className="text-muted-foreground">{catLabel(p.categoria)}</TableCell>
+                        <TableCell className="text-right font-mono text-green-600 dark:text-green-400">{p.receita > 0 ? formatCurrency(p.receita) : "—"}</TableCell>
+                        <TableCell className="text-right font-mono text-destructive">{p.despesa > 0 ? `(${formatCurrency(p.despesa)})` : "—"}</TableCell>
+                        <TableCell className={`text-right font-bold font-mono ${p.resultado >= 0 ? "text-primary" : "text-destructive"}`}>
+                          {p.resultado >= 0 ? "+" : ""}{formatCurrency(p.resultado)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="border-t-2 bg-muted/40">
+                      <TableCell className="font-bold" colSpan={2}>Total Geral</TableCell>
+                      <TableCell className="text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(totalReceitas)}</TableCell>
+                      <TableCell className="text-right font-bold font-mono text-destructive">({formatCurrency(totalDespesas)})</TableCell>
+                      <TableCell className={`text-right font-bold font-mono ${lucroLiquido >= 0 ? "text-primary" : "text-destructive"}`}>
+                        {lucroLiquido >= 0 ? "+" : ""}{formatCurrency(lucroLiquido)}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>
@@ -429,53 +422,51 @@ export default function Contabilidade() {
                 <CardDescription>Receitas, despesas e resultado por artista</CardDescription>
               </CardHeader>
               <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border bg-muted/40">
-                        <th className="text-left px-4 py-3 font-medium text-muted-foreground">Artista</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Receitas</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Despesas</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Resultado</th>
-                        <th className="text-right px-4 py-3 font-medium text-muted-foreground">Margem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {plPorArtista.length === 0 ? (
-                        <tr>
-                          <td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-sm">
-                            Nenhum artista com transações registradas
-                          </td>
-                        </tr>
-                      ) : (
-                        <>
-                          {plPorArtista.map((a) => (
-                            <tr key={a.id} className="border-b border-border/50 hover:bg-muted/20" data-testid={`row-artista-${a.id}`}>
-                              <td className="px-4 py-3 font-medium text-foreground">{a.nome}</td>
-                              <td className="px-4 py-3 text-right font-mono text-green-600 dark:text-green-400">{a.totalRec > 0 ? formatCurrency(a.totalRec) : "—"}</td>
-                              <td className="px-4 py-3 text-right font-mono text-destructive">{a.totalDes > 0 ? `(${formatCurrency(a.totalDes)})` : "—"}</td>
-                              <td className={`px-4 py-3 text-right font-bold font-mono ${a.lucro >= 0 ? "text-primary" : "text-destructive"}`}>
-                                {a.lucro >= 0 ? "+" : ""}{formatCurrency(a.lucro)}
-                              </td>
-                              <td className={`px-4 py-3 text-right text-sm ${a.margem >= 0 ? "text-primary" : "text-destructive"}`}>
-                                {a.margem.toFixed(1)}%
-                              </td>
-                            </tr>
-                          ))}
-                          <tr className="border-t-2 border-border bg-muted/40">
-                            <td className="px-4 py-3 font-bold text-foreground">Total (artistas)</td>
-                            <td className="px-4 py-3 text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(sum(plPorArtista, "totalRec"))}</td>
-                            <td className="px-4 py-3 text-right font-bold font-mono text-destructive">({formatCurrency(sum(plPorArtista, "totalDes"))})</td>
-                            <td className={`px-4 py-3 text-right font-bold font-mono ${sum(plPorArtista, "lucro") >= 0 ? "text-primary" : "text-destructive"}`}>
-                              {sum(plPorArtista, "lucro") >= 0 ? "+" : ""}{formatCurrency(sum(plPorArtista, "lucro"))}
-                            </td>
-                            <td className="px-4 py-3 text-right text-muted-foreground">—</td>
-                          </tr>
-                        </>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Artista</TableHead>
+                      <TableHead className="text-right">Receitas</TableHead>
+                      <TableHead className="text-right">Despesas</TableHead>
+                      <TableHead className="text-right">Resultado</TableHead>
+                      <TableHead className="text-right">Margem</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {plPorArtista.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
+                          Nenhum artista com transações registradas
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      <>
+                        {plPorArtista.map((a) => (
+                          <TableRow key={a.id} data-testid={`row-artista-${a.id}`}>
+                            <TableCell className="font-medium">{a.nome}</TableCell>
+                            <TableCell className="text-right font-mono text-green-600 dark:text-green-400">{a.totalRec > 0 ? formatCurrency(a.totalRec) : "—"}</TableCell>
+                            <TableCell className="text-right font-mono text-destructive">{a.totalDes > 0 ? `(${formatCurrency(a.totalDes)})` : "—"}</TableCell>
+                            <TableCell className={`text-right font-bold font-mono ${a.lucro >= 0 ? "text-primary" : "text-destructive"}`}>
+                              {a.lucro >= 0 ? "+" : ""}{formatCurrency(a.lucro)}
+                            </TableCell>
+                            <TableCell className={`text-right text-sm ${a.margem >= 0 ? "text-primary" : "text-destructive"}`}>
+                              {a.margem.toFixed(1)}%
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        <TableRow className="border-t-2 bg-muted/40">
+                          <TableCell className="font-bold">Total (artistas)</TableCell>
+                          <TableCell className="text-right font-bold font-mono text-green-600 dark:text-green-400">{formatCurrency(sum(plPorArtista, "totalRec"))}</TableCell>
+                          <TableCell className="text-right font-bold font-mono text-destructive">({formatCurrency(sum(plPorArtista, "totalDes"))})</TableCell>
+                          <TableCell className={`text-right font-bold font-mono ${sum(plPorArtista, "lucro") >= 0 ? "text-primary" : "text-destructive"}`}>
+                            {sum(plPorArtista, "lucro") >= 0 ? "+" : ""}{formatCurrency(sum(plPorArtista, "lucro"))}
+                          </TableCell>
+                          <TableCell className="text-right text-muted-foreground">—</TableCell>
+                        </TableRow>
+                      </>
+                    )}
+                  </TableBody>
+                </Table>
               </CardContent>
             </Card>
           </TabsContent>

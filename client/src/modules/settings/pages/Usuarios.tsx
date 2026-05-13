@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent } from "@/shared/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Users, Search, Loader2, UserCog } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Users, Search, Loader2, UserCog, Eye, Pencil } from "lucide-react";
 import { UsuarioFormModal } from "@/modules/settings/components/UsuarioFormModal";
 import { UsuarioViewModal } from "@/modules/settings/components/UsuarioViewModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -125,66 +126,86 @@ export default function Usuarios() {
               : "Novos usuários aparecem aqui após se cadastrarem no sistema."}
           />
         ) : (
-          <div className="space-y-3">
-            {filteredUsuarios.map((usuario) => (
-              <Card key={usuario.id} className="bg-card border-border hover:bg-muted/50 transition-colors">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-semibold">
-                      {getInitials(usuario.full_name)}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3 className="font-semibold text-foreground">{usuario.full_name || "Usuário"}</h3>
+          <Card className="bg-card border-border">
+            <CardHeader>
+              <CardTitle className="text-lg">Usuários</CardTitle>
+              <CardDescription>Todos os usuários cadastrados no sistema</CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Cargo / Função</TableHead>
+                    <TableHead>Telefone</TableHead>
+                    <TableHead>Criado em</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredUsuarios.map((usuario) => (
+                    <TableRow key={usuario.id} data-testid={`row-usuario-${usuario.id}`}>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-primary-foreground font-semibold text-xs shrink-0">
+                            {getInitials(usuario.full_name)}
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm">{usuario.full_name || "Usuário"}</p>
+                            <p className="text-xs text-muted-foreground">{usuario.email || "—"}</p>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <Badge variant="outline" className="text-xs">
                           {usuario.role === "admin" ? "Administrador" : usuario.cargo || "Usuário"}
                         </Badge>
-                        <Badge className={`text-xs ${usuario.status === 'ativo' ? 'bg-success' : 'bg-gray-500'} hover:bg-opacity-80 text-white`}>
-                          {usuario.status === 'ativo' ? 'Ativo' : 'Inativo'}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{usuario.phone || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{formatDate(usuario.created_at)}</TableCell>
+                      <TableCell>
+                        <Badge className={`text-xs ${usuario.status === "ativo" ? "bg-success" : "bg-gray-500"} text-white`}>
+                          {usuario.status === "ativo" ? "Ativo" : "Inativo"}
                         </Badge>
-                      </div>
-                      <p className="text-sm text-muted-foreground">ID: {usuario.id.substring(0, 8)}...</p>
-                    </div>
-                    <div className="hidden lg:flex items-center gap-8">
-                      <div>
-                        <span className="text-muted-foreground text-xs">Telefone:</span>
-                        <p className="text-foreground text-sm">{usuario.phone || "-"}</p>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground text-xs">Criado em:</span>
-                        <p className="text-foreground text-sm">{formatDate(usuario.created_at)}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setViewModal({ 
-                          open: true, 
-                          usuario: {
-                            ...usuario,
-                            nome: usuario.full_name,
-                            iniciais: getInitials(usuario.full_name),
-                            telefone: usuario.phone,
-                            criadoEm: formatDate(usuario.created_at),
-                          } as any
-                        })}
-                      >
-                        Ver
-                      </Button>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setFormModal({ open: true, mode: "edit", usuario })}
-                      >
-                        Editar
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            data-testid={`button-ver-usuario-${usuario.id}`}
+                            onClick={() => setViewModal({
+                              open: true,
+                              usuario: {
+                                ...usuario,
+                                nome: usuario.full_name,
+                                iniciais: getInitials(usuario.full_name),
+                                telefone: usuario.phone,
+                                criadoEm: formatDate(usuario.created_at),
+                              } as any,
+                            })}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            data-testid={`button-editar-usuario-${usuario.id}`}
+                            onClick={() => setFormModal({ open: true, mode: "edit", usuario })}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         )}
       </div>
 

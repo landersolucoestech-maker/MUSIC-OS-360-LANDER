@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
 import { MOCK_INTEGRATIONS } from "../data/mockAdmin";
 import type { IntegrationStatus } from "../types";
@@ -572,51 +573,51 @@ function TabUsuarios() {
       </div>
 
       <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-white/[0.06]">
+        <Table>
+          <TableHeader>
+            <TableRow className="border-white/[0.06] hover:bg-transparent">
               {["Usuário", "Tenant", "Role", "MFA", "Status", "Sessões", "Último Login"].map(h => (
-                <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</th>
+                <TableHead key={h} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-white/[0.04]">
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {filtered.map((u) => {
               const statusColor = u.status === "active" ? "text-emerald-400" : u.status === "blocked" ? "text-red-400" : "text-white/40";
               return (
-                <tr key={u.id} className="hover:bg-white/[0.02] transition-colors" data-testid={`user-${u.id}`}>
-                  <td className="px-4 py-3.5">
+                <TableRow key={u.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`user-${u.id}`}>
+                  <TableCell className="py-3.5">
                     <p className="text-[13px] font-medium text-white">{u.name}</p>
                     <p className="text-[11px] text-white/35">{u.email}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-[12px] text-white/50">{u.tenant_name}</td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-white/50">{u.tenant_name}</TableCell>
+                  <TableCell className="py-3.5">
                     <Badge variant="outline" className={cn("text-[10.5px] border", ROLE_STYLE[u.role])}>
                       {ROLE_LABEL[u.role]}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5">
                     {u.mfa_enabled
                       ? <Shield className="h-3.5 w-3.5 text-emerald-400" />
                       : <ShieldOff className="h-3.5 w-3.5 text-white/20" />}
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5">
                     <span className={cn("text-[12px] font-medium capitalize", statusColor)}>
                       {u.status === "active" ? "Ativo" : u.status === "blocked" ? "Bloqueado" : "Inativo"}
                     </span>
-                  </td>
-                  <td className="px-4 py-3.5 text-[12px] text-white/40">{u.sessions_count}</td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-white/40">{u.sessions_count}</TableCell>
+                  <TableCell className="py-3.5">
                     <div className="flex items-center gap-1 text-[11.5px] text-white/35">
                       <Clock className="h-3 w-3" />
                       {new Date(u.last_login).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

@@ -9,6 +9,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Package, Wrench, CheckCircle, Upload, Download, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User } from "lucide-react";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { InventarioFormModal } from "@/modules/inventory/components/InventarioFormModal";
 import { InventarioViewModal } from "@/modules/inventory/components/InventarioViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -161,92 +163,91 @@ export default function Inventario() {
         </div>
 
         <Card className="bg-card border-border">
-          <CardHeader><CardTitle className="text-lg">Lista de Equipamentos</CardTitle><CardDescription>Inventário completo de equipamentos e instrumentos</CardDescription></CardHeader>
-          <CardContent className="space-y-4">
-            {inventario.length > 0 && (
-              <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
-                <div className="w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer" onClick={toggleSelectAll}>
-                  {selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0 && <div className="w-2.5 h-2.5 rounded-sm bg-primary" />}
-                </div>
-                <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
-                {selectedIds.length > 0 && (
-                  <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
-                  </Button>
-                )}
-              </div>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+              <CardTitle className="text-lg">Lista de Equipamentos</CardTitle>
+              <CardDescription>Inventário completo de equipamentos e instrumentos</CardDescription>
+            </div>
+            {selectedIds.length > 0 && (
+              <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                <Trash2 className="h-3.5 w-3.5" />
+                Excluir ({selectedIds.length})
+              </Button>
             )}
-
+          </CardHeader>
+          <CardContent className="pt-0">
             {filteredEquipamentos.length > 0 ? (
-              <div className="space-y-3">
-                {filteredEquipamentos.map((item: any) => (
-                  <div key={item.id} className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-border hover:bg-muted/50 transition-colors" data-testid={`card-inventario-${item.id}`}>
-                    <div className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(item.id) ? 'bg-primary' : ''}`} onClick={() => toggleSelect(item.id)}>
-                      {selectedIds.includes(item.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                    </div>
-                    <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shrink-0"><Monitor className="h-5 w-5 text-white" /></div>
-                    <div className="min-w-[160px] flex-1">
-                      <h3 className="font-semibold text-foreground" data-testid={`text-inventario-nome-${item.id}`}>{item.nome}</h3>
-                      <div className="flex items-center gap-2 mt-1 flex-wrap">
-                        <Badge variant="outline" className="text-xs">{item.categoria || "-"}</Badge>
-                        <StatusBadge status={item.status} />
-                        {item.setor && <Badge variant="secondary" className="text-xs">{item.setor}</Badge>}
-                      </div>
-                    </div>
-                    <div className="hidden md:block text-sm shrink-0">
-                      <span className="text-muted-foreground text-xs">Quantidade</span>
-                      <p className="font-medium text-foreground">{item.quantidade || 1}</p>
-                    </div>
-                    <div className="hidden lg:block text-sm shrink-0">
-                      <span className="text-muted-foreground text-xs">Localização</span>
-                      <div className="flex items-center gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="font-medium text-foreground">{item.localizacao || "-"}</p>
-                      </div>
-                    </div>
-                    <div className="hidden lg:block text-sm shrink-0">
-                      <span className="text-muted-foreground text-xs">Responsável</span>
-                      <div className="flex items-center gap-1.5">
-                        <User className="h-3.5 w-3.5 text-muted-foreground" />
-                        <p className="font-medium text-foreground">{item.responsavel || "-"}</p>
-                      </div>
-                    </div>
-                    <div className="hidden xl:block text-sm shrink-0">
-                      <span className="text-muted-foreground text-xs">Valor Unit.</span>
-                      <p className="font-semibold text-success">{item.valor_unitario ? formatCurrency(item.valor_unitario) : "-"}</p>
-                    </div>
-                    <div className="hidden xl:block text-sm shrink-0">
-                      <span className="text-muted-foreground text-xs">Entrada</span>
-                      <p className="font-medium text-foreground">{item.dataEntrada ? formatDate(item.dataEntrada) : "-"}</p>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <span className="text-xs text-muted-foreground mb-1">Ações</span>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" data-testid={`button-menu-inventario-${item.id}`}>
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem data-testid={`button-ver-inventario-${item.id}`} onClick={() => setViewModal({ open: true, item })}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          Ver
-                        </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`button-editar-inventario-${item.id}`} onClick={() => setFormModal({ open: true, mode: "edit", item })}>
-                          <Pencil className="h-4 w-4 mr-2" />
-                          Editar
-                        </DropdownMenuItem>
-                        <DropdownMenuItem data-testid={`button-excluir-inventario-${item.id}`} onClick={() => setDeleteModal({ open: true, item })} className="text-destructive">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Excluir
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0}
+                        onCheckedChange={toggleSelectAll}
+                        data-testid="checkbox-select-all"
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Categoria</TableHead>
+                    <TableHead>Setor</TableHead>
+                    <TableHead className="text-center">Qtd.</TableHead>
+                    <TableHead>Localização</TableHead>
+                    <TableHead>Responsável</TableHead>
+                    <TableHead className="text-right">Valor Unit.</TableHead>
+                    <TableHead>Entrada</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredEquipamentos.map((item: any) => (
+                    <TableRow key={item.id} data-testid={`card-inventario-${item.id}`} className={selectedIds.includes(item.id) ? "bg-muted/20" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.includes(item.id)}
+                          onCheckedChange={() => toggleSelect(item.id)}
+                          data-testid={`checkbox-inventario-${item.id}`}
+                          aria-label={`Selecionar ${item.nome}`}
+                        />
+                      </TableCell>
+                      <TableCell className="font-medium" data-testid={`text-inventario-nome-${item.id}`}>{item.nome}</TableCell>
+                      <TableCell>
+                        {item.categoria ? <Badge variant="outline" className="text-xs">{item.categoria}</Badge> : "—"}
+                      </TableCell>
+                      <TableCell>
+                        {item.setor ? <Badge variant="secondary" className="text-xs">{item.setor}</Badge> : "—"}
+                      </TableCell>
+                      <TableCell className="text-center">{item.quantidade || 1}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{item.localizacao || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{item.responsavel || "—"}</TableCell>
+                      <TableCell className="text-right text-success font-medium">{item.valor_unitario ? formatCurrency(item.valor_unitario) : "—"}</TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{item.dataEntrada ? formatDate(item.dataEntrada) : "—"}</TableCell>
+                      <TableCell><StatusBadge status={item.status} /></TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-menu-inventario-${item.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem data-testid={`button-ver-inventario-${item.id}`} onClick={() => setViewModal({ open: true, item })}>
+                              <Eye className="h-4 w-4 mr-2" /> Ver
+                            </DropdownMenuItem>
+                            <DropdownMenuItem data-testid={`button-editar-inventario-${item.id}`} onClick={() => setFormModal({ open: true, mode: "edit", item })}>
+                              <Pencil className="h-4 w-4 mr-2" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem data-testid={`button-excluir-inventario-${item.id}`} onClick={() => setDeleteModal({ open: true, item })} className="text-destructive">
+                              <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             ) : (
               <EmptyState
                 icon={Package}

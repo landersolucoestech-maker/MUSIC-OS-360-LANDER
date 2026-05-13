@@ -7,6 +7,8 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -575,107 +577,89 @@ export default function RH() {
               />
             ) : (
               <>
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <div
-                  className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer"
-                  onClick={toggleSelectAllFuncs}
-                  data-testid="checkbox-select-all-funcs"
-                >
-                  {selectedFuncIds.length === filteredFuncionarios.length && filteredFuncionarios.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
-                </div>
-                <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
-                {selectedFuncIds.length > 0 && (
+              {selectedFuncIds.length > 0 && (
+                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
+                  <span className="text-sm text-muted-foreground flex-1">{selectedFuncIds.length} selecionado(s)</span>
                   <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteFuncs} data-testid="button-bulk-delete-funcs">
                     <Trash2 className="h-3.5 w-3.5" />
                     Excluir ({selectedFuncIds.length})
                   </Button>
-                )}
-              </div>
-              <div className="rounded-lg border overflow-x-auto" data-testid="table-funcionarios">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="w-10 p-3"></th>
-                      <th className="text-left p-3 font-medium">Nome</th>
-                      <th className="text-left p-3 font-medium">Cargo</th>
-                      <th className="text-left p-3 font-medium">Setor</th>
-                      <th className="text-left p-3 font-medium">Tipo</th>
-                      <th className="text-left p-3 font-medium">Salário</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-left p-3 font-medium">Usuário</th>
-                      <th className="text-right p-3 font-medium">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredFuncionarios.map((f) => (
-                      <tr key={f.id} className="border-b last:border-b-0" data-testid={`row-funcionario-${f.id}`}>
-                        <td className="p-3">
-                          <div
-                            className={`w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer ${selectedFuncIds.includes(f.id) ? 'bg-primary' : ''}`}
-                            onClick={() => toggleSelectFunc(f.id)}
-                            data-testid={`checkbox-funcionario-${f.id}`}
-                          >
-                            {selectedFuncIds.includes(f.id) && <div className="w-2 h-2 bg-white rounded-full" />}
-                          </div>
-                        </td>
-                        <td className="p-3">
-                          <div>
-                            <p className="font-medium">{f.nome_completo}</p>
-                            {f.email && (
-                              <p className="text-xs text-muted-foreground">{f.email}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="p-3 text-muted-foreground">{f.cargo || "-"}</td>
-                        <td className="p-3 text-muted-foreground">{f.setor || "-"}</td>
-                        <td className="p-3 text-muted-foreground">{f.tipo_contrato || "-"}</td>
-                        <td className="p-3">{f.salario_base ? formatCurrency(Number(f.salario_base)) : "-"}</td>
-                        <td className="p-3">
-                          <Badge className={STATUS_BADGE_FUNCIONARIO[f.status || "ativo"] || ""}>
-                            {(f.status || "ativo").charAt(0).toUpperCase() + (f.status || "ativo").slice(1)}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-muted-foreground text-xs" data-testid={`text-usuario-vinculo-${f.id}`}>
-                          {getUsuarioNome(f.vinculo_usuario_id) || "—"}
-                        </td>
-                        <td className="p-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-actions-func-${f.id}`}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setFuncFormModal({ open: true, mode: "view", funcionario: f })}
-                                data-testid={`button-view-func-${f.id}`}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Visualizar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setFuncFormModal({ open: true, mode: "edit", funcionario: f })}
-                                data-testid={`button-edit-func-${f.id}`}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => setFuncDeleteModal({ open: true, funcionario: f })}
-                                data-testid={`button-delete-func-${f.id}`}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                </div>
+              )}
+              <Table data-testid="table-funcionarios">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[36px]">
+                      <Checkbox
+                        checked={selectedFuncIds.length === filteredFuncionarios.length && filteredFuncionarios.length > 0}
+                        onCheckedChange={toggleSelectAllFuncs}
+                        data-testid="checkbox-select-all-funcs"
+                        aria-label="Selecionar todos"
+                      />
+                    </TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Cargo</TableHead>
+                    <TableHead>Setor</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead className="text-right">Salário</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredFuncionarios.map((f) => (
+                    <TableRow key={f.id} data-testid={`row-funcionario-${f.id}`} className={selectedFuncIds.includes(f.id) ? "bg-muted/20" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedFuncIds.includes(f.id)}
+                          onCheckedChange={() => toggleSelectFunc(f.id)}
+                          data-testid={`checkbox-funcionario-${f.id}`}
+                          aria-label={`Selecionar ${f.nome_completo}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium">{f.nome_completo}</p>
+                          {f.email && <p className="text-xs text-muted-foreground">{f.email}</p>}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{f.cargo || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
+                      <TableCell className="text-muted-foreground">{f.tipo_contrato || "—"}</TableCell>
+                      <TableCell className="text-right">{f.salario_base ? formatCurrency(Number(f.salario_base)) : "—"}</TableCell>
+                      <TableCell>
+                        <Badge className={STATUS_BADGE_FUNCIONARIO[f.status || "ativo"] || ""}>
+                          {(f.status || "ativo").charAt(0).toUpperCase() + (f.status || "ativo").slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs" data-testid={`text-usuario-vinculo-${f.id}`}>
+                        {getUsuarioNome(f.vinculo_usuario_id) || "—"}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-actions-func-${f.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setFuncFormModal({ open: true, mode: "view", funcionario: f })} data-testid={`button-view-func-${f.id}`}>
+                              <Eye className="mr-2 h-4 w-4" /> Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFuncFormModal({ open: true, mode: "edit", funcionario: f })} data-testid={`button-edit-func-${f.id}`}>
+                              <Pencil className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setFuncDeleteModal({ open: true, funcionario: f })} data-testid={`button-delete-func-${f.id}`}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
               </>
             )}
           </TabsContent>
@@ -731,80 +715,65 @@ export default function RH() {
                 }}
               />
             ) : (
-              <div className="rounded-lg border overflow-x-auto" data-testid="table-folha">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">Funcionário</th>
-                      <th className="text-left p-3 font-medium">Mês Ref.</th>
-                      <th className="text-right p-3 font-medium">Bruto</th>
-                      <th className="text-right p-3 font-medium">Descontos</th>
-                      <th className="text-right p-3 font-medium">Bônus</th>
-                      <th className="text-right p-3 font-medium">Líquido</th>
-                      <th className="text-left p-3 font-medium">Pagamento</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-right p-3 font-medium">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredFolha.map((fp) => (
-                      <tr key={fp.id} className="border-b last:border-b-0" data-testid={`row-folha-${fp.id}`}>
-                        <td className="p-3 font-medium">{getFuncionarioNome(fp.funcionario_id)}</td>
-                        <td className="p-3 text-muted-foreground">{fp.mes_referencia || "-"}</td>
-                        <td className="p-3 text-right">{formatCurrency(Number(fp.salario_bruto) || 0)}</td>
-                        <td className="p-3 text-right text-destructive">
-                          {fp.descontos ? `- ${formatCurrency(Number(fp.descontos))}` : "-"}
-                        </td>
-                        <td className="p-3 text-right text-emerald-600 dark:text-emerald-400">
-                          {fp.bonus ? `+ ${formatCurrency(Number(fp.bonus))}` : "-"}
-                        </td>
-                        <td className="p-3 text-right font-semibold">
-                          {formatCurrency(Number(fp.salario_liquido) || 0)}
-                        </td>
-                        <td className="p-3 text-muted-foreground">{fp.data_pagamento ? formatDate(fp.data_pagamento) : "-"}</td>
-                        <td className="p-3">
-                          <Badge className={STATUS_BADGE_PAGAMENTO[fp.status || "pendente"] || ""}>
-                            {(fp.status || "pendente").charAt(0).toUpperCase() + (fp.status || "pendente").slice(1)}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" data-testid={`button-actions-folha-${fp.id}`}>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                onClick={() => setFolhaFormModal({ open: true, mode: "view", registro: fp })}
-                                data-testid={`button-view-folha-${fp.id}`}
-                              >
-                                <Eye className="mr-2 h-4 w-4" />
-                                Visualizar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => setFolhaFormModal({ open: true, mode: "edit", registro: fp })}
-                                data-testid={`button-edit-folha-${fp.id}`}
-                              >
-                                <Pencil className="mr-2 h-4 w-4" />
-                                Editar
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => setFolhaDeleteModal({ open: true, registro: fp })}
-                                data-testid={`button-delete-folha-${fp.id}`}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                Excluir
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table data-testid="table-folha">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Mês Ref.</TableHead>
+                    <TableHead className="text-right">Bruto</TableHead>
+                    <TableHead className="text-right">Descontos</TableHead>
+                    <TableHead className="text-right">Bônus</TableHead>
+                    <TableHead className="text-right">Líquido</TableHead>
+                    <TableHead>Pagamento</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredFolha.map((fp) => (
+                    <TableRow key={fp.id} data-testid={`row-folha-${fp.id}`}>
+                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id)}</TableCell>
+                      <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
+                      <TableCell className="text-right text-destructive">
+                        {fp.descontos ? `- ${formatCurrency(Number(fp.descontos))}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
+                        {fp.bonus ? `+ ${formatCurrency(Number(fp.bonus))}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-right font-semibold">
+                        {formatCurrency(Number(fp.salario_liquido) || 0)}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{fp.data_pagamento ? formatDate(fp.data_pagamento) : "—"}</TableCell>
+                      <TableCell>
+                        <Badge className={STATUS_BADGE_PAGAMENTO[fp.status || "pendente"] || ""}>
+                          {(fp.status || "pendente").charAt(0).toUpperCase() + (fp.status || "pendente").slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-actions-folha-${fp.id}`}>
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setFolhaFormModal({ open: true, mode: "view", registro: fp })} data-testid={`button-view-folha-${fp.id}`}>
+                              <Eye className="mr-2 h-4 w-4" /> Visualizar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setFolhaFormModal({ open: true, mode: "edit", registro: fp })} data-testid={`button-edit-folha-${fp.id}`}>
+                              <Pencil className="mr-2 h-4 w-4" /> Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-destructive" onClick={() => setFolhaDeleteModal({ open: true, registro: fp })} data-testid={`button-delete-folha-${fp.id}`}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </TabsContent>
 
@@ -852,96 +821,69 @@ export default function RH() {
                 }}
               />
             ) : (
-              <div className="rounded-lg border overflow-x-auto" data-testid="table-ferias">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left p-3 font-medium">Funcionário</th>
-                      <th className="text-left p-3 font-medium">Tipo</th>
-                      <th className="text-left p-3 font-medium">Início</th>
-                      <th className="text-left p-3 font-medium">Fim</th>
-                      <th className="text-center p-3 font-medium">Dias</th>
-                      <th className="text-left p-3 font-medium">Status</th>
-                      <th className="text-right p-3 font-medium">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredFerias.map((fa) => (
-                      <tr key={fa.id} className="border-b last:border-b-0" data-testid={`row-ferias-${fa.id}`}>
-                        <td className="p-3 font-medium">{getFuncionarioNome(fa.funcionario_id)}</td>
-                        <td className="p-3 text-muted-foreground">
-                          {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "-"}
-                        </td>
-                        <td className="p-3 text-muted-foreground">{formatDate(fa.data_inicio)}</td>
-                        <td className="p-3 text-muted-foreground">{formatDate(fa.data_fim)}</td>
-                        <td className="p-3 text-center">{fa.dias_totais ?? "-"}</td>
-                        <td className="p-3">
-                          <Badge className={STATUS_BADGE_AUSENCIA[fa.status || "pendente"] || ""}>
-                            {(fa.status || "pendente").charAt(0).toUpperCase() + (fa.status || "pendente").slice(1)}
-                          </Badge>
-                        </td>
-                        <td className="p-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            {fa.status === "pendente" && (
-                              <>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleApproveReject(fa, "aprovado")}
-                                  title="Aprovar"
-                                  data-testid={`button-approve-${fa.id}`}
-                                >
-                                  <CheckCircle className="h-4 w-4 text-emerald-600" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => handleApproveReject(fa, "rejeitado")}
-                                  title="Rejeitar"
-                                  data-testid={`button-reject-${fa.id}`}
-                                >
-                                  <XCircle className="h-4 w-4 text-destructive" />
-                                </Button>
-                              </>
-                            )}
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" data-testid={`button-actions-ferias-${fa.id}`}>
-                                  <MoreHorizontal className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() => setFeriasFormModal({ open: true, mode: "view", ausencia: fa })}
-                                  data-testid={`button-view-ferias-${fa.id}`}
-                                >
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  Visualizar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() => setFeriasFormModal({ open: true, mode: "edit", ausencia: fa })}
-                                  data-testid={`button-edit-ferias-${fa.id}`}
-                                >
-                                  <Pencil className="mr-2 h-4 w-4" />
-                                  Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  className="text-destructive"
-                                  onClick={() => setFeriasDeleteModal({ open: true, ausencia: fa })}
-                                  data-testid={`button-delete-ferias-${fa.id}`}
-                                >
-                                  <Trash2 className="mr-2 h-4 w-4" />
-                                  Excluir
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <Table data-testid="table-ferias">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Funcionário</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Início</TableHead>
+                    <TableHead>Fim</TableHead>
+                    <TableHead className="text-center">Dias</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredFerias.map((fa) => (
+                    <TableRow key={fa.id} data-testid={`row-ferias-${fa.id}`}>
+                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.data_inicio)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
+                      <TableCell className="text-center">{fa.dias_totais ?? "—"}</TableCell>
+                      <TableCell>
+                        <Badge className={STATUS_BADGE_AUSENCIA[fa.status || "pendente"] || ""}>
+                          {(fa.status || "pendente").charAt(0).toUpperCase() + (fa.status || "pendente").slice(1)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          {fa.status === "pendente" && (
+                            <>
+                              <Button variant="ghost" size="icon" onClick={() => handleApproveReject(fa, "aprovado")} title="Aprovar" data-testid={`button-approve-${fa.id}`}>
+                                <CheckCircle className="h-4 w-4 text-emerald-600" />
+                              </Button>
+                              <Button variant="ghost" size="icon" onClick={() => handleApproveReject(fa, "rejeitado")} title="Rejeitar" data-testid={`button-reject-${fa.id}`}>
+                                <XCircle className="h-4 w-4 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0" data-testid={`button-actions-ferias-${fa.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => setFeriasFormModal({ open: true, mode: "view", ausencia: fa })} data-testid={`button-view-ferias-${fa.id}`}>
+                                <Eye className="mr-2 h-4 w-4" /> Visualizar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setFeriasFormModal({ open: true, mode: "edit", ausencia: fa })} data-testid={`button-edit-ferias-${fa.id}`}>
+                                <Pencil className="mr-2 h-4 w-4" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem className="text-destructive" onClick={() => setFeriasDeleteModal({ open: true, ausencia: fa })} data-testid={`button-delete-ferias-${fa.id}`}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             )}
           </TabsContent>
 
@@ -1021,23 +963,23 @@ export default function RH() {
                   />
                 ) : (
                   <div className="rounded-lg border overflow-x-auto" data-testid="table-documentos">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left p-3 font-medium">Tipo</th>
-                          <th className="text-left p-3 font-medium">Arquivo</th>
-                          <th className="text-left p-3 font-medium">Descrição</th>
-                          <th className="text-left p-3 font-medium">Data</th>
-                          <th className="text-right p-3 font-medium">Ações</th>
-                        </tr>
-                      </thead>
-                      <tbody>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Tipo</TableHead>
+                          <TableHead>Arquivo</TableHead>
+                          <TableHead>Descrição</TableHead>
+                          <TableHead>Data</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
                         {(documentos || []).map((doc) => (
-                          <tr key={doc.id} className="border-b last:border-b-0" data-testid={`row-documento-${doc.id}`}>
-                            <td className="p-3">
+                          <TableRow key={doc.id} data-testid={`row-documento-${doc.id}`}>
+                            <TableCell>
                               <Badge variant="secondary">{doc.tipo_documento || "Outro"}</Badge>
-                            </td>
-                            <td className="p-3">
+                            </TableCell>
+                            <TableCell>
                               <a
                                 href={doc.url_arquivo}
                                 target="_blank"
@@ -1047,10 +989,10 @@ export default function RH() {
                               >
                                 {doc.nome_arquivo}
                               </a>
-                            </td>
-                            <td className="p-3 text-muted-foreground">{doc.descricao || "-"}</td>
-                            <td className="p-3 text-muted-foreground">{formatDate(doc.created_at)}</td>
-                            <td className="p-3 text-right">
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{doc.descricao || "-"}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDate(doc.created_at)}</TableCell>
+                            <TableCell className="text-right">
                               <Button
                                 variant="ghost"
                                 size="icon"
@@ -1060,11 +1002,11 @@ export default function RH() {
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
-                            </td>
-                          </tr>
+                            </TableCell>
+                          </TableRow>
                         ))}
-                      </tbody>
-                    </table>
+                      </TableBody>
+                    </Table>
                   </div>
                 )}
               </div>

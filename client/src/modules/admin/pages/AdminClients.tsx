@@ -3,6 +3,7 @@ import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
@@ -166,59 +167,57 @@ export default function AdminClients() {
 
         {/* Table */}
         <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-white/[0.06] hover:bg-transparent">
                 {["Tenant", "Plano", "Status", "Usuários", "Storage", "MRR", "Ciclo", "Próxima Cobrança", "Método", "Desde", ""].map((h, i) => (
-                  <th key={i} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider whitespace-nowrap">
+                  <TableHead key={i} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider whitespace-nowrap">
                     {h}
-                  </th>
+                  </TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((t) => {
                 const sub = subByTenant[t.id];
                 return (
-                  <tr key={t.id} className="group hover:bg-white/[0.02] transition-colors" data-testid={`tenant-${t.id}`}>
-                    <td className="px-4 py-3.5">
+                  <TableRow key={t.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`tenant-${t.id}`}>
+                    <TableCell className="py-3.5">
                       <div>
                         <p className="text-[13px] font-medium text-white">{t.name}</p>
                         <p className="text-[11px] text-white/35 mt-0.5">{t.owner_email}</p>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <span className={cn("text-[12px] font-semibold capitalize", PLAN_COLOR[t.plan])}>
                         {t.plan}
                       </span>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <Badge variant="outline" className={cn("text-[10.5px] border", STATUS_STYLE[t.status])}>
                         {STATUS_LABEL[t.status]}
                       </Badge>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <div className="flex items-center gap-1.5">
                         <Users className="h-3.5 w-3.5 text-white/25" />
                         <span className="text-[12.5px] text-white/60">{t.users_count}</span>
                       </div>
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <StorageBar used={t.storage_used_mb} limit={t.storage_limit_mb} />
-                    </td>
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <span className="text-[13px] font-semibold text-white/80">
                         {t.mrr > 0 ? fmtBRL(t.mrr) : <span className="text-white/25">—</span>}
                       </span>
-                    </td>
-                    {/* Ciclo */}
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell className="py-3.5 whitespace-nowrap">
                       <span className="text-[12px] text-white/50">
                         {sub ? CYCLE_LABEL[sub.billing_cycle] ?? sub.billing_cycle : <span className="text-white/20">—</span>}
                       </span>
-                    </td>
-                    {/* Próxima Cobrança */}
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell className="py-3.5 whitespace-nowrap">
                       {sub?.next_payment_at ? (
                         <div className="flex items-center gap-1 text-[11.5px] text-white/45">
                           <Calendar className="h-3 w-3 shrink-0" />
@@ -227,9 +226,8 @@ export default function AdminClients() {
                       ) : (
                         <span className="text-[12px] text-white/20">—</span>
                       )}
-                    </td>
-                    {/* Método */}
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell className="py-3.5 whitespace-nowrap">
                       {sub?.payment_method && sub.payment_method !== "—" ? (
                         <div className="flex items-center gap-1.5 text-[11.5px] text-white/45">
                           <CreditCard className="h-3 w-3 shrink-0 text-white/25" />
@@ -238,16 +236,14 @@ export default function AdminClients() {
                       ) : (
                         <span className="text-[12px] text-white/20">—</span>
                       )}
-                    </td>
-                    {/* Desde */}
-                    <td className="px-4 py-3.5 whitespace-nowrap">
+                    </TableCell>
+                    <TableCell className="py-3.5 whitespace-nowrap">
                       <div className="flex items-center gap-1 text-[11px] text-white/35">
                         <Calendar className="h-3 w-3" />
                         {fmtDate(t.created_at)}
                       </div>
-                    </td>
-                    {/* Ações — dropdown */}
-                    <td className="px-4 py-3.5">
+                    </TableCell>
+                    <TableCell className="py-3.5">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
@@ -286,12 +282,12 @@ export default function AdminClients() {
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
 

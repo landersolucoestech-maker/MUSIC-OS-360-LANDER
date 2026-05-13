@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import {
   Shield, Radio, Search, RefreshCw, Upload, FileText,
   Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock, X
@@ -336,69 +337,67 @@ export default function RightsMonitoring() {
               <CardDescription className="text-xs">Execuções detectadas via fingerprinting em emissoras de rádio e televisão</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Música / Artista</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Emissora</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Canal</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Tipo</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden xl:table-cell">Data/Hora</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden xl:table-cell">ISRC</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Valor Est.</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {MOCK_BROADCAST_DETECTIONS.map(det => {
-                      const statusMap: Record<string, string> = {
-                        confirmado:    "bg-success/15 text-success border-success/30",
-                        pendente:      "bg-warning/15 text-warning border-warning/30",
-                        divergencia:   "bg-destructive/15 text-destructive border-destructive/30",
-                        nao_reportado: "bg-muted text-muted-foreground border-border",
-                      };
-                      const dt = new Date(det.data_hora);
-                      const catalogObra = isrcIndex.get(det.isrc);
-                      return (
-                        <tr key={det.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <p className="font-semibold">{det.obra_titulo}</p>
-                            <p className="text-xs text-muted-foreground">{det.artista}</p>
-                            {catalogObra && (
-                              <p className="text-xs text-muted-foreground/70 mt-0.5">
-                                {catalogObra.compositor} · {catalogObra.editora}
-                              </p>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Música / Artista</TableHead>
+                    <TableHead className="hidden md:table-cell">Emissora</TableHead>
+                    <TableHead className="hidden lg:table-cell">Canal</TableHead>
+                    <TableHead className="hidden lg:table-cell">Tipo</TableHead>
+                    <TableHead className="hidden xl:table-cell">Data/Hora</TableHead>
+                    <TableHead className="hidden xl:table-cell">ISRC</TableHead>
+                    <TableHead className="text-right hidden md:table-cell">Valor Est.</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {MOCK_BROADCAST_DETECTIONS.map(det => {
+                    const statusMap: Record<string, string> = {
+                      confirmado:    "bg-success/15 text-success border-success/30",
+                      pendente:      "bg-warning/15 text-warning border-warning/30",
+                      divergencia:   "bg-destructive/15 text-destructive border-destructive/30",
+                      nao_reportado: "bg-muted text-muted-foreground border-border",
+                    };
+                    const dt = new Date(det.data_hora);
+                    const catalogObra = isrcIndex.get(det.isrc);
+                    return (
+                      <TableRow key={det.id}>
+                        <TableCell>
+                          <p className="font-semibold">{det.obra_titulo}</p>
+                          <p className="text-xs text-muted-foreground">{det.artista}</p>
+                          {catalogObra && (
+                            <p className="text-xs text-muted-foreground/70 mt-0.5">
+                              {catalogObra.compositor} · {catalogObra.editora}
+                            </p>
+                          )}
+                        </TableCell>
+                        <TableCell className="hidden md:table-cell text-sm">{det.emissora}</TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">{det.canal}</TableCell>
+                        <TableCell className="hidden lg:table-cell">
+                          <span className="text-xs bg-muted/50 px-2 py-1 rounded-md capitalize">{det.tipo.replace("_", " ")}</span>
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell text-xs text-muted-foreground">
+                          {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                        </TableCell>
+                        <TableCell className="hidden xl:table-cell">
+                          <div>
+                            <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{det.isrc}</code>
+                            {catalogObra?.cod_ecad && (
+                              <p className="text-xs text-muted-foreground mt-0.5">{catalogObra.cod_ecad}</p>
                             )}
-                          </td>
-                          <td className="py-3 px-4 hidden md:table-cell text-sm">{det.emissora}</td>
-                          <td className="py-3 px-4 hidden lg:table-cell text-xs text-muted-foreground">{det.canal}</td>
-                          <td className="py-3 px-4 hidden lg:table-cell">
-                            <span className="text-xs bg-muted/50 px-2 py-1 rounded-md capitalize">{det.tipo.replace("_", " ")}</span>
-                          </td>
-                          <td className="py-3 px-4 hidden xl:table-cell text-xs text-muted-foreground">
-                            {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
-                          </td>
-                          <td className="py-3 px-4 hidden xl:table-cell">
-                            <div>
-                              <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{det.isrc}</code>
-                              {catalogObra?.cod_ecad && (
-                                <p className="text-xs text-muted-foreground mt-0.5">{catalogObra.cod_ecad}</p>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-3 px-4 text-right hidden md:table-cell text-sm font-medium tabular-nums">{fmtBRL(det.valor_estimado)}</td>
-                          <td className="py-3 px-4">
-                            <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${statusMap[det.status] ?? ""}`}>
-                              {det.status.replace("_", " ")}
-                            </span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right hidden md:table-cell text-sm font-medium tabular-nums">{fmtBRL(det.valor_estimado)}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${statusMap[det.status] ?? ""}`}>
+                            {det.status.replace("_", " ")}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}
@@ -425,37 +424,37 @@ export default function RightsMonitoring() {
                       </span>
                     </div>
                     <div className="border-t border-border/40 pt-3">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-muted-foreground">
-                            <th className="text-left pb-2 font-semibold">#</th>
-                            <th className="text-left pb-2 font-semibold">Música</th>
-                            <th className="text-left pb-2 font-semibold hidden sm:table-cell">Compositor</th>
-                            <th className="text-left pb-2 font-semibold hidden md:table-cell">ISRC</th>
-                            <th className="text-left pb-2 font-semibold hidden lg:table-cell">Publisher</th>
-                            <th className="text-right pb-2 font-semibold">Duração</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/30">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs py-1.5">#</TableHead>
+                            <TableHead className="text-xs py-1.5">Música</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden sm:table-cell">Compositor</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden md:table-cell">ISRC</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden lg:table-cell">Publisher</TableHead>
+                            <TableHead className="text-xs py-1.5 text-right">Duração</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {sl.musicas.map(m => {
                             const catalogObra = isrcIndex.get(m.isrc);
                             return (
-                              <tr key={m.ordem}>
-                                <td className="py-1.5 pr-3 text-muted-foreground">{m.ordem}</td>
-                                <td className="py-1.5 font-medium">{m.obra_titulo}</td>
-                                <td className="py-1.5 text-muted-foreground hidden sm:table-cell">{m.compositor}</td>
-                                <td className="py-1.5 hidden md:table-cell">
+                              <TableRow key={m.ordem}>
+                                <TableCell className="text-xs py-1.5 text-muted-foreground">{m.ordem}</TableCell>
+                                <TableCell className="text-xs py-1.5 font-medium">{m.obra_titulo}</TableCell>
+                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden sm:table-cell">{m.compositor}</TableCell>
+                                <TableCell className="text-xs py-1.5 hidden md:table-cell">
                                   <code className="font-mono text-muted-foreground">{m.isrc}</code>
-                                </td>
-                                <td className="py-1.5 text-muted-foreground hidden lg:table-cell">
+                                </TableCell>
+                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden lg:table-cell">
                                   {catalogObra?.editora ?? <span className="text-warning text-xs">Sem publisher</span>}
-                                </td>
-                                <td className="py-1.5 text-right text-muted-foreground">{Math.floor(m.duracao_segundos / 60)}:{String(m.duracao_segundos % 60).padStart(2, "0")}</td>
-                              </tr>
+                                </TableCell>
+                                <TableCell className="text-xs py-1.5 text-right text-muted-foreground">{Math.floor(m.duracao_segundos / 60)}:{String(m.duracao_segundos % 60).padStart(2, "0")}</TableCell>
+                              </TableRow>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   </CardContent>
                 </Card>
@@ -487,42 +486,42 @@ export default function RightsMonitoring() {
                       </span>
                     </div>
                     <div className="border-t border-border/40 pt-3">
-                      <table className="w-full text-xs">
-                        <thead>
-                          <tr className="text-muted-foreground">
-                            <th className="text-left pb-2 font-semibold">Música</th>
-                            <th className="text-left pb-2 font-semibold hidden sm:table-cell">Compositor</th>
-                            <th className="text-left pb-2 font-semibold hidden md:table-cell">Publisher</th>
-                            <th className="text-left pb-2 font-semibold hidden lg:table-cell">Cód. ECAD</th>
-                            <th className="text-left pb-2 font-semibold">Tipo de Uso</th>
-                            <th className="text-right pb-2 font-semibold">Duração</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-border/30">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs py-1.5">Música</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden sm:table-cell">Compositor</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden md:table-cell">Publisher</TableHead>
+                            <TableHead className="text-xs py-1.5 hidden lg:table-cell">Cód. ECAD</TableHead>
+                            <TableHead className="text-xs py-1.5">Tipo de Uso</TableHead>
+                            <TableHead className="text-xs py-1.5 text-right">Duração</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {cs.obras.map((o, i) => {
                             const catalogObra = isrcIndex.get(o.isrc);
                             return (
-                              <tr key={i}>
-                                <td className="py-1.5 font-medium">{o.obra_titulo}</td>
-                                <td className="py-1.5 text-muted-foreground hidden sm:table-cell">
+                              <TableRow key={i}>
+                                <TableCell className="text-xs py-1.5 font-medium">{o.obra_titulo}</TableCell>
+                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden sm:table-cell">
                                   {catalogObra?.compositor ?? o.compositor}
-                                </td>
-                                <td className="py-1.5 text-muted-foreground hidden md:table-cell">
+                                </TableCell>
+                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden md:table-cell">
                                   {catalogObra?.editora ?? o.publisher}
-                                </td>
-                                <td className="py-1.5 hidden lg:table-cell">
+                                </TableCell>
+                                <TableCell className="text-xs py-1.5 hidden lg:table-cell">
                                   {catalogObra?.cod_ecad
                                     ? <code className="font-mono text-success text-xs">{catalogObra.cod_ecad}</code>
                                     : <span className="text-warning text-xs">Sem cod_ecad</span>
                                   }
-                                </td>
-                                <td className="py-1.5"><span className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">{o.tipo_uso.replace("_", " ")}</span></td>
-                                <td className="py-1.5 text-right text-muted-foreground">{Math.floor(o.duracao_segundos / 60)}:{String(o.duracao_segundos % 60).padStart(2, "0")}</td>
-                              </tr>
+                                </TableCell>
+                                <TableCell className="text-xs py-1.5"><span className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">{o.tipo_uso.replace("_", " ")}</span></TableCell>
+                                <TableCell className="text-xs py-1.5 text-right text-muted-foreground">{Math.floor(o.duracao_segundos / 60)}:{String(o.duracao_segundos % 60).padStart(2, "0")}</TableCell>
+                              </TableRow>
                             );
                           })}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   </CardContent>
                 </Card>
@@ -562,43 +561,41 @@ export default function RightsMonitoring() {
               <CardDescription className="text-xs">Histórico de períodos e arrecadação por trimestre</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border/60">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Período</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden md:table-cell">Data Referência</th>
-                      <th className="text-right py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Valor Total</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide hidden lg:table-cell">Observações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/40">
-                    {MOCK_ECAD_PERIODOS.map(p => {
-                      const cfg = STATUS_ECAD[p.status] ?? { label: p.status, className: "bg-muted text-muted-foreground border-border" };
-                      return (
-                        <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
-                        <tr key={p.id} className="hover:bg-muted/30 transition-colors">
-                          <td className="py-3 px-4 font-semibold">{p.periodo}</td>
-                          <td className="py-3 px-4 text-sm text-muted-foreground hidden md:table-cell">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Período</TableHead>
+                    <TableHead className="hidden md:table-cell">Data Referência</TableHead>
+                    <TableHead className="text-right">Valor Total</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="hidden lg:table-cell">Observações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {MOCK_ECAD_PERIODOS.map(p => {
+                    const cfg = STATUS_ECAD[p.status] ?? { label: p.status, className: "bg-muted text-muted-foreground border-border" };
+                    return (
+                      <FeatureGate key={p.id} feature="moduleMonitoring" featureName="Monitoramento">
+                        <TableRow>
+                          <TableCell className="font-semibold">{p.periodo}</TableCell>
+                          <TableCell className="text-sm text-muted-foreground hidden md:table-cell">
                             {new Date(p.data_referencia).toLocaleDateString("pt-BR")}
-                          </td>
-                          <td className="py-3 px-4 text-right font-medium tabular-nums">
+                          </TableCell>
+                          <TableCell className="text-right font-medium tabular-nums">
                             {fmtBRL(p.valor_total)}
-                          </td>
-                          <td className="py-3 px-4">
+                          </TableCell>
+                          <TableCell>
                             <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${cfg.className}`}>
                               {cfg.label}
                             </span>
-                          </td>
-                          <td className="py-3 px-4 text-xs text-muted-foreground hidden lg:table-cell">{p.observacoes}</td>
-                        </tr>
-                        </FeatureGate>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                          </TableCell>
+                          <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{p.observacoes}</TableCell>
+                        </TableRow>
+                      </FeatureGate>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </CardContent>
           </Card>
         )}

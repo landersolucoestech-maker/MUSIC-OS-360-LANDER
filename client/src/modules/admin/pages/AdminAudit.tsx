@@ -2,6 +2,7 @@ import { useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
 import { MOCK_AUDIT_LOGS } from "../data/mockAdmin";
 import type { AuditAction } from "../types";
@@ -81,48 +82,48 @@ export default function AdminAudit() {
         </div>
 
         <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-white/[0.06]">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-white/[0.06] hover:bg-transparent">
                 {["Ação", "Entidade", "Usuário", "Tenant", "IP", "Detalhes", "Quando"].map(h => (
-                  <th key={h} className="text-left px-4 py-3 text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</th>
+                  <TableHead key={h} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</TableHead>
                 ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {filtered.map((log) => (
-                <tr key={log.id} className="hover:bg-white/[0.02] transition-colors" data-testid={`audit-${log.id}`}>
-                  <td className="px-4 py-3.5">
+                <TableRow key={log.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`audit-${log.id}`}>
+                  <TableCell className="py-3.5">
                     <Badge variant="outline" className={cn("text-[10.5px] border", ACTION_STYLE[log.action])}>
                       {ACTION_LABEL[log.action]}
                     </Badge>
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5">
                     <span className="text-[12.5px] font-medium text-white/70">{log.entity}</span>
                     <span className="text-[10px] text-white/30 ml-1.5 font-mono">#{log.entity_id.slice(0, 8)}</span>
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5">
                     <p className="text-[12px] text-white/70">{log.user_name}</p>
                     <p className="text-[10.5px] text-white/30">{log.user_email}</p>
-                  </td>
-                  <td className="px-4 py-3.5 text-[12px] text-white/50">{log.tenant_name}</td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-white/50">{log.tenant_name}</TableCell>
+                  <TableCell className="py-3.5">
                     <div className="flex items-center gap-1 text-[11px] font-mono text-white/30">
                       <Globe className="h-3 w-3 shrink-0" />{log.ip_address}
                     </div>
-                  </td>
-                  <td className="px-4 py-3.5 text-[11.5px] text-white/40 max-w-[150px] truncate">
+                  </TableCell>
+                  <TableCell className="py-3.5 text-[11.5px] text-white/40 max-w-[150px] truncate">
                     {log.details ?? "—"}
-                  </td>
-                  <td className="px-4 py-3.5">
+                  </TableCell>
+                  <TableCell className="py-3.5">
                     <div className="flex items-center gap-1 text-[11px] text-white/30">
                       <Clock className="h-3 w-3" />{fmtDate(log.created_at)}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         </div>
       </div>
     </AdminLayout>
