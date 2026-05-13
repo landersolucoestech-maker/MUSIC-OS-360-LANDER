@@ -48,6 +48,7 @@ import { AuditLogModule }          from './modules/audit-log/audit-log.module';
 import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
 import { IntegrationsModule }      from './modules/integrations/integrations.module';
 import { AIModule }                from './modules/ai/ai.module';
+import { BillingModule }           from './modules/billing/billing.module';
 import { ClerkAuthGuard }          from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
@@ -153,6 +154,9 @@ import { RolesGuard }           from './core/guards/roles.guard';
 
     // ── Módulos FASE 8 — AI Gateway ──────────────────────────────────────────
     AIModule,
+
+    // ── Módulos FASE 6 — Stripe Billing ──────────────────────────────────────
+    BillingModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas
