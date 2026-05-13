@@ -5,7 +5,7 @@
  * the expected payload shape. Use `WsEventMap[E]` in generic constraints so
  * TypeScript catches wrong payload types at compile time.
  *
- * Keep in sync with server/src/infrastructure/websocket/ws-events.mapper.ts
+ * Keep in sync with apps/api/src/core/websocket/ws.gateway.ts
  */
 
 export interface WsBasePayload {
@@ -13,21 +13,48 @@ export interface WsBasePayload {
   [key: string]: unknown;
 }
 
+export interface WsNotificationPayload {
+  id:        string | null;
+  title:     string;
+  body?:     string | null;
+  type:      string;
+  entity?:   string | null;
+  entityId?: string | null;
+  createdAt: string | Date;
+}
+
 export interface WsEventMap {
-  'artist.created':             WsBasePayload & { id: string };
-  'artist.updated':             WsBasePayload & { id: string };
-  'artist.deleted':             WsBasePayload & { id: string };
-  'catalog.music.registered':   WsBasePayload & { id: string };
+  // ── Artistas ────────────────────────────────────────────────────────────────
+  'artist.created':               WsBasePayload & { id: string };
+  'artist.updated':               WsBasePayload & { id: string };
+  'artist.deleted':               WsBasePayload & { id: string };
+
+  // ── Catálogo ─────────────────────────────────────────────────────────────────
+  'catalog.music.registered':     WsBasePayload & { id: string };
   'catalog.phonogram.registered': WsBasePayload & { id: string };
-  'contract.created':           WsBasePayload & { id: string };
-  'contract.updated':           WsBasePayload & { id: string };
-  'contract.signed':            WsBasePayload & { id: string };
-  'crm.lead.captured':          WsBasePayload & { id: string };
-  'crm.lead.converted':         WsBasePayload & { id: string };
-  'finance.transaction.created': WsBasePayload & { id: string };
-  'finance.transaction.updated': WsBasePayload & { id: string };
-  'finance.calculated':         WsBasePayload & { period?: string };
-  'audit.entry.created':        WsBasePayload & { action: string };
+
+  // ── Contratos ────────────────────────────────────────────────────────────────
+  'contract.created':             WsBasePayload & { id: string };
+  'contract.updated':             WsBasePayload & { id: string };
+  'contract.signed':              WsBasePayload & { id: string };
+
+  // ── CRM ──────────────────────────────────────────────────────────────────────
+  'crm.lead.captured':            WsBasePayload & { id: string };
+  'crm.lead.converted':           WsBasePayload & { id: string };
+
+  // ── Financeiro ───────────────────────────────────────────────────────────────
+  'finance.transaction.created':  WsBasePayload & { id: string };
+  'finance.transaction.updated':  WsBasePayload & { id: string };
+  'finance.calculated':           WsBasePayload & { period?: string };
+
+  // ── Audit ────────────────────────────────────────────────────────────────────
+  'audit.entry.created':          WsBasePayload & { action: string };
+
+  // ── Notificações individuais (FASE 4) ─────────────────────────────────────
+  'notification:new':             WsNotificationPayload;
+
+  // ── Dados alterados (invalidação de cache) ───────────────────────────────────
+  'data:changed':                 { entity: string; id: string };
 }
 
 /** Union of all known WS event names (useful for exhaustive switches). */

@@ -28,6 +28,8 @@ import { WorksModule }          from './modules/works/works.module';
 import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
 import { ContractsModule }      from './modules/contracts/contracts.module';
 import { TransactionsModule }   from './modules/transactions/transactions.module';
+import { WsModule }             from './core/websocket/ws.module';
+import { NotificationsModule }  from './modules/notifications/notifications.module';
 import { ClerkAuthGuard }       from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
@@ -76,6 +78,9 @@ import { RolesGuard }           from './core/guards/roles.guard';
     // ── Filas ─────────────────────────────────────────────────────────────────
     QueueModule,
 
+    // ── WebSocket Gateway (Socket.IO + Redis Pub/Sub) ─────────────────────────
+    WsModule,
+
     // ── Módulos de domínio ────────────────────────────────────────────────────
     HealthModule,
     ArtistsModule,
@@ -83,6 +88,7 @@ import { RolesGuard }           from './core/guards/roles.guard';
     PhonogramsModule,
     ContractsModule,
     TransactionsModule,
+    NotificationsModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

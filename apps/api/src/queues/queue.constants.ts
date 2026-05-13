@@ -4,30 +4,20 @@
  * Nomes das filas BullMQ do Music OS 360.
  * Usar estas constantes em vez de strings literais elimina erros de digitação
  * e centraliza o registo de todas as filas da plataforma.
- *
- * Filas futuras (prontas para adicionar):
- *   NOTIFICATIONS   — alertas push/email em tempo real
- *   AI_JOBS         — tarefas de IA (geração de conteúdo, classificação)
- *   UPLOADS         — processamento de áudio/imagem/vídeo
- *   METRICS         — ingestão de métricas de streaming e analytics
- *   WEBHOOKS        — reenvio de webhooks com retry
- *   DISTRIBUTION    — envio para distribuidoras (ONErpm, DistroKid…)
- *   ANALYTICS       — processamento de relatórios aggregados
- *   ACRCLOUD        — fingerprint e monitoramento musical
- *   AUTOMATIONS     — automações de regras e alertas
  */
 
 export const QUEUE_NAMES = {
-  EMAILS:        'emails',
-  NOTIFICATIONS: 'notifications',
-  AI_JOBS:       'ai-jobs',
-  UPLOADS:       'uploads',
-  METRICS:       'metrics',
-  WEBHOOKS:      'webhooks',
-  DISTRIBUTION:  'distribution',
-  ANALYTICS:     'analytics',
-  ACRCLOUD:      'acrcloud',
-  AUTOMATIONS:   'automations',
+  EMAILS:             'emails',
+  NOTIFICATIONS:      'notifications',
+  AI_JOBS:            'ai-jobs',
+  INTEGRATIONS_SYNC:  'integrations-sync',
+  STREAMING_SYNC:     'streaming-sync',
+  WEBHOOKS:           'webhooks',
+  EXPORTS:            'exports',
+  IMPORTS:            'imports',
+  CLERK_SYNC:         'clerk-sync',
+  BILLING:            'billing',
+  UPLOADS_PROCESS:    'uploads-process',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -44,3 +34,12 @@ export const EMAIL_JOB_NAMES = {
 } as const;
 
 export type EmailJobName = (typeof EMAIL_JOB_NAMES)[keyof typeof EMAIL_JOB_NAMES];
+
+// ─── Job names da fila NOTIFICATIONS ─────────────────────────────────────────
+
+export const NOTIFICATION_JOB_NAMES = {
+  SEND:               'send',
+  BROADCAST_TENANT:   'broadcast-tenant',
+} as const;
+
+export type NotificationJobName = (typeof NOTIFICATION_JOB_NAMES)[keyof typeof NOTIFICATION_JOB_NAMES];

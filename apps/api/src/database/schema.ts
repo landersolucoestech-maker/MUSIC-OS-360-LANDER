@@ -198,6 +198,27 @@ export const auditLogs = pgTable('audit_logs', {
   index('audit_created_idx').on(t.createdAt),
 ]);
 
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+export const notifications = pgTable('notifications', {
+  id:       uuid('id').primaryKey().defaultRandom(),
+  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId:   uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  title:    varchar('title', { length: 500 }).notNull(),
+  body:     text('body'),
+  type:     varchar('type', { length: 100 }).notNull().default('info'),
+  entity:   varchar('entity', { length: 100 }),
+  entityId: varchar('entity_id', { length: 255 }),
+  readAt:   timestamp('read_at'),
+  metadata: jsonb('metadata').default({}),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('notifications_tenant_idx').on(t.tenantId),
+  index('notifications_user_idx').on(t.userId),
+  index('notifications_read_idx').on(t.readAt),
+  index('notifications_created_idx').on(t.createdAt),
+]);
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export type Tenant       = typeof tenants.$inferSelect;
@@ -214,5 +235,7 @@ export type Contract     = typeof contracts.$inferSelect;
 export type NewContract  = typeof contracts.$inferInsert;
 export type Transaction  = typeof transactions.$inferSelect;
 export type NewTransaction = typeof transactions.$inferInsert;
-export type AuditLog     = typeof auditLogs.$inferSelect;
-export type NewAuditLog  = typeof auditLogs.$inferInsert;
+export type AuditLog         = typeof auditLogs.$inferSelect;
+export type NewAuditLog      = typeof auditLogs.$inferInsert;
+export type Notification     = typeof notifications.$inferSelect;
+export type NewNotification  = typeof notifications.$inferInsert;

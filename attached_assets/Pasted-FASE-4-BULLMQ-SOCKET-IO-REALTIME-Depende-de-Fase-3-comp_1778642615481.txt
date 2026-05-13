@@ -1,0 +1,294 @@
+FASE 4 — BULLMQ + SOCKET.IO REALTIME
+Depende de: Fase 3 completa
+Entregáveis:
+
+BullMQ conectado ao Railway Redis com 11 filas configuradas
+Socket.IO gateway com autenticação Clerk e isolamento por tenant
+Redis Pub/Sub sincronizando múltiplas instâncias do backend
+Notificações em tempo real substituindo as hardcoded do frontend
+Dashboard recebendo updates em tempo real sem polling
+
+
+4.1 — BullMQ setup
+bashcd apps/api
+npm install @nestjs/bullmq bullmq
+npm install @bull-board/nestjs @bull-board/express # UI de monitoramento de filas
+typescript// apps/api/src/core/queue/queue.constants.ts
+export const QUEUES = {
+  EMAILS:             'emails',
+  NOTIFICATIONS:      'notifications',
+  AI_JOBS:            'ai_jobs',
+  INTEGRATIONS_SYNC:  'integrations_sync',
+  STREAMING_SYNC:     'streaming_sync',
+  WEBHOOKS:           'webhooks',
+  EXPORTS:            'exports',
+  IMPORTS:            'imports',
+  CLERK_SYNC:         'clerk_sync',
+  BILLING:            'billing',
+  UPLOADS_PROCESS:    'uploads_process',
+} as const;
+
+// apps/api/src/core/queue/queue.module.ts
+import { BullModule } from '@nestjs/bullmq';
+import { BullBoardModule } from '@bull-board/nestjs';
+import { ExpressAdapter } from '@bull-board/express';
+import { ConfigModule, ConfigService } from '@nestjs/config';
+import { QUEUES } from './queue.constants';
+
+@Module({
+  imports: [
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          url:      config.get<string>('REDIS_QUEUE_URL'),
+          lazyConnect: false,
+          retryStrategy: (times: number) => Math.min(times * 100, 3000),
+        },
+        defaultJobOptions: {
+          attempts:        3,
+          backoff:         { type: 'exponential', delay: 2000 },
+          removeOnComplete: { count: 200 },
+          removeOnFail:    { count: 1000 },
+        },
+      }),
+      inject: [ConfigService],
+    }),
+
+    BullBoardModule.forRoot({
+      route:   '/bull',
+      adapter: ExpressAdapter,
+    }),
+
+    BullModule.registerQueue(
+      { name: QUEUES.EMAILS },
+      { name: QUEUES.NOTIFICATIONS },
+      { name: QUEUES.AI_JOBS },
+      { name: QUEUES.INTEGRATIONS_SYNC },
+      { name: QUEUES.STREAMING_SYNC },
+      { name: QUEUES.WEBHOOKS },
+      { name: QUEUES.EXPORTS },
+      { name: QUEUES.IMPORTS },
+      { name: QUEUES.CLERK_SYNC },
+      { name: QUEUES.BILLING },
+      { name: QUEUES.UPLOADS_PROCESS },
+    ),
+  ],
+  exports: [BullModule],
+})
+export class QueueModule {}
+
+4.2 — NotificationsProcessor (fila de notificações)
+typescript// apps/api/src/modules/notifications/notifications.processor.ts
+import { Processor, WorkerHost } from '@nestjs/bullmq';
+import { Job } from 'bullmq';
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../core/database/prisma.service';
+import { WsGateway }     from '../../core/websocket/ws.gateway';
+import { QUEUES }        from '../../core/queue/queue.constants';
+
+export interface NotificationJobData {
+  tenantId:  string;
+  userId:    string;
+  title:     string;
+  body?:     string;
+  type:      string;
+  entity?:   string;
+  entityId?: string;
+}
+
+@Processor(QUEUES.NOTIFICATIONS)
+@Injectable()
+export class NotificationsProcessor extends WorkerHost {
+  private readonly logger = new Logger(NotificationsProcessor.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private ws:     WsGateway,
+  ) { super(); }
+
+  async process(job: Job<NotificationJobData>) {
+    const d = job.data;
+
+    // 1. Persistir no banco
+    const notification = await this.prisma.notification.create({
+      data: {
+        tenant_id: d.tenantId,
+        user_id:   d.userId,
+        title:     d.title,
+        body:      d.body,
+        type:      d.type,
+        entity:    d.entity,
+        entity_id: d.entityId,
+      },
+    });
+
+    // 2. Enviar via WebSocket ao usuário
+    await this.ws.sendToUser(d.tenantId, d.userId, 'notification:new', {
+      id:    notification.id,
+      title: notification.title,
+      body:  notification.body,
+      type:  notification.type,
+      created_at: notification.created_at,
+    });
+
+    this.logger.log(`Notificação entregue: ${d.userId} — ${d.title}`);
+    return notification;
+  }
+}
+
+4.3 — Socket.IO Gateway com Redis Pub/Sub
+bashcd apps/api
+npm install @nestjs/websockets @nestjs/platform-socket.io socket.io
+npm install @socket.io/redis-adapter ioredis
+typescript// apps/api/src/core/websocket/ws.gateway.ts
+import {
+  WebSocketGateway, WebSocketServer,
+  OnGatewayConnection, OnGatewayDisconnect,
+  OnGatewayInit, SubscribeMessage,
+} from '@nestjs/websockets';
+import { Server, Socket } from 'socket.io';
+import { createAdapter }  from '@socket.io/redis-adapter';
+import { Redis }          from 'ioredis';
+import { Logger }         from '@nestjs/common';
+import { createClerkClient } from '@clerk/backend';
+import { ConfigService }  from '@nestjs/config';
+
+@WebSocketGateway({
+  cors: {
+    origin:      process.env.CORS_ORIGINS?.split(',') ?? ['http://localhost:5000'],
+    credentials: true,
+  },
+  transports: ['websocket', 'polling'],
+  namespace:  '/realtime',
+})
+export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
+  @WebSocketServer()
+  private server: Server;
+
+  private readonly logger = new Logger(WsGateway.name);
+  private clerk: ReturnType<typeof createClerkClient>;
+
+  // userId → Set de socketIds (suporte a múltiplas abas)
+  private userSockets = new Map<string, Set<string>>();
+
+  constructor(private config: ConfigService) {
+    this.clerk = createClerkClient({
+      secretKey: config.get<string>('CLERK_SECRET_KEY'),
+    });
+  }
+
+  async afterInit() {
+    // Redis Pub/Sub para sincronizar múltiplas instâncias do backend
+    const queueUrl = this.config.get<string>('REDIS_QUEUE_URL')!;
+    const pub = new Redis(queueUrl);
+    const sub = pub.duplicate();
+    this.server.adapter(createAdapter(pub, sub));
+    this.logger.log('WebSocket Gateway iniciado com Redis Pub/Sub');
+  }
+
+  async handleConnection(socket: Socket) {
+    const token = socket.handshake.auth?.token
+      ?? socket.handshake.headers['authorization']?.replace('Bearer ', '');
+
+    if (!token) {
+      socket.disconnect(true);
+      return;
+    }
+
+    try {
+      const payload = await this.clerk.verifyToken(token);
+
+      socket.data.userId   = payload.sub;
+      socket.data.tenantId = payload.org_id;
+
+      // Room do tenant (dados compartilhados da org)
+      await socket.join(`tenant:${payload.org_id}`);
+      // Room pessoal do usuário (notificações individuais)
+      await socket.join(`user:${payload.sub}`);
+
+      if (!this.userSockets.has(payload.sub)) {
+        this.userSockets.set(payload.sub, new Set());
+      }
+      this.userSockets.get(payload.sub)!.add(socket.id);
+
+      this.logger.log(`WS conectado: ${payload.sub} / tenant ${payload.org_id}`);
+    } catch {
+      socket.disconnect(true);
+    }
+  }
+
+  handleDisconnect(socket: Socket) {
+    const { userId } = socket.data;
+    if (userId) {
+      const sockets = this.userSockets.get(userId);
+      sockets?.delete(socket.id);
+      if (sockets?.size === 0) this.userSockets.delete(userId);
+    }
+  }
+
+  // Enviar para todos os usuários do tenant
+  async sendToTenant(tenantId: string, event: string, data: unknown) {
+    this.server.to(`tenant:${tenantId}`).emit(event, data);
+  }
+
+  // Enviar para um usuário específico (com verificação de tenant)
+  async sendToUser(tenantId: string, userId: string, event: string, data: unknown) {
+    this.server
+      .to(`tenant:${tenantId}`)
+      .to(`user:${userId}`)
+      .emit(event, data);
+  }
+
+  // Notificar todo o tenant que um recurso foi atualizado
+  // (frontend invalida a query correspondente)
+  async notifyDataChanged(tenantId: string, entity: string, id: string) {
+    this.server.to(`tenant:${tenantId}`).emit('data:changed', { entity, id });
+  }
+}
+
+4.4 — Frontend: conectar WebSocket real
+typescript// apps/web/src/shared/infrastructure/RealtimeLayer.tsx
+// Substituir o stub atual pelo componente real:
+
+import { useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
+import { useAuth } from '@clerk/clerk-react';
+import { useWebSocket } from '@/shared/hooks/useWebSocket';
+import { useWsEvent }   from '@/shared/hooks/useWsEvent';
+
+export function RealtimeLayer() {
+  // useWebSocket já existe em apps/web/src/shared/hooks/useWebSocket.ts
+  // Ele só precisa de MOCK_MODE=false para ativar
+  const { connected } = useWebSocket();
+  const queryClient   = useQueryClient();
+
+  // Notificação recebida
+  useWsEvent<{ id: string; title: string; body?: string; type: string }>(
+    'notification:new',
+    (n) => {
+      toast.info(n.title, { description: n.body });
+      // Invalida a lista de notificações no topbar
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+    },
+  );
+
+  // Dado de negócio alterado por outro usuário da mesma org
+  useWsEvent<{ entity: string; id: string }>(
+    'data:changed',
+    ({ entity, id }) => {
+      queryClient.invalidateQueries({ queryKey: [entity, id] });
+      queryClient.invalidateQueries({ queryKey: [entity] });
+    },
+  );
+
+  return null;
+}
+Critério de conclusão da Fase 4:
+
+✅ Notificação criada no backend aparece no frontend em < 2s sem refresh
+✅ Bull Board acessível em http://localhost:3001/bull
+✅ GET /api/v1/notifications retorna notificações reais do banco
+✅ Notificações hardcoded do MainLayout.tsx substituídas por dados reais
+✅ WebSocket desconecta e reconecta automaticamente ao expirar token
