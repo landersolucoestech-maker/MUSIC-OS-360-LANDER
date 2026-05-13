@@ -1,0 +1,218 @@
+PROMPT 2 — CONECTAR FRONTEND AO BACKEND (VITE_USE_MOCK=false)
+
+Contexto:
+- Backend NestJS está em apps/api/ rodando na porta 3001
+- Frontend Vite está na raiz rodando na porta 5000
+- Schema Drizzle foi corrigido (Prompt 1 aplicado)
+- VITE_USE_MOCK ainda está true — frontend ainda usa localStorage
+- Os campos do backend agora usam snake_case igual ao frontend
+
+OBJETIVO: Fazer o frontend consumir o backend real.
+
+═══════════════════════════════════════════════
+PARTE 1 — ATUALIZAR .env RAIZ
+═══════════════════════════════════════════════
+
+Atualizar .env.example na raiz:
+
+VITE_API_URL=http://localhost:3001/api/v1
+VITE_USE_MOCK=false
+VITE_MOCK_MODE=false
+VITE_CLERK_PUBLISHABLE_KEY=pk_test_SEU_KEY_AQUI
+VITE_SENTRY_DSN=
+VITE_POSTHOG_KEY=
+
+Criar .env na raiz com os mesmos valores.
+
+═══════════════════════════════════════════════
+PARTE 2 — ATUALIZAR API-CLIENT PARA ENVIAR TOKEN CLERK
+═══════════════════════════════════════════════
+
+Atualizar client/src/shared/lib/api-client.ts.
+
+O token JWT deve ser renovado automaticamente via Clerk.
+Adicionar função refreshClerkToken():
+
+import { getToken } from '@clerk/clerk-react';  // NÃO PODE: hook fora de componente
+
+// SOLUÇÃO: usar uma variável global atualizada pelo AuthContext
+
+// No topo do arquivo, já existe:
+let _accessToken: string | null = null;
+export function setAccessToken(t: string | null): void { _accessToken = t; }
+export function getAccessToken(): string | null { return _accessToken; }
+
+// No AuthContext.tsx, adicionar refresh automático do token:
+// Quando isSignedIn=true, chamar getToken() e setAccessToken() periodicamente.
+
+Atualizar apps/web/../client/src/app/providers/AuthContext.tsx.
+Na função AuthContextBridge, adicionar:
+
+useEffect(() => {
+  if (!isSignedIn) {
+    setAccessToken(null);
+    return;
+  }
+  
+  // Refresh inicial
+  const refreshToken = async () => {
+    try {
+      const token = await getToken();
+      if (token) {
+        const { setAccessToken } = await import('@/shared/lib/api-client');
+        setAccessToken(token);
+      }
+    } catch (err) {
+      console.error('Falha ao renovar token Clerk:', err);
+    }
+  };
+  
+  refreshToken();
+  
+  // Renovar a cada 55 minutos (token Clerk expira em 60min)
+  const interval = setInterval(refreshToken, 55 * 60 * 1000);
+  return () => clearInterval(interval);
+}, [isSignedIn, getToken]);
+
+═══════════════════════════════════════════════
+PARTE 3 — MAPEAR TABLE_ENDPOINT PARA NOVOS PATHS
+═══════════════════════════════════════════════
+
+Verificar client/src/shared/lib/api-client.ts.
+TABLE_ENDPOINT já existe. Confirmar que todos os paths batem com os
+controllers do backend:
+
+export const TABLE_ENDPOINT: Record<string, string> = {
+  artistas:            '/artists',
+  obras:               '/works',
+  fonogramas:          '/phonograms',
+  shares:              '/shares',
+  contratos:           '/contracts',
+  templates_contratos: '/contract-templates',
+  transacoes:          '/transactions',
+  leads:               '/leads',
+  clientes:            '/clients',
+  contatos:            '/clients',   // alias
+  campanhas:           '/campaigns',
+  conteudos:           '/contents',
+  briefings:           '/briefings',
+  tarefas_marketing:   '/marketing-tasks',
+  monitoramentos:      '/monitors',
+  takedowns:           '/takedowns',
+  regras_financeiras:  '/rules',
+  projetos:            '/projects',
+  eventos:             '/events',
+  inventario:          '/inventory',
+  licencas:            '/licenses',
+  funcionarios:        '/employees',
+  folha_pagamento:     '/payroll',
+  afastamentos:        '/leave',
+  ferias_ausencias:    '/leave',
+  regras:              '/rules',
+  usuarios:            '/users',
+  roles:               '/roles',
+  org_members:         '/users',
+  lancamentos:         '/releases',
+  notas_fiscais:       '/invoices',
+  lead_interactions:   '/lead-interactions',
+  permissions:         '/permissions',
+};
+
+Limpar PENDING_TABLES — esses endpoints agora existem no backend.
+
+═══════════════════════════════════════════════
+PARTE 4 — CORRIGIR INCOMPATIBILIDADE DE CAMPOS
+═══════════════════════════════════════════════
+
+O backend retorna os campos com os mesmos nomes do schema Drizzle
+(que agora está em snake_case). O frontend já espera snake_case.
+Verificar que não há divergência residual.
+
+Criar utilitário de mapeamento em client/src/shared/lib/field-mapper.ts:
+
+// Garante compatibilidade entre campos do backend e frontend
+// Adicionar apenas mapeamentos que divergem
+
+export function mapArtistFromApi(raw: any) {
+  // Backend retorna nome_artistico, frontend espera nome_artistico — OK
+  // Backend retorna cpf_cnpj (descriptografado pelo service) — OK
+  return raw;
+}
+
+// Para cada módulo: verificar que os campos que o hook useArtistas()
+// retorna no frontend batem com o que artists.service.ts retorna.
+// Se não bater, criar mapper aqui e aplicar no hook.
+
+═══════════════════════════════════════════════
+PARTE 5 — ATUALIZAR HOOKS PARA HTTP MODE
+═══════════════════════════════════════════════
+
+Verificar os hooks existentes em client/src/modules/*/hooks/.
+Eles usam storage.list(), storage.create() etc via api-client.
+Quando VITE_USE_MOCK=false, o storage.ts já redireciona para httpStorage.
+Isso deve funcionar automaticamente.
+
+Testar na ordem:
+1. useArtistas() — lista artistas do backend
+2. useObras() — lista obras
+3. useFonogramas() — lista fonogramas
+4. useContratos() — lista contratos
+5. useTransacoes() — lista transações
+
+Para cada um que falhar, identificar o campo divergente e corrigir
+no service do backend (não no frontend).
+
+═══════════════════════════════════════════════
+PARTE 6 — AUTENTICAÇÃO REAL NO FRONTEND
+═══════════════════════════════════════════════
+
+Com VITE_USE_MOCK=false e VITE_CLERK_PUBLISHABLE_KEY configurada:
+
+1. Ao acessar / sem estar logado → deve redirecionar para /auth
+2. /auth deve mostrar o SignIn do Clerk
+3. Após login → Clerk cria org automaticamente via webhook
+4. Webhook POST /webhooks/clerk cria Organization + Tenant no banco
+5. useAuth().user retorna dados reais do JWT Clerk
+6. getTenant() busca tenant pelo clerk_org_id no banco
+
+Confirmar que client/src/modules/auth/pages/Auth.tsx usa:
+
+import { SignIn } from '@clerk/clerk-react';
+
+export default function Auth() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <SignIn
+        appearance={{
+          elements: {
+            rootBox: 'w-full max-w-md',
+            card: 'bg-card border border-border shadow-xl',
+          },
+        }}
+        redirectUrl="/"
+      />
+    </div>
+  );
+}
+
+Confirmar que Register.tsx usa <SignUp /> do Clerk da mesma forma.
+
+═══════════════════════════════════════════════
+PARTE 7 — TESTAR INTEGRAÇÃO COMPLETA
+═══════════════════════════════════════════════
+
+Executar checklist de validação:
+
+1. cd apps/api && npm run dev → API inicia na porta 3001
+2. cd . && npm run dev:web → Frontend inicia na porta 5000
+3. GET http://localhost:3001/api/v1/health → { status: "ok" }
+4. Abrir http://localhost:5000 → redireciona para /auth (não logado)
+5. Fazer signup no Clerk → webhook cria org + tenant no Neon
+6. Verificar no Drizzle Studio que organizations + tenants foram criados
+7. Acessar /artistas → lista vazia (do banco real, não mock)
+8. Criar artista → aparece no banco real
+9. Refresh da página → artista ainda existe
+10. localStorage não contém dados de negócio
+
+Se qualquer passo falhar, documentar o erro exato e corrigir
+o service correspondente no backend.

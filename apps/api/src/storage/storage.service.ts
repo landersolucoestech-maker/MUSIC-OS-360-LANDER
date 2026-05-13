@@ -5,7 +5,7 @@
  * Operações: upload, presigned URL, delete, exists, list.
  */
 
-import { Injectable, Inject, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Optional, Logger, BadRequestException } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -61,9 +61,9 @@ export class StorageService {
   private readonly logger = new Logger(StorageService.name);
 
   constructor(
-    @Inject(R2_CLIENT)     private readonly r2Client: S3Client | null,
-    @Inject(R2_BUCKET)     private readonly r2Bucket: string,
-    @Inject(R2_PUBLIC_URL) private readonly r2PublicUrl: string | null,
+    @Optional() @Inject(R2_CLIENT)     private readonly r2Client: S3Client | null,
+    @Optional() @Inject(R2_BUCKET)     private readonly r2Bucket: string,
+    @Optional() @Inject(R2_PUBLIC_URL) private readonly r2PublicUrl: string | null,
   ) {}
 
   private getClient(): S3Client {

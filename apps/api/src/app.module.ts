@@ -70,20 +70,42 @@ import { RolesGuard }           from './core/guards/roles.guard';
     StorageModule,
 
     // ── BullMQ — filas enterprise-ready (Railway Redis) ───────────────────────
-    BullModule.forRoot({
-      connection: {
-        url: process.env.REDIS_QUEUE_URL,
-        maxRetriesPerRequest: null,
-        enableReadyCheck: false,
-      },
-      defaultJobOptions: {
-        attempts: 3,
-        removeOnComplete: 100,
-        removeOnFail: 1000,
-        backoff: {
-          type: 'exponential',
-          delay: 3000,
-        },
+    // Usa forRootAsync + instância ioredis com error handler silencioso
+    // (impede [ioredis] Unhandled error event quando Redis está inacessível em dev)
+    BullModule.forRootAsync({
+      useFactory: () => {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const IORedis = require('ioredis');
+        const url     = process.env.REDIS_QUEUE_URL ?? 'redis://localhost:6379';
+
+        const connection = new IORedis(url, {
+          maxRetriesPerRequest: null,
+          enableReadyCheck:     false,
+          enableOfflineQueue:   false,
+          lazyConnect:          true,
+          // Pára de tentar após 5 tentativas (~30s) quando o host não resolve
+          retryStrategy: (times: number) => (times >= 5 ? null : Math.min(times * 1000, 5000)),
+        });
+
+        // Silencia erros não catados (ex: ENOTFOUND redis.railway.internal)
+        connection.on('error', (err: NodeJS.ErrnoException) => {
+          if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(err.code ?? '')) {
+            // log limpo sem stack trace em dev
+            if (process.env.NODE_ENV !== 'production') {
+              process.stdout.write(`[BullMQ Redis] ${err.code}: ${err.hostname ?? err.message?.split('\n')[0]}\n`);
+            }
+          }
+        });
+
+        return {
+          connection,
+          defaultJobOptions: {
+            attempts:         3,
+            removeOnComplete: 100,
+            removeOnFail:     1000,
+            backoff: { type: 'exponential', delay: 3000 },
+          },
+        };
       },
     }),
 

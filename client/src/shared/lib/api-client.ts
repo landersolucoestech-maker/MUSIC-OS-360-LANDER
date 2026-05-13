@@ -43,10 +43,11 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   fonogramas:          "/phonograms",
   shares:              "/shares",
   contratos:           "/contracts",
+  templates_contratos: "/contract-templates",
   transacoes:          "/transactions",
   leads:               "/leads",
   clientes:            "/clients",
-  contatos:            "/contacts",
+  contatos:            "/clients",          // alias → /clients
   campanhas:           "/campaigns",
   conteudos:           "/contents",
   briefings:           "/briefings",
@@ -64,9 +65,12 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   ferias_ausencias:    "/leave",
   regras:              "/rules",
   usuarios:            "/users",
-  // Graduated from PENDING_TABLES — backend routes confirmed:
-  roles:               "/roles",           // GET /roles → RolesController (settings module)
-  org_members:         "/users",           // GET /users → UsersController (tenant-scoped member list)
+  roles:               "/roles",
+  org_members:         "/users",
+  lancamentos:         "/releases",
+  notas_fiscais:       "/invoices",
+  lead_interactions:   "/lead-interactions",
+  permissions:         "/permissions",
 };
 
 /**
@@ -79,15 +83,10 @@ export const TABLE_ENDPOINT: Record<string, string> = {
  * above, and remove it from this map.
  */
 export const PENDING_TABLES: Record<string, string> = {
-  templates_contratos:   "pending: contract-templates route — Task #535 (P2 contracts)",
   metas_artistas:        "pending: artist-goals route — no backend module yet",
-  lead_interactions:     "pending: CRM interaction-history route — no backend endpoint",
-  lancamentos:           "pending: financial-entries route — Task #538 (P3 financeiro)",
-  notas_fiscais:         "pending: invoices route — Task #538 (P3 financeiro)",
   documentos_funcionario:"pending: HR-documents route — rh.controller.ts has employees/payroll/leave but not docs",
   relatorios_ecad:       "pending: ECAD-reports route — monitoring.controller.ts has monitors/takedowns/rules but not ecad",
   deteccoes:             "pending: content-detections route — monitoring.controller.ts has monitors/takedowns/rules but not detections",
-  permissions:           "pending: permissions route — Task #537 (P2 RBAC)",
 };
 
 // ─── Error mapping ───────────────────────────────────────────────────────────

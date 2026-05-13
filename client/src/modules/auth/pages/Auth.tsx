@@ -4,14 +4,40 @@ import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/app/providers/AuthContext";
-
 import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
 import { Loader2, User, Lock, Facebook, Instagram, MessageCircle, Globe, Mail, ArrowLeft } from "lucide-react";
 import { authRateLimiter, isLeakedPassword } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
 
-// Password complexity validation with leaked password protection
+// ─── Clerk mode detection ─────────────────────────────────────────────────────
+
+const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
+
+// ─── Clerk SignIn page (lazy import — só quando Clerk está activo) ─────────────
+
+function ClerkSignInPage() {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { SignIn } = require("@clerk/clerk-react") as typeof import("@clerk/clerk-react");
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-black">
+      <SignIn
+        appearance={{
+          elements: {
+            rootBox:    "w-full max-w-md",
+            card:       "bg-card border border-border shadow-xl",
+            headerTitle:"text-primary-foreground",
+          },
+        }}
+        redirectUrl="/"
+      />
+    </div>
+  );
+}
+
+// ─── Schemas ──────────────────────────────────────────────────────────────────
+
 const passwordSchema = z
   .string()
   .min(8, "Senha deve ter no mínimo 8 caracteres")
@@ -24,20 +50,20 @@ const passwordSchema = z
   });
 
 const loginSchema = z.object({
-  email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
+  email:    z.string().trim().email("Email inválido").max(255, "Email muito longo"),
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
 const signupSchema = z
   .object({
-    fullName: z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres").max(100, "Nome muito longo"),
-    email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-    password: passwordSchema,
+    fullName:        z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres").max(100, "Nome muito longo"),
+    email:           z.string().trim().email("Email inválido").max(255, "Email muito longo"),
+    password:        passwordSchema,
     confirmPassword: z.string().min(1, "Confirme sua senha"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Senhas não conferem",
-    path: ["confirmPassword"],
+    path:    ["confirmPassword"],
   });
 
 const forgotPasswordSchema = z.object({
@@ -46,59 +72,62 @@ const forgotPasswordSchema = z.object({
 
 const resetPasswordSchema = z
   .object({
-    password: passwordSchema,
+    password:        passwordSchema,
     confirmPassword: z.string().min(1, "Confirme sua senha"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Senhas não conferem",
-    path: ["confirmPassword"],
+    path:    ["confirmPassword"],
   });
 
-type LoginFormData = z.infer<typeof loginSchema>;
-type SignupFormData = z.infer<typeof signupSchema>;
+type LoginFormData         = z.infer<typeof loginSchema>;
+type SignupFormData         = z.infer<typeof signupSchema>;
 type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
-type ResetPasswordFormData = z.infer<typeof resetPasswordSchema>;
-
+type ResetPasswordFormData  = z.infer<typeof resetPasswordSchema>;
 type AuthMode = "login" | "signup" | "forgot" | "reset";
 
+// ─── Custom auth form (NestJS JWT / mock mode) ────────────────────────────────
+
 export default function Auth() {
-  const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  // Quando Clerk está activo, renderizar directamente o componente Clerk
+  if (useClerkMode) return <ClerkSignInPage />;
+
+  return <CustomAuthForm />;
+}
+
+function CustomAuthForm() {
+  const navigate         = useNavigate();
+  const [searchParams]   = useSearchParams();
   const { user, signIn, signUp, resetPassword, updatePassword, loading: authLoading } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<AuthMode>("login");
+  const [mode, setMode]           = useState<AuthMode>("login");
 
   useEffect(() => {
-    // Check if we're in reset password mode (from email link)
     const modeParam = searchParams.get("mode");
-    if (modeParam === "reset") {
-      setMode("reset");
-    }
+    if (modeParam === "reset") setMode("reset");
   }, [searchParams]);
 
   useEffect(() => {
-    if (!MOCK_MODE && user && !authLoading && mode !== "reset") {
-      navigate("/");
-    }
+    if (!MOCK_MODE && user && !authLoading && mode !== "reset") navigate("/");
   }, [user, authLoading, navigate, mode]);
 
   const loginForm = useForm<LoginFormData>({
-    resolver: zodResolver(loginSchema),
+    resolver:      zodResolver(loginSchema),
     defaultValues: { email: "", password: "" },
   });
 
   const signupForm = useForm<SignupFormData>({
-    resolver: zodResolver(signupSchema),
+    resolver:      zodResolver(signupSchema),
     defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
   });
 
   const forgotPasswordForm = useForm<ForgotPasswordFormData>({
-    resolver: zodResolver(forgotPasswordSchema),
+    resolver:      zodResolver(forgotPasswordSchema),
     defaultValues: { email: "" },
   });
 
   const resetPasswordForm = useForm<ResetPasswordFormData>({
-    resolver: zodResolver(resetPasswordSchema),
+    resolver:      zodResolver(resetPasswordSchema),
     defaultValues: { password: "", confirmPassword: "" },
   });
 
@@ -108,7 +137,6 @@ export default function Auth() {
       toast.error(`Conta bloqueada temporariamente. Tente novamente em ${timeRemaining} minutos.`);
       return;
     }
-
     setIsLoading(true);
     try {
       const { error } = await signIn(data.email, data.password);
@@ -198,41 +226,21 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="Digite seu Email"
+                <input type="email" placeholder="Digite seu Email"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...forgotPasswordForm.register("email")}
-                />
+                  {...forgotPasswordForm.register("email")} />
               </div>
               {forgotPasswordForm.formState.errors.email && (
-                <p className="text-sm font-medium text-destructive">
-                  {forgotPasswordForm.formState.errors.email.message}
-                </p>
+                <p className="text-sm font-medium text-destructive">{forgotPasswordForm.formState.errors.email.message}</p>
               )}
             </div>
-            <Button
-              type="submit"
+            <Button type="submit"
               className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ENVIANDO...
-                </>
-              ) : (
-                "ENVIAR LINK DE RECUPERAÇÃO"
-              )}
+              disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />ENVIANDO...</> : "ENVIAR LINK DE RECUPERAÇÃO"}
             </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full text-primary-foreground"
-              onClick={() => setMode("login")}
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Voltar ao Login
+            <Button type="button" variant="ghost" className="w-full text-primary-foreground" onClick={() => setMode("login")}>
+              <ArrowLeft className="mr-2 h-4 w-4" />Voltar ao Login
             </Button>
           </form>
         );
@@ -244,51 +252,23 @@ export default function Auth() {
               <h2 className="text-lg font-semibold text-primary-foreground">Nova Senha</h2>
               <p className="text-sm text-gray-400">Digite sua nova senha</p>
             </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="Nova Senha"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...resetPasswordForm.register("password")}
-                />
+            {(["password", "confirmPassword"] as const).map((field) => (
+              <div className="space-y-2" key={field}>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
+                  <input type="password" placeholder={field === "password" ? "Nova Senha" : "Confirmar Nova Senha"}
+                    className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    {...resetPasswordForm.register(field)} />
+                </div>
+                {resetPasswordForm.formState.errors[field] && (
+                  <p className="text-sm font-medium text-destructive">{resetPasswordForm.formState.errors[field]?.message}</p>
+                )}
               </div>
-              {resetPasswordForm.formState.errors.password && (
-                <p className="text-sm font-medium text-destructive">
-                  {resetPasswordForm.formState.errors.password.message}
-                </p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="Confirmar Nova Senha"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...resetPasswordForm.register("confirmPassword")}
-                />
-              </div>
-              {resetPasswordForm.formState.errors.confirmPassword && (
-                <p className="text-sm font-medium text-destructive">
-                  {resetPasswordForm.formState.errors.confirmPassword.message}
-                </p>
-              )}
-            </div>
-            <Button
-              type="submit"
+            ))}
+            <Button type="submit"
               className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  SALVANDO...
-                </>
-              ) : (
-                "SALVAR NOVA SENHA"
-              )}
+              disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />SALVANDO...</> : "SALVAR NOVA SENHA"}
             </Button>
           </form>
         );
@@ -299,12 +279,9 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="text"
-                  placeholder="Nome Completo"
+                <input type="text" placeholder="Nome Completo"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("fullName")}
-                />
+                  {...signupForm.register("fullName")} />
               </div>
               {signupForm.formState.errors.fullName && (
                 <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.fullName.message}</p>
@@ -313,12 +290,9 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="Digite o Email"
+                <input type="email" placeholder="Digite o Email"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("email")}
-                />
+                  {...signupForm.register("email")} />
               </div>
               {signupForm.formState.errors.email && (
                 <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.email.message}</p>
@@ -327,12 +301,9 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="Senha"
+                <input type="password" placeholder="Senha"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("password")}
-                />
+                  {...signupForm.register("password")} />
               </div>
               {signupForm.formState.errors.password && (
                 <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.password.message}</p>
@@ -341,32 +312,18 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="Confirmar Senha"
+                <input type="password" placeholder="Confirmar Senha"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("confirmPassword")}
-                />
+                  {...signupForm.register("confirmPassword")} />
               </div>
               {signupForm.formState.errors.confirmPassword && (
-                <p className="text-sm font-medium text-destructive">
-                  {signupForm.formState.errors.confirmPassword.message}
-                </p>
+                <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.confirmPassword.message}</p>
               )}
             </div>
-            <Button
-              type="submit"
+            <Button type="submit"
               className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  CADASTRANDO...
-                </>
-              ) : (
-                "CRIAR CONTA"
-              )}
+              disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />CADASTRANDO...</> : "CRIAR CONTA"}
             </Button>
           </form>
         );
@@ -377,12 +334,9 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="email"
-                  placeholder="Digite o Usuário"
+                <input type="email" placeholder="Digite o Usuário"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...loginForm.register("email")}
-                />
+                  {...loginForm.register("email")} />
               </div>
               {loginForm.formState.errors.email && (
                 <p className="text-sm font-medium text-destructive">{loginForm.formState.errors.email.message}</p>
@@ -391,30 +345,18 @@ export default function Auth() {
             <div className="space-y-2">
               <div className="relative">
                 <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input
-                  type="password"
-                  placeholder="••••••"
+                <input type="password" placeholder="••••••"
                   className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...loginForm.register("password")}
-                />
+                  {...loginForm.register("password")} />
               </div>
               {loginForm.formState.errors.password && (
                 <p className="text-sm font-medium text-destructive">{loginForm.formState.errors.password.message}</p>
               )}
             </div>
-            <Button
-              type="submit"
+            <Button type="submit"
               className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ACESSANDO...
-                </>
-              ) : (
-                "ACESSAR O SISTEMA"
-              )}
+              disabled={isLoading}>
+              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
             </Button>
           </form>
         );
@@ -426,105 +368,63 @@ export default function Auth() {
       {/* Left Side - Login Form */}
       <div className="w-full lg:w-1/2 p-8 relative bg-black items-center justify-center px-0 py-0 flex flex-col">
         <div className="w-full max-w-md space-y-8">
-          {/* Welcome Text */}
           <div className="text-center">
             <h1 className="text-xl font-bold tracking-wider text-primary-foreground">
-              {mode === "signup"
-                ? "CRIAR CONTA"
-                : mode === "forgot"
-                  ? "RECUPERAR SENHA"
-                  : mode === "reset"
-                    ? "NOVA SENHA"
-                    : "SEJA BEM VINDO!"}
+              {mode === "signup" ? "CRIAR CONTA" : mode === "forgot" ? "RECUPERAR SENHA" : mode === "reset" ? "NOVA SENHA" : "SEJA BEM VINDO!"}
             </h1>
           </div>
-
-          {/* Logo */}
           <div className="py-0 flex-col flex items-center justify-center pointer-events-none">
-            <img
-              src="/lovable-uploads/a21a1ab1-df8a-4b7b-a1e4-0e36f63eff02.png"
-              alt="MUSIC OS 360"
-              className="h-[280px] w-[280px]"
-            />
+            <img src="/lovable-uploads/a21a1ab1-df8a-4b7b-a1e4-0e36f63eff02.png" alt="MUSIC OS 360" className="h-[280px] w-[280px]" />
           </div>
-
-          {/* Form */}
           <div className="relative z-10">{renderForm()}</div>
-
-          {/* Toggle Mode & Forgot Password */}
           {mode !== "reset" && (
             <div className="text-center space-y-3">
               {mode === "login" && (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setMode("forgot")}
-                    className="text-sm font-medium underline text-primary-foreground"
-                  >
+                  <button type="button" onClick={() => setMode("forgot")}
+                    className="text-sm font-medium underline text-primary-foreground">
                     Esqueci minha senha
                   </button>
                   <div>
-                    <Link
-                      to="/register"
-                      className="text-primary hover:text-primary/80 text-sm font-medium"
-                    >
+                    <Link to="/register" className="text-primary hover:text-primary/80 text-sm font-medium">
                       Criar nova conta
                     </Link>
                   </div>
                 </>
               )}
               {mode === "signup" && (
-                <button
-                  type="button"
-                  onClick={() => setMode("login")}
-                  className="text-sm font-medium underline text-primary-foreground"
-                >
+                <button type="button" onClick={() => setMode("login")}
+                  className="text-sm font-medium underline text-primary-foreground">
                   Já tenho uma conta
                 </button>
               )}
             </div>
           )}
-
-          {/* Social Icons */}
           <div className="flex justify-center gap-6 pt-4 py-0">
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <Facebook className="h-5 w-5" />
-            </a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <Instagram className="h-5 w-5" />
-            </a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <MessageCircle className="h-5 w-5" />
-            </a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors">
-              <Globe className="h-5 w-5" />
-            </a>
+            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Facebook className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Instagram className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><MessageCircle className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Globe className="h-5 w-5" /></a>
           </div>
         </div>
-
-        {/* Copyright Footer */}
         <div className="absolute bottom-6 left-0 right-0 text-center">
           <p className="text-xs text-gray-500 text-center">Copyright © MUSIC OS 360. Todos os direitos reservados.</p>
         </div>
       </div>
-
-      {/* Right Side - Gradient Background */}
+      {/* Right Side */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        {/* Decorative Elements */}
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
           <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-primary/60 rounded-full blur-3xl"></div>
         </div>
-        {/* Logo Placeholder */}
         <div className="absolute inset-0 flex items-center justify-center z-10">
           <div className="text-center">
             <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
-              <span className="text-5xl font-bold text-primary">LR</span>
+              <span className="text-5xl font-bold text-primary">M</span>
             </div>
             <h1 className="text-2xl font-bold text-white tracking-widest">MUSIC OS 360</h1>
           </div>
         </div>
-        {/* Text Overlay */}
         <div className="absolute bottom-12 left-12 z-10">
           <h2 className="text-3xl font-bold text-white mb-2">Sistema de Gestão</h2>
           <p className="text-gray-300 text-lg">Plataforma Musical Profissional</p>

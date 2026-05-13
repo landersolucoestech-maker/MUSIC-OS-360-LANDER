@@ -130,8 +130,31 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const inputCls = "flex h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors";
 const selectCls = inputCls + " appearance-none cursor-pointer";
 
+/* ─────────── Clerk mode detection ─────────── */
+const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const MOCK_MODE_R  = import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.VITE_MOCK_MODE === "true";
+const useClerkMode = !MOCK_MODE_R && Boolean(CLERK_KEY);
+
 /* ─────────── MAIN COMPONENT ─────────── */
 export default function Register() {
+  // Quando Clerk está activo, usa o componente de signup do Clerk
+  if (useClerkMode) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { SignUp } = require("@clerk/clerk-react") as typeof import("@clerk/clerk-react");
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-black">
+        <SignUp
+          appearance={{
+            elements: {
+              rootBox: "w-full max-w-md",
+              card:    "bg-card border border-border shadow-xl",
+            },
+          }}
+          redirectUrl="/"
+        />
+      </div>
+    );
+  }
   const navigate              = useNavigate();
   const [step, setStep]       = useState(1);
   const [isLoading, setIsLoading] = useState(false);

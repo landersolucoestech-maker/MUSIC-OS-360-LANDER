@@ -8,6 +8,26 @@
  * Se SENTRY_DSN não estiver configurado, o SDK é desativado silenciosamente.
  */
 
+// ── Silencia ruído ioredis em desenvolvimento ──────────────────────────────
+// BullMQ duplica conexões ioredis por fila; as duplicatas emitem 'error' events
+// sem listeners → ioredis loga "[ioredis] Unhandled error event" via console.error.
+// Em produção (Railway) o Redis está acessível, então este filtro não interfere.
+if (process.env['NODE_ENV'] !== 'production') {
+  const _origError = console.error.bind(console);
+  console.error = (...args: unknown[]) => {
+    const first = String(args[0] ?? '');
+    if (
+      first.includes('[ioredis]') ||
+      first.includes('ENOTFOUND') ||
+      first.includes('redis.railway.internal') ||
+      first.includes('Connection is closed')
+    ) {
+      return; // engole ruído de conexão Redis inacessível em dev
+    }
+    _origError(...args);
+  };
+}
+
 const SENTRY_DSN = process.env['SENTRY_DSN'];
 
 if (SENTRY_DSN) {

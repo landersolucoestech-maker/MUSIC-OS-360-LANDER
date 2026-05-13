@@ -6,11 +6,23 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, Logger } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import compression from 'compression';
+import * as compression from 'compression';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
+
+// Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
+// (ex: redis.railway.internal não está disponível fora da Railway private network)
+process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
+  if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
+    // erros de rede não fatais — log limpo sem stack trace
+    console.warn(`[Redis] Conexão indisponível (${err.code}): ${err.message?.split('\n')[0]}`);
+    return;
+  }
+  // outros erros não capturados → relança
+  throw err;
+});
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');

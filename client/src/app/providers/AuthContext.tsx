@@ -134,12 +134,28 @@ function ClerkBridgeInner({ children }: { children: React.ReactNode }) {
 
   const session: Session | null = isSignedIn ? { access_token: "", user: user! } : null;
 
-  // Injectar token Clerk nos headers de API (NestJS backend)
+  // Injectar token Clerk nos headers de API (NestJS backend) + refresh periódico
   useEffect(() => {
-    if (!isSignedIn) return;
-    getToken().then((token) => {
-      if (token) setAccessToken(token);
-    });
+    if (!isSignedIn) {
+      setAccessToken(null);
+      return;
+    }
+
+    const refreshToken = async () => {
+      try {
+        const token = await getToken();
+        if (token) setAccessToken(token);
+      } catch (err) {
+        console.error("Falha ao renovar token Clerk:", err);
+      }
+    };
+
+    // Refresh imediato ao entrar
+    void refreshToken();
+
+    // Renovar a cada 55 minutos (token Clerk expira em 60min)
+    const interval = setInterval(() => void refreshToken(), 55 * 60 * 1000);
+    return () => clearInterval(interval);
   }, [isSignedIn, getToken]);
 
   const value: AuthContextType = {

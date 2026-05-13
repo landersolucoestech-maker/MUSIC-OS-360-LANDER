@@ -79,18 +79,20 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
     const rawOrigins = this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:5000';
     const nodeEnv    = this.config.get<string>('NODE_ENV') ?? 'development';
 
-    // Reaplica CORS dinâmico no servidor Socket.IO após init
-    this.server.engine.on('initial_headers', (_headers: Record<string, string>, req: { headers: Record<string, string | string[] | undefined> }) => {
-      const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
-      const cb     = buildOriginCallback(rawOrigins, nodeEnv);
-      if (cb === true || !origin) return;
-      const allowed = new Set(rawOrigins.split(',').map((o) => o.trim()).filter(Boolean));
-      if (!allowed.has(origin)) {
-        this.logger.warn(`WsGateway: origem não autorizada bloqueada — ${origin}`);
-      }
-    });
+    // Reaplica CORS dinâmico no servidor Socket.IO após init (guard: server pode ser undefined)
+    if (this.server?.engine) {
+      this.server.engine.on('initial_headers', (_headers: Record<string, string>, req: { headers: Record<string, string | string[] | undefined> }) => {
+        const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
+        const cb     = buildOriginCallback(rawOrigins, nodeEnv);
+        if (cb === true || !origin) return;
+        const allowed = new Set(rawOrigins.split(',').map((o) => o.trim()).filter(Boolean));
+        if (!allowed.has(origin)) {
+          this.logger.warn(`WsGateway: origem não autorizada bloqueada — ${origin}`);
+        }
+      });
+    }
 
-    // Redis Pub/Sub — opcional; só activa se REDIS_QUEUE_URL estiver definido
+    // Redis Pub/Sub — opcional; só activa se REDIS_QUEUE_URL estiver definido e acessível
     const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
 
     if (queueUrl && queueUrl !== 'redis://localhost:6379') {
@@ -98,11 +100,24 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
         const { createAdapter } = await import('@socket.io/redis-adapter');
         const { Redis }         = await import('ioredis');
 
-        const pub = new Redis(queueUrl, { lazyConnect: false, maxRetriesPerRequest: null });
-        const sub = pub.duplicate();
+        const pub = new Redis(queueUrl, {
+          lazyConnect:          true,
+          maxRetriesPerRequest: 0,
+          enableReadyCheck:     false,
+          connectTimeout:       3000,
+        });
 
-        this.server.adapter(createAdapter(pub, sub));
-        this.logger.log('WsGateway: Redis Pub/Sub activado');
+        await pub.connect().catch(() => {
+          throw new Error(`Não foi possível conectar ao Redis: ${queueUrl.substring(0, 30)}...`);
+        });
+
+        const sub = pub.duplicate();
+        await sub.connect().catch(() => { /* tolera */ });
+
+        if (this.server) {
+          this.server.adapter(createAdapter(pub, sub));
+          this.logger.log('WsGateway: Redis Pub/Sub activado');
+        }
       } catch (err) {
         this.logger.warn(`WsGateway: Redis Pub/Sub não activado — ${String(err)}`);
       }

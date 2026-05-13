@@ -28,6 +28,15 @@ export class RateLimitService {
       return;
     }
 
+    if (!url.startsWith('https://')) {
+      this.logger.warn(
+        `UPSTASH_REDIS_URL deve começar com https:// (Upstash REST API). ` +
+        `Recebido: "${url.substring(0, 20)}..." — rate limiting desactivado`,
+      );
+      this.enabled = false;
+      return;
+    }
+
     this.enabled = true;
     const redis  = new Redis({ url, token });
 
