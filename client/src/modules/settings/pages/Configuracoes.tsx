@@ -1855,11 +1855,11 @@ export default function Configuracoes() {
                           variant="outline"
                           size="sm"
                           className="w-full gap-2"
-                          onClick={() => toast.info("Contacte o suporte para gerir a subscrição: suporte@musicos360.com.br")}
+                          onClick={() => toast.info("Entre em contato com o suporte para gerenciar a assinatura: suporte@musicos360.com.br")}
                           data-testid="button-manage-plan"
                         >
                           <CreditCard className="h-3.5 w-3.5" />
-                          Gerir Subscrição
+                          Gerenciar Assinatura
                         </Button>
                       </CardContent>
                     </Card>
@@ -1896,7 +1896,7 @@ export default function Configuracoes() {
                           variant="outline"
                           size="sm"
                           className="w-full gap-2"
-                          onClick={() => toast.info("Contacte o suporte para adicionar mais assentos: suporte@musicos360.com.br")}
+                          onClick={() => toast.info("Entre em contato com o suporte para adicionar mais assentos: suporte@musicos360.com.br")}
                           data-testid="button-add-seats"
                         >
                           <Plus className="h-3.5 w-3.5" />
@@ -1931,7 +1931,7 @@ export default function Configuracoes() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => toast.info("Contacte o suporte para actualizar o cartão: suporte@musicos360.com.br")}
+                            onClick={() => toast.info("Entre em contato com o suporte para atualizar o cartão: suporte@musicos360.com.br")}
                             data-testid="button-update-payment"
                           >
                             Alterar
@@ -1982,7 +1982,7 @@ export default function Configuracoes() {
                                     data-testid={`button-download-invoice-${inv.id}`}
                                   >
                                     <Download className="h-3 w-3" />
-                                    PDF
+                                    Baixar
                                   </Button>
                                 </td>
                               </tr>
@@ -2017,7 +2017,7 @@ export default function Configuracoes() {
                             >
                               {isCurrent && (
                                 <div className="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                                  <Badge className="text-[10px] px-2 py-0.5">Plano Actual</Badge>
+                                  <Badge className="text-[10px] px-2 py-0.5">Plano Atual</Badge>
                                 </div>
                               )}
                               <div>
@@ -2040,10 +2040,10 @@ export default function Configuracoes() {
                                 variant={isCurrent ? "outline" : "default"}
                                 className="w-full"
                                 disabled={isCurrent}
-                                onClick={() => !isCurrent && toast.info("Contacte o suporte para fazer upgrade: suporte@musicos360.com.br")}
+                                onClick={() => !isCurrent && toast.info("Entre em contato com o suporte para fazer upgrade: suporte@musicos360.com.br")}
                                 data-testid={`button-plan-${p.id}`}
                               >
-                                {isCurrent ? "Plano Actual" : "Fazer Upgrade"}
+                                {isCurrent ? "Plano Atual" : "Fazer Upgrade"}
                               </Button>
                             </div>
                           );
