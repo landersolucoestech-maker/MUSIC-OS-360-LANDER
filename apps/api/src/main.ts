@@ -15,6 +15,7 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     logger: ['error', 'warn', 'log', 'debug'],
+    rawBody:    true,
   });
 
   // ── Segurança ────────────────────────────────────────────────────────────────

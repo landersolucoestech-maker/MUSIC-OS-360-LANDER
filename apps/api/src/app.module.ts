@@ -7,17 +7,24 @@
  *   - Upstash Redis (cache / rate-limit)
  *   - Cloudflare R2 (file storage)
  *   - BullMQ + Railway Redis (filas assíncronas)
+ *   - Clerk (autenticação JWT + webhook sync)
  */
 
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import { BullModule } from '@nestjs/bullmq';
+import { Reflector } from '@nestjs/core';
 import { validateEnv } from './core/config/env.schema';
 import { DatabaseModule } from './database/database.module';
 import { CacheModule } from './cache/cache.module';
 import { StorageModule } from './storage/storage.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueueModule } from './queues/queue.module';
+import { AuthModule } from './modules/auth/auth.module';
+import { ClerkAuthGuard } from './core/guards/clerk-auth.guard';
+import { TenantGuard } from './core/guards/tenant.guard';
+import { RolesGuard } from './core/guards/roles.guard';
 
 @Module({
   imports: [
@@ -57,8 +64,28 @@ import { QueueModule } from './queues/queue.module';
     // ── Módulos de domínio ────────────────────────────────────────────────────
     HealthModule,
 
+    // ── Auth (Clerk JWT + Webhook Sync) ───────────────────────────────────────
+    AuthModule,
+
     // ── Filas ─────────────────────────────────────────────────────────────────
     QueueModule,
+  ],
+  providers: [
+    // Guards globais aplicados a TODAS as rotas
+    // Ordem: ClerkAuthGuard → TenantGuard → RolesGuard
+    Reflector,
+    {
+      provide:  APP_GUARD,
+      useClass: ClerkAuthGuard,
+    },
+    {
+      provide:  APP_GUARD,
+      useClass: TenantGuard,
+    },
+    {
+      provide:  APP_GUARD,
+      useClass: RolesGuard,
+    },
   ],
 })
 export class AppModule {}

@@ -16,6 +16,7 @@
   "dependencies": {
     "@bull-board/api": "^7.0.0",
     "@bull-board/express": "^7.0.0",
+    "@clerk/clerk-react": "^5.61.6",
     "@hookform/resolvers": "^3.10.0",
     "@nestjs/bullmq": "^11.0.4",
     "@octokit/rest": "^21.1.1",

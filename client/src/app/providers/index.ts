@@ -1,5 +1,6 @@
 // App providers — barrel export
-export { AuthProvider, useAuth, getSessionOrgId } from "./AuthContext";
+export { AuthProvider, useAuth } from "./AuthContext";
+export { getSessionOrgId } from "@/shared/lib/get-session-org-id";
 export {
   TenantProvider,
   useTenant,

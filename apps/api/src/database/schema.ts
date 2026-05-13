@@ -30,16 +30,18 @@ import {
 // ─── Tenants ──────────────────────────────────────────────────────────────────
 
 export const tenants = pgTable('tenants', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  name:       varchar('name', { length: 255 }).notNull(),
-  slug:       varchar('slug', { length: 100 }).notNull().unique(),
-  plan:       varchar('plan', { length: 50 }).notNull().default('starter'),
-  active:     boolean('active').notNull().default(true),
-  settings:   jsonb('settings').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+  id:          uuid('id').primaryKey().defaultRandom(),
+  name:        varchar('name', { length: 255 }).notNull(),
+  slug:        varchar('slug', { length: 100 }).notNull().unique(),
+  clerkOrgId:  varchar('clerk_org_id', { length: 255 }).unique(),
+  plan:        varchar('plan', { length: 50 }).notNull().default('starter'),
+  active:      boolean('active').notNull().default(true),
+  settings:    jsonb('settings').default({}),
+  createdAt:   timestamp('created_at').notNull().defaultNow(),
+  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [
   index('tenants_slug_idx').on(t.slug),
+  index('tenants_clerk_org_idx').on(t.clerkOrgId),
 ]);
 
 // ─── Users ────────────────────────────────────────────────────────────────────
@@ -51,6 +53,8 @@ export const users = pgTable('users', {
   email:      varchar('email', { length: 255 }).notNull(),
   fullName:   varchar('full_name', { length: 255 }),
   role:       varchar('role', { length: 50 }).notNull().default('user'),
+  orgRole:    varchar('org_role', { length: 50 }).default('viewer'),
+  isActive:   boolean('is_active').notNull().default(true),
   status:     varchar('status', { length: 50 }).notNull().default('active'),
   avatarUrl:  text('avatar_url'),
   metadata:   jsonb('metadata').default({}),

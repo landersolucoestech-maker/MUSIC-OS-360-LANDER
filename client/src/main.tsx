@@ -32,4 +32,28 @@ if (!MOCK_MODE && import.meta.env.VITE_POSTHOG_KEY) {
   });
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+// ── Clerk (autenticação real — apenas quando a chave estiver configurada) ──
+// Em MOCK_MODE=true a key pode não estar presente — o app funciona em modo
+// standalone sem Clerk. Em produção, VITE_CLERK_PUBLISHABLE_KEY é obrigatória.
+
+const CLERK_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const useClerk  = !MOCK_MODE && Boolean(CLERK_KEY);
+
+async function mount() {
+  const root = document.getElementById("root")!;
+
+  if (useClerk && CLERK_KEY) {
+    const { ClerkProvider } = await import("@clerk/clerk-react");
+    createRoot(root).render(
+      <ClerkProvider publishableKey={CLERK_KEY}>
+        <App />
+      </ClerkProvider>
+    );
+  } else {
+    createRoot(root).render(<App />);
+  }
+}
+
+mount().catch((err: unknown) => {
+  console.error("Falha ao montar a aplicação:", err);
+});

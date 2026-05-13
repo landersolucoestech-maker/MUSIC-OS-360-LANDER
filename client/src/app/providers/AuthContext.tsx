@@ -1,53 +1,64 @@
-import React, { createContext, useContext, useState, useEffect, useRef } from "react";
-import type { AuthError, Session, User } from "@/shared/types/auth";
-import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
-import {
-  setAccessToken,
-  getAccessToken,
-} from "@/shared/lib/api-client";
-import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
-
 /**
- * AuthContext — suporta dois modos:
+ * app/providers/AuthContext.tsx
  *
- * VITE_MOCK_MODE=true  (desenvolvimento):
- *   Modo standalone — usuário mock sempre autenticado, sem chamadas HTTP.
+ * AuthContext — bridge multi-modo:
  *
- * VITE_MOCK_MODE=false (produção / backend):
- *   Autenticação real via NestJS:
- *   - signIn  → POST /auth/login  → access_token em memória + refresh_token no localStorage
- *   - signOut → POST /auth/logout → limpa tokens
- *   - signUp  → POST /auth/register + login automático
- *   - On mount: tenta renovar sessão com refresh_token salvo
+ * MOCK_MODE=true  (standalone / desenvolvimento):
+ *   Usuário mock sempre autenticado. Sem Clerk. Sem chamadas HTTP.
+ *
+ * MOCK_MODE=false + VITE_CLERK_PUBLISHABLE_KEY definida:
+ *   Bridge Clerk — ClerkBridgeInner usa hooks @clerk/clerk-react.
+ *   Só é renderizado quando ClerkProvider já está na árvore (main.tsx).
+ *
+ * MOCK_MODE=false sem VITE_CLERK_PUBLISHABLE_KEY:
+ *   Autenticação real via NestJS JWT (legado / migração interna).
  */
 
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useRef,
+} from "react";
+import {
+  useAuth as useClerkAuth,
+  useUser,
+  useOrganization,
+} from "@clerk/clerk-react";
+import type { AuthError, Session, User } from "@/shared/types/auth";
+import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
+import { setAccessToken, getAccessToken } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
+
+// ─── Tipos ────────────────────────────────────────────────────────────────────
 
 interface AuthContextType {
-  user: User | null;
-  session: Session | null;
-  loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (
-    email: string,
-    password: string,
-    fullName?: string
-  ) => Promise<{ error: AuthError | null }>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
-  updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
+  user:            User | null;
+  session:         Session | null;
+  loading:         boolean;
+  signIn:          (email: string, password: string) => Promise<{ error: AuthError | null }>;
+  signUp:          (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>;
+  signOut:         () => Promise<void>;
+  resetPassword:   (email: string) => Promise<{ error: AuthError | null }>;
+  updatePassword:  (password: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ─── JWT decode helper ────────────────────────────────────────────────────────
+// ─── Constantes ───────────────────────────────────────────────────────────────
+
+const CLERK_KEY     = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const useClerkMode  = !MOCK_MODE && Boolean(CLERK_KEY);
+const API_BASE_URL  = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
+
+// ─── Helpers JWT ──────────────────────────────────────────────────────────────
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
-    const payload = token.split(".")[1];
-    return JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
-  } catch {
-    return {};
-  }
+    const b64 = token.split(".")[1];
+    return JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/")));
+  } catch { return {}; }
 }
 
 function tokenToUser(token: string): User {
@@ -69,13 +80,11 @@ function tokenToSession(access: string): Session {
   };
 }
 
-// ─── Real HTTP auth helpers ───────────────────────────────────────────────────
-
 async function httpPost<T>(path: string, body: unknown): Promise<T> {
   const res = await fetch(`${API_BASE_URL}${path}`, {
-    method: "POST",
-    credentials: "include",   // sends httpOnly refresh cookie automatically
-    headers: { "Content-Type": "application/json" },
+    method:      "POST",
+    credentials: "include",
+    headers:     { "Content-Type": "application/json" },
     ...(body !== null ? { body: JSON.stringify(body) } : {}),
   });
   if (res.status === 204) return undefined as T;
@@ -84,21 +93,80 @@ async function httpPost<T>(path: string, body: unknown): Promise<T> {
   return data;
 }
 
-// ─── Provider ────────────────────────────────────────────────────────────────
+// ─── Provider — Mock Mode ─────────────────────────────────────────────────────
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user,    setUser]    = useState<User | null>(MOCK_MODE ? (MOCK_USER as User) : null);
-  const [session, setSession] = useState<Session | null>(MOCK_MODE ? (MOCK_SESSION as Session) : null);
-  const [loading, setLoading] = useState(!MOCK_MODE);
+function MockAuthProvider({ children }: { children: React.ReactNode }) {
+  const value: AuthContextType = {
+    user:            MOCK_USER as User,
+    session:         MOCK_SESSION as Session,
+    loading:         false,
+    signIn:          async () => ({ error: null }),
+    signUp:          async () => ({ error: null }),
+    signOut:         async () => { /* standalone — mantém mock */ },
+    resetPassword:   async () => ({ error: null }),
+    updatePassword:  async () => ({ error: null }),
+  };
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
 
-  const initDone = useRef(false);
+// ─── Provider — Clerk Bridge ──────────────────────────────────────────────────
+// Só é renderizado quando ClerkProvider já está na árvore (ver main.tsx).
+// Os hooks useClerkAuth / useUser / useOrganization são seguros aqui.
 
-  // On mount (real mode): try to restore session via httpOnly cookie.
-  // The browser sends the cookie automatically; no stored token needed.
+function ClerkBridgeInner({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn, signOut: clerkSignOut, getToken } = useClerkAuth();
+  const { user: clerkUser }  = useUser();
+  const { organization }     = useOrganization();
+
+  const user: User | null = clerkUser
+    ? {
+        id:    clerkUser.id,
+        email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+        user_metadata: {
+          full_name:  clerkUser.fullName ?? "",
+          role:       (organization as unknown as { membership?: { role?: string } } | null)
+                        ?.membership?.role ?? "viewer",
+          org_id:     organization?.id ?? "",
+          avatar_url: clerkUser.imageUrl,
+        },
+      }
+    : null;
+
+  const session: Session | null = isSignedIn ? { access_token: "", user: user! } : null;
+
+  // Injectar token Clerk nos headers de API (NestJS backend)
   useEffect(() => {
-    if (MOCK_MODE || initDone.current) return;
-    initDone.current = true;
+    if (!isSignedIn) return;
+    getToken().then((token) => {
+      if (token) setAccessToken(token);
+    });
+  }, [isSignedIn, getToken]);
 
+  const value: AuthContextType = {
+    user,
+    session,
+    loading:       !isLoaded,
+    signIn:        async () => ({ error: null }), // Clerk usa UI própria (SignIn component)
+    signUp:        async () => ({ error: null }), // Clerk usa UI própria
+    signOut:       async () => { await clerkSignOut(); },
+    resetPassword: async () => ({ error: null }),
+    updatePassword:async () => ({ error: null }),
+  };
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+}
+
+// ─── Provider — NestJS JWT (modo real sem Clerk) ──────────────────────────────
+
+function NestAuthProvider({ children }: { children: React.ReactNode }) {
+  const [user,    setUser]    = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
+  const initDone              = useRef(false);
+
+  useEffect(() => {
+    if (initDone.current) return;
+    initDone.current = true;
     httpPost<{ access_token: string }>("/auth/refresh", null)
       .then(({ access_token }) => {
         setAccessToken(access_token);
@@ -106,88 +174,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setSession(s);
         setUser(s.user);
       })
-      .catch(() => { /* no valid cookie — stay logged out */ })
+      .catch(() => { /* sem cookie válido — fica deslogado */ })
       .finally(() => setLoading(false));
   }, []);
 
-  // ─── Mock mode methods ────────────────────────────────────────────────────
-
-  if (MOCK_MODE) {
-    const signIn    = async (_e: string, _p: string) => { setUser(MOCK_USER as User); setSession(MOCK_SESSION as Session); return { error: null }; };
-    const signUp    = async (_e: string, _p: string, _n?: string) => { setUser(MOCK_USER as User); setSession(MOCK_SESSION as Session); return { error: null }; };
-    const signOut   = async () => { /* standalone — mantém usuário mock */ };
-    const resetPassword  = async (_e: string)  => ({ error: null });
-    const updatePassword = async (_p: string)  => ({ error: null });
-
-    return (
-      <AuthContext.Provider value={{ user, session, loading: false, signIn, signUp, signOut, resetPassword, updatePassword }}>
-        {children}
-      </AuthContext.Provider>
-    );
-  }
-
-  // ─── Real mode methods ────────────────────────────────────────────────────
-
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
     try {
-      const { access_token } = await httpPost<{ access_token: string }>(
-        "/auth/login",
-        { email, password },
-      );
+      const { access_token } = await httpPost<{ access_token: string }>("/auth/login", { email, password });
       setAccessToken(access_token);
-      // backend sets httpOnly refresh cookie in Set-Cookie header automatically
       const s = tokenToSession(access_token);
-      setSession(s);
-      setUser(s.user);
+      setSession(s); setUser(s.user);
       return { error: null };
-    } catch (err) {
-      return { error: { message: err instanceof Error ? err.message : "Erro ao fazer login" } };
-    }
+    } catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao fazer login" } }; }
   };
 
   const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: AuthError | null }> => {
     try {
-      const orgNome = (fullName?.trim()) || email.split("@")[0].replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Organization";
-      const { access_token } = await httpPost<{ access_token: string }>(
-        "/auth/register",
-        { email, password, full_name: fullName, org_nome: orgNome },
-      );
+      const orgNome = fullName?.trim() || email.split("@")[0].replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Organization";
+      const { access_token } = await httpPost<{ access_token: string }>("/auth/register", { email, password, full_name: fullName, org_nome: orgNome });
       setAccessToken(access_token);
       const s = tokenToSession(access_token);
-      setSession(s);
-      setUser(s.user);
+      setSession(s); setUser(s.user);
       return { error: null };
-    } catch (err) {
-      return { error: { message: err instanceof Error ? err.message : "Erro ao criar conta" } };
-    }
+    } catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao criar conta" } }; }
   };
 
   const signOut = async (): Promise<void> => {
-    try {
-      // POST /auth/logout reads the cookie server-side and revokes it
-      await httpPost("/auth/logout", null);
-    } catch { /* ignore */ }
-    setAccessToken(null);
-    setUser(null);
-    setSession(null);
+    try { await httpPost("/auth/logout", null); } catch { /* ignore */ }
+    setAccessToken(null); setUser(null); setSession(null);
   };
 
-  const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
-    try {
-      await httpPost("/auth/forgot-password", { email });
-      return { error: null };
-    } catch (err) {
-      return { error: { message: err instanceof Error ? err.message : "Erro ao solicitar redefinição de senha" } };
-    }
+  const resetPassword  = async (email: string):    Promise<{ error: AuthError | null }> => {
+    try { await httpPost("/auth/forgot-password", { email }); return { error: null }; }
+    catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao solicitar redefinição" } }; }
   };
 
   const updatePassword = async (password: string): Promise<{ error: AuthError | null }> => {
-    try {
-      await httpPost("/auth/reset-password", { password });
-      return { error: null };
-    } catch (err) {
-      return { error: { message: err instanceof Error ? err.message : "Erro ao atualizar senha" } };
-    }
+    try { await httpPost("/auth/reset-password", { password }); return { error: null }; }
+    catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao atualizar senha" } }; }
   };
 
   return (
@@ -197,20 +221,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 }
 
-export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) throw new Error("useAuth must be used within an AuthProvider");
-  return context;
+// ─── AuthProvider principal ───────────────────────────────────────────────────
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  if (MOCK_MODE)      return <MockAuthProvider>{children}</MockAuthProvider>;
+  if (useClerkMode)   return <ClerkBridgeInner>{children}</ClerkBridgeInner>;
+  return                     <NestAuthProvider>{children}</NestAuthProvider>;
 }
 
-/** Reads the current org_id from the JWT stored in memory (real mode) or from MOCK_DATA. */
-export function getSessionOrgId(): string | null {
-  if (MOCK_MODE) return null; // tenant.ts uses MOCK_ORG_ID
-  const token = getAccessToken();
-  if (!token) return null;
-  try {
-    const payload = token.split(".")[1];
-    const p = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
-    return typeof p["org_id"] === "string" ? p["org_id"] : null;
-  } catch { return null; }
+// ─── Hook público ─────────────────────────────────────────────────────────────
+
+export function useAuth() {
+  const ctx = useContext(AuthContext);
+  if (!ctx) throw new Error("useAuth deve ser usado dentro de AuthProvider");
+  return ctx;
 }
+
+// getSessionOrgId está em @/shared/lib/get-session-org-id para compatibilidade
+// com Vite Fast Refresh (ficheiros só podem exportar componentes OU utilitários).
