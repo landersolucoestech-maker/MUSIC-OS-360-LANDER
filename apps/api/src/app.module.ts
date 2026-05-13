@@ -46,6 +46,8 @@ import { ReleasesModule }          from './modules/releases/releases.module';
 import { UsersModule }             from './modules/users/users.module';
 import { AuditLogModule }          from './modules/audit-log/audit-log.module';
 import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
+import { IntegrationsModule }      from './modules/integrations/integrations.module';
+import { AIModule }                from './modules/ai/ai.module';
 import { ClerkAuthGuard }          from './core/guards/clerk-auth.guard';
 import { TenantGuard }          from './core/guards/tenant.guard';
 import { RolesGuard }           from './core/guards/roles.guard';
@@ -123,6 +125,12 @@ import { RolesGuard }           from './core/guards/roles.guard';
     UsersModule,
     AuditLogModule,
     SupportTicketsModule,
+
+    // ── Módulos FASE 7 — Integrações Reais ───────────────────────────────────
+    IntegrationsModule,
+
+    // ── Módulos FASE 8 — AI Gateway ──────────────────────────────────────────
+    AIModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

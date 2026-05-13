@@ -67,6 +67,20 @@ const envSchema = z.object({
   // Monitoramento
   SENTRY_DSN: z.string().optional(),
   POSTHOG_API_KEY: z.string().optional(),
+  POSTHOG_HOST: z.string().default('https://app.posthog.com'),
+
+  // App URL (para templates de email, etc.)
+  APP_URL: z.string().default('http://localhost:5000'),
+
+  // ACRCloud (monitoramento musical)
+  ACRCLOUD_HOST: z.string().optional(),
+  ACRCLOUD_ACCESS_KEY: z.string().optional(),
+  ACRCLOUD_ACCESS_SECRET: z.string().optional(),
+
+  // Spotify (OAuth + streaming metrics)
+  SPOTIFY_CLIENT_ID: z.string().optional(),
+  SPOTIFY_CLIENT_SECRET: z.string().optional(),
+  SPOTIFY_REDIRECT_URI: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

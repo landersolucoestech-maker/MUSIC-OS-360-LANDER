@@ -530,6 +530,68 @@ export const uploads = pgTable('uploads', {
   index('uploads_status_idx').on(t.status),
 ]);
 
+// ─── Integrations (OAuth tokens + API keys por tenant/provider) ───────────────
+
+export const integrations = pgTable('integrations', {
+  id:                   uuid('id').primaryKey().defaultRandom(),
+  tenantId:             uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider:             varchar('provider', { length: 100 }).notNull(),
+  status:               varchar('status', { length: 50 }).notNull().default('disconnected'),
+  credentialsEncrypted: text('credentials_encrypted'),
+  settings:             jsonb('settings').default({}),
+  lastSyncAt:           timestamp('last_sync_at'),
+  failureCount:         integer('failure_count').notNull().default(0),
+  metadata:             jsonb('metadata').default({}),
+  createdAt:            timestamp('created_at').notNull().defaultNow(),
+  updatedAt:            timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('integrations_tenant_idx').on(t.tenantId),
+  index('integrations_provider_idx').on(t.provider),
+  index('integrations_tenant_provider_idx').on(t.tenantId, t.provider),
+]);
+
+// ─── OAuth Connections (access + refresh tokens por user/provider) ─────────────
+
+export const oauthConnections = pgTable('oauth_connections', {
+  id:                     uuid('id').primaryKey().defaultRandom(),
+  tenantId:               uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId:                 varchar('user_id', { length: 255 }).notNull(),
+  provider:               varchar('provider', { length: 100 }).notNull(),
+  accessTokenEncrypted:   text('access_token_encrypted').notNull(),
+  refreshTokenEncrypted:  text('refresh_token_encrypted'),
+  expiresAt:              timestamp('expires_at'),
+  scopes:                 text('scopes'),
+  metadata:               jsonb('metadata').default({}),
+  createdAt:              timestamp('created_at').notNull().defaultNow(),
+  updatedAt:              timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('oauth_tenant_idx').on(t.tenantId),
+  index('oauth_user_provider_idx').on(t.userId, t.provider),
+]);
+
+// ─── AI Jobs (cost tracking por request) ──────────────────────────────────────
+
+export const aiJobs = pgTable('ai_jobs', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  userId:       varchar('user_id', { length: 255 }).notNull(),
+  provider:     varchar('provider', { length: 50 }).notNull(),
+  model:        varchar('model', { length: 100 }).notNull(),
+  skill:        varchar('skill', { length: 100 }).notNull(),
+  status:       varchar('status', { length: 50 }).notNull().default('pending'),
+  inputTokens:  integer('input_tokens').notNull().default(0),
+  outputTokens: integer('output_tokens').notNull().default(0),
+  costUsd:      decimal('cost_usd', { precision: 12, scale: 8 }).notNull().default('0'),
+  latencyMs:    integer('latency_ms'),
+  completedAt:  timestamp('completed_at'),
+  metadata:     jsonb('metadata').default({}),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('ai_jobs_tenant_idx').on(t.tenantId),
+  index('ai_jobs_user_idx').on(t.userId),
+  index('ai_jobs_created_idx').on(t.createdAt),
+]);
+
 // ─── Exports ──────────────────────────────────────────────────────────────────
 
 export type Tenant       = typeof tenants.$inferSelect;
@@ -578,3 +640,9 @@ export type Release             = typeof releases.$inferSelect;
 export type NewRelease          = typeof releases.$inferInsert;
 export type SupportTicket       = typeof supportTickets.$inferSelect;
 export type NewSupportTicket    = typeof supportTickets.$inferInsert;
+export type Integration         = typeof integrations.$inferSelect;
+export type NewIntegration      = typeof integrations.$inferInsert;
+export type OAuthConnection     = typeof oauthConnections.$inferSelect;
+export type NewOAuthConnection  = typeof oauthConnections.$inferInsert;
+export type AIJob               = typeof aiJobs.$inferSelect;
+export type NewAIJob            = typeof aiJobs.$inferInsert;
