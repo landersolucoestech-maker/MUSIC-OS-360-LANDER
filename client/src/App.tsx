@@ -13,6 +13,7 @@ import { createQueryClient } from "@/shared/lib/query-config";
 import type { SuspenseRouteComponent } from "@/app/routes/types";
 import "@/shared/domain-events/consistency";
 import { RealtimeLayer } from "@/shared/infrastructure/RealtimeLayer";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
@@ -40,6 +41,7 @@ const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  if (MOCK_MODE) return <>{children}</>;
   if (loading) return <PageSkeleton />;
   if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
@@ -55,6 +57,7 @@ const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  if (MOCK_MODE) return <>{children}</>;
   if (loading) return <PageSkeleton />;
   const role = user?.user_metadata?.["role"] as string | undefined;
   if (!user || role !== "super_admin") return <Navigate to="/" replace />;
