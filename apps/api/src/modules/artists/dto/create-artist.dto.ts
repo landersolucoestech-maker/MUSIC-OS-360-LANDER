@@ -59,6 +59,24 @@ export class CreateArtistDto {
   @IsArray()
   especialidades?: string[];
 
+  @ApiPropertyOptional({ example: 'artista@email.com' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  email?: string;
+
+  @ApiPropertyOptional({ example: '+55 11 91234-5678' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(50)
+  telefone?: string;
+
+  @ApiPropertyOptional({ example: '123.456.789-00' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  cpf_cnpj?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsObject()

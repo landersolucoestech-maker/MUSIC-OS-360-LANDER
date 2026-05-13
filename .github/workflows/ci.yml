@@ -138,6 +138,7 @@ jobs:
             echo "## Cobertura Web" >> "$GITHUB_STEP_SUMMARY"
             echo "" >> "$GITHUB_STEP_SUMMARY"
             node -e "
+              const fs = require('fs');
               const s = require('./coverage/coverage-summary.json');
               const cwd = process.cwd();
               const rows = Object.entries(s).map(([k, v]) => {

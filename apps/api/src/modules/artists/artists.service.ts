@@ -1,15 +1,17 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { eq, and, ilike, or, isNull, desc, asc, count, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { artists, Artist }       from '../../database/schema';
-import { CreateArtistDto }        from './dto/create-artist.dto';
-import { UpdateArtistDto }        from './dto/update-artist.dto';
-import { QueryArtistDto }         from './dto/query-artist.dto';
+import { EncryptionService }       from '../../core/security/encryption.service';
+import { artists, Artist }         from '../../database/schema';
+import { CreateArtistDto }         from './dto/create-artist.dto';
+import { UpdateArtistDto }         from './dto/update-artist.dto';
+import { QueryArtistDto }          from './dto/query-artist.dto';
 
 @Injectable()
 export class ArtistsService {
   constructor(
     @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async list(tenantId: string, query: QueryArtistDto) {
@@ -75,21 +77,24 @@ export class ArtistsService {
     const [created] = await this.db
       .insert(artists)
       .values({
-        tenant_id:        tenantId,
-        nome_artistico:   dto.nome_artistico,
-        nome_civil:       dto.nome_civil       ?? null,
-        tipo:             dto.tipo             ?? 'solo',
-        status:           dto.status           ?? 'em_negociacao',
-        genero_musical:   dto.genero_musical   ?? null,
-        observacoes:      dto.observacoes      ?? null,
-        foto_url:         dto.foto_url         ?? null,
-        banner_url:       dto.banner_url       ?? null,
-        spotify_artist_id:  dto.spotify_artist_id  ?? null,
-        youtube_channel_id: dto.youtube_channel_id ?? null,
-        especialidades:   dto.especialidades   ?? [],
-        metadata:         dto.metadata         ?? {},
-        created_by:       userId,
-        updated_by:       userId,
+        tenant_id:              tenantId,
+        nome_artistico:         dto.nome_artistico,
+        nome_civil:             dto.nome_civil             ?? null,
+        tipo:                   dto.tipo                   ?? 'solo',
+        status:                 dto.status                 ?? 'em_negociacao',
+        genero_musical:         dto.genero_musical         ?? null,
+        observacoes:            dto.observacoes            ?? null,
+        foto_url:               dto.foto_url               ?? null,
+        banner_url:             dto.banner_url             ?? null,
+        spotify_artist_id:      dto.spotify_artist_id      ?? null,
+        youtube_channel_id:     dto.youtube_channel_id     ?? null,
+        especialidades:         dto.especialidades         ?? [],
+        metadata:               dto.metadata               ?? {},
+        email_encrypted:        this.encryption.encryptNullable(dto.email),
+        telefone_encrypted:     this.encryption.encryptNullable(dto.telefone),
+        cpf_cnpj_encrypted:     this.encryption.encryptNullable(dto.cpf_cnpj),
+        created_by:             userId,
+        updated_by:             userId,
       })
       .returning();
 
@@ -102,18 +107,21 @@ export class ArtistsService {
     const [updated] = await this.db
       .update(artists)
       .set({
-        ...(dto.nome_artistico   != null && { nome_artistico:   dto.nome_artistico }),
-        ...(dto.nome_civil       != null && { nome_civil:       dto.nome_civil }),
-        ...(dto.tipo             != null && { tipo:             dto.tipo }),
-        ...(dto.status           != null && { status:           dto.status }),
-        ...(dto.genero_musical   != null && { genero_musical:   dto.genero_musical }),
-        ...(dto.observacoes      != null && { observacoes:      dto.observacoes }),
-        ...(dto.foto_url         != null && { foto_url:         dto.foto_url }),
-        ...(dto.banner_url       != null && { banner_url:       dto.banner_url }),
+        ...(dto.nome_artistico     != null && { nome_artistico:     dto.nome_artistico }),
+        ...(dto.nome_civil         != null && { nome_civil:         dto.nome_civil }),
+        ...(dto.tipo               != null && { tipo:               dto.tipo }),
+        ...(dto.status             != null && { status:             dto.status }),
+        ...(dto.genero_musical     != null && { genero_musical:     dto.genero_musical }),
+        ...(dto.observacoes        != null && { observacoes:        dto.observacoes }),
+        ...(dto.foto_url           != null && { foto_url:           dto.foto_url }),
+        ...(dto.banner_url         != null && { banner_url:         dto.banner_url }),
         ...(dto.spotify_artist_id  != null && { spotify_artist_id:  dto.spotify_artist_id }),
         ...(dto.youtube_channel_id != null && { youtube_channel_id: dto.youtube_channel_id }),
-        ...(dto.especialidades   != null && { especialidades:   dto.especialidades }),
-        ...(dto.metadata         != null && { metadata:         dto.metadata }),
+        ...(dto.especialidades     != null && { especialidades:     dto.especialidades }),
+        ...(dto.metadata           != null && { metadata:           dto.metadata }),
+        ...(dto.email    !== undefined && { email_encrypted:    this.encryption.encryptNullable(dto.email) }),
+        ...(dto.telefone !== undefined && { telefone_encrypted: this.encryption.encryptNullable(dto.telefone) }),
+        ...(dto.cpf_cnpj !== undefined && { cpf_cnpj_encrypted: this.encryption.encryptNullable(dto.cpf_cnpj) }),
         updated_at: new Date(),
         updated_by: userId,
       })
