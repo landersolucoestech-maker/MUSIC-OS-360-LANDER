@@ -1,16 +1,10 @@
-/**
- * modules/transactions/transactions.service.ts
- *
- * TransactionsService — CRUD de transacções financeiras com Drizzle ORM + isolamento por tenant.
- */
-
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB }       from '../../database/database.module';
-import { transactions, Transaction }   from '../../database/schema';
-import { CreateTransactionDto }        from './dto/create-transaction.dto';
-import { UpdateTransactionDto }        from './dto/update-transaction.dto';
-import { QueryTransactionDto }         from './dto/query-transaction.dto';
+import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
+import { DRIZZLE_DB, DrizzleDB }     from '../../database/database.module';
+import { transactions, Transaction } from '../../database/schema';
+import { CreateTransactionDto }      from './dto/create-transaction.dto';
+import { UpdateTransactionDto }      from './dto/update-transaction.dto';
+import { QueryTransactionDto }       from './dto/query-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
@@ -19,30 +13,25 @@ export class TransactionsService {
   ) {}
 
   async list(tenantId: string, query: QueryTransactionDto) {
-    const conditions: SQL[] = [eq(transactions.tenantId, tenantId)];
+    const conditions: SQL[] = [
+      eq(transactions.tenant_id, tenantId),
+      isNull(transactions.deleted_at),
+    ];
 
-    if (query.type)     conditions.push(eq(transactions.type,     query.type));
-    if (query.category) conditions.push(eq(transactions.category, query.category));
-    if (query.status)   conditions.push(eq(transactions.status,   query.status));
-    if (query.artistId) conditions.push(eq(transactions.artistId, query.artistId));
-    if (query.search)   conditions.push(ilike(transactions.description, `%${query.search}%`) as SQL);
+    if (query.type)     conditions.push(eq(transactions.tipo,      query.type));
+    if (query.category) conditions.push(eq(transactions.categoria, query.category));
+    if (query.status)   conditions.push(eq(transactions.status,    query.status));
+    if (query.artistId) conditions.push(eq(transactions.artista_id, query.artistId));
+    if (query.search)   conditions.push(ilike(transactions.descricao, `%${query.search}%`) as SQL);
 
     const where    = and(...conditions);
-    const orderCol = this.resolveOrder(query.orderBy ?? 'occurred_at');
+    const orderCol = this.resolveOrder(query.orderBy ?? 'data');
     const orderDir = query.ascending ? asc(orderCol) : desc(orderCol);
 
     const [rows, [{ value: total }]] = await Promise.all([
-      this.db
-        .select()
-        .from(transactions)
-        .where(where)
-        .orderBy(orderDir)
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db
-        .select({ value: count() })
-        .from(transactions)
-        .where(where),
+      this.db.select().from(transactions).where(where).orderBy(orderDir)
+        .offset(query.offset ?? 0).limit(query.limit ?? 50),
+      this.db.select({ value: count() }).from(transactions).where(where),
     ]);
 
     return {
@@ -55,53 +44,54 @@ export class TransactionsService {
     const [result] = await this.db
       .select()
       .from(transactions)
-      .where(and(eq(transactions.tenantId, tenantId), eq(transactions.id, id)))
+      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id), isNull(transactions.deleted_at)))
       .limit(1);
 
     if (!result) throw new NotFoundException('Transacção não encontrada');
     return result;
   }
 
-  async create(tenantId: string, _userId: string, dto: CreateTransactionDto): Promise<Transaction> {
+  async create(tenantId: string, userId: string, dto: CreateTransactionDto): Promise<Transaction> {
     const [created] = await this.db
       .insert(transactions)
       .values({
-        tenantId,
-        artistId:    dto.artistId    ?? null,
-        type:        dto.type,
-        category:    dto.category,
-        amount:      dto.amount,
-        currency:    dto.currency    ?? 'BRL',
-        description: dto.description ?? null,
-        status:      dto.status      ?? 'pending',
-        referenceId: dto.referenceId ?? null,
-        occurredAt:  dto.occurredAt  ? new Date(dto.occurredAt) : new Date(),
-        metadata:    dto.metadata    ?? {},
+        tenant_id:       tenantId,
+        artista_id:      dto.artistId    ?? null,
+        tipo:            dto.tipo,
+        categoria:       dto.categoria,
+        valor:           dto.valor,
+        descricao:       dto.descricao   ?? null,
+        status:          dto.status      ?? 'pendente',
+        referencia:      dto.referencia  ?? null,
+        data:            dto.data        ? new Date(dto.data) : new Date(),
+        metadata:        dto.metadata    ?? {},
+        created_by:      userId,
+        updated_by:      userId,
       })
       .returning();
 
     return created;
   }
 
-  async update(tenantId: string, _userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
     await this.findById(tenantId, id);
 
     const [updated] = await this.db
       .update(transactions)
       .set({
-        ...(dto.type        != null && { type:        dto.type }),
-        ...(dto.category    != null && { category:    dto.category }),
-        ...(dto.amount      != null && { amount:      dto.amount }),
-        ...(dto.currency    != null && { currency:    dto.currency }),
-        ...(dto.description != null && { description: dto.description }),
-        ...(dto.status      != null && { status:      dto.status }),
-        ...(dto.artistId    != null && { artistId:    dto.artistId }),
-        ...(dto.referenceId != null && { referenceId: dto.referenceId }),
-        ...(dto.occurredAt  != null && { occurredAt:  new Date(dto.occurredAt) }),
-        ...(dto.metadata    != null && { metadata:    dto.metadata }),
-        updatedAt: new Date(),
+        ...(dto.tipo       != null && { tipo:       dto.tipo }),
+        ...(dto.categoria  != null && { categoria:  dto.categoria }),
+        ...(dto.valor      != null && { valor:      dto.valor }),
+        ...(dto.descricao  != null && { descricao:  dto.descricao }),
+        ...(dto.status     != null && { status:     dto.status }),
+        ...(dto.artistId   != null && { artista_id: dto.artistId }),
+        ...(dto.referencia != null && { referencia: dto.referencia }),
+        ...(dto.data       != null && { data:       new Date(dto.data) }),
+        ...(dto.metadata   != null && { metadata:   dto.metadata }),
+        updated_at: new Date(),
+        updated_by: userId,
       })
-      .where(and(eq(transactions.tenantId, tenantId), eq(transactions.id, id)))
+      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id), isNull(transactions.deleted_at)))
       .returning();
 
     return updated;
@@ -112,8 +102,8 @@ export class TransactionsService {
 
     await this.db
       .update(transactions)
-      .set({ status: 'cancelled', updatedAt: new Date() })
-      .where(and(eq(transactions.tenantId, tenantId), eq(transactions.id, id)));
+      .set({ deleted_at: new Date() })
+      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id)));
 
     return { deleted: true };
   }
@@ -121,11 +111,11 @@ export class TransactionsService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private resolveOrder(field: string): any {
     const map: Record<string, any> = {
-      occurred_at: transactions.occurredAt,
-      created_at:  transactions.createdAt,
-      updated_at:  transactions.updatedAt,
-      amount:      transactions.amount,
+      data:       transactions.data,
+      created_at: transactions.created_at,
+      updated_at: transactions.updated_at,
+      valor:      transactions.valor,
     };
-    return map[field] ?? transactions.occurredAt;
+    return map[field] ?? transactions.data;
   }
 }

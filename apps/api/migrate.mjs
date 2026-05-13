@@ -1,0 +1,71 @@
+/**
+ * migrate.mjs — aplica o SQL gerado pelo drizzle-kit generate ao Neon.
+ * Usa @neondatabase/serverless (http mode) via NEON_DATABASE_DIRECT_URL.
+ *
+ * Uso: node migrate.mjs
+ */
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+import { neon } from '@neondatabase/serverless';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const url =
+  process.env.NEON_DATABASE_DIRECT_URL ??
+  process.env.NEON_DATABASE_URL ??
+  process.env.DATABASE_URL;
+
+if (!url) {
+  console.error('❌  Defina NEON_DATABASE_DIRECT_URL, NEON_DATABASE_URL ou DATABASE_URL');
+  process.exit(1);
+}
+
+const sqlPath = join(__dirname, 'drizzle', '0000_mixed_jimmy_woo.sql');
+let rawSql;
+try {
+  rawSql = readFileSync(sqlPath, 'utf-8');
+} catch {
+  console.error('❌  Ficheiro SQL não encontrado:', sqlPath);
+  process.exit(1);
+}
+
+const sql = neon(url);
+
+// Executa cada statement separado por --> statement-breakpoint
+const statements = rawSql
+  .split('--> statement-breakpoint')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+console.log(`📋  ${statements.length} statements para aplicar...`);
+
+let ok = 0;
+let skipped = 0;
+let failed = 0;
+
+for (let i = 0; i < statements.length; i++) {
+  const stmt = statements[i];
+  try {
+    await sql.unsafe(stmt);
+    ok++;
+    process.stdout.write('.');
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (
+      msg.includes('already exists') ||
+      msg.includes('duplicate') ||
+      msg.includes('já existe')
+    ) {
+      skipped++;
+      process.stdout.write('s');
+    } else {
+      failed++;
+      console.error(`\n⚠️   Statement ${i + 1} falhou: ${msg}`);
+      console.error('    SQL:', stmt.slice(0, 200));
+    }
+  }
+}
+
+console.log(`\n\n✅  Migration concluída — ${ok} ok, ${skipped} skipped, ${failed} falhou`);
+if (failed > 0) process.exit(1);

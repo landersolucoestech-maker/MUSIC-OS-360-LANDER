@@ -1,43 +1,63 @@
-import { IsString, IsOptional, IsUrl, MaxLength, IsObject } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsObject, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateArtistDto {
-  @ApiProperty({ example: 'João da Silva' })
+  @ApiProperty({ example: 'Seu Jorge' })
   @IsString()
   @MaxLength(255)
-  name!: string;
+  nome_artistico!: string;
 
-  @ApiPropertyOptional({ example: 'Joãozinho' })
+  @ApiPropertyOptional({ example: 'Jorge Mário da Silva' })
   @IsOptional()
   @IsString()
   @MaxLength(255)
-  stageName?: string;
+  nome_civil?: string;
+
+  @ApiPropertyOptional({ example: 'solo', enum: ['solo', 'banda', 'duo'] })
+  @IsOptional()
+  @IsString()
+  tipo?: string;
+
+  @ApiPropertyOptional({ example: 'em_negociacao' })
+  @IsOptional()
+  @IsString()
+  status?: string;
 
   @ApiPropertyOptional({ example: 'MPB' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
-  genre?: string;
-
-  @ApiPropertyOptional({ example: 'active' })
-  @IsOptional()
-  @IsString()
-  status?: string = 'active';
+  genero_musical?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  bio?: string;
+  observacoes?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
-  avatarUrl?: string;
+  foto_url?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsObject()
-  socialLinks?: Record<string, string>;
+  @IsString()
+  banner_url?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  spotify_artist_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  youtube_channel_id?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsArray()
+  especialidades?: string[];
 
   @ApiPropertyOptional()
   @IsOptional()

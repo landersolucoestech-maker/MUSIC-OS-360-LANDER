@@ -9,6 +9,9 @@
  *
  * Redis Pub/Sub via @socket.io/redis-adapter sincroniza múltiplas instâncias.
  * Se REDIS_QUEUE_URL não estiver definido, corre em modo single-instance.
+ *
+ * CORS: lê CORS_ORIGINS (vírgula-separado) e rejeita origens não listadas.
+ *       Em development permite '*' se CORS_ORIGINS não estiver definido.
  */
 
 import {
@@ -23,10 +26,37 @@ import { Logger }         from '@nestjs/common';
 import { ConfigService }  from '@nestjs/config';
 import { verifyToken }    from '@clerk/backend';
 
+/** Deriva a lista de origens permitidas a partir de CORS_ORIGINS (env). */
+function buildOriginCallback(rawOrigins: string, nodeEnv: string) {
+  if (!rawOrigins || nodeEnv === 'development') {
+    return true; // permite tudo em development
+  }
+  const allowed = new Set(
+    rawOrigins.split(',').map((o) => o.trim()).filter(Boolean),
+  );
+  return (origin: string | undefined, cb: (err: Error | null, allow?: boolean) => void) => {
+    if (!origin || allowed.has(origin)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Origem não autorizada: ${origin}`));
+    }
+  };
+}
+
 @WebSocketGateway({
-  cors: {
-    origin:      '*',
-    credentials: true,
+  cors: (req: { headers: Record<string, string | string[] | undefined> }) => {
+    const rawOrigins  = process.env.CORS_ORIGINS ?? 'http://localhost:5000';
+    const nodeEnv     = process.env.NODE_ENV ?? 'development';
+    const origin      = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
+    const originCheck = buildOriginCallback(rawOrigins, nodeEnv);
+    if (originCheck === true) return { origin: true, credentials: true };
+    const allowed = new Set(
+      rawOrigins.split(',').map((o) => o.trim()).filter(Boolean),
+    );
+    return {
+      origin: !origin || allowed.has(origin),
+      credentials: true,
+    };
   },
   transports: ['websocket', 'polling'],
   namespace:  '/',
@@ -46,6 +76,20 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   }
 
   async afterInit() {
+    const rawOrigins = this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:5000';
+    const nodeEnv    = this.config.get<string>('NODE_ENV') ?? 'development';
+
+    // Reaplica CORS dinâmico no servidor Socket.IO após init
+    this.server.engine.on('initial_headers', (_headers: Record<string, string>, req: { headers: Record<string, string | string[] | undefined> }) => {
+      const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
+      const cb     = buildOriginCallback(rawOrigins, nodeEnv);
+      if (cb === true || !origin) return;
+      const allowed = new Set(rawOrigins.split(',').map((o) => o.trim()).filter(Boolean));
+      if (!allowed.has(origin)) {
+        this.logger.warn(`WsGateway: origem não autorizada bloqueada — ${origin}`);
+      }
+    });
+
     // Redis Pub/Sub — opcional; só activa se REDIS_QUEUE_URL estiver definido
     const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
 

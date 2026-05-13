@@ -35,7 +35,15 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z
     .string()
     .length(64, 'ENCRYPTION_KEY deve ter 64 chars hex (256 bits)')
-    .default('0000000000000000000000000000000000000000000000000000000000000000'),
+    .default('0000000000000000000000000000000000000000000000000000000000000000')
+    .refine(
+      (val) => {
+        const isProduction = process.env.NODE_ENV === 'production';
+        const isAllZero = /^0+$/.test(val);
+        return !(isProduction && isAllZero);
+      },
+      { message: 'ENCRYPTION_KEY não pode ser all-zero em produção. Gere uma chave segura com: openssl rand -hex 32' },
+    ),
   ENCRYPTION_IV_SECRET: z.string().min(1).default('dev_iv_secret_placeholder'),
 
   // Stripe (opcional em dev)

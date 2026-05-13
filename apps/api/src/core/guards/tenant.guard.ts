@@ -1,14 +1,3 @@
-/**
- * core/guards/tenant.guard.ts
- *
- * Guard de isolamento multi-tenant.
- * Verifica que o org_id do token Clerk corresponde a um tenant activo
- * e que o utilizador é membro activo desse tenant.
- *
- * Popula request.tenant e request.currentMember para uso nos controllers.
- * Adaptado para Drizzle ORM (sem Prisma).
- */
-
 import {
   Injectable,
   CanActivate,
@@ -20,7 +9,7 @@ import {
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import * as schema from '../../database/schema';
 import { DRIZZLE_DB } from '../../database/database.module';
 import { IS_PUBLIC_KEY } from './clerk-auth.guard';
@@ -51,28 +40,36 @@ export class TenantGuard implements CanActivate {
       throw new UnauthorizedException('Organização não identificada no token');
     }
 
+    // 1. Find active tenant by clerk_org_id (new snake_case schema)
     const [tenant] = await this.db
       .select()
       .from(schema.tenants)
-      .where(eq(schema.tenants.clerkOrgId, auth.orgId))
+      .where(
+        and(
+          eq(schema.tenants.clerk_org_id, auth.orgId),
+          isNull(schema.tenants.deleted_at),
+        ),
+      )
       .limit(1);
 
     if (!tenant || !tenant.active) {
       throw new UnauthorizedException('Tenant não encontrado ou inativo');
     }
 
+    // 2. Verify user is an active member via org_members (not users table)
     const [member] = await this.db
       .select()
-      .from(schema.users)
+      .from(schema.orgMembers)
       .where(
         and(
-          eq(schema.users.tenantId, tenant.id),
-          eq(schema.users.clerkId, auth.userId),
+          eq(schema.orgMembers.tenant_id, tenant.id),
+          eq(schema.orgMembers.clerk_user_id, auth.userId),
+          eq(schema.orgMembers.is_active, true),
         ),
       )
       .limit(1);
 
-    if (!member || !member.isActive) {
+    if (!member) {
       throw new ForbiddenException('Utilizador não é membro activo deste tenant');
     }
 

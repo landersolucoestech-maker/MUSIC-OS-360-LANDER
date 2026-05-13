@@ -1,7 +1,7 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, desc, asc, count, SQL } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, count, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { shares, Share } from '../../database/schema';
+import { shares, Share }         from '../../database/schema';
 import { CreateShareDto, UpdateShareDto, QueryShareDto } from './dto/shares.dto';
 
 @Injectable()
@@ -9,14 +9,20 @@ export class SharesService {
   constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
 
   async list(tenantId: string, q: QueryShareDto) {
-    const conditions: SQL[] = [eq(shares.tenantId, tenantId)];
-    if (q.workId)  conditions.push(eq(shares.workId,  q.workId));
-    if (q.trackId) conditions.push(eq(shares.trackId, q.trackId));
-    if (q.role)    conditions.push(eq(shares.role,    q.role));
+    const conditions: SQL[] = [
+      eq(shares.tenant_id, tenantId),
+      isNull(shares.deleted_at),
+    ];
+    if (q.workId)  conditions.push(eq(shares.obra_id,      q.workId));
+    if (q.trackId) conditions.push(eq(shares.fonograma_id, q.trackId));
+    if (q.role)    conditions.push(eq(shares.papel,        q.role));
+
     const where = and(...conditions);
-    const col   = q.ascending ? asc(shares.createdAt) : desc(shares.createdAt);
+    const col   = q.ascending ? asc(shares.created_at) : desc(shares.created_at);
+
     const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(shares).where(where).orderBy(col).offset(q.offset ?? 0).limit(q.limit ?? 50),
+      this.db.select().from(shares).where(where).orderBy(col)
+        .offset(q.offset ?? 0).limit(q.limit ?? 50),
       this.db.select({ value: count() }).from(shares).where(where),
     ]);
     return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
@@ -24,21 +30,23 @@ export class SharesService {
 
   async findById(tenantId: string, id: string): Promise<Share> {
     const [row] = await this.db.select().from(shares)
-      .where(and(eq(shares.tenantId, tenantId), eq(shares.id, id))).limit(1);
+      .where(and(eq(shares.tenant_id, tenantId), eq(shares.id, id), isNull(shares.deleted_at)))
+      .limit(1);
     if (!row) throw new NotFoundException('Share não encontrado');
     return row;
   }
 
   async create(tenantId: string, dto: CreateShareDto): Promise<Share> {
     const [row] = await this.db.insert(shares).values({
-      tenantId,
-      holderName: dto.holderName,
-      role:       dto.role,
-      percentage: String(dto.percentage),
-      workId:     dto.workId    ?? null,
-      trackId:    dto.trackId   ?? null,
-      holderDoc:  dto.holderDoc ?? null,
-      metadata:   dto.metadata  ?? {},
+      tenant_id:    tenantId,
+      titular_nome: dto.holderName,
+      papel:        dto.role,
+      percentual:   String(dto.percentage),
+      obra_id:      dto.workId    ?? null,
+      fonograma_id: dto.trackId   ?? null,
+      titular_doc:  dto.holderDoc ?? null,
+      status:       'ativo',
+      metadata:     dto.metadata  ?? {},
     }).returning();
     return row;
   }
@@ -46,23 +54,24 @@ export class SharesService {
   async update(tenantId: string, id: string, dto: UpdateShareDto): Promise<Share> {
     await this.findById(tenantId, id);
     const [row] = await this.db.update(shares).set({
-      ...(dto.holderName != null && { holderName: dto.holderName }),
-      ...(dto.holderDoc  != null && { holderDoc:  dto.holderDoc }),
-      ...(dto.role       != null && { role:       dto.role }),
-      ...(dto.percentage != null && { percentage: String(dto.percentage) }),
-      ...(dto.status     != null && { status:     dto.status }),
-      ...(dto.workId     != null && { workId:     dto.workId }),
-      ...(dto.trackId    != null && { trackId:    dto.trackId }),
-      ...(dto.metadata   != null && { metadata:   dto.metadata }),
-      updatedAt: new Date(),
-    }).where(and(eq(shares.tenantId, tenantId), eq(shares.id, id))).returning();
+      ...(dto.holderName != null && { titular_nome: dto.holderName }),
+      ...(dto.holderDoc  != null && { titular_doc:  dto.holderDoc }),
+      ...(dto.role       != null && { papel:        dto.role }),
+      ...(dto.percentage != null && { percentual:   String(dto.percentage) }),
+      ...(dto.status     != null && { status:       dto.status }),
+      ...(dto.workId     != null && { obra_id:      dto.workId }),
+      ...(dto.trackId    != null && { fonograma_id: dto.trackId }),
+      ...(dto.metadata   != null && { metadata:     dto.metadata }),
+      updated_at: new Date(),
+    }).where(and(eq(shares.tenant_id, tenantId), eq(shares.id, id), isNull(shares.deleted_at)))
+      .returning();
     return row;
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(shares).set({ status: 'inactive', updatedAt: new Date() })
-      .where(and(eq(shares.tenantId, tenantId), eq(shares.id, id)));
+    await this.db.update(shares).set({ deleted_at: new Date() })
+      .where(and(eq(shares.tenant_id, tenantId), eq(shares.id, id)));
     return { deleted: true };
   }
 }

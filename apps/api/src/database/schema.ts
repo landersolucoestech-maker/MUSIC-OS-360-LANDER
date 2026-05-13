@@ -1,648 +1,709 @@
-/**
- * database/schema.ts
- *
- * Schema Drizzle ORM do Music OS 360.
- * Fonte de verdade para todas as tabelas da plataforma.
- *
- * Organização:
- *   - tenants          → multi-tenant base
- *   - users            → utilizadores da plataforma
- *   - artists          → artistas
- *   - catalog_works    → obras musicais
- *   - catalog_tracks   → fonogramas
- *   - contracts        → contratos
- *   - transactions     → transações contabilísticas
- */
-
 import {
-  pgTable,
-  text,
-  varchar,
-  boolean,
-  integer,
-  timestamp,
-  jsonb,
-  uuid,
-  decimal,
-  index,
+  pgTable, text, varchar, boolean, integer,
+  timestamp, jsonb, uuid, decimal, index, uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
-// ─── Tenants ──────────────────────────────────────────────────────────────────
-
-export const tenants = pgTable('tenants', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  name:        varchar('name', { length: 255 }).notNull(),
-  slug:        varchar('slug', { length: 100 }).notNull().unique(),
-  clerkOrgId:  varchar('clerk_org_id', { length: 255 }).unique(),
-  plan:        varchar('plan', { length: 50 }).notNull().default('starter'),
-  active:      boolean('active').notNull().default(true),
-  settings:    jsonb('settings').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+// ─── Organizations ────────────────────────────────────────────────────────────
+export const organizations = pgTable('organizations', {
+  id:             uuid('id').primaryKey().defaultRandom(),
+  clerk_org_id:   varchar('clerk_org_id', { length: 255 }).unique(),
+  name:           varchar('name', { length: 255 }).notNull(),
+  slug:           varchar('slug', { length: 100 }).notNull().unique(),
+  plan:           varchar('plan', { length: 50 }).notNull().default('starter'),
+  billing_status: varchar('billing_status', { length: 50 }).notNull().default('trial'),
+  industry:       varchar('industry', { length: 100 }).notNull().default('gravadora'),
+  cnpj_encrypted: text('cnpj_encrypted'),
+  phone:          varchar('phone', { length: 50 }),
+  address:        jsonb('address').default({}),
+  config:         jsonb('config').default({}),
+  metadata:       jsonb('metadata').default({}),
+  created_at:     timestamp('created_at').notNull().defaultNow(),
+  updated_at:     timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:     timestamp('deleted_at'),
 }, (t) => [
-  index('tenants_slug_idx').on(t.slug),
-  index('tenants_clerk_org_idx').on(t.clerkOrgId),
+  index('org_clerk_idx').on(t.clerk_org_id),
+  index('org_slug_idx').on(t.slug),
 ]);
 
-// ─── Users ────────────────────────────────────────────────────────────────────
-
-export const users = pgTable('users', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  clerkId:    varchar('clerk_id', { length: 255 }).unique(),
-  email:      varchar('email', { length: 255 }).notNull(),
-  fullName:   varchar('full_name', { length: 255 }),
-  role:       varchar('role', { length: 50 }).notNull().default('user'),
-  orgRole:    varchar('org_role', { length: 50 }).default('viewer'),
-  isActive:   boolean('is_active').notNull().default(true),
-  status:     varchar('status', { length: 50 }).notNull().default('active'),
-  avatarUrl:  text('avatar_url'),
-  metadata:   jsonb('metadata').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+// ─── Tenants ──────────────────────────────────────────────────────────────────
+export const tenants = pgTable('tenants', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  org_id:       uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  clerk_org_id: varchar('clerk_org_id', { length: 255 }).unique(),
+  name:         varchar('name', { length: 255 }).notNull(),
+  slug:         varchar('slug', { length: 100 }).notNull().unique(),
+  plan:         varchar('plan', { length: 50 }).notNull().default('starter'),
+  features:     jsonb('features').notNull().default({}),
+  settings:     jsonb('settings').default({}),
+  active:       boolean('active').notNull().default(true),
+  created_at:   timestamp('created_at').notNull().defaultNow(),
+  updated_at:   timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:   timestamp('deleted_at'),
 }, (t) => [
-  index('users_tenant_idx').on(t.tenantId),
-  index('users_email_idx').on(t.email),
-  index('users_clerk_idx').on(t.clerkId),
+  index('tenant_clerk_idx').on(t.clerk_org_id),
+  index('tenant_slug_idx').on(t.slug),
+  index('tenant_org_idx').on(t.org_id),
+]);
+
+// ─── Org Members ──────────────────────────────────────────────────────────────
+export const orgMembers = pgTable('org_members', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  org_id:        uuid('org_id').notNull().references(() => organizations.id, { onDelete: 'cascade' }),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  clerk_user_id: varchar('clerk_user_id', { length: 255 }).notNull(),
+  email:         varchar('email', { length: 255 }).notNull(),
+  full_name:     varchar('full_name', { length: 255 }),
+  role:          varchar('role', { length: 50 }).notNull().default('viewer'),
+  is_active:     boolean('is_active').notNull().default(true),
+  joined_at:     timestamp('joined_at'),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+  updated_at:    timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  uniqueIndex('member_tenant_user_idx').on(t.tenant_id, t.clerk_user_id),
+  index('member_tenant_idx').on(t.tenant_id),
+  index('member_clerk_idx').on(t.clerk_user_id),
+]);
+
+// ─── Billing Subscriptions ────────────────────────────────────────────────────
+export const billingSubscriptions = pgTable('billing_subscriptions', {
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  org_id:             uuid('org_id').notNull().references(() => organizations.id),
+  stripe_customer_id: varchar('stripe_customer_id', { length: 255 }).unique(),
+  stripe_sub_id:      varchar('stripe_sub_id', { length: 255 }).unique(),
+  plan:               varchar('plan', { length: 50 }).notNull().default('starter'),
+  status:             varchar('status', { length: 50 }).notNull().default('trial'),
+  trial_ends_at:      timestamp('trial_ends_at'),
+  current_period_end: timestamp('current_period_end'),
+  seats:              integer('seats').notNull().default(3),
+  seats_used:         integer('seats_used').notNull().default(1),
+  metadata:           jsonb('metadata').default({}),
+  created_at:         timestamp('created_at').notNull().defaultNow(),
+  updated_at:         timestamp('updated_at').notNull().defaultNow(),
+}, (t) => [
+  index('billing_org_idx').on(t.org_id),
 ]);
 
 // ─── Artists ──────────────────────────────────────────────────────────────────
-
 export const artists = pgTable('artists', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  name:       varchar('name', { length: 255 }).notNull(),
-  stageName:  varchar('stage_name', { length: 255 }),
-  genre:      varchar('genre', { length: 100 }),
-  status:     varchar('status', { length: 50 }).notNull().default('active'),
-  bio:        text('bio'),
-  avatarUrl:  text('avatar_url'),
-  socialLinks: jsonb('social_links').default({}),
-  metadata:   jsonb('metadata').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+  id:                        uuid('id').primaryKey().defaultRandom(),
+  tenant_id:                 uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  nome_artistico:            varchar('nome_artistico', { length: 255 }).notNull(),
+  nome_civil:                varchar('nome_civil', { length: 255 }),
+  tipo:                      varchar('tipo', { length: 50 }).notNull().default('solo'),
+  status:                    varchar('status', { length: 50 }).notNull().default('em_negociacao'),
+  status_cadastro:           varchar('status_cadastro', { length: 50 }).notNull().default('ativo'),
+  genero_musical:            varchar('genero_musical', { length: 100 }),
+  email_encrypted:           text('email_encrypted'),
+  telefone_encrypted:        text('telefone_encrypted'),
+  cpf_cnpj_encrypted:        text('cpf_cnpj_encrypted'),
+  foto_url:                  text('foto_url'),
+  banner_url:                text('banner_url'),
+  galeria_urls:              jsonb('galeria_urls').default([]),
+  video_apresentacao_url:    text('video_apresentacao_url'),
+  documentos:                jsonb('documentos').default([]),
+  observacoes:               text('observacoes'),
+  manager_nome:              varchar('manager_nome', { length: 255 }),
+  manager_contato_encrypted: text('manager_contato_encrypted'),
+  produtor_executivo:        varchar('produtor_executivo', { length: 255 }),
+  agencia_booking:           varchar('agencia_booking', { length: 255 }),
+  label_parceira:            varchar('label_parceira', { length: 255 }),
+  especialidades:            jsonb('especialidades').default([]),
+  spotify_artist_id:         varchar('spotify_artist_id', { length: 255 }),
+  youtube_channel_id:        varchar('youtube_channel_id', { length: 255 }),
+  deezer_url:                text('deezer_url'),
+  apple_music_url:           text('apple_music_url'),
+  soundcloud_url:            text('soundcloud_url'),
+  contrato_id:               uuid('contrato_id'),
+  org_slug:                  varchar('org_slug', { length: 100 }),
+  metadata:                  jsonb('metadata').default({}),
+  created_at:                timestamp('created_at').notNull().defaultNow(),
+  updated_at:                timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:                timestamp('deleted_at'),
+  created_by:                varchar('created_by', { length: 255 }),
+  updated_by:                varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('artists_tenant_idx').on(t.tenantId),
-  index('artists_name_idx').on(t.name),
+  index('artists_tenant_idx').on(t.tenant_id),
+  index('artists_tenant_status_idx').on(t.tenant_id, t.status),
+  index('artists_tenant_deleted_idx').on(t.tenant_id, t.deleted_at),
 ]);
 
-// ─── Catalog Works (Obras) ────────────────────────────────────────────────────
-
-export const catalogWorks = pgTable('catalog_works', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  title:      varchar('title', { length: 500 }).notNull(),
-  iswc:       varchar('iswc', { length: 20 }),
-  genre:      varchar('genre', { length: 100 }),
-  year:       integer('year'),
-  status:     varchar('status', { length: 50 }).notNull().default('active'),
-  authors:    jsonb('authors').default([]),
-  shares:     jsonb('shares').default([]),
-  metadata:   jsonb('metadata').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+// ─── Catalog Works (obras) ────────────────────────────────────────────────────
+export const works = pgTable('works', {
+  id:                             uuid('id').primaryKey().defaultRandom(),
+  tenant_id:                      uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:                         varchar('titulo', { length: 500 }).notNull(),
+  compositor:                     varchar('compositor', { length: 255 }),
+  compositores:                   text('compositores'),
+  co_compositores:                text('co_compositores'),
+  detentores:                     text('detentores'),
+  editora:                        varchar('editora', { length: 255 }),
+  isrc:                           varchar('isrc', { length: 20 }),
+  iswc:                           varchar('iswc', { length: 20 }),
+  cod_abramus:                    varchar('cod_abramus', { length: 100 }),
+  cod_ecad:                       varchar('cod_ecad', { length: 100 }),
+  tipo:                           varchar('tipo', { length: 100 }).notNull(),
+  genero:                         varchar('genero', { length: 100 }),
+  status:                         varchar('status', { length: 50 }).notNull().default('pendente'),
+  duracao:                        varchar('duracao', { length: 20 }),
+  origem_externa:                 varchar('origem_externa', { length: 100 }),
+  origem_externa_id:              varchar('origem_externa_id', { length: 255 }),
+  origem_externa_sincronizado_em: timestamp('origem_externa_sincronizado_em'),
+  metadata:                       jsonb('metadata').default({}),
+  created_at:                     timestamp('created_at').notNull().defaultNow(),
+  updated_at:                     timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:                     timestamp('deleted_at'),
+  created_by:                     varchar('created_by', { length: 255 }),
+  updated_by:                     varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('works_tenant_idx').on(t.tenantId),
+  index('works_tenant_idx').on(t.tenant_id),
+  index('works_tenant_status_idx').on(t.tenant_id, t.status),
+  index('works_isrc_idx').on(t.isrc),
   index('works_iswc_idx').on(t.iswc),
 ]);
 
-// ─── Catalog Tracks (Fonogramas) ──────────────────────────────────────────────
-
-export const catalogTracks = pgTable('catalog_tracks', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  workId:     uuid('work_id').references(() => catalogWorks.id, { onDelete: 'set null' }),
-  artistId:   uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:      varchar('title', { length: 500 }).notNull(),
-  isrc:       varchar('isrc', { length: 20 }),
-  duration:   integer('duration'),
-  fileUrl:    text('file_url'),
-  status:     varchar('status', { length: 50 }).notNull().default('active'),
-  metadata:   jsonb('metadata').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+// ─── Phonograms (fonogramas) ───────────────────────────────────────────────────
+export const phonograms = pgTable('phonograms', {
+  id:                             uuid('id').primaryKey().defaultRandom(),
+  tenant_id:                      uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:                         varchar('titulo', { length: 500 }).notNull(),
+  obra_id:                        uuid('obra_id').references(() => works.id, { onDelete: 'set null' }),
+  artista_id:                     uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  isrc:                           varchar('isrc', { length: 20 }),
+  duracao:                        varchar('duracao', { length: 20 }),
+  tipo:                           varchar('tipo', { length: 100 }).notNull(),
+  status:                         varchar('status', { length: 50 }).notNull().default('pendente'),
+  compositores:                   text('compositores'),
+  interpretes:                    text('interpretes'),
+  produtores:                     text('produtores'),
+  gravadora:                      varchar('gravadora', { length: 255 }),
+  cod_abramus:                    varchar('cod_abramus', { length: 100 }),
+  cod_ecad:                       varchar('cod_ecad', { length: 100 }),
+  origem_externa:                 varchar('origem_externa', { length: 100 }),
+  origem_externa_id:              varchar('origem_externa_id', { length: 255 }),
+  origem_externa_sincronizado_em: timestamp('origem_externa_sincronizado_em'),
+  metadata:                       jsonb('metadata').default({}),
+  created_at:                     timestamp('created_at').notNull().defaultNow(),
+  updated_at:                     timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:                     timestamp('deleted_at'),
+  created_by:                     varchar('created_by', { length: 255 }),
+  updated_by:                     varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('tracks_tenant_idx').on(t.tenantId),
-  index('tracks_isrc_idx').on(t.isrc),
-  index('tracks_artist_idx').on(t.artistId),
+  index('phonograms_tenant_idx').on(t.tenant_id),
+  index('phonograms_obra_idx').on(t.obra_id),
+  index('phonograms_artista_idx').on(t.artista_id),
+  index('phonograms_isrc_idx').on(t.isrc),
 ]);
 
 // ─── Contracts ────────────────────────────────────────────────────────────────
-
 export const contracts = pgTable('contracts', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:   uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:      varchar('title', { length: 500 }).notNull(),
-  type:       varchar('type', { length: 100 }).notNull(),
-  status:     varchar('status', { length: 50 }).notNull().default('draft'),
-  value:      decimal('value', { precision: 15, scale: 2 }),
-  currency:   varchar('currency', { length: 3 }).default('BRL'),
-  startsAt:   timestamp('starts_at'),
-  expiresAt:  timestamp('expires_at'),
-  signedAt:   timestamp('signed_at'),
-  fileUrl:    text('file_url'),
-  parties:    jsonb('parties').default([]),
-  metadata:   jsonb('metadata').default({}),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-  updatedAt:  timestamp('updated_at').notNull().defaultNow(),
+  id:                uuid('id').primaryKey().defaultRandom(),
+  tenant_id:         uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:            varchar('titulo', { length: 500 }).notNull(),
+  tipo:              varchar('tipo', { length: 100 }).notNull(),
+  status:            varchar('status', { length: 50 }).notNull().default('rascunho'),
+  artista_id:        uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  cliente_id:        uuid('cliente_id'),
+  lancamento_id:     uuid('lancamento_id'),
+  data_inicio:       timestamp('data_inicio'),
+  data_fim:          timestamp('data_fim'),
+  valor:             decimal('valor', { precision: 15, scale: 2 }),
+  exclusivo:         boolean('exclusivo').notNull().default(false),
+  observacoes:       text('observacoes'),
+  arquivo_url:       text('arquivo_url'),
+  autentique_doc_id: varchar('autentique_doc_id', { length: 255 }),
+  signing_platform:  varchar('signing_platform', { length: 100 }),
+  versoes:           jsonb('versoes').default([]),
+  metadata:          jsonb('metadata').default({}),
+  created_at:        timestamp('created_at').notNull().defaultNow(),
+  updated_at:        timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:        timestamp('deleted_at'),
+  created_by:        varchar('created_by', { length: 255 }),
+  updated_by:        varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('contracts_tenant_idx').on(t.tenantId),
-  index('contracts_artist_idx').on(t.artistId),
-  index('contracts_status_idx').on(t.status),
-  index('contracts_expires_idx').on(t.expiresAt),
-]);
-
-// ─── Transactions (Accounting) ────────────────────────────────────────────────
-
-export const transactions = pgTable('transactions', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:     uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  type:         varchar('type', { length: 50 }).notNull(),
-  category:     varchar('category', { length: 100 }).notNull(),
-  amount:       decimal('amount', { precision: 15, scale: 2 }).notNull(),
-  currency:     varchar('currency', { length: 3 }).default('BRL'),
-  description:  text('description'),
-  status:       varchar('status', { length: 50 }).notNull().default('pending'),
-  referenceId:  varchar('reference_id', { length: 255 }),
-  occurredAt:   timestamp('occurred_at').notNull().defaultNow(),
-  metadata:     jsonb('metadata').default({}),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
-  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
-}, (t) => [
-  index('transactions_tenant_idx').on(t.tenantId),
-  index('transactions_artist_idx').on(t.artistId),
-  index('transactions_type_idx').on(t.type),
-  index('transactions_occurred_idx').on(t.occurredAt),
-]);
-
-// ─── Audit Logs ───────────────────────────────────────────────────────────────
-
-export const auditLogs = pgTable('audit_logs', {
-  id:         uuid('id').primaryKey().defaultRandom(),
-  tenantId:   uuid('tenant_id').references(() => tenants.id, { onDelete: 'set null' }),
-  userId:     uuid('user_id').references(() => users.id,   { onDelete: 'set null' }),
-  action:     varchar('action', { length: 100 }).notNull(),
-  entity:     varchar('entity', { length: 100 }).notNull(),
-  entityId:   varchar('entity_id', { length: 255 }),
-  before:     jsonb('before'),
-  after:      jsonb('after'),
-  ipAddress:  varchar('ip_address', { length: 45 }),
-  userAgent:  text('user_agent'),
-  requestId:  varchar('request_id', { length: 255 }),
-  createdAt:  timestamp('created_at').notNull().defaultNow(),
-}, (t) => [
-  index('audit_tenant_idx').on(t.tenantId),
-  index('audit_entity_idx').on(t.entity, t.entityId),
-  index('audit_created_idx').on(t.createdAt),
-]);
-
-// ─── Notifications ────────────────────────────────────────────────────────────
-
-export const notifications = pgTable('notifications', {
-  id:       uuid('id').primaryKey().defaultRandom(),
-  tenantId: uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:   uuid('user_id').references(() => users.id, { onDelete: 'cascade' }),
-  title:    varchar('title', { length: 500 }).notNull(),
-  body:     text('body'),
-  type:     varchar('type', { length: 100 }).notNull().default('info'),
-  entity:   varchar('entity', { length: 100 }),
-  entityId: varchar('entity_id', { length: 255 }),
-  readAt:   timestamp('read_at'),
-  metadata: jsonb('metadata').default({}),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
-}, (t) => [
-  index('notifications_tenant_idx').on(t.tenantId),
-  index('notifications_user_idx').on(t.userId),
-  index('notifications_read_idx').on(t.readAt),
-  index('notifications_created_idx').on(t.createdAt),
+  index('contracts_tenant_idx').on(t.tenant_id),
+  index('contracts_tenant_status_idx').on(t.tenant_id, t.status),
+  index('contracts_artista_idx').on(t.artista_id),
+  index('contracts_data_fim_idx').on(t.data_fim),
 ]);
 
 // ─── Contract Templates ───────────────────────────────────────────────────────
-
 export const contractTemplates = pgTable('contract_templates', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  title:       varchar('title', { length: 500 }).notNull(),
-  type:        varchar('type', { length: 100 }).notNull(),
-  status:      varchar('status', { length: 50 }).notNull().default('active'),
-  content:     text('content'),
-  variables:   jsonb('variables').default([]),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenant_id:  uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:     varchar('titulo', { length: 500 }).notNull(),
+  tipo:       varchar('tipo', { length: 100 }).notNull(),
+  conteudo:   text('conteudo').notNull(),
+  variaveis:  jsonb('variaveis').default([]),
+  ativo:      boolean('ativo').notNull().default(true),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  deleted_at: timestamp('deleted_at'),
+  created_by: varchar('created_by', { length: 255 }),
 }, (t) => [
-  index('ctpl_tenant_idx').on(t.tenantId),
-  index('ctpl_type_idx').on(t.type),
+  index('contract_templates_tenant_idx').on(t.tenant_id),
+]);
+
+// ─── Transactions ─────────────────────────────────────────────────────────────
+export const transactions = pgTable('transactions', {
+  id:              uuid('id').primaryKey().defaultRandom(),
+  tenant_id:       uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  tipo:            varchar('tipo', { length: 50 }).notNull(),
+  categoria:       varchar('categoria', { length: 100 }).notNull(),
+  descricao:       text('descricao'),
+  valor:           decimal('valor', { precision: 15, scale: 2 }).notNull(),
+  data:            timestamp('data').notNull(),
+  status:          varchar('status', { length: 50 }).notNull().default('pendente'),
+  artista_id:      uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  contrato_id:     uuid('contrato_id').references(() => contracts.id, { onDelete: 'set null' }),
+  projeto_id:      uuid('projeto_id'),
+  referencia:      varchar('referencia', { length: 255 }),
+  comprovante_url: text('comprovante_url'),
+  metadata:        jsonb('metadata').default({}),
+  created_at:      timestamp('created_at').notNull().defaultNow(),
+  updated_at:      timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:      timestamp('deleted_at'),
+  created_by:      varchar('created_by', { length: 255 }),
+  updated_by:      varchar('updated_by', { length: 255 }),
+}, (t) => [
+  index('transactions_tenant_idx').on(t.tenant_id),
+  index('transactions_tenant_data_idx').on(t.tenant_id, t.data),
+  index('transactions_artista_idx').on(t.artista_id),
 ]);
 
 // ─── Invoices (Notas Fiscais) ─────────────────────────────────────────────────
-
 export const invoices = pgTable('invoices', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:     uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  transactionId: uuid('transaction_id').references(() => transactions.id, { onDelete: 'set null' }),
-  number:       varchar('number', { length: 100 }),
-  type:         varchar('type', { length: 100 }).notNull(),
-  status:       varchar('status', { length: 50 }).notNull().default('pending'),
-  amount:       decimal('amount', { precision: 15, scale: 2 }).notNull(),
-  currency:     varchar('currency', { length: 3 }).default('BRL'),
-  issuerName:   varchar('issuer_name', { length: 255 }),
-  issuerDoc:    varchar('issuer_doc', { length: 50 }),
-  recipientName: varchar('recipient_name', { length: 255 }),
-  recipientDoc:  varchar('recipient_doc', { length: 50 }),
-  issuedAt:     timestamp('issued_at'),
-  dueAt:        timestamp('due_at'),
-  r2Key:        text('r2_key'),
-  metadata:     jsonb('metadata').default({}),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
-  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
+  id:                    uuid('id').primaryKey().defaultRandom(),
+  tenant_id:             uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  numero:                varchar('numero', { length: 100 }),
+  tipo:                  varchar('tipo', { length: 100 }).notNull(),
+  status:                varchar('status', { length: 50 }).notNull().default('pendente'),
+  prestador_id:          uuid('prestador_id'),
+  tomador_nome:          varchar('tomador_nome', { length: 255 }),
+  tomador_doc_encrypted: text('tomador_doc_encrypted'),
+  valor:                 decimal('valor', { precision: 15, scale: 2 }).notNull(),
+  descricao:             text('descricao'),
+  data_emissao:          timestamp('data_emissao'),
+  data_vencimento:       timestamp('data_vencimento'),
+  arquivo_url:           text('arquivo_url'),
+  metadata:              jsonb('metadata').default({}),
+  created_at:            timestamp('created_at').notNull().defaultNow(),
+  updated_at:            timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:            timestamp('deleted_at'),
+  created_by:            varchar('created_by', { length: 255 }),
 }, (t) => [
-  index('invoices_tenant_idx').on(t.tenantId),
-  index('invoices_artist_idx').on(t.artistId),
-  index('invoices_status_idx').on(t.status),
-  index('invoices_issued_idx').on(t.issuedAt),
+  index('invoices_tenant_idx').on(t.tenant_id),
+  index('invoices_tenant_status_idx').on(t.tenant_id, t.status),
 ]);
 
-// ─── Clients (CRM) ────────────────────────────────────────────────────────────
-
+// ─── Clients ──────────────────────────────────────────────────────────────────
 export const clients = pgTable('clients', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  name:        varchar('name', { length: 255 }).notNull(),
-  type:        varchar('type', { length: 100 }).notNull().default('person'),
-  category:    varchar('category', { length: 100 }),
-  email:       varchar('email', { length: 255 }),
-  phone:       varchar('phone', { length: 50 }),
-  document:    varchar('document', { length: 50 }),
-  status:      varchar('status', { length: 50 }).notNull().default('active'),
-  avatarUrl:   text('avatar_url'),
-  address:     jsonb('address').default({}),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  tenant_id:          uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  nome:               varchar('nome', { length: 255 }).notNull(),
+  segmento:           varchar('segmento', { length: 100 }),
+  tipo_pessoa:        varchar('tipo_pessoa', { length: 50 }).notNull().default('pessoa_juridica'),
+  cpf_cnpj_encrypted: text('cpf_cnpj_encrypted'),
+  responsavel:        varchar('responsavel', { length: 255 }),
+  email_encrypted:    text('email_encrypted'),
+  telefone_encrypted: text('telefone_encrypted'),
+  endereco:           varchar('endereco', { length: 500 }),
+  cidade:             varchar('cidade', { length: 100 }),
+  estado:             varchar('estado', { length: 2 }),
+  status:             varchar('status', { length: 50 }).notNull().default('ativo'),
+  observacoes:        text('observacoes'),
+  metadata:           jsonb('metadata').default({}),
+  created_at:         timestamp('created_at').notNull().defaultNow(),
+  updated_at:         timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:         timestamp('deleted_at'),
+  created_by:         varchar('created_by', { length: 255 }),
+  updated_by:         varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('clients_tenant_idx').on(t.tenantId),
-  index('clients_name_idx').on(t.name),
-  index('clients_status_idx').on(t.status),
+  index('clients_tenant_idx').on(t.tenant_id),
+  index('clients_tenant_status_idx').on(t.tenant_id, t.status),
 ]);
 
 // ─── Leads ────────────────────────────────────────────────────────────────────
-
 export const leads = pgTable('leads', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  name:        varchar('name', { length: 255 }).notNull(),
-  email:       varchar('email', { length: 255 }),
-  phone:       varchar('phone', { length: 50 }),
-  source:      varchar('source', { length: 100 }),
-  status:      varchar('status', { length: 50 }).notNull().default('new'),
-  stage:       varchar('stage', { length: 100 }).notNull().default('prospect'),
-  value:       decimal('value', { precision: 15, scale: 2 }),
-  assignedTo:  varchar('assigned_to', { length: 255 }),
-  notes:       text('notes'),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  id:                 uuid('id').primaryKey().defaultRandom(),
+  tenant_id:          uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  cliente_id:         uuid('cliente_id').references(() => clients.id, { onDelete: 'set null' }),
+  nome:               varchar('nome', { length: 255 }).notNull(),
+  email_encrypted:    text('email_encrypted'),
+  telefone_encrypted: text('telefone_encrypted'),
+  empresa:            varchar('empresa', { length: 255 }),
+  status:             varchar('status', { length: 50 }).notNull().default('novo'),
+  score:              integer('score').notNull().default(0),
+  fonte:              varchar('fonte', { length: 100 }),
+  pipeline_stage:     varchar('pipeline_stage', { length: 100 }),
+  metadata:           jsonb('metadata').default({}),
+  created_at:         timestamp('created_at').notNull().defaultNow(),
+  updated_at:         timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:         timestamp('deleted_at'),
+  created_by:         varchar('created_by', { length: 255 }),
+  updated_by:         varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('leads_tenant_idx').on(t.tenantId),
-  index('leads_status_idx').on(t.status),
-  index('leads_stage_idx').on(t.stage),
+  index('leads_tenant_idx').on(t.tenant_id),
+  index('leads_tenant_status_idx').on(t.tenant_id, t.status),
+  index('leads_cliente_idx').on(t.cliente_id),
 ]);
 
 // ─── Lead Interactions ────────────────────────────────────────────────────────
-
 export const leadInteractions = pgTable('lead_interactions', {
-  id:        uuid('id').primaryKey().defaultRandom(),
-  tenantId:  uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  leadId:    uuid('lead_id').notNull().references(() => leads.id, { onDelete: 'cascade' }),
-  userId:    varchar('user_id', { length: 255 }).notNull(),
-  type:      varchar('type', { length: 100 }).notNull(),
-  notes:     text('notes'),
-  metadata:  jsonb('metadata').default({}),
-  createdAt: timestamp('created_at').notNull().defaultNow(),
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenant_id:  uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  lead_id:    uuid('lead_id').notNull().references(() => leads.id, { onDelete: 'cascade' }),
+  tipo:       varchar('tipo', { length: 100 }).notNull(),
+  descricao:  text('descricao'),
+  data:       timestamp('data').notNull().defaultNow(),
+  created_by: varchar('created_by', { length: 255 }),
+  created_at: timestamp('created_at').notNull().defaultNow(),
 }, (t) => [
-  index('lead_int_tenant_idx').on(t.tenantId),
-  index('lead_int_lead_idx').on(t.leadId),
+  index('lead_int_tenant_idx').on(t.tenant_id),
+  index('lead_int_lead_idx').on(t.lead_id),
 ]);
 
-// ─── Campaigns (Marketing) ────────────────────────────────────────────────────
-
+// ─── Campaigns ────────────────────────────────────────────────────────────────
 export const campaigns = pgTable('campaigns', {
   id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:    uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:       varchar('title', { length: 500 }).notNull(),
-  type:        varchar('type', { length: 100 }).notNull(),
-  status:      varchar('status', { length: 50 }).notNull().default('draft'),
-  budget:      decimal('budget', { precision: 15, scale: 2 }),
-  currency:    varchar('currency', { length: 3 }).default('BRL'),
-  startsAt:    timestamp('starts_at'),
-  endsAt:      timestamp('ends_at'),
-  platforms:   jsonb('platforms').default([]),
+  tenant_id:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  nome:        varchar('nome', { length: 255 }).notNull(),
+  tipo:        varchar('tipo', { length: 100 }).notNull(),
+  status:      varchar('status', { length: 50 }).notNull().default('rascunho'),
+  objetivo:    text('objetivo'),
+  orcamento:   decimal('orcamento', { precision: 15, scale: 2 }),
+  data_inicio: timestamp('data_inicio'),
+  data_fim:    timestamp('data_fim'),
+  artista_id:  uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
   metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:  timestamp('deleted_at'),
+  created_by:  varchar('created_by', { length: 255 }),
+  updated_by:  varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('campaigns_tenant_idx').on(t.tenantId),
-  index('campaigns_artist_idx').on(t.artistId),
-  index('campaigns_status_idx').on(t.status),
+  index('campaigns_tenant_idx').on(t.tenant_id),
 ]);
 
-// ─── Briefings (Marketing) ────────────────────────────────────────────────────
-
+// ─── Briefings ────────────────────────────────────────────────────────────────
 export const briefings = pgTable('briefings', {
   id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  campaignId:  uuid('campaign_id').references(() => campaigns.id, { onDelete: 'set null' }),
-  title:       varchar('title', { length: 500 }).notNull(),
-  status:      varchar('status', { length: 50 }).notNull().default('draft'),
-  content:     text('content'),
-  objectives:  jsonb('objectives').default([]),
-  dueAt:       timestamp('due_at'),
+  tenant_id:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:      varchar('titulo', { length: 255 }).notNull(),
+  descricao:   text('descricao'),
+  artista_id:  uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  campanha_id: uuid('campanha_id').references(() => campaigns.id, { onDelete: 'set null' }),
+  status:      varchar('status', { length: 50 }).notNull().default('rascunho'),
+  prazo:       timestamp('prazo'),
   metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:  timestamp('deleted_at'),
+  created_by:  varchar('created_by', { length: 255 }),
 }, (t) => [
-  index('briefings_tenant_idx').on(t.tenantId),
-  index('briefings_campaign_idx').on(t.campaignId),
+  index('briefings_tenant_idx').on(t.tenant_id),
 ]);
 
-// ─── Events ───────────────────────────────────────────────────────────────────
-
+// ─── Events (Agenda) ──────────────────────────────────────────────────────────
 export const events = pgTable('events', {
   id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:    uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:       varchar('title', { length: 500 }).notNull(),
-  type:        varchar('type', { length: 100 }).notNull().default('show'),
-  status:      varchar('status', { length: 50 }).notNull().default('scheduled'),
-  venue:       varchar('venue', { length: 500 }),
-  city:        varchar('city', { length: 255 }),
-  country:     varchar('country', { length: 100 }).default('BR'),
-  startsAt:    timestamp('starts_at'),
-  endsAt:      timestamp('ends_at'),
-  capacity:    integer('capacity'),
-  ticketUrl:   text('ticket_url'),
+  tenant_id:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:      varchar('titulo', { length: 255 }).notNull(),
+  tipo:        varchar('tipo', { length: 100 }).notNull(),
+  status:      varchar('status', { length: 50 }).notNull().default('agendado'),
+  data:        timestamp('data').notNull(),
+  local:       varchar('local', { length: 255 }),
+  artista_id:  uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  valor:       decimal('valor', { precision: 15, scale: 2 }),
+  observacoes: text('observacoes'),
   metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:  timestamp('deleted_at'),
+  created_by:  varchar('created_by', { length: 255 }),
+  updated_by:  varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('events_tenant_idx').on(t.tenantId),
-  index('events_artist_idx').on(t.artistId),
-  index('events_status_idx').on(t.status),
-  index('events_starts_idx').on(t.startsAt),
+  index('events_tenant_idx').on(t.tenant_id),
+  index('events_tenant_data_idx').on(t.tenant_id, t.data),
 ]);
 
 // ─── Projects ─────────────────────────────────────────────────────────────────
-
 export const projects = pgTable('projects', {
   id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:    uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:       varchar('title', { length: 500 }).notNull(),
-  type:        varchar('type', { length: 100 }).notNull().default('album'),
-  status:      varchar('status', { length: 50 }).notNull().default('planning'),
-  budget:      decimal('budget', { precision: 15, scale: 2 }),
-  currency:    varchar('currency', { length: 3 }).default('BRL'),
-  startsAt:    timestamp('starts_at'),
-  deadlineAt:  timestamp('deadline_at'),
-  releasedAt:  timestamp('released_at'),
+  tenant_id:   uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  nome:        varchar('nome', { length: 255 }).notNull(),
+  tipo:        varchar('tipo', { length: 100 }).notNull(),
+  status:      varchar('status', { length: 50 }).notNull().default('planejamento'),
+  artista_id:  uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  data_inicio: timestamp('data_inicio'),
+  data_fim:    timestamp('data_fim'),
+  orcamento:   decimal('orcamento', { precision: 15, scale: 2 }),
+  descricao:   text('descricao'),
   metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  created_at:  timestamp('created_at').notNull().defaultNow(),
+  updated_at:  timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:  timestamp('deleted_at'),
+  created_by:  varchar('created_by', { length: 255 }),
+  updated_by:  varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('projects_tenant_idx').on(t.tenantId),
-  index('projects_artist_idx').on(t.artistId),
-  index('projects_status_idx').on(t.status),
-]);
-
-// ─── Takedowns ────────────────────────────────────────────────────────────────
-
-export const takedowns = pgTable('takedowns', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  trackId:     uuid('track_id').references(() => catalogTracks.id, { onDelete: 'set null' }),
-  platform:    varchar('platform', { length: 100 }).notNull(),
-  reason:      varchar('reason', { length: 500 }),
-  status:      varchar('status', { length: 50 }).notNull().default('pending'),
-  requestedAt: timestamp('requested_at').notNull().defaultNow(),
-  resolvedAt:  timestamp('resolved_at'),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
-}, (t) => [
-  index('takedowns_tenant_idx').on(t.tenantId),
-  index('takedowns_track_idx').on(t.trackId),
-  index('takedowns_status_idx').on(t.status),
-]);
-
-// ─── Shares (Royalty shares / participações) ──────────────────────────────────
-
-export const shares = pgTable('shares', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  workId:      uuid('work_id').references(() => catalogWorks.id, { onDelete: 'cascade' }),
-  trackId:     uuid('track_id').references(() => catalogTracks.id, { onDelete: 'set null' }),
-  holderName:  varchar('holder_name', { length: 255 }).notNull(),
-  holderDoc:   varchar('holder_doc', { length: 50 }),
-  role:        varchar('role', { length: 100 }).notNull().default('author'),
-  percentage:  decimal('percentage', { precision: 7, scale: 4 }).notNull(),
-  status:      varchar('status', { length: 50 }).notNull().default('active'),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
-}, (t) => [
-  index('shares_tenant_idx').on(t.tenantId),
-  index('shares_work_idx').on(t.workId),
-  index('shares_track_idx').on(t.trackId),
+  index('projects_tenant_idx').on(t.tenant_id),
 ]);
 
 // ─── Releases (Lançamentos) ───────────────────────────────────────────────────
-
 export const releases = pgTable('releases', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  artistId:     uuid('artist_id').references(() => artists.id, { onDelete: 'set null' }),
-  title:        varchar('title', { length: 500 }).notNull(),
-  type:         varchar('type', { length: 100 }).notNull().default('single'),
-  status:       varchar('status', { length: 50 }).notNull().default('planning'),
-  distributor:  varchar('distributor', { length: 255 }),
-  upc:          varchar('upc', { length: 20 }),
-  releasedAt:   timestamp('released_at'),
-  platforms:    jsonb('platforms').default([]),
-  coverUrl:     text('cover_url'),
-  metadata:     jsonb('metadata').default({}),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
-  updatedAt:    timestamp('updated_at').notNull().defaultNow(),
+  id:              uuid('id').primaryKey().defaultRandom(),
+  tenant_id:       uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  artista_id:      uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  titulo:          varchar('titulo', { length: 500 }).notNull(),
+  tipo:            varchar('tipo', { length: 100 }).notNull().default('single'),
+  status:          varchar('status', { length: 50 }).notNull().default('planejamento'),
+  distribuidora:   varchar('distribuidora', { length: 255 }),
+  upc:             varchar('upc', { length: 20 }),
+  data_lancamento: timestamp('data_lancamento'),
+  plataformas:     jsonb('plataformas').default([]),
+  capa_url:        text('capa_url'),
+  metadata:        jsonb('metadata').default({}),
+  created_at:      timestamp('created_at').notNull().defaultNow(),
+  updated_at:      timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:      timestamp('deleted_at'),
+  created_by:      varchar('created_by', { length: 255 }),
+  updated_by:      varchar('updated_by', { length: 255 }),
 }, (t) => [
-  index('releases_tenant_idx').on(t.tenantId),
-  index('releases_artist_idx').on(t.artistId),
-  index('releases_status_idx').on(t.status),
-  index('releases_upc_idx').on(t.upc),
+  index('releases_tenant_idx').on(t.tenant_id),
+  index('releases_artista_idx').on(t.artista_id),
+]);
+
+// ─── Shares (Participações) ───────────────────────────────────────────────────
+export const shares = pgTable('shares', {
+  id:           uuid('id').primaryKey().defaultRandom(),
+  tenant_id:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  obra_id:      uuid('obra_id').references(() => works.id, { onDelete: 'set null' }),
+  fonograma_id: uuid('fonograma_id').references(() => phonograms.id, { onDelete: 'set null' }),
+  titular_nome: varchar('titular_nome', { length: 255 }).notNull(),
+  titular_doc:  varchar('titular_doc', { length: 50 }),
+  papel:        varchar('papel', { length: 100 }).notNull().default('autor'),
+  percentual:   decimal('percentual', { precision: 7, scale: 4 }).notNull(),
+  status:       varchar('status', { length: 50 }).notNull().default('ativo'),
+  metadata:     jsonb('metadata').default({}),
+  created_at:   timestamp('created_at').notNull().defaultNow(),
+  updated_at:   timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:   timestamp('deleted_at'),
+}, (t) => [
+  index('shares_tenant_idx').on(t.tenant_id),
+  index('shares_obra_idx').on(t.obra_id),
+]);
+
+// ─── Takedowns ────────────────────────────────────────────────────────────────
+export const takedowns = pgTable('takedowns', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenant_id:  uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  titulo:     varchar('titulo', { length: 255 }).notNull(),
+  plataforma: varchar('plataforma', { length: 100 }).notNull(),
+  url:        text('url'),
+  status:     varchar('status', { length: 50 }).notNull().default('pendente'),
+  obra_id:    uuid('obra_id').references(() => works.id, { onDelete: 'set null' }),
+  artista_id: uuid('artista_id').references(() => artists.id, { onDelete: 'set null' }),
+  motivo:     text('motivo'),
+  resposta:   text('resposta'),
+  metadata:   jsonb('metadata').default({}),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+  updated_at: timestamp('updated_at').notNull().defaultNow(),
+  deleted_at: timestamp('deleted_at'),
+  created_by: varchar('created_by', { length: 255 }),
+}, (t) => [
+  index('takedowns_tenant_idx').on(t.tenant_id),
+  index('takedowns_tenant_status_idx').on(t.tenant_id, t.status),
 ]);
 
 // ─── Support Tickets ──────────────────────────────────────────────────────────
-
 export const supportTickets = pgTable('support_tickets', {
-  id:          uuid('id').primaryKey().defaultRandom(),
-  tenantId:    uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:      varchar('user_id', { length: 255 }).notNull(),
-  title:       varchar('title', { length: 500 }).notNull(),
-  description: text('description'),
-  status:      varchar('status', { length: 50 }).notNull().default('open'),
-  priority:    varchar('priority', { length: 50 }).notNull().default('medium'),
-  category:    varchar('category', { length: 100 }),
-  resolvedAt:  timestamp('resolved_at'),
-  metadata:    jsonb('metadata').default({}),
-  createdAt:   timestamp('created_at').notNull().defaultNow(),
-  updatedAt:   timestamp('updated_at').notNull().defaultNow(),
+  id:            uuid('id').primaryKey().defaultRandom(),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  ticket_number: varchar('ticket_number', { length: 50 }).notNull().unique(),
+  subject:       varchar('subject', { length: 500 }).notNull(),
+  description:   text('description'),
+  status:        varchar('status', { length: 50 }).notNull().default('open'),
+  priority:      varchar('priority', { length: 50 }).notNull().default('medium'),
+  category:      varchar('category', { length: 100 }),
+  created_by:    varchar('created_by', { length: 255 }).notNull(),
+  assigned_to:   varchar('assigned_to', { length: 255 }),
+  sla_deadline:  timestamp('sla_deadline'),
+  resolved_at:   timestamp('resolved_at'),
+  tags:          jsonb('tags').default([]),
+  metadata:      jsonb('metadata').default({}),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+  updated_at:    timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:    timestamp('deleted_at'),
 }, (t) => [
-  index('support_tenant_idx').on(t.tenantId),
-  index('support_status_idx').on(t.status),
-  index('support_priority_idx').on(t.priority),
+  index('tickets_tenant_idx').on(t.tenant_id),
+  index('tickets_status_idx').on(t.status),
+]);
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+export const notifications = pgTable('notifications', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenant_id:  uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  user_id:    varchar('user_id', { length: 255 }).notNull(),
+  title:      varchar('title', { length: 255 }).notNull(),
+  body:       text('body'),
+  type:       varchar('type', { length: 100 }).notNull(),
+  entity:     varchar('entity', { length: 100 }),
+  entity_id:  varchar('entity_id', { length: 255 }),
+  read_at:    timestamp('read_at'),
+  metadata:   jsonb('metadata').default({}),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('notif_tenant_user_idx').on(t.tenant_id, t.user_id),
+  index('notif_tenant_user_read_idx').on(t.tenant_id, t.user_id, t.read_at),
 ]);
 
 // ─── Uploads ──────────────────────────────────────────────────────────────────
-
 export const uploads = pgTable('uploads', {
-  id:           uuid('id').primaryKey().defaultRandom(),
-  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:       varchar('user_id', { length: 255 }).notNull(),
-  fileId:       varchar('file_id', { length: 255 }).notNull().unique(),
-  originalName: varchar('original_name', { length: 500 }).notNull(),
-  mimeType:     varchar('mime_type', { length: 255 }).notNull(),
-  sizeBytes:    integer('size_bytes').notNull(),
-  r2Key:        text('r2_key').notNull(),
-  category:     varchar('category', { length: 50 }).notNull(),
-  entity:       varchar('entity', { length: 100 }),
-  entityId:     varchar('entity_id', { length: 255 }),
-  status:       varchar('status', { length: 50 }).notNull().default('pending'),
-  confirmedAt:  timestamp('confirmed_at'),
-  metadata:     jsonb('metadata').default({}),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
+  id:            uuid('id').primaryKey().defaultRandom(),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  user_id:       varchar('user_id', { length: 255 }).notNull(),
+  file_id:       varchar('file_id', { length: 255 }).notNull().unique(),
+  original_name: varchar('original_name', { length: 500 }).notNull(),
+  mime_type:     varchar('mime_type', { length: 255 }).notNull(),
+  size_bytes:    integer('size_bytes').notNull(),
+  r2_key:        text('r2_key').notNull(),
+  category:      varchar('category', { length: 50 }).notNull(),
+  entity:        varchar('entity', { length: 100 }),
+  entity_id:     varchar('entity_id', { length: 255 }),
+  status:        varchar('status', { length: 50 }).notNull().default('pending'),
+  confirmed_at:  timestamp('confirmed_at'),
+  metadata:      jsonb('metadata').default({}),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+  deleted_at:    timestamp('deleted_at'),
 }, (t) => [
-  index('uploads_tenant_idx').on(t.tenantId),
-  index('uploads_file_id_idx').on(t.fileId),
-  index('uploads_entity_idx').on(t.entity, t.entityId),
-  index('uploads_status_idx').on(t.status),
+  index('uploads_tenant_idx').on(t.tenant_id),
+  index('uploads_file_id_idx').on(t.file_id),
+  index('uploads_entity_idx').on(t.entity, t.entity_id),
 ]);
 
-// ─── Integrations (OAuth tokens + API keys por tenant/provider) ───────────────
-
+// ─── Integrations ─────────────────────────────────────────────────────────────
 export const integrations = pgTable('integrations', {
-  id:                   uuid('id').primaryKey().defaultRandom(),
-  tenantId:             uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  provider:             varchar('provider', { length: 100 }).notNull(),
-  status:               varchar('status', { length: 50 }).notNull().default('disconnected'),
-  credentialsEncrypted: text('credentials_encrypted'),
-  settings:             jsonb('settings').default({}),
-  lastSyncAt:           timestamp('last_sync_at'),
-  failureCount:         integer('failure_count').notNull().default(0),
-  metadata:             jsonb('metadata').default({}),
-  createdAt:            timestamp('created_at').notNull().defaultNow(),
-  updatedAt:            timestamp('updated_at').notNull().defaultNow(),
+  id:                    uuid('id').primaryKey().defaultRandom(),
+  tenant_id:             uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  provider:              varchar('provider', { length: 100 }).notNull(),
+  status:                varchar('status', { length: 50 }).notNull().default('disconnected'),
+  credentials_encrypted: text('credentials_encrypted'),
+  settings:              jsonb('settings').default({}),
+  last_sync_at:          timestamp('last_sync_at'),
+  failure_count:         integer('failure_count').notNull().default(0),
+  metadata:              jsonb('metadata').default({}),
+  created_at:            timestamp('created_at').notNull().defaultNow(),
+  updated_at:            timestamp('updated_at').notNull().defaultNow(),
+  deleted_at:            timestamp('deleted_at'),
 }, (t) => [
-  index('integrations_tenant_idx').on(t.tenantId),
-  index('integrations_provider_idx').on(t.provider),
-  index('integrations_tenant_provider_idx').on(t.tenantId, t.provider),
+  uniqueIndex('integrations_tenant_provider_idx').on(t.tenant_id, t.provider),
 ]);
 
-// ─── OAuth Connections (access + refresh tokens por user/provider) ─────────────
-
+// ─── OAuth Connections ────────────────────────────────────────────────────────
 export const oauthConnections = pgTable('oauth_connections', {
-  id:                     uuid('id').primaryKey().defaultRandom(),
-  tenantId:               uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:                 varchar('user_id', { length: 255 }).notNull(),
-  provider:               varchar('provider', { length: 100 }).notNull(),
-  accessTokenEncrypted:   text('access_token_encrypted').notNull(),
-  refreshTokenEncrypted:  text('refresh_token_encrypted'),
-  expiresAt:              timestamp('expires_at'),
-  scopes:                 text('scopes'),
-  metadata:               jsonb('metadata').default({}),
-  createdAt:              timestamp('created_at').notNull().defaultNow(),
-  updatedAt:              timestamp('updated_at').notNull().defaultNow(),
+  id:                      uuid('id').primaryKey().defaultRandom(),
+  tenant_id:               uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  user_id:                 varchar('user_id', { length: 255 }).notNull(),
+  provider:                varchar('provider', { length: 100 }).notNull(),
+  access_token_encrypted:  text('access_token_encrypted').notNull(),
+  refresh_token_encrypted: text('refresh_token_encrypted'),
+  expires_at:              timestamp('expires_at'),
+  scopes:                  text('scopes'),
+  metadata:                jsonb('metadata').default({}),
+  created_at:              timestamp('created_at').notNull().defaultNow(),
+  updated_at:              timestamp('updated_at').notNull().defaultNow(),
 }, (t) => [
-  index('oauth_tenant_idx').on(t.tenantId),
-  index('oauth_user_provider_idx').on(t.userId, t.provider),
+  uniqueIndex('oauth_tenant_user_provider_idx').on(t.tenant_id, t.user_id, t.provider),
+  index('oauth_tenant_idx').on(t.tenant_id),
 ]);
 
-// ─── AI Jobs (cost tracking por request) ──────────────────────────────────────
-
-export const aiJobs = pgTable('ai_jobs', {
+// ─── Webhook Events ───────────────────────────────────────────────────────────
+export const webhookEvents = pgTable('webhook_events', {
   id:           uuid('id').primaryKey().defaultRandom(),
-  tenantId:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
-  userId:       varchar('user_id', { length: 255 }).notNull(),
-  provider:     varchar('provider', { length: 50 }).notNull(),
-  model:        varchar('model', { length: 100 }).notNull(),
-  skill:        varchar('skill', { length: 100 }).notNull(),
+  tenant_id:    uuid('tenant_id'),
+  provider:     varchar('provider', { length: 100 }).notNull(),
+  event_type:   varchar('event_type', { length: 100 }).notNull(),
+  external_id:  varchar('external_id', { length: 255 }).unique(),
+  payload:      jsonb('payload').notNull(),
   status:       varchar('status', { length: 50 }).notNull().default('pending'),
-  inputTokens:  integer('input_tokens').notNull().default(0),
-  outputTokens: integer('output_tokens').notNull().default(0),
-  costUsd:      decimal('cost_usd', { precision: 12, scale: 8 }).notNull().default('0'),
-  latencyMs:    integer('latency_ms'),
-  completedAt:  timestamp('completed_at'),
-  metadata:     jsonb('metadata').default({}),
-  createdAt:    timestamp('created_at').notNull().defaultNow(),
+  processed_at: timestamp('processed_at'),
+  error:        text('error'),
+  retry_count:  integer('retry_count').notNull().default(0),
+  created_at:   timestamp('created_at').notNull().defaultNow(),
 }, (t) => [
-  index('ai_jobs_tenant_idx').on(t.tenantId),
-  index('ai_jobs_user_idx').on(t.userId),
-  index('ai_jobs_created_idx').on(t.createdAt),
+  index('webhook_provider_idx').on(t.provider, t.event_type),
+  index('webhook_status_idx').on(t.status),
 ]);
 
-// ─── Exports ──────────────────────────────────────────────────────────────────
+// ─── Audit Logs ───────────────────────────────────────────────────────────────
+export const auditLogs = pgTable('audit_logs', {
+  id:         uuid('id').primaryKey().defaultRandom(),
+  tenant_id:  uuid('tenant_id'),
+  user_id:    varchar('user_id', { length: 255 }),
+  action:     varchar('action', { length: 100 }).notNull(),
+  entity:     varchar('entity', { length: 100 }).notNull(),
+  entity_id:  varchar('entity_id', { length: 255 }),
+  before:     jsonb('before'),
+  after:      jsonb('after'),
+  ip_address: varchar('ip_address', { length: 45 }),
+  user_agent: text('user_agent'),
+  request_id: varchar('request_id', { length: 255 }),
+  metadata:   jsonb('metadata').default({}),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('audit_tenant_idx').on(t.tenant_id),
+  index('audit_tenant_entity_idx').on(t.tenant_id, t.entity),
+  index('audit_user_idx').on(t.user_id),
+  index('audit_created_idx').on(t.created_at),
+]);
 
-export type Tenant       = typeof tenants.$inferSelect;
-export type NewTenant    = typeof tenants.$inferInsert;
-export type User         = typeof users.$inferSelect;
-export type NewUser      = typeof users.$inferInsert;
-export type Artist       = typeof artists.$inferSelect;
-export type NewArtist    = typeof artists.$inferInsert;
-export type CatalogWork  = typeof catalogWorks.$inferSelect;
-export type NewCatalogWork = typeof catalogWorks.$inferInsert;
-export type CatalogTrack = typeof catalogTracks.$inferSelect;
-export type NewCatalogTrack = typeof catalogTracks.$inferInsert;
-export type Contract     = typeof contracts.$inferSelect;
-export type NewContract  = typeof contracts.$inferInsert;
-export type Transaction  = typeof transactions.$inferSelect;
-export type NewTransaction = typeof transactions.$inferInsert;
-export type AuditLog         = typeof auditLogs.$inferSelect;
-export type NewAuditLog      = typeof auditLogs.$inferInsert;
-export type Notification     = typeof notifications.$inferSelect;
-export type NewNotification  = typeof notifications.$inferInsert;
-export type Upload              = typeof uploads.$inferSelect;
-export type NewUpload           = typeof uploads.$inferInsert;
+// ─── AI Jobs ──────────────────────────────────────────────────────────────────
+export const aiJobs = pgTable('ai_jobs', {
+  id:            uuid('id').primaryKey().defaultRandom(),
+  tenant_id:     uuid('tenant_id').notNull().references(() => tenants.id, { onDelete: 'cascade' }),
+  user_id:       varchar('user_id', { length: 255 }).notNull(),
+  provider:      varchar('provider', { length: 50 }).notNull(),
+  model:         varchar('model', { length: 100 }).notNull(),
+  skill:         varchar('skill', { length: 100 }).notNull(),
+  status:        varchar('status', { length: 50 }).notNull().default('pending'),
+  input_tokens:  integer('input_tokens').notNull().default(0),
+  output_tokens: integer('output_tokens').notNull().default(0),
+  cost_usd:      decimal('cost_usd', { precision: 12, scale: 8 }).notNull().default('0'),
+  latency_ms:    integer('latency_ms'),
+  completed_at:  timestamp('completed_at'),
+  metadata:      jsonb('metadata').default({}),
+  created_at:    timestamp('created_at').notNull().defaultNow(),
+}, (t) => [
+  index('ai_jobs_tenant_idx').on(t.tenant_id),
+  index('ai_jobs_created_idx').on(t.created_at),
+]);
+
+// ─── Type exports ─────────────────────────────────────────────────────────────
+export type Organization        = typeof organizations.$inferSelect;
+export type Tenant              = typeof tenants.$inferSelect;
+export type OrgMember           = typeof orgMembers.$inferSelect;
+export type BillingSubscription = typeof billingSubscriptions.$inferSelect;
+export type Artist              = typeof artists.$inferSelect;
+export type Work                = typeof works.$inferSelect;
+export type Phonogram           = typeof phonograms.$inferSelect;
+export type Contract            = typeof contracts.$inferSelect;
 export type ContractTemplate    = typeof contractTemplates.$inferSelect;
-export type NewContractTemplate = typeof contractTemplates.$inferInsert;
+export type Transaction         = typeof transactions.$inferSelect;
 export type Invoice             = typeof invoices.$inferSelect;
-export type NewInvoice          = typeof invoices.$inferInsert;
 export type Client              = typeof clients.$inferSelect;
-export type NewClient           = typeof clients.$inferInsert;
 export type Lead                = typeof leads.$inferSelect;
-export type NewLead             = typeof leads.$inferInsert;
 export type LeadInteraction     = typeof leadInteractions.$inferSelect;
-export type NewLeadInteraction  = typeof leadInteractions.$inferInsert;
 export type Campaign            = typeof campaigns.$inferSelect;
-export type NewCampaign         = typeof campaigns.$inferInsert;
 export type Briefing            = typeof briefings.$inferSelect;
-export type NewBriefing         = typeof briefings.$inferInsert;
 export type Event               = typeof events.$inferSelect;
-export type NewEvent            = typeof events.$inferInsert;
 export type Project             = typeof projects.$inferSelect;
-export type NewProject          = typeof projects.$inferInsert;
-export type Takedown            = typeof takedowns.$inferSelect;
-export type NewTakedown         = typeof takedowns.$inferInsert;
-export type Share               = typeof shares.$inferSelect;
-export type NewShare            = typeof shares.$inferInsert;
 export type Release             = typeof releases.$inferSelect;
-export type NewRelease          = typeof releases.$inferInsert;
+export type Share               = typeof shares.$inferSelect;
+export type Takedown            = typeof takedowns.$inferSelect;
 export type SupportTicket       = typeof supportTickets.$inferSelect;
-export type NewSupportTicket    = typeof supportTickets.$inferInsert;
+export type Notification        = typeof notifications.$inferSelect;
+export type Upload              = typeof uploads.$inferSelect;
 export type Integration         = typeof integrations.$inferSelect;
-export type NewIntegration      = typeof integrations.$inferInsert;
 export type OAuthConnection     = typeof oauthConnections.$inferSelect;
-export type NewOAuthConnection  = typeof oauthConnections.$inferInsert;
+export type WebhookEvent        = typeof webhookEvents.$inferSelect;
+export type AuditLog            = typeof auditLogs.$inferSelect;
 export type AIJob               = typeof aiJobs.$inferSelect;
-export type NewAIJob            = typeof aiJobs.$inferInsert;

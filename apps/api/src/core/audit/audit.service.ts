@@ -35,16 +35,16 @@ export class AuditService {
 
     try {
       await this.db.insert(auditLogs).values({
-        tenantId:   params.tenantId   ?? null,
-        userId:     params.userId     ?? null,
+        tenant_id:  params.tenantId   ?? null,
+        user_id:    params.userId     ?? null,
         action:     params.action,
         entity:     params.entity,
-        entityId:   params.entityId   ?? null,
+        entity_id:  params.entityId   ?? null,
         before:     params.before     ?? null,
         after:      params.after      ?? null,
-        ipAddress:  params.ip         ?? null,
-        userAgent:  params.userAgent  ?? null,
-        requestId:  params.requestId  ?? null,
+        ip_address: params.ip         ?? null,
+        user_agent: params.userAgent  ?? null,
+        request_id: params.requestId  ?? null,
       });
     } catch (err) {
       // Auditoria nunca deve quebrar a operação principal

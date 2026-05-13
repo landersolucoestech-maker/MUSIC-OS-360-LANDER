@@ -1,11 +1,5 @@
-/**
- * modules/contracts/contracts.service.ts
- *
- * ContractsService — CRUD de contratos com Drizzle ORM + isolamento por tenant.
- */
-
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, desc, asc, count, SQL } from 'drizzle-orm';
+import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
 import { contracts, Contract }   from '../../database/schema';
 import { CreateContractDto }     from './dto/create-contract.dto';
@@ -19,29 +13,24 @@ export class ContractsService {
   ) {}
 
   async list(tenantId: string, query: QueryContractDto) {
-    const conditions: SQL[] = [eq(contracts.tenantId, tenantId)];
+    const conditions: SQL[] = [
+      eq(contracts.tenant_id, tenantId),
+      isNull(contracts.deleted_at),
+    ];
 
-    if (query.status)   conditions.push(eq(contracts.status,   query.status));
-    if (query.type)     conditions.push(eq(contracts.type,     query.type));
-    if (query.artistId) conditions.push(eq(contracts.artistId, query.artistId));
-    if (query.search)   conditions.push(ilike(contracts.title, `%${query.search}%`) as SQL);
+    if (query.status)   conditions.push(eq(contracts.status,     query.status));
+    if (query.type)     conditions.push(eq(contracts.tipo,       query.type));
+    if (query.artistId) conditions.push(eq(contracts.artista_id, query.artistId));
+    if (query.search)   conditions.push(ilike(contracts.titulo,  `%${query.search}%`) as SQL);
 
     const where    = and(...conditions);
     const orderCol = this.resolveOrder(query.orderBy ?? 'created_at');
     const orderDir = query.ascending ? asc(orderCol) : desc(orderCol);
 
     const [rows, [{ value: total }]] = await Promise.all([
-      this.db
-        .select()
-        .from(contracts)
-        .where(where)
-        .orderBy(orderDir)
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db
-        .select({ value: count() })
-        .from(contracts)
-        .where(where),
+      this.db.select().from(contracts).where(where).orderBy(orderDir)
+        .offset(query.offset ?? 0).limit(query.limit ?? 50),
+      this.db.select({ value: count() }).from(contracts).where(where),
     ]);
 
     return {
@@ -54,57 +43,58 @@ export class ContractsService {
     const [result] = await this.db
       .select()
       .from(contracts)
-      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.id, id)))
+      .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.id, id), isNull(contracts.deleted_at)))
       .limit(1);
 
     if (!result) throw new NotFoundException('Contrato não encontrado');
     return result;
   }
 
-  async create(tenantId: string, _userId: string, dto: CreateContractDto): Promise<Contract> {
+  async create(tenantId: string, userId: string, dto: CreateContractDto): Promise<Contract> {
     const [created] = await this.db
       .insert(contracts)
       .values({
-        tenantId,
-        artistId:  dto.artistId  ?? null,
-        title:     dto.title,
-        type:      dto.type,
-        status:    dto.status    ?? 'draft',
-        value:     dto.value     ?? null,
-        currency:  dto.currency  ?? 'BRL',
-        startsAt:  dto.startsAt  ? new Date(dto.startsAt)  : null,
-        expiresAt: dto.expiresAt ? new Date(dto.expiresAt) : null,
-        signedAt:  dto.signedAt  ? new Date(dto.signedAt)  : null,
-        fileUrl:   dto.fileUrl   ?? null,
-        parties:   dto.parties   ?? [],
-        metadata:  dto.metadata  ?? {},
+        tenant_id:   tenantId,
+        artista_id:  dto.artistId  ?? null,
+        titulo:      dto.titulo,
+        tipo:        dto.tipo,
+        status:      dto.status    ?? 'rascunho',
+        valor:       dto.valor     ?? null,
+        exclusivo:   dto.exclusivo ?? false,
+        data_inicio: dto.dataInicio ? new Date(dto.dataInicio) : null,
+        data_fim:    dto.dataFim    ? new Date(dto.dataFim)    : null,
+        arquivo_url: dto.arquivoUrl ?? null,
+        observacoes: dto.observacoes ?? null,
+        metadata:    dto.metadata  ?? {},
+        created_by:  userId,
+        updated_by:  userId,
       })
       .returning();
 
     return created;
   }
 
-  async update(tenantId: string, _userId: string, id: string, dto: UpdateContractDto): Promise<Contract> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateContractDto): Promise<Contract> {
     await this.findById(tenantId, id);
 
     const [updated] = await this.db
       .update(contracts)
       .set({
-        ...(dto.title     != null && { title:     dto.title }),
-        ...(dto.type      != null && { type:      dto.type }),
-        ...(dto.artistId  != null && { artistId:  dto.artistId }),
-        ...(dto.status    != null && { status:    dto.status }),
-        ...(dto.value     != null && { value:     dto.value }),
-        ...(dto.currency  != null && { currency:  dto.currency }),
-        ...(dto.startsAt  != null && { startsAt:  new Date(dto.startsAt) }),
-        ...(dto.expiresAt != null && { expiresAt: new Date(dto.expiresAt) }),
-        ...(dto.signedAt  != null && { signedAt:  new Date(dto.signedAt) }),
-        ...(dto.fileUrl   != null && { fileUrl:   dto.fileUrl }),
-        ...(dto.parties   != null && { parties:   dto.parties }),
-        ...(dto.metadata  != null && { metadata:  dto.metadata }),
-        updatedAt: new Date(),
+        ...(dto.titulo      != null && { titulo:      dto.titulo }),
+        ...(dto.tipo        != null && { tipo:        dto.tipo }),
+        ...(dto.artistId    != null && { artista_id:  dto.artistId }),
+        ...(dto.status      != null && { status:      dto.status }),
+        ...(dto.valor       != null && { valor:       dto.valor }),
+        ...(dto.exclusivo   != null && { exclusivo:   dto.exclusivo }),
+        ...(dto.dataInicio  != null && { data_inicio: new Date(dto.dataInicio) }),
+        ...(dto.dataFim     != null && { data_fim:    new Date(dto.dataFim) }),
+        ...(dto.arquivoUrl  != null && { arquivo_url: dto.arquivoUrl }),
+        ...(dto.observacoes != null && { observacoes: dto.observacoes }),
+        ...(dto.metadata    != null && { metadata:    dto.metadata }),
+        updated_at: new Date(),
+        updated_by: userId,
       })
-      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.id, id)))
+      .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.id, id), isNull(contracts.deleted_at)))
       .returning();
 
     return updated;
@@ -115,8 +105,8 @@ export class ContractsService {
 
     await this.db
       .update(contracts)
-      .set({ status: 'cancelled', updatedAt: new Date() })
-      .where(and(eq(contracts.tenantId, tenantId), eq(contracts.id, id)));
+      .set({ deleted_at: new Date() })
+      .where(and(eq(contracts.tenant_id, tenantId), eq(contracts.id, id)));
 
     return { deleted: true };
   }
@@ -124,11 +114,11 @@ export class ContractsService {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   private resolveOrder(field: string): any {
     const map: Record<string, any> = {
-      created_at: contracts.createdAt,
-      updated_at: contracts.updatedAt,
-      expires_at: contracts.expiresAt,
-      title:      contracts.title,
+      created_at: contracts.created_at,
+      updated_at: contracts.updated_at,
+      data_fim:   contracts.data_fim,
+      titulo:     contracts.titulo,
     };
-    return map[field] ?? contracts.createdAt;
+    return map[field] ?? contracts.created_at;
   }
 }

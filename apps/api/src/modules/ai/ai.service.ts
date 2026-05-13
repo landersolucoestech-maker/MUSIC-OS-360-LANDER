@@ -179,18 +179,18 @@ export class AIService {
   private async recordJob(data: AICompletionOptions & AICompletionResult & { status: string }): Promise<void> {
     try {
       await this.db.insert(aiJobs).values({
-        tenantId:     data.tenantId,
-        userId:       data.userId,
-        provider:     data.provider,
-        model:        data.model,
-        skill:        data.skill,
-        status:       data.status,
-        inputTokens:  data.inputTokens,
-        outputTokens: data.outputTokens,
-        costUsd:      String(data.costUsd),
-        latencyMs:    data.latencyMs,
-        completedAt:  new Date(),
-        metadata:     { prompt: data.prompt.slice(0, 200) },
+        tenant_id:     data.tenantId,
+        user_id:       data.userId,
+        provider:      data.provider,
+        model:         data.model,
+        skill:         data.skill,
+        status:        data.status,
+        input_tokens:  data.inputTokens,
+        output_tokens: data.outputTokens,
+        cost_usd:      String(data.costUsd),
+        latency_ms:    data.latencyMs,
+        completed_at:  new Date(),
+        metadata:      { prompt: data.prompt.slice(0, 200) },
       });
     } catch (err) {
       this.logger.warn(`Erro ao registar AI job: ${String(err)}`);
@@ -231,9 +231,9 @@ export class AIService {
 
   async getCostSummary(tenantId: string): Promise<{ totalCostUsd: number; totalJobs: number }> {
     const jobs = await this.db.select().from(aiJobs)
-      .where(eq(aiJobs.tenantId, tenantId));
+      .where(eq(aiJobs.tenant_id, tenantId));
 
-    const totalCostUsd = jobs.reduce((acc, j) => acc + parseFloat(String(j.costUsd)), 0);
+    const totalCostUsd = jobs.reduce((acc, j) => acc + parseFloat(String(j.cost_usd)), 0);
     return { totalCostUsd, totalJobs: jobs.length };
   }
 }
