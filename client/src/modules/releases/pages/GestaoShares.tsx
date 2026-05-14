@@ -6,6 +6,7 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Share2, ArrowDownLeft, CheckCircle, ArrowUpRight, Send, Download,
   Plus, Search, Loader2, MoreHorizontal, Eye, Pencil, Trash2,
@@ -100,6 +101,29 @@ export default function GestaoShares() {
       deleteShare.mutate(deleteModal.share.id);
       setDeleteModal({ open: false });
     }
+  };
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAll = () =>
+    setSelectedIds(
+      selectedIds.size === filteredShares.length
+        ? new Set()
+        : new Set(filteredShares.map((s: any) => s.id)),
+    );
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) await deleteShare.mutateAsync(id);
+    setSelectedIds(new Set());
+    toast.success(`${ids.length} share(s) excluído(s).`);
   };
 
   const handleRegistrarLiquidacao = (share: any, novoStatus: "recebido" | "enviado") => {
@@ -268,10 +292,35 @@ export default function GestaoShares() {
             <CardDescription>{filteredShares.length} share{filteredShares.length !== 1 ? "s" : ""} encontrado{filteredShares.length !== 1 ? "s" : ""}</CardDescription>
           </CardHeader>
           <CardContent className="p-0">
+            {/* Bulk select bar */}
+            {filteredShares.length > 0 && (
+              <div className="flex items-center gap-3 px-6 py-3 border-b border-border">
+                <Checkbox
+                  checked={selectedIds.size === filteredShares.length && filteredShares.length > 0}
+                  onCheckedChange={toggleAll}
+                  data-testid="checkbox-select-all-shares"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {selectedIds.size > 0 ? `${selectedIds.size} selecionado(s)` : "Selecionar todos"}
+                </span>
+                {selectedIds.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 text-xs gap-1 ml-auto"
+                    onClick={handleBulkDelete}
+                    data-testid="button-bulk-delete-shares"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir selecionados
+                  </Button>
+                )}
+              </div>
+            )}
             {filteredShares.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8 pl-6" />
                     <TableHead>Lançamento</TableHead>
                     <TableHead>Detentor</TableHead>
                     <TableHead>Função</TableHead>
@@ -290,6 +339,13 @@ export default function GestaoShares() {
 
                     return (
                       <TableRow key={share.id} data-testid={`row-share-${share.id}`}>
+                        <TableCell className="w-8 pl-6">
+                          <Checkbox
+                            checked={selectedIds.has(share.id)}
+                            onCheckedChange={() => toggleSelect(share.id)}
+                            data-testid={`checkbox-share-${share.id}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <div className="w-8 h-8 bg-primary/10 rounded-md flex items-center justify-center shrink-0">
