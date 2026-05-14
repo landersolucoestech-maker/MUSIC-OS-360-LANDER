@@ -29,7 +29,7 @@ import { NotaFiscalFormModal } from "@/modules/accounting/components/NotaFiscalF
 import { NotaFiscalViewModal } from "@/modules/accounting/components/NotaFiscalViewModal";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { DataTable } from "@/shared/components/DataTable";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Badge } from "@/shared/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -147,74 +147,6 @@ export default function NotaFiscal() {
       </Badge>
     );
 
-  const columns = [
-    {
-      key: "numero",
-      label: "Número",
-      render: (nota: any) => (
-        <div>
-          <span className="font-medium">{nota.numero}</span>
-          {nota.serie && <span className="text-muted-foreground text-xs ml-1">/{nota.serie}</span>}
-        </div>
-      ),
-    },
-    {
-      key: "tipo",
-      label: "Tipo",
-      render: (nota: any) => getTipoBadge(nota._tipoOperacao),
-    },
-    {
-      key: "cliente",
-      label: "Cliente / Fornecedor",
-      render: (nota: any) => nota.clientes?.nome || nota.tomador_razao_social || "-",
-    },
-    {
-      key: "valor",
-      label: "Valor",
-      render: (nota: any) =>
-        nota.valor ? `R$ ${nota.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "-",
-    },
-    {
-      key: "data_emissao",
-      label: "Data Emissão",
-      render: (nota: any) =>
-        nota.data_emissao ? format(new Date(nota.data_emissao), "dd/MM/yyyy", { locale: ptBR }) : "-",
-    },
-    {
-      key: "status",
-      label: "Status",
-      render: (nota: any) => getStatusBadge(nota.status),
-    },
-    {
-      key: "pdf",
-      label: "PDF",
-      render: (nota: any) =>
-        nota.url_pdf ? (
-          <Button variant="ghost" size="sm" onClick={() => window.open(nota.url_pdf, "_blank")}>
-            <ExternalLink className="h-4 w-4" />
-          </Button>
-        ) : (
-          <span className="text-muted-foreground text-xs">-</span>
-        ),
-    },
-    {
-      key: "actions",
-      label: "",
-      render: (nota: any) => (
-        <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => handleView(nota)} data-testid={`button-view-nota-${nota.id}`}>
-            <Eye className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleEdit(nota)} data-testid={`button-edit-nota-${nota.id}`}>
-            <Pencil className="h-4 w-4" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(nota)} data-testid={`button-delete-nota-${nota.id}`}>
-            <Trash2 className="h-4 w-4 text-destructive" />
-          </Button>
-        </div>
-      ),
-    },
-  ];
 
   const headerActions = (
     <DropdownMenu>
@@ -384,13 +316,73 @@ export default function NotaFiscal() {
                   </Button>
                 </div>
               )}
-              <DataTable
-                data={filteredNotas}
-                columns={columns}
-                isLoading={isLoading}
-                selectable
-                onSelectionChange={(ids) => setSelectedIds(ids)}
-              />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-8"></TableHead>
+                      <TableHead>Número</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Cliente / Fornecedor</TableHead>
+                      <TableHead>Valor</TableHead>
+                      <TableHead>Data Emissão</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>PDF</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredNotas.map((nota: any) => (
+                      <TableRow key={nota.id} data-testid={`row-nota-${nota.id}`}>
+                        <TableCell className="py-3">
+                          <div
+                            className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(nota.id) ? "bg-primary border-primary" : ""}`}
+                            onClick={() => setSelectedIds(prev => prev.includes(nota.id) ? prev.filter(x => x !== nota.id) : [...prev, nota.id])}
+                            data-testid={`checkbox-nota-${nota.id}`}
+                          >
+                            {selectedIds.includes(nota.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-3">
+                          <span className="font-medium">{nota.numero}</span>
+                          {nota.serie && <span className="text-muted-foreground text-xs ml-1">/{nota.serie}</span>}
+                        </TableCell>
+                        <TableCell className="py-3">{getTipoBadge(nota._tipoOperacao)}</TableCell>
+                        <TableCell className="py-3 text-sm">{nota.clientes?.nome || nota.tomador_razao_social || "-"}</TableCell>
+                        <TableCell className="py-3 text-sm font-mono">
+                          {nota.valor ? `R$ ${nota.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "-"}
+                        </TableCell>
+                        <TableCell className="py-3 text-sm">
+                          {nota.data_emissao ? format(new Date(nota.data_emissao), "dd/MM/yyyy", { locale: ptBR }) : "-"}
+                        </TableCell>
+                        <TableCell className="py-3">{getStatusBadge(nota.status)}</TableCell>
+                        <TableCell className="py-3">
+                          {nota.url_pdf ? (
+                            <Button variant="ghost" size="sm" onClick={() => window.open(nota.url_pdf, "_blank")}>
+                              <ExternalLink className="h-4 w-4" />
+                            </Button>
+                          ) : (
+                            <span className="text-muted-foreground text-xs">-</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-3 text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="sm" onClick={() => handleView(nota)} data-testid={`button-view-nota-${nota.id}`}>
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleEdit(nota)} data-testid={`button-edit-nota-${nota.id}`}>
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                            <Button variant="ghost" size="sm" onClick={() => handleDelete(nota)} data-testid={`button-delete-nota-${nota.id}`}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         ) : (
