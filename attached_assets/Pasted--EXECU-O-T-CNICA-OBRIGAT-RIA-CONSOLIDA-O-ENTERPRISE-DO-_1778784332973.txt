@@ -1,0 +1,710 @@
+# EXECUÇÃO TÉCNICA OBRIGATÓRIA — CONSOLIDAÇÃO ENTERPRISE DO MUSIC OS 360
+
+Você deve executar as tarefas abaixo EXATAMENTE como descritas.
+
+NÃO improvise.
+NÃO alterar escopo.
+NÃO criar arquitetura paralela.
+NÃO gerar abstrações desnecessárias.
+NÃO reescrever funcionalidades estáveis.
+NÃO quebrar UX operacional existente.
+NÃO alterar comportamento consolidado.
+NÃO criar microservices.
+NÃO migrar stack.
+NÃO transformar o sistema em uma distribuidora musical.
+
+O sistema é uma plataforma operacional musical com orchestration de lançamentos e integrações com distribuidoras.
+
+O módulo de distribuição serve APENAS para:
+
+- preparar releases;
+- validar metadata;
+- organizar assets;
+- sincronizar dados;
+- integrar APIs externas;
+- enviar releases;
+- acompanhar status.
+
+O sistema NÃO deve implementar:
+
+- royalties engine;
+- payout system;
+- accounting DSP;
+- fingerprinting;
+- anti-fraude;
+- content ID;
+- ingestão DSP própria;
+- ledger financeiro complexo.
+
+Toda execução deve preservar:
+
+- frontend atual;
+- UX operacional;
+- formulários;
+- renderização;
+- comportamento visual;
+- experiência mobile;
+- experiência desktop;
+- módulo de lançamentos;
+- fluxo operacional atual.
+
+Toda alteração deve ser incremental, segura e compatível.
+
+━━━━━━━━━━━━━━━━━━━
+# FASE 1 — FUNDAÇÃO ARQUITETURAL
+━━━━━━━━━━━━━━━━━━━
+
+# OBJETIVO
+
+Consolidar a estrutura real do monorepo e corrigir os problemas críticos de tenancy/auth/mock.
+
+━━━━━━━━━━━━━━━━━━━
+## TASK 1 — MONOREPO FIX
+━━━━━━━━━━━━━━━━━━━
+
+# PROBLEMA
+
+O monorepo está parcialmente quebrado:
+
+- apenas apps/api está no workspace;
+- client não possui package.json isolado;
+- packages compartilhados não funcionam como workspace real;
+- frontend e backend compartilham escopo indevidamente.
+
+# EXECUTAR
+
+1. Atualizar root package.json:
+
+Adicionar:
+
+```json
+"workspaces": [
+  "apps/*",
+  "client",
+  "packages/*"
+]
+
+━━━━━━━━━━━━━━━━━━━
+
+Criar:
+client/package.json
+
+Mover TODAS as dependências frontend para ele:
+
+react
+vite
+tailwind
+radix
+shadcn
+tanstack-query
+react-hook-form
+zod
+lucide-react
+etc
+
+Manter no root apenas:
+
+turbo
+prettier
+eslint global
+husky
+lint-staged
+configs compartilhadas
+
+━━━━━━━━━━━━━━━━━━━
+
+Isolar packages compartilhados:
+
+Garantir package.json válido em:
+
+packages/shared-types
+packages/shared-zod
+
+Com:
+
+name
+exports
+main
+types
+
+Criar barrels index.ts se necessário.
+
+━━━━━━━━━━━━━━━━━━━
+
+Corrigir tsconfig references
+
+Root tsconfig.json deve referenciar:
+
+apps/api
+client
+packages/shared-types
+packages/shared-zod
+
+client tsconfig deve referenciar shared-types/shared-zod.
+
+━━━━━━━━━━━━━━━━━━━
+
+Ajustar Vite aliases
+
+Garantir aliases corretos:
+
+@shared-types
+@shared-zod
+
+━━━━━━━━━━━━━━━━━━━
+
+Atualizar turbo.json
+
+Garantir pipelines:
+
+dev
+build
+typecheck
+lint
+
+para TODOS os workspaces.
+
+━━━━━━━━━━━━━━━━━━━
+
+RESULTADO OBRIGATÓRIO
+
+Os comandos abaixo DEVEM funcionar:
+
+turbo run dev
+turbo run build
+turbo run lint
+turbo run typecheck
+
+Sem erros.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 2 — AUTH + TENANT FIX
+
+━━━━━━━━━━━━━━━━━━━
+
+PROBLEMA
+
+TenantGuard NÃO popula:
+
+request.tenantId
+request.userId
+
+Controllers usam:
+
+req.tenantId
+req.userId
+
+mas recebem undefined.
+
+Isso quebra tenancy silenciosamente.
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+Corrigir TenantGuard
+
+Após validar tenant/member:
+
+Adicionar:
+
+request.tenantId = tenant.id
+request.userId = auth.userId
+
+━━━━━━━━━━━━━━━━━━━
+
+Criar express.d.ts
+
+Estender Express.Request com:
+
+tenantId: string
+userId: string
+tenant: Tenant
+currentMember: OrgMember
+
+━━━━━━━━━━━━━━━━━━━
+
+Remover req:any
+
+Substituir TODOS:
+
+@Request() req: any
+
+por:
+
+@Req() req: Request
+
+━━━━━━━━━━━━━━━━━━━
+
+Corrigir Clerk token refresh
+
+REMOVER:
+
+tryRefresh()
+
+NÃO existe endpoint /auth/refresh válido com Clerk.
+
+Implementar retry usando:
+
+getToken({ skipCache: true })
+
+Garantir retry único sem loop infinito.
+
+━━━━━━━━━━━━━━━━━━━
+
+RESULTADO OBRIGATÓRIO
+
+Toda request autenticada DEVE possuir:
+
+req.tenantId
+req.userId
+
+válidos.
+
+Nenhum controller deve usar any.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 3 — MOCK_MODE FIX
+
+━━━━━━━━━━━━━━━━━━━
+
+PROBLEMA
+
+Hoje:
+
+VITE_USE_MOCK !== "false"
+
+ativa mock automaticamente.
+
+Isso é proibido em produção.
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Trocar para:
+
+VITE_USE_MOCK === "true"
+
+━━━━━━━━━━━━━━━━━━━
+
+Adicionar guard obrigatório:
+
+if (IS_PROD && MOCK_MODE) {
+  throw new Error(...)
+}
+
+━━━━━━━━━━━━━━━━━━━
+
+Garantir que:
+
+mockData
+mock providers
+
+NÃO entram no bundle production.
+
+Usar:
+
+dynamic imports
+conditional imports
+tree-shaking compatível com Vite
+
+━━━━━━━━━━━━━━━━━━━
+
+RESULTADO OBRIGATÓRIO
+
+Build production NÃO pode conter:
+
+mockData
+providers mock
+fallbacks mock
+
+━━━━━━━━━━━━━━━━━━━
+
+FASE 2 — GOVERNANÇA ENTERPRISE
+
+━━━━━━━━━━━━━━━━━━━
+
+OBJETIVO
+
+Criar governança técnica obrigatória antes de escalar módulos.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 4 — OBSERVABILITY
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Implementar:
+
+Pino logger
+request correlation id
+tenant correlation
+structured logs
+global exception filter
+queue logs
+OpenTelemetry base
+health checks
+metrics base
+
+━━━━━━━━━━━━━━━━━━━
+
+Toda queue deve logar:
+
+jobId
+tenantId
+retries
+duration
+failure reason
+
+━━━━━━━━━━━━━━━━━━━
+
+Toda request deve possuir:
+
+requestId
+tenantId
+userId
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 5 — RBAC
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Implementar:
+
+permission decorators
+route permissions
+feature permissions
+hierarchical roles
+tenant-aware authorization
+
+━━━━━━━━━━━━━━━━━━━
+
+Garantir:
+
+ausência de cross-access
+isolamento real
+permission enforcement
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 6 — DATABASE GOVERNANCE
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Implementar:
+
+soft delete padrão
+audit logs
+pagination padrão
+migration padrão
+rollback safety
+index strategy
+query governance
+
+━━━━━━━━━━━━━━━━━━━
+
+Padronizar:
+
+created_at
+updated_at
+deleted_at
+tenant_id
+
+━━━━━━━━━━━━━━━━━━━
+
+FASE 3 — CONSOLIDAÇÃO BACKEND
+
+━━━━━━━━━━━━━━━━━━━
+
+OBJETIVO
+
+Transformar backend em source of truth real.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 7 — QUEUE PROCESSORS
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Implementar processors reais para:
+
+WEBHOOKS
+EXPORTS
+IMPORTS
+BILLING
+UPLOADS_PROCESS
+INTEGRATIONS_SYNC
+STREAMING_SYNC
+
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+retry
+dead-letter
+exponential backoff
+structured logs
+error handling
+
+━━━━━━━━━━━━━━━━━━━
+
+WEBHOOKS:
+
+validar assinatura
+validar OAuth callbacks
+Stripe webhooks
+
+━━━━━━━━━━━━━━━━━━━
+
+UPLOADS_PROCESS:
+
+validar MIME
+extrair metadata
+gerar thumbnails
+atualizar status
+
+━━━━━━━━━━━━━━━━━━━
+
+STREAMING_SYNC:
+
+sync de métricas
+logs estruturados
+retry
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 8 — BACKEND MODULES
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Criar backend real para:
+
+inventory
+licensing
+monitoring
+rules
+contents
+
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+CRUD completo
+DTOs
+validações
+pagination
+tenant isolation
+audit logs
+
+━━━━━━━━━━━━━━━━━━━
+
+Frontend deve parar de usar mock nessas rotas.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 9 — DISTRIBUTION ORCHESTRATION
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Criar:
+
+/integrations/distribution
+
+━━━━━━━━━━━━━━━━━━━
+
+Implementar interface:
+
+interface DistributionProvider {
+  validateRelease()
+  uploadAssets()
+  publishRelease()
+  syncStatus()
+}
+
+━━━━━━━━━━━━━━━━━━━
+
+Criar adapters para:
+
+DistroKid
+TuneCore
+ONErpm
+TooLost
+FUGA
+
+━━━━━━━━━━━━━━━━━━━
+
+IMPORTANTE
+
+NÃO implementar:
+
+royalties
+payout
+DSP accounting
+fingerprinting
+anti-fraude
+
+━━━━━━━━━━━━━━━━━━━
+
+O módulo deve apenas:
+
+validar release
+organizar metadata
+enviar
+acompanhar status
+
+━━━━━━━━━━━━━━━━━━━
+
+FASE 4 — CONSOLIDAÇÃO FRONTEND
+
+━━━━━━━━━━━━━━━━━━━
+
+OBJETIVO
+
+Consolidar frontend enterprise.
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 10 — DATA LAYER
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Padronizar:
+
+React Query
+query keys
+mutations
+optimistic updates
+loading states
+error handling
+cache contracts
+
+━━━━━━━━━━━━━━━━━━━
+
+Eliminar:
+
+providers redundantes
+estado duplicado
+queries inconsistentes
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 11 — UPLOAD ARCHITECTURE
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Implementar:
+
+signed URLs
+multipart upload
+resumable upload
+retry upload
+MIME validation
+metadata extraction
+
+━━━━━━━━━━━━━━━━━━━
+
+Suportar:
+
+WAV
+FLAC
+imagens
+vídeos
+
+━━━━━━━━━━━━━━━━━━━
+
+TASK 12 — DESIGN SYSTEM
+
+━━━━━━━━━━━━━━━━━━━
+
+EXECUTAR
+
+Padronizar:
+
+forms
+spacing
+grids
+cards
+modals
+date pickers
+typography
+loading states
+empty states
+feedbacks
+
+━━━━━━━━━━━━━━━━━━━
+
+Módulos Rádio/TV devem seguir visual dos cards de projetos.
+
+━━━━━━━━━━━━━━━━━━━
+
+REGRAS ABSOLUTAS
+
+━━━━━━━━━━━━━━━━━━━
+
+NÃO:
+
+criar microservices
+migrar stack
+usar PHP
+reescrever frontend
+reescrever backend
+quebrar UX
+alterar comportamento consolidado
+
+━━━━━━━━━━━━━━━━━━━
+
+PRESERVAR:
+
+módulo releases
+fluxo operacional
+UX existente
+comportamento visual
+formulários
+
+━━━━━━━━━━━━━━━━━━━
+
+TODAS as alterações devem terminar com:
+
+turbo run lint
+turbo run typecheck
+turbo run build
+
+100% funcionais.
+
+━━━━━━━━━━━━━━━━━━━
+
+SAÍDA FINAL OBRIGATÓRIA
+
+━━━━━━━━━━━━━━━━━━━
+
+Ao final de CADA fase gerar:
+
+Alterações executadas
+Arquivos alterados
+Problemas resolvidos
+Riscos restantes
+Pendências
+Resultado do build
+Resultado do typecheck
+Resultado do lint
+Resultado do runtime
+Avaliação da estabilidade
