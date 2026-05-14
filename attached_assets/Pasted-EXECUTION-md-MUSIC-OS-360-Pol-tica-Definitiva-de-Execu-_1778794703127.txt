@@ -1,0 +1,485 @@
+EXECUTION.md — MUSIC OS 360
+Política Definitiva de Execução Controlada, Preservação Estrutural e Anti-Overengineering
+OBJETIVO DESTE DOCUMENTO
+
+Este documento define:
+
+limites absolutos de execução;
+regras obrigatórias de alteração;
+políticas anti-destruição;
+políticas anti-overengineering;
+ordem de prioridade real;
+regras de preservação estrutural;
+regras de segurança operacional;
+regras de modificação incremental.
+
+Este documento NÃO define arquitetura.
+
+Este documento NÃO define stack.
+
+Este documento NÃO define governança.
+
+Essas definições pertencem exclusivamente ao:
+
+GOVERNANCE.md
+MAPEAMENTO_ESTRUTURAL.md
+
+Este documento define APENAS:
+
+COMO executar;
+O QUE pode alterar;
+O QUE NÃO pode alterar;
+LIMITES da autonomia do agente.
+REGRA ABSOLUTA PRINCIPAL
+
+O agente NÃO possui autonomia arquitetural.
+
+O agente NÃO deve:
+
+reinterpretar o produto;
+reinventar a arquitetura;
+“modernizar” arbitrariamente;
+refatorar por preferência pessoal;
+reorganizar por opinião;
+aplicar “best practices” genéricas sem necessidade real.
+
+O agente deve operar exclusivamente:
+
+dentro da arquitetura existente;
+dentro do stack existente;
+dentro da estrutura existente;
+dentro das regras do GOVERNANCE.md.
+PRINCÍPIO DE EXECUÇÃO
+
+Toda alteração deve seguir:
+
+MENOR IMPACTO POSSÍVEL
+
+Sempre preferir:
+
+correção localizada;
+correção incremental;
+preservação estrutural;
+preservação visual;
+preservação operacional;
+preservação de contratos;
+preservação de APIs;
+preservação de UX;
+preservação de comportamento.
+PROIBIÇÃO ABSOLUTA — ALTERAÇÕES NÃO SOLICITADAS
+
+O agente NUNCA deve executar alterações fora do escopo explicitamente solicitado.
+
+Mesmo que considere a alteração:
+
+“melhor”;
+“mais limpa”;
+“mais moderna”;
+“mais escalável”;
+“mais enterprise”.
+PROIBIÇÕES ABSOLUTAS
+ESTRUTURA
+
+PROIBIDO:
+
+mover arquivos entre módulos sem necessidade crítica comprovada;
+reorganizar pastas arbitrariamente;
+alterar estrutura de módulos consolidada;
+mover componentes de domínio para shared/;
+mover componentes de shared/ para módulos sem justificativa real;
+renomear módulos;
+alterar convenções existentes sem solicitação explícita;
+alterar estrutura do monorepo.
+ROTAS
+
+PROIBIDO:
+
+alterar rotas existentes;
+alterar slugs;
+alterar navegação;
+alterar estrutura de URLs;
+alterar comportamento do router;
+alterar guards existentes;
+alterar fluxo de navegação.
+UX/UI
+
+PROIBIDO:
+
+alterar UX consolidada;
+alterar comportamento visual;
+alterar grids;
+alterar densidade visual;
+alterar hierarquia visual;
+alterar fluxo operacional;
+alterar formulários consolidados;
+alterar experiência mobile;
+alterar experiência desktop;
+alterar comportamento de modais;
+alterar comportamento de tabelas;
+alterar comportamento de filtros;
+alterar experiência do módulo de lançamentos.
+COMPONENTES
+
+PROIBIDO:
+
+recriar componentes existentes;
+duplicar componentes já existentes;
+substituir componentes funcionais sem problema comprovado;
+criar wrappers desnecessários;
+criar abstrações artificiais;
+criar “component engines” genéricos;
+criar “universal forms”;
+criar CRUD generators;
+criar factories sem necessidade real.
+STACK
+
+PROIBIDO:
+
+trocar bibliotecas do stack;
+instalar frameworks alternativos;
+adicionar dependências desnecessárias;
+substituir TanStack Query;
+substituir RHF;
+substituir Zod;
+substituir shadcn/ui;
+substituir NestJS;
+substituir Drizzle;
+substituir Clerk;
+substituir BullMQ.
+BANCO DE DADOS
+
+PROIBIDO:
+
+alterar schemas sem migration explícita;
+alterar relacionamentos sem validação;
+alterar integridade relacional arbitrariamente;
+remover colunas sem validação;
+alterar constraints sem análise;
+alterar índices sem necessidade real;
+criar tabelas genéricas artificiais.
+MULTI-TENANT
+
+PROIBIDO:
+
+remover isolamento por tenant;
+executar queries sem tenant isolation;
+criar cache sem tenant prefix;
+criar lógica compartilhada entre tenants;
+ignorar RBAC;
+ignorar feature flags.
+INTEGRAÇÕES
+
+PROIBIDO:
+
+alterar contratos OAuth existentes;
+alterar callbacks existentes;
+alterar fluxos de autenticação;
+alterar tokens sem validação;
+substituir providers;
+adicionar integrações fora do escopo.
+POLÍTICA ANTI-OVERENGINEERING
+ABSOLUTAMENTE PROIBIDO
+
+O agente NÃO deve criar:
+
+arquitetura hexagonal completa;
+microserviços;
+event sourcing;
+CQRS complexo;
+service factories genéricas;
+repository pattern sem necessidade real;
+wrappers redundantes;
+hooks globais artificiais;
+providers redundantes;
+abstrações sem reutilização comprovada;
+“core engines” genéricas;
+plugin systems;
+dynamic module loaders;
+arquitetura “enterprise fake”;
+boilerplate desnecessário;
+pipelines artificiais;
+“universal SDKs” internos;
+sistemas genéricos prematuros.
+REGRA DE REUTILIZAÇÃO OBRIGATÓRIA
+
+Antes de criar QUALQUER:
+
+componente;
+hook;
+utilitário;
+provider;
+service;
+helper;
+mapper;
+schema;
+modal;
+tabela;
+card;
+formulário;
+abstraction;
+
+o agente DEVE verificar se já existe solução reutilizável no projeto.
+
+Se existir solução equivalente:
+
+reutilizar;
+extender minimamente;
+preservar compatibilidade.
+REGRA DE EVIDÊNCIA OBRIGATÓRIA
+
+PROIBIDO alterar qualquer estrutura sem evidência objetiva de:
+
+bug real;
+falha real;
+vulnerabilidade real;
+duplicação comprovada;
+gargalo comprovado;
+inconsistência verificável;
+risco operacional real.
+
+“Melhor prática” isolada NÃO é justificativa.
+
+“Arquitetura mais limpa” NÃO é justificativa.
+
+“Mais enterprise” NÃO é justificativa.
+
+ORDEM OFICIAL DE PRIORIDADE
+PRIORIDADE 1 — CRÍTICO
+
+Corrigir APENAS:
+
+segurança;
+isolamento multi-tenant;
+vazamento de dados;
+autenticação;
+autorização;
+tenant guards;
+falhas críticas;
+queries inseguras;
+validações críticas;
+corrupção de dados;
+problemas de integridade;
+falhas de upload;
+webhooks inseguros;
+secrets expostos.
+PRIORIDADE 2 — ESTABILIDADE
+
+Corrigir:
+
+crashes;
+loops;
+memory leaks;
+re-renderizações críticas;
+falhas de filas;
+falhas de retry;
+falhas de cache;
+falhas de websocket;
+race conditions;
+falhas de sincronização.
+PRIORIDADE 3 — PERFORMANCE
+
+Corrigir:
+
+lazy loading;
+chunk splitting;
+queries pesadas;
+N+1;
+payload excessivo;
+renderizações desnecessárias;
+gargalos reais;
+cache inválido.
+PRIORIDADE 4 — PADRONIZAÇÃO
+
+Corrigir:
+
+naming;
+imports;
+organização leve;
+barrel exports;
+tipagem;
+duplicações reais;
+inconsistências menores.
+PRIORIDADE 5 — UX
+
+Corrigir apenas:
+
+inconsistências reais;
+problemas operacionais;
+falhas de acessibilidade;
+problemas de responsividade;
+loading states ausentes;
+empty states ausentes.
+
+SEM alterar UX consolidada.
+
+POLÍTICA DE PRESERVAÇÃO DO FRONTEND
+
+O frontend atual é:
+
+referência operacional;
+referência visual;
+referência funcional.
+
+Portanto:
+
+PRESERVAR:
+
+renderização;
+formulários;
+fluxo operacional;
+preenchimento automático;
+autocomplete;
+experiência desktop;
+experiência mobile;
+experiência do usuário;
+comportamento visual;
+comportamento dos modais;
+comportamento dos date pickers;
+comportamento das tabelas;
+comportamento dos filtros.
+MÓDULO CRÍTICO — LANÇAMENTOS
+
+O módulo de lançamentos é considerado:
+
+consolidado;
+operacionalmente crítico;
+sensível a regressão.
+
+PROIBIDO:
+
+alterar fluxo;
+alterar steps;
+alterar UX;
+alterar validações;
+alterar preenchimento;
+alterar autocomplete;
+alterar relacionamento entre entidades.
+
+Fluxo obrigatório:
+
+Album Info
+Track Upload
+Album Art
+Distribution Preferences
+Preview
+MOCK_MODE — REGRA ABSOLUTA
+
+MOCK_MODE é obrigatório.
+
+PROIBIDO:
+
+quebrar frontend standalone;
+remover mocks;
+alterar comportamento do useDataQuery;
+remover musicos360_mock_data;
+alterar estrutura mock sem compatibilidade.
+
+Toda alteração backend deve preservar:
+
+VITE_USE_MOCK=true
+
+funcionando integralmente.
+
+POLÍTICA DE ALTERAÇÃO DE SCHEMA
+
+Schema só pode ser alterado quando:
+
+existir migration explícita;
+existir justificativa técnica real;
+existir impacto validado;
+existir compatibilidade;
+existir preservação multi-tenant.
+POLÍTICA DE LOGS
+
+PROIBIDO:
+
+logar tokens;
+logar secrets;
+logar CPF;
+logar email;
+logar refresh tokens;
+logar payload sensível.
+POLÍTICA DE EXECUÇÃO
+
+O agente deve SEMPRE:
+
+analisar impacto;
+validar dependências;
+validar imports;
+validar tipagem;
+validar compatibilidade;
+validar UX;
+validar multi-tenant;
+validar mocks;
+validar rotas;
+validar comportamento operacional.
+
+ANTES de alterar qualquer coisa.
+
+POLÍTICA DE ALTERAÇÃO SEGURA
+
+Toda alteração deve ser:
+
+incremental;
+reversível;
+localizada;
+rastreável;
+compatível;
+previsível.
+POLÍTICA DE “NÃO REESCREVER”
+
+PROIBIDO:
+
+reescrever módulos completos;
+recriar páginas;
+recriar providers;
+recriar hooks;
+recriar tabelas;
+recriar forms;
+recriar layouts;
+
+quando o problema puder ser resolvido localmente.
+
+POLÍTICA DE “NÃO INVENTAR DOMÍNIO”
+
+O agente NÃO pode:
+
+criar novos domínios;
+criar novos módulos;
+criar novos conceitos de negócio;
+reinterpretar regras operacionais;
+redefinir escopo do produto.
+POLÍTICA DE EXECUÇÃO FINAL
+
+O agente deve atuar como:
+
+executor controlado;
+mantenedor arquitetural;
+estabilizador incremental.
+
+NÃO como:
+
+redefinidor do sistema;
+reestruturador agressivo;
+arquiteto autônomo;
+“reinventador” da plataforma.
+RESULTADO ESPERADO
+
+O resultado esperado é:
+
+maior estabilidade;
+menor débito técnico;
+melhor segurança;
+melhor isolamento multi-tenant;
+melhor observabilidade;
+melhor performance;
+melhor consistência;
+
+SEM:
+
+destruir arquitetura;
+reinventar estrutura;
+quebrar UX;
+quebrar frontend;
+gerar abstrações artificiais;
+transformar o sistema em “enterprise boilerplate”.
