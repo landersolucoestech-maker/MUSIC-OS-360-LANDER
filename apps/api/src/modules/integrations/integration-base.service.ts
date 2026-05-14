@@ -157,8 +157,12 @@ export class IntegrationBaseService {
 
   // ── Signed OAuth state (HMAC-SHA256) ───────────────────────────────────────
 
+  /** TTL máximo do state OAuth: 10 minutos */
+  private static readonly STATE_TTL_MS = 10 * 60 * 1_000;
+
   buildSignedState(payload: Record<string, string>): string {
-    const json    = JSON.stringify(payload);
+    const full    = { ...payload, iat: String(Date.now()) };
+    const json    = JSON.stringify(full);
     const b64     = Buffer.from(json).toString('base64url');
     const hmacKey = this.enc.getKeyBytes();
     const sig     = crypto.createHmac('sha256', hmacKey).update(b64).digest('base64url');
@@ -166,19 +170,41 @@ export class IntegrationBaseService {
   }
 
   verifySignedState(state: string): Record<string, string> {
+    if (typeof state !== 'string' || state.length > 2048) {
+      throw new UnauthorizedException('OAuth state inválido');
+    }
+
     const dot = state.lastIndexOf('.');
-    if (dot === -1) throw new UnauthorizedException('OAuth state inválido');
-    const b64      = state.slice(0, dot);
-    const sig      = state.slice(dot + 1);
+    if (dot === -1 || dot === 0 || dot === state.length - 1) {
+      throw new UnauthorizedException('OAuth state malformado');
+    }
+
+    const b64 = state.slice(0, dot);
+    const sig  = state.slice(dot + 1);
+
     const hmacKey  = this.enc.getKeyBytes();
     const expected = crypto.createHmac('sha256', hmacKey).update(b64).digest('base64url');
-    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+
+    // Guard: ambos devem ter o mesmo comprimento para timingSafeEqual não lançar
+    const sigBuf  = Buffer.from(sig,      'base64url');
+    const expBuf  = Buffer.from(expected, 'base64url');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
       throw new UnauthorizedException('OAuth state com assinatura inválida');
     }
+
+    let parsed: Record<string, string>;
     try {
-      return JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) as Record<string, string>;
+      parsed = JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) as Record<string, string>;
     } catch {
       throw new UnauthorizedException('OAuth state malformado');
     }
+
+    // Verificar TTL
+    const iat = Number(parsed['iat'] ?? 0);
+    if (!iat || Date.now() - iat > IntegrationBaseService.STATE_TTL_MS) {
+      throw new UnauthorizedException('OAuth state expirado');
+    }
+
+    return parsed;
   }
 }

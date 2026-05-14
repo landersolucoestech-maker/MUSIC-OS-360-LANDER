@@ -22,6 +22,8 @@ export class AppleMusicService extends IntegrationBaseService {
     super(db, enc);
   }
 
+  isConfigured(): boolean { return true; }
+
   async configure(tenantId: string, teamId: string, keyId: string, privateKey: string): Promise<void> {
     await this.saveCredentials(tenantId, PROVIDER, {
       team_id:     teamId,

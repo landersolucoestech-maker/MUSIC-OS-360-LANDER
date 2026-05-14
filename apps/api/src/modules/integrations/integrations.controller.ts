@@ -52,9 +52,11 @@ export class IntegrationsController {
       youtube:     { configured: this.youtube.isConfigured() },
       deezer:      { configured: this.deezer.isConfigured() },
       soundcloud:  { configured: this.soundcloud.isConfigured() },
+      apple_music: { configured: this.appleMusic.isConfigured() },
       instagram:   { configured: this.instagram.isConfigured() },
       tiktok:      { configured: this.tiktok.isConfigured() },
       google_ads:  { configured: this.googleAds.isConfigured() },
+      abramus:     { configured: true },
     };
   }
 
