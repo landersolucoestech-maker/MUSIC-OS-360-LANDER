@@ -282,7 +282,7 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
     : "";
 
   // ── Filtered lists for searchable dropdowns ───────────────────────────────
-  const TIPOS_MUSICAIS: string[] = ["album", "ep", "single", "videoclipe"];
+  const TIPOS_MUSICAIS: string[] = ["album", "ep", "single"];
   const projetosFiltrados = projetos
     .filter(p => !p.tipo || TIPOS_MUSICAIS.includes(String(p.tipo).toLowerCase()))
     .filter(p => !projetoSearch || normStr(p.titulo ?? p.nome ?? "").includes(normStr(projetoSearch)));
