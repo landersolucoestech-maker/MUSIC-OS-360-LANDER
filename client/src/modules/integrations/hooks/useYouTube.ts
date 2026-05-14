@@ -69,12 +69,13 @@ export function useYouTubeSaveCredentials() {
         _mockChannelId = input?.channel_id ?? null;
         return;
       }
-      // Modo real: YouTube usa YOUTUBE_API_KEY configurado no servidor — sem configure endpoint
-      // Apenas invalidamos o status para refletir o estado do servidor
+      // Modo real: YouTube usa YOUTUBE_API_KEY configurado no servidor (env var).
+      // Não há endpoint de configure — status reflete configuração do servidor.
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "youtube", "status"] });
-      toast.success("YouTube conectado com sucesso.");
+      if (MOCK_MODE) toast.success("YouTube conectado (modo mock).");
+      else toast.info("YouTube é configurado via variável de ambiente do servidor. Verifique o status atualizado.");
     },
     onError: (err: Error) => toast.error(err.message),
   });
