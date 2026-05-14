@@ -459,8 +459,26 @@ export default function RH() {
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="funcionarios" className="flex items-center gap-2" data-testid="tab-funcionarios">
+              <Users className="h-4 w-4" />
+              Funcionários
+            </TabsTrigger>
+            <TabsTrigger value="folha" className="flex items-center gap-2" data-testid="tab-folha">
+              <DollarSign className="h-4 w-4" />
+              Folha de Pagamento
+            </TabsTrigger>
+            <TabsTrigger value="ferias" className="flex items-center gap-2" data-testid="tab-ferias">
+              <CalendarDays className="h-4 w-4" />
+              Férias e Ausências
+            </TabsTrigger>
+            <TabsTrigger value="documentos" className="flex items-center gap-2" data-testid="tab-documentos">
+              <FileText className="h-4 w-4" />
+              Documentos
+            </TabsTrigger>
+          </TabsList>
           {activeTab === "funcionarios" && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -500,7 +518,7 @@ export default function RH() {
             </div>
           )}
           {activeTab === "folha" && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -536,7 +554,7 @@ export default function RH() {
             </div>
           )}
           {activeTab === "ferias" && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -564,24 +582,6 @@ export default function RH() {
               </div>
             </div>
           )}
-          <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="funcionarios" className="flex items-center gap-2" data-testid="tab-funcionarios">
-              <Users className="h-4 w-4" />
-              Funcionários
-            </TabsTrigger>
-            <TabsTrigger value="folha" className="flex items-center gap-2" data-testid="tab-folha">
-              <DollarSign className="h-4 w-4" />
-              Folha de Pagamento
-            </TabsTrigger>
-            <TabsTrigger value="ferias" className="flex items-center gap-2" data-testid="tab-ferias">
-              <CalendarDays className="h-4 w-4" />
-              Férias e Ausências
-            </TabsTrigger>
-            <TabsTrigger value="documentos" className="flex items-center gap-2" data-testid="tab-documentos">
-              <FileText className="h-4 w-4" />
-              Documentos
-            </TabsTrigger>
-          </TabsList>
 
           <TabsContent value="funcionarios" className="mt-6 space-y-6">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
