@@ -8,6 +8,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Users, Plus, Phone, Mail, Search, Eye,
   Pencil, Trash2, UserCheck, FileText,
@@ -138,6 +139,9 @@ export default function CRM() {
   const [leadSearch, setLeadSearch] = useState("");
   const [leadStatusFilter, setLeadStatusFilter] = useState("all");
 
+  const [selectedClienteIds, setSelectedClienteIds] = useState<Set<string>>(new Set());
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
   const filteredClientes = useMemo(() => {
     return clientes.filter((cliente) => {
       const q = searchTerm.toLowerCase();
@@ -196,6 +200,48 @@ export default function CRM() {
 
   const clearFilters = () => { setSearchTerm(""); setStatusFilter("all"); };
   const clearLeadFilters = () => { setLeadSearch(""); setLeadStatusFilter("all"); };
+
+  const toggleClienteSelect = (id: string) =>
+    setSelectedClienteIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAllClientes = () =>
+    setSelectedClienteIds(
+      selectedClienteIds.size === filteredClientes.length
+        ? new Set()
+        : new Set(filteredClientes.map((c) => c.id)),
+    );
+
+  const handleBulkDeleteClientes = async () => {
+    const ids = Array.from(selectedClienteIds);
+    for (const id of ids) await deleteCliente.mutateAsync(id);
+    setSelectedClienteIds(new Set());
+    toast.success(`${ids.length} contato(s) excluído(s).`);
+  };
+
+  const toggleLeadSelect = (id: string) =>
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAllLeads = () =>
+    setSelectedLeadIds(
+      selectedLeadIds.size === filteredLeads.length
+        ? new Set()
+        : new Set(filteredLeads.map((l: any) => l.id)),
+    );
+
+  const handleBulkDeleteLeads = async () => {
+    const ids = Array.from(selectedLeadIds);
+    for (const id of ids) await deleteLead.mutateAsync(id);
+    setSelectedLeadIds(new Set());
+    toast.success(`${ids.length} lead(s) excluído(s).`);
+  };
 
   const getInitials = (nome: string) =>
     nome?.split(" ").map((n) => n[0]).join("").substring(0, 2).toUpperCase() ?? "?";
@@ -355,6 +401,36 @@ export default function CRM() {
               </span>
             </div>
 
+            {/* Bulk select bar */}
+            {filteredClientes.length > 0 && (
+              <div className="flex items-center gap-3 py-1">
+                <Checkbox
+                  checked={selectedClienteIds.size === filteredClientes.length && filteredClientes.length > 0}
+                  onCheckedChange={toggleAllClientes}
+                  data-testid="checkbox-select-all-contatos"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {selectedClienteIds.size > 0
+                    ? `${selectedClienteIds.size} selecionado(s)`
+                    : "Selecionar todos"}
+                </span>
+                {selectedClienteIds.size > 0 && (
+                  <RequirePermission module="crm" action="delete">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs gap-1 ml-auto"
+                      onClick={handleBulkDeleteClientes}
+                      data-testid="button-bulk-delete-contatos"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir selecionados
+                    </Button>
+                  </RequirePermission>
+                )}
+              </div>
+            )}
+
             {/* Table */}
             {clientesLoading ? (
               <div className="space-y-3">
@@ -374,6 +450,7 @@ export default function CRM() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8" />
                     <TableHead>Nome</TableHead>
                     <TableHead>Segmento</TableHead>
                     <TableHead>Contato</TableHead>
@@ -389,6 +466,13 @@ export default function CRM() {
                     const situacao = getContratoSituacao(clienteContratos);
                     return (
                       <TableRow key={cliente.id} data-testid={`row-contato-${cliente.id}`}>
+                        <TableCell className="w-8">
+                          <Checkbox
+                            checked={selectedClienteIds.has(cliente.id)}
+                            onCheckedChange={() => toggleClienteSelect(cliente.id)}
+                            data-testid={`checkbox-contato-${cliente.id}`}
+                          />
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <Avatar className="h-7 w-7 shrink-0 rounded-lg">
@@ -538,6 +622,36 @@ export default function CRM() {
               </span>
             </div>
 
+            {/* Bulk select bar — leads */}
+            {filteredLeads.length > 0 && (
+              <div className="flex items-center gap-3 py-1">
+                <Checkbox
+                  checked={selectedLeadIds.size === filteredLeads.length && filteredLeads.length > 0}
+                  onCheckedChange={toggleAllLeads}
+                  data-testid="checkbox-select-all-leads"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {selectedLeadIds.size > 0
+                    ? `${selectedLeadIds.size} selecionado(s)`
+                    : "Selecionar todos"}
+                </span>
+                {selectedLeadIds.size > 0 && (
+                  <RequirePermission module="crm" action="delete">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs gap-1 ml-auto"
+                      onClick={handleBulkDeleteLeads}
+                      data-testid="button-bulk-delete-leads"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir selecionados
+                    </Button>
+                  </RequirePermission>
+                )}
+              </div>
+            )}
+
             {/* Lead Table */}
             {leadsLoading ? (
               <div className="space-y-3">
@@ -557,6 +671,7 @@ export default function CRM() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8" />
                     <TableHead>Nome</TableHead>
                     <TableHead>Etapa Pipeline</TableHead>
                     <TableHead>Contato</TableHead>
@@ -569,6 +684,13 @@ export default function CRM() {
                 <TableBody>
                   {filteredLeads.map((lead: any) => (
                     <TableRow key={lead.id} data-testid={`row-lead-${lead.id}`}>
+                      <TableCell className="w-8">
+                        <Checkbox
+                          checked={selectedLeadIds.has(lead.id)}
+                          onCheckedChange={() => toggleLeadSelect(lead.id)}
+                          data-testid={`checkbox-lead-${lead.id}`}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Avatar className="h-7 w-7 shrink-0 rounded-lg">
