@@ -50,7 +50,7 @@ export class HrService {
     };
   }
 
-  async findEmployee(tenantId: string, id: string): Promise<Employee> {
+  private async _findRaw(tenantId: string, id: string): Promise<Employee> {
     const [result] = await this.db
       .select()
       .from(employees)
@@ -58,6 +58,11 @@ export class HrService {
       .limit(1);
     if (!result) throw new NotFoundException('Funcionário não encontrado');
     return result;
+  }
+
+  async findEmployee(tenantId: string, id: string) {
+    const raw = await this._findRaw(tenantId, id);
+    return this.mapEmployee(raw);
   }
 
   async createEmployee(tenantId: string, userId: string, dto: CreateEmployeeDto) {
@@ -85,7 +90,7 @@ export class HrService {
   }
 
   async updateEmployee(tenantId: string, userId: string, id: string, dto: UpdateEmployeeDto) {
-    await this.findEmployee(tenantId, id);
+    await this._findRaw(tenantId, id);
     const [updated] = await this.db
       .update(employees)
       .set({
@@ -110,7 +115,7 @@ export class HrService {
   }
 
   async softDeleteEmployee(tenantId: string, id: string): Promise<{ deleted: boolean }> {
-    await this.findEmployee(tenantId, id);
+    await this._findRaw(tenantId, id);
     await this.db
       .update(employees)
       .set({ deleted_at: new Date() })
