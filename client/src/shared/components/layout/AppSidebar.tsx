@@ -260,7 +260,7 @@ export function AppSidebar() {
                     />
                     <span>{child.title}</span>
                     {isActive(child.href) && (
-                      <span className="ml-auto h-1.5 w-1.5 rounded-full bg-sidebar-primary shrink-0" />
+                      <span className="ml-auto h-1.5 w-1.5 bg-sidebar-primary shrink-0" />
                     )}
                   </Link>
                 ))}
@@ -295,7 +295,7 @@ export function AppSidebar() {
           <>
             <span className="flex-1">{item.title}</span>
             {active && (
-              <span className="h-1.5 w-1.5 rounded-full bg-sidebar-primary shrink-0" />
+              <span className="h-1.5 w-1.5 bg-sidebar-primary shrink-0" />
             )}
           </>
         )}
