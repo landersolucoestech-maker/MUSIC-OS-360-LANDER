@@ -14,7 +14,7 @@ import type { SuspenseRouteComponent } from "@/app/routes/types";
 import "@/shared/domain-events/consistency";
 import { RealtimeLayer } from "@/shared/infrastructure/RealtimeLayer";
 import { MOCK_MODE } from "@/shared/lib/env";
-
+import { runClientMigrations } from "@/shared/lib/migrations";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
 import { catalogRoutes } from "@/app/routes/catalog.routes";
@@ -28,6 +28,8 @@ import { adminRoutes } from "@/app/routes/admin.routes";
 import { contractsRoutes } from "@/app/routes/contracts.routes";
 import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
+
+runClientMigrations();
 
 const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
 
