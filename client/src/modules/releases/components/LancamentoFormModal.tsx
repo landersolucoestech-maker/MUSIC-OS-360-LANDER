@@ -594,33 +594,6 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Data de Lançamento</Label>
-                  <DatePickerField
-                    value={formData.dataLancamento}
-                    onChange={(iso) => setFormData({ ...formData, dataLancamento: iso })}
-                    disabled={isViewMode}
-                    placeholder="Selecione a data de lançamento"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Status</Label>
-                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })} disabled={isViewMode}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="planejado">Planejado</SelectItem>
-                      <SelectItem value="em_producao">Em Produção</SelectItem>
-                      <SelectItem value="analise">Em Análise</SelectItem>
-                      <SelectItem value="aprovado">Aprovado</SelectItem>
-                      <SelectItem value="aguardando_distribuicao">Aguardando Distribuição</SelectItem>
-                      <SelectItem value="ativo">Ativo / Publicado</SelectItem>
-                      <SelectItem value="programado">Programado</SelectItem>
-                      <SelectItem value="cancelado">Cancelado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -897,6 +870,41 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
               </CollapsibleContent>
             </Card>
           </Collapsible>
+
+          {/* Data de Lançamento + Status */}
+          <Card className="bg-muted/30 border-border">
+            <CardContent className="pt-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Data de Lançamento</Label>
+                  <DatePickerField
+                    value={formData.dataLancamento}
+                    onChange={(iso) => setFormData({ ...formData, dataLancamento: iso })}
+                    disabled={isViewMode}
+                    placeholder="Selecione a data de lançamento"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <Select value={formData.status} onValueChange={(v) => setFormData({ ...formData, status: v })} disabled={isViewMode}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="planejado">Planejado</SelectItem>
+                      <SelectItem value="em_producao">Em Produção</SelectItem>
+                      <SelectItem value="analise">Em Análise</SelectItem>
+                      <SelectItem value="aprovado">Aprovado</SelectItem>
+                      <SelectItem value="aguardando_distribuicao">Aguardando Distribuição</SelectItem>
+                      <SelectItem value="ativo">Ativo / Publicado</SelectItem>
+                      <SelectItem value="programado">Programado</SelectItem>
+                      <SelectItem value="cancelado">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
 
           {/* Distribuição */}
           <Card className="bg-muted/30 border-border">
