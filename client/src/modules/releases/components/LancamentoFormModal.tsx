@@ -141,6 +141,13 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
     const rawGenero = seed.genero?.trim()
       || artistas.find((a) => a.id === projeto.artista_id)?.genero_musical
       || "";
+
+    // ── Buscar ISRC via fonograma com mesmo título do projeto ─────────────
+    const projetoNorm = normStr(projeto.titulo ?? "");
+    const fonogramaDosProjeto = projetoNorm
+      ? fonogramas.find(f => normStr(f.titulo ?? "") === projetoNorm)
+      : undefined;
+
     setFormData(prev => ({
       ...prev,
       projetoSeed: projetoId,
@@ -148,7 +155,9 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
       artista_id: !prev.artista_id.trim() ? seed.artista_id ?? "" : prev.artista_id,
       genero:     !prev.genero.trim()     ? matchGenero(rawGenero) : prev.genero,
       tipo:       !prev.tipo.trim()       ? seed.tipo ?? "" : prev.tipo,
+      isrcGlobal: !prev.isrcGlobal.trim() ? fonogramaDosProjeto?.isrc ?? "" : prev.isrcGlobal,
     }));
+
     if (projeto.descricao) {
       try {
         const musicas = JSON.parse(projeto.descricao) as Array<{
@@ -159,17 +168,23 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
           const artistaNome = projeto.artista_id
             ? artistas.find((a) => a.id === projeto.artista_id)?.nome_artistico ?? ""
             : "";
-          setFaixas(musicas.map((m, i) => ({
-            id: i + 1,
-            titulo: m.nome ?? "",
-            artista: artistaNome,
-            isrc: m.isrc ?? "",
-            compositores: m.compositores?.length ? m.compositores : [""],
-            interpretes:  m.interpretes?.length  ? m.interpretes  : [""],
-            produtores:   m.produtores?.length   ? m.produtores   : [""],
-            arquivoAudio: null,
-            letra: m.letra ?? "",
-          })));
+          setFaixas(musicas.map((m, i) => {
+            // Prioriza ISRC da descrição; fallback: fonograma com mesmo título da faixa
+            const faixaNorm = normStr(m.nome ?? "");
+            const isrcFaixa = m.isrc?.trim()
+              || (faixaNorm ? (fonogramas.find(f => normStr(f.titulo ?? "") === faixaNorm)?.isrc ?? "") : "");
+            return {
+              id: i + 1,
+              titulo: m.nome ?? "",
+              artista: artistaNome,
+              isrc: isrcFaixa,
+              compositores: m.compositores?.length ? m.compositores : [""],
+              interpretes:  m.interpretes?.length  ? m.interpretes  : [""],
+              produtores:   m.produtores?.length   ? m.produtores   : [""],
+              arquivoAudio: null,
+              letra: m.letra ?? "",
+            };
+          }));
         }
       } catch { /* invalid JSON */ }
     }
