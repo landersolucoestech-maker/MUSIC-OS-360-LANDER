@@ -1,0 +1,478 @@
+Você atuará como um Principal Software Architect + Senior Staff Engineer + DevOps Engineer + Security Engineer responsável pela estabilização completa do SaaS enterprise MUSIC OS 360°.
+
+Sua missão NÃO é apenas analisar.
+
+Sua missão é:
+
+* AUDITAR
+* IDENTIFICAR
+* CORRIGIR
+* REFATORAR
+* PADRONIZAR
+* VALIDAR
+* TESTAR
+* GARANTIR ESTABILIDADE
+* PREVENIR REGRESSÕES
+
+Você deve executar TODAS as ações necessárias diretamente no projeto, sem respostas superficiais, sem simplificações, sem pseudo-correções, sem mocks temporários, sem workarounds frágeis e sem deixar problemas parcialmente resolvidos.
+
+======================================================================
+CONTEXTO DO SISTEMA
+===================
+
+O MUSIC OS 360° é um SaaS enterprise multi-tenant para gestão da indústria musical brasileira.
+
+Stack:
+
+* Frontend:
+
+  * React 18
+  * Vite
+  * TypeScript
+  * shadcn/ui
+  * TanStack Query
+  * Zod
+
+* Backend:
+
+  * NestJS
+  * Drizzle ORM
+  * Neon PostgreSQL
+  * BullMQ
+  * Redis
+  * Clerk
+  * Stripe
+
+* Infraestrutura:
+
+  * Turborepo
+  * GitHub Actions
+  * WebSocket
+  * CI/CD
+
+======================================================================
+OBJETIVO PRINCIPAL
+==================
+
+Transformar o sistema em um SaaS:
+
+* funcional em produção;
+* estável;
+* seguro;
+* escalável;
+* enterprise-grade;
+* multi-tenant consistente;
+* sem mocks acidentais;
+* sem módulos quebrados;
+* sem inconsistências arquiteturais;
+* sem vazamentos entre frontend/backend;
+* sem regressões.
+
+======================================================================
+REGRA ABSOLUTA
+==============
+
+NÃO responda apenas com análise.
+
+EXECUTE AS ALTERAÇÕES NO CÓDIGO.
+
+Você deve:
+
+* localizar os arquivos;
+* modificar a implementação;
+* corrigir arquitetura;
+* ajustar imports;
+* corrigir tipos;
+* remover lógica quebrada;
+* reorganizar estrutura;
+* atualizar configs;
+* validar dependências;
+* garantir compilação;
+* garantir build;
+* garantir tipagem;
+* garantir runtime.
+
+======================================================================
+OBRIGAÇÕES CRÍTICAS
+===================
+
+1. NÃO criar soluções improvisadas.
+2. NÃO usar any.
+3. NÃO mascarar erros.
+4. NÃO ignorar TypeScript errors.
+5. NÃO deixar TODO/FIXME.
+6. NÃO quebrar compatibilidade multi-tenant.
+7. NÃO remover funcionalidades existentes sem substituição equivalente.
+8. NÃO gerar duplicação arquitetural.
+9. NÃO criar dependências circulares.
+10. NÃO criar regressões silenciosas.
+11. NÃO deixar mocks ativos em produção.
+12. NÃO manter endpoints órfãos.
+13. NÃO deixar filas sem processors.
+14. NÃO deixar rotas frontend apontando para módulos inexistentes.
+15. NÃO deixar env vars inseguras.
+16. NÃO deixar lógica apenas client-side quando precisa existir server-side.
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — PRIORIDADE P0
+====================================
+
+======================================================================
+PROB-001 — tenantId/userId undefined
+====================================
+
+Corrigir imediatamente o TenantGuard e toda a cadeia de autenticação multi-tenant.
+
+Objetivos:
+
+* garantir req.tenantId;
+* garantir req.userId;
+* garantir req.tenant;
+* garantir req.currentMember;
+* garantir tipagem global correta no Express Request;
+* eliminar any dos controllers.
+
+Implementar:
+
+* express.d.ts
+* tipagem segura
+* padronização global
+* compatibilidade completa com IntegrationsController
+
+Validar:
+
+* Spotify
+* Instagram
+* TikTok
+* YouTube
+* Apple Music
+* Google Ads
+* SoundCloud
+* Abramus
+* Autentique
+
+Garantir:
+
+* tenant isolation real;
+* persistência correta de OAuth tokens;
+* queries Drizzle nunca recebendo undefined.
+
+Também:
+
+* localizar TODOS os controllers/services que usam req.tenantId/req.userId;
+* corrigir qualquer implementação inconsistente.
+
+======================================================================
+PROB-002 — MOCK_MODE inseguro
+=============================
+
+Remover completamente a possibilidade de mock habilitar sozinho em produção.
+
+Objetivos:
+
+* mock apenas quando explicitamente ativado;
+* impedir fallback silencioso;
+* impedir localStorage fake em produção;
+* impedir fake data em builds reais.
+
+Executar:
+
+* corrigir env.ts;
+* remover inversão lógica;
+* validar build production;
+* validar runtime production.
+
+Também:
+
+* localizar TODOS os imports de mockData;
+* impedir inclusão de mocks no bundle production;
+* aplicar lazy loading ou conditional imports corretos.
+
+======================================================================
+PROB-003 — MONOREPO QUEBRADO
+============================
+
+Reestruturar completamente o monorepo.
+
+Objetivos:
+
+* frontend isolado do backend;
+* workspaces reais;
+* dependências segregadas;
+* Vite sem acesso a libs Node backend;
+* Turborepo funcional;
+* builds independentes.
+
+Executar:
+
+* corrigir root package.json;
+* adicionar:
+
+  * client
+  * packages/shared-types
+  * packages/shared-zod
+
+Criar:
+
+* client/package.json isolado;
+* dependency boundaries corretos;
+* tsconfig references corretos;
+* aliases compartilhados corretos.
+
+Mover:
+
+* enums compartilhados;
+* plan features;
+* tipos;
+* schemas;
+* interfaces.
+
+Garantir:
+
+* turbo run dev funcional;
+* turbo build funcional;
+* frontend sem dependências NestJS;
+* bundle otimizado;
+* tree-shaking correto.
+
+======================================================================
+PROB-004 — REFRESH TOKEN CLERK
+==============================
+
+Remover completamente lógica falsa de /auth/refresh.
+
+Implementar:
+
+* integração correta com Clerk useAuth();
+* getToken();
+* renovação automática real;
+* interceptors corretos;
+* retry seguro;
+* sincronização auth state.
+
+Remover:
+
+* tryRefresh fake;
+* chamadas inexistentes;
+* lógica morta.
+
+Garantir:
+
+* sessão persistente;
+* sem logout após 1h;
+* sem 401 em cascata.
+
+======================================================================
+PROB-005 — MÓDULOS BACKEND AUSENTES
+===================================
+
+Implementar backend real para:
+
+* /contents
+* /monitors
+* /rules
+* /inventory
+* /licenses
+
+Executar:
+
+* modules
+* controllers
+* services
+* repositories
+* DTOs
+* validators
+* schemas
+* routes
+* permissions
+* tenant isolation
+* query filters
+
+Garantir:
+
+* CRUD funcional;
+* persistência real;
+* integração frontend/backend;
+* React Query funcionando;
+* sem fallback para mock.
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — SEGURANÇA
+================================
+
+Implementar:
+
+1. OAuth state assinado com HMAC
+2. nonce criptográfico
+3. Redis cache expiring
+4. validação de callback
+5. proteção CSRF OAuth
+6. env validation rigorosa
+7. bloqueio de placeholders inseguros em production
+8. APP_GUARD global para RateLimitGuard
+9. proteção websocket origin
+10. remoção do proxy OpenAI inseguro do Vite
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — FILAS E PROCESSAMENTO
+============================================
+
+Implementar processors reais para:
+
+* webhooks
+* exports
+* imports
+* uploads-process
+* billing
+
+Garantir:
+
+* retries;
+* dead-letter;
+* logs;
+* observabilidade;
+* jobs não presos;
+* BullMQ health.
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — BANCO DE DADOS
+=====================================
+
+Executar:
+
+* FK real em artists.contrato_id;
+* migrations seguras;
+* validação de integridade;
+* rollback seguro;
+* índices ausentes;
+* otimização de queries críticas.
+
+Também:
+
+* revisar queries N+1;
+* revisar paginação;
+* revisar isolamento multi-tenant.
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — REFATORAÇÃO FRONTEND
+===========================================
+
+Refatorar arquivos gigantes:
+
+* LancamentoFormModal.tsx
+* Configuracoes.tsx
+* OAuthPopupPage.tsx
+* RH.tsx
+* IACriativa.tsx
+
+Objetivo:
+
+* componentização real;
+* lazy loading;
+* separação por domínio;
+* hooks isolados;
+* services isolados;
+* forms desacoplados;
+* redução de complexidade ciclomática.
+
+Arquitetura obrigatória:
+
+* feature-based structure;
+* shared components;
+* form steps;
+* isolated business logic;
+* reusable hooks;
+* typed state management.
+
+======================================================================
+EXECUÇÃO OBRIGATÓRIA — PERFORMANCE E ESCALA
+===========================================
+
+Implementar:
+
+* Redis cache no TenantGuard;
+* TTL inteligente;
+* cursor pagination;
+* presigned upload URLs;
+* websocket redis adapter;
+* server-side feature validation;
+* otimização Drizzle;
+* separação AI workloads.
+
+======================================================================
+VALIDAÇÕES OBRIGATÓRIAS
+=======================
+
+Após TODAS as alterações:
+
+1. rodar typecheck;
+2. rodar lint;
+3. rodar build frontend;
+4. rodar build backend;
+5. validar turbo;
+6. validar CI;
+7. validar produção;
+8. validar OAuth;
+9. validar multi-tenant;
+10. validar filas;
+11. validar websocket;
+12. validar uploads;
+13. validar auth;
+14. validar rate limit;
+15. validar modules;
+16. validar integrations;
+17. validar Drizzle migrations.
+
+======================================================================
+PROIBIDO
+========
+
+* NÃO responder apenas com teoria;
+* NÃO resumir;
+* NÃO simplificar;
+* NÃO omitir arquivos alterados;
+* NÃO ignorar erros existentes;
+* NÃO deixar problemas parcialmente corrigidos;
+* NÃO usar hacks;
+* NÃO gerar arquitetura temporária;
+* NÃO gerar código fictício;
+* NÃO remover tipagem;
+* NÃO criar dependências implícitas.
+
+======================================================================
+RESULTADO ESPERADO
+==================
+
+Ao final da execução, o sistema deve estar:
+
+* funcional em produção;
+* sem mocks acidentais;
+* com integrações operacionais;
+* com tenant isolation consistente;
+* com auth estável;
+* com backend completo;
+* com filas funcionando;
+* com monorepo saudável;
+* com segurança reforçada;
+* com frontend modularizado;
+* com arquitetura enterprise-grade;
+* preparado para escala real.
+
+======================================================================
+SAÍDA OBRIGATÓRIA
+=================
+
+Ao finalizar:
+
+1. liste TODOS os arquivos alterados;
+2. explique TODAS as correções aplicadas;
+3. informe problemas encontrados adicionais;
+4. informe riscos restantes;
+5. informe melhorias futuras recomendadas;
+6. informe impactos arquiteturais;
+7. informe possíveis breaking changes;
+8. informe validações executadas;
+9. informe cobertura dos problemas resolvidos;
+10. informe exatamente o que ainda falta para produção enterprise massiva.
+
+EXECUTE AS CORREÇÕES DIRETAMENTE NO PROJETO.
