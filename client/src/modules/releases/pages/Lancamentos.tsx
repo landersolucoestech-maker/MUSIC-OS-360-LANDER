@@ -9,7 +9,7 @@ import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
 import {
-  Music, Radio, Clock, Eye, AlertTriangle, Upload, Download, Plus, Search,
+  Music, Radio, Clock, Eye, Upload, Download, Plus, Search,
   Loader2, Disc, Trash2, LayoutGrid, List, Calendar,
 } from "lucide-react";
 import { SiSpotify, SiApplemusic, SiYoutubemusic } from "react-icons/si";
@@ -32,26 +32,6 @@ const lancamentoColumns: CSVColumn[] = [
   { key: "plataformas", label: "Plataformas", transform: (r) => Array.isArray(r.plataformas) ? r.plataformas.join(", ") : (r.plataformas || "") },
   { key: "observacoes", label: "Observações" },
 ];
-
-// ── Assets helpers ──────────────────────────────────────────────────────────
-const ASSETS_REQUIRED: Record<string, string[]> = {
-  single: ["audio_master_url", "capa_url"],
-  ep:     ["audio_master_url", "capa_url", "ficha_tecnica"],
-  album:  ["audio_master_url", "capa_url", "ficha_tecnica", "press_release", "epk_url"],
-};
-
-function calcAssetsPct(lancamento: any): number {
-  const tipo = (lancamento.tipo || "single").toLowerCase();
-  const required = ASSETS_REQUIRED[tipo] ?? ASSETS_REQUIRED.single;
-  const assets = lancamento.assets ?? {};
-  const filled = required.filter((k: string) => assets[k] && String(assets[k]).trim()).length;
-  if (required.length === 0) return 100;
-  return Math.round((filled / required.length) * 100);
-}
-
-function isIncompleto(lancamento: any): boolean {
-  return calcAssetsPct(lancamento) < 100;
-}
 
 // ── Kanban ──────────────────────────────────────────────────────────────────
 const KANBAN_COLUMNS = [
@@ -114,7 +94,6 @@ export default function Lancamentos() {
   const [typeFilter, setTypeFilter] = useState("all-type");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [artistFilter, setArtistFilter] = useState("all-artist");
-  const [incompletoFilter, setIncompletoFilter] = useState(false);
 
   const handleExport = () => exportToCSV(lancamentos, lancamentoColumns, "lancamentos");
   const handleImport = () => importCSV(async (data) => {
@@ -145,7 +124,6 @@ export default function Lancamentos() {
   const metricas = useMemo(() => {
     const ativos = lancamentos.filter(l => ["ativo", "publicado"].includes(l.status ?? "")).length;
     const programados = lancamentos.filter(l => ["programado", "planejado"].includes(l.status ?? "")).length;
-    const incompletos = lancamentos.filter(l => isIncompleto(l)).length;
     const hoje = new Date();
     const em30 = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
     const proximos30 = lancamentos.filter(l => {
@@ -153,7 +131,7 @@ export default function Lancamentos() {
       const dl = new Date(l.data_lancamento);
       return dl >= hoje && dl <= em30;
     }).length;
-    return { total: lancamentos.length, ativos, programados, incompletos, proximos30 };
+    return { total: lancamentos.length, ativos, programados, proximos30 };
   }, [lancamentos]);
 
   const filteredReleases = useMemo(() => {
@@ -164,19 +142,17 @@ export default function Lancamentos() {
       const matchesType = typeFilter === "all-type" || release.tipo?.toLowerCase() === typeFilter.toLowerCase();
       const matchesStatus = statusFilter === "all-status" || release.status === statusFilter;
       const matchesArtist = artistFilter === "all-artist" || release.artista_id === artistFilter;
-      const matchesIncompleto = !incompletoFilter || isIncompleto(release);
-      return matchesSearch && matchesType && matchesStatus && matchesArtist && matchesIncompleto;
+      return matchesSearch && matchesType && matchesStatus && matchesArtist;
     });
-  }, [lancamentos, searchTerm, typeFilter, statusFilter, artistFilter, incompletoFilter, artistas]);
+  }, [lancamentos, searchTerm, typeFilter, statusFilter, artistFilter, artistas]);
 
-  const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || artistFilter !== "all-artist" || incompletoFilter;
+  const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || artistFilter !== "all-artist";
 
   const handleClearFilters = () => {
     setSearchTerm("");
     setTypeFilter("all-type");
     setStatusFilter("all-status");
     setArtistFilter("all-artist");
-    setIncompletoFilter(false);
   };
 
   const handleDelete = () => {
@@ -366,19 +342,6 @@ export default function Lancamentos() {
           <Card className="bg-card border-border">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Assets Incompletos</span>
-                <AlertTriangle className="h-4 w-4 text-warning" />
-              </div>
-              <div className="mt-2">
-                <span className={`text-2xl font-bold ${metricas.incompletos > 0 ? "text-warning" : "text-foreground"}`}>{metricas.incompletos}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">lançamentos com assets pendentes</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
                 <span className="text-sm text-muted-foreground">Próximos 30 dias</span>
                 <Calendar className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -451,16 +414,6 @@ export default function Lancamentos() {
               ))}
             </SelectContent>
           </Select>
-          <Button
-            variant={incompletoFilter ? "default" : "outline"}
-            size="sm"
-            className={`gap-1.5 ${incompletoFilter ? "bg-warning hover:bg-warning/90 text-warning-foreground" : ""}`}
-            data-testid="button-filter-incompleto"
-            onClick={() => setIncompletoFilter(!incompletoFilter)}
-          >
-            <AlertTriangle className="h-3.5 w-3.5" />
-            Assets incompletos
-          </Button>
           {hasActiveFilters && (
             <Button variant="outline" size="sm" onClick={handleClearFilters}>Limpar</Button>
           )}
