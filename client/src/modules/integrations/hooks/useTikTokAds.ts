@@ -17,10 +17,9 @@ export interface TikTokAdsStatus {
 }
 
 export interface TikTokAdsCredentials {
-  appId: string;
+  app_id: string;
   secret: string;
-  advertiserId?: string;
-  accessToken: string;
+  advertiser_id?: string;
 }
 
 export function useTikTokAdsStatus() {
@@ -39,7 +38,12 @@ export function useTikTokAdsSaveCredentials() {
   return useMutation({
     mutationFn: async (input: TikTokAdsCredentials) => {
       if (MOCK_MODE) return;
-      return api.post("/integrations/tiktok/ads/configure", input);
+      return api.post("/integrations/tiktok/ads/configure", {
+        appId: input.app_id,
+        secret: input.secret,
+        advertiserId: input.advertiser_id,
+        accessToken: "",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "tiktok-ads"] });

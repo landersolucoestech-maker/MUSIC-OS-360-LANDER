@@ -17,9 +17,10 @@ export interface AppleMusicStatus {
 }
 
 export interface AppleMusicCredentials {
-  teamId: string;
-  keyId: string;
-  privateKey: string;
+  team_id: string;
+  key_id: string;
+  private_key: string;
+  artist_id?: string;
 }
 
 export function useAppleMusicStatus() {
@@ -38,7 +39,11 @@ export function useAppleMusicSaveCredentials() {
   return useMutation({
     mutationFn: async (input: AppleMusicCredentials) => {
       if (MOCK_MODE) return;
-      return api.post("/integrations/apple-music/configure", input);
+      return api.post("/integrations/apple-music/configure", {
+        teamId: input.team_id,
+        keyId: input.key_id,
+        privateKey: input.private_key,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "apple-music"] });

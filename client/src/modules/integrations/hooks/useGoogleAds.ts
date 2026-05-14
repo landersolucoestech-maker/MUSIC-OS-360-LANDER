@@ -17,8 +17,10 @@ export interface GoogleAdsStatus {
 }
 
 export interface GoogleAdsCredentials {
-  developerToken: string;
-  customerId: string;
+  developer_token: string;
+  client_id: string;
+  client_secret: string;
+  manager_account_id?: string;
 }
 
 export function useGoogleAdsStatus() {
@@ -37,7 +39,10 @@ export function useGoogleAdsSaveCredentials() {
   return useMutation({
     mutationFn: async (input: GoogleAdsCredentials) => {
       if (MOCK_MODE) return;
-      return api.post("/integrations/google-ads/configure", input);
+      return api.post("/integrations/google-ads/configure", {
+        developerToken: input.developer_token,
+        customerId: input.manager_account_id ?? input.client_id,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "google-ads"] });

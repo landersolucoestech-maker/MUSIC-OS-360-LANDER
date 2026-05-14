@@ -2,15 +2,24 @@
  * integrations/hooks/useYouTube.ts
  *
  * Hook para integração YouTube Analytics.
- * Status e métricas via backend. Em MOCK_MODE retorna stubs.
+ * Status e métricas via backend. Em MOCK_MODE retorna stubs sem sessionStorage.
  */
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { api } from "@/shared/lib/api-client";
 import { MOCK_MODE } from "@/shared/lib/env";
 
+// In-memory mock state (no sessionStorage)
+let _mockConnected  = false;
+let _mockChannelId: string | null = null;
+
 export interface YouTubeStatus {
   connected: boolean;
+  channel_id?: string | null;
+  channel_title?: string | null;
+  has_credentials?: boolean;
+  content_id_enabled?: boolean;
   last_sync_at?: string | null;
 }
 
@@ -28,10 +37,57 @@ export function useYouTubeStatus() {
   return useQuery<YouTubeStatus>({
     queryKey: ["integrations", "youtube", "status"],
     queryFn: async (): Promise<YouTubeStatus> => {
-      if (MOCK_MODE) return { connected: false, last_sync_at: null };
+      if (MOCK_MODE) return {
+        connected: _mockConnected,
+        channel_id: _mockChannelId,
+        channel_title: null,
+        has_credentials: _mockConnected,
+        content_id_enabled: false,
+        last_sync_at: null,
+      };
       return api.get<YouTubeStatus>("/integrations/youtube/status");
     },
     staleTime: 30_000,
+  });
+}
+
+/** @deprecated Mantido para retrocompatibilidade com YouTubeConfigDialog. */
+export function useYouTubeSaveCredentials() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: { api_key?: string; channel_id?: string }) => {
+      if (MOCK_MODE) {
+        _mockConnected = true;
+        _mockChannelId = input?.channel_id ?? null;
+        return;
+      }
+      // Modo real: YouTube usa YOUTUBE_API_KEY configurado no servidor — sem configure endpoint
+      // Apenas invalidamos o status para refletir o estado do servidor
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "youtube", "status"] });
+      toast.success("YouTube conectado com sucesso.");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+/** @deprecated Mantido para retrocompatibilidade com YouTubeConfigDialog. */
+export function useYouTubeDeleteCredentials() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (MOCK_MODE) {
+        _mockConnected = false;
+        _mockChannelId = null;
+        return;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "youtube", "status"] });
+      toast.success("YouTube Music desconectado.");
+    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -61,14 +117,4 @@ export function useYouTubeVideoMetrics(videoId?: string) {
 
 export function useYouTubeContentIdClaims() {
   return { data: null, isLoading: false, fetch: () => {} };
-}
-
-/** @deprecated Use useYouTubeStatus */
-export function useYouTubeSaveCredentials() {
-  return { mutate: () => {}, isPending: false };
-}
-
-/** @deprecated */
-export function useYouTubeDeleteCredentials() {
-  return { mutate: () => {}, isPending: false };
 }

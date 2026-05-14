@@ -17,8 +17,9 @@ export interface SoundCloudStatus {
 }
 
 export interface SoundCloudCredentials {
-  clientId: string;
-  clientSecret: string;
+  client_id: string;
+  client_secret: string;
+  permalink?: string;
 }
 
 export function useSoundCloudStatus() {
@@ -37,7 +38,10 @@ export function useSoundCloudSaveCredentials() {
   return useMutation({
     mutationFn: async (input: SoundCloudCredentials) => {
       if (MOCK_MODE) return;
-      return api.post("/integrations/soundcloud/configure", input);
+      return api.post("/integrations/soundcloud/configure", {
+        clientId: input.client_id,
+        clientSecret: input.client_secret,
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "soundcloud"] });

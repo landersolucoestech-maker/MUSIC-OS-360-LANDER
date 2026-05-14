@@ -17,26 +17,16 @@ import type {
   ArtistSearchResult,
 } from "@/modules/integrations/dto";
 
-// ─── Storage helpers (MOCK_MODE only) ─────────────────────────────────────────
-const CRED_KEY  = "musicos360_abramus_credentials";
-const SCHED_KEY = "musicos360_abramus_schedule";
-
-interface StoredCreds {
+// ─── In-memory mock credentials (no sessionStorage) ───────────────────────────
+interface MockCreds {
   username: string;
   base_url?: string;
   saved_at: string;
 }
+let _mockCreds: MockCreds | null = null;
 
-function readCreds(): StoredCreds | null {
-  if (!MOCK_MODE) return null;
-  try { return JSON.parse(sessionStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
-}
-function writeCreds(c: StoredCreds) {
-  try { sessionStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
-}
-function clearCreds() {
-  try { sessionStorage.removeItem(CRED_KEY); } catch { /* ignore */ }
-}
+// Schedule stays in sessionStorage (not a credential)
+const SCHED_KEY = "musicos360_abramus_schedule";
 function readSchedule(): AbramusSyncSchedule {
   try { return (sessionStorage.getItem(SCHED_KEY) as AbramusSyncSchedule) || "off"; } catch { return "off"; }
 }
@@ -250,11 +240,10 @@ export function useAbramusStatus() {
       if (!MOCK_MODE) {
         return api.get<AbramusStatus>("/integrations/abramus/status");
       }
-      const creds = readCreds();
-      if (!creds) return { connected: false, status: "disconnected", sync_schedule: readSchedule() };
+      if (!_mockCreds) return { connected: false, status: "disconnected", sync_schedule: readSchedule() };
       return {
         connected: true, status: "ok",
-        username: creds.username, base_url: creds.base_url ?? null,
+        username: _mockCreds.username, base_url: _mockCreds.base_url ?? null,
         last_error: null, last_sync_at: null, last_sync_summary: null,
         sync_schedule: readSchedule(), next_sync_at: null,
       };
@@ -277,7 +266,7 @@ export function useAbramusSaveCredentials() {
           baseUrl:  input.base_url?.trim() ?? "",
         });
       }
-      writeCreds({ username: input.username.trim(), base_url: input.base_url?.trim(), saved_at: new Date().toISOString() });
+      _mockCreds = { username: input.username.trim(), base_url: input.base_url?.trim(), saved_at: new Date().toISOString() };
       return { ok: true };
     },
     onSuccess: () => {
@@ -295,7 +284,7 @@ export function useAbramusDeleteCredentials() {
       if (!MOCK_MODE) {
         return api.delete("/integrations/abramus/disconnect");
       }
-      clearCreds();
+      _mockCreds = null;
       return { ok: true };
     },
     onSuccess: () => {
@@ -312,8 +301,7 @@ export function useAbramusSearch(kind: AbramusKind, query: string) {
     queryKey: ["abramus", "search", kind, trimmed],
     queryFn: async () => {
       if (MOCK_MODE) {
-        const creds = readCreds();
-        if (!creds) return { results: [], error: "not_configured" };
+        if (!_mockCreds) return { results: [], error: "not_configured" };
         const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
         const results = searchAbramus(db, trimmed);
         return { results, total: results.length, has_more: false };
@@ -338,8 +326,7 @@ export function useAbramusSearchArtists(query: string) {
         );
         return res?.results ?? (res as unknown as ArtistSearchResult[]) ?? [];
       }
-      const creds = readCreds();
-      if (!creds) return [];
+      if (!_mockCreds) return [];
       return mockAbramusProvider.searchArtists({ query: trimmed, limit: 10 });
     },
     enabled: trimmed.length >= 2,
@@ -351,8 +338,7 @@ export function useAbramusImport(kind: AbramusKind) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { external_id: string; record?: AbramusSearchResult }): Promise<{ record?: AbramusSearchResult }> => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
 
       const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
       const rec = input.record ?? db.find((r) => r.external_id === input.external_id);
@@ -364,7 +350,7 @@ export function useAbramusImport(kind: AbramusKind) {
       importRecord(kind, input.external_id, rec);
       return { record: rec };
     },
-    onSuccess: (_, vars) => {
+    onSuccess: (_data, _vars) => {
       const table = kind === "obras" ? ["obras"] : ["fonogramas"];
       queryClient.invalidateQueries({ queryKey: table });
       queryClient.invalidateQueries({ queryKey: ["abramus", "local-lookup"] });
@@ -382,8 +368,7 @@ export function useAbramusSyncAll() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (_input?: { kinds?: AbramusKind[] }): Promise<AbramusSyncSummary> => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
 
       const kinds: AbramusKind[] = _input?.kinds ?? ["obras", "fonogramas"];
       const started_at = new Date().toISOString();
@@ -456,8 +441,7 @@ export function useAbramusRegistrationHistory(kind: AbramusKind, localId: string
   return useQuery<RegistrationHistoryEntry[]>({
     queryKey: ["abramus", "registration-history", kind, localId],
     queryFn: async () => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) return [];
+      if (MOCK_MODE && !_mockCreds) return [];
       const rightsKind = kind === "obras" ? "obra" : "fonograma";
       return mockAbramusProvider.getRegistrationHistory(rightsKind, localId);
     },
@@ -470,8 +454,7 @@ export function useAbramusRegisterObra() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterObraInput>({
     mutationFn: async (input) => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.registerObra(input);
     },
     onSuccess: (data) => {
@@ -495,8 +478,7 @@ export function useAbramusRegisterFonograma() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterFonogramaInput>({
     mutationFn: async (input) => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.registerFonograma(input);
     },
     onSuccess: (data) => {
@@ -520,8 +502,7 @@ export function useAbramusGenerateISWC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISWCResult, Error, GenerateISWCInput>({
     mutationFn: async (input) => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISWC(input);
     },
     onSuccess: (data) => {
@@ -540,8 +521,7 @@ export function useAbramusGenerateISRC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISRCResult, Error, GenerateISRCInput>({
     mutationFn: async (input) => {
-      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
-      if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISRC(input);
     },
     onSuccess: (data) => {
