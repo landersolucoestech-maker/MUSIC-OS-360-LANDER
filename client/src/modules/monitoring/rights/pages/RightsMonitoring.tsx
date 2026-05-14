@@ -187,7 +187,20 @@ export default function RightsMonitoring() {
   }
 
   return (
-    <MainLayout title="Rights Monitoring" description="Monitoramento de execução pública, auditoria ECAD e reconciliação de royalties">
+    <MainLayout
+      title="Rights Monitoring"
+      description="Monitoramento de execução pública, auditoria ECAD e reconciliação de royalties"
+      actions={
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncCatalog} data-testid="button-sync-catalog">
+            <RefreshCw className="h-3.5 w-3.5" />Sincronizar
+          </Button>
+          <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)} data-testid="button-import-ecad">
+            <Upload className="h-3.5 w-3.5" />Importar ECAD
+          </Button>
+        </div>
+      }
+    >
       <div className="space-y-5">
 
         {/* KPI Cards */}
@@ -202,16 +215,7 @@ export default function RightsMonitoring() {
         />
 
         {/* Tab bar */}
-        <div className="flex items-center gap-3 flex-wrap border-b border-border/60 pb-0">
-          <div className="flex items-center gap-2 pb-[2px]">
-            <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleSyncCatalog} data-testid="button-sync-catalog">
-              <RefreshCw className="h-3.5 w-3.5" />Sincronizar
-            </Button>
-            <Button size="sm" className="gap-2 h-8 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)} data-testid="button-import-ecad">
-              <Upload className="h-3.5 w-3.5" />Importar ECAD
-            </Button>
-          </div>
-          <div className="flex items-center gap-1 flex-wrap">
+        <div className="flex items-center gap-1 flex-wrap border-b border-border/60 pb-0">
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -231,7 +235,6 @@ export default function RightsMonitoring() {
               )}
             </button>
           ))}
-          </div>
         </div>
 
         {/* ── Overview ── */}
