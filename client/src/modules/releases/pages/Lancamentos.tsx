@@ -8,7 +8,6 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Badge } from "@/shared/ui/badge";
-import { Progress } from "@/shared/ui/progress";
 import {
   Music, Radio, Clock, Eye, AlertTriangle, Upload, Download, Plus, Search,
   Loader2, Disc, Trash2, LayoutGrid, List, Calendar,
@@ -225,7 +224,6 @@ export default function Lancamentos() {
     const artista = getArtistaById(release.artista_id);
     const tipoBadgeColor = release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
     const generos = artista?.genero_musical ? [artista.genero_musical] : [];
-    const pct = calcAssetsPct(release);
     return (
       <Card key={release.id} data-testid={`card-lancamento-${release.id}`} className="bg-muted/30 border-border overflow-hidden flex flex-col">
         <div className="relative">
@@ -259,13 +257,6 @@ export default function Lancamentos() {
                 {g}
               </Badge>
             ))}
-          </div>
-          <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-[10px] text-muted-foreground">Assets</span>
-              <span className={`text-[10px] font-medium ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>{pct}%</span>
-            </div>
-            <Progress value={pct} className="h-1" />
           </div>
           <div className="grid grid-cols-4 gap-1 text-center mb-3">
             <div className="flex flex-col items-center gap-0.5">
@@ -308,7 +299,6 @@ export default function Lancamentos() {
   // ── Render kanban card ──────────────────────────────────────────────────
   const renderKanbanCard = (release: any) => {
     const artista = getArtistaById(release.artista_id);
-    const pct = calcAssetsPct(release);
     const tipoBadgeColor = release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
     return (
       <Card
@@ -333,13 +323,6 @@ export default function Lancamentos() {
               {new Date(release.data_lancamento).toLocaleDateString("pt-BR")}
             </div>
           )}
-          <div>
-            <div className="flex justify-between mb-0.5">
-              <span className="text-[10px] text-muted-foreground">Assets</span>
-              <span className={`text-[10px] font-medium ${pct === 100 ? "text-success" : pct >= 50 ? "text-warning" : "text-destructive"}`}>{pct}%</span>
-            </div>
-            <Progress value={pct} className="h-1" />
-          </div>
           <div className="flex gap-1 pt-1">
             <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1" onClick={() => setViewModal({ open: true, lancamento: release })}>Ver</Button>
             <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1" onClick={() => setFormModal({ open: true, mode: "edit", lancamento: release })}>Editar</Button>
