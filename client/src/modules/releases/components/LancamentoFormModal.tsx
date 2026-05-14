@@ -385,7 +385,7 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                 <Folder className="h-5 w-5 text-muted-foreground" />
                 <CardTitle className="text-base">Vinculações</CardTitle>
               </div>
-              <CardDescription>Selecione projeto, obra e/ou fonograma para pré-carregar informações automaticamente</CardDescription>
+              <CardDescription>Selecione o projeto para pré-carregar informações automaticamente</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               {/* Projeto */}
@@ -450,132 +450,6 @@ export function LancamentoFormModal({ open, onOpenChange, lancamento, mode }: La
                 </Popover>
                 {formData.projetoSeed && (
                   <p className="text-xs text-muted-foreground">Faixas, artista e gênero preenchidos a partir do projeto.</p>
-                )}
-              </div>
-
-              {/* Obra */}
-              <div className="space-y-2">
-                <Label>Obra</Label>
-                <Popover open={obraOpen} onOpenChange={isViewMode ? undefined : setObraOpen}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        value={obraOpen ? obraSearch : obraLabel}
-                        onChange={(e) => { setObraSearch(e.target.value); setObraOpen(true); }}
-                        onFocus={() => !isViewMode && setObraOpen(true)}
-                        onClick={() => !isViewMode && setObraOpen(true)}
-                        disabled={isViewMode}
-                        placeholder="Buscar obra musical..."
-                        className="pl-10"
-                        data-testid="input-buscar-obra"
-                      />
-                      {selectedObraId && !isViewMode && (
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setSelectedObraId(""); setObraSearch(""); }}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[480px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <ScrollArea className="max-h-[280px]">
-                      <div className="p-2">
-                        {obrasFiltradas.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">Nenhuma obra encontrada.</p>
-                        ) : obrasFiltradas.map((o) => (
-                          <div
-                            key={o.id}
-                            role="option"
-                            tabIndex={0}
-                            className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors"
-                            onClick={() => handleSelectObra(o.id)}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelectObra(o.id); } }}
-                            data-testid={`option-obra-${o.id}`}
-                          >
-                            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shrink-0">
-                              <Music className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{o.titulo ?? "—"}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {[o.genero, Array.isArray(o.compositores) ? (o.compositores as string[]).join(", ") : o.compositor].filter(Boolean).join(" • ") || "—"}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-                {selectedObraId && (
-                  <p className="text-xs text-muted-foreground">Título, gênero e ISRC preenchidos a partir da obra.</p>
-                )}
-              </div>
-
-              {/* Fonograma */}
-              <div className="space-y-2">
-                <Label>Fonograma</Label>
-                <Popover open={fonogramaOpen} onOpenChange={isViewMode ? undefined : setFonogramaOpen}>
-                  <PopoverTrigger asChild>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
-                      <Input
-                        value={fonogramaOpen ? fonogramaSearch : fonogramaLabel}
-                        onChange={(e) => { setFonogramaSearch(e.target.value); setFonogramaOpen(true); }}
-                        onFocus={() => !isViewMode && setFonogramaOpen(true)}
-                        onClick={() => !isViewMode && setFonogramaOpen(true)}
-                        disabled={isViewMode}
-                        placeholder="Buscar fonograma..."
-                        className="pl-10"
-                        data-testid="input-buscar-fonograma"
-                      />
-                      {selectedFonogramaId && !isViewMode && (
-                        <button
-                          type="button"
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                          onClick={(e) => { e.stopPropagation(); setSelectedFonogramaId(""); setFonogramaSearch(""); }}
-                        >
-                          <X className="w-3.5 h-3.5" />
-                        </button>
-                      )}
-                    </div>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-[480px] p-0" align="start" onOpenAutoFocus={(e) => e.preventDefault()}>
-                    <ScrollArea className="max-h-[280px]">
-                      <div className="p-2">
-                        {fonogramasFiltrados.length === 0 ? (
-                          <p className="text-sm text-muted-foreground text-center py-4">Nenhum fonograma encontrado.</p>
-                        ) : fonogramasFiltrados.map((f) => (
-                          <div
-                            key={f.id}
-                            role="option"
-                            tabIndex={0}
-                            className="flex items-center gap-3 p-2 hover:bg-muted rounded-lg cursor-pointer transition-colors"
-                            onClick={() => handleSelectFonograma(f.id)}
-                            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleSelectFonograma(f.id); } }}
-                            data-testid={`option-fonograma-${f.id}`}
-                          >
-                            <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shrink-0">
-                              <Music className="h-4 w-4 text-white" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium truncate">{f.titulo ?? "—"}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {[f.isrc, artistas.find(a => a.id === f.artista_id)?.nome_artistico].filter(Boolean).join(" • ") || "—"}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </PopoverContent>
-                </Popover>
-                {selectedFonogramaId && (
-                  <p className="text-xs text-muted-foreground">Artista, gravadora, ISRC e faixas preenchidos a partir do fonograma.</p>
                 )}
               </div>
 
