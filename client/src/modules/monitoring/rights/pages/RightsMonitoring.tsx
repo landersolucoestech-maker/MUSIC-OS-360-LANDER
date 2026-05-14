@@ -190,27 +190,6 @@ export default function RightsMonitoring() {
     <MainLayout title="Rights Monitoring" description="Monitoramento de execução pública, auditoria ECAD e reconciliação de royalties">
       <div className="space-y-5">
 
-        {/* Header actions */}
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="p-2 bg-primary/10 rounded-lg">
-              <Shield className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <h1 className="text-base font-semibold">Rights Monitoring</h1>
-              <p className="text-xs text-muted-foreground">ECAD Intelligence · Broadcast Tracking · Reconciliação</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncCatalog}>
-              <RefreshCw className="h-3.5 w-3.5" />Sincronizar
-            </Button>
-            <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
-              <Upload className="h-3.5 w-3.5" />Importar ECAD
-            </Button>
-          </div>
-        </div>
-
         {/* KPI Cards */}
         <RightsKPICards
           total={filtered.length}
@@ -223,7 +202,16 @@ export default function RightsMonitoring() {
         />
 
         {/* Tab bar */}
-        <div className="flex items-center gap-1 flex-wrap border-b border-border/60 pb-0">
+        <div className="flex items-center gap-3 flex-wrap border-b border-border/60 pb-0">
+          <div className="flex items-center gap-2 pb-[2px]">
+            <Button variant="outline" size="sm" className="gap-2 h-8" onClick={handleSyncCatalog} data-testid="button-sync-catalog">
+              <RefreshCw className="h-3.5 w-3.5" />Sincronizar
+            </Button>
+            <Button size="sm" className="gap-2 h-8 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)} data-testid="button-import-ecad">
+              <Upload className="h-3.5 w-3.5" />Importar ECAD
+            </Button>
+          </div>
+          <div className="flex items-center gap-1 flex-wrap">
           {TABS.map(tab => (
             <button
               key={tab.key}
@@ -243,6 +231,7 @@ export default function RightsMonitoring() {
               )}
             </button>
           ))}
+          </div>
         </div>
 
         {/* ── Overview ── */}

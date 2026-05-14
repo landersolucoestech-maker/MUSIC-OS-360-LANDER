@@ -500,12 +500,13 @@ export default function Projetos() {
                         aria-label="Selecionar todos"
                       />
                     </TableHead>
-                    <TableHead>Título</TableHead>
-                    <TableHead>Artista</TableHead>
+                    <TableHead>Título da Música</TableHead>
                     <TableHead>Tipo</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Gênero</TableHead>
                     <TableHead>Compositores</TableHead>
+                    <TableHead>Intérpretes</TableHead>
+                    <TableHead>Produtores</TableHead>
+                    <TableHead>Gênero</TableHead>
+                    <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -522,12 +523,13 @@ export default function Projetos() {
                             aria-label={`Selecionar ${project.titulo}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium">{project.titulo}</TableCell>
-                        <TableCell className="text-muted-foreground text-sm">{project.artistas?.nome_artistico || "—"}</TableCell>
+                        <TableCell className="font-medium" data-testid={`text-titulo-${project.id}`}>{project.titulo}</TableCell>
                         <TableCell className="capitalize text-sm">{project.tipo || "—"}</TableCell>
-                        <TableCell>{getStatusBadge(project.status)}</TableCell>
+                        <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-compositores-${project.id}`}>{info.compositores || "—"}</TableCell>
+                        <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-interpretes-${project.id}`}>{info.interpretes || "—"}</TableCell>
+                        <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-produtores-${project.id}`}>{info.produtores || "—"}</TableCell>
                         <TableCell className="capitalize text-sm" data-testid={`text-genero-${project.id}`}>{info.genero || "—"}</TableCell>
-                        <TableCell className="text-sm max-w-[160px] truncate" data-testid={`text-compositores-${project.id}`}>{info.compositores || "—"}</TableCell>
+                        <TableCell>{getStatusBadge(project.status)}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

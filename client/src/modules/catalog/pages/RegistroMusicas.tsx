@@ -716,6 +716,28 @@ export default function RegistroMusicas() {
         </div>
 
 
+        {/* Tabs */}
+        <div className="flex items-center gap-2">
+          <Button 
+            variant={activeTab === "obras" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("obras")}
+            className={activeTab === "obras" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
+          >
+            <Music className="h-4 w-4" />
+            Obras
+          </Button>
+          <Button 
+            variant={activeTab === "fonogramas" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("fonogramas")}
+            className={activeTab === "fonogramas" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
+          >
+            <Disc className="h-4 w-4" />
+            Fonogramas
+          </Button>
+        </div>
+
         {/* Search and Filters */}
         <div className="flex items-center gap-4">
           <div className="relative flex-1">
@@ -806,28 +828,6 @@ export default function RegistroMusicas() {
               Limpar
             </Button>
           )}
-        </div>
-
-        {/* Tabs */}
-        <div className="flex items-center gap-2">
-          <Button 
-            variant={activeTab === "obras" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("obras")}
-            className={activeTab === "obras" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
-          >
-            <Music className="h-4 w-4" />
-            Obras
-          </Button>
-          <Button 
-            variant={activeTab === "fonogramas" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveTab("fonogramas")}
-            className={activeTab === "fonogramas" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
-          >
-            <Disc className="h-4 w-4" />
-            Fonogramas
-          </Button>
         </div>
 
         {/* Content - Fonogramas */}

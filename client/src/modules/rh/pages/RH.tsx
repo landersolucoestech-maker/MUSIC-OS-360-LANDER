@@ -459,6 +459,111 @@ export default function RH() {
     >
       <div className="space-y-6">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
+          {activeTab === "funcionarios" && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por nome, email, cargo, CPF..."
+                  value={funcSearch}
+                  onChange={(e) => setFuncSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-funcionarios"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={funcStatusFilter} onValueChange={setFuncStatusFilter}>
+                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-func">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Status</SelectItem>
+                    {STATUS_FUNCIONARIO.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Select value={funcSetorFilter} onValueChange={setFuncSetorFilter}>
+                  <SelectTrigger className="w-[150px]" data-testid="select-filter-setor">
+                    <SelectValue placeholder="Setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Setores</SelectItem>
+                    {SETORES.map((s) => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          {activeTab === "folha" && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por funcionário ou mês..."
+                  value={folhaSearch}
+                  onChange={(e) => setFolhaSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-folha"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <MonthPickerField
+                  value={folhaMesFilter}
+                  onChange={setFolhaMesFilter}
+                  placeholder="Filtrar por mês"
+                  className="w-[200px]"
+                  data-testid="monthpicker-filter-mes-folha"
+                />
+                <Select value={folhaStatusFilter} onValueChange={setFolhaStatusFilter}>
+                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-folha">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Status</SelectItem>
+                    {STATUS_PAGAMENTO.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
+          {activeTab === "ferias" && (
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar por funcionário ou tipo..."
+                  value={feriasSearch}
+                  onChange={(e) => setFeriasSearch(e.target.value)}
+                  className="pl-9"
+                  data-testid="input-search-ferias"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <Select value={feriasStatusFilter} onValueChange={setFeriasStatusFilter}>
+                  <SelectTrigger className="w-[140px]" data-testid="select-filter-status-ferias">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos Status</SelectItem>
+                    {STATUS_AUSENCIA.map((s) => (
+                      <SelectItem key={s} value={s}>
+                        {s.charAt(0).toUpperCase() + s.slice(1)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="funcionarios" className="flex items-center gap-2" data-testid="tab-funcionarios">
               <Users className="h-4 w-4" />
@@ -524,45 +629,6 @@ export default function RH() {
                   </div>
                 </CardContent>
               </Card>
-            </div>
-
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por nome, email, cargo, CPF..."
-                  value={funcSearch}
-                  onChange={(e) => setFuncSearch(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-funcionarios"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Select value={funcStatusFilter} onValueChange={setFuncStatusFilter}>
-                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-func">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    {STATUS_FUNCIONARIO.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Select value={funcSetorFilter} onValueChange={setFuncSetorFilter}>
-                  <SelectTrigger className="w-[150px]" data-testid="select-filter-setor">
-                    <SelectValue placeholder="Setor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Setores</SelectItem>
-                    {SETORES.map((s) => (
-                      <SelectItem key={s} value={s}>{s}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
             </div>
 
             {filteredFuncionarios.length === 0 ? (
@@ -665,39 +731,51 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="folha" className="mt-6 space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por funcionário ou mês..."
-                  value={folhaSearch}
-                  onChange={(e) => setFolhaSearch(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-folha"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <MonthPickerField
-                  value={folhaMesFilter}
-                  onChange={setFolhaMesFilter}
-                  placeholder="Filtrar por mês"
-                  className="w-[200px]"
-                  data-testid="monthpicker-filter-mes-folha"
-                />
-                <Select value={folhaStatusFilter} onValueChange={setFolhaStatusFilter}>
-                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-folha">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    {STATUS_PAGAMENTO.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <Card data-testid="kpi-total-folha">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.total}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-ativos-folha">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.ativos}</p>
+                    <p className="text-xs text-muted-foreground">Ativos</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-ferias-folha">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.ferias}</p>
+                    <p className="text-xs text-muted-foreground">Férias</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-afastados-folha">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <UserX className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.afastados}</p>
+                    <p className="text-xs text-muted-foreground">Afastados</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {loadingFolha ? (
@@ -778,32 +856,51 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="ferias" className="mt-6 space-y-6">
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar por funcionário ou tipo..."
-                  value={feriasSearch}
-                  onChange={(e) => setFeriasSearch(e.target.value)}
-                  className="pl-9"
-                  data-testid="input-search-ferias"
-                />
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <Select value={feriasStatusFilter} onValueChange={setFeriasStatusFilter}>
-                  <SelectTrigger className="w-[140px]" data-testid="select-filter-status-ferias">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    {STATUS_AUSENCIA.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <Card data-testid="kpi-total-ferias">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10">
+                    <Users className="h-5 w-5 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.total}</p>
+                    <p className="text-xs text-muted-foreground">Total</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-ativos-ferias">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10">
+                    <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.ativos}</p>
+                    <p className="text-xs text-muted-foreground">Ativos</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-ferias-ferias">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-blue-500/10">
+                    <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.ferias}</p>
+                    <p className="text-xs text-muted-foreground">Férias</p>
+                  </div>
+                </CardContent>
+              </Card>
+              <Card data-testid="kpi-afastados-ferias">
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-warning/10">
+                    <UserX className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <p className="text-2xl font-bold">{kpiCounts.afastados}</p>
+                    <p className="text-xs text-muted-foreground">Afastados</p>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
             {loadingFerias ? (
