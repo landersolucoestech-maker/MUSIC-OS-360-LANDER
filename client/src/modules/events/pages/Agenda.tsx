@@ -15,6 +15,7 @@ import { EventoFormModal } from "@/modules/events/components/EventoFormModal";
 import { EventoViewModal } from "@/modules/events/components/EventoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
+import { FeatureGate } from "@/shared/components/FeatureGate";
 import { toast } from "sonner";
 const getXLSX = () => import("xlsx");
 
@@ -233,6 +234,7 @@ export default function Agenda() {
   );
 
   return (
+    <FeatureGate feature="moduleEvents" featureName="Agenda & Eventos">
     <MainLayout title="Agenda" description="Gerencie shows, eventos e compromissos" actions={headerActions}>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -488,5 +490,6 @@ export default function Agenda() {
         onConfirm={handleDelete} 
       />
     </MainLayout>
+    </FeatureGate>
   );
 }

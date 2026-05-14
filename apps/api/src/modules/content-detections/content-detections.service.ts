@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc, count } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDB }       from '../../database/database.module';
 import { contentDetections, ContentDetection } from '../../database/schema';
 import { CreateContentDetectionDto }   from './dto/create-content-detection.dto';
@@ -11,12 +11,22 @@ export class ContentDetectionsService {
     @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
   ) {}
 
-  async list(tenantId: string) {
-    return this.db
-      .select()
-      .from(contentDetections)
-      .where(and(eq(contentDetections.tenant_id, tenantId), isNull(contentDetections.deleted_at)))
-      .orderBy(desc(contentDetections.created_at));
+  async list(tenantId: string, query: { status?: string; plataforma?: string; offset?: number; limit?: number } = {}) {
+    const conds = [eq(contentDetections.tenant_id, tenantId), isNull(contentDetections.deleted_at)];
+    if (query.status)     conds.push(eq(contentDetections.status, query.status));
+    if (query.plataforma) conds.push(eq(contentDetections.plataforma, query.plataforma));
+    const where = and(...conds);
+    const [rows, [{ value: total }]] = await Promise.all([
+      this.db.select().from(contentDetections).where(where)
+        .orderBy(desc(contentDetections.created_at))
+        .offset(query.offset ?? 0)
+        .limit(query.limit ?? 50),
+      this.db.select({ value: count() }).from(contentDetections).where(where),
+    ]);
+    return {
+      data: rows,
+      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
+    };
   }
 
   async findById(tenantId: string, id: string): Promise<ContentDetection> {
@@ -29,7 +39,6 @@ export class ContentDetectionsService {
         isNull(contentDetections.deleted_at),
       ))
       .limit(1);
-
     if (!result) throw new NotFoundException('Detecção não encontrada');
     return result;
   }
@@ -50,13 +59,11 @@ export class ContentDetectionsService {
         metadata:         dto.metadata         ?? {},
       })
       .returning();
-
     return created;
   }
 
   async update(tenantId: string, id: string, dto: UpdateContentDetectionDto): Promise<ContentDetection> {
     await this.findById(tenantId, id);
-
     const [updated] = await this.db
       .update(contentDetections)
       .set({
@@ -73,18 +80,15 @@ export class ContentDetectionsService {
       })
       .where(and(eq(contentDetections.tenant_id, tenantId), eq(contentDetections.id, id), isNull(contentDetections.deleted_at)))
       .returning();
-
     return updated;
   }
 
   async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
     await this.findById(tenantId, id);
-
     await this.db
       .update(contentDetections)
       .set({ deleted_at: new Date() })
       .where(and(eq(contentDetections.tenant_id, tenantId), eq(contentDetections.id, id)));
-
     return { deleted: true };
   }
 }

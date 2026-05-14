@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, UseGuards, ParseUUIDPipe,
 } from '@nestjs/common';
 import { ClerkAuthGuard }              from '../../core/guards/clerk-auth.guard';
 import { TenantGuard }                 from '../../core/guards/tenant.guard';
@@ -15,8 +15,19 @@ export class ContentDetectionsController {
   constructor(private readonly svc: ContentDetectionsService) {}
 
   @Get()
-  list(@CurrentTenant() tenant: { id: string }) {
-    return this.svc.list(tenant.id);
+  list(
+    @CurrentTenant() tenant: { id: string },
+    @Query('status') status?: string,
+    @Query('plataforma') plataforma?: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.list(tenant.id, {
+      status,
+      plataforma,
+      offset: offset ? +offset : undefined,
+      limit:  limit  ? +limit  : undefined,
+    });
   }
 
   @Get(':id')

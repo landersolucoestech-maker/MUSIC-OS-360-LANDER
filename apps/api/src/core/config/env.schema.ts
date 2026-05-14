@@ -89,6 +89,28 @@ const envSchema = z.object({
   SPOTIFY_CLIENT_ID: z.string().optional(),
   SPOTIFY_CLIENT_SECRET: z.string().optional(),
   SPOTIFY_REDIRECT_URI: z.string().optional(),
+
+  // YouTube Data API v3
+  YOUTUBE_API_KEY: z.string().optional(),
+
+  // SoundCloud
+  SOUNDCLOUD_CLIENT_ID: z.string().optional(),
+  SOUNDCLOUD_CLIENT_SECRET: z.string().optional(),
+
+  // Meta / Facebook (Instagram OAuth)
+  META_APP_ID: z.string().optional(),
+  META_APP_SECRET: z.string().optional(),
+  META_REDIRECT_URI: z.string().optional(),
+
+  // TikTok
+  TIKTOK_CLIENT_KEY: z.string().optional(),
+  TIKTOK_CLIENT_SECRET: z.string().optional(),
+  TIKTOK_REDIRECT_URI: z.string().optional(),
+
+  // Google Ads
+  GOOGLE_ADS_CLIENT_ID: z.string().optional(),
+  GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),
+  GOOGLE_ADS_REDIRECT_URI: z.string().optional(),
 });
 
 export type EnvConfig = z.infer<typeof envSchema>;

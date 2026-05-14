@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc } from 'drizzle-orm';
+import { eq, and, isNull, desc, count } from 'drizzle-orm';
 import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
 import { artistGoals, ArtistGoal } from '../../database/schema';
 import { CreateArtistGoalDto } from './dto/create-artist-goal.dto';
@@ -11,12 +11,22 @@ export class ArtistGoalsService {
     @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
   ) {}
 
-  async list(tenantId: string) {
-    return this.db
-      .select()
-      .from(artistGoals)
-      .where(and(eq(artistGoals.tenant_id, tenantId), isNull(artistGoals.deleted_at)))
-      .orderBy(desc(artistGoals.created_at));
+  async list(tenantId: string, query: { artista_id?: string; status?: string; offset?: number; limit?: number } = {}) {
+    const conds = [eq(artistGoals.tenant_id, tenantId), isNull(artistGoals.deleted_at)];
+    if (query.artista_id) conds.push(eq(artistGoals.artista_id, query.artista_id));
+    if (query.status)     conds.push(eq(artistGoals.status, query.status));
+    const where = and(...conds);
+    const [rows, [{ value: total }]] = await Promise.all([
+      this.db.select().from(artistGoals).where(where)
+        .orderBy(desc(artistGoals.created_at))
+        .offset(query.offset ?? 0)
+        .limit(query.limit ?? 50),
+      this.db.select({ value: count() }).from(artistGoals).where(where),
+    ]);
+    return {
+      data: rows,
+      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
+    };
   }
 
   async findById(tenantId: string, id: string): Promise<ArtistGoal> {
@@ -25,7 +35,6 @@ export class ArtistGoalsService {
       .from(artistGoals)
       .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id), isNull(artistGoals.deleted_at)))
       .limit(1);
-
     if (!result) throw new NotFoundException('Meta de artista não encontrada');
     return result;
   }
@@ -48,13 +57,11 @@ export class ArtistGoalsService {
         created_by:  userId,
       })
       .returning();
-
     return created;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateArtistGoalDto): Promise<ArtistGoal> {
     await this.findById(tenantId, id);
-
     const [updated] = await this.db
       .update(artistGoals)
       .set({
@@ -71,18 +78,15 @@ export class ArtistGoalsService {
       })
       .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id), isNull(artistGoals.deleted_at)))
       .returning();
-
     return updated;
   }
 
   async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
     await this.findById(tenantId, id);
-
     await this.db
       .update(artistGoals)
       .set({ deleted_at: new Date() })
       .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id)));
-
     return { deleted: true };
   }
 }

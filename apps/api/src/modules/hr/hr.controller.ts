@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, UseGuards, ParseUUIDPipe,
 } from '@nestjs/common';
 import { ClerkAuthGuard }        from '../../core/guards/clerk-auth.guard';
 import { TenantGuard }           from '../../core/guards/tenant.guard';
@@ -20,8 +20,17 @@ export class HrController {
   // ── Employees ──────────────────────────────────────────────────────────────
 
   @Get('employees')
-  listEmployees(@CurrentTenant() tenant: { id: string }) {
-    return this.svc.listEmployees(tenant.id);
+  listEmployees(
+    @CurrentTenant() tenant: { id: string },
+    @Query('status') status?: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.listEmployees(tenant.id, {
+      status,
+      offset: offset ? +offset : undefined,
+      limit:  limit  ? +limit  : undefined,
+    });
   }
 
   @Get('employees/:id')
@@ -62,8 +71,19 @@ export class HrController {
   // ── Payroll ────────────────────────────────────────────────────────────────
 
   @Get('payroll')
-  listPayroll(@CurrentTenant() tenant: { id: string }) {
-    return this.svc.listPayroll(tenant.id);
+  listPayroll(
+    @CurrentTenant() tenant: { id: string },
+    @Query('employee_id') employee_id?: string,
+    @Query('competencia') competencia?: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.listPayroll(tenant.id, {
+      employee_id,
+      competencia,
+      offset: offset ? +offset : undefined,
+      limit:  limit  ? +limit  : undefined,
+    });
   }
 
   @Post('payroll')
@@ -77,8 +97,19 @@ export class HrController {
   // ── Leave Requests ─────────────────────────────────────────────────────────
 
   @Get('leave-requests')
-  listLeaveRequests(@CurrentTenant() tenant: { id: string }) {
-    return this.svc.listLeaveRequests(tenant.id);
+  listLeaveRequests(
+    @CurrentTenant() tenant: { id: string },
+    @Query('employee_id') employee_id?: string,
+    @Query('status') status?: string,
+    @Query('offset') offset?: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.svc.listLeaveRequests(tenant.id, {
+      employee_id,
+      status,
+      offset: offset ? +offset : undefined,
+      limit:  limit  ? +limit  : undefined,
+    });
   }
 
   @Post('leave-requests')

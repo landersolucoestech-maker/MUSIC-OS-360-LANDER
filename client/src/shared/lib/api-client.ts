@@ -71,6 +71,10 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   notas_fiscais:       "/invoices",
   lead_interactions:   "/lead-interactions",
   permissions:         "/permissions",
+  metas_artistas:      "/artist-goals",
+  relatorios_ecad:     "/ecad-reports",
+  deteccoes:           "/content-detections",
+  documentos_funcionario: "/hr/employees",
 };
 
 /**
@@ -82,12 +86,7 @@ export const TABLE_ENDPOINT: Record<string, string> = {
  * To graduate a table: implement the backend route, add it to TABLE_ENDPOINT
  * above, and remove it from this map.
  */
-export const PENDING_TABLES: Record<string, string> = {
-  metas_artistas:        "pending: artist-goals route — no backend module yet",
-  documentos_funcionario:"pending: HR-documents route — rh.controller.ts has employees/payroll/leave but not docs",
-  relatorios_ecad:       "pending: ECAD-reports route — monitoring.controller.ts has monitors/takedowns/rules but not ecad",
-  deteccoes:             "pending: content-detections route — monitoring.controller.ts has monitors/takedowns/rules but not detections",
-};
+export const PENDING_TABLES: Record<string, string> = {};
 
 // ─── Error mapping ───────────────────────────────────────────────────────────
 
