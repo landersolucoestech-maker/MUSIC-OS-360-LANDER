@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/shared/ui/badge";
 import {
   Music, Radio, Clock, Eye, Upload, Download, Plus, Search,
-  Loader2, Disc, Trash2, LayoutGrid, List, Calendar,
+  Loader2, Disc, Trash2, Calendar,
 } from "lucide-react";
 import { SiSpotify, SiApplemusic, SiYoutubemusic } from "react-icons/si";
 import { LancamentoFormModal } from "@/modules/releases/components/LancamentoFormModal";
@@ -33,26 +33,11 @@ const lancamentoColumns: CSVColumn[] = [
   { key: "observacoes", label: "Observações" },
 ];
 
-// ── Kanban ──────────────────────────────────────────────────────────────────
-const KANBAN_COLUMNS = [
-  { key: "planejado",               label: "Planejado",               colorCls: "border-muted-foreground/40", badgeCls: "bg-muted text-muted-foreground",      statuses: ["planejado", "programado"] },
-  { key: "em_producao",             label: "Em Produção",             colorCls: "border-warning/60",          badgeCls: "bg-warning text-warning-foreground",  statuses: ["em_producao", "analise"] },
-  { key: "aguardando_distribuicao", label: "Aguardando Distribuição", colorCls: "border-blue-500/50",         badgeCls: "bg-blue-600 text-white",              statuses: ["aguardando_distribuicao", "aprovado"] },
-  { key: "publicado",               label: "Publicado",               colorCls: "border-success/50",          badgeCls: "bg-success text-success-foreground",  statuses: ["publicado", "ativo"] },
-  { key: "cancelado",               label: "Cancelado",               colorCls: "border-destructive/40",      badgeCls: "bg-destructive text-destructive-foreground", statuses: ["cancelado"] },
-];
-
-function getKanbanCol(status: string | null | undefined) {
-  const s = status ?? "";
-  return KANBAN_COLUMNS.find(c => c.statuses.includes(s)) ?? KANBAN_COLUMNS[0];
-}
 
 export default function Lancamentos() {
-  const { lancamentos, isLoading, deleteLancamento, addLancamento, updateLancamento } = useLancamentos();
+  const { lancamentos, isLoading, deleteLancamento, addLancamento } = useLancamentos();
   const { artistas } = useArtistas();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [view, setView] = useState<"list" | "kanban">("list");
-  const [draggedId, setDraggedId] = useState<string | null>(null);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredReleases.length && filteredReleases.length > 0) {
@@ -162,20 +147,6 @@ export default function Lancamentos() {
     }
   };
 
-  // ── Kanban drag handlers ─────────────────────────────────────────────────
-  const handleDragStart = (id: string) => setDraggedId(id);
-  const handleDragEnd = () => setDraggedId(null);
-
-  const handleDrop = (colKey: string) => {
-    if (!draggedId) return;
-    const lancamento = lancamentos.find(l => l.id === draggedId);
-    if (!lancamento) return;
-    const currentCol = getKanbanCol(lancamento.status);
-    if (currentCol.key === colKey) return;
-    updateLancamento.mutate({ id: draggedId, status: colKey } as any);
-    setDraggedId(null);
-  };
-
   if (isLoading) {
     return (
       <MainLayout>
@@ -266,42 +237,6 @@ export default function Lancamentos() {
             <Button variant="outline" size="sm" className="text-xs text-destructive" data-testid={`button-excluir-lancamento-${release.id}`} onClick={() => setDeleteModal({ open: true, lancamento: release })}>
               Excluir
             </Button>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  };
-
-  // ── Render kanban card ──────────────────────────────────────────────────
-  const renderKanbanCard = (release: any) => {
-    const artista = getArtistaById(release.artista_id);
-    const tipoBadgeColor = release.tipo === "single" ? "bg-primary" : release.tipo === "ep" ? "bg-blue-600" : "bg-purple-600";
-    return (
-      <Card
-        key={release.id}
-        draggable
-        onDragStart={() => handleDragStart(release.id)}
-        onDragEnd={handleDragEnd}
-        data-testid={`kanban-card-${release.id}`}
-        className={`bg-card border-border cursor-grab active:cursor-grabbing select-none mb-2 ${draggedId === release.id ? "opacity-50" : ""}`}
-      >
-        <CardContent className="p-3 space-y-2">
-          <div className="flex items-start justify-between gap-2">
-            <p className="text-sm font-semibold leading-tight truncate flex-1">{release.titulo}</p>
-            <Badge className={`${tipoBadgeColor} text-white text-[9px] shrink-0 no-default-hover-elevate`}>
-              {release.tipo === "single" ? "Single" : release.tipo === "ep" ? "EP" : "Album"}
-            </Badge>
-          </div>
-          <p className="text-xs text-muted-foreground">{artista?.nome_artistico || "—"}</p>
-          {release.data_lancamento && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="h-3 w-3" />
-              {new Date(release.data_lancamento).toLocaleDateString("pt-BR")}
-            </div>
-          )}
-          <div className="flex gap-1 pt-1">
-            <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1" onClick={() => setViewModal({ open: true, lancamento: release })}>Ver</Button>
-            <Button variant="outline" size="sm" className="h-6 text-[10px] flex-1" onClick={() => setFormModal({ open: true, mode: "edit", lancamento: release })}>Editar</Button>
           </div>
         </CardContent>
       </Card>
@@ -417,33 +352,9 @@ export default function Lancamentos() {
           {hasActiveFilters && (
             <Button variant="outline" size="sm" onClick={handleClearFilters}>Limpar</Button>
           )}
-
-          {/* View toggle */}
-          <div className="ml-auto flex items-center gap-1 border border-border rounded-md p-0.5">
-            <Button
-              variant={view === "list" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2"
-              data-testid="button-view-list"
-              onClick={() => setView("list")}
-            >
-              <List className="h-4 w-4" />
-            </Button>
-            <Button
-              variant={view === "kanban" ? "secondary" : "ghost"}
-              size="sm"
-              className="h-7 px-2"
-              data-testid="button-view-kanban"
-              onClick={() => setView("kanban")}
-            >
-              <LayoutGrid className="h-4 w-4" />
-            </Button>
-          </div>
         </div>
 
-        {/* ── LIST VIEW ── */}
-        {view === "list" && (
-          <Card className="bg-card border-border">
+        <Card className="bg-card border-border">
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Lista de Lançamentos</CardTitle>
@@ -483,44 +394,6 @@ export default function Lancamentos() {
               )}
             </CardContent>
           </Card>
-        )}
-
-        {/* ── KANBAN VIEW ── */}
-        {view === "kanban" && (
-          <div>
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold">Pipeline de Lançamentos</h2>
-              <p className="text-sm text-muted-foreground">{filteredReleases.length} lançamento(s)</p>
-            </div>
-            <div className="grid grid-cols-5 gap-3 min-h-[400px]">
-              {KANBAN_COLUMNS.map(col => {
-                const colReleases = filteredReleases.filter(r => col.statuses.includes(r.status ?? ""));
-                return (
-                  <div
-                    key={col.key}
-                    data-testid={`kanban-col-${col.key}`}
-                    className={`rounded-lg border-2 ${col.colorCls} bg-muted/20 p-3 flex flex-col min-h-[400px]`}
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={() => handleDrop(col.key)}
-                  >
-                    <div className="flex items-center justify-between mb-3">
-                      <span className="text-xs font-semibold">{col.label}</span>
-                      <Badge className={`${col.badgeCls} text-[10px] h-5 px-2`}>{colReleases.length}</Badge>
-                    </div>
-                    <div className="flex-1">
-                      {colReleases.map(renderKanbanCard)}
-                      {colReleases.length === 0 && (
-                        <div className="flex items-center justify-center h-20 text-xs text-muted-foreground/50 border-2 border-dashed border-border rounded-lg">
-                          Arraste aqui
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
       </div>
 
       <LancamentoFormModal open={formModal.open} onOpenChange={(open) => setFormModal({ ...formModal, open })} lancamento={formModal.lancamento} mode={formModal.mode} />
