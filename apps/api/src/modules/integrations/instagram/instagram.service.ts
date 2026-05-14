@@ -23,9 +23,9 @@ export class InstagramService extends IntegrationBaseService {
   }
 
   getAuthUrl(tenantId: string, userId: string): string {
-    const appId      = this.config.get<string>('META_APP_ID') ?? '';
+    const appId       = this.config.get<string>('META_APP_ID')       ?? '';
     const redirectUri = this.config.get<string>('META_REDIRECT_URI') ?? '';
-    const state       = Buffer.from(JSON.stringify({ tenantId, userId, provider: PROVIDER })).toString('base64');
+    const state       = this.buildSignedState({ tenantId, userId, provider: PROVIDER });
     const params      = new URLSearchParams({
       client_id:     appId,
       redirect_uri:  redirectUri,
@@ -37,7 +37,8 @@ export class InstagramService extends IntegrationBaseService {
   }
 
   async handleCallback(code: string, state: string): Promise<void> {
-    const { tenantId, userId } = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+    const payload     = this.verifySignedState(state);
+    const { tenantId, userId } = payload;
     const appId       = this.config.get<string>('META_APP_ID')       ?? '';
     const appSecret   = this.config.get<string>('META_APP_SECRET')   ?? '';
     const redirectUri = this.config.get<string>('META_REDIRECT_URI') ?? '';
@@ -68,8 +69,9 @@ export class InstagramService extends IntegrationBaseService {
     this.logger.log(`Instagram OAuth: ${userId}@${tenantId} conectado`);
   }
 
-  async getProviderStatus(tenantId: string) {
-    return this.getStatus(tenantId, PROVIDER);
+  // Status deriva de oauth_connections — única tabela gravada pelo fluxo Instagram
+  async getProviderStatus(tenantId: string, userId: string) {
+    return this.getOAuthStatus(tenantId, userId, PROVIDER);
   }
 
   async disconnectProvider(tenantId: string, userId: string): Promise<void> {

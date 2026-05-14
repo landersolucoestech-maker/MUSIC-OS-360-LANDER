@@ -48,7 +48,7 @@ export class GoogleAdsService extends IntegrationBaseService {
   getOAuthUrl(tenantId: string, userId: string): string {
     const clientId    = this.config.get<string>('GOOGLE_ADS_CLIENT_ID')    ?? '';
     const redirectUri = this.config.get<string>('GOOGLE_ADS_REDIRECT_URI') ?? '';
-    const state       = Buffer.from(JSON.stringify({ tenantId, userId, provider: PROVIDER })).toString('base64');
+    const state       = this.buildSignedState({ tenantId, userId, provider: PROVIDER });
     const params      = new URLSearchParams({
       client_id:     clientId,
       redirect_uri:  redirectUri,
@@ -62,7 +62,8 @@ export class GoogleAdsService extends IntegrationBaseService {
   }
 
   async handleOAuthCallback(code: string, state: string): Promise<void> {
-    const { tenantId, userId } = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+    const payload      = this.verifySignedState(state);
+    const { tenantId, userId } = payload;
     const clientId     = this.config.get<string>('GOOGLE_ADS_CLIENT_ID')     ?? '';
     const clientSecret = this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET') ?? '';
     const redirectUri  = this.config.get<string>('GOOGLE_ADS_REDIRECT_URI')  ?? '';
@@ -114,9 +115,9 @@ export class GoogleAdsService extends IntegrationBaseService {
     const res = await fetch(`${GAD_API}/customers/${creds.customer_id}/googleAds:search`, {
       method:  'POST',
       headers: {
-        'Authorization':       `Bearer ${conn.accessToken}`,
-        'developer-token':     creds.developer_token,
-        'Content-Type':        'application/json',
+        'Authorization':   `Bearer ${conn.accessToken}`,
+        'developer-token': creds.developer_token,
+        'Content-Type':    'application/json',
       },
       body: JSON.stringify({ query }),
     });
@@ -124,14 +125,14 @@ export class GoogleAdsService extends IntegrationBaseService {
     if (!res.ok) return { error: `Google Ads API error: ${res.status}` };
     const d = await res.json() as any;
     return (d.results ?? []).map((r: any) => ({
-      id:           r.campaign?.id ?? '',
-      name:         r.campaign?.name ?? '',
-      status:       r.campaign?.status ?? '',
-      channelType:  r.campaign?.advertisingChannelType ?? '',
-      impressions:  r.metrics?.impressions ?? 0,
-      clicks:       r.metrics?.clicks ?? 0,
-      costMicros:   r.metrics?.costMicros ?? 0,
-      ctr:          r.metrics?.ctr ?? 0,
+      id:          r.campaign?.id ?? '',
+      name:        r.campaign?.name ?? '',
+      status:      r.campaign?.status ?? '',
+      channelType: r.campaign?.advertisingChannelType ?? '',
+      impressions: r.metrics?.impressions ?? 0,
+      clicks:      r.metrics?.clicks ?? 0,
+      costMicros:  r.metrics?.costMicros ?? 0,
+      ctr:         r.metrics?.ctr ?? 0,
     }));
   }
 }

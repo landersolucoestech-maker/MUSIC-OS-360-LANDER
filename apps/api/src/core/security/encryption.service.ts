@@ -47,6 +47,9 @@ export class EncryptionService {
     return PREFIX + payload.toString('base64');
   }
 
+  /** Expõe os bytes da chave para uso em HMAC dentro de serviços internos. */
+  getKeyBytes(): Buffer { return this.key; }
+
   decrypt(ciphertext: string): string {
     try {
       const raw     = ciphertext.startsWith(PREFIX)

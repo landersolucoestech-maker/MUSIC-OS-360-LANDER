@@ -1,5 +1,6 @@
-import { Injectable, Inject, Logger } from '@nestjs/common';
+import { Injectable, Inject, Logger, UnauthorizedException } from '@nestjs/common';
 import { eq, and }               from 'drizzle-orm';
+import * as crypto               from 'crypto';
 import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
 import { integrations, oauthConnections } from '../../database/schema';
 import { EncryptionService }     from '../../core/security/encryption.service';
@@ -139,5 +140,45 @@ export class IntegrationBaseService {
         eq(oauthConnections.user_id,   userId),
         eq(oauthConnections.provider,  provider),
       ));
+  }
+
+  // ── Status via oauth_connections (OAuth-only providers) ────────────────────
+
+  async getOAuthStatus(tenantId: string, userId: string, provider: string): Promise<{ connected: boolean }> {
+    const [conn] = await this.db.select({ id: oauthConnections.id }).from(oauthConnections)
+      .where(and(
+        eq(oauthConnections.tenant_id, tenantId),
+        eq(oauthConnections.user_id,   userId),
+        eq(oauthConnections.provider,  provider),
+      ))
+      .limit(1);
+    return { connected: !!conn };
+  }
+
+  // ── Signed OAuth state (HMAC-SHA256) ───────────────────────────────────────
+
+  buildSignedState(payload: Record<string, string>): string {
+    const json    = JSON.stringify(payload);
+    const b64     = Buffer.from(json).toString('base64url');
+    const hmacKey = this.enc.getKeyBytes();
+    const sig     = crypto.createHmac('sha256', hmacKey).update(b64).digest('base64url');
+    return `${b64}.${sig}`;
+  }
+
+  verifySignedState(state: string): Record<string, string> {
+    const dot = state.lastIndexOf('.');
+    if (dot === -1) throw new UnauthorizedException('OAuth state inválido');
+    const b64      = state.slice(0, dot);
+    const sig      = state.slice(dot + 1);
+    const hmacKey  = this.enc.getKeyBytes();
+    const expected = crypto.createHmac('sha256', hmacKey).update(b64).digest('base64url');
+    if (!crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
+      throw new UnauthorizedException('OAuth state com assinatura inválida');
+    }
+    try {
+      return JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) as Record<string, string>;
+    } catch {
+      throw new UnauthorizedException('OAuth state malformado');
+    }
   }
 }

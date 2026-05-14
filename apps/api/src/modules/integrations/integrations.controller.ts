@@ -286,7 +286,7 @@ export class IntegrationsController {
   @Get('instagram/status')
   @ApiOperation({ summary: 'Status integração Instagram' })
   instagramStatus(@Request() req: any) {
-    return this.instagram.getProviderStatus(req.tenantId);
+    return this.instagram.getProviderStatus(req.tenantId, req.userId);
   }
 
   @Get('instagram/metrics')

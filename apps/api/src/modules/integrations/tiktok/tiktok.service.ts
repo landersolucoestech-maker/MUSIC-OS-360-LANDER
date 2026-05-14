@@ -92,9 +92,9 @@ export class TikTokService extends IntegrationBaseService {
   // ── TikTok orgânico (OAuth 2.0 Login Kit) ─────────────────────────────────
 
   getOAuthUrl(tenantId: string, userId: string): string {
-    const clientKey  = this.config.get<string>('TIKTOK_CLIENT_KEY') ?? '';
+    const clientKey   = this.config.get<string>('TIKTOK_CLIENT_KEY')   ?? '';
     const redirectUri = this.config.get<string>('TIKTOK_REDIRECT_URI') ?? '';
-    const state       = Buffer.from(JSON.stringify({ tenantId, userId, provider: PROVIDER_ORG })).toString('base64');
+    const state       = this.buildSignedState({ tenantId, userId, provider: PROVIDER_ORG });
     const params      = new URLSearchParams({
       client_key:    clientKey,
       redirect_uri:  redirectUri,
@@ -106,7 +106,8 @@ export class TikTokService extends IntegrationBaseService {
   }
 
   async handleOAuthCallback(code: string, state: string): Promise<void> {
-    const { tenantId, userId } = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+    const payload      = this.verifySignedState(state);
+    const { tenantId, userId } = payload;
     const clientKey    = this.config.get<string>('TIKTOK_CLIENT_KEY')    ?? '';
     const clientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET') ?? '';
     const redirectUri  = this.config.get<string>('TIKTOK_REDIRECT_URI')  ?? '';
