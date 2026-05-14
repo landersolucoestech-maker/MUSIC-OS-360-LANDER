@@ -1,89 +1,77 @@
 /**
  * integrations/hooks/useTikTokAds.ts
  *
- * Hook de configuração para TikTok Ads Manager.
- * Credenciais OAuth armazenadas em localStorage (musicos360_ prefix).
- * Padrão: mesmo que GoogleAds/MetaAds/Clicksign.
- *
- * NOTA: Este hook é exclusivo para a plataforma de anúncios pagos (TikTok Ads).
- * Métricas orgânicas de vídeo/som ficam em useTikTok.ts (via perfil do artista).
- *
- * MIGRAÇÃO FUTURA: OAuth 2.0 com TikTok Login Kit
- * + TikTok Ads API v1.3 para campanhas, conjuntos de anúncios, criativos, relatórios.
+ * Hook para integração TikTok Ads Manager.
+ * Credenciais gerenciadas server-side (criptografadas no banco).
+ * Em MOCK_MODE retorna stubs sem chamar o backend.
  */
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-
-const STORAGE_KEY = "musicos360_tiktok_ads_credentials";
-
-interface TikTokAdsCredentials {
-  app_id: string;
-  secret: string;
-  advertiser_id?: string;
-  saved_at: string;
-}
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 export interface TikTokAdsStatus {
   connected: boolean;
-  has_credentials: boolean;
-  advertiser_id?: string;
-  saved_at?: string;
+  last_sync_at?: string | null;
 }
 
-function loadCredentials(): TikTokAdsCredentials | null {
-  try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+export interface TikTokAdsCredentials {
+  appId: string;
+  secret: string;
+  advertiserId?: string;
+  accessToken: string;
 }
 
 export function useTikTokAdsStatus() {
   return useQuery<TikTokAdsStatus>({
     queryKey: ["integrations", "tiktok-ads", "status"],
-    queryFn: (): TikTokAdsStatus => {
-      const creds = loadCredentials();
-      if (!creds) return { connected: false, has_credentials: false };
-      return {
-        connected: true,
-        has_credentials: true,
-        advertiser_id: creds.advertiser_id,
-        saved_at: creds.saved_at,
-      };
+    queryFn: async (): Promise<TikTokAdsStatus> => {
+      if (MOCK_MODE) return { connected: false, last_sync_at: null };
+      return api.get<TikTokAdsStatus>("/integrations/tiktok/ads/status");
     },
-    staleTime: 0,
+    staleTime: 30_000,
   });
 }
 
 export function useTikTokAdsSaveCredentials() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (payload: {
-      app_id: string;
-      secret: string;
-      advertiser_id?: string;
-    }) => {
-      const creds: TikTokAdsCredentials = {
-        ...payload,
-        saved_at: new Date().toISOString(),
-      };
-      sessionStorage.setItem(STORAGE_KEY, JSON.stringify(creds));
+    mutationFn: async (input: TikTokAdsCredentials) => {
+      if (MOCK_MODE) return;
+      return api.post("/integrations/tiktok/ads/configure", input);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["integrations", "tiktok-ads", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations", "tiktok-ads"] });
+      toast.success("TikTok Ads conectado com sucesso.");
     },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
 export function useTikTokAdsDeleteCredentials() {
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      sessionStorage.removeItem(STORAGE_KEY);
+      if (MOCK_MODE) return;
+      return api.delete("/integrations/tiktok/ads/disconnect");
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["integrations", "tiktok-ads", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations", "tiktok-ads"] });
+      toast.success("TikTok Ads desconectado.");
     },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+export function useTikTokAdsCampaigns() {
+  return useQuery({
+    queryKey: ["integrations", "tiktok-ads", "campaigns"],
+    queryFn: async () => {
+      if (MOCK_MODE) return [];
+      return api.get("/integrations/tiktok/ads/campaigns");
+    },
+    enabled: !MOCK_MODE,
+    staleTime: 60_000,
   });
 }

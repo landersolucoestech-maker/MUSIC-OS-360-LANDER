@@ -1,70 +1,82 @@
 /**
  * integrations/hooks/useInstagram.ts
  *
- * Hook stub para integração Instagram Insights (Graph API).
- *
- * ESTADO ACTUAL: standalone — métricas são MOCK_DATA.
- * MIGRAÇÃO FUTURA:
- *   1. OAuth 2.0 com Facebook Login (scope: instagram_basic, instagram_manage_insights)
- *   2. Instagram Graph API para métricas de Reels, Stories, alcance
- *   3. Compartilha credenciais com Meta Ads (mesmo token de acesso)
- *
- * Nota: Meta Ads já tem hook próprio em marketing/hooks/useMetaAds.ts.
- * Este hook cobre apenas métricas orgânicas do Instagram (Insights).
- *
- * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider
+ * Hook para integração Instagram Insights (Meta Graph API).
+ * Fluxo OAuth 2.0 via popup → backend gerencia tokens.
+ * Em MOCK_MODE retorna stubs sem chamar o backend.
  */
 
-import { useQuery } from "@tanstack/react-query";
-import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
-import { disabledIntegration } from "@/shared/lib/disabled-integration";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
 
-// ─── Tipos específicos do Instagram ───────────────────────────────────────────
-
-export interface InstagramStatus extends IntegrationRuntimeStatus {
-  integration_id: "instagram";
-  instagram_account_id?: string | null;
-  facebook_page_id?: string | null;
-  username?: string | null;
-  oauth_scope?: string | null;
-  token_expires_at?: string | null;
+export interface InstagramStatus {
+  connected: boolean;
+  last_sync_at?: string | null;
 }
 
-// ─── Hook de status ───────────────────────────────────────────────────────────
+export interface InstagramAccountMetrics {
+  instagramId?: string;
+  username?: string;
+  name?: string;
+  followers?: number;
+  following?: number;
+  mediaCount?: number;
+  profilePicture?: string;
+  syncedAt?: string;
+  error?: string;
+}
 
 export function useInstagramStatus() {
   return useQuery<InstagramStatus>({
     queryKey: ["integrations", "instagram", "status"],
-    queryFn: async (): Promise<InstagramStatus> => ({
-      integration_id: "instagram",
-      status: "disabled",
-      connected: false,
-      instagram_account_id: null,
-      facebook_page_id: null,
-      username: null,
-      oauth_scope: null,
-      token_expires_at: null,
-      last_error: null,
-      last_checked_at: new Date().toISOString(),
-    }),
-    staleTime: Infinity,
+    queryFn: async (): Promise<InstagramStatus> => {
+      if (MOCK_MODE) return { connected: false, last_sync_at: null };
+      return api.get<InstagramStatus>("/integrations/instagram/status");
+    },
+    staleTime: 30_000,
   });
 }
 
-// ─── Stubs desabilitados ──────────────────────────────────────────────────────
-
-export function useInstagramAccountMetrics() {
+export function useInstagramConnect() {
   return {
-    data: null,
-    isLoading: false,
-    fetch: () => disabledIntegration("Instagram Insights"),
+    connect: async () => {
+      if (MOCK_MODE) { toast.info("Modo mock — OAuth Instagram desabilitado."); return; }
+      const { url } = await api.get<{ url: string }>("/integrations/instagram/auth");
+      const popup = window.open(url, "instagram_oauth", "width=600,height=700");
+      if (!popup) toast.error("Popup bloqueado. Permita popups para este site.");
+    },
   };
 }
 
+export function useInstagramAccountMetrics() {
+  return useQuery<InstagramAccountMetrics | null>({
+    queryKey: ["integrations", "instagram", "metrics"],
+    queryFn: async () => {
+      if (MOCK_MODE) return null;
+      return api.get<InstagramAccountMetrics>("/integrations/instagram/metrics");
+    },
+    enabled: !MOCK_MODE,
+    staleTime: 60_000,
+  });
+}
+
+export function useInstagramDisconnect() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      if (MOCK_MODE) return;
+      return api.delete("/integrations/instagram/disconnect");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "instagram"] });
+      toast.success("Instagram desconectado.");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
 export function useInstagramReelsMetrics() {
-  return {
-    data: null,
-    isLoading: false,
-    fetch: () => disabledIntegration("Instagram Insights"),
-  };
+  return { data: null, isLoading: false, fetch: () => {} };
 }

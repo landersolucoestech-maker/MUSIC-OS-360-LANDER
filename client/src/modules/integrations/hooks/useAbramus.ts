@@ -3,6 +3,8 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { mockAbramusProvider } from "@/modules/integrations/providers/mock/mock-rights.provider";
+import { api } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
 import type {
   RegisterObraInput,
   RegisterFonogramaInput,
@@ -12,12 +14,11 @@ import type {
   GenerateISWCResult,
   GenerateISRCInput,
   GenerateISRCResult,
-  ArtistSearchQuery,
   ArtistSearchResult,
 } from "@/modules/integrations/dto";
 
-// ─── Storage helpers ──────────────────────────────────────────────────────────
-const CRED_KEY = "musicos360_abramus_credentials";
+// ─── Storage helpers (MOCK_MODE only) ─────────────────────────────────────────
+const CRED_KEY  = "musicos360_abramus_credentials";
 const SCHED_KEY = "musicos360_abramus_schedule";
 
 interface StoredCreds {
@@ -27,6 +28,7 @@ interface StoredCreds {
 }
 
 function readCreds(): StoredCreds | null {
+  if (!MOCK_MODE) return null;
   try { return JSON.parse(sessionStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
 }
 function writeCreds(c: StoredCreds) {
@@ -107,11 +109,8 @@ export interface AbramusLocalMatch {
 }
 
 // ─── Mock ABRAMUS database ────────────────────────────────────────────────────
-// Inclui registros que existem no MOCK_DATA (com cod_abramus) + novos
-// registros exclusivos do banco ABRAMUS que ainda não foram importados.
 
 const ABRAMUS_OBRAS: AbramusSearchResult[] = [
-  // Registros espelhados do MOCK_DATA (já importados)
   { external_id: "ABR-001-2025", titulo: "Noite de Luz", iswc: "T-123.456.789-0", genero: "Pop", compositores: ["Vitória Carvalho", "Lucas Mendes"], artista_nome: "Vitória Lunar", duracao: "3:42", data_registro: "2025-01-10" },
   { external_id: "ABR-002-2025", titulo: "Beira do Rio", iswc: "T-234.567.890-1", genero: "Forró", compositores: ["Grupo Raiz Nordestina"], artista_nome: "Grupo Raiz Nordestina", duracao: "4:15", data_registro: "2025-01-12" },
   { external_id: "ABR-003-2025", titulo: "Frequência 440", iswc: "T-345.678.901-2", genero: "Eletrônico", compositores: ["Marcus Oliveira"], artista_nome: "DJ Marcus Flow", duracao: "5:30", data_registro: "2025-01-15" },
@@ -131,7 +130,6 @@ const ABRAMUS_OBRAS: AbramusSearchResult[] = [
   { external_id: "ABR-018-2025", titulo: "Estrela do Sul", iswc: "T-812.345.678-7", genero: "MPB", compositores: ["Vitória Carvalho", "Trio Bossa Moderna"], artista_nome: "Vitória Lunar", duracao: "4:40", data_registro: "2025-04-05" },
   { external_id: "ABR-019-2025", titulo: "Ritmo da Favela", iswc: "T-912.345.678-8", genero: "Funk", compositores: ["Pedro Alves", "Renan Costa Pereira"], artista_nome: "Pedro Breaks", duracao: "3:22", data_registro: "2025-04-10" },
   { external_id: "ABR-020-2025", titulo: "Chuva de Julho", iswc: "T-022.345.678-9", genero: "Sertanejo", compositores: ["Ana Beatriz Santos"], artista_nome: "Ana Beatriz Santos", duracao: "4:05", data_registro: "2025-04-14" },
-  // Registros EXCLUSIVOS do banco ABRAMUS (ainda não importados)
   { external_id: "ABR-101-2025", titulo: "Lua Cheia", iswc: "T-101.001.001-0", genero: "Pop", compositores: ["Vitória Carvalho"], artista_nome: "Vitória Lunar", duracao: "3:50", data_registro: "2025-05-02" },
   { external_id: "ABR-102-2025", titulo: "Reza Forte", iswc: "T-102.001.001-0", genero: "Forró", compositores: ["Grupo Raiz Nordestina"], artista_nome: "Grupo Raiz Nordestina", duracao: "4:10", data_registro: "2025-05-05" },
   { external_id: "ABR-103-2025", titulo: "Bass Drop 2026", iswc: "T-103.001.001-0", genero: "Eletrônico", compositores: ["Marcus Oliveira"], artista_nome: "DJ Marcus Flow", duracao: "5:55", data_registro: "2025-05-08" },
@@ -145,7 +143,6 @@ const ABRAMUS_OBRAS: AbramusSearchResult[] = [
 ];
 
 const ABRAMUS_FONOGRAMAS: AbramusSearchResult[] = [
-  // Registros espelhados do MOCK_DATA
   { external_id: "ABR-001-2025", titulo: "Noite de Luz", isrc: "BRMSC2500001", genero: "Pop", compositores: ["Vitória Carvalho", "Lucas Mendes"], gravadora: "MusicOS 360", produtores: ["Rafael Santana"], artista_nome: "Vitória Lunar", duracao: "3:42", data_registro: "2025-01-10" },
   { external_id: "ABR-002-2025", titulo: "Beira do Rio", isrc: "BRMSC2500002", genero: "Forró", compositores: ["Grupo Raiz Nordestina"], gravadora: "MusicOS 360", produtores: ["Rafael Santana"], artista_nome: "Grupo Raiz Nordestina", duracao: "4:15", data_registro: "2025-01-12" },
   { external_id: "ABR-003-2025", titulo: "Frequência 440", isrc: "BRMSC2500003", genero: "Eletrônico", compositores: ["Marcus Oliveira"], gravadora: "Marcus Flow Music", produtores: ["Marcus Oliveira"], artista_nome: "DJ Marcus Flow", duracao: "5:30", data_registro: "2025-01-15" },
@@ -159,7 +156,6 @@ const ABRAMUS_FONOGRAMAS: AbramusSearchResult[] = [
   { external_id: "ABR-015-2025", titulo: "Voo Livre", isrc: "BRMSC2500015", genero: "MPB", compositores: ["Trio Bossa Moderna"], gravadora: "Sony Music", produtores: ["Rafael Santana"], artista_nome: "Trio Bossa Moderna", duracao: "5:08", data_registro: "2025-03-18" },
   { external_id: "ABR-017-2025", titulo: "Baião Moderno", isrc: "BRMSC2500017", genero: "Forró", compositores: ["Grupo Raiz Nordestina"], gravadora: "MusicOS 360", produtores: ["Rafael Santana"], artista_nome: "Grupo Raiz Nordestina", duracao: "3:55", data_registro: "2025-04-01" },
   { external_id: "ABR-019-2025", titulo: "Ritmo da Favela", isrc: "BRMSC2500019", genero: "Funk", compositores: ["Pedro Alves", "Renan Costa Pereira"], gravadora: "MusicOS 360", produtores: ["Pedro Alves"], artista_nome: "Pedro Breaks", duracao: "3:22", data_registro: "2025-04-10" },
-  // Registros EXCLUSIVOS do banco ABRAMUS (ainda não importados)
   { external_id: "ABR-F-101", titulo: "Lua Cheia", isrc: "BRMSC2600001", genero: "Pop", compositores: ["Vitória Carvalho"], gravadora: "MusicOS 360", produtores: ["Rafael Santana"], artista_nome: "Vitória Lunar", duracao: "3:50", data_registro: "2025-05-02" },
   { external_id: "ABR-F-102", titulo: "Reza Forte", isrc: "BRMSC2600002", genero: "Forró", compositores: ["Grupo Raiz Nordestina"], gravadora: "MusicOS 360", produtores: ["Rafael Santana"], artista_nome: "Grupo Raiz Nordestina", duracao: "4:10", data_registro: "2025-05-05" },
   { external_id: "ABR-F-103", titulo: "Bass Drop 2026", isrc: "BRMSC2600003", genero: "Eletrônico", compositores: ["Marcus Oliveira"], gravadora: "Marcus Flow Music", produtores: ["Marcus Oliveira"], artista_nome: "DJ Marcus Flow", duracao: "5:55", data_registro: "2025-05-08" },
@@ -178,13 +174,8 @@ function searchAbramus(db: AbramusSearchResult[], query: string): AbramusSearchR
   if (q.length < 2) return [];
   return db.filter((r) => {
     const haystack = [
-      r.titulo,
-      r.artista_nome,
-      r.genero,
-      r.iswc,
-      r.isrc,
-      ...(r.compositores ?? []),
-      ...(r.produtores ?? []),
+      r.titulo, r.artista_nome, r.genero, r.iswc, r.isrc,
+      ...(r.compositores ?? []), ...(r.produtores ?? []),
     ].filter(Boolean).join(" ").toLowerCase();
     return haystack.includes(q);
   });
@@ -196,47 +187,32 @@ function buildLocalMap(kind: AbramusKind, externalIds: string[]): Map<string, Ab
   const rows = (MOCK_DATA[table] ?? []) as Array<Record<string, unknown>>;
   const map = new Map<string, AbramusLocalMatch>();
   for (const id of externalIds) {
-    const match = rows.find(
-      (r) => r.cod_abramus === id || r.origem_externa_id === id,
-    );
-    if (match) {
-      map.set(id, { id: match.id as string, titulo: match.titulo as string });
-    }
+    const match = rows.find((r) => r.cod_abramus === id || r.origem_externa_id === id);
+    if (match) map.set(id, { id: match.id as string, titulo: match.titulo as string });
   }
   return map;
 }
 
 // ─── Import helper ────────────────────────────────────────────────────────────
 function importRecord(kind: AbramusKind, external_id: string, record: AbramusSearchResult): Record<string, unknown> {
-  const now = new Date().toISOString();
+  const now    = new Date().toISOString();
   const baseId = `mock-abr-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
   if (kind === "obras") {
     const newObra: Record<string, unknown> = {
-      id: baseId,
-      user_id: MOCK_USER_ID,
-      titulo: record.titulo,
+      id: baseId, user_id: MOCK_USER_ID, titulo: record.titulo,
       compositor: record.compositores?.[0] ?? null,
       compositores: record.compositores?.join(", ") ?? null,
       co_compositores: record.compositores?.slice(1).join(", ") ?? null,
       letristas: record.letristas?.join(", ") ?? null,
-      detentores: "MusicOS Publishing",
-      editora: "MusicOS Publishing",
-      isrc: record.isrc ?? null,
-      iswc: record.iswc ?? null,
-      cod_abramus: external_id,
-      cod_ecad: null,
-      tipo: "musica",
-      genero: record.genero ?? null,
-      status: "registrado",
+      detentores: "MusicOS Publishing", editora: "MusicOS Publishing",
+      isrc: record.isrc ?? null, iswc: record.iswc ?? null,
+      cod_abramus: external_id, cod_ecad: null,
+      tipo: "musica", genero: record.genero ?? null, status: "registrado",
       duracao: record.duracao ?? null,
-      origem_externa: "abramus",
-      origem_externa_id: external_id,
+      origem_externa: "abramus", origem_externa_id: external_id,
       origem_externa_sincronizado_em: now,
-      projeto_id: null,
-      artista_id: null,
-      created_at: now,
-      updated_at: now,
+      projeto_id: null, artista_id: null, created_at: now, updated_at: now,
     };
     const arr = (MOCK_DATA["obras"] ?? (MOCK_DATA["obras"] = [])) as Record<string, unknown>[];
     arr.unshift(newObra);
@@ -244,28 +220,19 @@ function importRecord(kind: AbramusKind, external_id: string, record: AbramusSea
     return newObra;
   } else {
     const newFono: Record<string, unknown> = {
-      id: baseId,
-      user_id: MOCK_USER_ID,
-      titulo: record.titulo,
-      obra_id: null,
-      artista_id: null,
-      isrc: record.isrc ?? null,
-      duracao: record.duracao ?? null,
-      tipo: "original",
-      status: "registrado",
+      id: baseId, user_id: MOCK_USER_ID, titulo: record.titulo,
+      obra_id: null, artista_id: null,
+      isrc: record.isrc ?? null, duracao: record.duracao ?? null,
+      tipo: "original", status: "registrado",
       compositores: record.compositores?.join(", ") ?? null,
       interpretes: record.artista_nome ?? null,
       produtores: record.produtores?.join(", ") ?? null,
       gravadora: record.gravadora ?? "MusicOS 360",
-      cod_abramus: external_id,
-      cod_ecad: null,
+      cod_abramus: external_id, cod_ecad: null,
       genero_musical: record.genero ?? null,
-      origem_externa: "abramus",
-      origem_externa_id: external_id,
+      origem_externa: "abramus", origem_externa_id: external_id,
       origem_externa_sincronizado_em: now,
-      data_registro: record.data_registro ?? null,
-      created_at: now,
-      updated_at: now,
+      data_registro: record.data_registro ?? null, created_at: now, updated_at: now,
     };
     const arr = (MOCK_DATA["fonogramas"] ?? (MOCK_DATA["fonogramas"] = [])) as Record<string, unknown>[];
     arr.unshift(newFono);
@@ -280,23 +247,19 @@ export function useAbramusStatus() {
   return useQuery<AbramusStatus>({
     queryKey: ["abramus", "status"],
     queryFn: async () => {
-      const creds = readCreds();
-      if (!creds) {
-        return { connected: false, status: "disconnected", sync_schedule: readSchedule() };
+      if (!MOCK_MODE) {
+        return api.get<AbramusStatus>("/integrations/abramus/status");
       }
+      const creds = readCreds();
+      if (!creds) return { connected: false, status: "disconnected", sync_schedule: readSchedule() };
       return {
-        connected: true,
-        status: "ok",
-        username: creds.username,
-        base_url: creds.base_url ?? null,
-        last_error: null,
-        last_sync_at: null,
-        last_sync_summary: null,
-        sync_schedule: readSchedule(),
-        next_sync_at: null,
+        connected: true, status: "ok",
+        username: creds.username, base_url: creds.base_url ?? null,
+        last_error: null, last_sync_at: null, last_sync_summary: null,
+        sync_schedule: readSchedule(), next_sync_at: null,
       };
     },
-    staleTime: Infinity,
+    staleTime: MOCK_MODE ? Infinity : 30_000,
   });
 }
 
@@ -307,6 +270,13 @@ export function useAbramusSaveCredentials() {
       if (!input.username.trim() || !input.password.trim()) {
         throw new Error("Usuário e senha são obrigatórios.");
       }
+      if (!MOCK_MODE) {
+        return api.post("/integrations/abramus/configure", {
+          username: input.username.trim(),
+          password: input.password,
+          baseUrl:  input.base_url?.trim() ?? "",
+        });
+      }
       writeCreds({ username: input.username.trim(), base_url: input.base_url?.trim(), saved_at: new Date().toISOString() });
       return { ok: true };
     },
@@ -314,9 +284,7 @@ export function useAbramusSaveCredentials() {
       queryClient.invalidateQueries({ queryKey: ["abramus", "status"] });
       toast.success("Credenciais ABRAMUS salvas. Conectado com sucesso.");
     },
-    onError: (err: Error) => {
-      toast.error(err.message);
-    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -324,6 +292,9 @@ export function useAbramusDeleteCredentials() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      if (!MOCK_MODE) {
+        return api.delete("/integrations/abramus/disconnect");
+      }
       clearCreds();
       return { ok: true };
     },
@@ -331,9 +302,7 @@ export function useAbramusDeleteCredentials() {
       queryClient.invalidateQueries({ queryKey: ["abramus", "status"] });
       toast.success("Integração ABRAMUS desconectada.");
     },
-    onError: (err: Error) => {
-      toast.error(err.message);
-    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -342,13 +311,36 @@ export function useAbramusSearch(kind: AbramusKind, query: string) {
   return useQuery<AbramusSearchResponse>({
     queryKey: ["abramus", "search", kind, trimmed],
     queryFn: async () => {
-      const creds = readCreds();
-      if (!creds) {
-        return { results: [], error: "not_configured" };
+      if (MOCK_MODE) {
+        const creds = readCreds();
+        if (!creds) return { results: [], error: "not_configured" };
+        const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
+        const results = searchAbramus(db, trimmed);
+        return { results, total: results.length, has_more: false };
       }
-      const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
-      const results = searchAbramus(db, trimmed);
-      return { results, total: results.length, has_more: false };
+      return api.get<AbramusSearchResponse>(
+        `/integrations/abramus/search-${kind === "obras" ? "work" : "work"}?q=${encodeURIComponent(trimmed)}`,
+      );
+    },
+    enabled: trimmed.length >= 2,
+    staleTime: 30_000,
+  });
+}
+
+export function useAbramusSearchArtists(query: string) {
+  const trimmed = query.trim();
+  return useQuery<ArtistSearchResult[]>({
+    queryKey: ["abramus", "search-artists", trimmed],
+    queryFn: async () => {
+      if (!MOCK_MODE) {
+        const res = await api.get<{ results?: ArtistSearchResult[] }>(
+          `/integrations/abramus/search-artist?q=${encodeURIComponent(trimmed)}&limit=10`,
+        );
+        return res?.results ?? (res as unknown as ArtistSearchResult[]) ?? [];
+      }
+      const creds = readCreds();
+      if (!creds) return [];
+      return mockAbramusProvider.searchArtists({ query: trimmed, limit: 10 });
     },
     enabled: trimmed.length >= 2,
     staleTime: 30_000,
@@ -359,18 +351,15 @@ export function useAbramusImport(kind: AbramusKind) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: { external_id: string; record?: AbramusSearchResult }): Promise<{ record?: AbramusSearchResult }> => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
 
       const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
       const rec = input.record ?? db.find((r) => r.external_id === input.external_id);
       if (!rec) throw new Error(`Registro ${input.external_id} não encontrado no banco ABRAMUS.`);
 
-      // Verifica se já existe localmente
       const existing = buildLocalMap(kind, [input.external_id]).get(input.external_id);
-      if (existing) {
-        return { record: rec };
-      }
+      if (existing) return { record: rec };
 
       importRecord(kind, input.external_id, rec);
       return { record: rec };
@@ -381,13 +370,11 @@ export function useAbramusImport(kind: AbramusKind) {
       queryClient.invalidateQueries({ queryKey: ["abramus", "local-lookup"] });
       toast.success(
         kind === "obras"
-          ? `Obra importada do ABRAMUS com sucesso.`
-          : `Fonograma importado do ABRAMUS com sucesso.`,
+          ? "Obra importada do ABRAMUS com sucesso."
+          : "Fonograma importado do ABRAMUS com sucesso.",
       );
     },
-    onError: (err: Error) => {
-      toast.error(err.message);
-    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -395,49 +382,38 @@ export function useAbramusSyncAll() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (_input?: { kinds?: AbramusKind[] }): Promise<AbramusSyncSummary> => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
 
       const kinds: AbramusKind[] = _input?.kinds ?? ["obras", "fonogramas"];
       const started_at = new Date().toISOString();
 
       const summary: AbramusSyncSummary = {
-        started_at,
-        finished_at: started_at,
-        duration_ms: 0,
-        obras: { fetched: 0, inserted: 0, updated: 0, errors: 0 },
+        started_at, finished_at: started_at, duration_ms: 0,
+        obras:      { fetched: 0, inserted: 0, updated: 0, errors: 0 },
         fonogramas: { fetched: 0, inserted: 0, updated: 0, errors: 0 },
-        total_fetched: 0,
-        total_inserted: 0,
-        total_updated: 0,
-        total_errors: 0,
+        total_fetched: 0, total_inserted: 0, total_updated: 0, total_errors: 0,
       };
 
       for (const kind of kinds) {
-        const db = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
+        const db  = kind === "obras" ? ABRAMUS_OBRAS : ABRAMUS_FONOGRAMAS;
         const cat = summary[kind];
         cat.fetched = db.length;
         for (const rec of db) {
           try {
             const existing = buildLocalMap(kind, [rec.external_id]).get(rec.external_id);
-            if (!existing) {
-              importRecord(kind, rec.external_id, rec);
-              cat.inserted++;
-            } else {
-              cat.updated++;
-            }
-          } catch {
-            cat.errors++;
-          }
+            if (!existing) { importRecord(kind, rec.external_id, rec); cat.inserted++; }
+            else cat.updated++;
+          } catch { cat.errors++; }
         }
       }
 
-      summary.finished_at = new Date().toISOString();
-      summary.duration_ms = new Date(summary.finished_at).getTime() - new Date(started_at).getTime();
-      summary.total_fetched = summary.obras.fetched + summary.fonogramas.fetched;
+      summary.finished_at    = new Date().toISOString();
+      summary.duration_ms    = new Date(summary.finished_at).getTime() - new Date(started_at).getTime();
+      summary.total_fetched  = summary.obras.fetched  + summary.fonogramas.fetched;
       summary.total_inserted = summary.obras.inserted + summary.fonogramas.inserted;
-      summary.total_updated = summary.obras.updated + summary.fonogramas.updated;
-      summary.total_errors = summary.obras.errors + summary.fonogramas.errors;
+      summary.total_updated  = summary.obras.updated  + summary.fonogramas.updated;
+      summary.total_errors   = summary.obras.errors   + summary.fonogramas.errors;
 
       return summary;
     },
@@ -445,13 +421,9 @@ export function useAbramusSyncAll() {
       queryClient.invalidateQueries({ queryKey: ["obras"] });
       queryClient.invalidateQueries({ queryKey: ["fonogramas"] });
       queryClient.invalidateQueries({ queryKey: ["abramus", "local-lookup"] });
-      toast.success(
-        `Sincronização concluída: ${data.total_inserted} novos, ${data.total_updated} já existentes.`,
-      );
+      toast.success(`Sincronização concluída: ${data.total_inserted} novos, ${data.total_updated} já existentes.`);
     },
-    onError: (err: Error) => {
-      toast.error(err.message);
-    },
+    onError: (err: Error) => toast.error(err.message),
   });
 }
 
@@ -460,7 +432,6 @@ export function useAbramusLocalLookup(kind: AbramusKind, externalIds: string[]) 
     () => Array.from(new Set(externalIds.filter((id) => typeof id === "string" && id.length > 0))).sort(),
     [externalIds],
   );
-
   return useQuery<Map<string, AbramusLocalMatch>>({
     queryKey: ["abramus", "local-lookup", kind, ids],
     queryFn: async () => buildLocalMap(kind, ids),
@@ -476,38 +447,16 @@ export function useAbramusSetSchedule() {
       writeSchedule(schedule);
       return { ok: true };
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["abramus", "status"] });
-    },
-    onError: (err: Error) => {
-      toast.error(err.message);
-    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["abramus", "status"] }),
+    onError:   (err: Error) => toast.error(err.message),
   });
 }
-
-// ─── Pesquisa de artistas ─────────────────────────────────────────────────────
-
-export function useAbramusSearchArtists(query: string) {
-  const trimmed = query.trim();
-  return useQuery<ArtistSearchResult[]>({
-    queryKey: ["abramus", "search-artists", trimmed],
-    queryFn: async () => {
-      const creds = readCreds();
-      if (!creds) return [];
-      return mockAbramusProvider.searchArtists({ query: trimmed, limit: 10 });
-    },
-    enabled: trimmed.length >= 2,
-    staleTime: 30_000,
-  });
-}
-
-// ─── Histórico de registro ────────────────────────────────────────────────────
 
 export function useAbramusRegistrationHistory(kind: AbramusKind, localId: string) {
   return useQuery<RegistrationHistoryEntry[]>({
     queryKey: ["abramus", "registration-history", kind, localId],
     queryFn: async () => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) return [];
       const rightsKind = kind === "obras" ? "obra" : "fonograma";
       return mockAbramusProvider.getRegistrationHistory(rightsKind, localId);
@@ -517,20 +466,17 @@ export function useAbramusRegistrationHistory(kind: AbramusKind, localId: string
   });
 }
 
-// ─── Registro de obras ────────────────────────────────────────────────────────
-
 export function useAbramusRegisterObra() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterObraInput>({
     mutationFn: async (input) => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.registerObra(input);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["obras"] });
       queryClient.invalidateQueries({ queryKey: ["abramus", "registration-history"] });
-      // Atualiza a obra local com o ISWC gerado
       if (data.iswc) {
         const obras = (MOCK_DATA["obras"] ?? []) as Array<Record<string, unknown>>;
         const idx = obras.findIndex((o) => o.id === data.local_id);
@@ -541,26 +487,21 @@ export function useAbramusRegisterObra() {
       }
       toast.success(`Obra registrada na ABRAMUS. Código: ${data.code}${data.iswc ? ` | ISWC: ${data.iswc}` : ""}`);
     },
-    onError: (err) => {
-      toast.error(`Erro ao registrar obra: ${err.message}`);
-    },
+    onError: (err) => toast.error(`Erro ao registrar obra: ${err.message}`),
   });
 }
-
-// ─── Registro de fonogramas ───────────────────────────────────────────────────
 
 export function useAbramusRegisterFonograma() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterFonogramaInput>({
     mutationFn: async (input) => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.registerFonograma(input);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["fonogramas"] });
       queryClient.invalidateQueries({ queryKey: ["abramus", "registration-history"] });
-      // Atualiza o fonograma local com o ISRC gerado
       if (data.isrc) {
         const fonogramas = (MOCK_DATA["fonogramas"] ?? []) as Array<Record<string, unknown>>;
         const idx = fonogramas.findIndex((f) => f.id === data.local_id);
@@ -571,64 +512,46 @@ export function useAbramusRegisterFonograma() {
       }
       toast.success(`Fonograma registrado na ABRAMUS. Código: ${data.code}${data.isrc ? ` | ISRC: ${data.isrc}` : ""}`);
     },
-    onError: (err) => {
-      toast.error(`Erro ao registrar fonograma: ${err.message}`);
-    },
+    onError: (err) => toast.error(`Erro ao registrar fonograma: ${err.message}`),
   });
 }
-
-// ─── Geração de ISWC ─────────────────────────────────────────────────────────
 
 export function useAbramusGenerateISWC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISWCResult, Error, GenerateISWCInput>({
     mutationFn: async (input) => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISWC(input);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["obras"] });
-      // Atualiza a obra local com o ISWC
       const obras = (MOCK_DATA["obras"] ?? []) as Array<Record<string, unknown>>;
       const idx = obras.findIndex((o) => o.id === data.local_obra_id);
-      if (idx >= 0) {
-        obras[idx] = { ...obras[idx], iswc: data.iswc };
-        saveMockData();
-      }
-      const sourceLabel = data.source === "existing" ? "ISWC existente confirmado" : "ISWC gerado";
-      toast.success(`${sourceLabel}: ${data.iswc}`);
+      if (idx >= 0) { obras[idx] = { ...obras[idx], iswc: data.iswc }; saveMockData(); }
+      const label = data.source === "existing" ? "ISWC existente confirmado" : "ISWC gerado";
+      toast.success(`${label}: ${data.iswc}`);
     },
-    onError: (err) => {
-      toast.error(`Erro ao gerar ISWC: ${err.message}`);
-    },
+    onError: (err) => toast.error(`Erro ao gerar ISWC: ${err.message}`),
   });
 }
-
-// ─── Geração de ISRC ─────────────────────────────────────────────────────────
 
 export function useAbramusGenerateISRC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISRCResult, Error, GenerateISRCInput>({
     mutationFn: async (input) => {
-      const creds = readCreds();
+      const creds = MOCK_MODE ? readCreds() : { username: "backend" };
       if (!creds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISRC(input);
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["fonogramas"] });
-      // Atualiza o fonograma local com o ISRC
       const fonogramas = (MOCK_DATA["fonogramas"] ?? []) as Array<Record<string, unknown>>;
       const idx = fonogramas.findIndex((f) => f.id === data.local_fonograma_id);
-      if (idx >= 0) {
-        fonogramas[idx] = { ...fonogramas[idx], isrc: data.isrc };
-        saveMockData();
-      }
-      const sourceLabel = data.source === "existing" ? "ISRC existente confirmado" : "ISRC gerado";
-      toast.success(`${sourceLabel}: ${data.isrc}`);
+      if (idx >= 0) { fonogramas[idx] = { ...fonogramas[idx], isrc: data.isrc }; saveMockData(); }
+      const label = data.source === "existing" ? "ISRC existente confirmado" : "ISRC gerado";
+      toast.success(`${label}: ${data.isrc}`);
     },
-    onError: (err) => {
-      toast.error(`Erro ao gerar ISRC: ${err.message}`);
-    },
+    onError: (err) => toast.error(`Erro ao gerar ISRC: ${err.message}`),
   });
 }

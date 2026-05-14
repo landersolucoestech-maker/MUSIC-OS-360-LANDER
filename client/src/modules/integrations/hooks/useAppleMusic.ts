@@ -2,78 +2,34 @@
  * integrations/hooks/useAppleMusic.ts
  *
  * Hook para integração Apple Music for Artists.
- *
- * ESTADO ACTUAL: standalone — credenciais persistidas em localStorage.
- * MIGRAÇÃO FUTURA:
- *   1. Autenticação via MusicKit JS + Apple Developer token (JWT)
- *   2. Apple Music for Artists API para streams, Shazams e playlists editoriais
- *   3. Apple Music API para metadados de catálogo
- *
- * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider
+ * Credenciais gerenciadas server-side (criptografadas no banco).
+ * Em MOCK_MODE retorna stubs sem chamar o backend.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { disabledIntegration } from "@/shared/lib/disabled-integration";
-
-const LS_KEY = "musicos360_apple_music_credentials";
-
-export interface AppleMusicCredentials {
-  team_id: string;
-  key_id: string;
-  private_key: string;
-  artist_id?: string;
-}
+import { api } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 export interface AppleMusicStatus {
   connected: boolean;
-  status: string;
-  has_credentials: boolean;
-  artist_id?: string | null;
-  team_id?: string | null;
-  key_id?: string | null;
-  last_error?: string | null;
-  last_checked_at: string;
+  last_sync_at?: string | null;
 }
 
-function readCredentials(): AppleMusicCredentials | null {
-  try {
-    const raw = sessionStorage.getItem(LS_KEY);
-    return raw ? JSON.parse(raw) : null;
-  } catch {
-    return null;
-  }
+export interface AppleMusicCredentials {
+  teamId: string;
+  keyId: string;
+  privateKey: string;
 }
 
 export function useAppleMusicStatus() {
   return useQuery<AppleMusicStatus>({
     queryKey: ["integrations", "apple-music", "status"],
     queryFn: async (): Promise<AppleMusicStatus> => {
-      const creds = readCredentials();
-      if (creds?.team_id && creds?.key_id && creds?.private_key) {
-        return {
-          connected: true,
-          status: "connected",
-          has_credentials: true,
-          artist_id: creds.artist_id ?? null,
-          team_id: creds.team_id,
-          key_id: creds.key_id,
-          last_error: null,
-          last_checked_at: new Date().toISOString(),
-        };
-      }
-      return {
-        connected: false,
-        status: "disconnected",
-        has_credentials: false,
-        artist_id: null,
-        team_id: null,
-        key_id: null,
-        last_error: null,
-        last_checked_at: new Date().toISOString(),
-      };
+      if (MOCK_MODE) return { connected: false, last_sync_at: null };
+      return api.get<AppleMusicStatus>("/integrations/apple-music/status");
     },
-    staleTime: 0,
+    staleTime: 30_000,
   });
 }
 
@@ -81,15 +37,11 @@ export function useAppleMusicSaveCredentials() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: AppleMusicCredentials) => {
-      try {
-        sessionStorage.setItem(LS_KEY, JSON.stringify(input));
-      } catch {
-        throw new Error("Não foi possível salvar as credenciais.");
-      }
-      return input;
+      if (MOCK_MODE) return;
+      return api.post("/integrations/apple-music/configure", input);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrations", "apple-music", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations", "apple-music"] });
       toast.success("Apple Music conectado com sucesso.");
     },
     onError: (err: Error) => toast.error(err.message),
@@ -100,24 +52,29 @@ export function useAppleMusicDeleteCredentials() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      try {
-        sessionStorage.removeItem(LS_KEY);
-      } catch {
-        throw new Error("Não foi possível remover as credenciais.");
-      }
+      if (MOCK_MODE) return;
+      return api.delete("/integrations/apple-music/disconnect");
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["integrations", "apple-music", "status"] });
+      queryClient.invalidateQueries({ queryKey: ["integrations", "apple-music"] });
       toast.success("Apple Music desconectado.");
     },
     onError: (err: Error) => toast.error(err.message),
   });
 }
 
-export function useAppleMusicArtistMetrics() {
-  return { data: null, isLoading: false, fetch: () => disabledIntegration("Apple Music for Artists") };
+export function useAppleMusicArtistMetrics(artistId?: string, storefront = "br") {
+  return useQuery({
+    queryKey: ["integrations", "apple-music", "artist", artistId, storefront],
+    queryFn: async () => {
+      if (MOCK_MODE || !artistId) return null;
+      return api.get(`/integrations/apple-music/artist/${artistId}?storefront=${storefront}`);
+    },
+    enabled: !MOCK_MODE && !!artistId,
+    staleTime: 60_000,
+  });
 }
 
 export function useAppleMusicShazamMetrics() {
-  return { data: null, isLoading: false, fetch: (_isrc: string) => disabledIntegration("Apple Music for Artists") };
+  return { data: null, isLoading: false, fetch: (_isrc: string) => {} };
 }
