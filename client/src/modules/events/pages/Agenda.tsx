@@ -342,11 +342,11 @@ export default function Agenda() {
           {eventos.length > 0 && filteredEventos.length > 0 && (
             <div className="flex items-center gap-3 mb-2 pb-3 border-b border-border">
               <div
-                className="w-5 h-5 rounded-full border-2 border-primary flex items-center justify-center cursor-pointer"
+                className="w-5 h-5 rounded-sm border-2 border-primary flex items-center justify-center cursor-pointer"
                 onClick={toggleSelectAll}
                 data-testid="checkbox-select-all"
               >
-                {selectedIds.length === filteredEventos.length && filteredEventos.length > 0 && <div className="w-2.5 h-2.5 rounded-full bg-primary" />}
+                {selectedIds.length === filteredEventos.length && filteredEventos.length > 0 && <div className="w-2.5 h-2.5 bg-primary" />}
               </div>
               <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
               {selectedIds.length > 0 && (
