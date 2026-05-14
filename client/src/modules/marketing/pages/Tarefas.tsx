@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/sha
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Clock, FileText, CheckCircle, Target, Search, Check, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { TarefaMarketingFormModal } from "@/modules/marketing/components/TarefaMarketingFormModal";
@@ -44,6 +46,29 @@ export default function MarketingTarefas() {
       deleteTarefa.mutate(deleteModal.tarefa.id);
       setDeleteModal({ open: false });
     }
+  };
+
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+
+  const toggleSelect = (id: string) =>
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+
+  const toggleAll = () =>
+    setSelectedIds(
+      selectedIds.size === filteredTarefas.length
+        ? new Set()
+        : new Set(filteredTarefas.map((t: any) => t.id)),
+    );
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    for (const id of ids) await deleteTarefa.mutateAsync(id);
+    setSelectedIds(new Set());
+    toast.success(`${ids.length} tarefa(s) excluída(s).`);
   };
 
   const filteredTarefas = tarefas.filter((t: any) => {
@@ -160,10 +185,34 @@ export default function MarketingTarefas() {
             <CardDescription className="text-xs mt-0.5">Gerencie todas as tarefas de marketing e seus prazos</CardDescription>
           </CardHeader>
           <CardContent className="pt-0">
+            {filteredTarefas.length > 0 && (
+              <div className="flex items-center gap-3 pb-3 mb-1">
+                <Checkbox
+                  checked={selectedIds.size === filteredTarefas.length && filteredTarefas.length > 0}
+                  onCheckedChange={toggleAll}
+                  data-testid="checkbox-select-all-tarefas"
+                />
+                <span className="text-xs text-muted-foreground">
+                  {selectedIds.size > 0 ? `${selectedIds.size} selecionada(s)` : "Selecionar todas"}
+                </span>
+                {selectedIds.size > 0 && (
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="h-7 text-xs gap-1 ml-auto"
+                    onClick={handleBulkDelete}
+                    data-testid="button-bulk-delete-tarefas"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" /> Excluir selecionadas
+                  </Button>
+                )}
+              </div>
+            )}
             {filteredTarefas.length > 0 ? (
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-8" />
                     <TableHead>Título</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Prioridade</TableHead>
@@ -174,6 +223,13 @@ export default function MarketingTarefas() {
                 <TableBody>
                   {filteredTarefas.map((tarefa: any) => (
                     <TableRow key={tarefa.id} data-testid={`row-tarefa-${tarefa.id}`}>
+                      <TableCell className="w-8">
+                        <Checkbox
+                          checked={selectedIds.has(tarefa.id)}
+                          onCheckedChange={() => toggleSelect(tarefa.id)}
+                          data-testid={`checkbox-tarefa-${tarefa.id}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">{tarefa.titulo}</TableCell>
                       <TableCell>
                         {tarefa.categoria ? (
