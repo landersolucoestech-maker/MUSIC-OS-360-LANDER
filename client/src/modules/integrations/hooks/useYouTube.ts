@@ -45,7 +45,15 @@ export function useYouTubeStatus() {
         content_id_enabled: false,
         last_sync_at: null,
       };
-      return api.get<YouTubeStatus>("/integrations/youtube/status");
+      const raw = await api.get<{ configured?: boolean; connected?: boolean } & Partial<YouTubeStatus>>("/integrations/youtube/status");
+      return {
+        connected: raw.connected ?? raw.configured ?? false,
+        channel_id: raw.channel_id ?? null,
+        channel_title: raw.channel_title ?? null,
+        has_credentials: raw.has_credentials ?? raw.configured ?? false,
+        content_id_enabled: raw.content_id_enabled ?? false,
+        last_sync_at: raw.last_sync_at ?? null,
+      };
     },
     staleTime: 30_000,
   });

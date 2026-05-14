@@ -307,7 +307,7 @@ export function useAbramusSearch(kind: AbramusKind, query: string) {
         return { results, total: results.length, has_more: false };
       }
       return api.get<AbramusSearchResponse>(
-        `/integrations/abramus/search-${kind === "obras" ? "work" : "work"}?q=${encodeURIComponent(trimmed)}`,
+        `/integrations/abramus/search-work?q=${encodeURIComponent(trimmed)}&kind=${kind}`,
       );
     },
     enabled: trimmed.length >= 2,
