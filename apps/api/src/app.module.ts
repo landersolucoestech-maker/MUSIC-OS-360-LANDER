@@ -53,9 +53,10 @@ import { ArtistGoalsModule }       from './modules/artist-goals/artist-goals.mod
 import { ContentDetectionsModule } from './modules/content-detections/content-detections.module';
 import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
 import { HrModule }                from './modules/hr/hr.module';
-import { ClerkAuthGuard }          from './core/guards/clerk-auth.guard';
-import { TenantGuard }          from './core/guards/tenant.guard';
-import { RolesGuard }           from './core/guards/roles.guard';
+import { ClerkAuthGuard }    from './core/guards/clerk-auth.guard';
+import { TenantGuard }       from './core/guards/tenant.guard';
+import { RolesGuard }        from './core/guards/roles.guard';
+import { RateLimitGuard }    from './core/guards/rate-limit.guard';
 
 @Module({
   imports: [
@@ -170,8 +171,12 @@ import { RolesGuard }           from './core/guards/roles.guard';
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas
-    // Ordem: ClerkAuthGuard → TenantGuard → RolesGuard
+    // Ordem: RateLimitGuard → ClerkAuthGuard → TenantGuard → RolesGuard
     Reflector,
+    {
+      provide:  APP_GUARD,
+      useClass: RateLimitGuard,
+    },
     {
       provide:  APP_GUARD,
       useClass: ClerkAuthGuard,

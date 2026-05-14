@@ -51,7 +51,7 @@ const STORAGE_KEY = "musicos360_contracts_docs";
 
 function loadDocuments(): VinculadoDocument[] {
   try {
-    const raw = sessionStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? (JSON.parse(raw) as VinculadoDocument[]) : MOCK_DOCUMENTS;
   } catch {
     return MOCK_DOCUMENTS;
@@ -60,7 +60,7 @@ function loadDocuments(): VinculadoDocument[] {
 
 function saveDocuments(docs: VinculadoDocument[]): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
   } catch { /* ignore */ }
 }
 
