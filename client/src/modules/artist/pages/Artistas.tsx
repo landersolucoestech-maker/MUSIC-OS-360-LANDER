@@ -393,11 +393,11 @@ export default function Artistas() {
                         </div>
 
                         {/* Avatar */}
-                        <Avatar className="h-12 w-12 shrink-0">
+                        <Avatar className="h-12 w-12 shrink-0 rounded-md">
                           {artista.foto_url && (
                             <AvatarImage src={artista.foto_url} alt={artista.nome_artistico} className="object-cover" />
                           )}
-                          <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-sm font-semibold">
+                          <AvatarFallback className="bg-primary/10 border border-primary/20 text-primary text-sm font-semibold rounded-md">
                             {getInitials(artista.nome_artistico)}
                           </AvatarFallback>
                         </Avatar>
