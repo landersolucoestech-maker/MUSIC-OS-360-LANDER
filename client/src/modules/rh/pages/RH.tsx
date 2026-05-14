@@ -458,6 +458,52 @@ export default function RH() {
       }
     >
       <div className="space-y-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <Card data-testid="kpi-total">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-primary/10">
+                <Users className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" data-testid="text-kpi-total">{kpiCounts.total}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="kpi-ativos">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-emerald-500/10">
+                <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" data-testid="text-kpi-ativos">{kpiCounts.ativos}</p>
+                <p className="text-xs text-muted-foreground">Ativos</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="kpi-ferias">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-blue-500/10">
+                <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" data-testid="text-kpi-ferias">{kpiCounts.ferias}</p>
+                <p className="text-xs text-muted-foreground">Férias</p>
+              </div>
+            </CardContent>
+          </Card>
+          <Card data-testid="kpi-afastados">
+            <CardContent className="p-4 flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-warning/10">
+                <UserX className="h-5 w-5 text-warning" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold" data-testid="text-kpi-afastados">{kpiCounts.afastados}</p>
+                <p className="text-xs text-muted-foreground">Afastados</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="funcionarios" className="flex items-center gap-2" data-testid="tab-funcionarios">
@@ -584,53 +630,6 @@ export default function RH() {
           )}
 
           <TabsContent value="funcionarios" className="mt-6 space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Card data-testid="kpi-total">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold" data-testid="text-kpi-total">{kpiCounts.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ativos">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold" data-testid="text-kpi-ativos">{kpiCounts.ativos}</p>
-                    <p className="text-xs text-muted-foreground">Ativos</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ferias">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold" data-testid="text-kpi-ferias">{kpiCounts.ferias}</p>
-                    <p className="text-xs text-muted-foreground">Férias</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-afastados">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-warning/10">
-                    <UserX className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold" data-testid="text-kpi-afastados">{kpiCounts.afastados}</p>
-                    <p className="text-xs text-muted-foreground">Afastados</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {filteredFuncionarios.length === 0 ? (
               <EmptyState
                 icon={Users}
@@ -731,53 +730,6 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="folha" className="mt-6 space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Card data-testid="kpi-total-folha">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ativos-folha">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.ativos}</p>
-                    <p className="text-xs text-muted-foreground">Ativos</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ferias-folha">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.ferias}</p>
-                    <p className="text-xs text-muted-foreground">Férias</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-afastados-folha">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-warning/10">
-                    <UserX className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.afastados}</p>
-                    <p className="text-xs text-muted-foreground">Afastados</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {loadingFolha ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -856,53 +808,6 @@ export default function RH() {
           </TabsContent>
 
           <TabsContent value="ferias" className="mt-6 space-y-6">
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Card data-testid="kpi-total-ferias">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-primary/10">
-                    <Users className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.total}</p>
-                    <p className="text-xs text-muted-foreground">Total</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ativos-ferias">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-emerald-500/10">
-                    <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.ativos}</p>
-                    <p className="text-xs text-muted-foreground">Ativos</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-ferias-ferias">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-blue-500/10">
-                    <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.ferias}</p>
-                    <p className="text-xs text-muted-foreground">Férias</p>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card data-testid="kpi-afastados-ferias">
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-warning/10">
-                    <UserX className="h-5 w-5 text-warning" />
-                  </div>
-                  <div>
-                    <p className="text-2xl font-bold">{kpiCounts.afastados}</p>
-                    <p className="text-xs text-muted-foreground">Afastados</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
             {loadingFerias ? (
               <div className="flex items-center justify-center h-32">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
