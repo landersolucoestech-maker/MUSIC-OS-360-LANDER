@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -422,6 +422,63 @@ function InfoBox({ children }: { children: React.ReactNode }) {
   return (
     <div className="bg-muted/50 border rounded-md p-3 text-sm text-muted-foreground">
       {children}
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ArtistAutocompleteInput — texto com dropdown que abre no foco
+// ─────────────────────────────────────────────────────────────────────────────
+function ArtistAutocompleteInput({
+  value,
+  onChange,
+  placeholder,
+  disabled,
+  suggestions,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  suggestions: string[];
+}) {
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const filtered = suggestions.filter((s) =>
+    s.toLowerCase().includes(value.toLowerCase())
+  );
+
+  return (
+    <div ref={containerRef} className="relative flex-1">
+      <Input
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        disabled={disabled}
+        onFocus={() => setOpen(true)}
+        onBlur={() => setTimeout(() => setOpen(false), 150)}
+        autoComplete="off"
+        className="w-full"
+      />
+      {open && filtered.length > 0 && (
+        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+          {filtered.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer text-left"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                onChange(s);
+                setOpen(false);
+              }}
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -944,7 +1001,7 @@ export function LancamentoFormModal({
     onAdd,
     onUpdate,
     onRemove,
-    suggestionsListId,
+    suggestions,
   }: {
     entries: ArtistEntry[];
     roles: string[];
@@ -952,20 +1009,29 @@ export function LancamentoFormModal({
     onAdd: () => void;
     onUpdate: (i: number, k: "nome" | "role", v: string) => void;
     onRemove: (i: number) => void;
-    suggestionsListId?: string;
+    suggestions?: string[];
   }) => {
     return (
     <div className="space-y-2">
       {entries.map((e, i) => (
         <div key={i} className="flex gap-2 items-center">
-          <Input
-            value={e.nome}
-            onChange={(ev) => onUpdate(i, "nome", ev.target.value)}
-            placeholder="Nome"
-            disabled={isViewMode}
-            className="flex-1"
-            list={suggestionsListId}
-          />
+          {suggestions ? (
+            <ArtistAutocompleteInput
+              value={e.nome}
+              onChange={(v) => onUpdate(i, "nome", v)}
+              placeholder="Nome"
+              disabled={isViewMode}
+              suggestions={suggestions}
+            />
+          ) : (
+            <Input
+              value={e.nome}
+              onChange={(ev) => onUpdate(i, "nome", ev.target.value)}
+              placeholder="Nome"
+              disabled={isViewMode}
+              className="flex-1"
+            />
+          )}
           <Select
             value={e.role}
             onValueChange={(v) => onUpdate(i, "role", v)}
@@ -1016,9 +1082,6 @@ export function LancamentoFormModal({
 
   const renderStep0 = () => (
     <div className="space-y-6">
-      <datalist id="artist-ac-list">
-        {artistSuggestions.map((s) => <option key={s} value={s} />)}
-      </datalist>
       {/* Vinculações */}
       <Card className="bg-muted/30 border-border">
         <CardHeader className="pb-3">
@@ -1287,7 +1350,7 @@ export function LancamentoFormModal({
               onAdd={addAlbumArtist}
               onUpdate={updAlbumArtist}
               onRemove={removeAlbumArtist}
-              suggestionsListId="artist-ac-list"
+              suggestions={artistSuggestions}
             />
           </div>
 
@@ -1643,7 +1706,7 @@ export function LancamentoFormModal({
                   updAE(faixa.id, "artistasAdicionais", i, k, v)
                 }
                 onRemove={(i) => removeAE(faixa.id, "artistasAdicionais", i)}
-                suggestionsListId="artist-ac-list"
+                suggestions={artistSuggestions}
               />
             </div>
 
