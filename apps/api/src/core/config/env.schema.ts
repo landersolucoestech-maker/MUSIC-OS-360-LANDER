@@ -16,9 +16,11 @@ const envSchema = z.object({
   // Redis (BullMQ Queues via ioredis — deve ser URL acessível, não Railway internal)
   REDIS_QUEUE_URL: z.string().optional(),
 
-  // Redis (Upstash — Cache / Rate Limit via REST API)
+  // Redis (Upstash — Cache / Rate Limit via REST API https://...)
   UPSTASH_REDIS_URL: z.string().optional(),
   UPSTASH_REDIS_TOKEN: z.string().optional(),
+  // UPSTASH_REST_URL: URL REST HTTPS do Upstash (preferida sobre UPSTASH_REDIS_URL quando disponível)
+  UPSTASH_REST_URL: z.string().optional(),
 
   // Auth (Clerk)
   CLERK_SECRET_KEY: z

@@ -81,7 +81,7 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
     AuthModule,
 
     // ── Filas (BullMQ + QueueModule) — só quando Redis ioredis está disponível
-    QueueModule,
+    QueueModule.register(),
 
     // ── WebSocket Gateway (Socket.IO + Redis Pub/Sub) ─────────────────────────
     WsModule,
