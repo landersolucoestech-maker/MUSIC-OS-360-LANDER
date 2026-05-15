@@ -1,90 +1,83 @@
 import { Injectable, Inject, Logger, UnauthorizedException } from '@nestjs/common';
-import { eq, and }               from 'drizzle-orm';
-import * as crypto               from 'crypto';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { integrations, oauthConnections } from '../../database/schema';
-import { EncryptionService }     from '../../core/security/encryption.service';
+import * as crypto from 'crypto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { IntegrationEntity, OAuthConnectionEntity } from '../../database/entities';
+import { EncryptionService } from '../../core/security/encryption.service';
 
 @Injectable()
 export class IntegrationBaseService {
   protected readonly logger = new Logger(IntegrationBaseService.name);
+  private readonly integRepo:   Repository<IntegrationEntity>   | null = null;
+  private readonly oauthRepo:   Repository<OAuthConnectionEntity> | null = null;
 
   constructor(
-    @Inject(DRIZZLE_DB) protected readonly db: DrizzleDB,
+    @Inject(DATA_SOURCE) protected readonly ds: DataSource | null,
     protected readonly enc: EncryptionService,
-  ) {}
+  ) {
+    if (ds) {
+      this.integRepo = ds.getRepository(IntegrationEntity);
+      this.oauthRepo = ds.getRepository(OAuthConnectionEntity);
+    }
+  }
 
-  // ── Credentials (API key / secret armazenados criptografados) ──────────────
+  // ── Credentials ─────────────────────────────────────────────────────────────
 
   async saveCredentials(tenantId: string, provider: string, creds: Record<string, string>): Promise<void> {
     const credentials_encrypted = this.enc.encrypt(JSON.stringify(creds));
-    const [existing] = await this.db.select().from(integrations)
-      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, provider)))
-      .limit(1);
+    const existing = await this.integRepo!
+      .createQueryBuilder('i')
+      .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider })
+      .getOne();
 
     if (existing) {
-      await this.db.update(integrations)
-        .set({ credentials_encrypted, status: 'connected', failure_count: 0, updated_at: new Date() })
-        .where(eq(integrations.id, existing.id));
+      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: 'connected', failure_count: 0, updated_at: new Date() } as any);
     } else {
-      await this.db.insert(integrations).values({
-        tenant_id: tenantId, provider, status: 'connected', credentials_encrypted,
-      });
+      const entity = this.integRepo!.create({ tenant_id: tenantId, provider, status: 'connected', credentials_encrypted });
+      await this.integRepo!.save(entity);
     }
   }
 
   async loadCredentials<T = Record<string, string>>(tenantId: string, provider: string): Promise<T | null> {
-    const [row] = await this.db.select().from(integrations)
-      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, provider)))
-      .limit(1);
-
+    const row = await this.integRepo!
+      .createQueryBuilder('i')
+      .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider })
+      .getOne();
     if (!row?.credentials_encrypted) return null;
-    try {
-      return JSON.parse(this.enc.decrypt(row.credentials_encrypted)) as T;
-    } catch {
-      return null;
-    }
+    try { return JSON.parse(this.enc.decrypt(row.credentials_encrypted)) as T; } catch { return null; }
   }
 
   async getStatus(tenantId: string, provider: string): Promise<{ connected: boolean; last_sync_at: Date | null }> {
-    const [row] = await this.db.select().from(integrations)
-      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, provider)))
-      .limit(1);
-
-    return {
-      connected:    row?.status === 'connected',
-      last_sync_at: row?.last_sync_at ?? null,
-    };
+    const row = await this.integRepo!
+      .createQueryBuilder('i')
+      .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider })
+      .getOne();
+    return { connected: row?.status === 'connected', last_sync_at: row?.last_sync_at ?? null };
   }
 
   async disconnect(tenantId: string, provider: string): Promise<void> {
-    await this.db.update(integrations)
-      .set({ status: 'disconnected', credentials_encrypted: null, updated_at: new Date() })
-      .where(and(eq(integrations.tenant_id, tenantId), eq(integrations.provider, provider)));
+    const row = await this.integRepo!
+      .createQueryBuilder('i')
+      .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider })
+      .getOne();
+    if (row) {
+      await this.integRepo!.update({ id: row.id } as any, { status: 'disconnected', credentials_encrypted: null, updated_at: new Date() } as any);
+    }
   }
 
-  // ── OAuth tokens ───────────────────────────────────────────────────────────
+  // ── OAuth tokens ─────────────────────────────────────────────────────────────
 
   async saveOAuthTokens(params: {
-    tenantId:     string;
-    userId:       string;
-    provider:     string;
-    accessToken:  string;
-    refreshToken?: string;
-    expiresIn?:   number;
-    scopes?:      string;
+    tenantId: string; userId: string; provider: string;
+    accessToken: string; refreshToken?: string; expiresIn?: number; scopes?: string;
   }): Promise<void> {
-    const expiresAt = params.expiresIn
-      ? new Date(Date.now() + params.expiresIn * 1000)
-      : null;
-
-    const [existing] = await this.db.select().from(oauthConnections)
-      .where(and(
-        eq(oauthConnections.tenant_id, params.tenantId),
-        eq(oauthConnections.user_id,   params.userId),
-        eq(oauthConnections.provider,  params.provider),
-      ))
-      .limit(1);
+    const expiresAt = params.expiresIn ? new Date(Date.now() + params.expiresIn * 1000) : null;
+    const existing  = await this.oauthRepo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', {
+        tenantId: params.tenantId, userId: params.userId, provider: params.provider,
+      })
+      .getOne();
 
     const payload = {
       access_token_encrypted:  this.enc.encrypt(params.accessToken),
@@ -95,69 +88,47 @@ export class IntegrationBaseService {
     };
 
     if (existing) {
-      await this.db.update(oauthConnections)
-        .set({
-          ...payload,
-          refresh_token_encrypted: params.refreshToken
-            ? this.enc.encrypt(params.refreshToken)
-            : existing.refresh_token_encrypted,
-        })
-        .where(eq(oauthConnections.id, existing.id));
-    } else {
-      await this.db.insert(oauthConnections).values({
-        tenant_id:  params.tenantId,
-        user_id:    params.userId,
-        provider:   params.provider,
+      await this.oauthRepo!.update({ id: existing.id } as any, {
         ...payload,
-      });
+        refresh_token_encrypted: params.refreshToken
+          ? this.enc.encrypt(params.refreshToken)
+          : existing.refresh_token_encrypted,
+      } as any);
+    } else {
+      const entity = this.oauthRepo!.create({ tenant_id: params.tenantId, user_id: params.userId, provider: params.provider, ...payload });
+      await this.oauthRepo!.save(entity);
     }
   }
 
   async getOAuthConnection(tenantId: string, userId: string, provider: string) {
-    const [conn] = await this.db.select().from(oauthConnections)
-      .where(and(
-        eq(oauthConnections.tenant_id, tenantId),
-        eq(oauthConnections.user_id,   userId),
-        eq(oauthConnections.provider,  provider),
-      ))
-      .limit(1);
-
+    const conn = await this.oauthRepo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider })
+      .getOne();
     if (!conn) return null;
-
-    return {
-      ...conn,
-      accessToken:  this.enc.decrypt(conn.access_token_encrypted),
-      refreshToken: conn.refresh_token_encrypted
-        ? this.enc.decrypt(conn.refresh_token_encrypted)
-        : null,
-    };
+    return { ...conn, accessToken: this.enc.decrypt(conn.access_token_encrypted), refreshToken: conn.refresh_token_encrypted ? this.enc.decrypt(conn.refresh_token_encrypted) : null };
   }
 
   async disconnectOAuth(tenantId: string, userId: string, provider: string): Promise<void> {
-    await this.db.delete(oauthConnections)
-      .where(and(
-        eq(oauthConnections.tenant_id, tenantId),
-        eq(oauthConnections.user_id,   userId),
-        eq(oauthConnections.provider,  provider),
-      ));
+    await this.oauthRepo!
+      .createQueryBuilder()
+      .delete()
+      .from(OAuthConnectionEntity)
+      .where('tenant_id = :tenantId AND user_id = :userId AND provider = :provider', { tenantId, userId, provider })
+      .execute();
   }
 
-  // ── Status via oauth_connections (OAuth-only providers) ────────────────────
-
   async getOAuthStatus(tenantId: string, userId: string, provider: string): Promise<{ connected: boolean }> {
-    const [conn] = await this.db.select({ id: oauthConnections.id }).from(oauthConnections)
-      .where(and(
-        eq(oauthConnections.tenant_id, tenantId),
-        eq(oauthConnections.user_id,   userId),
-        eq(oauthConnections.provider,  provider),
-      ))
-      .limit(1);
+    const conn = await this.oauthRepo!
+      .createQueryBuilder('o')
+      .select('o.id')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider })
+      .getOne();
     return { connected: !!conn };
   }
 
-  // ── Signed OAuth state (HMAC-SHA256) ───────────────────────────────────────
+  // ── Signed OAuth state ───────────────────────────────────────────────────────
 
-  /** TTL máximo do state OAuth: 10 minutos */
   private static readonly STATE_TTL_MS = 10 * 60 * 1_000;
 
   buildSignedState(payload: Record<string, string>): string {
@@ -170,41 +141,21 @@ export class IntegrationBaseService {
   }
 
   verifySignedState(state: string): Record<string, string> {
-    if (typeof state !== 'string' || state.length > 2048) {
-      throw new UnauthorizedException('OAuth state inválido');
-    }
-
+    if (typeof state !== 'string' || state.length > 2048) throw new UnauthorizedException('OAuth state inválido');
     const dot = state.lastIndexOf('.');
-    if (dot === -1 || dot === 0 || dot === state.length - 1) {
-      throw new UnauthorizedException('OAuth state malformado');
-    }
-
+    if (dot === -1 || dot === 0 || dot === state.length - 1) throw new UnauthorizedException('OAuth state malformado');
     const b64 = state.slice(0, dot);
     const sig  = state.slice(dot + 1);
-
     const hmacKey  = this.enc.getKeyBytes();
     const expected = crypto.createHmac('sha256', hmacKey).update(b64).digest('base64url');
-
-    // Guard: ambos devem ter o mesmo comprimento para timingSafeEqual não lançar
-    const sigBuf  = Buffer.from(sig,      'base64url');
-    const expBuf  = Buffer.from(expected, 'base64url');
-    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
-      throw new UnauthorizedException('OAuth state com assinatura inválida');
-    }
-
+    const sigBuf = Buffer.from(sig,      'base64url');
+    const expBuf = Buffer.from(expected, 'base64url');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) throw new UnauthorizedException('OAuth state com assinatura inválida');
     let parsed: Record<string, string>;
-    try {
-      parsed = JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) as Record<string, string>;
-    } catch {
-      throw new UnauthorizedException('OAuth state malformado');
-    }
-
-    // Verificar TTL
+    try { parsed = JSON.parse(Buffer.from(b64, 'base64url').toString('utf-8')) as Record<string, string>; }
+    catch { throw new UnauthorizedException('OAuth state malformado'); }
     const iat = Number(parsed['iat'] ?? 0);
-    if (!iat || Date.now() - iat > IntegrationBaseService.STATE_TTL_MS) {
-      throw new UnauthorizedException('OAuth state expirado');
-    }
-
+    if (!iat || Date.now() - iat > IntegrationBaseService.STATE_TTL_MS) throw new UnauthorizedException('OAuth state expirado');
     return parsed;
   }
 }

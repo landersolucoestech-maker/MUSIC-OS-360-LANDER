@@ -1,11 +1,11 @@
 import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import { eq, and }               from 'drizzle-orm';
-import { InjectQueue }           from '@nestjs/bullmq';
-import { Queue }                 from 'bullmq';
-import { DRIZZLE_DB, DrizzleDB } from '../../../database/database.module';
-import { oauthConnections, OAuthConnection } from '../../../database/schema';
-import { EncryptionService }     from '../../../core/security/encryption.service';
-import { QUEUE_NAMES }           from '../../../queues/queue.constants';
+import { InjectQueue }  from '@nestjs/bullmq';
+import { Queue }        from 'bullmq';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE }  from '../../../database/database.module';
+import { OAuthConnectionEntity } from '../../../database/entities';
+import { EncryptionService } from '../../../core/security/encryption.service';
+import { QUEUE_NAMES }   from '../../../queues/queue.constants';
 
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
 const SPOTIFY_API      = 'https://api.spotify.com/v1';
@@ -13,28 +13,28 @@ const SPOTIFY_API      = 'https://api.spotify.com/v1';
 @Injectable()
 export class SpotifyService {
   private readonly logger = new Logger(SpotifyService.name);
+  private readonly repo: Repository<OAuthConnectionEntity> | null = null;
 
   constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly encryption: EncryptionService,
     @Optional()
     @InjectQueue(QUEUE_NAMES.STREAMING_SYNC) private readonly syncQueue: Queue | null,
-  ) {}
+  ) {
+    if (ds) this.repo = ds.getRepository(OAuthConnectionEntity);
+  }
 
   isConfigured(): boolean {
     return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
   }
 
   getAuthUrl(tenantId: string, userId: string): string {
-    const clientId   = process.env['SPOTIFY_CLIENT_ID']   ?? '';
+    const clientId    = process.env['SPOTIFY_CLIENT_ID']   ?? '';
     const redirectUri = process.env['SPOTIFY_REDIRECT_URI'] ?? '';
     const state       = Buffer.from(JSON.stringify({ tenantId, userId })).toString('base64');
     const params      = new URLSearchParams({
-      response_type: 'code',
-      client_id:     clientId,
-      scope:         'user-read-private user-read-email',
-      redirect_uri:  redirectUri,
-      state,
+      response_type: 'code', client_id: clientId, scope: 'user-read-private user-read-email',
+      redirect_uri: redirectUri, state,
     });
     return `${SPOTIFY_ACCOUNTS}/authorize?${params}`;
   }
@@ -69,38 +69,39 @@ export class SpotifyService {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;
-
     this.logger.log(`Spotify: ${data.name} — ${data.followers?.total?.toLocaleString()} followers`);
     return { followers: data.followers?.total ?? 0, popularity: data.popularity ?? 0 };
   }
 
   private async upsertConnection(tenantId: string, userId: string, tokens: any): Promise<void> {
     const expiresAt = new Date(Date.now() + (tokens.expires_in as number) * 1000);
-    const [existing] = await this.db.select().from(oauthConnections)
-      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.user_id, userId), eq(oauthConnections.provider, 'spotify')))
-      .limit(1);
+    const existing  = await this.repo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider: 'spotify' })
+      .getOne();
 
     if (existing) {
-      await this.db.update(oauthConnections).set({
+      await this.repo!.update({ id: existing.id } as any, {
         access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
         refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : existing.refresh_token_encrypted,
-        expires_at:  expiresAt,
-        updated_at:  new Date(),
-      }).where(eq(oauthConnections.id, existing.id));
+        expires_at: expiresAt, updated_at: new Date(),
+      } as any);
     } else {
-      await this.db.insert(oauthConnections).values({
+      const entity = this.repo!.create({
         tenant_id: tenantId, user_id: userId, provider: 'spotify', expires_at: expiresAt,
         access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
         refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : null,
         scopes: 'user-read-private user-read-email',
       });
+      await this.repo!.save(entity);
     }
   }
 
   async getValidToken(tenantId: string): Promise<string | null> {
-    const [conn] = await this.db.select().from(oauthConnections)
-      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.provider, 'spotify')))
-      .limit(1);
+    const conn = await this.repo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.provider = :provider', { tenantId, provider: 'spotify' })
+      .getOne();
     if (!conn) return null;
 
     if (conn.expires_at && conn.expires_at < new Date()) {
@@ -109,7 +110,7 @@ export class SpotifyService {
     return this.encryption.decrypt(conn.access_token_encrypted);
   }
 
-  private async refreshToken(conn: OAuthConnection): Promise<string> {
+  private async refreshToken(conn: OAuthConnectionEntity): Promise<string> {
     const clientId     = process.env['SPOTIFY_CLIENT_ID']     ?? '';
     const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
     const refreshToken = this.encryption.decrypt(conn.refresh_token_encrypted ?? '');
@@ -124,17 +125,21 @@ export class SpotifyService {
     });
     const data = await res.json() as any;
 
-    await this.db.update(oauthConnections).set({
+    await this.repo!.update({ id: conn.id } as any, {
       access_token_encrypted: this.encryption.encrypt(data.access_token),
-      expires_at:             new Date(Date.now() + data.expires_in * 1000),
-      updated_at:             new Date(),
-    }).where(eq(oauthConnections.id, conn.id));
+      expires_at: new Date(Date.now() + data.expires_in * 1000),
+      updated_at: new Date(),
+    } as any);
 
     return data.access_token as string;
   }
 
   async disconnect(tenantId: string, userId: string): Promise<void> {
-    await this.db.delete(oauthConnections)
-      .where(and(eq(oauthConnections.tenant_id, tenantId), eq(oauthConnections.user_id, userId), eq(oauthConnections.provider, 'spotify')));
+    await this.repo!
+      .createQueryBuilder()
+      .delete()
+      .from(OAuthConnectionEntity)
+      .where('tenant_id = :tenantId AND user_id = :userId AND provider = :provider', { tenantId, userId, provider: 'spotify' })
+      .execute();
   }
 }

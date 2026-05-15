@@ -1,81 +1,61 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { campaigns, Campaign }   from '../../database/schema';
-import { CreateCampaignDto, UpdateCampaignDto, QueryCampaignDto } from './dto/campaigns.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { CampaignEntity } from '../../database/entities';
+import type { CreateCampaignDto, UpdateCampaignDto, QueryCampaignDto } from './dto/campaigns.dto';
 
 @Injectable()
 export class CampaignsService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<CampaignEntity> | null = null;
 
-  async list(tenantId: string, q: QueryCampaignDto) {
-    const conditions: SQL[] = [
-      eq(campaigns.tenant_id, tenantId),
-      isNull(campaigns.deleted_at),
-    ];
-    if (q.status)   conditions.push(eq(campaigns.status,     q.status));
-    if (q.type)     conditions.push(eq(campaigns.tipo,       q.type));
-    if (q.artistId) conditions.push(eq(campaigns.artista_id, q.artistId));
-    if (q.search)   conditions.push(ilike(campaigns.nome,    `%${q.search}%`) as SQL);
-
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(campaigns.created_at) : desc(campaigns.created_at);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(campaigns).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(campaigns).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(CampaignEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Campaign> {
-    const [row] = await this.db.select().from(campaigns)
-      .where(and(eq(campaigns.tenant_id, tenantId), eq(campaigns.id, id), isNull(campaigns.deleted_at)))
-      .limit(1);
-    if (!row) throw new NotFoundException('Campanha não encontrada');
-    return row;
+  async list(tenantId: string, query: QueryCampaignDto) {
+    const qb = this.repo!
+      .createQueryBuilder('c')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.deleted_at IS NULL');
+
+    if ((query as any).status)     qb.andWhere('c.status = :status',       { status:     (query as any).status });
+    if ((query as any).tipo)       qb.andWhere('c.tipo = :tipo',           { tipo:       (query as any).tipo });
+    if ((query as any).artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: (query as any).artista_id });
+    if ((query as any).search)     qb.andWhere('c.nome ILIKE :search',     { search: `%${(query as any).search}%` });
+
+    qb.orderBy('c.created_at', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateCampaignDto): Promise<Campaign> {
-    const [row] = await this.db.insert(campaigns).values({
-      tenant_id:   tenantId,
-      nome:        dto.title,
-      tipo:        dto.type,
-      artista_id:  dto.artistId  ?? null,
-      orcamento:   dto.budget != null ? String(dto.budget) : null,
-      objetivo:    null,
-      data_inicio: dto.startsAt ? new Date(dto.startsAt) : null,
-      data_fim:    dto.endsAt   ? new Date(dto.endsAt)   : null,
-      metadata:    dto.metadata ?? {},
-      created_by:  userId,
-      updated_by:  userId,
-    }).returning();
-    return row;
+  async findById(tenantId: string, id: string): Promise<CampaignEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('c')
+      .where('c.id = :id AND c.tenant_id = :tenantId AND c.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Campanha não encontrada');
+    return result;
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateCampaignDto): Promise<Campaign> {
+  async create(tenantId: string, userId: string, dto: CreateCampaignDto): Promise<CampaignEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    return this.repo!.save(entity);
+  }
+
+  async update(tenantId: string, userId: string, id: string, dto: UpdateCampaignDto): Promise<CampaignEntity> {
     await this.findById(tenantId, id);
-    const [row] = await this.db.update(campaigns).set({
-      ...(dto.title    != null && { nome:        dto.title }),
-      ...(dto.type     != null && { tipo:        dto.type }),
-      ...(dto.status   != null && { status:      dto.status }),
-      ...(dto.artistId != null && { artista_id:  dto.artistId }),
-      ...(dto.budget   != null && { orcamento:   String(dto.budget) }),
-      ...(dto.startsAt != null && { data_inicio: new Date(dto.startsAt) }),
-      ...(dto.endsAt   != null && { data_fim:    new Date(dto.endsAt) }),
-      ...(dto.metadata != null && { metadata:    dto.metadata }),
-      updated_at: new Date(),
-      updated_by: userId,
-    }).where(and(eq(campaigns.tenant_id, tenantId), eq(campaigns.id, id), isNull(campaigns.deleted_at)))
-      .returning();
-    return row;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(campaigns).set({ deleted_at: new Date() })
-      .where(and(eq(campaigns.tenant_id, tenantId), eq(campaigns.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

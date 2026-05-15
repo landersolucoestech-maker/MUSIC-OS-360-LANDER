@@ -1,154 +1,106 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, or, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { EncryptionService }       from '../../core/security/encryption.service';
-import { artists, Artist }         from '../../database/schema';
-import { CreateArtistDto }         from './dto/create-artist.dto';
-import { UpdateArtistDto }         from './dto/update-artist.dto';
-import { QueryArtistDto }          from './dto/query-artist.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { ArtistEntity } from '../../database/entities';
+import { EncryptionService } from '../../core/security/encryption.service';
+import type { CreateArtistDto } from './dto/create-artist.dto';
+import type { UpdateArtistDto } from './dto/update-artist.dto';
+import type { QueryArtistDto }  from './dto/query-artist.dto';
 
 @Injectable()
 export class ArtistsService {
+  private readonly repo: Repository<ArtistEntity> | null = null;
+
   constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly encryption: EncryptionService,
-  ) {}
-
-  async list(tenantId: string, query: QueryArtistDto) {
-    const conditions: SQL[] = [
-      eq(artists.tenant_id, tenantId),
-      isNull(artists.deleted_at),
-    ];
-
-    if (query.status) {
-      conditions.push(eq(artists.status, query.status));
-    }
-    if (query.genre) {
-      conditions.push(eq(artists.genero_musical, query.genre));
-    }
-    if (query.search) {
-      conditions.push(
-        or(
-          ilike(artists.nome_artistico, `%${query.search}%`),
-          ilike(artists.nome_civil,     `%${query.search}%`),
-        ) as SQL,
-      );
-    }
-
-    const where    = and(...conditions);
-    const orderCol = this.resolveOrder(query.orderBy ?? 'created_at');
-    const orderDir = query.ascending ? asc(orderCol) : desc(orderCol);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db
-        .select()
-        .from(artists)
-        .where(where)
-        .orderBy(orderDir)
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(artists).where(where),
-    ]);
-
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  ) {
+    if (ds) this.repo = ds.getRepository(ArtistEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Artist> {
-    const [result] = await this.db
-      .select()
-      .from(artists)
-      .where(
-        and(
-          eq(artists.tenant_id, tenantId),
-          eq(artists.id, id),
-          isNull(artists.deleted_at),
-        ),
-      )
-      .limit(1);
+  async list(tenantId: string, query: QueryArtistDto) {
+    const qb = this.repo!
+      .createQueryBuilder('a')
+      .where('a.tenant_id = :tenantId', { tenantId })
+      .andWhere('a.deleted_at IS NULL');
 
+    if (query.status) qb.andWhere('a.status = :status', { status: query.status });
+    if (query.genre)  qb.andWhere('a.genero_musical = :genre', { genre: query.genre });
+    if (query.search) {
+      qb.andWhere('(a.nome_artistico ILIKE :search OR a.nome_civil ILIKE :search)', {
+        search: `%${query.search}%`,
+      });
+    }
+
+    const orderField = query.orderBy ?? 'created_at';
+    qb.orderBy(`a.${orderField}`, query.ascending ? 'ASC' : 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<ArtistEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('a')
+      .where('a.id = :id AND a.tenant_id = :tenantId AND a.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!result) throw new NotFoundException('Artista não encontrado');
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateArtistDto): Promise<Artist> {
-    const [created] = await this.db
-      .insert(artists)
-      .values({
-        tenant_id:              tenantId,
-        nome_artistico:         dto.nome_artistico,
-        nome_civil:             dto.nome_civil             ?? null,
-        tipo:                   dto.tipo                   ?? 'solo',
-        status:                 dto.status                 ?? 'em_negociacao',
-        genero_musical:         dto.genero_musical         ?? null,
-        observacoes:            dto.observacoes            ?? null,
-        foto_url:               dto.foto_url               ?? null,
-        banner_url:             dto.banner_url             ?? null,
-        spotify_artist_id:      dto.spotify_artist_id      ?? null,
-        youtube_channel_id:     dto.youtube_channel_id     ?? null,
-        especialidades:         dto.especialidades         ?? [],
-        metadata:               dto.metadata               ?? {},
-        email_encrypted:        this.encryption.encryptNullable(dto.email),
-        telefone_encrypted:     this.encryption.encryptNullable(dto.telefone),
-        cpf_cnpj_encrypted:     this.encryption.encryptNullable(dto.cpf_cnpj),
-        created_by:             userId,
-        updated_by:             userId,
-      })
-      .returning();
-
-    return created;
+  async create(tenantId: string, userId: string, dto: CreateArtistDto): Promise<ArtistEntity> {
+    const entity = this.repo!.create({
+      tenant_id:           tenantId,
+      nome_artistico:      dto.nome_artistico,
+      nome_civil:          dto.nome_civil          ?? null,
+      tipo:                dto.tipo                ?? 'solo',
+      status:              dto.status              ?? 'em_negociacao',
+      genero_musical:      dto.genero_musical      ?? null,
+      observacoes:         dto.observacoes         ?? null,
+      foto_url:            dto.foto_url            ?? null,
+      banner_url:          dto.banner_url          ?? null,
+      spotify_artist_id:   dto.spotify_artist_id   ?? null,
+      youtube_channel_id:  dto.youtube_channel_id  ?? null,
+      especialidades:      dto.especialidades      ?? [],
+      metadata:            dto.metadata            ?? {},
+      email_encrypted:     this.encryption.encryptNullable((dto as any).email),
+      telefone_encrypted:  this.encryption.encryptNullable((dto as any).telefone),
+      cpf_cnpj_encrypted:  this.encryption.encryptNullable((dto as any).cpf_cnpj),
+      created_by:          userId,
+      updated_by:          userId,
+    });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<Artist> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<ArtistEntity> {
     await this.findById(tenantId, id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
+    if (dto.nome_artistico    != null) updates.nome_artistico    = dto.nome_artistico;
+    if (dto.nome_civil        != null) updates.nome_civil        = dto.nome_civil;
+    if (dto.tipo              != null) updates.tipo              = dto.tipo;
+    if (dto.status            != null) updates.status            = dto.status;
+    if (dto.genero_musical    != null) updates.genero_musical    = dto.genero_musical;
+    if (dto.observacoes       != null) updates.observacoes       = dto.observacoes;
+    if (dto.foto_url          != null) updates.foto_url          = dto.foto_url;
+    if (dto.banner_url        != null) updates.banner_url        = dto.banner_url;
+    if (dto.spotify_artist_id != null) updates.spotify_artist_id = dto.spotify_artist_id;
+    if (dto.youtube_channel_id != null) updates.youtube_channel_id = dto.youtube_channel_id;
+    if (dto.especialidades    != null) updates.especialidades    = dto.especialidades;
+    if (dto.metadata          != null) updates.metadata          = dto.metadata;
+    if ((dto as any).email    !== undefined) updates.email_encrypted    = this.encryption.encryptNullable((dto as any).email);
+    if ((dto as any).telefone !== undefined) updates.telefone_encrypted = this.encryption.encryptNullable((dto as any).telefone);
+    if ((dto as any).cpf_cnpj !== undefined) updates.cpf_cnpj_encrypted = this.encryption.encryptNullable((dto as any).cpf_cnpj);
 
-    const [updated] = await this.db
-      .update(artists)
-      .set({
-        ...(dto.nome_artistico     != null && { nome_artistico:     dto.nome_artistico }),
-        ...(dto.nome_civil         != null && { nome_civil:         dto.nome_civil }),
-        ...(dto.tipo               != null && { tipo:               dto.tipo }),
-        ...(dto.status             != null && { status:             dto.status }),
-        ...(dto.genero_musical     != null && { genero_musical:     dto.genero_musical }),
-        ...(dto.observacoes        != null && { observacoes:        dto.observacoes }),
-        ...(dto.foto_url           != null && { foto_url:           dto.foto_url }),
-        ...(dto.banner_url         != null && { banner_url:         dto.banner_url }),
-        ...(dto.spotify_artist_id  != null && { spotify_artist_id:  dto.spotify_artist_id }),
-        ...(dto.youtube_channel_id != null && { youtube_channel_id: dto.youtube_channel_id }),
-        ...(dto.especialidades     != null && { especialidades:     dto.especialidades }),
-        ...(dto.metadata           != null && { metadata:           dto.metadata }),
-        ...(dto.email    !== undefined && { email_encrypted:    this.encryption.encryptNullable(dto.email) }),
-        ...(dto.telefone !== undefined && { telefone_encrypted: this.encryption.encryptNullable(dto.telefone) }),
-        ...(dto.cpf_cnpj !== undefined && { cpf_cnpj_encrypted: this.encryption.encryptNullable(dto.cpf_cnpj) }),
-        updated_at: new Date(),
-        updated_by: userId,
-      })
-      .where(and(eq(artists.tenant_id, tenantId), eq(artists.id, id), isNull(artists.deleted_at)))
-      .returning();
-
-    return updated;
+    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    return this.findById(tenantId, id);
   }
 
   async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
     await this.findById(tenantId, id);
-
-    await this.db
-      .update(artists)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(artists.tenant_id, tenantId), eq(artists.id, id)));
-
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private resolveOrder(field: string): any {
-    const map: Record<string, any> = {
-      created_at:     artists.created_at,
-      updated_at:     artists.updated_at,
-      nome_artistico: artists.nome_artistico,
-    };
-    return map[field] ?? artists.created_at;
   }
 }

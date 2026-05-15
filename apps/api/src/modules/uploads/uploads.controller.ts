@@ -11,32 +11,31 @@
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, Logger,
+  NotFoundException, Logger, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { Inject } from '@nestjs/common';
-import { eq, and } from 'drizzle-orm';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { DataSource, Repository } from 'typeorm';
 
-import { DRIZZLE_DB }       from '../../database/database.module';
-import * as schema           from '../../database/schema';
-import { StorageService }   from '../../storage/storage.service';
-import { CurrentTenant }    from '../../core/decorators/current-tenant.decorator';
-import { CurrentUser }      from '../../core/decorators/current-user.decorator';
+import { DATA_SOURCE }     from '../../database/database.module';
+import { UploadEntity }    from '../../database/entities';
+import { StorageService }  from '../../storage/storage.service';
+import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
+import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
-
-type DB = NodePgDatabase<typeof schema>;
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
 @Controller('uploads')
 export class UploadsController {
   private readonly logger = new Logger(UploadsController.name);
+  private readonly repo: Repository<UploadEntity> | null = null;
 
   constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DB,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly storage: StorageService,
-  ) {}
+  ) {
+    if (ds) this.repo = ds.getRepository(UploadEntity);
+  }
 
   // ── POST /uploads/presign ────────────────────────────────────────────────────
 
@@ -58,7 +57,7 @@ export class UploadsController {
       entityId:  dto.entityId,
     });
 
-    await this.db.insert(schema.uploads).values({
+    const entity = this.repo!.create({
       tenant_id:     tenant.id,
       user_id:       user.userId,
       file_id:       fileId,
@@ -71,6 +70,7 @@ export class UploadsController {
       entity_id:     dto.entityId ?? null,
       status:        'pending',
     });
+    await this.repo!.save(entity);
 
     this.logger.log(`Presign registado: ${fileId} / tenant ${tenant.id}`);
     return { presignedUrl, key, fileId };
@@ -84,27 +84,18 @@ export class UploadsController {
     @CurrentTenant() tenant: { id: string },
     @Param('fileId') fileId:  string,
   ) {
-    const [row] = await this.db
-      .select()
-      .from(schema.uploads)
-      .where(
-        and(
-          eq(schema.uploads.file_id,   fileId),
-          eq(schema.uploads.tenant_id, tenant.id),
-        ),
-      )
-      .limit(1);
+    const row = await this.repo!
+      .createQueryBuilder('u')
+      .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
+      .getOne();
 
     if (!row) throw new NotFoundException('Upload não encontrado');
 
-    const [updated] = await this.db
-      .update(schema.uploads)
-      .set({ status: 'confirmed', confirmed_at: new Date() })
-      .where(eq(schema.uploads.id, row.id))
-      .returning();
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
     this.logger.log(`Upload confirmado: ${fileId}`);
-    return updated;
+
+    return this.repo!.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
   }
 
   // ── GET /uploads/:fileId/download ────────────────────────────────────────────
@@ -115,16 +106,10 @@ export class UploadsController {
     @CurrentTenant() tenant: { id: string },
     @Param('fileId') fileId:  string,
   ) {
-    const [row] = await this.db
-      .select()
-      .from(schema.uploads)
-      .where(
-        and(
-          eq(schema.uploads.file_id,   fileId),
-          eq(schema.uploads.tenant_id, tenant.id),
-        ),
-      )
-      .limit(1);
+    const row = await this.repo!
+      .createQueryBuilder('u')
+      .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
+      .getOne();
 
     if (!row) throw new NotFoundException('Arquivo não encontrado');
 

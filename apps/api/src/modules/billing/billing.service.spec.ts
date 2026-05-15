@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService }       from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
 import { BillingService }      from './billing.service';
-import { DRIZZLE_DB }          from '../../database/database.module';
+import { DATA_SOURCE }         from '../../database/database.module';
 import { WsGateway }           from '../../core/websocket/ws.gateway';
 
 jest.mock('stripe', () => {
@@ -24,37 +24,54 @@ const getStripeInstance = () => {
   return StripeRaw.__instance;
 };
 
-const buildMockDb = () => {
-  const mock = {
-    select:              jest.fn(),
-    from:                jest.fn(),
-    where:               jest.fn(),
-    limit:               jest.fn(),
-    insert:              jest.fn(),
-    values:              jest.fn(),
-    onConflictDoNothing: jest.fn(),
-    update:              jest.fn(),
-    set:                 jest.fn(),
+const buildMockQb = (resolveValue: any = null) => {
+  const qb: any = {
+    where:      jest.fn(),
+    andWhere:   jest.fn(),
+    getOne:     jest.fn().mockResolvedValue(resolveValue),
+    getMany:    jest.fn().mockResolvedValue([]),
+    getManyAndCount: jest.fn().mockResolvedValue([[], 0]),
+    update:     jest.fn(),
+    set:        jest.fn(),
+    delete:     jest.fn(),
+    from:       jest.fn(),
+    execute:    jest.fn().mockResolvedValue({ affected: 1 }),
   };
-  mock.select.mockReturnValue(mock);
-  mock.from.mockReturnValue(mock);
-  mock.where.mockReturnValue(mock);
-  mock.limit.mockResolvedValue([]);
-  mock.insert.mockReturnValue(mock);
-  mock.values.mockReturnValue(mock);
-  mock.onConflictDoNothing.mockResolvedValue([]);
-  mock.update.mockReturnValue(mock);
-  mock.set.mockReturnValue(mock);
-  return mock;
+  qb.where.mockReturnValue(qb);
+  qb.andWhere.mockReturnValue(qb);
+  qb.update.mockReturnValue(qb);
+  qb.set.mockReturnValue(qb);
+  qb.delete.mockReturnValue(qb);
+  qb.from.mockReturnValue(qb);
+  return qb;
+};
+
+const buildMockRepo = (getOneValue: any = null) => {
+  const qb = buildMockQb(getOneValue);
+  return {
+    createQueryBuilder: jest.fn(() => qb),
+    create: jest.fn((v: any) => v),
+    save:   jest.fn((v: any) => Promise.resolve({ id: 'test-id', ...v })),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    _qb: qb,
+  };
+};
+
+const buildMockDs = (getOneValue: any = null) => {
+  const repo = buildMockRepo(getOneValue);
+  return {
+    getRepository: jest.fn(() => repo),
+    _repo: repo,
+  };
 };
 
 describe('BillingService', () => {
   let service: BillingService;
-  let mockDb: ReturnType<typeof buildMockDb>;
+  let mockDs: ReturnType<typeof buildMockDs>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
-    mockDb = buildMockDb();
+    mockDs = buildMockDs();
 
     const stripe = getStripeInstance();
     stripe.checkout.sessions.create.mockResolvedValue({
@@ -80,8 +97,8 @@ describe('BillingService', () => {
             }[key]),
           },
         },
-        { provide: DRIZZLE_DB, useValue: mockDb },
-        { provide: WsGateway,  useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
+        { provide: DATA_SOURCE, useValue: mockDs },
+        { provide: WsGateway,   useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
       ],
     }).compile();
 
@@ -105,7 +122,8 @@ describe('BillingService', () => {
     });
 
     it('reusa customer_id existente', async () => {
-      mockDb.limit.mockResolvedValueOnce([{ stripe_customer_id: 'cus_123', stripe_sub_id: 'sub_123' }]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce({ stripe_customer_id: 'cus_123', stripe_sub_id: 'sub_123' });
       await service.createCheckoutSession({
         orgId: 'o1', tenantId: 't1', plan: 'starter',
         successUrl: 'https://ok', cancelUrl: 'https://cancel',
@@ -119,18 +137,21 @@ describe('BillingService', () => {
 
   describe('createPortalSession', () => {
     it('cria sessão de portal para customer existente', async () => {
-      mockDb.limit.mockResolvedValueOnce([{ stripe_customer_id: 'cus_portal' }]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce({ stripe_customer_id: 'cus_portal' });
       const r = await service.createPortalSession('org-1', 'https://app.com');
       expect(r.url).toBe('https://billing.stripe.com/test');
     });
 
     it('lança BadRequestException sem assinatura', async () => {
-      mockDb.limit.mockResolvedValueOnce([]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce(null);
       await expect(service.createPortalSession('org-sem-sub', 'x')).rejects.toThrow();
     });
 
     it('lança BadRequestException com customer pending_', async () => {
-      mockDb.limit.mockResolvedValueOnce([{ stripe_customer_id: 'pending_org-1' }]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce({ stripe_customer_id: 'pending_org-1' });
       await expect(service.createPortalSession('org-1', 'x')).rejects.toThrow(BadRequestException);
     });
   });
@@ -149,7 +170,8 @@ describe('BillingService', () => {
       stripe.webhooks.constructEvent.mockReturnValueOnce({
         id: 'evt_done', type: 'checkout.session.completed', data: { object: {} },
       });
-      mockDb.limit.mockResolvedValueOnce([{ id: 'wh-1', status: 'processed' }]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce({ id: 'wh-1', status: 'processed' });
       const r = await service.handleWebhook('sig', Buffer.from('{}'));
       expect(r).toEqual({ received: true });
     });
@@ -157,13 +179,15 @@ describe('BillingService', () => {
 
   describe('getSubscription', () => {
     it('retorna null quando não há subscription', async () => {
-      mockDb.limit.mockResolvedValueOnce([]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce(null);
       expect(await service.getSubscription('org-x')).toBeNull();
     });
 
     it('retorna subscription existente', async () => {
       const sub = { id: 's1', plan: 'starter', status: 'trial' };
-      mockDb.limit.mockResolvedValueOnce([sub]);
+      const repo = mockDs._repo;
+      repo._qb.getOne.mockResolvedValueOnce(sub);
       expect(await service.getSubscription('org-1')).toEqual(sub);
     });
   });

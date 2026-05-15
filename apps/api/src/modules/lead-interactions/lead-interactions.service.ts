@@ -1,47 +1,47 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { leadInteractions, LeadInteraction } from '../../database/schema';
-import { CreateLeadInteractionDto, QueryLeadInteractionDto } from './dto/lead-interactions.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { LeadInteractionEntity } from '../../database/entities';
+import type { CreateLeadInteractionDto, QueryLeadInteractionDto } from './dto/lead-interactions.dto';
 
 @Injectable()
 export class LeadInteractionsService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<LeadInteractionEntity> | null = null;
 
-  async list(tenantId: string, q: QueryLeadInteractionDto) {
-    const conditions: SQL[] = [eq(leadInteractions.tenant_id, tenantId)];
-    if (q.leadId) conditions.push(eq(leadInteractions.lead_id, q.leadId));
-    if (q.type)   conditions.push(eq(leadInteractions.tipo,    q.type));
-
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(leadInteractions.created_at) : desc(leadInteractions.created_at);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(leadInteractions).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(leadInteractions).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(LeadInteractionEntity);
   }
 
-  async create(tenantId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteraction> {
-    const [row] = await this.db.insert(leadInteractions).values({
+  async list(tenantId: string, leadId: string, query: QueryLeadInteractionDto) {
+    const qb = this.repo!
+      .createQueryBuilder('i')
+      .where('i.tenant_id = :tenantId AND i.lead_id = :leadId', { tenantId, leadId });
+
+    qb.orderBy('i.created_at', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+  }
+
+  async create(tenantId: string, leadId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteractionEntity> {
+    const entity = this.repo!.create({
       tenant_id:  tenantId,
-      lead_id:    dto.leadId,
-      tipo:       dto.type,
-      descricao:  dto.notes ?? null,
-      data:       new Date(),
+      lead_id:    leadId,
+      ...(dto as any),
       created_by: userId,
-    }).returning();
-    return row;
+    });
+    return this.repo!.save(entity);
   }
 
-  async remove(tenantId: string, id: string) {
-    const [row] = await this.db.select().from(leadInteractions)
-      .where(and(eq(leadInteractions.tenant_id, tenantId), eq(leadInteractions.id, id))).limit(1);
-    if (!row) throw new NotFoundException('Interacção não encontrada');
-    await this.db.delete(leadInteractions)
-      .where(and(eq(leadInteractions.tenant_id, tenantId), eq(leadInteractions.id, id)));
+  async remove(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+    const existing = await this.repo!
+      .createQueryBuilder('i')
+      .where('i.id = :id AND i.tenant_id = :tenantId', { id, tenantId })
+      .getOne();
+    if (!existing) throw new NotFoundException('Interação não encontrada');
+    await this.repo!.delete({ id, tenant_id: tenantId } as any);
     return { deleted: true };
   }
 }

@@ -1,89 +1,60 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc, count } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB }   from '../../database/database.module';
-import { ecadReports, EcadReport } from '../../database/schema';
-import { CreateEcadReportDto }     from './dto/create-ecad-report.dto';
-import { UpdateEcadReportDto }     from './dto/update-ecad-report.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { EcadReportEntity } from '../../database/entities';
+import type { CreateEcadReportDto } from './dto/create-ecad-report.dto';
 
 @Injectable()
 export class EcadReportsService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-  ) {}
+  private readonly repo: Repository<EcadReportEntity> | null = null;
 
-  async list(tenantId: string, query: { periodo?: string; status?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(ecadReports.tenant_id, tenantId), isNull(ecadReports.deleted_at)];
-    if (query.periodo) conds.push(eq(ecadReports.periodo, query.periodo));
-    if (query.status)  conds.push(eq(ecadReports.status, query.status));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(ecadReports).where(where)
-        .orderBy(desc(ecadReports.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(ecadReports).where(where),
-    ]);
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(EcadReportEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<EcadReport> {
-    const [result] = await this.db
-      .select()
-      .from(ecadReports)
-      .where(and(eq(ecadReports.tenant_id, tenantId), eq(ecadReports.id, id), isNull(ecadReports.deleted_at)))
-      .limit(1);
+  async list(tenantId: string, query: any) {
+    const qb = this.repo!
+      .createQueryBuilder('r')
+      .where('r.tenant_id = :tenantId', { tenantId })
+      .andWhere('r.deleted_at IS NULL');
+
+    if (query.obra_id) qb.andWhere('r.obra_id = :obraId',    { obraId:  query.obra_id });
+    if (query.periodo) qb.andWhere('r.periodo = :periodo',   { periodo: query.periodo });
+    if (query.status)  qb.andWhere('r.status = :status',     { status:  query.status });
+
+    qb.orderBy('r.created_at', query.ascending ? 'ASC' : 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<EcadReportEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('r')
+      .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!result) throw new NotFoundException('Relatório ECAD não encontrado');
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateEcadReportDto): Promise<EcadReport> {
-    const [created] = await this.db
-      .insert(ecadReports)
-      .values({
-        tenant_id:     tenantId,
-        periodo:       dto.periodo,
-        tipo:          dto.tipo,
-        obra_id:       dto.obra_id       ?? null,
-        valor_bruto:   dto.valor_bruto   ?? null,
-        valor_liquido: dto.valor_liquido ?? null,
-        status:        dto.status        ?? 'pendente',
-        arquivo_url:   dto.arquivo_url   ?? null,
-        metadata:      dto.metadata      ?? {},
-        created_by:    userId,
-      })
-      .returning();
-    return created;
+  async create(tenantId: string, userId: string, dto: CreateEcadReportDto): Promise<EcadReportEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateEcadReportDto): Promise<EcadReport> {
+  async update(tenantId: string, id: string, dto: any): Promise<EcadReportEntity> {
     await this.findById(tenantId, id);
-    const [updated] = await this.db
-      .update(ecadReports)
-      .set({
-        ...(dto.periodo       != null && { periodo:       dto.periodo }),
-        ...(dto.tipo          != null && { tipo:          dto.tipo }),
-        ...(dto.obra_id       != null && { obra_id:       dto.obra_id }),
-        ...(dto.valor_bruto   != null && { valor_bruto:   dto.valor_bruto }),
-        ...(dto.valor_liquido != null && { valor_liquido: dto.valor_liquido }),
-        ...(dto.status        != null && { status:        dto.status }),
-        ...(dto.arquivo_url   != null && { arquivo_url:   dto.arquivo_url }),
-        ...(dto.metadata      != null && { metadata:      dto.metadata }),
-        updated_at: new Date(),
-      })
-      .where(and(eq(ecadReports.tenant_id, tenantId), eq(ecadReports.id, id), isNull(ecadReports.deleted_at)))
-      .returning();
-    return updated;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+  async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db
-      .update(ecadReports)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(ecadReports.tenant_id, tenantId), eq(ecadReports.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

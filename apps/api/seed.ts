@@ -6,18 +6,11 @@
  *   - 1 tenant "Demo Label"
  *   - 1 billing subscription (trial)
  *
- * Uso:  cd apps/api && npx ts-node --esm seed.ts
- *  ou:  cd apps/api && node --loader ts-node/esm seed.ts
+ * Uso:  cd apps/api && npx ts-node --transpile-only seed.ts
  */
 import 'dotenv/config';
-import { Pool }    from 'pg';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { eq }      from 'drizzle-orm';
-import {
-  organizations,
-  tenants,
-  billingSubscriptions,
-} from './src/database/schema.js';
+import { DataSource } from 'typeorm';
+import { ALL_ENTITIES } from './src/database/entities';
 
 const url = process.env.DATABASE_URL;
 
@@ -26,104 +19,99 @@ if (!url) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: url });
-const db   = drizzle(pool);
+const ds = new DataSource({
+  type:        'postgres',
+  url,
+  entities:    ALL_ENTITIES,
+  synchronize: false,
+  logging:     false,
+  ssl:         process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+});
 
 async function seed() {
   console.log('🌱  A iniciar seed...');
+  await ds.initialize();
+  const qr = ds.createQueryRunner();
 
-  // ── 1. Organização ─────────────────────────────────────────────────────────
-  const existingOrgs = await db.select({ id: organizations.id })
-    .from(organizations)
-    .where(eq(organizations.slug, 'music-os-360-demo'))
-    .limit(1);
+  try {
+    // ── 1. Organização ──────────────────────────────────────────────────────
+    const existingOrg = await qr.query(
+      `SELECT id FROM organizations WHERE slug = $1 LIMIT 1`,
+      ['music-os-360-demo'],
+    );
 
-  let orgId: string;
-  if (existingOrgs.length > 0) {
-    orgId = existingOrgs[0].id;
-    console.log('⏭️   Organização já existe:', orgId);
-  } else {
-    const [org] = await db.insert(organizations).values({
-      name:           'Music OS 360 Demo',
-      slug:           'music-os-360-demo',
-      plan:           'professional',
-      billing_status: 'trial',
-      industry:       'gravadora',
-    }).returning({ id: organizations.id });
-    orgId = org.id;
-    console.log('✅  Organização criada:', orgId);
+    let orgId: string;
+    if (existingOrg.length > 0) {
+      orgId = existingOrg[0].id;
+      console.log('⏭️   Organização já existe:', orgId);
+    } else {
+      const [org] = await qr.query(
+        `INSERT INTO organizations (name, slug, plan, billing_status, industry)
+         VALUES ($1, $2, $3, $4, $5)
+         RETURNING id`,
+        ['Music OS 360 Demo', 'music-os-360-demo', 'professional', 'trial', 'gravadora'],
+      );
+      orgId = org.id;
+      console.log('✅  Organização criada:', orgId);
+    }
+
+    // ── 2. Tenant ────────────────────────────────────────────────────────────
+    const existingTenant = await qr.query(
+      `SELECT id FROM tenants WHERE slug = $1 LIMIT 1`,
+      ['demo-label'],
+    );
+
+    let tenantId: string;
+    if (existingTenant.length > 0) {
+      tenantId = existingTenant[0].id;
+      console.log('⏭️   Tenant já existe:', tenantId);
+    } else {
+      const features = JSON.stringify({
+        artists: true, catalog: true, contracts: true, accounting: true,
+        crm: true, marketing: true, events: true, projects: true,
+        releases: true, monitoring: true, analytics: true, support: true, ai: true,
+      });
+      const settings = JSON.stringify({
+        timezone: 'America/Sao_Paulo', locale: 'pt-BR', currency: 'BRL',
+      });
+      const [tenant] = await qr.query(
+        `INSERT INTO tenants (org_id, name, slug, plan, features, settings, active)
+         VALUES ($1, $2, $3, $4, $5::jsonb, $6::jsonb, $7)
+         RETURNING id`,
+        [orgId, 'Demo Label', 'demo-label', 'professional', features, settings, true],
+      );
+      tenantId = tenant.id;
+      console.log('✅  Tenant criado:', tenantId);
+    }
+
+    // ── 3. Billing Subscription ───────────────────────────────────────────────
+    const existingBilling = await qr.query(
+      `SELECT id FROM billing_subscriptions WHERE org_id = $1 LIMIT 1`,
+      [orgId],
+    );
+
+    if (existingBilling.length > 0) {
+      console.log('⏭️   Billing subscription já existe:', existingBilling[0].id);
+    } else {
+      const trialEnd = new Date();
+      trialEnd.setDate(trialEnd.getDate() + 14);
+      const [billing] = await qr.query(
+        `INSERT INTO billing_subscriptions (org_id, plan, status, trial_ends_at, seats, seats_used)
+         VALUES ($1, $2, $3, $4, $5, $6)
+         RETURNING id`,
+        [orgId, 'professional', 'trial', trialEnd, 10, 1],
+      );
+      console.log('✅  Billing subscription criada:', billing.id);
+    }
+
+    console.log('\n🎉  Seed concluído!');
+    console.log('    org_id:    ', orgId);
+    console.log('    tenant_id: ', tenantId);
+
+  } finally {
+    await qr.release();
+    await ds.destroy();
   }
-
-  // ── 2. Tenant ──────────────────────────────────────────────────────────────
-  const existingTenants = await db.select({ id: tenants.id })
-    .from(tenants)
-    .where(eq(tenants.slug, 'demo-label'))
-    .limit(1);
-
-  let tenantId: string;
-  if (existingTenants.length > 0) {
-    tenantId = existingTenants[0].id;
-    console.log('⏭️   Tenant já existe:', tenantId);
-  } else {
-    const [tenant] = await db.insert(tenants).values({
-      org_id:   orgId,
-      name:     'Demo Label',
-      slug:     'demo-label',
-      plan:     'professional',
-      features: {
-        artists:          true,
-        catalog:          true,
-        contracts:        true,
-        accounting:       true,
-        crm:              true,
-        marketing:        true,
-        events:           true,
-        projects:         true,
-        releases:         true,
-        monitoring:       true,
-        analytics:        true,
-        support:          true,
-        ai:               true,
-      },
-      settings: {
-        timezone: 'America/Sao_Paulo',
-        locale:   'pt-BR',
-        currency: 'BRL',
-      },
-      active: true,
-    }).returning({ id: tenants.id });
-    tenantId = tenant.id;
-    console.log('✅  Tenant criado:', tenantId);
-  }
-
-  // ── 3. Billing Subscription ────────────────────────────────────────────────
-  const existingBilling = await db.select({ id: billingSubscriptions.id })
-    .from(billingSubscriptions)
-    .where(eq(billingSubscriptions.org_id, orgId))
-    .limit(1);
-
-  if (existingBilling.length > 0) {
-    console.log('⏭️   Billing subscription já existe:', existingBilling[0].id);
-  } else {
-    const trialEnd = new Date();
-    trialEnd.setDate(trialEnd.getDate() + 14);
-
-    const [billing] = await db.insert(billingSubscriptions).values({
-      org_id:        orgId,
-      plan:          'professional',
-      status:        'trial',
-      trial_ends_at: trialEnd,
-      seats:         10,
-      seats_used:    1,
-    }).returning({ id: billingSubscriptions.id });
-    console.log('✅  Billing subscription criada:', billing.id);
-  }
-
-  console.log('\n🎉  Seed concluído!');
-  console.log('    org_id:    ', orgId);
-  console.log('    tenant_id: ', tenantId);
-
-  await pool.end();
 }
 
 seed().catch((err) => {

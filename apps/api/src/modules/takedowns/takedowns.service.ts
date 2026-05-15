@@ -1,76 +1,61 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { takedowns, Takedown }   from '../../database/schema';
-import { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './dto/takedowns.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { TakedownEntity } from '../../database/entities';
+import type { CreateTakedownDto, UpdateTakedownDto, QueryTakedownDto } from './dto/takedowns.dto';
 
 @Injectable()
 export class TakedownsService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<TakedownEntity> | null = null;
 
-  async list(tenantId: string, q: QueryTakedownDto) {
-    const conditions: SQL[] = [
-      eq(takedowns.tenant_id, tenantId),
-      isNull(takedowns.deleted_at),
-    ];
-    if (q.status)   conditions.push(eq(takedowns.status,     q.status));
-    if (q.platform) conditions.push(eq(takedowns.plataforma, q.platform));
-    if (q.trackId)  conditions.push(eq(takedowns.obra_id,    q.trackId));
-    if (q.search)   conditions.push(ilike(takedowns.titulo,  `%${q.search}%`) as SQL);
-
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(takedowns.created_at) : desc(takedowns.created_at);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(takedowns).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(takedowns).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(TakedownEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Takedown> {
-    const [row] = await this.db.select().from(takedowns)
-      .where(and(eq(takedowns.tenant_id, tenantId), eq(takedowns.id, id), isNull(takedowns.deleted_at)))
-      .limit(1);
-    if (!row) throw new NotFoundException('Takedown não encontrado');
-    return row;
+  async list(tenantId: string, query: QueryTakedownDto) {
+    const qb = this.repo!
+      .createQueryBuilder('t')
+      .where('t.tenant_id = :tenantId', { tenantId })
+      .andWhere('t.deleted_at IS NULL');
+
+    if ((query as any).status)     qb.andWhere('t.status = :status',       { status:     (query as any).status });
+    if ((query as any).plataforma) qb.andWhere('t.plataforma = :plataforma', { plataforma: (query as any).plataforma });
+    if ((query as any).artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId: (query as any).artista_id });
+    if ((query as any).search)     qb.andWhere('t.titulo ILIKE :search',   { search: `%${(query as any).search}%` });
+
+    qb.orderBy('t.created_at', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<Takedown> {
-    const [row] = await this.db.insert(takedowns).values({
-      tenant_id:  tenantId,
-      titulo:     dto.platform,
-      plataforma: dto.platform,
-      url:        null,
-      obra_id:    dto.trackId ?? null,
-      artista_id: null,
-      motivo:     dto.reason   ?? null,
-      status:     'pendente',
-      metadata:   dto.metadata ?? {},
-      created_by: userId,
-    }).returning();
-    return row;
+  async findById(tenantId: string, id: string): Promise<TakedownEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('t')
+      .where('t.id = :id AND t.tenant_id = :tenantId AND t.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Takedown não encontrado');
+    return result;
   }
 
-  async update(tenantId: string, id: string, dto: UpdateTakedownDto): Promise<Takedown> {
+  async create(tenantId: string, userId: string, dto: CreateTakedownDto): Promise<TakedownEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
+    return this.repo!.save(entity);
+  }
+
+  async update(tenantId: string, id: string, dto: UpdateTakedownDto): Promise<TakedownEntity> {
     await this.findById(tenantId, id);
-    const [row] = await this.db.update(takedowns).set({
-      ...(dto.platform   != null && { plataforma: dto.platform }),
-      ...(dto.reason     != null && { motivo:     dto.reason }),
-      ...(dto.status     != null && { status:     dto.status }),
-      ...(dto.resolvedAt != null && { updated_at: new Date(dto.resolvedAt) }),
-      ...(dto.metadata   != null && { metadata:   dto.metadata }),
-      updated_at: new Date(),
-    }).where(and(eq(takedowns.tenant_id, tenantId), eq(takedowns.id, id), isNull(takedowns.deleted_at)))
-      .returning();
-    return row;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(takedowns).set({ deleted_at: new Date() })
-      .where(and(eq(takedowns.tenant_id, tenantId), eq(takedowns.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

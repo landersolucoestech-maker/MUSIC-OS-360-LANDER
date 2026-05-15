@@ -1,82 +1,60 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, or, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { clients, Client }       from '../../database/schema';
-import { CreateClientDto, UpdateClientDto, QueryClientDto } from './dto/clients.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { ClientEntity } from '../../database/entities';
+import type { CreateClientDto, UpdateClientDto, QueryClientDto } from './dto/clients.dto';
 
 @Injectable()
 export class ClientsService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<ClientEntity> | null = null;
 
-  async list(tenantId: string, q: QueryClientDto) {
-    const conditions: SQL[] = [
-      eq(clients.tenant_id, tenantId),
-      isNull(clients.deleted_at),
-    ];
-    if (q.status) conditions.push(eq(clients.status, q.status));
-    if (q.search) conditions.push(or(ilike(clients.nome, `%${q.search}%`)) as SQL);
-
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(clients.created_at) : desc(clients.created_at);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(clients).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(clients).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(ClientEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Client> {
-    const [row] = await this.db.select().from(clients)
-      .where(and(eq(clients.tenant_id, tenantId), eq(clients.id, id), isNull(clients.deleted_at)))
-      .limit(1);
-    if (!row) throw new NotFoundException('Cliente não encontrado');
-    return row;
+  async list(tenantId: string, query: QueryClientDto) {
+    const qb = this.repo!
+      .createQueryBuilder('c')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.deleted_at IS NULL');
+
+    if ((query as any).status)   qb.andWhere('c.status = :status',   { status:   (query as any).status });
+    if ((query as any).segmento) qb.andWhere('c.segmento = :segmento', { segmento: (query as any).segmento });
+    if ((query as any).search)   qb.andWhere('(c.nome ILIKE :search OR c.responsavel ILIKE :search)', { search: `%${(query as any).search}%` });
+
+    qb.orderBy('c.created_at', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateClientDto): Promise<Client> {
-    const [row] = await this.db.insert(clients).values({
-      tenant_id:          tenantId,
-      nome:               dto.name,
-      tipo_pessoa:        dto.type             ?? 'pessoa_juridica',
-      segmento:           dto.category         ?? null,
-      responsavel:        null,
-      email_encrypted:    dto.email            ?? null,
-      telefone_encrypted: dto.phone            ?? null,
-      endereco:           dto.address ? JSON.stringify(dto.address) : null,
-      cidade:             null,
-      estado:             null,
-      observacoes:        null,
-      metadata:           dto.metadata ?? {},
-      created_by:         userId,
-      updated_by:         userId,
-    }).returning();
-    return row;
+  async findById(tenantId: string, id: string): Promise<ClientEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('c')
+      .where('c.id = :id AND c.tenant_id = :tenantId AND c.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Cliente não encontrado');
+    return result;
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateClientDto): Promise<Client> {
+  async create(tenantId: string, userId: string, dto: CreateClientDto): Promise<ClientEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    return this.repo!.save(entity);
+  }
+
+  async update(tenantId: string, userId: string, id: string, dto: UpdateClientDto): Promise<ClientEntity> {
     await this.findById(tenantId, id);
-    const [row] = await this.db.update(clients).set({
-      ...(dto.name     != null && { nome:               dto.name }),
-      ...(dto.type     != null && { tipo_pessoa:        dto.type }),
-      ...(dto.category != null && { segmento:           dto.category }),
-      ...(dto.status   != null && { status:             dto.status }),
-      ...(dto.email    != null && { email_encrypted:    dto.email }),
-      ...(dto.phone    != null && { telefone_encrypted: dto.phone }),
-      ...(dto.address  != null && { endereco:           JSON.stringify(dto.address) }),
-      ...(dto.metadata != null && { metadata:           dto.metadata }),
-      updated_at: new Date(),
-      updated_by: userId,
-    }).where(and(eq(clients.tenant_id, tenantId), eq(clients.id, id), isNull(clients.deleted_at)))
-      .returning();
-    return row;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(clients).set({ deleted_at: new Date() })
-      .where(and(eq(clients.tenant_id, tenantId), eq(clients.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

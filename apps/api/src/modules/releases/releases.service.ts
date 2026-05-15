@@ -1,86 +1,87 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { releases, Release }     from '../../database/schema';
-import { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { ReleaseEntity } from '../../database/entities';
+import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
 
 @Injectable()
 export class ReleasesService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<ReleaseEntity> | null = null;
+
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(ReleaseEntity);
+  }
 
   async list(tenantId: string, q: QueryReleaseDto) {
-    const conditions: SQL[] = [
-      eq(releases.tenant_id, tenantId),
-      isNull(releases.deleted_at),
-    ];
-    if (q.status)      conditions.push(eq(releases.status,        q.status));
-    if (q.type)        conditions.push(eq(releases.tipo,          q.type));
-    if (q.artistId)    conditions.push(eq(releases.artista_id,    q.artistId));
-    if (q.distributor) conditions.push(eq(releases.distribuidora, q.distributor));
-    if (q.search)      conditions.push(ilike(releases.titulo,     `%${q.search}%`) as SQL);
+    const qb = this.repo!
+      .createQueryBuilder('r')
+      .where('r.tenant_id = :tenantId', { tenantId })
+      .andWhere('r.deleted_at IS NULL');
 
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(releases.created_at) : desc(releases.created_at);
+    if (q.status)      qb.andWhere('r.status = :status',             { status:      q.status });
+    if (q.type)        qb.andWhere('r.tipo = :tipo',                 { tipo:        q.type });
+    if (q.artistId)    qb.andWhere('r.artista_id = :artistaId',      { artistaId:   q.artistId });
+    if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
+    if (q.search)      qb.andWhere('r.titulo ILIKE :search',         { search:      `%${q.search}%` });
 
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(releases).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(releases).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+    qb.orderBy('r.created_at', q.ascending ? 'ASC' : 'DESC')
+      .skip(q.offset ?? 0)
+      .take(q.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
   }
 
-  async findById(tenantId: string, id: string): Promise<Release> {
-    const [row] = await this.db.select().from(releases)
-      .where(and(eq(releases.tenant_id, tenantId), eq(releases.id, id), isNull(releases.deleted_at)))
-      .limit(1);
-    if (!row) throw new NotFoundException('Lançamento não encontrado');
-    return row;
+  async findById(tenantId: string, id: string): Promise<ReleaseEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('r')
+      .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Lançamento não encontrado');
+    return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateReleaseDto): Promise<Release> {
-    const [row] = await this.db.insert(releases).values({
+  async create(tenantId: string, userId: string, dto: CreateReleaseDto): Promise<ReleaseEntity> {
+    const entity = this.repo!.create({
       tenant_id:       tenantId,
       titulo:          dto.title,
       tipo:            dto.type,
-      artista_id:      dto.artistId  ?? null,
-      upc:             dto.upc       ?? null,
+      artista_id:      dto.artistId    ?? null,
+      upc:             dto.upc         ?? null,
       distribuidora:   dto.distributor ?? null,
-      data_lancamento: dto.releasedAt ? new Date(dto.releasedAt) : null,
-      plataformas:     dto.platforms ?? [],
-      capa_url:        dto.coverUrl  ?? null,
+      data_lancamento: dto.releasedAt  ? new Date(dto.releasedAt) : null,
+      plataformas:     dto.platforms   ?? [],
+      capa_url:        dto.coverUrl    ?? null,
       status:          'planejamento',
-      metadata:        dto.metadata  ?? {},
+      metadata:        dto.metadata    ?? {},
       created_by:      userId,
       updated_by:      userId,
-    }).returning();
-    return row;
+    });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateReleaseDto): Promise<Release> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateReleaseDto): Promise<ReleaseEntity> {
     await this.findById(tenantId, id);
-    const [row] = await this.db.update(releases).set({
-      ...(dto.title       != null && { titulo:          dto.title }),
-      ...(dto.type        != null && { tipo:            dto.type }),
-      ...(dto.status      != null && { status:          dto.status }),
-      ...(dto.artistId    != null && { artista_id:      dto.artistId }),
-      ...(dto.upc         != null && { upc:             dto.upc }),
-      ...(dto.distributor != null && { distribuidora:   dto.distributor }),
-      ...(dto.releasedAt  != null && { data_lancamento: new Date(dto.releasedAt) }),
-      ...(dto.platforms   != null && { plataformas:     dto.platforms }),
-      ...(dto.coverUrl    != null && { capa_url:        dto.coverUrl }),
-      ...(dto.metadata    != null && { metadata:        dto.metadata }),
-      updated_at: new Date(),
-      updated_by: userId,
-    }).where(and(eq(releases.tenant_id, tenantId), eq(releases.id, id), isNull(releases.deleted_at)))
-      .returning();
-    return row;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
+    if (dto.title       != null) updates.titulo          = dto.title;
+    if (dto.type        != null) updates.tipo            = dto.type;
+    if (dto.status      != null) updates.status          = dto.status;
+    if (dto.artistId    != null) updates.artista_id      = dto.artistId;
+    if (dto.upc         != null) updates.upc             = dto.upc;
+    if (dto.distributor != null) updates.distribuidora   = dto.distributor;
+    if (dto.releasedAt  != null) updates.data_lancamento = new Date(dto.releasedAt);
+    if (dto.platforms   != null) updates.plataformas     = dto.platforms;
+    if (dto.coverUrl    != null) updates.capa_url        = dto.coverUrl;
+    if (dto.metadata    != null) updates.metadata        = dto.metadata;
+
+    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(releases).set({ deleted_at: new Date() })
-      .where(and(eq(releases.tenant_id, tenantId), eq(releases.id, id)));
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

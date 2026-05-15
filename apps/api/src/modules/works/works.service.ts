@@ -1,122 +1,62 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { works, Work }       from '../../database/schema';
-import { CreateWorkDto }     from './dto/create-work.dto';
-import { UpdateWorkDto }     from './dto/update-work.dto';
-import { QueryWorkDto }      from './dto/query-work.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { WorkEntity } from '../../database/entities';
+import type { CreateWorkDto }  from './dto/create-work.dto';
+import type { UpdateWorkDto }  from './dto/update-work.dto';
+import type { QueryWorkDto }   from './dto/query-work.dto';
 
 @Injectable()
 export class WorksService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-  ) {}
+  private readonly repo: Repository<WorkEntity> | null = null;
 
-  async list(tenantId: string, query: QueryWorkDto) {
-    const conditions: SQL[] = [
-      eq(works.tenant_id, tenantId),
-      isNull(works.deleted_at),
-    ];
-
-    if (query.status) conditions.push(eq(works.status,  query.status));
-    if (query.genre)  conditions.push(eq(works.genero,  query.genre));
-    if (query.search) {
-      conditions.push(ilike(works.titulo, `%${query.search}%`) as SQL);
-    }
-
-    const where    = and(...conditions);
-    const orderCol = this.resolveOrder(query.orderBy ?? 'created_at');
-    const orderDir = query.ascending ? asc(orderCol) : desc(orderCol);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(works).where(where).orderBy(orderDir)
-        .offset(query.offset ?? 0).limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(works).where(where),
-    ]);
-
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(WorkEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Work> {
-    const [result] = await this.db
-      .select()
-      .from(works)
-      .where(and(eq(works.tenant_id, tenantId), eq(works.id, id), isNull(works.deleted_at)))
-      .limit(1);
+  async list(tenantId: string, query: QueryWorkDto) {
+    const qb = this.repo!
+      .createQueryBuilder('w')
+      .where('w.tenant_id = :tenantId', { tenantId })
+      .andWhere('w.deleted_at IS NULL');
 
+    if ((query as any).status) qb.andWhere('w.status = :status', { status: (query as any).status });
+    if ((query as any).tipo)   qb.andWhere('w.tipo = :tipo',     { tipo:   (query as any).tipo });
+    if ((query as any).search) qb.andWhere('w.titulo ILIKE :search', { search: `%${(query as any).search}%` });
+
+    qb.orderBy('w.created_at', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<WorkEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('w')
+      .where('w.id = :id AND w.tenant_id = :tenantId AND w.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!result) throw new NotFoundException('Obra não encontrada');
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateWorkDto): Promise<Work> {
-    const [created] = await this.db
-      .insert(works)
-      .values({
-        tenant_id:    tenantId,
-        titulo:       dto.titulo,
-        tipo:         dto.tipo          ?? 'composicao',
-        iswc:         dto.iswc          ?? null,
-        isrc:         dto.isrc          ?? null,
-        genero:       dto.genero        ?? null,
-        status:       dto.status        ?? 'pendente',
-        compositor:   dto.compositor   ?? null,
-        compositores: dto.compositores ? JSON.stringify(dto.compositores) : null,
-        editora:      dto.editora      ?? null,
-        metadata:     dto.metadata      ?? {},
-        created_by:   userId,
-        updated_by:   userId,
-      })
-      .returning();
-
-    return created;
+  async create(tenantId: string, userId: string, dto: CreateWorkDto): Promise<WorkEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateWorkDto): Promise<Work> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateWorkDto): Promise<WorkEntity> {
     await this.findById(tenantId, id);
-
-    const [updated] = await this.db
-      .update(works)
-      .set({
-        ...(dto.titulo       != null && { titulo:       dto.titulo }),
-        ...(dto.tipo         != null && { tipo:         dto.tipo }),
-        ...(dto.iswc         != null && { iswc:         dto.iswc }),
-        ...(dto.isrc         != null && { isrc:         dto.isrc }),
-        ...(dto.genero       != null && { genero:       dto.genero }),
-        ...(dto.status       != null && { status:       dto.status }),
-        ...(dto.compositor   != null && { compositor:   dto.compositor }),
-        ...(dto.compositores != null && { compositores: JSON.stringify(dto.compositores) }),
-        ...(dto.editora      != null && { editora:      dto.editora }),
-        ...(dto.metadata     != null && { metadata:     dto.metadata }),
-        updated_at: new Date(),
-        updated_by: userId,
-      })
-      .where(and(eq(works.tenant_id, tenantId), eq(works.id, id), isNull(works.deleted_at)))
-      .returning();
-
-    return updated;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    return this.findById(tenantId, id);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+  async softDelete(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-
-    await this.db
-      .update(works)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(works.tenant_id, tenantId), eq(works.id, id)));
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private resolveOrder(field: string): any {
-    const map: Record<string, any> = {
-      created_at: works.created_at,
-      updated_at: works.updated_at,
-      titulo:     works.titulo,
-    };
-    return map[field] ?? works.created_at;
   }
 }

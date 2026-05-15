@@ -1,94 +1,61 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc, count } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB }       from '../../database/database.module';
-import { contentDetections, ContentDetection } from '../../database/schema';
-import { CreateContentDetectionDto }   from './dto/create-content-detection.dto';
-import { UpdateContentDetectionDto }   from './dto/update-content-detection.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { ContentDetectionEntity } from '../../database/entities';
+import type { CreateContentDetectionDto } from './dto/create-content-detection.dto';
 
 @Injectable()
 export class ContentDetectionsService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-  ) {}
+  private readonly repo: Repository<ContentDetectionEntity> | null = null;
 
-  async list(tenantId: string, query: { status?: string; plataforma?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(contentDetections.tenant_id, tenantId), isNull(contentDetections.deleted_at)];
-    if (query.status)     conds.push(eq(contentDetections.status, query.status));
-    if (query.plataforma) conds.push(eq(contentDetections.plataforma, query.plataforma));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(contentDetections).where(where)
-        .orderBy(desc(contentDetections.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(contentDetections).where(where),
-    ]);
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(ContentDetectionEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<ContentDetection> {
-    const [result] = await this.db
-      .select()
-      .from(contentDetections)
-      .where(and(
-        eq(contentDetections.tenant_id, tenantId),
-        eq(contentDetections.id, id),
-        isNull(contentDetections.deleted_at),
-      ))
-      .limit(1);
+  async list(tenantId: string, query: any) {
+    const qb = this.repo!
+      .createQueryBuilder('c')
+      .where('c.tenant_id = :tenantId', { tenantId })
+      .andWhere('c.deleted_at IS NULL');
+
+    if (query.status)     qb.andWhere('c.status = :status',       { status:     query.status });
+    if (query.plataforma) qb.andWhere('c.plataforma = :plataforma', { plataforma: query.plataforma });
+    if (query.artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.obra_id)    qb.andWhere('c.obra_id = :obraId',      { obraId:     query.obra_id });
+
+    qb.orderBy('c.detectado_em', query.ascending ? 'ASC' : 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<ContentDetectionEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('c')
+      .where('c.id = :id AND c.tenant_id = :tenantId AND c.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!result) throw new NotFoundException('Detecção não encontrada');
     return result;
   }
 
-  async create(tenantId: string, dto: CreateContentDetectionDto): Promise<ContentDetection> {
-    const [created] = await this.db
-      .insert(contentDetections)
-      .values({
-        tenant_id:        tenantId,
-        plataforma:       dto.plataforma,
-        obra_id:          dto.obra_id          ?? null,
-        artista_id:       dto.artista_id       ?? null,
-        titulo_detectado: dto.titulo_detectado ?? null,
-        url:              dto.url              ?? null,
-        score:            dto.score            ?? null,
-        status:           dto.status           ?? 'pendente',
-        tipo:             dto.tipo             ?? 'uso_nao_autorizado',
-        metadata:         dto.metadata         ?? {},
-      })
-      .returning();
-    return created;
+  async create(tenantId: string, dto: CreateContentDetectionDto): Promise<ContentDetectionEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any) });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateContentDetectionDto): Promise<ContentDetection> {
+  async updateStatus(tenantId: string, id: string, status: string): Promise<ContentDetectionEntity> {
     await this.findById(tenantId, id);
-    const [updated] = await this.db
-      .update(contentDetections)
-      .set({
-        ...(dto.plataforma       != null && { plataforma:       dto.plataforma }),
-        ...(dto.obra_id          != null && { obra_id:          dto.obra_id }),
-        ...(dto.artista_id       != null && { artista_id:       dto.artista_id }),
-        ...(dto.titulo_detectado != null && { titulo_detectado: dto.titulo_detectado }),
-        ...(dto.url              != null && { url:              dto.url }),
-        ...(dto.score            != null && { score:            dto.score }),
-        ...(dto.status           != null && { status:           dto.status }),
-        ...(dto.tipo             != null && { tipo:             dto.tipo }),
-        ...(dto.metadata         != null && { metadata:         dto.metadata }),
-        updated_at: new Date(),
-      })
-      .where(and(eq(contentDetections.tenant_id, tenantId), eq(contentDetections.id, id), isNull(contentDetections.deleted_at)))
-      .returning();
-    return updated;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { status, updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+  async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db
-      .update(contentDetections)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(contentDetections.tenant_id, tenantId), eq(contentDetections.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

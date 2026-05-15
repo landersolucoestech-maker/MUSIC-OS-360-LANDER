@@ -1,92 +1,60 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc, count } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { artistGoals, ArtistGoal } from '../../database/schema';
-import { CreateArtistGoalDto } from './dto/create-artist-goal.dto';
-import { UpdateArtistGoalDto } from './dto/update-artist-goal.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { ArtistGoalEntity } from '../../database/entities';
+import type { CreateArtistGoalDto } from './dto/create-artist-goal.dto';
 
 @Injectable()
 export class ArtistGoalsService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-  ) {}
+  private readonly repo: Repository<ArtistGoalEntity> | null = null;
 
-  async list(tenantId: string, query: { artista_id?: string; status?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(artistGoals.tenant_id, tenantId), isNull(artistGoals.deleted_at)];
-    if (query.artista_id) conds.push(eq(artistGoals.artista_id, query.artista_id));
-    if (query.status)     conds.push(eq(artistGoals.status, query.status));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(artistGoals).where(where)
-        .orderBy(desc(artistGoals.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(artistGoals).where(where),
-    ]);
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(ArtistGoalEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<ArtistGoal> {
-    const [result] = await this.db
-      .select()
-      .from(artistGoals)
-      .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id), isNull(artistGoals.deleted_at)))
-      .limit(1);
-    if (!result) throw new NotFoundException('Meta de artista não encontrada');
+  async list(tenantId: string, query: any) {
+    const qb = this.repo!
+      .createQueryBuilder('g')
+      .where('g.tenant_id = :tenantId', { tenantId })
+      .andWhere('g.deleted_at IS NULL');
+
+    if (query.artista_id) qb.andWhere('g.artista_id = :artistaId', { artistaId: query.artista_id });
+    if (query.status)     qb.andWhere('g.status = :status',        { status:    query.status });
+    if (query.tipo)       qb.andWhere('g.tipo = :tipo',            { tipo:      query.tipo });
+
+    qb.orderBy('g.created_at', query.ascending ? 'ASC' : 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<ArtistGoalEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('g')
+      .where('g.id = :id AND g.tenant_id = :tenantId AND g.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Meta não encontrada');
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateArtistGoalDto): Promise<ArtistGoal> {
-    const [created] = await this.db
-      .insert(artistGoals)
-      .values({
-        tenant_id:   tenantId,
-        artista_id:  dto.artista_id,
-        titulo:      dto.titulo,
-        tipo:        dto.tipo,
-        meta_valor:  dto.meta_valor  ?? null,
-        valor_atual: dto.valor_atual ?? '0',
-        status:      dto.status      ?? 'em_andamento',
-        periodo:     dto.periodo     ?? 'mensal',
-        data_inicio: dto.data_inicio ? new Date(dto.data_inicio) : null,
-        data_fim:    dto.data_fim    ? new Date(dto.data_fim)    : null,
-        metadata:    dto.metadata    ?? {},
-        created_by:  userId,
-      })
-      .returning();
-    return created;
+  async create(tenantId: string, userId: string, dto: CreateArtistGoalDto): Promise<ArtistGoalEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateArtistGoalDto): Promise<ArtistGoal> {
+  async update(tenantId: string, id: string, dto: any): Promise<ArtistGoalEntity> {
     await this.findById(tenantId, id);
-    const [updated] = await this.db
-      .update(artistGoals)
-      .set({
-        ...(dto.titulo      != null && { titulo:      dto.titulo }),
-        ...(dto.tipo        != null && { tipo:        dto.tipo }),
-        ...(dto.meta_valor  != null && { meta_valor:  dto.meta_valor }),
-        ...(dto.valor_atual != null && { valor_atual: dto.valor_atual }),
-        ...(dto.status      != null && { status:      dto.status }),
-        ...(dto.periodo     != null && { periodo:     dto.periodo }),
-        ...(dto.metadata    != null && { metadata:    dto.metadata }),
-        ...(dto.data_inicio != null && { data_inicio: new Date(dto.data_inicio) }),
-        ...(dto.data_fim    != null && { data_fim:    new Date(dto.data_fim) }),
-        updated_at: new Date(),
-      })
-      .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id), isNull(artistGoals.deleted_at)))
-      .returning();
-    return updated;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+  async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db
-      .update(artistGoals)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(artistGoals.tenant_id, tenantId), eq(artistGoals.id, id)));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

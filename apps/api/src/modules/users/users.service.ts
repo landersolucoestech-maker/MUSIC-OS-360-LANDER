@@ -1,81 +1,86 @@
 import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
-import { eq, and, ilike, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { orgMembers, OrgMember } from '../../database/schema';
-import { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/users.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { OrgMemberEntity } from '../../database/entities';
+import type { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/users.dto';
 
 @Injectable()
 export class UsersService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<OrgMemberEntity> | null = null;
+
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(OrgMemberEntity);
+  }
 
   async list(tenantId: string, q: QueryUserDto) {
-    const conditions: SQL[] = [eq(orgMembers.tenant_id, tenantId)];
-    if (q.role)   conditions.push(eq(orgMembers.role,  q.role));
-    if (q.search) conditions.push(ilike(orgMembers.email, `%${q.search}%`) as SQL);
+    const qb = this.repo!
+      .createQueryBuilder('m')
+      .where('m.tenant_id = :tenantId', { tenantId });
 
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(orgMembers.created_at) : desc(orgMembers.created_at);
+    if (q.role)   qb.andWhere('m.role = :role',       { role:   q.role });
+    if (q.search) qb.andWhere('m.email ILIKE :search', { search: `%${q.search}%` });
 
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(orgMembers).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 50),
-      this.db.select({ value: count() }).from(orgMembers).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 50 } };
+    qb.orderBy('m.created_at', q.ascending ? 'ASC' : 'DESC')
+      .skip(q.offset ?? 0)
+      .take(q.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
   }
 
-  async findById(tenantId: string, id: string): Promise<OrgMember> {
-    const [row] = await this.db.select().from(orgMembers)
-      .where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.id, id)))
-      .limit(1);
-    if (!row) throw new NotFoundException('Utilizador não encontrado');
-    return row;
+  async findById(tenantId: string, id: string): Promise<OrgMemberEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('m')
+      .where('m.id = :id AND m.tenant_id = :tenantId', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Utilizador não encontrado');
+    return result;
   }
 
-  async findByUserId(tenantId: string, userId: string): Promise<OrgMember | null> {
-    const [row] = await this.db.select().from(orgMembers)
-      .where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.clerk_user_id, userId)))
-      .limit(1);
-    return row ?? null;
+  async findByUserId(tenantId: string, userId: string): Promise<OrgMemberEntity | null> {
+    return this.repo!
+      .createQueryBuilder('m')
+      .where('m.tenant_id = :tenantId AND m.clerk_user_id = :userId', { tenantId, userId })
+      .getOne() ?? null;
   }
 
-  async create(tenantId: string, dto: CreateUserDto): Promise<OrgMember> {
+  async create(tenantId: string, dto: CreateUserDto): Promise<OrgMemberEntity> {
     const existing = await this.findByUserId(tenantId, dto.userId);
     if (existing) throw new ConflictException('Utilizador já existe neste tenant');
 
-    const [member] = await this.db.select({ org_id: orgMembers.org_id })
-      .from(orgMembers).where(eq(orgMembers.tenant_id, tenantId)).limit(1);
+    const anyMember = await this.repo!
+      .createQueryBuilder('m')
+      .select('m.org_id')
+      .where('m.tenant_id = :tenantId', { tenantId })
+      .getOne();
+    if (!anyMember) throw new NotFoundException('Tenant sem organização associada');
 
-    if (!member) throw new NotFoundException('Tenant sem organização associada');
-
-    const [row] = await this.db.insert(orgMembers).values({
-      org_id:        member.org_id,
+    const entity = this.repo!.create({
+      org_id:        anyMember.org_id,
       tenant_id:     tenantId,
       clerk_user_id: dto.userId,
       email:         dto.email,
-      full_name:     dto.fullName  ?? null,
+      full_name:     dto.fullName ?? null,
       role:          dto.role,
       is_active:     true,
-    }).returning();
-    return row;
+    });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, id: string, dto: UpdateUserDto): Promise<OrgMember> {
+  async update(tenantId: string, id: string, dto: UpdateUserDto): Promise<OrgMemberEntity> {
     await this.findById(tenantId, id);
-    const [row] = await this.db.update(orgMembers).set({
-      ...(dto.fullName != null && { full_name: dto.fullName }),
-      ...(dto.role     != null && { role:      dto.role }),
-      ...(dto.status   != null && { is_active: dto.status === 'active' }),
-      updated_at: new Date(),
-    }).where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.id, id)))
-      .returning();
-    return row;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, unknown> = { updated_at: new Date() };
+    if (dto.fullName != null) updates.full_name = dto.fullName;
+    if (dto.role     != null) updates.role      = dto.role;
+    if (dto.status   != null) updates.is_active = dto.status === 'active';
+    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.db.update(orgMembers).set({ is_active: false, updated_at: new Date() })
-      .where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.id, id)));
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { is_active: false, updated_at: new Date() } as any);
     return { deleted: true };
   }
 }

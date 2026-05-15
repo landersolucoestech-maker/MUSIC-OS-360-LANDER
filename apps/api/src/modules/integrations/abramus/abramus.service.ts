@@ -1,5 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { DRIZZLE_DB, DrizzleDB } from '../../../database/database.module';
+import { DataSource } from 'typeorm';
+import { DATA_SOURCE } from '../../../database/database.module';
 import { EncryptionService }    from '../../../core/security/encryption.service';
 import { IntegrationBaseService } from '../integration-base.service';
 
@@ -14,10 +15,10 @@ interface AbramusCreds {
 @Injectable()
 export class AbramusService extends IntegrationBaseService {
   constructor(
-    @Inject(DRIZZLE_DB) db: DrizzleDB,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     enc: EncryptionService,
   ) {
-    super(db, enc);
+    super(ds, enc);
   }
 
   async configure(tenantId: string, username: string, password: string, baseUrl: string): Promise<void> {
@@ -68,18 +69,10 @@ export class AbramusService extends IntegrationBaseService {
   }
 
   async registerWork(tenantId: string, workData: {
-    titulo:       string;
-    compositor:   string;
-    iswc?:        string;
-    genero?:      string;
-    duracao?:     string;
-    editora?:     string;
-    coautores?:   string[];
+    titulo: string; compositor: string; iswc?: string;
+    genero?: string; duracao?: string; editora?: string; coautores?: string[];
   }) {
-    return this.request(tenantId, '/api/v1/works', {
-      method: 'POST',
-      body:   JSON.stringify(workData),
-    });
+    return this.request(tenantId, '/api/v1/works', { method: 'POST', body: JSON.stringify(workData) });
   }
 
   async getStatements(tenantId: string, periodo?: string, limit = 20) {

@@ -1,29 +1,27 @@
 /**
  * database/database.module.ts
  *
- * Módulo Drizzle ORM com PostgreSQL padrão (node-postgres / pg).
- * Fornece o token DRIZZLE_DB injectável em todos os repositórios.
+ * TypeORM DataSource provider for MUSIC OS 360 API.
+ * Provides the DATA_SOURCE token injectable across all services.
  *
- * Ligação: DATABASE_URL (postgres://...)
+ * Graceful standalone mode: if DATABASE_URL is not set the provider returns
+ * null — services and guards check for this and bypass DB calls safely.
  */
 
 import { Module, Global, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { drizzle } from 'drizzle-orm/node-postgres';
-import { Pool } from 'pg';
-import * as schema from './schema';
+import { DataSource } from 'typeorm';
+import { ALL_ENTITIES } from './entities';
 
-export const DRIZZLE_DB = Symbol('DRIZZLE_DB');
-
-export type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
+export const DATA_SOURCE = Symbol('DATA_SOURCE');
 
 @Global()
 @Module({
   providers: [
     {
-      provide: DRIZZLE_DB,
+      provide: DATA_SOURCE,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      useFactory: async (config: ConfigService): Promise<DataSource | null> => {
         const logger = new Logger('DatabaseModule');
 
         const url = config.get<string>('DATABASE_URL');
@@ -35,14 +33,28 @@ export type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
           return null;
         }
 
-        const pool = new Pool({ connectionString: url });
-        const db   = drizzle(pool, { schema });
+        const ds = new DataSource({
+          type:           'postgres',
+          url,
+          entities:       ALL_ENTITIES,
+          synchronize:    false,
+          logging:        config.get('NODE_ENV') !== 'production',
+          ssl:            config.get('NODE_ENV') === 'production'
+                            ? { rejectUnauthorized: false }
+                            : false,
+        });
 
-        logger.log('PostgreSQL conectado via Drizzle ORM (node-postgres)');
-        return db;
+        try {
+          await ds.initialize();
+          logger.log('PostgreSQL conectado via TypeORM');
+          return ds;
+        } catch (err) {
+          logger.error('Falha ao conectar PostgreSQL — DB desactivado', (err as Error).message);
+          return null;
+        }
       },
     },
   ],
-  exports: [DRIZZLE_DB],
+  exports: [DATA_SOURCE],
 })
 export class DatabaseModule {}

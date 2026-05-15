@@ -3,7 +3,7 @@
  *
  * Módulo raiz do MUSIC OS 360 API.
  * Infraestrutura:
- *   - PostgreSQL (Drizzle ORM / node-postgres)
+ *   - PostgreSQL (TypeORM / node-postgres)
  *   - Cache em memória (InMemoryCacheClient)
  *   - Cloudflare R2 (file storage)
  *   - BullMQ + Redis (filas assíncronas)
@@ -65,7 +65,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
       validate: validateEnv,
     }),
 
-    // ── PostgreSQL (Drizzle ORM / node-postgres) ──────────────────────────────
+    // ── PostgreSQL (TypeORM / node-postgres) ──────────────────────────────────
     DatabaseModule,
 
     // ── Cache em memória ─────────────────────────────────────────────────────

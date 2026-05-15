@@ -1,121 +1,65 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB }     from '../../database/database.module';
-import { transactions, Transaction } from '../../database/schema';
-import { CreateTransactionDto }      from './dto/create-transaction.dto';
-import { UpdateTransactionDto }      from './dto/update-transaction.dto';
-import { QueryTransactionDto }       from './dto/query-transaction.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { TransactionEntity } from '../../database/entities';
+import type { CreateTransactionDto } from './dto/create-transaction.dto';
+import type { UpdateTransactionDto } from './dto/update-transaction.dto';
+import type { QueryTransactionDto }  from './dto/query-transaction.dto';
 
 @Injectable()
 export class TransactionsService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-  ) {}
+  private readonly repo: Repository<TransactionEntity> | null = null;
 
-  async list(tenantId: string, query: QueryTransactionDto) {
-    const conditions: SQL[] = [
-      eq(transactions.tenant_id, tenantId),
-      isNull(transactions.deleted_at),
-    ];
-
-    if (query.type)     conditions.push(eq(transactions.tipo,      query.type));
-    if (query.category) conditions.push(eq(transactions.categoria, query.category));
-    if (query.status)   conditions.push(eq(transactions.status,    query.status));
-    if (query.artistId) conditions.push(eq(transactions.artista_id, query.artistId));
-    if (query.search)   conditions.push(ilike(transactions.descricao, `%${query.search}%`) as SQL);
-
-    const where    = and(...conditions);
-    const orderCol = this.resolveOrder(query.orderBy ?? 'data');
-    const orderDir = query.ascending ? asc(orderCol) : desc(orderCol);
-
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(transactions).where(where).orderBy(orderDir)
-        .offset(query.offset ?? 0).limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(transactions).where(where),
-    ]);
-
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(TransactionEntity);
   }
 
-  async findById(tenantId: string, id: string): Promise<Transaction> {
-    const [result] = await this.db
-      .select()
-      .from(transactions)
-      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id), isNull(transactions.deleted_at)))
-      .limit(1);
+  async list(tenantId: string, query: QueryTransactionDto) {
+    const qb = this.repo!
+      .createQueryBuilder('t')
+      .where('t.tenant_id = :tenantId', { tenantId })
+      .andWhere('t.deleted_at IS NULL');
 
-    if (!result) throw new NotFoundException('Transacção não encontrada');
+    if ((query as any).status)     qb.andWhere('t.status = :status',         { status:     (query as any).status });
+    if ((query as any).tipo)       qb.andWhere('t.tipo = :tipo',             { tipo:       (query as any).tipo });
+    if ((query as any).categoria)  qb.andWhere('t.categoria = :categoria',   { categoria:  (query as any).categoria });
+    if ((query as any).artista_id) qb.andWhere('t.artista_id = :artistaId', { artistaId:  (query as any).artista_id });
+    if ((query as any).dateFrom)   qb.andWhere('t.data >= :dateFrom',        { dateFrom:   (query as any).dateFrom });
+    if ((query as any).dateTo)     qb.andWhere('t.data <= :dateTo',          { dateTo:     (query as any).dateTo });
+
+    qb.orderBy('t.data', (query as any).ascending ? 'ASC' : 'DESC')
+      .skip((query as any).offset ?? 0)
+      .take((query as any).limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+  }
+
+  async findById(tenantId: string, id: string): Promise<TransactionEntity> {
+    const result = await this.repo!
+      .createQueryBuilder('t')
+      .where('t.id = :id AND t.tenant_id = :tenantId AND t.deleted_at IS NULL', { id, tenantId })
+      .getOne();
+    if (!result) throw new NotFoundException('Transação não encontrada');
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateTransactionDto): Promise<Transaction> {
-    const [created] = await this.db
-      .insert(transactions)
-      .values({
-        tenant_id:  tenantId,
-        artista_id: dto.artistId   ?? null,
-        tipo:       dto.type,
-        categoria:  dto.category,
-        valor:      dto.amount,
-        descricao:  dto.description ?? null,
-        status:     dto.status      ?? 'pendente',
-        referencia: dto.referenceId ?? null,
-        data:       dto.occurredAt  ? new Date(dto.occurredAt) : new Date(),
-        metadata:   dto.metadata    ?? {},
-        created_by: userId,
-        updated_by: userId,
-      })
-      .returning();
-
-    return created;
+  async create(tenantId: string, userId: string, dto: CreateTransactionDto): Promise<TransactionEntity> {
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    return this.repo!.save(entity);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateTransactionDto): Promise<Transaction> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateTransactionDto): Promise<TransactionEntity> {
     await this.findById(tenantId, id);
-
-    const [updated] = await this.db
-      .update(transactions)
-      .set({
-        ...(dto.type        != null && { tipo:       dto.type }),
-        ...(dto.category    != null && { categoria:  dto.category }),
-        ...(dto.amount      != null && { valor:      dto.amount }),
-        ...(dto.description != null && { descricao:  dto.description }),
-        ...(dto.status      != null && { status:     dto.status }),
-        ...(dto.artistId    != null && { artista_id: dto.artistId }),
-        ...(dto.referenceId != null && { referencia: dto.referenceId }),
-        ...(dto.occurredAt  != null && { data:       new Date(dto.occurredAt) }),
-        ...(dto.metadata    != null && { metadata:   dto.metadata }),
-        updated_at: new Date(),
-        updated_by: userId,
-      })
-      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id), isNull(transactions.deleted_at)))
-      .returning();
-
-    return updated;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    return this.findById(tenantId, id);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+  async softDelete(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-
-    await this.db
-      .update(transactions)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(transactions.tenant_id, tenantId), eq(transactions.id, id)));
-
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  private resolveOrder(field: string): any {
-    const map: Record<string, any> = {
-      data:       transactions.data,
-      created_at: transactions.created_at,
-      updated_at: transactions.updated_at,
-      valor:      transactions.valor,
-    };
-    return map[field] ?? transactions.data;
   }
 }

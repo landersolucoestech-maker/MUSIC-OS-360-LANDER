@@ -1,25 +1,31 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { eq, and, isNull, desc, count }          from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB }                 from '../../database/database.module';
-import { EncryptionService }                     from '../../core/security/encryption.service';
-import {
-  employees, Employee,
-  payrollEntries, PayrollEntry,
-  leaveRequests, LeaveRequest,
-} from '../../database/schema';
-import { CreateEmployeeDto }     from './dto/create-employee.dto';
-import { UpdateEmployeeDto }     from './dto/update-employee.dto';
-import { CreatePayrollEntryDto } from './dto/create-payroll-entry.dto';
-import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { EmployeeEntity, PayrollEntryEntity, LeaveRequestEntity } from '../../database/entities';
+import { EncryptionService } from '../../core/security/encryption.service';
+import type { CreateEmployeeDto }     from './dto/create-employee.dto';
+import type { UpdateEmployeeDto }     from './dto/update-employee.dto';
+import type { CreatePayrollEntryDto } from './dto/create-payroll-entry.dto';
+import type { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 
 @Injectable()
 export class HrService {
-  constructor(
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
-    private readonly enc: EncryptionService,
-  ) {}
+  private readonly empRepo:     Repository<EmployeeEntity>    | null = null;
+  private readonly payrollRepo: Repository<PayrollEntryEntity> | null = null;
+  private readonly leaveRepo:   Repository<LeaveRequestEntity> | null = null;
 
-  private mapEmployee(e: Employee) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    private readonly enc: EncryptionService,
+  ) {
+    if (ds) {
+      this.empRepo     = ds.getRepository(EmployeeEntity);
+      this.payrollRepo = ds.getRepository(PayrollEntryEntity);
+      this.leaveRepo   = ds.getRepository(LeaveRequestEntity);
+    }
+  }
+
+  private mapEmployee(e: EmployeeEntity) {
     return {
       ...e,
       email:              this.enc.decryptNullable(e.email_encrypted),
@@ -34,180 +40,158 @@ export class HrService {
   // ── Employees ──────────────────────────────────────────────────────────────
 
   async listEmployees(tenantId: string, query: { status?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(employees.tenant_id, tenantId), isNull(employees.deleted_at)];
-    if (query.status) conds.push(eq(employees.status, query.status));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(employees).where(where)
-        .orderBy(desc(employees.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(employees).where(where),
-    ]);
-    return {
-      data: rows.map(e => this.mapEmployee(e)),
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+    const qb = this.empRepo!
+      .createQueryBuilder('e')
+      .where('e.tenant_id = :tenantId AND e.deleted_at IS NULL', { tenantId });
+
+    if (query.status) qb.andWhere('e.status = :status', { status: query.status });
+
+    qb.orderBy('e.created_at', 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [rows, total] = await qb.getManyAndCount();
+    return { data: rows.map(e => this.mapEmployee(e)), meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
   }
 
-  private async _findRaw(tenantId: string, id: string): Promise<Employee> {
-    const [result] = await this.db
-      .select()
-      .from(employees)
-      .where(and(eq(employees.tenant_id, tenantId), eq(employees.id, id), isNull(employees.deleted_at)))
-      .limit(1);
+  private async _findRaw(tenantId: string, id: string): Promise<EmployeeEntity> {
+    const result = await this.empRepo!
+      .createQueryBuilder('e')
+      .where('e.id = :id AND e.tenant_id = :tenantId AND e.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!result) throw new NotFoundException('Funcionário não encontrado');
     return result;
   }
 
   async findEmployee(tenantId: string, id: string) {
-    const raw = await this._findRaw(tenantId, id);
-    return this.mapEmployee(raw);
+    return this.mapEmployee(await this._findRaw(tenantId, id));
   }
 
   async createEmployee(tenantId: string, userId: string, dto: CreateEmployeeDto) {
-    const [created] = await this.db
-      .insert(employees)
-      .values({
-        tenant_id:          tenantId,
-        nome:               dto.nome,
-        cargo:              dto.cargo         ?? null,
-        departamento:       dto.departamento  ?? null,
-        tipo_contrato:      dto.tipo_contrato ?? 'clt',
-        status:             dto.status        ?? 'ativo',
-        email_encrypted:    this.enc.encryptNullable(dto.email),
-        telefone_encrypted: this.enc.encryptNullable(dto.telefone),
-        cpf_encrypted:      this.enc.encryptNullable(dto.cpf),
-        salario:            dto.salario       ?? null,
-        data_admissao:      dto.data_admissao ? new Date(dto.data_admissao) : null,
-        data_demissao:      dto.data_demissao ? new Date(dto.data_demissao) : null,
-        documentos:         dto.documentos    ?? [],
-        metadata:           dto.metadata      ?? {},
-        created_by:         userId,
-      })
-      .returning();
-    return this.mapEmployee(created);
+    const entity = this.empRepo!.create({
+      tenant_id:          tenantId,
+      nome:               dto.nome,
+      cargo:              dto.cargo         ?? null,
+      departamento:       dto.departamento  ?? null,
+      tipo_contrato:      dto.tipo_contrato ?? 'clt',
+      status:             dto.status        ?? 'ativo',
+      email_encrypted:    this.enc.encryptNullable((dto as any).email),
+      telefone_encrypted: this.enc.encryptNullable((dto as any).telefone),
+      cpf_encrypted:      this.enc.encryptNullable((dto as any).cpf),
+      salario:            (dto as any).salario       ?? null,
+      data_admissao:      (dto as any).data_admissao ? new Date((dto as any).data_admissao) : null,
+      data_demissao:      (dto as any).data_demissao ? new Date((dto as any).data_demissao) : null,
+      documentos:         (dto as any).documentos    ?? [],
+      metadata:           (dto as any).metadata      ?? {},
+      created_by:         userId,
+    });
+    return this.mapEmployee(await this.empRepo!.save(entity));
   }
 
   async updateEmployee(tenantId: string, userId: string, id: string, dto: UpdateEmployeeDto) {
     await this._findRaw(tenantId, id);
-    const [updated] = await this.db
-      .update(employees)
-      .set({
-        ...(dto.nome          != null && { nome:          dto.nome }),
-        ...(dto.cargo         != null && { cargo:         dto.cargo }),
-        ...(dto.departamento  != null && { departamento:  dto.departamento }),
-        ...(dto.tipo_contrato != null && { tipo_contrato: dto.tipo_contrato }),
-        ...(dto.status        != null && { status:        dto.status }),
-        ...(dto.salario       != null && { salario:       dto.salario }),
-        ...(dto.documentos    != null && { documentos:    dto.documentos }),
-        ...(dto.metadata      != null && { metadata:      dto.metadata }),
-        ...(dto.data_admissao != null && { data_admissao: new Date(dto.data_admissao) }),
-        ...(dto.data_demissao != null && { data_demissao: new Date(dto.data_demissao) }),
-        ...(dto.email    !== undefined && { email_encrypted:    this.enc.encryptNullable(dto.email) }),
-        ...(dto.telefone !== undefined && { telefone_encrypted: this.enc.encryptNullable(dto.telefone) }),
-        ...(dto.cpf      !== undefined && { cpf_encrypted:      this.enc.encryptNullable(dto.cpf) }),
-        updated_at: new Date(),
-      })
-      .where(and(eq(employees.tenant_id, tenantId), eq(employees.id, id), isNull(employees.deleted_at)))
-      .returning();
-    return this.mapEmployee(updated);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const updates: Record<string, unknown> = { updated_at: new Date() };
+    if (dto.nome          != null) updates.nome          = dto.nome;
+    if (dto.cargo         != null) updates.cargo         = dto.cargo;
+    if (dto.departamento  != null) updates.departamento  = dto.departamento;
+    if (dto.tipo_contrato != null) updates.tipo_contrato = dto.tipo_contrato;
+    if (dto.status        != null) updates.status        = dto.status;
+    if ((dto as any).salario       != null) updates.salario       = (dto as any).salario;
+    if ((dto as any).documentos    != null) updates.documentos    = (dto as any).documentos;
+    if ((dto as any).metadata      != null) updates.metadata      = (dto as any).metadata;
+    if ((dto as any).data_admissao != null) updates.data_admissao = new Date((dto as any).data_admissao);
+    if ((dto as any).data_demissao != null) updates.data_demissao = new Date((dto as any).data_demissao);
+    if ((dto as any).email    !== undefined) updates.email_encrypted    = this.enc.encryptNullable((dto as any).email);
+    if ((dto as any).telefone !== undefined) updates.telefone_encrypted = this.enc.encryptNullable((dto as any).telefone);
+    if ((dto as any).cpf      !== undefined) updates.cpf_encrypted      = this.enc.encryptNullable((dto as any).cpf);
+
+    await this.empRepo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    return this.mapEmployee(await this._findRaw(tenantId, id));
   }
 
   async softDeleteEmployee(tenantId: string, id: string): Promise<{ deleted: boolean }> {
     await this._findRaw(tenantId, id);
-    await this.db
-      .update(employees)
-      .set({ deleted_at: new Date() })
-      .where(and(eq(employees.tenant_id, tenantId), eq(employees.id, id)));
+    await this.empRepo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 
   // ── Payroll ────────────────────────────────────────────────────────────────
 
   async listPayroll(tenantId: string, query: { employee_id?: string; competencia?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(payrollEntries.tenant_id, tenantId), isNull(payrollEntries.deleted_at)];
-    if (query.employee_id) conds.push(eq(payrollEntries.employee_id, query.employee_id));
-    if (query.competencia) conds.push(eq(payrollEntries.competencia, query.competencia));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(payrollEntries).where(where)
-        .orderBy(desc(payrollEntries.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(payrollEntries).where(where),
-    ]);
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+    const qb = this.payrollRepo!
+      .createQueryBuilder('p')
+      .where('p.tenant_id = :tenantId AND p.deleted_at IS NULL', { tenantId });
+
+    if (query.employee_id) qb.andWhere('p.employee_id = :employeeId', { employeeId: query.employee_id });
+    if (query.competencia) qb.andWhere('p.competencia = :competencia', { competencia: query.competencia });
+
+    qb.orderBy('p.created_at', 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
   }
 
-  async createPayroll(tenantId: string, dto: CreatePayrollEntryDto): Promise<PayrollEntry> {
-    const [created] = await this.db
-      .insert(payrollEntries)
-      .values({
-        tenant_id:       tenantId,
-        employee_id:     dto.employee_id,
-        competencia:     dto.competencia,
-        salario_bruto:   dto.salario_bruto,
-        descontos:       dto.descontos       ?? '0',
-        salario_liquido: dto.salario_liquido,
-        status:          dto.status          ?? 'pendente',
-        arquivo_url:     dto.arquivo_url     ?? null,
-        pago_em:         dto.pago_em         ? new Date(dto.pago_em) : null,
-        metadata:        dto.metadata        ?? {},
-      })
-      .returning();
-    return created;
+  async createPayroll(tenantId: string, dto: CreatePayrollEntryDto): Promise<PayrollEntryEntity> {
+    const entity = this.payrollRepo!.create({
+      tenant_id:       tenantId,
+      employee_id:     dto.employee_id,
+      competencia:     dto.competencia,
+      salario_bruto:   dto.salario_bruto,
+      descontos:       (dto as any).descontos    ?? '0',
+      salario_liquido: dto.salario_liquido,
+      status:          (dto as any).status       ?? 'pendente',
+      arquivo_url:     (dto as any).arquivo_url  ?? null,
+      pago_em:         (dto as any).pago_em      ? new Date((dto as any).pago_em) : null,
+      metadata:        (dto as any).metadata     ?? {},
+    });
+    return this.payrollRepo!.save(entity);
   }
 
   // ── Leave Requests ─────────────────────────────────────────────────────────
 
   async listLeaveRequests(tenantId: string, query: { employee_id?: string; status?: string; offset?: number; limit?: number } = {}) {
-    const conds = [eq(leaveRequests.tenant_id, tenantId), isNull(leaveRequests.deleted_at)];
-    if (query.employee_id) conds.push(eq(leaveRequests.employee_id, query.employee_id));
-    if (query.status)      conds.push(eq(leaveRequests.status, query.status));
-    const where = and(...conds);
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(leaveRequests).where(where)
-        .orderBy(desc(leaveRequests.created_at))
-        .offset(query.offset ?? 0)
-        .limit(query.limit ?? 50),
-      this.db.select({ value: count() }).from(leaveRequests).where(where),
-    ]);
-    return {
-      data: rows,
-      meta: { total: Number(total), offset: query.offset ?? 0, limit: query.limit ?? 50 },
-    };
+    const qb = this.leaveRepo!
+      .createQueryBuilder('l')
+      .where('l.tenant_id = :tenantId AND l.deleted_at IS NULL', { tenantId });
+
+    if (query.employee_id) qb.andWhere('l.employee_id = :employeeId', { employeeId: query.employee_id });
+    if (query.status)      qb.andWhere('l.status = :status', { status: query.status });
+
+    qb.orderBy('l.created_at', 'DESC')
+      .skip(query.offset ?? 0)
+      .take(query.limit ?? 50);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 } };
   }
 
-  async createLeaveRequest(tenantId: string, userId: string, dto: CreateLeaveRequestDto): Promise<LeaveRequest> {
-    const [created] = await this.db
-      .insert(leaveRequests)
-      .values({
-        tenant_id:    tenantId,
-        employee_id:  dto.employee_id,
-        tipo:         dto.tipo,
-        data_inicio:  new Date(dto.data_inicio),
-        data_fim:     new Date(dto.data_fim),
-        status:       dto.status       ?? 'pendente',
-        motivo:       dto.motivo       ?? null,
-        aprovado_por: dto.aprovado_por ?? null,
-        documento_url: dto.documento_url ?? null,
-        metadata:     dto.metadata     ?? {},
-        created_by:   userId,
-      })
-      .returning();
-    return created;
+  async createLeaveRequest(tenantId: string, userId: string, dto: CreateLeaveRequestDto): Promise<LeaveRequestEntity> {
+    const entity = this.leaveRepo!.create({
+      tenant_id:    tenantId,
+      employee_id:  dto.employee_id,
+      tipo:         dto.tipo,
+      data_inicio:  new Date(dto.data_inicio),
+      data_fim:     new Date(dto.data_fim),
+      status:       (dto as any).status       ?? 'pendente',
+      motivo:       (dto as any).motivo       ?? null,
+      aprovado_por: (dto as any).aprovado_por ?? null,
+      documento_url: (dto as any).documento_url ?? null,
+      metadata:     (dto as any).metadata     ?? {},
+      created_by:   userId,
+    });
+    return this.leaveRepo!.save(entity);
   }
 
-  async approveLeaveRequest(tenantId: string, id: string, userId: string): Promise<LeaveRequest> {
-    const [updated] = await this.db
-      .update(leaveRequests)
-      .set({ status: 'aprovado', aprovado_por: userId, updated_at: new Date() })
-      .where(and(eq(leaveRequests.tenant_id, tenantId), eq(leaveRequests.id, id), isNull(leaveRequests.deleted_at)))
-      .returning();
+  async approveLeaveRequest(tenantId: string, id: string, userId: string): Promise<LeaveRequestEntity> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.leaveRepo!.update({ id, tenant_id: tenantId } as any, { status: 'aprovado', aprovado_por: userId, updated_at: new Date() } as any);
+    const updated = await this.leaveRepo!
+      .createQueryBuilder('l')
+      .where('l.id = :id AND l.tenant_id = :tenantId AND l.deleted_at IS NULL', { id, tenantId })
+      .getOne();
     if (!updated) throw new NotFoundException('Afastamento não encontrado');
     return updated;
   }

@@ -10,27 +10,23 @@
 
 import { Injectable, BadRequestException, Logger, Inject } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { eq } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
 import {
-  organizations,
-  tenants,
-  billingSubscriptions,
-  webhookEvents,
-} from '../../database/schema';
+  BillingSubscriptionEntity,
+  TenantEntity,
+  OrganizationEntity,
+  WebhookEventEntity,
+} from '../../database/entities';
 import { WsGateway } from '../../core/websocket/ws.gateway';
 
 // ── Stripe CJS/ESM interop ────────────────────────────────────────────────────
-// Stripe v17+ distribui ESM; ts-node compila para CJS, logo o export default fica
-// em .default. Usamos require() + fallback para garantir que o constructor funciona
-// em ambos os casos.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const StripeRaw = require('stripe');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const StripeClass: new (key: string, opts: Record<string, unknown>) => StripeClient =
   (StripeRaw as any).default ?? StripeRaw;
 
-// Interface mínima do cliente Stripe que o serviço utiliza
 interface StripeClient {
   checkout: {
     sessions: {
@@ -43,77 +39,43 @@ interface StripeClient {
     };
   };
   webhooks: {
-    constructEvent(
-      payload: string | Buffer,
-      header: string,
-      secret: string,
-    ): StripeWebhookEvent;
+    constructEvent(payload: string | Buffer, header: string, secret: string): StripeWebhookEvent;
   };
 }
 
-// ── Tipos internos para objectos de webhook ───────────────────────────────────
 interface StripeCheckoutSession {
   customer:     string | null;
   subscription: string | null;
   metadata?:    Record<string, string> | null;
 }
 interface StripeSubscription {
-  id:                  string;
-  status:              string;
-  current_period_end:  number;
-  metadata?:           Record<string, string> | null;
+  id:                 string;
+  status:             string;
+  current_period_end: number;
+  metadata?:          Record<string, string> | null;
 }
-interface StripeInvoice {
-  customer: string | null;
-}
+interface StripeInvoice { customer: string | null; }
 interface StripeWebhookEvent {
   id:   string;
   type: string;
   data: { object: unknown };
 }
 
-// ── Features por plano ────────────────────────────────────────────────────────
 const PLAN_FEATURES = {
   starter: {
-    moduleArtists:     true,
-    moduleCatalog:     true,
-    moduleContracts:   true,
-    moduleCrm:         true,
-    moduleMarketing:   false,
-    moduleAccounting:  false,
-    moduleMonitoring:  false,
-    aiFeatures:        false,
-    moduleRh:          false,
+    moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
+    moduleMarketing: false, moduleAccounting: false, moduleMonitoring: false, aiFeatures: false, moduleRh: false,
   },
   professional: {
-    moduleArtists:     true,
-    moduleCatalog:     true,
-    moduleContracts:   true,
-    moduleCrm:         true,
-    moduleMarketing:   true,
-    moduleAccounting:  true,
-    moduleMonitoring:  true,
-    aiFeatures:        false,
-    moduleRh:          true,
-    moduleEvents:      true,
-    moduleInventory:   true,
+    moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
+    moduleMarketing: true, moduleAccounting: true, moduleMonitoring: true, aiFeatures: false,
+    moduleRh: true, moduleEvents: true, moduleInventory: true,
   },
   enterprise: {
-    moduleArtists:      true,
-    moduleCatalog:      true,
-    moduleContracts:    true,
-    moduleCrm:          true,
-    moduleMarketing:    true,
-    moduleAccounting:   true,
-    moduleMonitoring:   true,
-    aiFeatures:         true,
-    moduleRh:           true,
-    moduleEvents:       true,
-    moduleInventory:    true,
-    moduleLicensing:    true,
-    multiTenantAdmin:   true,
-    analyticsAdvanced:  true,
-    whitelabel:         true,
+    moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
+    moduleMarketing: true, moduleAccounting: true, moduleMonitoring: true, aiFeatures: true,
+    moduleRh: true, moduleEvents: true, moduleInventory: true, moduleLicensing: true,
+    multiTenantAdmin: true, analyticsAdvanced: true, whitelabel: true,
   },
 } as const;
 
@@ -123,12 +85,22 @@ type Plan = keyof typeof PLAN_FEATURES;
 export class BillingService {
   private readonly stripe: StripeClient | null = null;
   private readonly logger = new Logger(BillingService.name);
+  private readonly subRepo:     Repository<BillingSubscriptionEntity> | null = null;
+  private readonly tenantRepo:  Repository<TenantEntity>              | null = null;
+  private readonly orgRepo:     Repository<OrganizationEntity>        | null = null;
+  private readonly webhookRepo: Repository<WebhookEventEntity>        | null = null;
 
   constructor(
     private readonly config: ConfigService,
-    @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly ws: WsGateway,
   ) {
+    if (ds) {
+      this.subRepo     = ds.getRepository(BillingSubscriptionEntity);
+      this.tenantRepo  = ds.getRepository(TenantEntity);
+      this.orgRepo     = ds.getRepository(OrganizationEntity);
+      this.webhookRepo = ds.getRepository(WebhookEventEntity);
+    }
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
     if (key) {
       this.stripe = new StripeClass(key, { apiVersion: '2026-04-22.dahlia' });
@@ -146,17 +118,12 @@ export class BillingService {
   // ── Checkout Session ──────────────────────────────────────────────────────
 
   async createCheckoutSession(params: {
-    orgId:      string;
-    tenantId:   string;
-    plan:       Plan;
-    successUrl: string;
-    cancelUrl:  string;
+    orgId: string; tenantId: string; plan: Plan; successUrl: string; cancelUrl: string;
   }) {
-    const [sub] = await this.db
-      .select()
-      .from(billingSubscriptions)
-      .where(eq(billingSubscriptions.org_id, params.orgId))
-      .limit(1);
+    const sub = await this.subRepo!
+      .createQueryBuilder('s')
+      .where('s.org_id = :orgId', { orgId: params.orgId })
+      .getOne();
 
     const prices: Record<string, string | undefined> = {
       starter:      this.config.get('STRIPE_PRICE_STARTER'),
@@ -175,11 +142,7 @@ export class BillingService {
       mode:       'subscription',
       customer,
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata: {
-        tenant_id: params.tenantId,
-        org_id:    params.orgId,
-        plan:      params.plan,
-      },
+      metadata:   { tenant_id: params.tenantId, org_id: params.orgId, plan: params.plan },
       success_url: params.successUrl,
       cancel_url:  params.cancelUrl,
     });
@@ -187,14 +150,13 @@ export class BillingService {
     return { url: session.url };
   }
 
-  // ── Portal Session ────────────────────────────────────────────────────────
+  // ── Portal Session ─────────────────────────────────────────────────────────
 
   async createPortalSession(orgId: string, returnUrl: string) {
-    const [sub] = await this.db
-      .select()
-      .from(billingSubscriptions)
-      .where(eq(billingSubscriptions.org_id, orgId))
-      .limit(1);
+    const sub = await this.subRepo!
+      .createQueryBuilder('s')
+      .where('s.org_id = :orgId', { orgId })
+      .getOne();
 
     if (!sub?.stripe_customer_id || sub.stripe_customer_id.startsWith('pending_')) {
       throw new BadRequestException('Sem assinatura Stripe ativa');
@@ -208,7 +170,7 @@ export class BillingService {
     return { url: session.url };
   }
 
-  // ── Webhook (com idempotência) ─────────────────────────────────────────────
+  // ── Webhook ────────────────────────────────────────────────────────────────
 
   async handleWebhook(signature: string, rawBody: Buffer) {
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
@@ -220,47 +182,47 @@ export class BillingService {
       throw new BadRequestException('Assinatura Stripe inválida');
     }
 
-    // Idempotência — não reprocessar evento já tratado
-    const [existing] = await this.db
-      .select()
-      .from(webhookEvents)
-      .where(eq(webhookEvents.external_id, event.id))
-      .limit(1);
+    const existing = await this.webhookRepo!
+      .createQueryBuilder('w')
+      .where('w.external_id = :externalId', { externalId: event.id })
+      .getOne();
 
     if (existing?.status === 'processed') {
       this.logger.log(`Webhook já processado: ${event.id}`);
       return { received: true };
     }
 
-    // Registar antes de processar
-    await this.db
-      .insert(webhookEvents)
-      .values({
+    // Registar antes de processar (upsert via insert then ignore duplicate)
+    if (!existing) {
+      const entity = this.webhookRepo!.create({
         provider:    'stripe',
         event_type:  event.type,
         external_id: event.id,
         payload:     event as unknown as Record<string, unknown>,
         status:      'pending',
-      })
-      .onConflictDoNothing();
+      });
+      await this.webhookRepo!.save(entity).catch(() => { /* idempotência */ });
+    }
 
     try {
       await this.processEvent(event);
-
-      await this.db
-        .update(webhookEvents)
-        .set({ status: 'processed', processed_at: new Date() })
-        .where(eq(webhookEvents.external_id, event.id));
-
+      await this.webhookRepo!
+        .createQueryBuilder()
+        .update(WebhookEventEntity)
+        .set({ status: 'processed', processed_at: new Date() } as any)
+        .where('external_id = :externalId', { externalId: event.id })
+        .execute();
     } catch (err) {
-      await this.db
-        .update(webhookEvents)
+      await this.webhookRepo!
+        .createQueryBuilder()
+        .update(WebhookEventEntity)
         .set({
           status:      'failed',
           error:       (err as Error).message,
           retry_count: (existing?.retry_count ?? 0) + 1,
-        })
-        .where(eq(webhookEvents.external_id, event.id));
+        } as any)
+        .where('external_id = :externalId', { externalId: event.id })
+        .execute();
       throw err;
     }
 
@@ -286,38 +248,38 @@ export class BillingService {
     }
   }
 
-  // ── Handlers de eventos ───────────────────────────────────────────────────
-
   private async onCheckoutCompleted(session: StripeCheckoutSession) {
     const { tenant_id, org_id, plan } = session.metadata ?? {};
     if (!tenant_id || !org_id || !plan) return;
 
     const features = PLAN_FEATURES[plan as Plan] ?? PLAN_FEATURES.starter;
 
-    await this.db
-      .update(billingSubscriptions)
+    await this.subRepo!
+      .createQueryBuilder()
+      .update(BillingSubscriptionEntity)
       .set({
         stripe_customer_id: session.customer ?? undefined,
         stripe_sub_id:      session.subscription ?? undefined,
-        plan,
-        status:             'active',
-        trial_ends_at:      null,
-        updated_at:         new Date(),
-      })
-      .where(eq(billingSubscriptions.org_id, org_id));
+        plan, status: 'active', trial_ends_at: null, updated_at: new Date(),
+      } as any)
+      .where('org_id = :orgId', { orgId: org_id })
+      .execute();
 
-    await this.db
-      .update(tenants)
-      .set({ plan, features, updated_at: new Date() })
-      .where(eq(tenants.id, tenant_id));
+    await this.tenantRepo!
+      .createQueryBuilder()
+      .update(TenantEntity)
+      .set({ plan, features, updated_at: new Date() } as any)
+      .where('id = :tenantId', { tenantId: tenant_id })
+      .execute();
 
-    await this.db
-      .update(organizations)
-      .set({ plan, billing_status: 'active', updated_at: new Date() })
-      .where(eq(organizations.id, org_id));
+    await this.orgRepo!
+      .createQueryBuilder()
+      .update(OrganizationEntity)
+      .set({ plan, billing_status: 'active', updated_at: new Date() } as any)
+      .where('id = :orgId', { orgId: org_id })
+      .execute();
 
     this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan });
-
     this.logger.log(`Plano atualizado: org ${org_id} → ${plan}`);
   }
 
@@ -325,14 +287,12 @@ export class BillingService {
     const tenantId = sub.metadata?.['tenant_id'];
     if (!tenantId) return;
 
-    await this.db
-      .update(billingSubscriptions)
-      .set({
-        status:             sub.status,
-        current_period_end: new Date(sub.current_period_end * 1000),
-        updated_at:         new Date(),
-      })
-      .where(eq(billingSubscriptions.stripe_sub_id, sub.id));
+    await this.subRepo!
+      .createQueryBuilder()
+      .update(BillingSubscriptionEntity)
+      .set({ status: sub.status, current_period_end: new Date(sub.current_period_end * 1000), updated_at: new Date() } as any)
+      .where('stripe_sub_id = :subId', { subId: sub.id })
+      .execute();
   }
 
   private async onSubCanceled(sub: StripeSubscription) {
@@ -340,20 +300,26 @@ export class BillingService {
     const orgId    = sub.metadata?.['org_id'];
     if (!tenantId || !orgId) return;
 
-    await this.db
-      .update(billingSubscriptions)
-      .set({ status: 'cancelled', updated_at: new Date() })
-      .where(eq(billingSubscriptions.stripe_sub_id, sub.id));
+    await this.subRepo!
+      .createQueryBuilder()
+      .update(BillingSubscriptionEntity)
+      .set({ status: 'cancelled', updated_at: new Date() } as any)
+      .where('stripe_sub_id = :subId', { subId: sub.id })
+      .execute();
 
-    await this.db
-      .update(tenants)
-      .set({ plan: 'starter', features: PLAN_FEATURES.starter, updated_at: new Date() })
-      .where(eq(tenants.id, tenantId));
+    await this.tenantRepo!
+      .createQueryBuilder()
+      .update(TenantEntity)
+      .set({ plan: 'starter', features: PLAN_FEATURES.starter, updated_at: new Date() } as any)
+      .where('id = :tenantId', { tenantId })
+      .execute();
 
-    await this.db
-      .update(organizations)
-      .set({ plan: 'starter', billing_status: 'cancelled', updated_at: new Date() })
-      .where(eq(organizations.id, orgId));
+    await this.orgRepo!
+      .createQueryBuilder()
+      .update(OrganizationEntity)
+      .set({ plan: 'starter', billing_status: 'cancelled', updated_at: new Date() } as any)
+      .where('id = :orgId', { orgId })
+      .execute();
 
     this.ws.sendToTenant(tenantId, 'billing:cancelled', { org_id: orgId });
   }
@@ -362,14 +328,13 @@ export class BillingService {
     this.logger.warn(`Pagamento falhou: customer ${invoice.customer}`);
   }
 
-  // ── Query ─────────────────────────────────────────────────────────────────
+  // ── Query ──────────────────────────────────────────────────────────────────
 
   async getSubscription(orgId: string) {
-    const [sub] = await this.db
-      .select()
-      .from(billingSubscriptions)
-      .where(eq(billingSubscriptions.org_id, orgId))
-      .limit(1);
+    const sub = await this.subRepo!
+      .createQueryBuilder('s')
+      .where('s.org_id = :orgId', { orgId })
+      .getOne();
     return sub ?? null;
   }
 }

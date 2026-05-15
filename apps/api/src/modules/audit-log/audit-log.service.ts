@@ -1,28 +1,32 @@
 import { Injectable, Inject } from '@nestjs/common';
-import { eq, and, ilike, isNull, desc, asc, count, SQL } from 'drizzle-orm';
-import { DRIZZLE_DB, DrizzleDB } from '../../database/database.module';
-import { auditLogs }              from '../../database/schema';
-import { QueryAuditLogDto }       from './dto/audit-log.dto';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { AuditLogEntity } from '../../database/entities';
+import type { QueryAuditLogDto } from './dto/audit-log.dto';
 
 @Injectable()
 export class AuditLogService {
-  constructor(@Inject(DRIZZLE_DB) private readonly db: DrizzleDB) {}
+  private readonly repo: Repository<AuditLogEntity> | null = null;
+
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    if (ds) this.repo = ds.getRepository(AuditLogEntity);
+  }
 
   async list(tenantId: string, q: QueryAuditLogDto) {
-    const conditions: SQL[] = [eq(auditLogs.tenant_id, tenantId)];
-    if (q.action)   conditions.push(ilike(auditLogs.action,    `%${q.action}%`) as SQL);
-    if (q.userId)   conditions.push(eq(auditLogs.user_id,      q.userId));
-    if (q.entity)   conditions.push(eq(auditLogs.entity,       q.entity));
-    if (q.entityId) conditions.push(eq(auditLogs.entity_id,    q.entityId));
+    const qb = this.repo!
+      .createQueryBuilder('a')
+      .where('a.tenant_id = :tenantId', { tenantId });
 
-    const where = and(...conditions);
-    const col   = q.ascending ? asc(auditLogs.created_at) : desc(auditLogs.created_at);
+    if (q.action)   qb.andWhere('a.action ILIKE :action',     { action:   `%${q.action}%` });
+    if (q.userId)   qb.andWhere('a.user_id = :userId',        { userId:   q.userId });
+    if (q.entity)   qb.andWhere('a.entity = :entity',         { entity:   q.entity });
+    if (q.entityId) qb.andWhere('a.entity_id = :entityId',    { entityId: q.entityId });
 
-    const [rows, [{ value: total }]] = await Promise.all([
-      this.db.select().from(auditLogs).where(where).orderBy(col)
-        .offset(q.offset ?? 0).limit(q.limit ?? 100),
-      this.db.select({ value: count() }).from(auditLogs).where(where),
-    ]);
-    return { data: rows, meta: { total: Number(total), offset: q.offset ?? 0, limit: q.limit ?? 100 } };
+    qb.orderBy('a.created_at', q.ascending ? 'ASC' : 'DESC')
+      .skip(q.offset ?? 0)
+      .take(q.limit ?? 100);
+
+    const [data, total] = await qb.getManyAndCount();
+    return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 100 } };
   }
 }

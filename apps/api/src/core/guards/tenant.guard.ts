@@ -7,11 +7,10 @@ import {
   Logger,
   Inject,
 } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { eq, and, isNull } from 'drizzle-orm';
-import * as schema from '../../database/schema';
-import { DRIZZLE_DB } from '../../database/database.module';
+import { Reflector }  from '@nestjs/core';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.module';
+import { TenantEntity, OrgMemberEntity } from '../../database/entities';
 import { IS_PUBLIC_KEY } from './clerk-auth.guard';
 import type { Request } from 'express';
 import type { JwtAuth } from './clerk-auth.guard';
@@ -19,12 +18,18 @@ import type { JwtAuth } from './clerk-auth.guard';
 @Injectable()
 export class TenantGuard implements CanActivate {
   private readonly logger = new Logger(TenantGuard.name);
+  private readonly tenantRepo: Repository<TenantEntity>    | null = null;
+  private readonly memberRepo: Repository<OrgMemberEntity> | null = null;
 
   constructor(
-    @Inject(DRIZZLE_DB)
-    private readonly db: NodePgDatabase<typeof schema>,
+    @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly reflector: Reflector,
-  ) {}
+  ) {
+    if (ds) {
+      this.tenantRepo = ds.getRepository(TenantEntity);
+      this.memberRepo = ds.getRepository(OrgMemberEntity);
+    }
+  }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
@@ -40,42 +45,29 @@ export class TenantGuard implements CanActivate {
       throw new UnauthorizedException('Organização não identificada no token');
     }
 
-    if (!this.db) {
+    if (!this.tenantRepo || !this.memberRepo) {
       this.logger.warn('DB não configurado — TenantGuard em modo passthrough');
       return true;
     }
 
-    // clerk_org_id is the unique identifier column in the tenants table.
-    // The column name is a historical artifact — it stores the org identifier
-    // from the JWT `org_id` claim regardless of auth provider.
-    const [tenant] = await this.db
-      .select()
-      .from(schema.tenants)
-      .where(
-        and(
-          eq(schema.tenants.clerk_org_id, auth.orgId),
-          isNull(schema.tenants.deleted_at),
-        ),
-      )
-      .limit(1);
+    // clerk_org_id stores the org identifier from the JWT `org_id` claim.
+    const tenant = await this.tenantRepo
+      .createQueryBuilder('t')
+      .where('t.clerk_org_id = :orgId AND t.deleted_at IS NULL', { orgId: auth.orgId })
+      .getOne();
 
     if (!tenant || !tenant.active) {
       throw new UnauthorizedException('Tenant não encontrado ou inativo');
     }
 
-    // clerk_user_id is the unique identifier column in the org_members table.
-    // Stores the user identifier from the JWT `sub` claim.
-    const [member] = await this.db
-      .select()
-      .from(schema.orgMembers)
+    // clerk_user_id stores the user identifier from the JWT `sub` claim.
+    const member = await this.memberRepo
+      .createQueryBuilder('m')
       .where(
-        and(
-          eq(schema.orgMembers.tenant_id, tenant.id),
-          eq(schema.orgMembers.clerk_user_id, auth.userId),
-          eq(schema.orgMembers.is_active, true),
-        ),
+        'm.tenant_id = :tenantId AND m.clerk_user_id = :userId AND m.is_active = :active',
+        { tenantId: tenant.id, userId: auth.userId, active: true },
       )
-      .limit(1);
+      .getOne();
 
     if (!member) {
       throw new ForbiddenException('Utilizador não é membro activo deste tenant');
