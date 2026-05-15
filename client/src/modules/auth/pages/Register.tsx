@@ -1,5 +1,4 @@
 import { useState, useCallback } from "react";
-import { SignUp } from "@clerk/clerk-react";
 import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -138,22 +137,6 @@ const useClerkMode = !MOCK_MODE_R && Boolean(CLERK_KEY);
 
 /* ─────────── MAIN COMPONENT ─────────── */
 export default function Register() {
-  // Quando Clerk está activo, usa o componente de signup do Clerk
-  if (useClerkMode) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-black">
-        <SignUp
-          appearance={{
-            elements: {
-              rootBox: "w-full max-w-md",
-              card:    "bg-card border border-border shadow-xl",
-            },
-          }}
-          fallbackRedirectUrl="/"
-        />
-      </div>
-    );
-  }
   const navigate              = useNavigate();
   const [step, setStep]       = useState(1);
   const [isLoading, setIsLoading] = useState(false);
