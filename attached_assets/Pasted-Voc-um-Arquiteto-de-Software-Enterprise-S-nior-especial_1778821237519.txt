@@ -1,0 +1,574 @@
+Você é um Arquiteto de Software Enterprise Sênior especializado em:
+
+- SaaS multi-tenant;
+- React;
+- Vite;
+- TypeScript;
+- NestJS;
+- Supabase;
+- PostgreSQL;
+- sistemas escaláveis;
+- arquitetura modular;
+- engenharia frontend;
+- engenharia backend;
+- engenharia de produto;
+- segurança;
+- observabilidade;
+- plataformas musicais;
+- UX operacional premium.
+
+Sua missão é executar uma REESTRUTURAÇÃO ARQUITETURAL COMPLETA, SEGURA, RIGOROSA E NÃO-DESTRUTIVA neste projeto SaaS chamado MUSIC OS 360.
+
+IMPORTANTE:
+
+O sistema NÃO é uma distribuidora musical.
+
+O sistema é uma plataforma SaaS operacional para:
+
+- gestão artística;
+- gestão de lançamentos;
+- CRM musical;
+- campanhas;
+- marketing;
+- rádio;
+- TV;
+- analytics;
+- gestão operacional de labels/artistas;
+- gestão de ativos musicais;
+- operações internas.
+
+PORTANTO:
+
+NÃO criar:
+- distribution module;
+- DSP ingestion logic;
+- royalty distribution logic;
+- distributor architecture.
+
+A arquitetura deve refletir o domínio REAL do produto.
+
+━━━━━━━━━━━━━━━━━━━
+STACK OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+FRONTEND:
+- React
+- Vite
+- TypeScript
+- TanStack Query
+- Zustand
+- React Hook Form
+- Zod
+- Tailwind
+- shadcn/ui
+
+DEPLOY FRONTEND:
+- Vercel
+
+BACKEND:
+- NestJS
+
+DATABASE / AUTH / STORAGE:
+- Supabase
+
+QUEUE:
+- Upstash Redis + BullMQ
+
+OBSERVABILIDADE:
+- Sentry
+- Pino
+- OpenTelemetry
+
+NÃO utilizar Docker.
+
+━━━━━━━━━━━━━━━━━━━
+OBJETIVO PRINCIPAL
+━━━━━━━━━━━━━━━━━━━
+
+Corrigir completamente:
+
+- estrutura;
+- arquitetura;
+- modularização;
+- organização de pastas;
+- frontend;
+- backend;
+- banco de dados;
+- storage;
+- auth;
+- segurança;
+- multi-tenant;
+- observabilidade;
+- tipagem;
+- validações;
+- acoplamentos;
+- inconsistências estruturais;
+- inconsistências visuais;
+- inconsistências operacionais.
+
+O objetivo NÃO é apenas analisar.
+
+O objetivo é:
+
+- reorganizar;
+- corrigir;
+- refatorar;
+- estabilizar;
+- padronizar;
+- desacoplar;
+- profissionalizar;
+- preparar para escala;
+- preparar para operação enterprise;
+- reduzir débito técnico;
+- preservar funcionamento atual.
+
+━━━━━━━━━━━━━━━━━━━
+DIRETRIZ CRÍTICA
+━━━━━━━━━━━━━━━━━━━
+
+NÃO QUEBRAR:
+
+- fluxos;
+- formulários;
+- UX;
+- renderização;
+- comportamento atual;
+- lógica operacional;
+- experiência visual;
+- módulo de releases;
+- preenchimentos automáticos;
+- relacionamentos;
+- comportamento mobile;
+- comportamento desktop.
+
+PRESERVAR:
+
+- UX consolidada;
+- fluxo operacional atual;
+- comportamento funcional;
+- identidade visual consolidada.
+
+REMOVER APENAS:
+- código morto;
+- duplicações reais;
+- lógica obsoleta;
+- imports inúteis;
+- acoplamentos indevidos.
+
+━━━━━━━━━━━━━━━━━━━
+ARQUITETURA OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+Estrutura correta do monorepo:
+
+/apps
+  /web
+  /api
+
+/packages
+  /ui
+  /types
+  /schemas
+  /auth
+  /database
+  /config
+  /integrations
+  /observability
+  /utils
+
+/infrastructure
+/scripts
+
+━━━━━━━━━━━━━━━━━━━
+ESTRUTURA FRONTEND
+━━━━━━━━━━━━━━━━━━━
+
+Estrutura obrigatória:
+
+/apps/web/src
+  /app
+  /modules
+  /shared
+  /providers
+  /routes
+  /layouts
+  /styles
+
+━━━━━━━━━━━━━━━━━━━
+ESTRUTURA DOS MÓDULOS
+━━━━━━━━━━━━━━━━━━━
+
+TODOS os módulos devem seguir EXATAMENTE esta estrutura:
+
+/module-name
+  /components
+  /pages
+  /hooks
+  /services
+  /store
+  /schemas
+  /types
+  /utils
+  /constants
+  /forms
+
+━━━━━━━━━━━━━━━━━━━
+RESPONSABILIDADE DE CADA PASTA
+━━━━━━━━━━━━━━━━━━━
+
+/components
+- apenas UI;
+- nenhum fetch;
+- nenhuma regra de negócio;
+- nenhum payload API.
+
+/pages
+- composição de layout;
+- orquestração;
+- conexão entre hooks e componentes.
+
+/hooks
+- React Query;
+- mutations;
+- cache;
+- estados do módulo.
+
+/services
+- comunicação API;
+- chamadas HTTP;
+- adapters.
+
+/store
+- Zustand;
+- estados globais específicos do módulo.
+
+/schemas
+- validações Zod.
+
+/types
+- interfaces;
+- tipos do domínio.
+
+/utils
+- helpers puros.
+
+/constants
+- constantes do módulo.
+
+/forms
+- estrutura desacoplada dos formulários.
+
+━━━━━━━━━━━━━━━━━━━
+FORMULÁRIOS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+NUNCA deixar formulários gigantes.
+
+Separar obrigatoriamente:
+
+/forms
+  /release-form
+    ReleaseForm.tsx
+    release-form.schema.ts
+    release-form.mapper.ts
+    release-form.types.ts
+    release-form.constants.ts
+
+━━━━━━━━━━━━━━━━━━━
+DESIGN SYSTEM — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Criar:
+
+/packages/ui
+
+Padronizar:
+- cards;
+- modals;
+- tables;
+- date pickers;
+- dialogs;
+- tabs;
+- inputs;
+- selects;
+- typography;
+- spacing;
+- grids;
+- badges;
+- dropdowns;
+- loading states;
+- skeletons.
+
+Os módulos:
+- Rádio;
+- TV;
+- Projects;
+- Releases;
+
+DEVEM compartilhar exatamente o mesmo padrão visual premium.
+
+━━━━━━━━━━━━━━━━━━━
+DATE PICKERS
+━━━━━━━━━━━━━━━━━━━
+
+Criar DatePicker global único:
+
+/packages/ui/date-picker
+
+NÃO permitir múltiplas implementações diferentes.
+
+━━━━━━━━━━━━━━━━━━━
+BACKEND — ESTRUTURA OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+/apps/api/src
+  /core
+  /modules
+  /shared
+
+━━━━━━━━━━━━━━━━━━━
+CORE
+━━━━━━━━━━━━━━━━━━━
+
+/core
+  /auth
+  /database
+  /storage
+  /queue
+  /cache
+  /tenant
+  /rbac
+  /logger
+  /events
+
+━━━━━━━━━━━━━━━━━━━
+ESTRUTURA DOS MÓDULOS BACKEND
+━━━━━━━━━━━━━━━━━━━
+
+/module-name
+  /controllers
+  /services
+  /repositories
+  /dto
+  /entities
+  /validators
+
+━━━━━━━━━━━━━━━━━━━
+RESPONSABILIDADE BACKEND
+━━━━━━━━━━━━━━━━━━━
+
+controllers
+- recebem requests.
+
+services
+- regras de negócio.
+
+repositories
+- acesso ao Supabase/Postgres.
+
+dto
+- payloads.
+
+entities
+- entidades do domínio.
+
+validators
+- validações.
+
+━━━━━━━━━━━━━━━━━━━
+MULTI-TENANT — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+TODAS as tabelas devem possuir:
+
+- tenant_id;
+- created_at;
+- updated_at;
+- created_by;
+- updated_by.
+
+Implementar:
+
+- tenant isolation;
+- tenant guards;
+- tenant scope;
+- tenant-aware queries.
+
+━━━━━━━━━━━━━━━━━━━
+RLS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar Row Level Security em TODAS as tabelas sensíveis.
+
+Garantir:
+- isolamento entre labels;
+- isolamento entre artistas;
+- isolamento entre organizações.
+
+━━━━━━━━━━━━━━━━━━━
+AUTH — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Usar:
+
+Supabase Auth
++
+JWT Validation no NestJS
++
+RBAC
++
+Tenant Scope
+
+━━━━━━━━━━━━━━━━━━━
+RBAC — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+- OWNER
+- ADMIN
+- MANAGER
+- ARTIST
+- MARKETING
+- RADIO
+- TV
+- FINANCIAL
+
+━━━━━━━━━━━━━━━━━━━
+STORAGE — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Estrutura obrigatória:
+
+tenant-id/
+  artists/
+  releases/
+  covers/
+  assets/
+  campaigns/
+  media/
+
+Implementar:
+- signed URLs;
+- validação de uploads;
+- organização tenant-aware.
+
+━━━━━━━━━━━━━━━━━━━
+SEGURANÇA — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+- Helmet;
+- Rate Limit;
+- CSP;
+- XSS protection;
+- sanitização;
+- audit logs;
+- request IDs;
+- secure headers;
+- secure cookies;
+- validações globais;
+- proteção de rotas;
+- proteção tenant-aware.
+
+━━━━━━━━━━━━━━━━━━━
+OBSERVABILIDADE — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+- Sentry;
+- OpenTelemetry;
+- Pino;
+- logs estruturados;
+- tracing;
+- monitoramento de erros;
+- correlation IDs.
+
+━━━━━━━━━━━━━━━━━━━
+QUEUE — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar BullMQ + Redis para:
+
+- uploads;
+- webhooks;
+- sincronizações;
+- automações;
+- jobs assíncronos.
+
+━━━━━━━━━━━━━━━━━━━
+REGRAS ABSOLUTAS
+━━━━━━━━━━━━━━━━━━━
+
+NÃO:
+- misturar UI com fetch;
+- misturar validação com componente;
+- misturar payload API com formulário;
+- misturar regra de negócio com renderização;
+- criar arquivos gigantes;
+- criar utils genéricas gigantes;
+- criar services gigantes;
+- criar stores globais gigantes.
+
+━━━━━━━━━━━━━━━━━━━
+EXECUÇÃO OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+Executar automaticamente:
+- reorganização de pastas;
+- refatoração segura;
+- separação de responsabilidades;
+- padronização arquitetural;
+- estabilização estrutural;
+- correção de acoplamentos;
+- centralização de validações;
+- centralização de tipos;
+- estabilização de formulários;
+- estabilização de hooks;
+- estabilização de providers;
+- estabilização de integrações;
+- estabilização visual.
+
+━━━━━━━━━━━━━━━━━━━
+SAÍDA OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+Ao concluir, gerar:
+
+1. Diagnóstico arquitetural completo;
+2. Problemas críticos encontrados;
+3. Débito técnico identificado;
+4. Gargalos de escalabilidade;
+5. Problemas de segurança;
+6. Problemas de multi-tenant;
+7. Problemas de UX/UI;
+8. Estrutura final aplicada;
+9. Lista completa de refatorações executadas;
+10. Lista completa de arquivos reorganizados;
+11. Lista completa de arquivos removidos;
+12. Lista completa de melhorias implementadas;
+13. Roadmap técnico;
+14. Avaliação final da arquitetura.
+
+━━━━━━━━━━━━━━━━━━━
+OBJETIVO FINAL
+━━━━━━━━━━━━━━━━━━━
+
+Transformar o MUSIC OS 360 em um SaaS:
+
+- premium;
+- enterprise-grade;
+- escalável;
+- modular;
+- multi-tenant;
+- seguro;
+- performático;
+- sustentável;
+- desacoplado;
+- profissional;
+- preparado para crescimento massivo;
+- preparado para expansão futura;
+- preparado para operação de longo prazo;
+- sem débito técnico crítico.
