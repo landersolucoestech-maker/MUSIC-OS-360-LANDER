@@ -143,6 +143,10 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
   const [showCpw, setShowCpw] = useState(false);
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [verifyCode, setVerifyCode]   = useState("");
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [savedTenant, setSavedTenant] = useState<Record<string, unknown> | null>(null);
   const { signUp, setActive } = useSignUp();
 
   /* collected data across steps */
@@ -171,12 +175,45 @@ export default function Register() {
   const onStep2 = (d: Step2) => { setData((p) => ({ ...p, ...d })); setStep(3); };
   const onStep3 = (d: Step3) => { setData((p) => ({ ...p, ...d })); setStep(4); };
 
+  /* ── Monta objeto tenant sem persistir ainda ── */
+  const buildTenant = (all: Partial<Step1 & Step2 & Step3 & Step4>) => {
+    const tenantId = `tenant-${Date.now()}`;
+    return {
+      id:            tenantId,
+      name:          all.companyName,
+      tradeName:     all.tradeName,
+      cnpj:          all.cnpj,
+      segment:       all.segment,
+      address:       all.address,
+      city:          all.city,
+      state:         all.state,
+      phone:         all.phone,
+      email:         all.corporateEmail,
+      slug:          all.slug,
+      workspaceName: all.workspaceName,
+      adminName:     all.fullName,
+      adminEmail:    all.email,
+      adminRole:     all.role,
+      plan:          all.plan,
+      createdAt:     new Date().toISOString(),
+      status:        "trial",
+    };
+  };
+
+  /* ── Persiste tenant e redireciona ── */
+  const persistAndGo = (tenant: Record<string, unknown>) => {
+    localStorage.setItem(`musicos360_tenant_${tenant.id}`, JSON.stringify(tenant));
+    localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
+    toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
+    navigate("/");
+  };
+
+  /* ── Handler step 4 ── */
   const onStep4 = async (d: Step4) => {
     setIsLoading(true);
     const all = { ...data, ...d };
 
     try {
-      /* ── 1. Criar conta no Clerk (quando ativo) ── */
       if (useClerkMode && signUp && all.email && all.password) {
         const result = await signUp.create({
           emailAddress: all.email,
@@ -185,49 +222,51 @@ export default function Register() {
           lastName:     all.fullName?.split(" ").slice(1).join(" ") ?? "",
         });
 
-        if (result.status === "missing_requirements") {
-          /* Clerk pode exigir verificação de email */
+        if (result.status === "complete") {
+          /* Conta criada sem verificação — ativa sessão e vai */
+          if (setActive) await setActive({ session: result.createdSessionId });
+          persistAndGo(buildTenant(all));
+        } else {
+          /* Clerk exige verificação de email — guarda tenant e mostra campo de código */
           await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-          toast.info("Verifique seu email para confirmar a conta, depois faça o login.");
-        } else if (result.status === "complete" && setActive) {
-          await setActive({ session: result.createdSessionId });
+          setSavedTenant(buildTenant(all));
+          setPendingVerification(true);
+          toast.info("Código enviado para " + all.email + ". Digite-o abaixo.");
         }
+      } else {
+        /* Modo mock — sem Clerk */
+        persistAndGo(buildTenant(all));
       }
-
-      /* ── 2. Salvar tenant no localStorage ── */
-      const tenantId = `tenant-${Date.now()}`;
-      const tenant = {
-        id:            tenantId,
-        name:          all.companyName,
-        tradeName:     all.tradeName,
-        cnpj:          all.cnpj,
-        segment:       all.segment,
-        address:       all.address,
-        city:          all.city,
-        state:         all.state,
-        phone:         all.phone,
-        email:         all.corporateEmail,
-        slug:          all.slug,
-        workspaceName: all.workspaceName,
-        adminName:     all.fullName,
-        adminEmail:    all.email,
-        adminRole:     all.role,
-        plan:          all.plan,
-        createdAt:     new Date().toISOString(),
-        status:        "trial",
-      };
-
-      localStorage.setItem(`musicos360_tenant_${tenantId}`, JSON.stringify(tenant));
-      localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
-
-      toast.success(`Empresa "${all.companyName}" criada com sucesso!`);
-      navigate("/");
     } catch (err: unknown) {
-      const clerkErr = err as { errors?: { message: string }[] };
-      const msg = clerkErr?.errors?.[0]?.message ?? "Erro ao criar conta. Tente novamente.";
-      toast.error(msg);
+      const clerkErr = err as { errors?: { code?: string; message: string }[] };
+      const clerkError = clerkErr?.errors?.[0];
+      if (clerkError?.code === "form_identifier_exists") {
+        toast.error("Este email já está cadastrado. Faça login ou use outro email.");
+      } else {
+        toast.error(clerkError?.message ?? "Erro ao criar conta. Tente novamente.");
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  /* ── Handler verificação de email ── */
+  const onVerifyCode = async () => {
+    if (!verifyCode.trim() || !signUp || !setActive) return;
+    setVerifyLoading(true);
+    try {
+      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode.trim() });
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        if (savedTenant) persistAndGo(savedTenant);
+      } else {
+        toast.error("Verificação incompleta. Tente novamente.");
+      }
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { message: string }[] };
+      toast.error(clerkErr?.errors?.[0]?.message ?? "Código inválido.");
+    } finally {
+      setVerifyLoading(false);
     }
   };
 
@@ -530,8 +569,51 @@ export default function Register() {
             </form>
           )}
 
+          {/* ── VERIFICAÇÃO DE EMAIL (Clerk) ── */}
+          {pendingVerification && (
+            <div className="space-y-5 flex-1">
+              <div className="flex items-center gap-2 mb-2">
+                <ShieldCheck className="h-5 w-5 text-primary" />
+                <h2 className="text-base font-semibold text-white">Confirme seu Email</h2>
+              </div>
+              <p className="text-sm text-gray-400">
+                Enviamos um código de verificação para <span className="text-white font-medium">{data.email}</span>. Digite-o abaixo para ativar sua conta.
+              </p>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                placeholder="000000"
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
+                className="flex h-14 w-full rounded-lg border border-white/20 bg-white/5 px-4 text-2xl text-center text-white tracking-[0.5em] placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/60 transition-colors"
+                data-testid="input-verify-code"
+              />
+              <Button
+                type="button"
+                onClick={onVerifyCode}
+                disabled={verifyLoading || verifyCode.length < 6}
+                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-sm tracking-wider rounded-xl gap-2"
+                data-testid="button-verify-code"
+              >
+                {verifyLoading ? (
+                  <><Loader2 className="h-4 w-4 animate-spin" />VERIFICANDO...</>
+                ) : (
+                  <><ShieldCheck className="h-4 w-4" />CONFIRMAR CÓDIGO</>
+                )}
+              </Button>
+              <button
+                type="button"
+                onClick={() => setPendingVerification(false)}
+                className="w-full flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-300 text-[12.5px] transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" /> Voltar
+              </button>
+            </div>
+          )}
+
           {/* ── STEP 4 — ATIVAÇÃO ── */}
-          {step === 4 && (
+          {step === 4 && !pendingVerification && (
             <form onSubmit={form4.handleSubmit(onStep4)} className="space-y-5 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Rocket className="h-5 w-5 text-primary" />
@@ -621,6 +703,9 @@ export default function Register() {
                   </div>
                 ))}
               </div>
+
+              {/* Clerk bot-protection anchor — obrigatório para custom signup flows */}
+              <div id="clerk-captcha" />
 
               <Button
                 type="submit"
