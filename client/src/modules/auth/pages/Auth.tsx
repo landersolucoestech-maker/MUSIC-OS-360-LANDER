@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { authRateLimiter } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
+const refImg = "/auth-bg.png";
 
 const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
@@ -34,270 +35,169 @@ export default function Auth() {
   return <AuthPage />;
 }
 
-// ── Particle dots (decorative) ────────────────────────────────────────────────
+// ── Particle dots ─────────────────────────────────────────────────────────────
 const DOTS = [
-  { x: 8,  y: 88, s: 2,   o: 0.7 },
-  { x: 14, y: 82, s: 1.5, o: 0.5 },
-  { x: 22, y: 92, s: 2.5, o: 0.6 },
-  { x: 5,  y: 75, s: 1.5, o: 0.4 },
-  { x: 30, y: 86, s: 2,   o: 0.5 },
-  { x: 18, y: 96, s: 1.5, o: 0.6 },
-  { x: 10, y: 70, s: 1,   o: 0.3 },
-  { x: 35, y: 94, s: 1.5, o: 0.4 },
-  { x: 3,  y: 83, s: 2,   o: 0.5 },
-  { x: 25, y: 78, s: 1,   o: 0.3 },
-  { x: 40, y: 90, s: 2,   o: 0.4 },
-  { x: 12, y: 99, s: 1.5, o: 0.5 },
-  { x: 28, y: 72, s: 1,   o: 0.25 },
-  { x: 42, y: 82, s: 1.5, o: 0.35 },
-  { x: 6,  y: 93, s: 2.5, o: 0.55 },
-  { x: 20, y: 68, s: 1,   o: 0.2 },
-  { x: 33, y: 76, s: 1.5, o: 0.3 },
-  { x: 15, y: 65, s: 1,   o: 0.2 },
-  { x: 38, y: 70, s: 1.5, o: 0.25 },
-  { x: 45, y: 95, s: 1,   o: 0.3 },
+  {x:6,y:88,s:2.2,o:0.75},{x:13,y:82,s:1.6,o:0.5},{x:21,y:93,s:2.6,o:0.6},
+  {x:4,y:76,s:1.4,o:0.4},{x:29,y:87,s:2,o:0.5},{x:17,y:97,s:1.6,o:0.6},
+  {x:9,y:71,s:1,o:0.3},{x:34,y:94,s:1.6,o:0.4},{x:2,y:84,s:2.1,o:0.5},
+  {x:24,y:79,s:1,o:0.3},{x:39,y:91,s:2,o:0.4},{x:11,y:99,s:1.5,o:0.5},
+  {x:27,y:73,s:1,o:0.25},{x:41,y:83,s:1.5,o:0.35},{x:5,y:95,s:2.5,o:0.55},
+  {x:19,y:68,s:1,o:0.2},{x:32,y:77,s:1.5,o:0.3},{x:44,y:89,s:1.2,o:0.35},
+  {x:15,y:64,s:1,o:0.2},{x:37,y:70,s:1.4,o:0.25},{x:8,y:60,s:0.8,o:0.15},
+  {x:22,y:58,s:0.8,o:0.15},{x:46,y:96,s:1,o:0.3},{x:3,y:91,s:1.8,o:0.45},
 ];
 
 function Particles() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {DOTS.map((d, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full bg-blue-400"
-          style={{
-            left: `${d.x}%`,
-            top:  `${d.y}%`,
-            width:  `${d.s}px`,
-            height: `${d.s}px`,
-            opacity: d.o,
-            boxShadow: `0 0 ${d.s * 2}px rgba(59,130,246,0.8)`,
-          }}
-        />
+      {DOTS.map((d,i) => (
+        <div key={i} className="absolute rounded-full" style={{
+          left:`${d.x}%`, top:`${d.y}%`,
+          width:`${d.s}px`, height:`${d.s}px`,
+          background:"#60a5fa",
+          opacity:d.o,
+          boxShadow:`0 0 ${d.s*3}px rgba(96,165,250,0.9)`,
+        }}/>
       ))}
-      {/* Ambient glow */}
-      <div
-        className="absolute"
-        style={{
-          bottom: "-60px",
-          left:   "-60px",
-          width:  "340px",
-          height: "340px",
-          borderRadius: "50%",
-          background: "radial-gradient(circle, rgba(29,78,216,0.18) 0%, transparent 70%)",
-        }}
-      />
+      <div className="absolute" style={{
+        bottom:"-80px", left:"-80px",
+        width:"380px", height:"380px",
+        borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(29,78,216,0.22) 0%, transparent 70%)",
+      }}/>
     </div>
   );
 }
 
-// ── Main page ─────────────────────────────────────────────────────────────────
+// ── Main Page ─────────────────────────────────────────────────────────────────
 function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
 
   return (
-    <div className="min-h-screen flex" style={{ background: "#080e1c" }}>
+    <div style={{ minHeight:"100vh", display:"flex", background:"#07101f" }}>
 
-      {/* ══════════ LEFT PANEL ══════════ */}
-      <div
-        className="w-full lg:w-[44%] flex flex-col relative overflow-hidden"
-        style={{ background: "#08111f" }}
-      >
+      {/* ══ LEFT PANEL ══ */}
+      <div className="w-full lg:w-[44%]" style={{
+        display:"flex", flexDirection:"column",
+        position:"relative", overflow:"hidden",
+        background:"linear-gradient(180deg, #07101f 0%, #050d1a 100%)",
+      }}>
+
         <Particles />
 
-        <div className="relative z-10 flex flex-col h-full px-12 py-10">
+        <div style={{
+          position:"relative", zIndex:10,
+          display:"flex", flexDirection:"column",
+          height:"100%", padding:"40px 48px",
+        }}>
 
-          {/* ─ Logo ─ */}
-          <div className="flex items-center gap-4 mb-1">
-            {/* Sound bars */}
-            <div className="flex items-end gap-[4px]" style={{ height: "52px" }}>
-              {[18, 30, 42, 52, 42, 30, 18].map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: "5px",
-                    height: `${h}px`,
-                    borderRadius: "3px",
-                    background: "linear-gradient(to top, #1d4ed8, #3b82f6)",
-                    boxShadow: "0 0 6px rgba(59,130,246,0.6)",
-                  }}
-                />
+          {/* Logo */}
+          <div style={{ display:"flex", alignItems:"center", gap:"16px", marginBottom:"24px" }}>
+            <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", height:"54px" }}>
+              {[20,32,44,54,44,32,20].map((h,i) => (
+                <div key={i} style={{
+                  width:"5px", height:`${h}px`, borderRadius:"3px",
+                  background:"linear-gradient(to top, #1d4ed8, #3b82f6)",
+                  boxShadow:"0 0 8px rgba(59,130,246,0.7)",
+                }}/>
               ))}
             </div>
-            {/* Brand text */}
-            <div style={{ lineHeight: 1.1 }}>
-              <div style={{ color: "#ffffff", fontWeight: 900, fontSize: "32px", letterSpacing: "2px" }}>MUSIC</div>
-              <div style={{ color: "#3b82f6", fontWeight: 900, fontSize: "32px", letterSpacing: "2px" }}>OS 360</div>
+            <div style={{ lineHeight:1.08 }}>
+              <div style={{ color:"#fff", fontWeight:900, fontSize:"30px", letterSpacing:"2px" }}>MUSIC</div>
+              <div style={{ color:"#3b82f6", fontWeight:900, fontSize:"30px", letterSpacing:"2px" }}>OS 360</div>
             </div>
           </div>
 
-          {/* ─ Tagline ─ */}
-          <div className="mt-5 mb-10">
-            <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "15px" }}>Sistema de Gestão Musical</p>
-            <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px", lineHeight: 1.6, textAlign: "center" }}>
-              Plataforma completa para gestão operacional<br />da indústria musical.
+          {/* Tagline */}
+          <div style={{ marginBottom:"36px" }}>
+            <p style={{ color:"#fff", fontWeight:700, fontSize:"15px", marginBottom:"6px" }}>Sistema de Gestão Musical</p>
+            <p style={{ color:"#6b7280", fontSize:"13px", lineHeight:1.65, textAlign:"center" }}>
+              Plataforma completa para gestão operacional<br/>da indústria musical.
             </p>
           </div>
 
-          {/* ─ Form area ─ */}
-          <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: "360px" }}>
-            {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} />}
-            {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
+          {/* Form */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
+            {mode==="login"  && <LoginForm  onForgot={()=>setMode("forgot")}/>}
+            {mode==="forgot" && <ForgotForm onBack={()=>setMode("login")}/>}
           </div>
 
-          {/* ─ Footer ─ */}
-          <div className="mt-6">
-            <div className="flex justify-center gap-7 mb-4">
-              {[Facebook, Instagram, MessageCircle, Globe].map((Icon, i) => (
-                <a key={i} href="#" style={{ color: "#4b5563" }}
-                  onMouseEnter={e => (e.currentTarget.style.color = "#3b82f6")}
-                  onMouseLeave={e => (e.currentTarget.style.color = "#4b5563")}
-                >
-                  <Icon size={20} />
-                </a>
+          {/* Footer */}
+          <div style={{ marginTop:"24px" }}>
+            <div style={{ display:"flex", justifyContent:"center", gap:"28px", marginBottom:"14px" }}>
+              {[Facebook,Instagram,MessageCircle,Globe].map((Icon,i) => (
+                <a key={i} href="#"
+                  style={{ color:"#4b5563", transition:"color .2s" }}
+                  onMouseEnter={e=>(e.currentTarget.style.color="#3b82f6")}
+                  onMouseLeave={e=>(e.currentTarget.style.color="#4b5563")}
+                ><Icon size={20}/></a>
               ))}
             </div>
-            <p style={{ textAlign: "center", fontSize: "11px", color: "#374151" }}>
+            <p style={{ textAlign:"center", fontSize:"11px", color:"#374151" }}>
               © MUSIC OS 360. Todos os direitos reservados.
             </p>
           </div>
         </div>
       </div>
 
-      {/* ══════════ RIGHT PANEL ══════════ */}
+      {/* ══ RIGHT PANEL ══ */}
       <div
-        className="hidden lg:flex lg:w-[56%] relative overflow-hidden flex-col justify-end"
-        style={{ background: "#050c18" }}
+        className="hidden lg:block lg:w-[56%]"
+        style={{ position:"relative", overflow:"hidden", background:"#040b16" }}
       >
-        {/* Background depth gradient */}
-        <div
-          className="absolute inset-0"
+        {/* Reference image — right portion only (card mockup) */}
+        <img
+          src={refImg}
+          alt=""
+          aria-hidden="true"
           style={{
-            background: "radial-gradient(ellipse at 60% 40%, #0d1f3a 0%, #050c18 60%)",
+            position:"absolute",
+            top:0, right:0,
+            height:"100%",
+            width:"auto",
+            objectFit:"cover",
+            objectPosition:"right top",
+            userSelect:"none",
+            pointerEvents:"none",
           }}
         />
 
-        {/* ─ 3D Card ─ */}
-        <div
-          className="absolute"
-          style={{
-            top: "50%",
-            left: "50%",
-            transform: "translate(-54%, -60%) perspective(1200px) rotateX(12deg) rotateY(-16deg) rotateZ(-2deg)",
-            zIndex: 10,
-          }}
-        >
-          {/* Card outer shadow/glow */}
-          <div
-            style={{
-              width: "420px",
-              height: "280px",
-              borderRadius: "20px",
-              background: "linear-gradient(145deg, #1a2744 0%, #0c1529 40%, #111d38 70%, #0a1422 100%)",
-              boxShadow: [
-                "0 60px 120px rgba(0,0,0,0.8)",
-                "0 20px 60px rgba(0,0,0,0.6)",
-                "-8px -8px 30px rgba(255,255,255,0.03)",
-                "inset 0 1px 0 rgba(255,255,255,0.07)",
-                "inset 0 -1px 0 rgba(0,0,0,0.5)",
-                "0 0 80px rgba(30,64,175,0.12)",
-              ].join(", "),
-              border: "1px solid rgba(255,255,255,0.08)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              gap: "16px",
-              position: "relative",
-              overflow: "hidden",
-            }}
-          >
-            {/* Card inner texture */}
-            <div
-              style={{
-                position: "absolute",
-                inset: 0,
-                background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)",
-                borderRadius: "20px",
-              }}
-            />
+        {/* Gradient that fades the image bottom into solid background */}
+        <div style={{
+          position:"absolute",
+          bottom:0, left:0, right:0,
+          height:"68%",
+          background:"linear-gradient(to bottom, transparent 0%, rgba(4,11,22,0.85) 30%, #040b16 52%)",
+          zIndex:1,
+        }}/>
 
-            {/* Sound bars on card */}
-            <div className="relative z-10 flex items-end gap-[6px]" style={{ height: "72px" }}>
-              {[20, 36, 52, 68, 52, 36, 20].map((h, i) => (
-                <div
-                  key={i}
-                  style={{
-                    width: "8px",
-                    height: `${h}px`,
-                    borderRadius: "4px",
-                    background: "linear-gradient(to top, #1e40af, #60a5fa)",
-                    boxShadow: `0 0 12px rgba(96,165,250,0.8), 0 0 24px rgba(59,130,246,0.4)`,
-                  }}
-                />
-              ))}
-            </div>
-
-            {/* Brand on card */}
-            <div className="relative z-10 text-center" style={{ lineHeight: 1.05 }}>
-              <div style={{
-                color: "#ffffff",
-                fontWeight: 900,
-                fontSize: "48px",
-                letterSpacing: "4px",
-                textShadow: "0 2px 20px rgba(255,255,255,0.15)",
-              }}>MUSIC</div>
-              <div style={{
-                color: "#3b82f6",
-                fontWeight: 900,
-                fontSize: "48px",
-                letterSpacing: "4px",
-                textShadow: "0 2px 20px rgba(59,130,246,0.5)",
-              }}>OS 360</div>
-            </div>
-
-            {/* Card bottom edge light */}
-            <div
-              style={{
-                position: "absolute",
-                bottom: 0,
-                left: "10%",
-                right: "10%",
-                height: "1px",
-                background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)",
-              }}
-            />
-          </div>
-        </div>
-
-        {/* ─ Bottom text + features ─ */}
-        <div className="relative z-10 px-14 pb-12">
-          <h2 style={{ color: "#ffffff", fontSize: "26px", fontWeight: 800, marginBottom: "8px" }}>
+        {/* Text + features over the solid area */}
+        <div style={{
+          position:"absolute",
+          bottom:0, left:0, right:0,
+          padding:"0 56px 44px",
+          zIndex:2,
+        }}>
+          <h2 style={{ color:"#fff", fontSize:"26px", fontWeight:800, marginBottom:"8px" }}>
             Gestão. Controle. Crescimento.
           </h2>
-          <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "36px", lineHeight: 1.6 }}>
-            Tudo o que você precisa para<br />levar sua música mais longe.
+          <p style={{ color:"#6b7280", fontSize:"14px", marginBottom:"32px", lineHeight:1.6 }}>
+            Tudo o que você precisa para<br/>levar sua música mais longe.
           </p>
-
-          {/* Feature grid with vertical dividers */}
-          <div className="grid grid-cols-4" style={{ gap: 0 }}>
+          <div style={{ display:"grid", gridTemplateColumns:"repeat(4, 1fr)" }}>
             {[
-              { icon: BarChart2,   label: "ANALYTICS",   desc: "Dados que geram estratégias." },
-              { icon: ShieldCheck, label: "SEGURANÇA",   desc: "Proteção total para suas informações." },
-              { icon: Users,       label: "INTEGRAÇÃO",  desc: "Conecte artistas, equipes e parceiros." },
-              { icon: TrendingUp,  label: "PERFORMANCE", desc: "Acompanhe e impulsione resultados." },
-            ].map(({ icon: Icon, label, desc }, idx) => (
-              <div
-                key={label}
-                style={{
-                  textAlign: "center",
-                  padding: "0 16px",
-                  borderLeft: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
-                }}
-              >
-                <Icon size={28} style={{ color: "#60a5fa", margin: "0 auto 10px" }} />
-                <p style={{ color: "#ffffff", fontSize: "11px", fontWeight: 700, letterSpacing: "1px", marginBottom: "6px" }}>{label}</p>
-                <p style={{ color: "#6b7280", fontSize: "11px", lineHeight: 1.4 }}>{desc}</p>
+              { icon:BarChart2,   label:"ANALYTICS",   desc:"Dados que geram estratégias." },
+              { icon:ShieldCheck, label:"SEGURANÇA",   desc:"Proteção total para suas informações." },
+              { icon:Users,       label:"INTEGRAÇÃO",  desc:"Conecte artistas, equipes e parceiros." },
+              { icon:TrendingUp,  label:"PERFORMANCE", desc:"Acompanhe e impulsione resultados." },
+            ].map(({icon:Icon,label,desc},idx) => (
+              <div key={label} style={{
+                textAlign:"center", padding:"0 12px",
+                borderLeft: idx>0 ? "1px solid rgba(255,255,255,0.08)" : "none",
+              }}>
+                <Icon size={26} style={{ color:"#60a5fa", margin:"0 auto 10px" }}/>
+                <p style={{ color:"#fff", fontSize:"11px", fontWeight:700, letterSpacing:"1px", marginBottom:"5px" }}>{label}</p>
+                <p style={{ color:"#6b7280", fontSize:"11px", lineHeight:1.4 }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -308,91 +208,68 @@ function AuthPage() {
 }
 
 // ── AuthInput ─────────────────────────────────────────────────────────────────
-
 interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  icon: React.ElementType;
-  error?: string;
-  showToggle?: boolean;
-  onToggle?: () => void;
-  showPass?: boolean;
+  icon: React.ElementType; error?: string;
+  showToggle?: boolean; onToggle?: () => void; showPass?: boolean;
 }
 
 const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInput(
-  { icon: Icon, error, showToggle, onToggle, showPass, type, ...rest },
-  ref,
+  { icon: Icon, error, showToggle, onToggle, showPass, type, ...rest }, ref,
 ) {
   return (
-    <div style={{ marginBottom: error ? "0" : "0" }}>
-      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-        <Icon
-          size={16}
-          style={{
-            position: "absolute",
-            left: "16px",
-            color: "#6b7280",
-            pointerEvents: "none",
-          }}
-        />
+    <div>
+      <div style={{ position:"relative", display:"flex", alignItems:"center" }}>
+        <Icon size={15} style={{ position:"absolute", left:"15px", color:"#6b7280", pointerEvents:"none" }}/>
         <input
           ref={ref}
-          type={showToggle ? (showPass ? "text" : "password") : type}
+          type={showToggle?(showPass?"text":"password"):type}
           style={{
-            width: "100%",
-            height: "50px",
-            borderRadius: "10px",
-            border: "1px solid #374151",
-            background: "transparent",
-            color: "#ffffff",
-            fontSize: "14px",
-            paddingLeft: "44px",
-            paddingRight: showToggle ? "44px" : "16px",
-            outline: "none",
+            width:"100%", height:"50px", borderRadius:"10px",
+            border:"1px solid #374151", background:"transparent",
+            color:"#fff", fontSize:"14px",
+            paddingLeft:"42px", paddingRight: showToggle?"42px":"14px",
+            outline:"none",
           }}
-          onFocus={e => (e.currentTarget.style.borderColor = "#3b82f6")}
-          onBlur={e  => (e.currentTarget.style.borderColor = "#374151")}
+          onFocus={e=>(e.currentTarget.style.borderColor="#3b82f6")}
+          onBlur={e=>(e.currentTarget.style.borderColor="#374151")}
           {...rest}
         />
         {showToggle && (
-          <button
-            type="button"
-            onClick={onToggle}
-            style={{ position: "absolute", right: "12px", color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}
-          >
-            {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
+          <button type="button" onClick={onToggle}
+            style={{ position:"absolute", right:"12px", color:"#6b7280", background:"none", border:"none", cursor:"pointer" }}>
+            {showPass?<EyeOff size={15}/>:<Eye size={15}/>}
           </button>
         )}
       </div>
-      {error && <p style={{ color: "#f87171", fontSize: "11px", marginTop: "4px", paddingLeft: "4px" }}>{error}</p>}
+      {error && <p style={{ color:"#f87171", fontSize:"11px", marginTop:"4px", paddingLeft:"4px" }}>{error}</p>}
     </div>
   );
 });
 
 // ── LoginForm ─────────────────────────────────────────────────────────────────
-
 function LoginForm({ onForgot }: { onForgot: () => void }) {
-  const [showPass, setShowPass] = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const { signIn, setActive }   = useSignIn();
-  const { signIn: mockSignIn }  = useAuth();
+  const [showPass,setShowPass] = useState(false);
+  const [loading,setLoading]   = useState(false);
+  const { signIn, setActive }  = useSignIn();
+  const { signIn: mockSignIn } = useAuth();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginData>({
+  const { register, handleSubmit, formState:{errors} } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email:"", password:"" },
   });
 
   const onSubmit = async (data: LoginData) => {
     if (!authRateLimiter.check(data.email)) {
-      const min = Math.ceil(authRateLimiter.getTimeUntilReset(data.email) / 60000);
-      toast.error(`Conta bloqueada temporariamente. Tente em ${min} minutos.`);
-      return;
+      const min = Math.ceil(authRateLimiter.getTimeUntilReset(data.email)/60000);
+      toast.error(`Conta bloqueada. Tente em ${min} minutos.`); return;
     }
     setLoading(true);
     try {
       if (useClerkMode && signIn) {
-        const result = await signIn.create({ identifier: data.email, password: data.password });
-        if (result.status === "complete") {
+        const result = await signIn.create({ identifier:data.email, password:data.password });
+        if (result.status==="complete") {
           authRateLimiter.reset(data.email);
-          await setActive!({ session: result.createdSessionId });
+          await setActive!({ session:result.createdSessionId });
           toast.success("Bem-vindo ao MUSIC OS 360!");
         } else {
           toast.error("Autenticação incompleta. Verifique seu email.");
@@ -400,88 +277,48 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       } else {
         const { error } = await mockSignIn(data.email, data.password);
         if (error) {
-          const rem = authRateLimiter.getRemainingAttempts(data.email);
-          toast.error(`${error.message}. ${rem} tentativas restantes.`);
+          toast.error(`${error.message}. ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`);
         } else {
           authRateLimiter.reset(data.email);
           toast.success("Bem-vindo!");
         }
       }
     } catch (err: unknown) {
-      const msg = (err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Erro ao fazer login.";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
+      toast.error((err as {errors?:{message:string}[]})?.errors?.[0]?.message ?? "Erro ao fazer login.");
+    } finally { setLoading(false); }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-      <AuthInput
-        icon={User}
-        type="email"
-        placeholder="Digite o Usuário"
-        autoComplete="email"
-        error={errors.email?.message}
-        {...register("email")}
-      />
-      <AuthInput
-        icon={Lock}
-        type="password"
-        placeholder="Digite sua senha"
-        autoComplete="current-password"
-        showToggle
-        showPass={showPass}
-        onToggle={() => setShowPass(p => !p)}
-        error={errors.password?.message}
-        {...register("password")}
-      />
+    <form onSubmit={handleSubmit(onSubmit)} style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+      <AuthInput icon={User} type="email" placeholder="Digite o Usuário"
+        autoComplete="email" error={errors.email?.message} {...register("email")}/>
+      <AuthInput icon={Lock} type="password" placeholder="Digite sua senha"
+        autoComplete="current-password" showToggle showPass={showPass}
+        onToggle={()=>setShowPass(p=>!p)} error={errors.password?.message}
+        {...register("password")}/>
 
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          width: "100%",
-          height: "50px",
-          borderRadius: "10px",
-          background: loading ? "#1d4ed8" : "#2563eb",
-          color: "#ffffff",
-          fontWeight: 800,
-          fontSize: "14px",
-          letterSpacing: "2px",
-          border: "none",
-          cursor: loading ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-          opacity: loading ? 0.8 : 1,
-          transition: "background 0.2s",
-          marginTop: "4px",
-        }}
-        onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#1d4ed8"; }}
-        onMouseLeave={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#2563eb"; }}
+      <button type="submit" disabled={loading} style={{
+        width:"100%", height:"50px", borderRadius:"10px",
+        background:"#2563eb", color:"#fff", fontWeight:800,
+        fontSize:"13px", letterSpacing:"2px", border:"none",
+        cursor: loading?"not-allowed":"pointer",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+        opacity: loading ? 0.8 : 1, marginTop:"2px",
+      }}
+        onMouseEnter={e=>{ if(!loading)(e.currentTarget as HTMLButtonElement).style.background="#1d4ed8"; }}
+        onMouseLeave={e=>{ if(!loading)(e.currentTarget as HTMLButtonElement).style.background="#2563eb"; }}
       >
-        {loading ? <><Loader2 size={16} className="animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
+        {loading?<><Loader2 size={15} className="animate-spin"/>ACESSANDO...</>:"ACESSAR O SISTEMA"}
       </button>
 
-      <div style={{ textAlign: "center", marginTop: "4px" }}>
-        <button
-          type="button"
-          onClick={onForgot}
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            color: "#9ca3af", fontSize: "13px",
-            textDecoration: "underline", textUnderlineOffset: "3px",
-            display: "block", width: "100%", marginBottom: "8px",
-          }}
-        >
-          Esqueci minha senha
-        </button>
-        <Link
-          to="/register"
-          style={{ color: "#3b82f6", fontSize: "13px", textDecoration: "none", display: "block" }}
-        >
+      <div style={{ textAlign:"center", marginTop:"4px" }}>
+        <button type="button" onClick={onForgot} style={{
+          background:"none", border:"none", cursor:"pointer",
+          color:"#9ca3af", fontSize:"13px",
+          textDecoration:"underline", textUnderlineOffset:"3px",
+          display:"block", width:"100%", marginBottom:"8px",
+        }}>Esqueci minha senha</button>
+        <Link to="/register" style={{ color:"#3b82f6", fontSize:"13px", textDecoration:"none", display:"block" }}>
           Criar nova conta
         </Link>
       </div>
@@ -490,14 +327,13 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
 }
 
 // ── ForgotForm ────────────────────────────────────────────────────────────────
-
 function ForgotForm({ onBack }: { onBack: () => void }) {
-  const [loading, setLoading] = useState(false);
-  const { resetPassword }     = useAuth();
+  const [loading,setLoading] = useState(false);
+  const { resetPassword }    = useAuth();
 
-  const { register, handleSubmit, formState: { errors } } = useForm<ForgotData>({
+  const { register, handleSubmit, formState:{errors} } = useForm<ForgotData>({
     resolver: zodResolver(forgotSchema),
-    defaultValues: { email: "" },
+    defaultValues: { email:"" },
   });
 
   const onSubmit = async (data: ForgotData) => {
@@ -505,55 +341,34 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
     try {
       const { error } = await resetPassword(data.email);
       if (error) toast.error(error.message);
-      else {
-        toast.success("Email enviado! Verifique sua caixa de entrada.");
-        onBack();
-      }
-    } finally {
-      setLoading(false);
-    }
+      else { toast.success("Email enviado! Verifique sua caixa de entrada."); onBack(); }
+    } finally { setLoading(false); }
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
-      <div style={{ marginBottom: "4px" }}>
-        <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "15px" }}>Recuperar Senha</p>
-        <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px" }}>
+    <form onSubmit={handleSubmit(onSubmit)} style={{ display:"flex", flexDirection:"column", gap:"14px" }}>
+      <div style={{ marginBottom:"4px" }}>
+        <p style={{ color:"#fff", fontWeight:700, fontSize:"15px" }}>Recuperar Senha</p>
+        <p style={{ color:"#6b7280", fontSize:"13px", marginTop:"6px" }}>
           Digite seu email para receber um link de redefinição.
         </p>
       </div>
-      <AuthInput
-        icon={Mail}
-        type="email"
-        placeholder="Seu email"
-        autoComplete="email"
-        error={errors.email?.message}
-        {...register("email")}
-      />
-      <button
-        type="submit"
-        disabled={loading}
-        style={{
-          width: "100%", height: "50px", borderRadius: "10px",
-          background: "#2563eb", color: "#ffffff", fontWeight: 800,
-          fontSize: "14px", letterSpacing: "2px", border: "none",
-          cursor: "pointer", display: "flex", alignItems: "center",
-          justifyContent: "center", gap: "8px",
-        }}
-      >
-        {loading ? <><Loader2 size={16} className="animate-spin" />ENVIANDO...</> : "ENVIAR LINK"}
+      <AuthInput icon={Mail} type="email" placeholder="Seu email"
+        autoComplete="email" error={errors.email?.message} {...register("email")}/>
+      <button type="submit" disabled={loading} style={{
+        width:"100%", height:"50px", borderRadius:"10px",
+        background:"#2563eb", color:"#fff", fontWeight:800,
+        fontSize:"13px", letterSpacing:"2px", border:"none", cursor:"pointer",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:"8px",
+      }}>
+        {loading?<><Loader2 size={15} className="animate-spin"/>ENVIANDO...</>:"ENVIAR LINK"}
       </button>
-      <button
-        type="button"
-        onClick={onBack}
-        style={{
-          background: "none", border: "none", cursor: "pointer",
-          color: "#6b7280", fontSize: "13px", display: "flex",
-          alignItems: "center", justifyContent: "center", gap: "4px",
-          width: "100%",
-        }}
-      >
-        <ArrowLeft size={14} /> Voltar ao Login
+      <button type="button" onClick={onBack} style={{
+        background:"none", border:"none", cursor:"pointer",
+        color:"#6b7280", fontSize:"13px",
+        display:"flex", alignItems:"center", justifyContent:"center", gap:"4px", width:"100%",
+      }}>
+        <ArrowLeft size={14}/> Voltar ao Login
       </button>
     </form>
   );
