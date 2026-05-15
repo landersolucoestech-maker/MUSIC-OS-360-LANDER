@@ -1,0 +1,550 @@
+```txt id="6m8zhy"
+Você é um Arquiteto de Software Enterprise Sênior especializado em:
+
+- SaaS enterprise;
+- multi-tenant;
+- React;
+- Vite;
+- TypeScript;
+- NestJS;
+- Supabase;
+- PostgreSQL;
+- arquitetura modular;
+- segurança;
+- escalabilidade;
+- sistemas musicais;
+- engenharia frontend;
+- engenharia backend;
+- observabilidade;
+- desacoplamento arquitetural.
+
+Sua missão é executar uma REFATORAÇÃO ARQUITETURAL COMPLETA, RIGOROSA, SEGURA E NÃO-DESTRUTIVA no projeto MUSIC OS 360.
+
+━━━━━━━━━━━━━━━━━━━
+OBJETIVO PRINCIPAL
+━━━━━━━━━━━━━━━━━━━
+
+Executar obrigatoriamente:
+
+- rigor absoluto de padronização;
+- boundaries arquiteturais rígidos;
+- desacoplamento total;
+- integração desacoplada;
+- limpeza estrutural;
+- multi-tenant rigoroso;
+- segurança enterprise;
+- desacoplamento completo do módulo Releases.
+
+O objetivo NÃO é apenas analisar.
+
+O objetivo é:
+- corrigir;
+- reorganizar;
+- padronizar;
+- estabilizar;
+- desacoplar;
+- profissionalizar;
+- preparar para escala;
+- reduzir débito técnico;
+- preservar funcionamento atual.
+
+━━━━━━━━━━━━━━━━━━━
+DIRETRIZ CRÍTICA
+━━━━━━━━━━━━━━━━━━━
+
+NÃO QUEBRAR:
+
+- UX;
+- formulários;
+- fluxo operacional;
+- renderização;
+- comportamento visual;
+- lógica funcional;
+- experiência mobile;
+- experiência desktop;
+- módulo Releases;
+- preenchimentos automáticos;
+- relacionamentos existentes.
+
+PRESERVAR:
+- comportamento consolidado;
+- UX atual;
+- identidade visual;
+- experiência operacional.
+
+━━━━━━━━━━━━━━━━━━━
+PADRONIZAÇÃO ABSOLUTA — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+TODOS os módulos DEVEM seguir EXATAMENTE a mesma estrutura.
+
+Estrutura obrigatória:
+
+/module-name
+  /components
+  /pages
+  /hooks
+  /services
+  /schemas
+  /types
+  /utils
+  /constants
+  /forms
+
+NÃO permitir:
+- módulos com estruturas diferentes;
+- nomenclaturas diferentes;
+- convenções diferentes;
+- organização inconsistente.
+
+━━━━━━━━━━━━━━━━━━━
+PADRONIZAÇÃO DE NOMENCLATURA
+━━━━━━━━━━━━━━━━━━━
+
+TODOS os módulos DEVEM usar plural.
+
+CORRETO:
+- artists
+- releases
+- projects
+- campaigns
+
+ERRADO:
+- artist
+- release
+- project
+
+━━━━━━━━━━━━━━━━━━━
+BOUNDARIES RÍGIDOS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar isolamento absoluto entre:
+
+- UI;
+- estado;
+- fetch;
+- validação;
+- payload;
+- regras de negócio;
+- integrações;
+- persistência;
+- storage;
+- auth.
+
+━━━━━━━━━━━━━━━━━━━
+PROIBIÇÕES ABSOLUTAS
+━━━━━━━━━━━━━━━━━━━
+
+NÃO permitir:
+- fetch dentro de componentes;
+- validação dentro de componentes;
+- payload API dentro de componentes;
+- lógica de negócio dentro de páginas;
+- transformação de payload dentro da UI;
+- services gigantes;
+- utils gigantes;
+- stores globais gigantes;
+- shared genérico;
+- helpers genéricos;
+- lógica cruzando módulos.
+
+━━━━━━━━━━━━━━━━━━━
+FLUXO ARQUITETURAL OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Frontend:
+
+component
+→ hook
+→ service
+→ API
+
+Backend:
+
+controller
+→ service
+→ repository
+→ database
+
+━━━━━━━━━━━━━━━━━━━
+LIMPEZA ESTRUTURAL — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Remover completamente:
+
+- código morto;
+- imports inúteis;
+- duplicações;
+- lógica abandonada;
+- providers obsoletos;
+- componentes não utilizados;
+- hooks não utilizados;
+- abstrações desnecessárias;
+- arquivos legacy;
+- build artifacts;
+- coverage artifacts.
+
+━━━━━━━━━━━━━━━━━━━
+BUILD ARTIFACTS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Remover completamente:
+
+/dist
+/coverage
+
+Adicionar corretamente no .gitignore.
+
+━━━━━━━━━━━━━━━━━━━
+SHARED — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+/shared deve conter SOMENTE:
+
+/shared
+  /components
+  /hooks
+  /types
+
+PROIBIDO:
+- lógica de domínio;
+- services;
+- governance;
+- data;
+- business rules;
+- release logic;
+- artist logic.
+
+━━━━━━━━━━━━━━━━━━━
+LIB — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Criar:
+
+/lib
+
+Estrutura:
+
+/lib
+  api.ts
+  supabase.ts
+  query-client.ts
+  env.ts
+
+Centralizar:
+- axios;
+- supabase client;
+- query client;
+- env config.
+
+━━━━━━━━━━━━━━━━━━━
+INTEGRATIONS LAYER — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Criar camada desacoplada:
+
+/apps/api/src/integrations
+
+Estrutura obrigatória:
+
+/integrations
+  /spotify
+  /youtube
+  /meta
+  /tiktok
+  /soundcloud
+
+Cada integração deve possuir:
+
+/client
+/services
+/webhooks
+/types
+/schemas
+
+━━━━━━━━━━━━━━━━━━━
+REGRAS DAS INTEGRAÇÕES
+━━━━━━━━━━━━━━━━━━━
+
+Integrações NÃO podem:
+- contaminar módulos;
+- misturar regras de domínio;
+- acessar UI;
+- espalhar lógica OAuth;
+- espalhar tokens;
+- espalhar callbacks.
+
+Centralizar:
+- OAuth;
+- refresh token;
+- retries;
+- webhooks;
+- callbacks;
+- sincronizações.
+
+━━━━━━━━━━━━━━━━━━━
+MULTI-TENANT RIGOROSO — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+TODAS as entidades DEVEM possuir:
+
+- tenant_id;
+- created_at;
+- updated_at;
+- created_by;
+- updated_by.
+
+Implementar:
+- tenant guards;
+- tenant context;
+- tenant-aware repositories;
+- tenant-aware queries;
+- tenant-aware storage;
+- tenant-aware auth;
+- tenant-aware RBAC.
+
+━━━━━━━━━━━━━━━━━━━
+RLS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar Row Level Security em TODAS as tabelas críticas.
+
+Garantir:
+- isolamento total entre tenants;
+- impossibilidade de vazamento;
+- impossibilidade de cross-tenant access.
+
+━━━━━━━━━━━━━━━━━━━
+AUTH — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Usar:
+
+Supabase Auth
++
+NestJS Guards
++
+JWT Validation
++
+RBAC
++
+Tenant Scope
+
+━━━━━━━━━━━━━━━━━━━
+RBAC — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar rigorosamente:
+
+- OWNER
+- ADMIN
+- MANAGER
+- ARTIST
+- MARKETING
+- RADIO
+- TV
+- FINANCIAL
+
+Implementar:
+- guards;
+- permissions;
+- role hierarchy;
+- permission boundaries.
+
+━━━━━━━━━━━━━━━━━━━
+SEGURANÇA COMPLETA — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar obrigatoriamente:
+
+- Helmet;
+- CSP;
+- XSS protection;
+- CSRF protection;
+- rate limiting;
+- audit logs;
+- request IDs;
+- secure headers;
+- secure cookies;
+- upload validation;
+- signed URLs;
+- payload sanitization;
+- route protection;
+- tenant isolation;
+- auth guards;
+- validation pipes.
+
+━━━━━━━━━━━━━━━━━━━
+OBSERVABILIDADE — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Implementar:
+
+- Sentry;
+- Pino;
+- OpenTelemetry;
+- structured logs;
+- tracing;
+- correlation IDs;
+- error monitoring.
+
+━━━━━━━━━━━━━━━━━━━
+DESACOPLAMENTO TOTAL DO RELEASES — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+O módulo Releases é o núcleo do sistema.
+
+NÃO alterar:
+- UX;
+- fluxo;
+- experiência operacional;
+- comportamento consolidado.
+
+Mas executar desacoplamento TOTAL.
+
+━━━━━━━━━━━━━━━━━━━
+ESTRUTURA OBRIGATÓRIA DO RELEASES
+━━━━━━━━━━━━━━━━━━━
+
+/modules/releases
+  /components
+  /forms
+  /hooks
+  /services
+  /schemas
+  /types
+  /utils
+  /constants
+  /pages
+  /builders
+
+━━━━━━━━━━━━━━━━━━━
+FORMULÁRIOS DO RELEASES
+━━━━━━━━━━━━━━━━━━━
+
+Separar rigorosamente:
+
+- UI;
+- validação;
+- payload;
+- transformação;
+- estado;
+- relacionamento;
+- API.
+
+Estrutura obrigatória:
+
+/forms
+  /release-form
+    ReleaseForm.tsx
+    release-form.schema.ts
+    release-form.mapper.ts
+    release-form.types.ts
+    release-form.constants.ts
+
+━━━━━━━━━━━━━━━━━━━
+BUILDERS — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Criar:
+
+/builders
+
+Para:
+- composição de payloads;
+- transformação de relacionamentos;
+- construção de entidades complexas;
+- builders de submissão.
+
+━━━━━━━━━━━━━━━━━━━
+DESIGN SYSTEM — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Padronizar completamente:
+
+- cards;
+- spacing;
+- typography;
+- tables;
+- forms;
+- date pickers;
+- modals;
+- dialogs;
+- tabs;
+- dropdowns;
+- badges;
+- loading states;
+- skeletons.
+
+━━━━━━━━━━━━━━━━━━━
+DATE PICKER — OBRIGATÓRIO
+━━━━━━━━━━━━━━━━━━━
+
+Criar DatePicker global único.
+
+PROIBIDO:
+- múltiplas implementações;
+- estilos inconsistentes;
+- comportamentos diferentes.
+
+━━━━━━━━━━━━━━━━━━━
+EXECUÇÃO OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+Executar automaticamente:
+
+- reorganização estrutural;
+- padronização global;
+- refatoração segura;
+- desacoplamento;
+- isolamento de domínio;
+- limpeza estrutural;
+- estabilização de módulos;
+- estabilização de integrações;
+- estabilização do releases;
+- estabilização multi-tenant;
+- estabilização visual;
+- estabilização de auth;
+- estabilização de segurança.
+
+━━━━━━━━━━━━━━━━━━━
+SAÍDA OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━
+
+Ao concluir gerar:
+
+1. Estrutura final aplicada;
+2. Lista de arquivos reorganizados;
+3. Lista de arquivos removidos;
+4. Lista de duplicações eliminadas;
+5. Lista de boundaries corrigidos;
+6. Lista de integrações desacopladas;
+7. Lista de vulnerabilidades corrigidas;
+8. Lista de melhorias multi-tenant;
+9. Lista de melhorias do Releases;
+10. Lista de melhorias de segurança;
+11. Lista de melhorias de observabilidade;
+12. Lista de melhorias de performance;
+13. Diagnóstico arquitetural final;
+14. Avaliação final do sistema.
+
+━━━━━━━━━━━━━━━━━━━
+OBJETIVO FINAL
+━━━━━━━━━━━━━━━━━━━
+
+Transformar o MUSIC OS 360 em um SaaS:
+
+- enterprise-grade;
+- premium;
+- modular;
+- desacoplado;
+- seguro;
+- multi-tenant real;
+- escalável;
+- sustentável;
+- altamente manutenível;
+- preparado para crescimento massivo;
+- preparado para evolução contínua;
+- sem débito técnico crítico;
+- com arquitetura profissional de longo prazo.
+```

@@ -1,1 +1,1 @@
-export * from "./leads.store";
+export * from '../hooks/leads.store';

@@ -1,1 +1,1 @@
-export * from "./crm.store";
+export * from '../hooks/crm.store';

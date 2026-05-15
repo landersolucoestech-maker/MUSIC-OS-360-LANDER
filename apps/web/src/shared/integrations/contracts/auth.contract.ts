@@ -90,6 +90,14 @@ export interface AuthProviderCapabilities {
   supportsAuditLog: boolean;
 }
 
+export const CLERK_CAPABILITIES: AuthProviderCapabilities = {
+  supportsSSO: false,
+  supportsMFA: false,
+  supportsPasswordReset: true,
+  supportsInvites: true,
+  supportsAuditLog: true,
+};
+
 export const JWT_AUTH_CAPABILITIES: AuthProviderCapabilities = {
   supportsSSO: false,
   supportsMFA: false,

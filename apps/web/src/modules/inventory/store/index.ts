@@ -1,1 +1,1 @@
-export * from "./inventory.store";
+export * from '../hooks/inventory.store';

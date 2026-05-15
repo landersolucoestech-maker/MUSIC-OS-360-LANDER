@@ -1,1 +1,1 @@
-export * from "./events.store";
+export * from '../hooks/events.store';

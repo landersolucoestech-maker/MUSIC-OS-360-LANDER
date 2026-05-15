@@ -1,0 +1,28 @@
+import { CONTRACT_TYPES } from "../constants/contract-types";
+import type { ContractPartyOrigin } from "../domain/contract-party-origin";
+
+const ARTIST_TYPES: string[] = [
+  ...CONTRACT_TYPES.ARTISTICOS,
+  ...CONTRACT_TYPES.SHOWS,
+  ...CONTRACT_TYPES.MARCAS_PUBLICIDADE,
+  "Parceria entre Artistas",
+  "Colaboração Musical (Feat com estrutura contratual)",
+];
+
+export const getContractPartyOrigin = (
+  contractType: string
+): ContractPartyOrigin => {
+  if (ARTIST_TYPES.includes(contractType)) {
+    return "ARTIST";
+  }
+
+  const allCRMTypes = Object.values(CONTRACT_TYPES)
+    .flat()
+    .filter((type) => !ARTIST_TYPES.includes(type));
+
+  if (allCRMTypes.includes(contractType)) {
+    return "CRM";
+  }
+
+  return "NONE";
+};

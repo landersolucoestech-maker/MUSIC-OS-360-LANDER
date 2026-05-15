@@ -1,1 +1,1 @@
-export * from "./marketing.store";
+export * from '../hooks/marketing.store';
