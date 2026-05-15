@@ -1,436 +1,375 @@
-import { useState, useEffect } from "react";
-import { useNavigate, useSearchParams, Link, Navigate } from "react-router-dom";
+import { useState, forwardRef } from "react";
+import { Navigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useSignIn, useSignUp } from "@clerk/clerk-react";
 import { useAuth } from "@/app/providers/AuthContext";
-import { Button } from "@/shared/ui/button";
 import { toast } from "sonner";
-import { Loader2, User, Lock, Facebook, Instagram, MessageCircle, Globe, Mail, ArrowLeft } from "lucide-react";
-import { authRateLimiter, isLeakedPassword } from "@/shared/lib/security";
+import {
+  Loader2, User, Lock, Eye, EyeOff, Facebook, Instagram,
+  MessageCircle, Globe, Mail, ArrowLeft, BarChart2, ShieldCheck,
+  Users, TrendingUp,
+} from "lucide-react";
+import { authRateLimiter } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
-import { SignIn } from "@clerk/clerk-react";
 
-// ─── Clerk mode detection ─────────────────────────────────────────────────────
+// ─── Clerk mode detection ──────────────────────────────────────────────────────
 
 const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
 
-// ─── Clerk SignIn page ────────────────────────────────────────────────────────
+// ─── Schemas ──────────────────────────────────────────────────────────────────
 
-function ClerkSignInPage() {
+const loginSchema = z.object({
+  email:    z.string().trim().email("Email inválido"),
+  password: z.string().min(1, "Senha é obrigatória"),
+});
+
+const signupSchema = z.object({
+  fullName:        z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres"),
+  email:           z.string().trim().email("Email inválido"),
+  password:        z.string().min(8, "Mínimo 8 caracteres"),
+  confirmPassword: z.string().min(1, "Confirme sua senha"),
+}).refine((d) => d.password === d.confirmPassword, {
+  message: "Senhas não conferem",
+  path: ["confirmPassword"],
+});
+
+const forgotSchema = z.object({
+  email: z.string().trim().email("Email inválido"),
+});
+
+type LoginData  = z.infer<typeof loginSchema>;
+type SignupData = z.infer<typeof signupSchema>;
+type ForgotData = z.infer<typeof forgotSchema>;
+type Mode = "login" | "signup" | "forgot";
+
+// ─── Root export ──────────────────────────────────────────────────────────────
+
+export default function Auth() {
+  if (MOCK_MODE) return <Navigate to="/" replace />;
+  return <AuthPage />;
+}
+
+// ─── Main auth page ───────────────────────────────────────────────────────────
+
+function AuthPage() {
+  const [mode, setMode] = useState<Mode>("login");
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-black">
-      <SignIn
-        appearance={{
-          elements: {
-            rootBox:    "w-full max-w-md",
-            card:       "bg-card border border-border shadow-xl",
-            headerTitle:"text-primary-foreground",
-          },
-        }}
-        fallbackRedirectUrl="/"
-      />
+    <div className="min-h-screen flex bg-[#060d1a]">
+      {/* ── LEFT PANEL ── */}
+      <div className="w-full lg:w-[45%] flex flex-col justify-between px-10 py-10 relative overflow-hidden">
+        {/* Background subtle glow */}
+        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
+        <div className="absolute top-1/2 -left-10 w-48 h-48 rounded-full bg-blue-500/5 blur-2xl pointer-events-none" />
+
+        {/* Logo */}
+        <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-end gap-[3px] h-9">
+            {[3,5,7,9,7,5,3].map((h, i) => (
+              <div key={i} className="w-[4px] rounded-full bg-blue-500" style={{ height: `${h * 3}px` }} />
+            ))}
+          </div>
+          <div className="leading-tight">
+            <span className="block text-white font-extrabold text-2xl tracking-wide">MUSIC</span>
+            <span className="block text-blue-500 font-extrabold text-2xl tracking-wide">OS 360</span>
+          </div>
+        </div>
+
+        {/* Subtitle */}
+        <div className="mb-8">
+          <p className="text-white font-semibold text-base">Sistema de Gestão Musical</p>
+          <p className="text-gray-400 text-sm mt-1 leading-relaxed">
+            Plataforma completa para gestão operacional<br />da indústria musical.
+          </p>
+        </div>
+
+        {/* Form area */}
+        <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto lg:mx-0">
+          {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} onSignup={() => setMode("signup")} />}
+          {mode === "signup" && <SignupForm onBack={() => setMode("login")} />}
+          {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
+        </div>
+
+        {/* Footer */}
+        <div className="mt-8">
+          <div className="flex justify-center gap-6 mb-4">
+            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Facebook className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Instagram className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><MessageCircle className="h-5 w-5" /></a>
+            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Globe className="h-5 w-5" /></a>
+          </div>
+          <p className="text-center text-xs text-gray-600">© MUSIC OS 360. Todos os direitos reservados.</p>
+        </div>
+      </div>
+
+      {/* ── RIGHT PANEL ── */}
+      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-[#0a0f1e] flex-col justify-end p-12">
+        {/* Texture / noise overlay */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#0e1628] via-[#070d1a] to-[#0a1020] opacity-90" />
+
+        {/* 3D Card — logo */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] z-10">
+          <div
+            className="w-64 h-44 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-2xl border border-white/10"
+            style={{
+              background: "linear-gradient(135deg, #1a2340 0%, #0d1528 50%, #111c35 100%)",
+              boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
+              transform: "perspective(800px) rotateX(4deg) rotateY(-6deg)",
+            }}
+          >
+            <div className="flex items-end gap-[3px] h-9">
+              {[3,5,7,9,7,5,3].map((h, i) => (
+                <div key={i} className="w-[5px] rounded-full bg-blue-500" style={{ height: `${h * 3.5}px`, boxShadow: "0 0 6px rgba(59,130,246,0.6)" }} />
+              ))}
+            </div>
+            <div className="text-center leading-tight mt-1">
+              <span className="block text-white font-extrabold text-3xl tracking-widest">MUSIC</span>
+              <span className="block text-blue-500 font-extrabold text-3xl tracking-widest">OS 360</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom content */}
+        <div className="relative z-10">
+          <h2 className="text-white text-2xl font-bold mb-2">Gestão. Controle. Crescimento.</h2>
+          <p className="text-gray-400 text-sm mb-8">Tudo o que você precisa para<br />levar sua música mais longe.</p>
+
+          <div className="grid grid-cols-4 gap-4">
+            {[
+              { icon: BarChart2,   label: "ANALYTICS",   desc: "Dados que geram estratégias." },
+              { icon: ShieldCheck, label: "SEGURANÇA",   desc: "Proteção total para suas informações." },
+              { icon: Users,       label: "INTEGRAÇÃO",  desc: "Conecte artistas, equipes e parceiros." },
+              { icon: TrendingUp,  label: "PERFORMANCE", desc: "Acompanhe e impulsione resultados." },
+            ].map(({ icon: Icon, label, desc }) => (
+              <div key={label} className="text-center">
+                <div className="flex justify-center mb-2">
+                  <Icon className="h-7 w-7 text-blue-400" />
+                </div>
+                <p className="text-white text-xs font-bold tracking-wider mb-1">{label}</p>
+                <p className="text-gray-500 text-xs leading-snug">{desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Schemas ──────────────────────────────────────────────────────────────────
+// ─── Input component ──────────────────────────────────────────────────────────
 
-const passwordSchema = z
-  .string()
-  .min(8, "Senha deve ter no mínimo 8 caracteres")
-  .regex(/[A-Z]/, "Senha deve conter pelo menos uma letra maiúscula")
-  .regex(/[a-z]/, "Senha deve conter pelo menos uma letra minúscula")
-  .regex(/[0-9]/, "Senha deve conter pelo menos um número")
-  .regex(/[^A-Za-z0-9]/, "Senha deve conter pelo menos um caractere especial (!@#$%^&*)")
-  .refine((password) => !isLeakedPassword(password), {
-    message: "Esta senha foi vazada em violações de dados. Por segurança, escolha outra senha.",
-  });
-
-const loginSchema = z.object({
-  email:    z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-  password: z.string().min(1, "Senha é obrigatória"),
-});
-
-const signupSchema = z
-  .object({
-    fullName:        z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres").max(100, "Nome muito longo"),
-    email:           z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-    password:        passwordSchema,
-    confirmPassword: z.string().min(1, "Confirme sua senha"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Senhas não conferem",
-    path:    ["confirmPassword"],
-  });
-
-const forgotPasswordSchema = z.object({
-  email: z.string().trim().email("Email inválido").max(255, "Email muito longo"),
-});
-
-const resetPasswordSchema = z
-  .object({
-    password:        passwordSchema,
-    confirmPassword: z.string().min(1, "Confirme sua senha"),
-  })
-  .refine((data) => data.password === data.confirmPassword, {
-    message: "Senhas não conferem",
-    path:    ["confirmPassword"],
-  });
-
-type LoginFormData         = z.infer<typeof loginSchema>;
-type SignupFormData         = z.infer<typeof signupSchema>;
-type ForgotPasswordFormData = z.infer<typeof forgotPasswordSchema>;
-type ResetPasswordFormData  = z.infer<typeof resetPasswordSchema>;
-type AuthMode = "login" | "signup" | "forgot" | "reset";
-
-// ─── Custom auth form (NestJS JWT / mock mode) ────────────────────────────────
-
-export default function Auth() {
-  // Em modo mock/standalone: redirecionar directamente para o dashboard
-  if (MOCK_MODE) return <Navigate to="/" replace />;
-  // Quando Clerk está activo, renderizar directamente o componente Clerk
-  if (useClerkMode) return <ClerkSignInPage />;
-
-  return <CustomAuthForm />;
+interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+  icon: React.ElementType;
+  error?: string;
+  showToggle?: boolean;
+  onToggle?: () => void;
+  showPass?: boolean;
 }
 
-function CustomAuthForm() {
-  const navigate         = useNavigate();
-  const [searchParams]   = useSearchParams();
-  const { user, signIn, signUp, resetPassword, updatePassword, loading: authLoading } = useAuth();
-  const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode]           = useState<AuthMode>("login");
+const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInput(
+  { icon: Icon, error, showToggle, onToggle, showPass, type, ...rest },
+  ref,
+) {
+  return (
+    <div className="space-y-1">
+      <div className="relative flex items-center">
+        <Icon className="absolute left-4 h-4 w-4 text-gray-500 pointer-events-none" />
+        <input
+          ref={ref}
+          type={showToggle ? (showPass ? "text" : "password") : type}
+          className="w-full h-12 rounded-lg border border-gray-700 bg-transparent text-white placeholder-gray-500 text-sm pl-11 pr-4 focus:outline-none focus:border-blue-500 transition-colors"
+          {...rest}
+        />
+        {showToggle && (
+          <button type="button" onClick={onToggle} className="absolute right-3 text-gray-500 hover:text-gray-300">
+            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          </button>
+        )}
+      </div>
+      {error && <p className="text-red-400 text-xs pl-1">{error}</p>}
+    </div>
+  );
+});
 
-  useEffect(() => {
-    const modeParam = searchParams.get("mode");
-    if (modeParam === "reset") setMode("reset");
-  }, [searchParams]);
+// ─── Login form ───────────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    if (!MOCK_MODE && user && !authLoading && mode !== "reset") navigate("/");
-  }, [user, authLoading, navigate, mode]);
+function LoginForm({ onForgot, onSignup }: { onForgot: () => void; onSignup: () => void }) {
+  const [showPass, setShowPass] = useState(false);
+  const [loading,  setLoading]  = useState(false);
+  const { signIn, setActive }   = useSignIn();
+  const { signIn: mockSignIn }  = useAuth();
 
-  const loginForm = useForm<LoginFormData>({
-    resolver:      zodResolver(loginSchema),
-    defaultValues: { email: "", password: "" },
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginData>({
+    resolver: zodResolver(loginSchema),
   });
 
-  const signupForm = useForm<SignupFormData>({
-    resolver:      zodResolver(signupSchema),
-    defaultValues: { fullName: "", email: "", password: "", confirmPassword: "" },
-  });
-
-  const forgotPasswordForm = useForm<ForgotPasswordFormData>({
-    resolver:      zodResolver(forgotPasswordSchema),
-    defaultValues: { email: "" },
-  });
-
-  const resetPasswordForm = useForm<ResetPasswordFormData>({
-    resolver:      zodResolver(resetPasswordSchema),
-    defaultValues: { password: "", confirmPassword: "" },
-  });
-
-  const handleLogin = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginData) => {
     if (!authRateLimiter.check(data.email)) {
-      const timeRemaining = Math.ceil(authRateLimiter.getTimeUntilReset(data.email) / 60000);
-      toast.error(`Conta bloqueada temporariamente. Tente novamente em ${timeRemaining} minutos.`);
+      const min = Math.ceil(authRateLimiter.getTimeUntilReset(data.email) / 60000);
+      toast.error(`Conta bloqueada temporariamente. Tente em ${min} minutos.`);
       return;
     }
-    setIsLoading(true);
+    setLoading(true);
     try {
-      const { error } = await signIn(data.email, data.password);
-      if (error) {
-        const remaining = authRateLimiter.getRemainingAttempts(data.email);
-        if (error.message.includes("Invalid login credentials")) {
-          toast.error(`Email ou senha incorretos. ${remaining} tentativas restantes.`);
+      if (useClerkMode && signIn) {
+        const result = await signIn.create({ identifier: data.email, password: data.password });
+        if (result.status === "complete") {
+          authRateLimiter.reset(data.email);
+          await setActive!({ session: result.createdSessionId });
+          toast.success("Bem-vindo ao MUSIC OS 360!");
         } else {
-          toast.error(error.message);
+          toast.error("Autenticação incompleta. Verifique seu email.");
         }
       } else {
-        authRateLimiter.reset(data.email);
-        toast.success("Bem-vindo! Login realizado com sucesso");
-        navigate("/");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleSignup = async (data: SignupFormData) => {
-    setIsLoading(true);
-    try {
-      const { error } = await signUp(data.email, data.password, data.fullName);
-      if (error) {
-        if (error.message.includes("User already registered")) {
-          toast.error("Este email já está em uso. Tente fazer login.");
+        const { error } = await mockSignIn(data.email, data.password);
+        if (error) {
+          const rem = authRateLimiter.getRemainingAttempts(data.email);
+          toast.error(`${error.message}. ${rem} tentativas restantes.`);
         } else {
-          toast.error(error.message);
+          authRateLimiter.reset(data.email);
+          toast.success("Bem-vindo!");
         }
-      } else {
-        toast.success("Conta criada! Você já pode acessar o sistema");
-        navigate("/");
       }
+    } catch (err: unknown) {
+      const msg = (err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Erro ao fazer login.";
+      toast.error(msg);
     } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleForgotPassword = async (data: ForgotPasswordFormData) => {
-    setIsLoading(true);
-    try {
-      const { error } = await resetPassword(data.email);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Email enviado! Verifique sua caixa de entrada para redefinir sua senha.");
-        setMode("login");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleResetPassword = async (data: ResetPasswordFormData) => {
-    setIsLoading(true);
-    try {
-      const { error } = await updatePassword(data.password);
-      if (error) {
-        toast.error(error.message);
-      } else {
-        toast.success("Senha atualizada! Sua senha foi alterada com sucesso.");
-        navigate("/");
-      }
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  const renderForm = () => {
-    switch (mode) {
-      case "forgot":
-        return (
-          <form onSubmit={forgotPasswordForm.handleSubmit(handleForgotPassword)} className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold text-primary-foreground">Recuperar Senha</h2>
-              <p className="text-sm text-gray-400">Digite seu email para receber um link de redefinição</p>
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="email" placeholder="Digite seu Email"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...forgotPasswordForm.register("email")} />
-              </div>
-              {forgotPasswordForm.formState.errors.email && (
-                <p className="text-sm font-medium text-destructive">{forgotPasswordForm.formState.errors.email.message}</p>
-              )}
-            </div>
-            <Button type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />ENVIANDO...</> : "ENVIAR LINK DE RECUPERAÇÃO"}
-            </Button>
-            <Button type="button" variant="ghost" className="w-full text-primary-foreground" onClick={() => setMode("login")}>
-              <ArrowLeft className="mr-2 h-4 w-4" />Voltar ao Login
-            </Button>
-          </form>
-        );
-
-      case "reset":
-        return (
-          <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4">
-            <div className="text-center mb-4">
-              <h2 className="text-lg font-semibold text-primary-foreground">Nova Senha</h2>
-              <p className="text-sm text-gray-400">Digite sua nova senha</p>
-            </div>
-            {(["password", "confirmPassword"] as const).map((field) => (
-              <div className="space-y-2" key={field}>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                  <input type="password" placeholder={field === "password" ? "Nova Senha" : "Confirmar Nova Senha"}
-                    className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    {...resetPasswordForm.register(field)} />
-                </div>
-                {resetPasswordForm.formState.errors[field] && (
-                  <p className="text-sm font-medium text-destructive">{resetPasswordForm.formState.errors[field]?.message}</p>
-                )}
-              </div>
-            ))}
-            <Button type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />SALVANDO...</> : "SALVAR NOVA SENHA"}
-            </Button>
-          </form>
-        );
-
-      case "signup":
-        return (
-          <form onSubmit={signupForm.handleSubmit(handleSignup)} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="text" placeholder="Nome Completo"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("fullName")} />
-              </div>
-              {signupForm.formState.errors.fullName && (
-                <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.fullName.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="email" placeholder="Digite o Email"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("email")} />
-              </div>
-              {signupForm.formState.errors.email && (
-                <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="password" placeholder="Senha"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("password")} />
-              </div>
-              {signupForm.formState.errors.password && (
-                <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.password.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="password" placeholder="Confirmar Senha"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...signupForm.register("confirmPassword")} />
-              </div>
-              {signupForm.formState.errors.confirmPassword && (
-                <p className="text-sm font-medium text-destructive">{signupForm.formState.errors.confirmPassword.message}</p>
-              )}
-            </div>
-            <Button type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />CADASTRANDO...</> : "CRIAR CONTA"}
-            </Button>
-          </form>
-        );
-
-      default: // login
-        return (
-          <form onSubmit={loginForm.handleSubmit(handleLogin)} className="space-y-4">
-            <div className="space-y-2">
-              <div className="relative">
-                <User className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="email" placeholder="Digite o Usuário"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...loginForm.register("email")} />
-              </div>
-              {loginForm.formState.errors.email && (
-                <p className="text-sm font-medium text-destructive">{loginForm.formState.errors.email.message}</p>
-              )}
-            </div>
-            <div className="space-y-2">
-              <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400 z-10 pointer-events-none" />
-                <input type="password" placeholder="••••••"
-                  className="flex h-14 w-full rounded-lg border-0 bg-gray-100 pl-12 px-3 py-2 text-base text-gray-700 placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                  {...loginForm.register("password")} />
-              </div>
-              {loginForm.formState.errors.password && (
-                <p className="text-sm font-medium text-destructive">{loginForm.formState.errors.password.message}</p>
-              )}
-            </div>
-            <Button type="submit"
-              className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm tracking-wider rounded-lg"
-              disabled={isLoading}>
-              {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
-            </Button>
-          </form>
-        );
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Side - Login Form */}
-      <div className="w-full lg:w-1/2 p-8 relative bg-black items-center justify-center px-0 py-0 flex flex-col">
-        <div className="w-full max-w-md space-y-8">
-          <div className="text-center">
-            <h1 className="text-xl font-bold tracking-wider text-primary-foreground">
-              {mode === "signup" ? "CRIAR CONTA" : mode === "forgot" ? "RECUPERAR SENHA" : mode === "reset" ? "NOVA SENHA" : "SEJA BEM VINDO!"}
-            </h1>
-          </div>
-          <div className="py-0 flex-col flex items-center justify-center pointer-events-none">
-            <img src="/lovable-uploads/a21a1ab1-df8a-4b7b-a1e4-0e36f63eff02.png" alt="MUSIC OS 360" className="h-[280px] w-[280px]" />
-          </div>
-          <div className="relative z-10">{renderForm()}</div>
-          {mode !== "reset" && (
-            <div className="text-center space-y-3">
-              {mode === "login" && (
-                <>
-                  <button type="button" onClick={() => setMode("forgot")}
-                    className="text-sm font-medium underline text-primary-foreground">
-                    Esqueci minha senha
-                  </button>
-                  <div>
-                    <Link to="/register" className="text-primary hover:text-primary/80 text-sm font-medium">
-                      Criar nova conta
-                    </Link>
-                  </div>
-                </>
-              )}
-              {mode === "signup" && (
-                <button type="button" onClick={() => setMode("login")}
-                  className="text-sm font-medium underline text-primary-foreground">
-                  Já tenho uma conta
-                </button>
-              )}
-            </div>
-          )}
-          <div className="flex justify-center gap-6 pt-4 py-0">
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Facebook className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Instagram className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><MessageCircle className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-gray-700 transition-colors"><Globe className="h-5 w-5" /></a>
-          </div>
-        </div>
-        <div className="absolute bottom-6 left-0 right-0 text-center">
-          <p className="text-xs text-gray-500 text-center">Copyright © MUSIC OS 360. Todos os direitos reservados.</p>
-        </div>
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <AuthInput icon={User} type="email" placeholder="Digite o Usuário" error={errors.email?.message} {...register("email")} />
+      <AuthInput icon={Lock} type="password" placeholder="Digite sua senha" showToggle showPass={showPass} onToggle={() => setShowPass(p => !p)} error={errors.password?.message} {...register("password")} />
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
+      </button>
+
+      <div className="text-center space-y-2 pt-1">
+        <button type="button" onClick={onForgot} className="text-sm text-gray-400 underline underline-offset-2 hover:text-white transition-colors block w-full">
+          Esqueci minha senha
+        </button>
+        <button type="button" onClick={onSignup} className="text-sm text-blue-400 hover:text-blue-300 transition-colors block w-full">
+          Criar nova conta
+        </button>
       </div>
-      {/* Right Side */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-primary rounded-full blur-3xl"></div>
-          <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-primary/60 rounded-full blur-3xl"></div>
-        </div>
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="text-center">
-            <div className="w-32 h-32 mx-auto mb-6 rounded-full bg-primary/20 flex items-center justify-center border-2 border-primary/50">
-              <span className="text-5xl font-bold text-primary">M</span>
-            </div>
-            <h1 className="text-2xl font-bold text-white tracking-widest">MUSIC OS 360</h1>
-          </div>
-        </div>
-        <div className="absolute bottom-12 left-12 z-10">
-          <h2 className="text-3xl font-bold text-white mb-2">Sistema de Gestão</h2>
-          <p className="text-gray-300 text-lg">Plataforma Musical Profissional</p>
-        </div>
+    </form>
+  );
+}
+
+// ─── Signup form ──────────────────────────────────────────────────────────────
+
+function SignupForm({ onBack }: { onBack: () => void }) {
+  const [showPass, setShowPass]   = useState(false);
+  const [loading,  setLoading]    = useState(false);
+  const { signUp, setActive }     = useSignUp();
+  const { signUp: mockSignUp }    = useAuth();
+
+  const { register, handleSubmit, formState: { errors } } = useForm<SignupData>({
+    resolver: zodResolver(signupSchema),
+  });
+
+  const onSubmit = async (data: SignupData) => {
+    setLoading(true);
+    try {
+      if (useClerkMode && signUp) {
+        const nameParts  = data.fullName.trim().split(" ");
+        const firstName  = nameParts[0];
+        const lastName   = nameParts.slice(1).join(" ") || "";
+        const result = await signUp.create({
+          emailAddress: data.email,
+          password:     data.password,
+          firstName,
+          lastName,
+        });
+        if (result.status === "complete") {
+          await setActive!({ session: result.createdSessionId });
+          toast.success("Conta criada com sucesso!");
+        } else {
+          toast.info("Verifique seu email para ativar a conta.");
+        }
+      } else {
+        const { error } = await mockSignUp(data.email, data.password, data.fullName);
+        if (error) toast.error(error.message);
+        else toast.success("Conta criada!");
+      }
+    } catch (err: unknown) {
+      const msg = (err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Erro ao criar conta.";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+      <AuthInput icon={User} type="text"     placeholder="Nome Completo"    error={errors.fullName?.message}        {...register("fullName")} />
+      <AuthInput icon={Mail} type="email"    placeholder="Email"            error={errors.email?.message}           {...register("email")} />
+      <AuthInput icon={Lock} type="password" placeholder="Senha"            showToggle showPass={showPass} onToggle={() => setShowPass(p => !p)} error={errors.password?.message} {...register("password")} />
+      <AuthInput icon={Lock} type="password" placeholder="Confirmar Senha"  error={errors.confirmPassword?.message} {...register("confirmPassword")} />
+
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />CRIANDO...</> : "CRIAR CONTA"}
+      </button>
+
+      <button type="button" onClick={onBack} className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors pt-1">
+        <ArrowLeft className="h-4 w-4" />Voltar ao Login
+      </button>
+    </form>
+  );
+}
+
+// ─── Forgot password form ─────────────────────────────────────────────────────
+
+function ForgotForm({ onBack }: { onBack: () => void }) {
+  const [loading, setLoading] = useState(false);
+  const { resetPassword }     = useAuth();
+
+  const { register, handleSubmit, formState: { errors } } = useForm<ForgotData>({
+    resolver: zodResolver(forgotSchema),
+  });
+
+  const onSubmit = async (data: ForgotData) => {
+    setLoading(true);
+    try {
+      const { error } = await resetPassword(data.email);
+      if (error) toast.error(error.message);
+      else { toast.success("Email enviado! Verifique sua caixa de entrada."); onBack(); }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+      <div className="mb-2">
+        <p className="text-white font-semibold">Recuperar Senha</p>
+        <p className="text-gray-400 text-sm mt-1">Digite seu email para receber um link de redefinição.</p>
       </div>
-    </div>
+      <AuthInput icon={Mail} type="email" placeholder="Seu email" error={errors.email?.message} {...register("email")} />
+      <button
+        type="submit"
+        disabled={loading}
+        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+      >
+        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />ENVIANDO...</> : "ENVIAR LINK"}
+      </button>
+      <button type="button" onClick={onBack} className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors">
+        <ArrowLeft className="h-4 w-4" />Voltar ao Login
+      </button>
+    </form>
   );
 }
