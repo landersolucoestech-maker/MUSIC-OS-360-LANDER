@@ -112,17 +112,35 @@ function MockAuthProvider({ children }: { children: React.ReactNode }) {
 // Só é renderizado quando ClerkProvider já está na árvore (ver main.tsx).
 // Os hooks useClerkAuth / useUser / useOrganization são seguros aqui.
 
+/**
+ * Deriva o role do usuário a partir do localStorage.
+ * O Register.tsx persiste `adminEmail` no objeto `musicos360_current_tenant`.
+ * Se o email do usuário bater com `adminEmail`, ele é o fundador → owner.
+ * Caso contrário, padrão seguro: viewer (até que role real seja carregado da API).
+ */
+function deriveRoleFromStorage(email: string): string {
+  try {
+    const raw = localStorage.getItem("musicos360_current_tenant");
+    if (!raw) return "viewer";
+    const stored = JSON.parse(raw) as { adminEmail?: string };
+    if (stored.adminEmail && stored.adminEmail === email) return "owner";
+  } catch { /* ignore */ }
+  return "viewer";
+}
+
 function ClerkBridgeInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, signOut: clerkSignOut, getToken } = useClerkAuth();
   const { user: clerkUser }  = useUser();
 
+  const clerkEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "";
+
   const user: User | null = clerkUser
     ? {
         id:    clerkUser.id,
-        email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
+        email: clerkEmail,
         user_metadata: {
           full_name:  clerkUser.fullName ?? "",
-          role:       "viewer",
+          role:       deriveRoleFromStorage(clerkEmail),
           org_id:     "",
           avatar_url: clerkUser.imageUrl,
         },

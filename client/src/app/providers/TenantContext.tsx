@@ -166,11 +166,50 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
+// ─── Helpers — leitura do localStorage (persistido pelo Register.tsx) ─────────
+
+/** Shape do objeto salvo pelo Register.tsx em musicos360_current_tenant */
+interface StoredTenantData {
+  id?:         string;
+  name?:       string;
+  slug?:       string;
+  segment?:    string;
+  industry?:   string;
+  cnpj?:       string;
+  phone?:      string;
+  address?:    string;
+  plan?:       string;
+  adminEmail?: string;
+}
+
+function readStoredTenant(): StoredTenantData | null {
+  try {
+    const raw = localStorage.getItem("musicos360_current_tenant");
+    return raw ? (JSON.parse(raw) as StoredTenantData) : null;
+  } catch { return null; }
+}
+
+function buildInitialTenant(): Tenant {
+  if (MOCK_MODE) return MOCK_TENANT;
+  const stored = readStoredTenant();
+  const industry = ((stored?.segment ?? stored?.industry) as TenantIndustry | undefined);
+  const plan     = (stored?.plan as TenantPlan | undefined);
+  return {
+    ...MOCK_TENANT,
+    id:          stored?.id       ?? MOCK_TENANT.id,
+    name:        stored?.name     ?? MOCK_TENANT.name,
+    slug:        stored?.slug     ?? MOCK_TENANT.slug,
+    industry:    industry         ?? MOCK_TENANT.industry,
+    cnpj:        stored?.cnpj     ?? MOCK_TENANT.cnpj,
+    phone:       stored?.phone    ?? MOCK_TENANT.phone,
+    address:     stored?.address  ?? MOCK_TENANT.address,
+    plan:        plan             ?? "starter",
+    permissions: ROLE_PERMISSIONS.owner,
+  };
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
-  const initialTenant: Tenant = MOCK_MODE
-    ? MOCK_TENANT
-    : { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.viewer };
-  const [tenant, setTenant] = useState<Tenant>(initialTenant);
+  const [tenant, setTenant] = useState<Tenant>(buildInitialTenant);
 
   const isFeatureEnabled = (flag: keyof FeatureFlags): boolean =>
     tenant.features[flag] ?? false;
@@ -208,6 +247,27 @@ export function useSyncTenantFromJWT(): void {
   const { setTenant } = useTenant();
   useEffect(() => {
     if (MOCK_MODE) return;
+
+    // 1. Hidratar org metadata do localStorage (persistido pelo Register.tsx)
+    const stored = readStoredTenant();
+    if (stored) {
+      const industry = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
+      const plan     = (stored.plan as TenantPlan | undefined);
+      setTenant(prev => ({
+        ...prev,
+        id:          stored.id      ?? prev.id,
+        name:        stored.name    ?? prev.name,
+        slug:        stored.slug    ?? prev.slug,
+        industry:    industry       ?? prev.industry,
+        cnpj:        stored.cnpj    ?? prev.cnpj,
+        phone:       stored.phone   ?? prev.phone,
+        address:     stored.address ?? prev.address,
+        plan:        plan           ?? prev.plan,
+        permissions: ROLE_PERMISSIONS.owner,
+      }));
+    }
+
+    // 2. Se o JWT tiver role + org_id (Clerk JWT Template configurado), sobrescreve
     const token = getAccessToken();
     if (!token) return;
     try {
@@ -220,7 +280,7 @@ export function useSyncTenantFromJWT(): void {
       setTenant(prev => ({
         ...prev,
         id:          decoded.org_id ?? prev.id,
-        permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.viewer,
+        permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.owner,
       }));
     } catch { /* JWT inválido */ }
   // eslint-disable-next-line react-hooks/exhaustive-deps
