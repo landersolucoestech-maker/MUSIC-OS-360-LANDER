@@ -105,11 +105,13 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
           lazyConnect:          true,
           maxRetriesPerRequest: 0,
           enableReadyCheck:     false,
-          connectTimeout:       3000,
+          connectTimeout:       4000,
+          retryStrategy:        () => null, // fail fast — sem reconexão automática
         });
 
-        await pub.connect().catch(() => {
-          throw new Error(`Não foi possível conectar ao Redis: ${queueUrl.substring(0, 30)}...`);
+        await pub.connect().catch((err: Error) => {
+          pub.disconnect(false);
+          throw new Error(`Redis inacessível: ${err.message?.split('\n')[0]}`);
         });
 
         const sub = pub.duplicate();
