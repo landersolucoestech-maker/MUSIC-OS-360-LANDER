@@ -35,36 +35,55 @@ export default function Auth() {
   return <AuthPage />;
 }
 
-// ── Particle dots ─────────────────────────────────────────────────────────────
-const DOTS = [
-  {x:6,y:88,s:2.2,o:0.75},{x:13,y:82,s:1.6,o:0.5},{x:21,y:93,s:2.6,o:0.6},
-  {x:4,y:76,s:1.4,o:0.4},{x:29,y:87,s:2,o:0.5},{x:17,y:97,s:1.6,o:0.6},
-  {x:9,y:71,s:1,o:0.3},{x:34,y:94,s:1.6,o:0.4},{x:2,y:84,s:2.1,o:0.5},
-  {x:24,y:79,s:1,o:0.3},{x:39,y:91,s:2,o:0.4},{x:11,y:99,s:1.5,o:0.5},
-  {x:27,y:73,s:1,o:0.25},{x:41,y:83,s:1.5,o:0.35},{x:5,y:95,s:2.5,o:0.55},
-  {x:19,y:68,s:1,o:0.2},{x:32,y:77,s:1.5,o:0.3},{x:44,y:89,s:1.2,o:0.35},
-  {x:15,y:64,s:1,o:0.2},{x:37,y:70,s:1.4,o:0.25},{x:8,y:60,s:0.8,o:0.15},
-  {x:22,y:58,s:0.8,o:0.15},{x:46,y:96,s:1,o:0.3},{x:3,y:91,s:1.8,o:0.45},
+// ── Particle nebula (bottom-left cluster matching reference) ───────────────────
+const NEBULA_DOTS = [
+  // bright core cluster — dense, bottom-left
+  {x:2, y:92,s:3.0,o:0.95,c:"#93c5fd"},{x:5, y:88,s:2.5,o:0.9, c:"#60a5fa"},
+  {x:8, y:95,s:3.5,o:1.0, c:"#bfdbfe"},{x:4, y:97,s:2.0,o:0.85,c:"#93c5fd"},
+  {x:11,y:91,s:2.8,o:0.9, c:"#60a5fa"},{x:7, y:85,s:2.2,o:0.8, c:"#3b82f6"},
+  {x:14,y:96,s:2.0,o:0.8, c:"#60a5fa"},{x:1, y:84,s:1.8,o:0.7, c:"#93c5fd"},
+  {x:16,y:89,s:2.4,o:0.75,c:"#60a5fa"},{x:3, y:80,s:1.6,o:0.6, c:"#3b82f6"},
+  {x:19,y:94,s:1.8,o:0.7, c:"#93c5fd"},{x:9, y:99,s:2.5,o:0.85,c:"#bfdbfe"},
+  {x:22,y:87,s:1.5,o:0.6, c:"#60a5fa"},{x:12,y:82,s:1.4,o:0.55,c:"#3b82f6"},
+  {x:25,y:98,s:1.6,o:0.6, c:"#60a5fa"},{x:6, y:77,s:1.2,o:0.45,c:"#2563eb"},
+  {x:28,y:92,s:1.4,o:0.5, c:"#60a5fa"},{x:18,y:79,s:1.3,o:0.45,c:"#3b82f6"},
+  {x:31,y:86,s:1.2,o:0.4, c:"#93c5fd"},{x:21,y:74,s:1.0,o:0.35,c:"#2563eb"},
+  {x:34,y:95,s:1.3,o:0.45,c:"#60a5fa"},{x:15,y:71,s:1.0,o:0.3, c:"#3b82f6"},
+  {x:37,y:88,s:1.1,o:0.35,c:"#60a5fa"},{x:26,y:69,s:0.8,o:0.25,c:"#2563eb"},
+  {x:40,y:93,s:1.0,o:0.3, c:"#93c5fd"},{x:10,y:67,s:0.8,o:0.2, c:"#3b82f6"},
+  {x:43,y:82,s:0.8,o:0.25,c:"#60a5fa"},{x:33,y:72,s:0.7,o:0.2, c:"#2563eb"},
+  {x:0, y:90,s:2.8,o:0.9, c:"#93c5fd"},{x:13,y:86,s:2.0,o:0.7, c:"#60a5fa"},
 ];
 
 function Particles() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {DOTS.map((d,i) => (
+      {/* Nebula glow layers — outer to inner */}
+      <div className="absolute" style={{
+        bottom:"-120px", left:"-120px",
+        width:"500px", height:"500px", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(29,78,216,0.30) 0%, rgba(37,99,235,0.12) 40%, transparent 70%)",
+      }}/>
+      <div className="absolute" style={{
+        bottom:"-60px", left:"-60px",
+        width:"300px", height:"300px", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(59,130,246,0.35) 0%, rgba(37,99,235,0.18) 45%, transparent 70%)",
+      }}/>
+      <div className="absolute" style={{
+        bottom:"-20px", left:"-20px",
+        width:"160px", height:"160px", borderRadius:"50%",
+        background:"radial-gradient(circle, rgba(96,165,250,0.28) 0%, transparent 70%)",
+      }}/>
+      {/* Individual glowing dots */}
+      {NEBULA_DOTS.map((d,i) => (
         <div key={i} className="absolute rounded-full" style={{
           left:`${d.x}%`, top:`${d.y}%`,
           width:`${d.s}px`, height:`${d.s}px`,
-          background:"#60a5fa",
+          background:d.c,
           opacity:d.o,
-          boxShadow:`0 0 ${d.s*3}px rgba(96,165,250,0.9)`,
+          boxShadow:`0 0 ${d.s*4}px ${d.s*2}px ${d.c}88`,
         }}/>
       ))}
-      <div className="absolute" style={{
-        bottom:"-80px", left:"-80px",
-        width:"380px", height:"380px",
-        borderRadius:"50%",
-        background:"radial-gradient(circle, rgba(29,78,216,0.22) 0%, transparent 70%)",
-      }}/>
     </div>
   );
 }
