@@ -9,17 +9,16 @@ import { toast } from "sonner";
 import { Loader2, User, Lock, Facebook, Instagram, MessageCircle, Globe, Mail, ArrowLeft } from "lucide-react";
 import { authRateLimiter, isLeakedPassword } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
+import { SignIn } from "@clerk/clerk-react";
 
 // ─── Clerk mode detection ─────────────────────────────────────────────────────
 
 const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
 
-// ─── Clerk SignIn page (lazy import — só quando Clerk está activo) ─────────────
+// ─── Clerk SignIn page ────────────────────────────────────────────────────────
 
 function ClerkSignInPage() {
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { SignIn } = require("@clerk/clerk-react") as typeof import("@clerk/clerk-react");
   return (
     <div className="min-h-screen flex items-center justify-center bg-black">
       <SignIn
@@ -30,7 +29,7 @@ function ClerkSignInPage() {
             headerTitle:"text-primary-foreground",
           },
         }}
-        redirectUrl="/"
+        fallbackRedirectUrl="/"
       />
     </div>
   );

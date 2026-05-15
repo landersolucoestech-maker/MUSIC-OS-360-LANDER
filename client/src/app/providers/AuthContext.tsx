@@ -24,7 +24,6 @@ import React, {
 import {
   useAuth as useClerkAuth,
   useUser,
-  useOrganization,
 } from "@clerk/clerk-react";
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
@@ -116,7 +115,6 @@ function MockAuthProvider({ children }: { children: React.ReactNode }) {
 function ClerkBridgeInner({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn, signOut: clerkSignOut, getToken } = useClerkAuth();
   const { user: clerkUser }  = useUser();
-  const { organization }     = useOrganization();
 
   const user: User | null = clerkUser
     ? {
@@ -124,9 +122,8 @@ function ClerkBridgeInner({ children }: { children: React.ReactNode }) {
         email: clerkUser.primaryEmailAddress?.emailAddress ?? "",
         user_metadata: {
           full_name:  clerkUser.fullName ?? "",
-          role:       (organization as unknown as { membership?: { role?: string } } | null)
-                        ?.membership?.role ?? "viewer",
-          org_id:     organization?.id ?? "",
+          role:       "viewer",
+          org_id:     "",
           avatar_url: clerkUser.imageUrl,
         },
       }
