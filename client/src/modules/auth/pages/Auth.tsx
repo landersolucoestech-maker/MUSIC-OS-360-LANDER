@@ -14,18 +14,13 @@ import {
 import { authRateLimiter } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
 
-// ─── Clerk mode detection ──────────────────────────────────────────────────────
-
 const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
 const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
-
-// ─── Schemas ──────────────────────────────────────────────────────────────────
 
 const loginSchema = z.object({
   email:    z.string().trim().email("Email inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
 });
-
 const forgotSchema = z.object({
   email: z.string().trim().email("Email inválido"),
 });
@@ -34,114 +29,275 @@ type LoginData  = z.infer<typeof loginSchema>;
 type ForgotData = z.infer<typeof forgotSchema>;
 type Mode = "login" | "forgot";
 
-// ─── Root export ──────────────────────────────────────────────────────────────
-
 export default function Auth() {
   if (MOCK_MODE) return <Navigate to="/" replace />;
   return <AuthPage />;
 }
 
-// ─── Main auth page ───────────────────────────────────────────────────────────
+// ── Particle dots (decorative) ────────────────────────────────────────────────
+const DOTS = [
+  { x: 8,  y: 88, s: 2,   o: 0.7 },
+  { x: 14, y: 82, s: 1.5, o: 0.5 },
+  { x: 22, y: 92, s: 2.5, o: 0.6 },
+  { x: 5,  y: 75, s: 1.5, o: 0.4 },
+  { x: 30, y: 86, s: 2,   o: 0.5 },
+  { x: 18, y: 96, s: 1.5, o: 0.6 },
+  { x: 10, y: 70, s: 1,   o: 0.3 },
+  { x: 35, y: 94, s: 1.5, o: 0.4 },
+  { x: 3,  y: 83, s: 2,   o: 0.5 },
+  { x: 25, y: 78, s: 1,   o: 0.3 },
+  { x: 40, y: 90, s: 2,   o: 0.4 },
+  { x: 12, y: 99, s: 1.5, o: 0.5 },
+  { x: 28, y: 72, s: 1,   o: 0.25 },
+  { x: 42, y: 82, s: 1.5, o: 0.35 },
+  { x: 6,  y: 93, s: 2.5, o: 0.55 },
+  { x: 20, y: 68, s: 1,   o: 0.2 },
+  { x: 33, y: 76, s: 1.5, o: 0.3 },
+  { x: 15, y: 65, s: 1,   o: 0.2 },
+  { x: 38, y: 70, s: 1.5, o: 0.25 },
+  { x: 45, y: 95, s: 1,   o: 0.3 },
+];
 
+function Particles() {
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {DOTS.map((d, i) => (
+        <div
+          key={i}
+          className="absolute rounded-full bg-blue-400"
+          style={{
+            left: `${d.x}%`,
+            top:  `${d.y}%`,
+            width:  `${d.s}px`,
+            height: `${d.s}px`,
+            opacity: d.o,
+            boxShadow: `0 0 ${d.s * 2}px rgba(59,130,246,0.8)`,
+          }}
+        />
+      ))}
+      {/* Ambient glow */}
+      <div
+        className="absolute"
+        style={{
+          bottom: "-60px",
+          left:   "-60px",
+          width:  "340px",
+          height: "340px",
+          borderRadius: "50%",
+          background: "radial-gradient(circle, rgba(29,78,216,0.18) 0%, transparent 70%)",
+        }}
+      />
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 function AuthPage() {
   const [mode, setMode] = useState<Mode>("login");
 
   return (
-    <div className="min-h-screen flex bg-[#060d1a]">
-      {/* ── LEFT PANEL ── */}
-      <div className="w-full lg:w-[45%] flex flex-col justify-between px-10 py-10 relative overflow-hidden">
-        {/* Background subtle glow */}
-        <div className="absolute bottom-0 left-0 w-72 h-72 rounded-full bg-blue-600/10 blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 -left-10 w-48 h-48 rounded-full bg-blue-500/5 blur-2xl pointer-events-none" />
+    <div className="min-h-screen flex" style={{ background: "#080e1c" }}>
 
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-2">
-          <div className="flex items-end gap-[3px] h-9">
-            {[3,5,7,9,7,5,3].map((h, i) => (
-              <div key={i} className="w-[4px] rounded-full bg-blue-500" style={{ height: `${h * 3}px` }} />
-            ))}
-          </div>
-          <div className="leading-tight">
-            <span className="block text-white font-extrabold text-2xl tracking-wide">MUSIC</span>
-            <span className="block text-blue-500 font-extrabold text-2xl tracking-wide">OS 360</span>
-          </div>
-        </div>
+      {/* ══════════ LEFT PANEL ══════════ */}
+      <div
+        className="w-full lg:w-[44%] flex flex-col relative overflow-hidden"
+        style={{ background: "#08111f" }}
+      >
+        <Particles />
 
-        {/* Subtitle */}
-        <div className="mb-8">
-          <p className="text-white font-semibold text-base">Sistema de Gestão Musical</p>
-          <p className="text-gray-400 text-sm mt-1 leading-relaxed">
-            Plataforma completa para gestão operacional<br />da indústria musical.
-          </p>
-        </div>
+        <div className="relative z-10 flex flex-col h-full px-12 py-10">
 
-        {/* Form area */}
-        <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto lg:mx-0">
-          {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} />}
-          {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
-        </div>
-
-        {/* Footer */}
-        <div className="mt-8">
-          <div className="flex justify-center gap-6 mb-4">
-            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Facebook className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Instagram className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><MessageCircle className="h-5 w-5" /></a>
-            <a href="#" className="text-gray-500 hover:text-blue-400 transition-colors"><Globe className="h-5 w-5" /></a>
-          </div>
-          <p className="text-center text-xs text-gray-600">© MUSIC OS 360. Todos os direitos reservados.</p>
-        </div>
-      </div>
-
-      {/* ── RIGHT PANEL ── */}
-      <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-[#0a0f1e] flex-col justify-end p-12">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#0e1628] via-[#070d1a] to-[#0a1020] opacity-90" />
-
-        {/* 3D Card */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] z-10">
-          <div
-            className="w-72 h-52 rounded-2xl flex flex-col items-center justify-center gap-3 shadow-2xl border border-white/10"
-            style={{
-              background: "linear-gradient(135deg, #1a2340 0%, #0d1528 50%, #111c35 100%)",
-              boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
-              transform: "perspective(900px) rotateX(5deg) rotateY(-8deg)",
-            }}
-          >
-            <div className="flex items-end gap-[4px]">
-              {[3,5,7,9,7,5,3].map((h, i) => (
+          {/* ─ Logo ─ */}
+          <div className="flex items-center gap-4 mb-1">
+            {/* Sound bars */}
+            <div className="flex items-end gap-[4px]" style={{ height: "52px" }}>
+              {[18, 30, 42, 52, 42, 30, 18].map((h, i) => (
                 <div
                   key={i}
-                  className="w-[6px] rounded-full bg-blue-500"
-                  style={{ height: `${h * 4}px`, boxShadow: "0 0 8px rgba(59,130,246,0.7)" }}
+                  style={{
+                    width: "5px",
+                    height: `${h}px`,
+                    borderRadius: "3px",
+                    background: "linear-gradient(to top, #1d4ed8, #3b82f6)",
+                    boxShadow: "0 0 6px rgba(59,130,246,0.6)",
+                  }}
                 />
               ))}
             </div>
-            <div className="text-center leading-tight">
-              <span className="block text-white font-extrabold text-4xl tracking-widest">MUSIC</span>
-              <span className="block text-blue-500 font-extrabold text-4xl tracking-widest">OS 360</span>
+            {/* Brand text */}
+            <div style={{ lineHeight: 1.1 }}>
+              <div style={{ color: "#ffffff", fontWeight: 900, fontSize: "32px", letterSpacing: "2px" }}>MUSIC</div>
+              <div style={{ color: "#3b82f6", fontWeight: 900, fontSize: "32px", letterSpacing: "2px" }}>OS 360</div>
             </div>
+          </div>
+
+          {/* ─ Tagline ─ */}
+          <div className="mt-5 mb-10">
+            <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "15px" }}>Sistema de Gestão Musical</p>
+            <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px", lineHeight: 1.6, textAlign: "center" }}>
+              Plataforma completa para gestão operacional<br />da indústria musical.
+            </p>
+          </div>
+
+          {/* ─ Form area ─ */}
+          <div className="flex-1 flex flex-col justify-center" style={{ maxWidth: "360px" }}>
+            {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} />}
+            {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
+          </div>
+
+          {/* ─ Footer ─ */}
+          <div className="mt-6">
+            <div className="flex justify-center gap-7 mb-4">
+              {[Facebook, Instagram, MessageCircle, Globe].map((Icon, i) => (
+                <a key={i} href="#" style={{ color: "#4b5563" }}
+                  onMouseEnter={e => (e.currentTarget.style.color = "#3b82f6")}
+                  onMouseLeave={e => (e.currentTarget.style.color = "#4b5563")}
+                >
+                  <Icon size={20} />
+                </a>
+              ))}
+            </div>
+            <p style={{ textAlign: "center", fontSize: "11px", color: "#374151" }}>
+              © MUSIC OS 360. Todos os direitos reservados.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* ══════════ RIGHT PANEL ══════════ */}
+      <div
+        className="hidden lg:flex lg:w-[56%] relative overflow-hidden flex-col justify-end"
+        style={{ background: "#050c18" }}
+      >
+        {/* Background depth gradient */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background: "radial-gradient(ellipse at 60% 40%, #0d1f3a 0%, #050c18 60%)",
+          }}
+        />
+
+        {/* ─ 3D Card ─ */}
+        <div
+          className="absolute"
+          style={{
+            top: "50%",
+            left: "50%",
+            transform: "translate(-54%, -60%) perspective(1200px) rotateX(12deg) rotateY(-16deg) rotateZ(-2deg)",
+            zIndex: 10,
+          }}
+        >
+          {/* Card outer shadow/glow */}
+          <div
+            style={{
+              width: "420px",
+              height: "280px",
+              borderRadius: "20px",
+              background: "linear-gradient(145deg, #1a2744 0%, #0c1529 40%, #111d38 70%, #0a1422 100%)",
+              boxShadow: [
+                "0 60px 120px rgba(0,0,0,0.8)",
+                "0 20px 60px rgba(0,0,0,0.6)",
+                "-8px -8px 30px rgba(255,255,255,0.03)",
+                "inset 0 1px 0 rgba(255,255,255,0.07)",
+                "inset 0 -1px 0 rgba(0,0,0,0.5)",
+                "0 0 80px rgba(30,64,175,0.12)",
+              ].join(", "),
+              border: "1px solid rgba(255,255,255,0.08)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "16px",
+              position: "relative",
+              overflow: "hidden",
+            }}
+          >
+            {/* Card inner texture */}
+            <div
+              style={{
+                position: "absolute",
+                inset: 0,
+                background: "linear-gradient(135deg, rgba(255,255,255,0.02) 0%, transparent 50%, rgba(0,0,0,0.1) 100%)",
+                borderRadius: "20px",
+              }}
+            />
+
+            {/* Sound bars on card */}
+            <div className="relative z-10 flex items-end gap-[6px]" style={{ height: "72px" }}>
+              {[20, 36, 52, 68, 52, 36, 20].map((h, i) => (
+                <div
+                  key={i}
+                  style={{
+                    width: "8px",
+                    height: `${h}px`,
+                    borderRadius: "4px",
+                    background: "linear-gradient(to top, #1e40af, #60a5fa)",
+                    boxShadow: `0 0 12px rgba(96,165,250,0.8), 0 0 24px rgba(59,130,246,0.4)`,
+                  }}
+                />
+              ))}
+            </div>
+
+            {/* Brand on card */}
+            <div className="relative z-10 text-center" style={{ lineHeight: 1.05 }}>
+              <div style={{
+                color: "#ffffff",
+                fontWeight: 900,
+                fontSize: "48px",
+                letterSpacing: "4px",
+                textShadow: "0 2px 20px rgba(255,255,255,0.15)",
+              }}>MUSIC</div>
+              <div style={{
+                color: "#3b82f6",
+                fontWeight: 900,
+                fontSize: "48px",
+                letterSpacing: "4px",
+                textShadow: "0 2px 20px rgba(59,130,246,0.5)",
+              }}>OS 360</div>
+            </div>
+
+            {/* Card bottom edge light */}
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                left: "10%",
+                right: "10%",
+                height: "1px",
+                background: "linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent)",
+              }}
+            />
           </div>
         </div>
 
-        {/* Bottom content */}
-        <div className="relative z-10">
-          <h2 className="text-white text-2xl font-bold mb-2">Gestão. Controle. Crescimento.</h2>
-          <p className="text-gray-400 text-sm mb-8">
+        {/* ─ Bottom text + features ─ */}
+        <div className="relative z-10 px-14 pb-12">
+          <h2 style={{ color: "#ffffff", fontSize: "26px", fontWeight: 800, marginBottom: "8px" }}>
+            Gestão. Controle. Crescimento.
+          </h2>
+          <p style={{ color: "#6b7280", fontSize: "14px", marginBottom: "36px", lineHeight: 1.6 }}>
             Tudo o que você precisa para<br />levar sua música mais longe.
           </p>
-          <div className="grid grid-cols-4 gap-4">
+
+          {/* Feature grid with vertical dividers */}
+          <div className="grid grid-cols-4" style={{ gap: 0 }}>
             {[
               { icon: BarChart2,   label: "ANALYTICS",   desc: "Dados que geram estratégias." },
               { icon: ShieldCheck, label: "SEGURANÇA",   desc: "Proteção total para suas informações." },
               { icon: Users,       label: "INTEGRAÇÃO",  desc: "Conecte artistas, equipes e parceiros." },
               { icon: TrendingUp,  label: "PERFORMANCE", desc: "Acompanhe e impulsione resultados." },
-            ].map(({ icon: Icon, label, desc }) => (
-              <div key={label} className="text-center">
-                <div className="flex justify-center mb-2">
-                  <Icon className="h-7 w-7 text-blue-400" />
-                </div>
-                <p className="text-white text-xs font-bold tracking-wider mb-1">{label}</p>
-                <p className="text-gray-500 text-xs leading-snug">{desc}</p>
+            ].map(({ icon: Icon, label, desc }, idx) => (
+              <div
+                key={label}
+                style={{
+                  textAlign: "center",
+                  padding: "0 16px",
+                  borderLeft: idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
+                }}
+              >
+                <Icon size={28} style={{ color: "#60a5fa", margin: "0 auto 10px" }} />
+                <p style={{ color: "#ffffff", fontSize: "11px", fontWeight: 700, letterSpacing: "1px", marginBottom: "6px" }}>{label}</p>
+                <p style={{ color: "#6b7280", fontSize: "11px", lineHeight: 1.4 }}>{desc}</p>
               </div>
             ))}
           </div>
@@ -151,7 +307,7 @@ function AuthPage() {
   );
 }
 
-// ─── Input component ──────────────────────────────────────────────────────────
+// ── AuthInput ─────────────────────────────────────────────────────────────────
 
 interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: React.ElementType;
@@ -166,27 +322,52 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInpu
   ref,
 ) {
   return (
-    <div className="space-y-1">
-      <div className="relative flex items-center">
-        <Icon className="absolute left-4 h-4 w-4 text-gray-500 pointer-events-none" />
+    <div style={{ marginBottom: error ? "0" : "0" }}>
+      <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+        <Icon
+          size={16}
+          style={{
+            position: "absolute",
+            left: "16px",
+            color: "#6b7280",
+            pointerEvents: "none",
+          }}
+        />
         <input
           ref={ref}
           type={showToggle ? (showPass ? "text" : "password") : type}
-          className="w-full h-12 rounded-lg border border-gray-700 bg-transparent text-white placeholder-gray-500 text-sm pl-11 pr-10 focus:outline-none focus:border-blue-500 transition-colors"
+          style={{
+            width: "100%",
+            height: "50px",
+            borderRadius: "10px",
+            border: "1px solid #374151",
+            background: "transparent",
+            color: "#ffffff",
+            fontSize: "14px",
+            paddingLeft: "44px",
+            paddingRight: showToggle ? "44px" : "16px",
+            outline: "none",
+          }}
+          onFocus={e => (e.currentTarget.style.borderColor = "#3b82f6")}
+          onBlur={e  => (e.currentTarget.style.borderColor = "#374151")}
           {...rest}
         />
         {showToggle && (
-          <button type="button" onClick={onToggle} className="absolute right-3 text-gray-500 hover:text-gray-300">
-            {showPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          <button
+            type="button"
+            onClick={onToggle}
+            style={{ position: "absolute", right: "12px", color: "#6b7280", background: "none", border: "none", cursor: "pointer" }}
+          >
+            {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
           </button>
         )}
       </div>
-      {error && <p className="text-red-400 text-xs pl-1">{error}</p>}
+      {error && <p style={{ color: "#f87171", fontSize: "11px", marginTop: "4px", paddingLeft: "4px" }}>{error}</p>}
     </div>
   );
 });
 
-// ─── Login form ───────────────────────────────────────────────────────────────
+// ── LoginForm ─────────────────────────────────────────────────────────────────
 
 function LoginForm({ onForgot }: { onForgot: () => void }) {
   const [showPass, setShowPass] = useState(false);
@@ -235,7 +416,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+    <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
       <AuthInput
         icon={User}
         type="email"
@@ -259,26 +440,47 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        style={{
+          width: "100%",
+          height: "50px",
+          borderRadius: "10px",
+          background: loading ? "#1d4ed8" : "#2563eb",
+          color: "#ffffff",
+          fontWeight: 800,
+          fontSize: "14px",
+          letterSpacing: "2px",
+          border: "none",
+          cursor: loading ? "not-allowed" : "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "8px",
+          opacity: loading ? 0.8 : 1,
+          transition: "background 0.2s",
+          marginTop: "4px",
+        }}
+        onMouseEnter={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#1d4ed8"; }}
+        onMouseLeave={e => { if (!loading) (e.currentTarget as HTMLButtonElement).style.background = "#2563eb"; }}
       >
-        {loading
-          ? <><Loader2 className="h-4 w-4 animate-spin" />ACESSANDO...</>
-          : "ACESSAR O SISTEMA"
-        }
+        {loading ? <><Loader2 size={16} className="animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
       </button>
 
-      <div className="text-center space-y-2 pt-1">
+      <div style={{ textAlign: "center", marginTop: "4px" }}>
         <button
           type="button"
           onClick={onForgot}
-          className="text-sm text-gray-400 underline underline-offset-2 hover:text-white transition-colors block w-full"
+          style={{
+            background: "none", border: "none", cursor: "pointer",
+            color: "#9ca3af", fontSize: "13px",
+            textDecoration: "underline", textUnderlineOffset: "3px",
+            display: "block", width: "100%", marginBottom: "8px",
+          }}
         >
           Esqueci minha senha
         </button>
-        {/* Vai para /register — fluxo original com dados da empresa e seleção de plano */}
         <Link
           to="/register"
-          className="text-sm text-blue-400 hover:text-blue-300 transition-colors block w-full"
+          style={{ color: "#3b82f6", fontSize: "13px", textDecoration: "none", display: "block" }}
         >
           Criar nova conta
         </Link>
@@ -287,7 +489,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   );
 }
 
-// ─── Forgot password form ─────────────────────────────────────────────────────
+// ── ForgotForm ────────────────────────────────────────────────────────────────
 
 function ForgotForm({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
@@ -313,10 +515,12 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <div className="mb-2">
-        <p className="text-white font-semibold">Recuperar Senha</p>
-        <p className="text-gray-400 text-sm mt-1">Digite seu email para receber um link de redefinição.</p>
+    <form onSubmit={handleSubmit(onSubmit)} style={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+      <div style={{ marginBottom: "4px" }}>
+        <p style={{ color: "#ffffff", fontWeight: 700, fontSize: "15px" }}>Recuperar Senha</p>
+        <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px" }}>
+          Digite seu email para receber um link de redefinição.
+        </p>
       </div>
       <AuthInput
         icon={Mail}
@@ -329,19 +533,27 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
       <button
         type="submit"
         disabled={loading}
-        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+        style={{
+          width: "100%", height: "50px", borderRadius: "10px",
+          background: "#2563eb", color: "#ffffff", fontWeight: 800,
+          fontSize: "14px", letterSpacing: "2px", border: "none",
+          cursor: "pointer", display: "flex", alignItems: "center",
+          justifyContent: "center", gap: "8px",
+        }}
       >
-        {loading
-          ? <><Loader2 className="h-4 w-4 animate-spin" />ENVIANDO...</>
-          : "ENVIAR LINK"
-        }
+        {loading ? <><Loader2 size={16} className="animate-spin" />ENVIANDO...</> : "ENVIAR LINK"}
       </button>
       <button
         type="button"
         onClick={onBack}
-        className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors"
+        style={{
+          background: "none", border: "none", cursor: "pointer",
+          color: "#6b7280", fontSize: "13px", display: "flex",
+          alignItems: "center", justifyContent: "center", gap: "4px",
+          width: "100%",
+        }}
       >
-        <ArrowLeft className="h-4 w-4" />Voltar ao Login
+        <ArrowLeft size={14} /> Voltar ao Login
       </button>
     </form>
   );
