@@ -7,8 +7,8 @@ integrations = ["javascript_database:1.0.0", "javascript_openai_ai_integrations:
 channel = "stable-25_05"
 
 [deployment]
-deploymentTarget = "static"
-run = ["node", "./dist/index.cjs"]
+deploymentTarget = "autoscale"
+run = ["sh", "-c", "node apps/api/dist/main.js"]
 build = ["npm", "run", "build"]
 publicDir = "dist"
 

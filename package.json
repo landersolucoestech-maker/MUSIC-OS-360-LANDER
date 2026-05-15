@@ -5,7 +5,8 @@
   "version": "0.0.0",
   "type": "module",
   "workspaces": [
-    "apps/api"
+    "apps/api",
+    "packages/*"
   ],
   "scripts": {
     "dev": "turbo run dev",
