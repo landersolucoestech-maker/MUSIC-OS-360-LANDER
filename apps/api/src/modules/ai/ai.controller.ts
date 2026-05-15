@@ -35,6 +35,27 @@ export class AIController {
     });
   }
 
+  /**
+   * /generate — alias do /complete para compatibilidade com o frontend.
+   * O frontend (useAI.ts / AIGenerateButton) envia { prompt, type }.
+   * Mapeamos `type` para `skill` e retornamos { content } como esperado.
+   */
+  @Post('generate')
+  @ApiOperation({ summary: 'Alias de /complete para o frontend (useAI hook)' })
+  @HttpCode(HttpStatus.OK)
+  async generate(
+    @Request() req: any,
+    @Body() body: { prompt: string; type?: string },
+  ): Promise<{ content: string }> {
+    const result = await this.ai.complete({
+      tenantId: req.tenantId,
+      userId:   req.userId,
+      skill:    body.type ?? 'general',
+      prompt:   body.prompt,
+    });
+    return { content: result.content ?? '' };
+  }
+
   // ─── Helpers de domínio ───────────────────────────────────────────────────
 
   @Post('biography')
