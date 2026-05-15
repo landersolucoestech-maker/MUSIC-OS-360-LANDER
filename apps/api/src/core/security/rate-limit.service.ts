@@ -19,18 +19,21 @@ export class RateLimitService {
   private readonly enabled:  boolean;
 
   constructor(private config: ConfigService) {
-    const url   = this.config.get<string>('UPSTASH_REDIS_URL');
+    // UPSTASH_REST_URL é a URL REST HTTPS do Upstash (preferida).
+    // UPSTASH_REDIS_URL é fallback (pode ser ioredis URL — inválida para REST client).
+    const url   = this.config.get<string>('UPSTASH_REST_URL')
+               ?? this.config.get<string>('UPSTASH_REDIS_URL');
     const token = this.config.get<string>('UPSTASH_REDIS_TOKEN');
 
     if (!url || !token) {
-      this.logger.warn('UPSTASH_REDIS_URL/TOKEN não configurados — rate limiting desactivado');
+      this.logger.warn('UPSTASH_REST_URL/TOKEN não configurados — rate limiting desactivado');
       this.enabled = false;
       return;
     }
 
     if (!url.startsWith('https://')) {
       this.logger.warn(
-        `UPSTASH_REDIS_URL deve começar com https:// (Upstash REST API). ` +
+        `UPSTASH_REST_URL deve começar com https:// (Upstash REST API). ` +
         `Recebido: "${url.substring(0, 20)}..." — rate limiting desactivado`,
       );
       this.enabled = false;

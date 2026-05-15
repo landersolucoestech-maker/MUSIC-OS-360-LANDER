@@ -13,8 +13,8 @@ const envSchema = z.object({
   NEON_DATABASE_URL: z.string().optional(),
   NEON_DATABASE_DIRECT_URL: z.string().optional(),
 
-  // Redis (Railway — BullMQ Queues via ioredis)
-  REDIS_QUEUE_URL: z.string().default('redis://localhost:6379'),
+  // Redis (BullMQ Queues via ioredis — deve ser URL acessível, não Railway internal)
+  REDIS_QUEUE_URL: z.string().optional(),
 
   // Redis (Upstash — Cache / Rate Limit via REST API)
   UPSTASH_REDIS_URL: z.string().optional(),

@@ -2,14 +2,10 @@
  * queues/services/email-queue.service.ts
  *
  * Producer service para a fila "emails".
- * Encapsula o InjectQueue do BullMQ e expõe métodos tipados
- * para cada tipo de email da plataforma.
- *
- * Injectar EmailQueueService em qualquer módulo que precise
- * de enviar emails assíncronos — sem acoplamento directo ao BullMQ.
+ * Quando Redis não está disponível, os métodos são no-op silenciosos.
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue, JobsOptions } from 'bullmq';
 import {
@@ -24,9 +20,7 @@ import type {
   MonitoringAlertEmailPayload,
 } from '../processors/email.processor';
 
-// ─── Opções padrão por prioridade ─────────────────────────────────────────────
-
-const HIGH_PRIORITY: Partial<JobsOptions> = { priority: 1 };
+const HIGH_PRIORITY:   Partial<JobsOptions> = { priority: 1 };
 const NORMAL_PRIORITY: Partial<JobsOptions> = { priority: 5 };
 
 @Injectable()
@@ -34,104 +28,59 @@ export class EmailQueueService {
   private readonly logger = new Logger(EmailQueueService.name);
 
   constructor(
+    @Optional()
     @InjectQueue(QUEUE_NAMES.EMAILS)
-    private readonly emailQueue: Queue,
+    private readonly emailQueue: Queue | null,
   ) {}
 
-  // ── Welcome email (enviado após registo do utilizador) ────────────────────
+  private get available(): boolean {
+    return this.emailQueue != null;
+  }
 
   async enqueueWelcomeEmail(payload: WelcomeEmailPayload): Promise<void> {
-    const job = await this.emailQueue.add(
-      EMAIL_JOB_NAMES.WELCOME,
-      payload,
-      {
-        ...HIGH_PRIORITY,
-        jobId: `welcome:${payload.userId}`,
-      },
-    );
-    this.logger.log(
-      `[emails] enqueued "${EMAIL_JOB_NAMES.WELCOME}" jobId=${job.id} para=${payload.email}`,
-    );
+    if (!this.available) return;
+    const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.WELCOME, payload, {
+      ...HIGH_PRIORITY,
+      jobId: `welcome:${payload.userId}`,
+    });
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.WELCOME}" jobId=${job.id} para=${payload.email}`);
   }
 
-  // ── Password reset ────────────────────────────────────────────────────────
-
-  async enqueuePasswordResetEmail(
-    payload: PasswordResetEmailPayload,
-  ): Promise<void> {
-    const job = await this.emailQueue.add(
-      EMAIL_JOB_NAMES.PASSWORD_RESET,
-      payload,
-      HIGH_PRIORITY,
-    );
-    this.logger.log(
-      `[emails] enqueued "${EMAIL_JOB_NAMES.PASSWORD_RESET}" jobId=${job.id} para=${payload.email}`,
-    );
+  async enqueuePasswordResetEmail(payload: PasswordResetEmailPayload): Promise<void> {
+    if (!this.available) return;
+    const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.PASSWORD_RESET, payload, HIGH_PRIORITY);
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.PASSWORD_RESET}" jobId=${job.id} para=${payload.email}`);
   }
 
-  // ── Alerta de expiração de contrato ───────────────────────────────────────
-
-  async enqueueContractExpiryEmail(
-    payload: ContractExpiryEmailPayload,
-  ): Promise<void> {
-    const job = await this.emailQueue.add(
-      EMAIL_JOB_NAMES.CONTRACT_EXPIRY,
-      payload,
-      {
-        ...NORMAL_PRIORITY,
-        jobId: `contract-expiry:${payload.contractId}`,
-      },
-    );
-    this.logger.log(
-      `[emails] enqueued "${EMAIL_JOB_NAMES.CONTRACT_EXPIRY}" jobId=${job.id} contrato=${payload.contractId}`,
-    );
+  async enqueueContractExpiryEmail(payload: ContractExpiryEmailPayload): Promise<void> {
+    if (!this.available) return;
+    const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.CONTRACT_EXPIRY, payload, {
+      ...NORMAL_PRIORITY,
+      jobId: `contract-expiry:${payload.contractId}`,
+    });
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.CONTRACT_EXPIRY}" jobId=${job.id} contrato=${payload.contractId}`);
   }
 
-  // ── Convite de utilizador ─────────────────────────────────────────────────
-
-  async enqueueInviteUserEmail(
-    payload: InviteUserEmailPayload,
-  ): Promise<void> {
-    const job = await this.emailQueue.add(
-      EMAIL_JOB_NAMES.INVITE_USER,
-      payload,
-      HIGH_PRIORITY,
-    );
-    this.logger.log(
-      `[emails] enqueued "${EMAIL_JOB_NAMES.INVITE_USER}" jobId=${job.id} para=${payload.email}`,
-    );
+  async enqueueInviteUserEmail(payload: InviteUserEmailPayload): Promise<void> {
+    if (!this.available) return;
+    const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.INVITE_USER, payload, HIGH_PRIORITY);
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.INVITE_USER}" jobId=${job.id} para=${payload.email}`);
   }
 
-  // ── Alerta de monitoramento musical ──────────────────────────────────────
-
-  async enqueueMonitoringAlertEmail(
-    payload: MonitoringAlertEmailPayload,
-  ): Promise<void> {
-    const job = await this.emailQueue.add(
-      EMAIL_JOB_NAMES.MONITORING_ALERT,
-      payload,
-      NORMAL_PRIORITY,
-    );
-    this.logger.log(
-      `[emails] enqueued "${EMAIL_JOB_NAMES.MONITORING_ALERT}" jobId=${job.id} tipo=${payload.alertType}`,
-    );
+  async enqueueMonitoringAlertEmail(payload: MonitoringAlertEmailPayload): Promise<void> {
+    if (!this.available) return;
+    const job = await this.emailQueue!.add(EMAIL_JOB_NAMES.MONITORING_ALERT, payload, NORMAL_PRIORITY);
+    this.logger.log(`[emails] enqueued "${EMAIL_JOB_NAMES.MONITORING_ALERT}" jobId=${job.id} tipo=${payload.alertType}`);
   }
 
-  // ── Utilitários ───────────────────────────────────────────────────────────
-
-  async getQueueStats(): Promise<{
-    waiting:   number;
-    active:    number;
-    completed: number;
-    failed:    number;
-    delayed:   number;
-  }> {
+  async getQueueStats(): Promise<{ waiting: number; active: number; completed: number; failed: number; delayed: number }> {
+    if (!this.available) return { waiting: 0, active: 0, completed: 0, failed: 0, delayed: 0 };
     const [waiting, active, completed, failed, delayed] = await Promise.all([
-      this.emailQueue.getWaitingCount(),
-      this.emailQueue.getActiveCount(),
-      this.emailQueue.getCompletedCount(),
-      this.emailQueue.getFailedCount(),
-      this.emailQueue.getDelayedCount(),
+      this.emailQueue!.getWaitingCount(),
+      this.emailQueue!.getActiveCount(),
+      this.emailQueue!.getCompletedCount(),
+      this.emailQueue!.getFailedCount(),
+      this.emailQueue!.getDelayedCount(),
     ]);
     return { waiting, active, completed, failed, delayed };
   }

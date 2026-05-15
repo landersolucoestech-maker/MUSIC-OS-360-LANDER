@@ -5,6 +5,9 @@
  * para a fila BullMQ "clerk-sync" (processamento assíncrono com retry).
  * Rota pública (sem autenticação): POST /webhooks/clerk
  * Verificação de assinatura HMAC via svix.
+ *
+ * Quando Redis não está disponível, o evento é processado sincronamente
+ * via ClerkSyncService em vez de ser enfileirado.
  */
 
 import {
@@ -15,6 +18,7 @@ import {
   BadRequestException,
   Logger,
   RawBodyRequest,
+  Optional,
 } from '@nestjs/common';
 import { InjectQueue }    from '@nestjs/bullmq';
 import { Queue }          from 'bullmq';
@@ -22,6 +26,7 @@ import { Webhook }        from 'svix';
 import { ConfigService }  from '@nestjs/config';
 import { Public }         from '../../core/decorators/public.decorator';
 import { QUEUE_NAMES }    from '../../queues/queue.constants';
+import { ClerkSyncService } from './clerk-sync.service';
 import type { Request }   from 'express';
 
 @Controller('webhooks/clerk')
@@ -30,8 +35,10 @@ export class ClerkWebhookController {
 
   constructor(
     private readonly config: ConfigService,
+    private readonly clerkSync: ClerkSyncService,
+    @Optional()
     @InjectQueue(QUEUE_NAMES.CLERK_SYNC)
-    private readonly clerkQueue: Queue,
+    private readonly clerkQueue: Queue | null,
   ) {}
 
   @Post()
@@ -65,17 +72,26 @@ export class ClerkWebhookController {
     }
 
     const eventType = String(event['type'] ?? 'unknown');
-    this.logger.log(`Clerk webhook recebido: ${eventType} — enfileirando`);
+    this.logger.log(`Clerk webhook recebido: ${eventType}`);
 
-    await this.clerkQueue.add(
-      'clerk-event',
-      { event },
-      {
-        jobId:    `clerk:${eventType}:${String(event['id'] ?? Date.now())}`,
-        attempts: 3,
-        backoff:  { type: 'exponential', delay: 2000 },
-      },
-    );
+    if (this.clerkQueue) {
+      await this.clerkQueue.add(
+        'clerk-event',
+        { event },
+        {
+          jobId:    `clerk:${eventType}:${String(event['id'] ?? Date.now())}`,
+          attempts: 3,
+          backoff:  { type: 'exponential', delay: 2000 },
+        },
+      );
+      this.logger.log(`Clerk evento enfileirado: ${eventType}`);
+    } else {
+      // Redis indisponível — processa sincronamente
+      this.logger.warn(`Redis indisponível — processando ${eventType} sincronamente`);
+      await this.clerkSync.process(event).catch((err: Error) => {
+        this.logger.error(`Erro ao processar ${eventType} sincronamente: ${err.message}`);
+      });
+    }
 
     return { received: true };
   }

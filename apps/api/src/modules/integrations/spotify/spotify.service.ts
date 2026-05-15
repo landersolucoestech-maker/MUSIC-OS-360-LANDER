@@ -1,4 +1,4 @@
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
 import { eq, and }               from 'drizzle-orm';
 import { InjectQueue }           from '@nestjs/bullmq';
 import { Queue }                 from 'bullmq';
@@ -17,7 +17,8 @@ export class SpotifyService {
   constructor(
     @Inject(DRIZZLE_DB) private readonly db: DrizzleDB,
     private readonly encryption: EncryptionService,
-    @InjectQueue(QUEUE_NAMES.STREAMING_SYNC) private readonly syncQueue: Queue,
+    @Optional()
+    @InjectQueue(QUEUE_NAMES.STREAMING_SYNC) private readonly syncQueue: Queue | null,
   ) {}
 
   isConfigured(): boolean {
@@ -56,7 +57,7 @@ export class SpotifyService {
     const tokens = await tokenRes.json() as any;
     await this.upsertConnection(tenantId, userId, tokens);
 
-    await this.syncQueue.add('spotify:sync', { tenantId, userId }, { delay: 1000 });
+    if (this.syncQueue) await this.syncQueue.add('spotify:sync', { tenantId, userId }, { delay: 1000 });
     this.logger.log(`Spotify OAuth: ${userId}@${tenantId} conectado`);
   }
 

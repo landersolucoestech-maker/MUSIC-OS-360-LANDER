@@ -1,5 +1,4 @@
 import { Module }              from '@nestjs/common';
-import { BullModule }          from '@nestjs/bullmq';
 import { IntegrationBaseService } from './integration-base.service';
 import { ACRCloudService }     from './acrcloud/acrcloud.service';
 import { AutentiqueService }   from './autentique/autentique.service';
@@ -13,7 +12,6 @@ import { TikTokService }       from './tiktok/tiktok.service';
 import { GoogleAdsService }    from './google-ads/google-ads.service';
 import { AbramusService }      from './abramus/abramus.service';
 import { IntegrationsController } from './integrations.controller';
-import { QUEUE_NAMES }         from '../../queues/queue.constants';
 
 const ALL_SERVICES = [
   IntegrationBaseService,
@@ -31,10 +29,6 @@ const ALL_SERVICES = [
 ];
 
 @Module({
-  imports: [
-    BullModule.registerQueue({ name: QUEUE_NAMES.STREAMING_SYNC }),
-    BullModule.registerQueue({ name: QUEUE_NAMES.INTEGRATIONS_SYNC }),
-  ],
   controllers: [IntegrationsController],
   providers:   ALL_SERVICES,
   exports:     ALL_SERVICES,

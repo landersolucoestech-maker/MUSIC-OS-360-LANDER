@@ -13,7 +13,6 @@
 import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
-import { BullModule } from '@nestjs/bullmq';
 import { Reflector } from '@nestjs/core';
 import { validateEnv } from './core/config/env.schema';
 import { DatabaseModule }       from './database/database.module';
@@ -75,53 +74,13 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
     // ── Cloudflare R2 (file storage) ──────────────────────────────────────────
     StorageModule,
 
-    // ── BullMQ — filas enterprise-ready (Railway Redis) ───────────────────────
-    // Usa forRootAsync + instância ioredis com error handler silencioso
-    // (impede [ioredis] Unhandled error event quando Redis está inacessível em dev)
-    BullModule.forRootAsync({
-      useFactory: () => {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
-        const IORedis = require('ioredis');
-        const url     = process.env.UPSTASH_REDIS_URL ?? process.env.REDIS_QUEUE_URL ?? 'redis://localhost:6379';
-
-        const connection = new IORedis(url, {
-          maxRetriesPerRequest: null,
-          enableReadyCheck:     false,
-          enableOfflineQueue:   false,
-          lazyConnect:          true,
-          // Pára de tentar após 5 tentativas (~30s) quando o host não resolve
-          retryStrategy: (times: number) => (times >= 5 ? null : Math.min(times * 1000, 5000)),
-        });
-
-        // Silencia erros não catados (ex: ENOTFOUND redis.railway.internal)
-        connection.on('error', (err: NodeJS.ErrnoException) => {
-          if (['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET'].includes(err.code ?? '')) {
-            // log limpo sem stack trace em dev
-            if (process.env.NODE_ENV !== 'production') {
-              process.stdout.write(`[BullMQ Redis] ${err.code}: ${(err as any).hostname ?? err.message?.split('\n')[0]}\n`);
-            }
-          }
-        });
-
-        return {
-          connection,
-          defaultJobOptions: {
-            attempts:         3,
-            removeOnComplete: 100,
-            removeOnFail:     1000,
-            backoff: { type: 'exponential', delay: 3000 },
-          },
-        };
-      },
-    }),
-
     // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
     CoreModule,
 
     // ── Auth (Clerk JWT + Webhook Sync) ───────────────────────────────────────
     AuthModule,
 
-    // ── Filas ─────────────────────────────────────────────────────────────────
+    // ── Filas (BullMQ + QueueModule) — só quando Redis ioredis está disponível
     QueueModule,
 
     // ── WebSocket Gateway (Socket.IO + Redis Pub/Sub) ─────────────────────────

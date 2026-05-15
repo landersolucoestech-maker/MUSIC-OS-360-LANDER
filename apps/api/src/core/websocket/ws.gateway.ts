@@ -92,11 +92,11 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
       });
     }
 
-    // Redis Pub/Sub — opcional; prefere UPSTASH_REDIS_URL, fallback REDIS_QUEUE_URL
-    const queueUrl = this.config.get<string>('UPSTASH_REDIS_URL')
-      ?? this.config.get<string>('REDIS_QUEUE_URL');
+    // Redis Pub/Sub — opcional; usa REDIS_QUEUE_URL (ioredis-compatible).
+    // UPSTASH_REST_URL é REST-only e NÃO compatível com ioredis — ignorado aqui.
+    const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
 
-    if (queueUrl && queueUrl !== 'redis://localhost:6379') {
+    if (queueUrl && queueUrl !== 'redis://localhost:6379' && !queueUrl.includes('railway.internal')) {
       try {
         const { createAdapter } = await import('@socket.io/redis-adapter');
         const { Redis }         = await import('ioredis');
