@@ -114,7 +114,7 @@ export class OpenAIProvider implements IAIProvider {
     }
 
     // Produção: proxy via server (nunca expõe API key no frontend)
-    const res = await fetch("/api/ai/generate", {
+    const res = await fetch("/api/v1/ai/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -189,7 +189,7 @@ export class OpenAIProvider implements IAIProvider {
     }
     const start = Date.now();
     try {
-      const res = await fetch("/api/ai/health?provider=openai");
+      const res = await fetch("/api/v1/ai/health?provider=openai");
       return {
         provider: "openai",
         available: res.ok,

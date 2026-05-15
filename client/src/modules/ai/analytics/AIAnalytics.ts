@@ -202,7 +202,7 @@ export class AIAnalytics {
 
   private async sendToServer(entry: AIAnalyticsEntry): Promise<void> {
     try {
-      await fetch("/api/ai/analytics", {
+      await fetch("/api/v1/ai/analytics", {
         method:  "POST",
         headers: { "Content-Type": "application/json" },
         body:    JSON.stringify(entry),

@@ -86,11 +86,10 @@ export class ClerkWebhookController {
       );
       this.logger.log(`Clerk evento enfileirado: ${eventType}`);
     } else {
-      // Redis indisponível — processa sincronamente
+      // Redis indisponível — processa sincronamente; falha propaga (não suprime)
       this.logger.warn(`Redis indisponível — processando ${eventType} sincronamente`);
-      await this.clerkSync.process(event).catch((err: Error) => {
-        this.logger.error(`Erro ao processar ${eventType} sincronamente: ${err.message}`);
-      });
+      await this.clerkSync.process(event);
+      this.logger.log(`Clerk evento processado sincronamente: ${eventType}`);
     }
 
     return { received: true };

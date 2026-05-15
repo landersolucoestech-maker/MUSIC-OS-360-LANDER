@@ -26,7 +26,7 @@ export interface AIGenerateResult {
 }
 
 async function callAI(params: AIGenerateParams): Promise<AIGenerateResult> {
-  const res = await fetch("/api/ai/generate", {
+  const res = await fetch("/api/v1/ai/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(params),

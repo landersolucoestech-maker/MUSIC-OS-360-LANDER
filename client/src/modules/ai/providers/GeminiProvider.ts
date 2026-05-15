@@ -86,7 +86,7 @@ export class GeminiProvider implements IAIProvider {
       };
     }
 
-    const res = await fetch("/api/ai/generate", {
+    const res = await fetch("/api/v1/ai/generate", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -155,7 +155,7 @@ export class GeminiProvider implements IAIProvider {
     }
     const start = Date.now();
     try {
-      const res = await fetch("/api/ai/health?provider=gemini");
+      const res = await fetch("/api/v1/ai/health?provider=gemini");
       return { provider: "gemini", available: res.ok, latencyMs: Date.now() - start, checkedAt: new Date().toISOString() };
     } catch {
       return { provider: "gemini", available: false, errorMessage: "Unreachable", checkedAt: new Date().toISOString() };
