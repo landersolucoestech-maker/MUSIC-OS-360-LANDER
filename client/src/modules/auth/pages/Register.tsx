@@ -200,18 +200,17 @@ export default function Register() {
     };
   };
 
-  /* ── Persiste tenant e redireciona ── */
-  const persistAndGo = (tenant: Record<string, unknown>) => {
+  /* ── Persiste tenant no localStorage (sem navegar ainda) ── */
+  const persistTenant = (tenant: Record<string, unknown>) => {
     localStorage.setItem(`musicos360_tenant_${tenant.id}`, JSON.stringify(tenant));
     localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
-    toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
-    navigate("/");
   };
 
   /* ── Handler step 4 ── */
   const onStep4 = async (d: Step4) => {
     setIsLoading(true);
     const all = { ...data, ...d };
+    const tenant = buildTenant(all);
 
     try {
       if (useClerkMode && signUp && all.email && all.password) {
@@ -223,19 +222,24 @@ export default function Register() {
         });
 
         if (result.status === "complete") {
-          /* Conta criada sem verificação — ativa sessão e vai */
+          /* Salva ANTES de setActive para não perder com redirect */
+          persistTenant(tenant);
           if (setActive) await setActive({ session: result.createdSessionId });
-          persistAndGo(buildTenant(all));
+          toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
+          navigate("/");
         } else {
-          /* Clerk exige verificação de email — guarda tenant e mostra campo de código */
+          /* Clerk exige verificação — salva tenant no localStorage AGORA antes de qualquer redirect */
+          persistTenant(tenant);
           await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-          setSavedTenant(buildTenant(all));
+          setSavedTenant(tenant);
           setPendingVerification(true);
           toast.info("Código enviado para " + all.email + ". Digite-o abaixo.");
         }
       } else {
         /* Modo mock — sem Clerk */
-        persistAndGo(buildTenant(all));
+        persistTenant(tenant);
+        toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
+        navigate("/");
       }
     } catch (err: unknown) {
       const clerkErr = err as { errors?: { code?: string; message: string }[] };
@@ -257,8 +261,11 @@ export default function Register() {
     try {
       const result = await signUp.attemptEmailAddressVerification({ code: verifyCode.trim() });
       if (result.status === "complete") {
+        /* Tenant já está no localStorage — só ativa sessão e redireciona */
+        const tenantName = savedTenant?.name as string | undefined;
         await setActive({ session: result.createdSessionId });
-        if (savedTenant) persistAndGo(savedTenant);
+        toast.success(`Empresa "${tenantName ?? ""}" criada com sucesso!`);
+        navigate("/");
       } else {
         toast.error("Verificação incompleta. Tente novamente.");
       }
