@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useSignUp } from "@clerk/clerk-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -142,6 +143,7 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
   const [showCpw, setShowCpw] = useState(false);
+  const { signUp, setActive } = useSignUp();
 
   /* collected data across steps */
   const [data, setData] = useState<Partial<Step1 & Step2 & Step3 & Step4>>({});
@@ -173,37 +175,60 @@ export default function Register() {
     setIsLoading(true);
     const all = { ...data, ...d };
 
-    /* mock: store new tenant in localStorage */
-    const tenantId  = `tenant-${Date.now()}`;
-    const tenant = {
-      id:           tenantId,
-      name:         all.companyName,
-      tradeName:    all.tradeName,
-      cnpj:         all.cnpj,
-      segment:      all.segment,
-      address:      all.address,
-      city:         all.city,
-      state:        all.state,
-      phone:        all.phone,
-      email:        all.corporateEmail,
-      slug:         all.slug,
-      workspaceName: all.workspaceName,
-      adminName:    all.fullName,
-      adminEmail:   all.email,
-      adminRole:    all.role,
-      plan:         all.plan,
-      createdAt:    new Date().toISOString(),
-      status:       "trial",
-    };
+    try {
+      /* ── 1. Criar conta no Clerk (quando ativo) ── */
+      if (useClerkMode && signUp && all.email && all.password) {
+        const result = await signUp.create({
+          emailAddress: all.email,
+          password:     all.password,
+          firstName:    all.fullName?.split(" ")[0] ?? "",
+          lastName:     all.fullName?.split(" ").slice(1).join(" ") ?? "",
+        });
 
-    localStorage.setItem(`musicos360_tenant_${tenantId}`, JSON.stringify(tenant));
-    localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
+        if (result.status === "missing_requirements") {
+          /* Clerk pode exigir verificação de email */
+          await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
+          toast.info("Verifique seu email para confirmar a conta, depois faça o login.");
+        } else if (result.status === "complete" && setActive) {
+          await setActive({ session: result.createdSessionId });
+        }
+      }
 
-    /* simula delay de criação */
-    await new Promise((r) => setTimeout(r, 1800));
-    setIsLoading(false);
-    toast.success(`Empresa "${all.companyName}" criada com sucesso!`);
-    navigate("/");
+      /* ── 2. Salvar tenant no localStorage ── */
+      const tenantId = `tenant-${Date.now()}`;
+      const tenant = {
+        id:            tenantId,
+        name:          all.companyName,
+        tradeName:     all.tradeName,
+        cnpj:          all.cnpj,
+        segment:       all.segment,
+        address:       all.address,
+        city:          all.city,
+        state:         all.state,
+        phone:         all.phone,
+        email:         all.corporateEmail,
+        slug:          all.slug,
+        workspaceName: all.workspaceName,
+        adminName:     all.fullName,
+        adminEmail:    all.email,
+        adminRole:     all.role,
+        plan:          all.plan,
+        createdAt:     new Date().toISOString(),
+        status:        "trial",
+      };
+
+      localStorage.setItem(`musicos360_tenant_${tenantId}`, JSON.stringify(tenant));
+      localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
+
+      toast.success(`Empresa "${all.companyName}" criada com sucesso!`);
+      navigate("/");
+    } catch (err: unknown) {
+      const clerkErr = err as { errors?: { message: string }[] };
+      const msg = clerkErr?.errors?.[0]?.message ?? "Erro ao criar conta. Tente novamente.";
+      toast.error(msg);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const progress = ((step - 1) / (STEPS.length - 1)) * 100;
