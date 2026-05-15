@@ -1,7 +1,9 @@
 // ── dotenv carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
-// apps/api/.env é carregado primeiro; Replit Secrets sobrepõem via process.env nativo.
+// Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
+// Replit Secrets já estão em process.env — dotenv não sobrepõe valores existentes.
 import * as dotenv from 'dotenv';
-dotenv.config();
+import * as path from 'path';
+dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 
 // ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
 import './instrument';
