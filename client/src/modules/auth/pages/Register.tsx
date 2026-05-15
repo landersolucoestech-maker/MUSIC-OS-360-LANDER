@@ -1,4 +1,5 @@
 import { useState, useCallback } from "react";
+import { SignUp } from "@clerk/clerk-react";
 import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
@@ -139,8 +140,6 @@ const useClerkMode = !MOCK_MODE_R && Boolean(CLERK_KEY);
 export default function Register() {
   // Quando Clerk está activo, usa o componente de signup do Clerk
   if (useClerkMode) {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { SignUp } = require("@clerk/clerk-react") as typeof import("@clerk/clerk-react");
     return (
       <div className="min-h-screen flex items-center justify-center bg-black">
         <SignUp
@@ -150,7 +149,7 @@ export default function Register() {
               card:    "bg-card border border-border shadow-xl",
             },
           }}
-          redirectUrl="/"
+          fallbackRedirectUrl="/"
         />
       </div>
     );

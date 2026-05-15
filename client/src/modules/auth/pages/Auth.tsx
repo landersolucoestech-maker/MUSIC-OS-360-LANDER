@@ -1,9 +1,9 @@
 import { useState, forwardRef } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSignIn, useSignUp } from "@clerk/clerk-react";
+import { useSignIn } from "@clerk/clerk-react";
 import { useAuth } from "@/app/providers/AuthContext";
 import { toast } from "sonner";
 import {
@@ -26,24 +26,13 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-const signupSchema = z.object({
-  fullName:        z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres"),
-  email:           z.string().trim().email("Email inválido"),
-  password:        z.string().min(8, "Mínimo 8 caracteres"),
-  confirmPassword: z.string().min(1, "Confirme sua senha"),
-}).refine((d) => d.password === d.confirmPassword, {
-  message: "Senhas não conferem",
-  path: ["confirmPassword"],
-});
-
 const forgotSchema = z.object({
   email: z.string().trim().email("Email inválido"),
 });
 
 type LoginData  = z.infer<typeof loginSchema>;
-type SignupData = z.infer<typeof signupSchema>;
 type ForgotData = z.infer<typeof forgotSchema>;
-type Mode = "login" | "signup" | "forgot";
+type Mode = "login" | "forgot";
 
 // ─── Root export ──────────────────────────────────────────────────────────────
 
@@ -88,8 +77,7 @@ function AuthPage() {
 
         {/* Form area */}
         <div className="flex-1 flex flex-col justify-center max-w-sm w-full mx-auto lg:mx-0">
-          {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} onSignup={() => setMode("signup")} />}
-          {mode === "signup" && <SignupForm onBack={() => setMode("login")} />}
+          {mode === "login"  && <LoginForm  onForgot={() => setMode("forgot")} />}
           {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
         </div>
 
@@ -107,27 +95,30 @@ function AuthPage() {
 
       {/* ── RIGHT PANEL ── */}
       <div className="hidden lg:flex lg:w-[55%] relative overflow-hidden bg-[#0a0f1e] flex-col justify-end p-12">
-        {/* Texture / noise overlay */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0e1628] via-[#070d1a] to-[#0a1020] opacity-90" />
 
-        {/* 3D Card — logo */}
+        {/* 3D Card */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-[60%] z-10">
           <div
-            className="w-64 h-44 rounded-2xl flex flex-col items-center justify-center gap-2 shadow-2xl border border-white/10"
+            className="w-72 h-52 rounded-2xl flex flex-col items-center justify-center gap-3 shadow-2xl border border-white/10"
             style={{
               background: "linear-gradient(135deg, #1a2340 0%, #0d1528 50%, #111c35 100%)",
               boxShadow: "0 30px 80px rgba(0,0,0,0.6), 0 0 40px rgba(59,130,246,0.08), inset 0 1px 0 rgba(255,255,255,0.08)",
-              transform: "perspective(800px) rotateX(4deg) rotateY(-6deg)",
+              transform: "perspective(900px) rotateX(5deg) rotateY(-8deg)",
             }}
           >
-            <div className="flex items-end gap-[3px] h-9">
+            <div className="flex items-end gap-[4px]">
               {[3,5,7,9,7,5,3].map((h, i) => (
-                <div key={i} className="w-[5px] rounded-full bg-blue-500" style={{ height: `${h * 3.5}px`, boxShadow: "0 0 6px rgba(59,130,246,0.6)" }} />
+                <div
+                  key={i}
+                  className="w-[6px] rounded-full bg-blue-500"
+                  style={{ height: `${h * 4}px`, boxShadow: "0 0 8px rgba(59,130,246,0.7)" }}
+                />
               ))}
             </div>
-            <div className="text-center leading-tight mt-1">
-              <span className="block text-white font-extrabold text-3xl tracking-widest">MUSIC</span>
-              <span className="block text-blue-500 font-extrabold text-3xl tracking-widest">OS 360</span>
+            <div className="text-center leading-tight">
+              <span className="block text-white font-extrabold text-4xl tracking-widest">MUSIC</span>
+              <span className="block text-blue-500 font-extrabold text-4xl tracking-widest">OS 360</span>
             </div>
           </div>
         </div>
@@ -135,8 +126,9 @@ function AuthPage() {
         {/* Bottom content */}
         <div className="relative z-10">
           <h2 className="text-white text-2xl font-bold mb-2">Gestão. Controle. Crescimento.</h2>
-          <p className="text-gray-400 text-sm mb-8">Tudo o que você precisa para<br />levar sua música mais longe.</p>
-
+          <p className="text-gray-400 text-sm mb-8">
+            Tudo o que você precisa para<br />levar sua música mais longe.
+          </p>
           <div className="grid grid-cols-4 gap-4">
             {[
               { icon: BarChart2,   label: "ANALYTICS",   desc: "Dados que geram estratégias." },
@@ -180,7 +172,7 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInpu
         <input
           ref={ref}
           type={showToggle ? (showPass ? "text" : "password") : type}
-          className="w-full h-12 rounded-lg border border-gray-700 bg-transparent text-white placeholder-gray-500 text-sm pl-11 pr-4 focus:outline-none focus:border-blue-500 transition-colors"
+          className="w-full h-12 rounded-lg border border-gray-700 bg-transparent text-white placeholder-gray-500 text-sm pl-11 pr-10 focus:outline-none focus:border-blue-500 transition-colors"
           {...rest}
         />
         {showToggle && (
@@ -196,7 +188,7 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInpu
 
 // ─── Login form ───────────────────────────────────────────────────────────────
 
-function LoginForm({ onForgot, onSignup }: { onForgot: () => void; onSignup: () => void }) {
+function LoginForm({ onForgot }: { onForgot: () => void }) {
   const [showPass, setShowPass] = useState(false);
   const [loading,  setLoading]  = useState(false);
   const { signIn, setActive }   = useSignIn();
@@ -204,6 +196,7 @@ function LoginForm({ onForgot, onSignup }: { onForgot: () => void; onSignup: () 
 
   const { register, handleSubmit, formState: { errors } } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
+    defaultValues: { email: "", password: "" },
   });
 
   const onSubmit = async (data: LoginData) => {
@@ -243,91 +236,53 @@ function LoginForm({ onForgot, onSignup }: { onForgot: () => void; onSignup: () 
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-      <AuthInput icon={User} type="email" placeholder="Digite o Usuário" error={errors.email?.message} {...register("email")} />
-      <AuthInput icon={Lock} type="password" placeholder="Digite sua senha" showToggle showPass={showPass} onToggle={() => setShowPass(p => !p)} error={errors.password?.message} {...register("password")} />
+      <AuthInput
+        icon={User}
+        type="email"
+        placeholder="Digite o Usuário"
+        autoComplete="email"
+        error={errors.email?.message}
+        {...register("email")}
+      />
+      <AuthInput
+        icon={Lock}
+        type="password"
+        placeholder="Digite sua senha"
+        autoComplete="current-password"
+        showToggle
+        showPass={showPass}
+        onToggle={() => setShowPass(p => !p)}
+        error={errors.password?.message}
+        {...register("password")}
+      />
 
       <button
         type="submit"
         disabled={loading}
         className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
       >
-        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />ACESSANDO...</> : "ACESSAR O SISTEMA"}
+        {loading
+          ? <><Loader2 className="h-4 w-4 animate-spin" />ACESSANDO...</>
+          : "ACESSAR O SISTEMA"
+        }
       </button>
 
       <div className="text-center space-y-2 pt-1">
-        <button type="button" onClick={onForgot} className="text-sm text-gray-400 underline underline-offset-2 hover:text-white transition-colors block w-full">
+        <button
+          type="button"
+          onClick={onForgot}
+          className="text-sm text-gray-400 underline underline-offset-2 hover:text-white transition-colors block w-full"
+        >
           Esqueci minha senha
         </button>
-        <button type="button" onClick={onSignup} className="text-sm text-blue-400 hover:text-blue-300 transition-colors block w-full">
+        {/* Vai para /register — fluxo original com dados da empresa e seleção de plano */}
+        <Link
+          to="/register"
+          className="text-sm text-blue-400 hover:text-blue-300 transition-colors block w-full"
+        >
           Criar nova conta
-        </button>
+        </Link>
       </div>
-    </form>
-  );
-}
-
-// ─── Signup form ──────────────────────────────────────────────────────────────
-
-function SignupForm({ onBack }: { onBack: () => void }) {
-  const [showPass, setShowPass]   = useState(false);
-  const [loading,  setLoading]    = useState(false);
-  const { signUp, setActive }     = useSignUp();
-  const { signUp: mockSignUp }    = useAuth();
-
-  const { register, handleSubmit, formState: { errors } } = useForm<SignupData>({
-    resolver: zodResolver(signupSchema),
-  });
-
-  const onSubmit = async (data: SignupData) => {
-    setLoading(true);
-    try {
-      if (useClerkMode && signUp) {
-        const nameParts  = data.fullName.trim().split(" ");
-        const firstName  = nameParts[0];
-        const lastName   = nameParts.slice(1).join(" ") || "";
-        const result = await signUp.create({
-          emailAddress: data.email,
-          password:     data.password,
-          firstName,
-          lastName,
-        });
-        if (result.status === "complete") {
-          await setActive!({ session: result.createdSessionId });
-          toast.success("Conta criada com sucesso!");
-        } else {
-          toast.info("Verifique seu email para ativar a conta.");
-        }
-      } else {
-        const { error } = await mockSignUp(data.email, data.password, data.fullName);
-        if (error) toast.error(error.message);
-        else toast.success("Conta criada!");
-      }
-    } catch (err: unknown) {
-      const msg = (err as { errors?: { message: string }[] })?.errors?.[0]?.message ?? "Erro ao criar conta.";
-      toast.error(msg);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
-      <AuthInput icon={User} type="text"     placeholder="Nome Completo"    error={errors.fullName?.message}        {...register("fullName")} />
-      <AuthInput icon={Mail} type="email"    placeholder="Email"            error={errors.email?.message}           {...register("email")} />
-      <AuthInput icon={Lock} type="password" placeholder="Senha"            showToggle showPass={showPass} onToggle={() => setShowPass(p => !p)} error={errors.password?.message} {...register("password")} />
-      <AuthInput icon={Lock} type="password" placeholder="Confirmar Senha"  error={errors.confirmPassword?.message} {...register("confirmPassword")} />
-
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
-      >
-        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />CRIANDO...</> : "CRIAR CONTA"}
-      </button>
-
-      <button type="button" onClick={onBack} className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors pt-1">
-        <ArrowLeft className="h-4 w-4" />Voltar ao Login
-      </button>
     </form>
   );
 }
@@ -340,6 +295,7 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
 
   const { register, handleSubmit, formState: { errors } } = useForm<ForgotData>({
     resolver: zodResolver(forgotSchema),
+    defaultValues: { email: "" },
   });
 
   const onSubmit = async (data: ForgotData) => {
@@ -347,7 +303,10 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
     try {
       const { error } = await resetPassword(data.email);
       if (error) toast.error(error.message);
-      else { toast.success("Email enviado! Verifique sua caixa de entrada."); onBack(); }
+      else {
+        toast.success("Email enviado! Verifique sua caixa de entrada.");
+        onBack();
+      }
     } finally {
       setLoading(false);
     }
@@ -359,15 +318,29 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
         <p className="text-white font-semibold">Recuperar Senha</p>
         <p className="text-gray-400 text-sm mt-1">Digite seu email para receber um link de redefinição.</p>
       </div>
-      <AuthInput icon={Mail} type="email" placeholder="Seu email" error={errors.email?.message} {...register("email")} />
+      <AuthInput
+        icon={Mail}
+        type="email"
+        placeholder="Seu email"
+        autoComplete="email"
+        error={errors.email?.message}
+        {...register("email")}
+      />
       <button
         type="submit"
         disabled={loading}
         className="w-full h-12 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-bold tracking-widest text-sm transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
       >
-        {loading ? <><Loader2 className="h-4 w-4 animate-spin" />ENVIANDO...</> : "ENVIAR LINK"}
+        {loading
+          ? <><Loader2 className="h-4 w-4 animate-spin" />ENVIANDO...</>
+          : "ENVIAR LINK"
+        }
       </button>
-      <button type="button" onClick={onBack} className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors">
+      <button
+        type="button"
+        onClick={onBack}
+        className="w-full text-sm text-gray-500 hover:text-white flex items-center justify-center gap-1 transition-colors"
+      >
         <ArrowLeft className="h-4 w-4" />Voltar ao Login
       </button>
     </form>
