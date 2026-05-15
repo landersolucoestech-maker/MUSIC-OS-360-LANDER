@@ -1,9 +1,17 @@
 /**
  * core/guards/clerk-auth.guard.ts
  *
- * Guard global de autenticação via JWT.
- * Valida o Bearer token (ou cookie musicos360_rt) em todas as rotas protegidas.
+ * Guard global de autenticação via JWT do Supabase.
+ * Valida o Bearer token em todas as rotas protegidas usando o
+ * SUPABASE_JWT_SECRET (HS256) do projeto Supabase.
  * Rotas marcadas com @Public() são excluídas da validação.
+ *
+ * Claims Supabase:
+ *   sub              → userId (UUID do usuário)
+ *   email            → email
+ *   role             → "authenticated" (papel padrão Supabase)
+ *   app_metadata.org_id   → orgId do tenant
+ *   app_metadata.role     → papel RBAC da aplicação
  */
 
 import {
@@ -16,6 +24,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
+import * as jwt from 'jsonwebtoken';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 
@@ -38,16 +47,18 @@ declare module 'express' {
   }
 }
 
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const raw = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
-    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
+interface SupabaseClaims {
+  sub?:           string;
+  email?:         string;
+  role?:          string;
+  aud?:           string | string[];
+  exp?:           number;
+  iat?:           number;
+  jti?:           string;
+  session_id?:    string;
+  app_metadata?:  { org_id?: string; role?: string; [key: string]: unknown };
+  user_metadata?: Record<string, unknown>;
+  [key: string]:  unknown;
 }
 
 @Injectable()
@@ -73,26 +84,57 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Token de autenticação ausente');
     }
 
-    const claims = decodeJwtPayload(token);
-
-    if (!claims) {
-      this.logger.warn('Token JWT malformado');
-      throw new UnauthorizedException('Token inválido ou expirado');
-    }
-
-    if (typeof claims['exp'] === 'number' && claims['exp'] * 1000 < Date.now()) {
-      throw new UnauthorizedException('Token expirado');
-    }
+    const claims = this.verifyToken(token);
 
     request.auth = {
-      userId:    String(claims['sub'] ?? ''),
-      sessionId: String(claims['sid'] ?? claims['jti'] ?? ''),
-      orgId:     typeof claims['org_id'] === 'string'   ? claims['org_id']   : null,
-      orgRole:   typeof claims['org_role'] === 'string' ? claims['org_role'] : null,
-      claims,
+      userId:    String(claims.sub ?? ''),
+      sessionId: String(claims.session_id ?? claims.jti ?? ''),
+      orgId:     claims.app_metadata?.org_id   ?? null,
+      orgRole:   claims.app_metadata?.role     ?? null,
+      claims:    claims as Record<string, unknown>,
     };
 
     return true;
+  }
+
+  private verifyToken(token: string): SupabaseClaims {
+    const secret = this.config.get<string>('SUPABASE_JWT_SECRET');
+
+    // Em desenvolvimento sem secret configurado, apenas decodifica sem verificar
+    if (!secret || secret === 'dev_supabase_jwt_secret_placeholder') {
+      this.logger.warn(
+        'SUPABASE_JWT_SECRET não configurado — decodificando JWT sem verificação de assinatura. ' +
+        'Configure em produção.',
+      );
+      try {
+        const decoded = jwt.decode(token);
+        if (!decoded || typeof decoded !== 'object') {
+          throw new UnauthorizedException('Token inválido ou expirado');
+        }
+        const claims = decoded as SupabaseClaims;
+        if (typeof claims.exp === 'number' && claims.exp * 1000 < Date.now()) {
+          throw new UnauthorizedException('Token expirado');
+        }
+        return claims;
+      } catch (err) {
+        if (err instanceof UnauthorizedException) throw err;
+        throw new UnauthorizedException('Token inválido ou expirado');
+      }
+    }
+
+    try {
+      const verified = jwt.verify(token, secret, { algorithms: ['HS256'] });
+      if (typeof verified !== 'object' || verified === null) {
+        throw new UnauthorizedException('Token inválido');
+      }
+      return verified as SupabaseClaims;
+    } catch (err) {
+      if (err instanceof jwt.TokenExpiredError) {
+        throw new UnauthorizedException('Token expirado');
+      }
+      this.logger.warn(`Falha na verificação do JWT: ${(err as Error).message}`);
+      throw new UnauthorizedException('Token inválido ou expirado');
+    }
   }
 
   private extractToken(request: Request): string | null {
@@ -100,8 +142,7 @@ export class JwtAuthGuard implements CanActivate {
     if (typeof auth === 'string' && auth.startsWith('Bearer ')) {
       return auth.slice(7);
     }
-    const cookies = (request as Request & { cookies?: Record<string, string> }).cookies;
-    return cookies?.['musicos360_rt'] ?? null;
+    return null;
   }
 }
 

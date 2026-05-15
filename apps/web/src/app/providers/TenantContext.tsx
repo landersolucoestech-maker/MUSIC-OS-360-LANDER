@@ -289,7 +289,7 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
       }));
     }
 
-    // 2. Se o JWT tiver role + org_id (Clerk JWT Template configurado), sobrescreve
+    // 2. Se o JWT tiver role + org_id (Supabase app_metadata ou claims top-level)
     const token = getAccessToken();
     if (!token) return;
     try {
@@ -297,13 +297,20 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
       if (parts.length < 2) return;
       const decoded = JSON.parse(
         atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-      ) as { role?: string; org_id?: string };
-      if (!decoded.role) return;
-      const tenantRole = appRoleToTenantRole(decoded.role);
+      ) as {
+        role?: string;
+        org_id?: string;
+        app_metadata?: { role?: string; org_id?: string };
+      };
+      // Supabase aninha role/org_id em app_metadata; fallback para top-level (JWT customizado)
+      const claimRole  = decoded.app_metadata?.role   ?? decoded.role;
+      const claimOrgId = decoded.app_metadata?.org_id ?? decoded.org_id;
+      if (!claimRole) return;
+      const tenantRole = appRoleToTenantRole(claimRole);
       if (!(tenantRole in ROLE_PERMISSIONS)) return;
       setTenant(prev => ({
         ...prev,
-        id:          decoded.org_id ?? prev.id,
+        id:          claimOrgId ?? prev.id,
         permissions: ROLE_PERMISSIONS[tenantRole],
       }));
     } catch { /* JWT inválido */ }
