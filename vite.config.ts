@@ -114,10 +114,6 @@ export default defineConfig({
     },
   },
   define: {
-    "import.meta.env.VITE_MOCK_MODE": JSON.stringify("false"),
-
-    "import.meta.env.VITE_USE_MOCK": JSON.stringify("false"),
-
     "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
       process.env.VITE_CLERK_PUBLISHABLE_KEY ?? "",
     ),
