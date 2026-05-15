@@ -41,7 +41,7 @@ interface MainLayoutProps {
 }
 
 const ROLE_LABEL: Record<string, string> = {
-  tenant_owner: "Super Admin",
+  tenant_owner: "Proprietário",
   admin: "Administrador",
   manager: "Gerente",
   editor: "Editor",

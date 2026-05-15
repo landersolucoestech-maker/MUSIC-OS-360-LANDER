@@ -271,7 +271,8 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
     if (stored) {
       const industry    = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
       const plan        = (stored.plan as TenantPlan | undefined);
-      const isFounder   = !!(userEmail && stored.adminEmail && userEmail === stored.adminEmail);
+      const isFounder   = !!(userEmail && stored.adminEmail &&
+        userEmail.trim().toLowerCase() === stored.adminEmail.trim().toLowerCase());
       const permissions = isFounder ? ROLE_PERMISSIONS.owner : ROLE_PERMISSIONS.viewer;
 
       setTenant(prev => ({
