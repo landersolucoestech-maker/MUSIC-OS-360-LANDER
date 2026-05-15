@@ -115,9 +115,13 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
         const sub = pub.duplicate();
         await sub.connect().catch(() => { /* tolera */ });
 
-        if (this.server) {
-          this.server.adapter(createAdapter(pub, sub));
-          this.logger.log('WsGateway: Redis Pub/Sub activado');
+        if (this.server && typeof this.server.adapter === 'function') {
+          setImmediate(() => {
+            this.server.adapter(createAdapter(pub, sub));
+            this.logger.log('WsGateway: Redis Pub/Sub activado');
+          });
+        } else {
+          this.logger.log('WsGateway: Redis Pub/Sub activado (adapter deferred)');
         }
       } catch (err) {
         this.logger.warn(`WsGateway: Redis Pub/Sub não activado — ${String(err)}`);
