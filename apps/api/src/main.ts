@@ -1,4 +1,9 @@
-// ── Sentry DEVE ser o primeiro import ──────────────────────────────────────────
+// ── dotenv carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
+// apps/api/.env é carregado primeiro; Replit Secrets sobrepõem via process.env nativo.
+import * as dotenv from 'dotenv';
+dotenv.config();
+
+// ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
 import './instrument';
 
 import 'reflect-metadata';
