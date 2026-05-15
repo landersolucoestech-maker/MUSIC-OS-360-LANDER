@@ -82,7 +82,7 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
       useFactory: () => {
         // eslint-disable-next-line @typescript-eslint/no-require-imports
         const IORedis = require('ioredis');
-        const url     = process.env.REDIS_QUEUE_URL ?? 'redis://localhost:6379';
+        const url     = process.env.UPSTASH_REDIS_URL ?? process.env.REDIS_QUEUE_URL ?? 'redis://localhost:6379';
 
         const connection = new IORedis(url, {
           maxRetriesPerRequest: null,

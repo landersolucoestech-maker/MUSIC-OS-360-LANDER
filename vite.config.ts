@@ -4,64 +4,6 @@ import path from "path";
 import type { Connect } from "vite";
 import type { IncomingMessage, ServerResponse } from "http";
 
-function aiApiPlugin() {
-  return {
-    name: "ai-api-middleware",
-    configureServer(server: { middlewares: Connect.Server }) {
-      server.middlewares.use(
-        async (req: IncomingMessage, res: ServerResponse, next: Connect.NextFunction) => {
-          if (req.url !== "/api/ai/generate" || req.method !== "POST") {
-            return next();
-          }
-
-          let body = "";
-          req.on("data", (chunk: Buffer) => { body += chunk.toString(); });
-          req.on("end", async () => {
-            try {
-              const { prompt, type } = JSON.parse(body || "{}");
-              if (!prompt) {
-                res.statusCode = 400;
-                res.setHeader("Content-Type", "application/json");
-                res.end(JSON.stringify({ error: "prompt é obrigatório" }));
-                return;
-              }
-
-              const { default: OpenAI } = await import("openai");
-              const openai = new OpenAI({
-                apiKey: process.env.AI_INTEGRATIONS_OPENAI_API_KEY ?? "dummy",
-                baseURL: process.env.AI_INTEGRATIONS_OPENAI_BASE_URL,
-              });
-
-              const completion = await openai.chat.completions.create({
-                model: "gpt-4o-mini",
-                messages: [
-                  {
-                    role: "system",
-                    content:
-                      "Você é um assistente especializado em música e indústria fonográfica brasileira. " +
-                      "Responda sempre em Português do Brasil. Seja conciso, profissional e direto. " +
-                      "Não use asteriscos para negrito nem markdown. Use texto simples.",
-                  },
-                  { role: "user", content: prompt },
-                ],
-                max_completion_tokens: 1024,
-              });
-
-              const content = completion.choices[0]?.message?.content ?? "";
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ content, type }));
-            } catch (err: unknown) {
-              res.statusCode = 500;
-              res.setHeader("Content-Type", "application/json");
-              res.end(JSON.stringify({ error: String(err) }));
-            }
-          });
-        }
-      );
-    },
-  };
-}
-
 /**
  * acrcloudApiPlugin — ACRCloud como infraestrutura backend nativa.
  *
@@ -71,7 +13,7 @@ function aiApiPlugin() {
  *   - Frontend chama apenas /api/acrcloud/* (API interna Music OS 360)
  *   - Nenhum domínio acrcloud.com é acessado pelo cliente
  *
- * Em produção: as mesmas rotas são servidas por server/ai-proxy.ts
+ * Em produção: as mesmas rotas são servidas pelo NestJS (ACRCloudService)
  * Em desenvolvimento (modo standalone): retorna dados mock autênticos
  */
 function acrcloudApiPlugin() {
@@ -152,7 +94,7 @@ function acrcloudApiPlugin() {
 }
 
 export default defineConfig({
-  plugins: [react(), aiApiPlugin(), acrcloudApiPlugin()],
+  plugins: [react(), acrcloudApiPlugin()],
   root: path.resolve(__dirname, "client"),
   resolve: {
     alias: {
@@ -168,6 +110,9 @@ export default defineConfig({
       process.env.VITE_USE_MOCK ??
         process.env.VITE_MOCK_MODE ??
         (process.env.NODE_ENV === "production" ? "false" : "true")
+    ),
+    "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
+      process.env.VITE_CLERK_PUBLISHABLE_KEY ?? ""
     ),
   },
   build: {
@@ -232,6 +177,10 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     proxy: {
+      "/api": {
+        target: "http://localhost:3001",
+        changeOrigin: true,
+      },
       "/projects/upload-audio": {
         target: "http://localhost:3001",
         changeOrigin: true,

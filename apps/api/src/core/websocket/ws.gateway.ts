@@ -92,8 +92,9 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
       });
     }
 
-    // Redis Pub/Sub — opcional; só activa se REDIS_QUEUE_URL estiver definido e acessível
-    const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
+    // Redis Pub/Sub — opcional; prefere UPSTASH_REDIS_URL, fallback REDIS_QUEUE_URL
+    const queueUrl = this.config.get<string>('UPSTASH_REDIS_URL')
+      ?? this.config.get<string>('REDIS_QUEUE_URL');
 
     if (queueUrl && queueUrl !== 'redis://localhost:6379') {
       try {
