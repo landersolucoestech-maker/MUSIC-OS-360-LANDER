@@ -1,0 +1,14 @@
+{
+  "name": "@music-os-360/web",
+  "version": "0.0.1",
+  "description": "MUSIC OS 360 — React Enterprise Frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0 --port 5000",
+    "build": "tsc -p tsconfig.app.json && vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 5000",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+  }
+}

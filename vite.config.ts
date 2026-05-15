@@ -107,10 +107,10 @@ function acrcloudApiPlugin() {
 
 export default defineConfig({
   plugins: [react(), acrcloudApiPlugin()],
-  root: path.resolve(__dirname, "client"),
+  root: path.resolve(__dirname, "apps/web"),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "client/src"),
+      "@": path.resolve(__dirname, "apps/web/src"),
     },
   },
   define: {

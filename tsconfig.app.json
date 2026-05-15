@@ -22,9 +22,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./client/src/*"],
+      "@/*": ["./apps/web/src/*"],
       "@shared/*": ["./shared/*"]
     }
   },
-  "include": ["client/src", "shared"]
+  "include": ["apps/web/src", "shared"]
 }
