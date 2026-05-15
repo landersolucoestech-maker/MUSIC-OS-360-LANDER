@@ -7,7 +7,7 @@
  * retornam null silenciosamente.
  */
 
-import { Module, forwardRef } from '@nestjs/common';
+import { Global, Module, forwardRef } from '@nestjs/common';
 import { BullModule }              from '@nestjs/bullmq';
 import { QUEUE_NAMES }             from './queue.constants';
 
@@ -70,6 +70,7 @@ function buildBullRoot() {
 
 const BULL_AVAILABLE = isBullRedisAvailable();
 
+@Global()
 @Module({
   imports: [
     ...buildBullRoot(),

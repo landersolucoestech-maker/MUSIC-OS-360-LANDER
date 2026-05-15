@@ -1,4 +1,5 @@
 import { Module }              from '@nestjs/common';
+import { QueueModule }        from '../../queues/queue.module';
 import { IntegrationBaseService } from './integration-base.service';
 import { ACRCloudService }     from './acrcloud/acrcloud.service';
 import { AutentiqueService }   from './autentique/autentique.service';
@@ -29,6 +30,7 @@ const ALL_SERVICES = [
 ];
 
 @Module({
+  imports:     [QueueModule],
   controllers: [IntegrationsController],
   providers:   ALL_SERVICES,
   exports:     ALL_SERVICES,
