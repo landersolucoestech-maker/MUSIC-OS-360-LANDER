@@ -221,7 +221,9 @@ export function MainLayout({
   actions,
   noPadding = false,
 }: MainLayoutProps) {
-  useSyncTenantFromJWT();
+  const { user } = useAuth();
+  const userEmail = user?.email ?? "";
+  useSyncTenantFromJWT(userEmail || undefined);
 
   return (
     <div className="flex min-h-screen w-full bg-background">

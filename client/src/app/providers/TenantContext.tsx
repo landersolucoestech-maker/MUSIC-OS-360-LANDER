@@ -204,8 +204,22 @@ function buildInitialTenant(): Tenant {
     phone:       stored?.phone    ?? MOCK_TENANT.phone,
     address:     stored?.address  ?? MOCK_TENANT.address,
     plan:        plan             ?? "starter",
-    permissions: ROLE_PERMISSIONS.owner,
+    // Permissions start at viewer (safe default).
+    // useSyncTenantFromJWT elevates to owner once the signed-in email is verified
+    // against adminEmail stored by Register.tsx.
+    permissions: ROLE_PERMISSIONS.viewer,
   };
+}
+
+/**
+ * Maps an AppRole string (from AuthContext / shared/types/auth.ts) to the
+ * TenantRole key used by ROLE_PERMISSIONS.
+ * "tenant_owner" → "owner", everything else is a direct match or falls back to "viewer".
+ */
+function appRoleToTenantRole(appRole: string): TenantRole {
+  if (appRole === "tenant_owner") return "owner";
+  if (appRole in ROLE_PERMISSIONS)  return appRole as TenantRole;
+  return "viewer";
 }
 
 export function TenantProvider({ children }: { children: React.ReactNode }) {
@@ -236,23 +250,30 @@ export function useTenant(): TenantContextType {
 }
 
 /**
- * useSyncTenantFromJWT — sincroniza permissões do tenant a partir do JWT real.
+ * useSyncTenantFromJWT — sincroniza permissões + metadados do tenant.
  *
- * FASE 05: Em MOCK_MODE não faz nada (tenant usa ROLE_PERMISSIONS.owner por defeito).
- * Em produção, lê o role e org_id do JWT e actualiza as permissões do tenant.
+ * Recebe o email do usuário autenticado (do AuthContext) para verificar se é o
+ * fundador da org antes de elevar as permissões. Re-executa sempre que o email mudar
+ * (e.g., após login Clerk carregar o usuário).
  *
- * Chamar num componente raiz (ex: AppShell) após autenticação.
+ * Fluxo de prioridade:
+ *   1. JWT com role claim (Clerk JWT Template configurado) → mais alta prioridade
+ *   2. localStorage adminEmail === userEmail → promove a owner
+ *   3. Sem correspondência → mantém viewer (padrão seguro)
  */
-export function useSyncTenantFromJWT(): void {
+export function useSyncTenantFromJWT(userEmail?: string): void {
   const { setTenant } = useTenant();
   useEffect(() => {
     if (MOCK_MODE) return;
 
-    // 1. Hidratar org metadata do localStorage (persistido pelo Register.tsx)
+    // 1. Hidratar org metadata do localStorage + determinar permissões por identidade
     const stored = readStoredTenant();
     if (stored) {
-      const industry = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
-      const plan     = (stored.plan as TenantPlan | undefined);
+      const industry    = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
+      const plan        = (stored.plan as TenantPlan | undefined);
+      const isFounder   = !!(userEmail && stored.adminEmail && userEmail === stored.adminEmail);
+      const permissions = isFounder ? ROLE_PERMISSIONS.owner : ROLE_PERMISSIONS.viewer;
+
       setTenant(prev => ({
         ...prev,
         id:          stored.id      ?? prev.id,
@@ -263,7 +284,7 @@ export function useSyncTenantFromJWT(): void {
         phone:       stored.phone   ?? prev.phone,
         address:     stored.address ?? prev.address,
         plan:        plan           ?? prev.plan,
-        permissions: ROLE_PERMISSIONS.owner,
+        permissions,
       }));
     }
 
@@ -275,16 +296,19 @@ export function useSyncTenantFromJWT(): void {
       if (parts.length < 2) return;
       const decoded = JSON.parse(
         atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-      ) as { role?: TenantRole; org_id?: string };
-      if (!decoded.role || !(decoded.role in ROLE_PERMISSIONS)) return;
+      ) as { role?: string; org_id?: string };
+      if (!decoded.role) return;
+      const tenantRole = appRoleToTenantRole(decoded.role);
+      if (!(tenantRole in ROLE_PERMISSIONS)) return;
       setTenant(prev => ({
         ...prev,
         id:          decoded.org_id ?? prev.id,
-        permissions: ROLE_PERMISSIONS[decoded.role as TenantRole] ?? ROLE_PERMISSIONS.owner,
+        permissions: ROLE_PERMISSIONS[tenantRole],
       }));
     } catch { /* JWT inválido */ }
+  // userEmail é dependência: re-executa quando Clerk carrega o usuário após login
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userEmail]);
 }
 
 // Label constants (PLAN_LABEL, INDUSTRY_LABEL, BILLING_STATUS_LABEL, ROLE_LABEL)

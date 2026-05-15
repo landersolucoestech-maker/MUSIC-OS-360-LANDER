@@ -123,7 +123,7 @@ function deriveRoleFromStorage(email: string): string {
     const raw = localStorage.getItem("musicos360_current_tenant");
     if (!raw) return "viewer";
     const stored = JSON.parse(raw) as { adminEmail?: string };
-    if (stored.adminEmail && stored.adminEmail === email) return "owner";
+    if (stored.adminEmail && stored.adminEmail === email) return "tenant_owner";
   } catch { /* ignore */ }
   return "viewer";
 }
