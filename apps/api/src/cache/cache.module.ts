@@ -1,59 +1,78 @@
 /**
  * cache/cache.module.ts
  *
- * Módulo Upstash Redis para cache e rate limiting.
- * Usa o cliente @upstash/redis com REST API (funciona em edge e serverless).
+ * Módulo de cache em memória (Map com TTL).
+ * Substitui Upstash Redis — sem dependências externas.
+ * Adequado para desenvolvimento e ambientes sem Redis dedicado.
  *
- * Token: UPSTASH_REDIS_TOKEN
- * URL:   UPSTASH_REDIS_URL   (deve começar com https://)
- *
- * Se o URL não for Upstash (https://), o módulo fica desactivado graciosamente.
+ * Para produção com Redis: substituir o provider pelo ioredis client
+ * usando REDIS_CACHE_URL.
  */
 
 import { Module, Global, Logger } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import { Redis } from '@upstash/redis';
 
-export const UPSTASH_REDIS = Symbol('UPSTASH_REDIS');
+export const CACHE_CLIENT = Symbol('CACHE_CLIENT');
+
+export interface CacheClient {
+  get(key: string): Promise<string | null>;
+  set(key: string, value: string, exSeconds?: number): Promise<void>;
+  del(key: string): Promise<void>;
+  incr(key: string): Promise<number>;
+  expire(key: string, seconds: number): Promise<void>;
+}
+
+class InMemoryCacheClient implements CacheClient {
+  private readonly store = new Map<string, { value: string; expiresAt: number | null }>();
+
+  async get(key: string): Promise<string | null> {
+    const entry = this.store.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt !== null && Date.now() > entry.expiresAt) {
+      this.store.delete(key);
+      return null;
+    }
+    return entry.value;
+  }
+
+  async set(key: string, value: string, exSeconds?: number): Promise<void> {
+    this.store.set(key, {
+      value,
+      expiresAt: exSeconds ? Date.now() + exSeconds * 1000 : null,
+    });
+  }
+
+  async del(key: string): Promise<void> {
+    this.store.delete(key);
+  }
+
+  async incr(key: string): Promise<number> {
+    const current = await this.get(key);
+    const next    = (current ? parseInt(current, 10) : 0) + 1;
+    const entry   = this.store.get(key);
+    await this.set(key, String(next), entry?.expiresAt ? Math.ceil((entry.expiresAt - Date.now()) / 1000) : undefined);
+    return next;
+  }
+
+  async expire(key: string, seconds: number): Promise<void> {
+    const entry = this.store.get(key);
+    if (entry) {
+      entry.expiresAt = Date.now() + seconds * 1000;
+    }
+  }
+}
 
 @Global()
 @Module({
   providers: [
     {
-      provide: UPSTASH_REDIS,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => {
+      provide: CACHE_CLIENT,
+      useFactory: () => {
         const logger = new Logger('CacheModule');
-
-        const url   = config.get<string>('UPSTASH_REDIS_URL');
-        const token = config.get<string>('UPSTASH_REDIS_TOKEN');
-
-        if (!url || !token) {
-          logger.warn(
-            'UPSTASH_REDIS_URL / UPSTASH_REDIS_TOKEN não configurados — cache desactivado',
-          );
-          return null;
-        }
-
-        if (!url.startsWith('https://')) {
-          logger.warn(
-            `UPSTASH_REDIS_URL deve começar com https:// (Upstash REST API). ` +
-            `Recebido: "${url.substring(0, 20)}..." — cache desactivado`,
-          );
-          return null;
-        }
-
-        try {
-          const redis = new Redis({ url, token });
-          logger.log('Upstash Redis conectado (cache / rate-limit)');
-          return redis;
-        } catch (err) {
-          logger.warn(`Falha ao conectar Upstash Redis: ${err.message} — cache desactivado`);
-          return null;
-        }
+        logger.log('Cache em memória activado');
+        return new InMemoryCacheClient();
       },
     },
   ],
-  exports: [UPSTASH_REDIS],
+  exports: [CACHE_CLIENT],
 })
 export class CacheModule {}

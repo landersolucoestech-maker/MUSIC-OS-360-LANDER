@@ -101,11 +101,6 @@ export default defineConfig({
       "@": path.resolve(__dirname, "src"),
     },
   },
-  define: {
-    "import.meta.env.VITE_CLERK_PUBLISHABLE_KEY": JSON.stringify(
-      process.env.VITE_CLERK_PUBLISHABLE_KEY ?? "",
-    ),
-  },
   build: {
     outDir: path.resolve(__dirname, "../../dist"),
     emptyOutDir: true,

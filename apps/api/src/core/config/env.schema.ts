@@ -6,29 +6,16 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3001),
 
-  // Database (Replit built-in PostgreSQL — não usar directamente no NestJS)
+  // Database (PostgreSQL — node-postgres / Drizzle ORM)
   DATABASE_URL: z.string().optional(),
 
-  // Database (Neon PostgreSQL — usar no NestJS/Drizzle)
-  NEON_DATABASE_URL: z.string().optional(),
-  NEON_DATABASE_DIRECT_URL: z.string().optional(),
-
-  // Redis (BullMQ Queues via ioredis — deve ser URL acessível, não Railway internal)
+  // Redis (BullMQ Queues via ioredis — deve ser URL acessível)
   REDIS_QUEUE_URL: z.string().optional(),
 
-  // Redis (Upstash — Cache / Rate Limit via REST API https://...)
-  UPSTASH_REDIS_URL: z.string().optional(),
-  UPSTASH_REDIS_TOKEN: z.string().optional(),
-  // UPSTASH_REST_URL: URL REST HTTPS do Upstash (preferida sobre UPSTASH_REDIS_URL quando disponível)
-  UPSTASH_REST_URL: z.string().optional(),
-
-  // Auth (Clerk)
-  CLERK_SECRET_KEY: z
-    .string()
-    .min(1, 'CLERK_SECRET_KEY é obrigatório')
-    .default('sk_test_placeholder'),
-  CLERK_PUBLISHABLE_KEY: z.string().optional(),
-  CLERK_WEBHOOK_SECRET: z.string().default('whsec_placeholder'),
+  // Auth (JWT)
+  JWT_SECRET: z.string().default('dev_jwt_secret_placeholder'),
+  JWT_EXPIRES_IN: z.string().default('1h'),
+  JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
   // CORS
   CORS_ORIGINS: z.string().default('http://localhost:5000'),

@@ -1,77 +1,56 @@
 /**
  * core/security/rate-limit.service.ts
  *
- * RateLimitService — sliding window rate limiting com Upstash Redis.
+ * RateLimitService — sliding window rate limiting em memória.
  * Categorias: auth (5/15m), api (120/1m), ai (20/1h), upload (30/1h), webhook (100/1m).
+ *
+ * Para produção com Redis: substituir o Map interno por ioredis + Lua script.
  */
 
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
-import { Ratelimit }   from '@upstash/ratelimit';
-import { Redis }       from '@upstash/redis';
-import { ConfigService } from '@nestjs/config';
 
 type RateLimitCategory = 'auth' | 'api' | 'ai' | 'upload' | 'webhook';
 
+interface WindowConfig {
+  maxRequests: number;
+  windowMs: number;
+}
+
+const WINDOW_CONFIGS: Record<RateLimitCategory, WindowConfig> = {
+  auth:    { maxRequests: 5,   windowMs: 15 * 60 * 1000 },
+  api:     { maxRequests: 120, windowMs:       60 * 1000 },
+  ai:      { maxRequests: 20,  windowMs: 60 * 60 * 1000 },
+  upload:  { maxRequests: 30,  windowMs: 60 * 60 * 1000 },
+  webhook: { maxRequests: 100, windowMs:       60 * 1000 },
+};
+
 @Injectable()
 export class RateLimitService {
-  private readonly logger   = new Logger(RateLimitService.name);
-  private readonly limiters = new Map<RateLimitCategory, Ratelimit>();
-  private readonly enabled:  boolean;
-
-  constructor(private config: ConfigService) {
-    // UPSTASH_REST_URL é a URL REST HTTPS do Upstash (preferida).
-    // UPSTASH_REDIS_URL é fallback (pode ser ioredis URL — inválida para REST client).
-    const url   = this.config.get<string>('UPSTASH_REST_URL')
-               ?? this.config.get<string>('UPSTASH_REDIS_URL');
-    const token = this.config.get<string>('UPSTASH_REDIS_TOKEN');
-
-    if (!url || !token) {
-      this.logger.warn('UPSTASH_REST_URL/TOKEN não configurados — rate limiting desactivado');
-      this.enabled = false;
-      return;
-    }
-
-    if (!url.startsWith('https://')) {
-      this.logger.warn(
-        `UPSTASH_REST_URL deve começar com https:// (Upstash REST API). ` +
-        `Recebido: "${url.substring(0, 20)}..." — rate limiting desactivado`,
-      );
-      this.enabled = false;
-      return;
-    }
-
-    this.enabled = true;
-    const redis  = new Redis({ url, token });
-
-    const configs: Record<RateLimitCategory, Ratelimit> = {
-      auth:    new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(5,   '15 m'), prefix: '@musicos360/auth' }),
-      api:     new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(120, '1 m'),  prefix: '@musicos360/api' }),
-      ai:      new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(20,  '1 h'),  prefix: '@musicos360/ai' }),
-      upload:  new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(30,  '1 h'),  prefix: '@musicos360/upload' }),
-      webhook: new Ratelimit({ redis, limiter: Ratelimit.slidingWindow(100, '1 m'),  prefix: '@musicos360/webhook' }),
-    };
-
-    for (const [name, limiter] of Object.entries(configs)) {
-      this.limiters.set(name as RateLimitCategory, limiter);
-    }
-  }
+  private readonly logger = new Logger(RateLimitService.name);
+  private readonly windows = new Map<string, number[]>();
 
   async check(category: RateLimitCategory, identifier: string): Promise<void> {
-    if (!this.enabled) return;
+    const config = WINDOW_CONFIGS[category];
+    if (!config) return;
 
-    const limiter = this.limiters.get(category);
-    if (!limiter) return;
+    const key  = `${category}:${identifier}`;
+    const now  = Date.now();
+    const hits = (this.windows.get(key) ?? []).filter((t) => now - t < config.windowMs);
 
-    const { success, reset } = await limiter.limit(identifier);
-
-    if (!success) {
+    if (hits.length >= config.maxRequests) {
+      const oldest     = hits[0]!;
+      const retryAfter = Math.ceil((oldest + config.windowMs - now) / 1000);
+      this.logger.warn(`Rate limit atingido: ${key} (${hits.length}/${config.maxRequests})`);
       throw new HttpException(
         {
           message:    'Muitas requisições. Tente novamente em breve.',
-          retryAfter: Math.ceil((reset - Date.now()) / 1000),
+          retryAfter,
         },
         HttpStatus.TOO_MANY_REQUESTS,
       );
     }
+
+    hits.push(now);
+    this.windows.set(key, hits);
   }
 }

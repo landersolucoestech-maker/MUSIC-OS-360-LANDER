@@ -32,15 +32,15 @@ export class UsersService {
     return row;
   }
 
-  async findByClerkId(tenantId: string, clerkUserId: string): Promise<OrgMember | null> {
+  async findByUserId(tenantId: string, userId: string): Promise<OrgMember | null> {
     const [row] = await this.db.select().from(orgMembers)
-      .where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.clerk_user_id, clerkUserId)))
+      .where(and(eq(orgMembers.tenant_id, tenantId), eq(orgMembers.clerk_user_id, userId)))
       .limit(1);
     return row ?? null;
   }
 
   async create(tenantId: string, dto: CreateUserDto): Promise<OrgMember> {
-    const existing = await this.findByClerkId(tenantId, dto.clerkId);
+    const existing = await this.findByUserId(tenantId, dto.userId);
     if (existing) throw new ConflictException('Utilizador já existe neste tenant');
 
     const [member] = await this.db.select({ org_id: orgMembers.org_id })
@@ -51,7 +51,7 @@ export class UsersService {
     const [row] = await this.db.insert(orgMembers).values({
       org_id:        member.org_id,
       tenant_id:     tenantId,
-      clerk_user_id: dto.clerkId,
+      clerk_user_id: dto.userId,
       email:         dto.email,
       full_name:     dto.fullName  ?? null,
       role:          dto.role,

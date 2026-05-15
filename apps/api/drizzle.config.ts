@@ -1,8 +1,7 @@
 /**
  * drizzle.config.ts
  *
- * Configuração do Drizzle Kit para migrations.
- * Usa NEON_DATABASE_DIRECT_URL (ligação directa, sem pooler) para DDL.
+ * Configuração do Drizzle Kit para migrations (PostgreSQL / node-postgres).
  *
  * Comandos:
  *   npx drizzle-kit generate   → gera ficheiros SQL em drizzle/
@@ -12,14 +11,11 @@
 
 import { defineConfig } from 'drizzle-kit';
 
-const url =
-  process.env.NEON_DATABASE_URL ??
-  process.env.NEON_DATABASE_DIRECT_URL ??
-  process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL;
 
 if (!url) {
   throw new Error(
-    'Defina NEON_DATABASE_DIRECT_URL, NEON_DATABASE_URL ou DATABASE_URL para usar o Drizzle Kit',
+    'Defina DATABASE_URL para usar o Drizzle Kit (ex: postgres://user:pass@host:5432/db)',
   );
 }
 

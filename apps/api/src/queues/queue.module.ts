@@ -11,14 +11,13 @@
  *     resolve para null → métodos enqueue são no-op explícito
  */
 
-import { DynamicModule, Global, Module, Logger, forwardRef } from '@nestjs/common';
+import { DynamicModule, Global, Module, Logger } from '@nestjs/common';
 import { BullModule }              from '@nestjs/bullmq';
 import { QUEUE_NAMES }             from './queue.constants';
 
 import { EmailProcessor }           from './processors/email.processor';
 import { NotificationsProcessor }   from './processors/notifications.processor';
 import { AIJobsProcessor }          from './processors/ai-jobs.processor';
-import { ClerkSyncProcessor }       from './processors/clerk-sync.processor';
 
 import { EmailQueueService }         from './services/email-queue.service';
 import { NotificationsQueueService } from './services/notifications-queue.service';
@@ -26,7 +25,6 @@ import { AIJobsQueueService }        from './services/ai-jobs-queue.service';
 
 import { CoreModule }  from '../core/core.module';
 import { AIModule }    from '../modules/ai/ai.module';
-import { AuthModule }  from '../modules/auth/auth.module';
 
 const moduleLogger = new Logger('QueueModule');
 
@@ -48,7 +46,7 @@ async function probeRedis(url: string): Promise<boolean> {
     enableOfflineQueue:   false,
     connectTimeout:       4000,
     maxRetriesPerRequest: 0,
-    retryStrategy:        () => null, // no reconnection
+    retryStrategy:        () => null,
   });
 
   return new Promise<boolean>((resolve) => {
@@ -82,7 +80,6 @@ const ALL_QUEUES = [
   QUEUE_NAMES.WEBHOOKS,
   QUEUE_NAMES.EXPORTS,
   QUEUE_NAMES.IMPORTS,
-  QUEUE_NAMES.CLERK_SYNC,
   QUEUE_NAMES.BILLING,
   QUEUE_NAMES.UPLOADS_PROCESS,
 ];
@@ -144,7 +141,6 @@ export class QueueModule {
         BullModule.registerQueue(...ALL_QUEUES.map((name) => ({ name }))),
         CoreModule,
         AIModule,
-        forwardRef(() => AuthModule),
       ],
       providers: [
         EmailQueueService,
@@ -153,7 +149,6 @@ export class QueueModule {
         EmailProcessor,
         NotificationsProcessor,
         AIJobsProcessor,
-        ClerkSyncProcessor,
       ],
       exports: [
         BullModule,

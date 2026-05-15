@@ -3,7 +3,6 @@ import { Navigate, Link } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useSignIn } from "@clerk/clerk-react";
 import { useAuth } from "@/app/providers/AuthContext";
 import { toast } from "sonner";
 import {
@@ -14,9 +13,6 @@ import {
 import { authRateLimiter } from "@/shared/lib/security";
 import { MOCK_MODE } from "@/shared/lib/env";
 const refImg = "/auth-bg.png";
-
-const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
-const useClerkMode = !MOCK_MODE && Boolean(CLERK_KEY);
 
 const loginSchema = z.object({
   email:    z.string().trim().email("Email inválido"),
@@ -58,7 +54,6 @@ const NEBULA_DOTS = [
 function Particles() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* Nebula glow layers — outer to inner */}
       <div className="absolute" style={{
         bottom:"-120px", left:"-120px",
         width:"500px", height:"500px", borderRadius:"50%",
@@ -74,7 +69,6 @@ function Particles() {
         width:"160px", height:"160px", borderRadius:"50%",
         background:"radial-gradient(circle, rgba(96,165,250,0.28) 0%, transparent 70%)",
       }}/>
-      {/* Individual glowing dots */}
       {NEBULA_DOTS.map((d,i) => (
         <div key={i} className="absolute rounded-full" style={{
           left:`${d.x}%`, top:`${d.y}%`,
@@ -102,14 +96,12 @@ function AuthPage() {
         background:"#07101f",
       }}>
 
-        {/* Blue glow radial — bottom-left corner */}
         <div style={{
           position:"absolute", bottom:"-60px", left:"-60px",
           width:"380px", height:"380px", borderRadius:"50%",
           background:"radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)",
           pointerEvents:"none",
         }}/>
-        {/* Subtle top-right glow */}
         <div style={{
           position:"absolute", top:"-40px", right:"-40px",
           width:"220px", height:"220px", borderRadius:"50%",
@@ -125,10 +117,8 @@ function AuthPage() {
           height:"100%", padding:"36px 52px",
         }}>
 
-          {/* ─ Centre block: logo + tagline + form ─ */}
           <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:"0" }}>
 
-            {/* Logo */}
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"18px", marginBottom:"20px" }}>
               <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", height:"56px" }}>
                 {[20,32,44,56,44,32,20].map((h,i) => (
@@ -145,7 +135,6 @@ function AuthPage() {
               </div>
             </div>
 
-            {/* Tagline */}
             <div style={{ textAlign:"center", marginBottom:"28px" }}>
               <p style={{ color:"#fff", fontWeight:700, fontSize:"15px", marginBottom:"6px" }}>
                 Sistema de Gestão Musical
@@ -155,7 +144,6 @@ function AuthPage() {
               </p>
             </div>
 
-            {/* Form */}
             <div>
               {mode==="login"  && <LoginForm  onForgot={()=>setMode("forgot")}/>}
               {mode==="forgot" && <ForgotForm onBack={()=>setMode("login")}/>}
@@ -163,7 +151,6 @@ function AuthPage() {
 
           </div>
 
-          {/* Footer — pinned to bottom */}
           <div style={{ paddingTop:"20px" }}>
             <div style={{ display:"flex", justifyContent:"center", gap:"28px", marginBottom:"12px" }}>
               {[Facebook,Instagram,MessageCircle,Globe].map((Icon,i) => (
@@ -187,7 +174,6 @@ function AuthPage() {
         className="hidden lg:block lg:w-[56%]"
         style={{ position:"relative", overflow:"hidden", background:"#040b16" }}
       >
-        {/* Reference image — right portion only (card mockup) */}
         <img
           src={refImg}
           alt=""
@@ -204,7 +190,6 @@ function AuthPage() {
           }}
         />
 
-        {/* Gradient that fades the image bottom into solid background */}
         <div style={{
           position:"absolute",
           bottom:0, left:0, right:0,
@@ -213,7 +198,6 @@ function AuthPage() {
           zIndex:1,
         }}/>
 
-        {/* Text + features over the solid area */}
         <div style={{
           position:"absolute",
           bottom:0, left:0, right:0,
@@ -292,8 +276,7 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(function AuthInpu
 function LoginForm({ onForgot }: { onForgot: () => void }) {
   const [showPass,setShowPass] = useState(false);
   const [loading,setLoading]   = useState(false);
-  const { signIn, setActive }  = useSignIn();
-  const { signIn: mockSignIn } = useAuth();
+  const { signIn }             = useAuth();
 
   const { register, handleSubmit, formState:{errors} } = useForm<LoginData>({
     resolver: zodResolver(loginSchema),
@@ -307,26 +290,15 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
     }
     setLoading(true);
     try {
-      if (useClerkMode && signIn) {
-        const result = await signIn.create({ identifier:data.email, password:data.password });
-        if (result.status==="complete") {
-          authRateLimiter.reset(data.email);
-          await setActive!({ session:result.createdSessionId });
-          toast.success("Bem-vindo ao MUSIC OS 360!");
-        } else {
-          toast.error("Autenticação incompleta. Verifique seu email.");
-        }
+      const { error } = await signIn(data.email, data.password);
+      if (error) {
+        toast.error(`${error.message}. ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`);
       } else {
-        const { error } = await mockSignIn(data.email, data.password);
-        if (error) {
-          toast.error(`${error.message}. ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`);
-        } else {
-          authRateLimiter.reset(data.email);
-          toast.success("Bem-vindo!");
-        }
+        authRateLimiter.reset(data.email);
+        toast.success("Bem-vindo ao MUSIC OS 360!");
       }
     } catch (err: unknown) {
-      toast.error((err as {errors?:{message:string}[]})?.errors?.[0]?.message ?? "Erro ao fazer login.");
+      toast.error((err as { message?: string })?.message ?? "Erro ao fazer login.");
     } finally { setLoading(false); }
   };
 

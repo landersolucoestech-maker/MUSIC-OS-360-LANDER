@@ -10,8 +10,8 @@
  *  ou:  cd apps/api && node --loader ts-node/esm seed.ts
  */
 import 'dotenv/config';
-import { neon }  from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-http';
+import { Pool }    from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { eq }      from 'drizzle-orm';
 import {
   organizations,
@@ -19,17 +19,15 @@ import {
   billingSubscriptions,
 } from './src/database/schema.js';
 
-const url =
-  process.env.NEON_DATABASE_DIRECT_URL ??
-  process.env.NEON_DATABASE_URL ??
-  process.env.DATABASE_URL;
+const url = process.env.DATABASE_URL;
 
 if (!url) {
-  console.error('❌  Defina NEON_DATABASE_DIRECT_URL, NEON_DATABASE_URL ou DATABASE_URL');
+  console.error('❌  Defina DATABASE_URL no ficheiro apps/api/.env');
   process.exit(1);
 }
 
-const db = drizzle(neon(url));
+const pool = new Pool({ connectionString: url });
+const db   = drizzle(pool);
 
 async function seed() {
   console.log('🌱  A iniciar seed...');
@@ -111,12 +109,12 @@ async function seed() {
     trialEnd.setDate(trialEnd.getDate() + 14);
 
     const [billing] = await db.insert(billingSubscriptions).values({
-      org_id:       orgId,
-      plan:         'professional',
-      status:       'trial',
+      org_id:        orgId,
+      plan:          'professional',
+      status:        'trial',
       trial_ends_at: trialEnd,
-      seats:        10,
-      seats_used:   1,
+      seats:         10,
+      seats_used:    1,
     }).returning({ id: billingSubscriptions.id });
     console.log('✅  Billing subscription criada:', billing.id);
   }
@@ -124,6 +122,8 @@ async function seed() {
   console.log('\n🎉  Seed concluído!');
   console.log('    org_id:    ', orgId);
   console.log('    tenant_id: ', tenantId);
+
+  await pool.end();
 }
 
 seed().catch((err) => {

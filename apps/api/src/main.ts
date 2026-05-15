@@ -107,7 +107,7 @@ async function bootstrap() {
       .setVersion('1.0')
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-        'Clerk JWT',
+        'JWT',
       )
       .addServer(`http://localhost:${process.env['PORT'] ?? 3001}`, 'Development')
       .build();

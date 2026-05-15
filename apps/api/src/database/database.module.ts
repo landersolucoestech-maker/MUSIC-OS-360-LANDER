@@ -1,17 +1,16 @@
 /**
  * database/database.module.ts
  *
- * Módulo Drizzle ORM com Neon PostgreSQL (serverless).
+ * Módulo Drizzle ORM com PostgreSQL padrão (node-postgres / pg).
  * Fornece o token DRIZZLE_DB injectável em todos os repositórios.
  *
- * Ligação: NEON_DATABASE_URL (pooler, ws)
- * Ligação directa (migrations): NEON_DATABASE_DIRECT_URL
+ * Ligação: DATABASE_URL (postgres://...)
  */
 
 import { Module, Global, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { drizzle } from 'drizzle-orm/neon-http';
-import { neon } from '@neondatabase/serverless';
+import { drizzle } from 'drizzle-orm/node-postgres';
+import { Pool } from 'pg';
 import * as schema from './schema';
 
 export const DRIZZLE_DB = Symbol('DRIZZLE_DB');
@@ -27,21 +26,19 @@ export type DrizzleDB = ReturnType<typeof drizzle<typeof schema>>;
       useFactory: (config: ConfigService) => {
         const logger = new Logger('DatabaseModule');
 
-        const url =
-          config.get<string>('NEON_DATABASE_URL') ??
-          config.get<string>('DATABASE_URL');
+        const url = config.get<string>('DATABASE_URL');
 
         if (!url) {
           logger.warn(
-            'NEON_DATABASE_URL não configurado — DB desactivado (modo standalone)',
+            'DATABASE_URL não configurado — DB desactivado (modo standalone)',
           );
           return null;
         }
 
-        const sql = neon(url);
-        const db = drizzle(sql, { schema });
+        const pool = new Pool({ connectionString: url });
+        const db   = drizzle(pool, { schema });
 
-        logger.log('Neon PostgreSQL conectado via Drizzle ORM');
+        logger.log('PostgreSQL conectado via Drizzle ORM (node-postgres)');
         return db;
       },
     },

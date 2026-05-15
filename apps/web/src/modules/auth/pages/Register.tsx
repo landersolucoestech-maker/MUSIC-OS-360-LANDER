@@ -1,6 +1,5 @@
 import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useSignUp } from "@clerk/clerk-react";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -131,11 +130,6 @@ function Field({ label, error, children }: { label: string; error?: string; chil
 const inputCls = "flex h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors";
 const selectCls = inputCls + " appearance-none cursor-pointer";
 
-/* ─────────── Clerk mode detection ─────────── */
-const CLERK_KEY    = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
-const MOCK_MODE_R  = import.meta.env.VITE_USE_MOCK === "true" || import.meta.env.VITE_MOCK_MODE === "true";
-const useClerkMode = !MOCK_MODE_R && Boolean(CLERK_KEY);
-
 /* ─────────── MAIN COMPONENT ─────────── */
 export default function Register() {
   const navigate              = useNavigate();
@@ -143,11 +137,6 @@ export default function Register() {
   const [isLoading, setIsLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
   const [showCpw, setShowCpw] = useState(false);
-  const [pendingVerification, setPendingVerification] = useState(false);
-  const [verifyCode, setVerifyCode]   = useState("");
-  const [verifyLoading, setVerifyLoading] = useState(false);
-  const [savedTenant, setSavedTenant] = useState<Record<string, unknown> | null>(null);
-  const { signUp, setActive } = useSignUp();
 
   /* collected data across steps */
   const [data, setData] = useState<Partial<Step1 & Step2 & Step3 & Step4>>({});
@@ -200,7 +189,7 @@ export default function Register() {
     };
   };
 
-  /* ── Persiste tenant no localStorage (sem navegar ainda) ── */
+  /* ── Persiste tenant no localStorage ── */
   const persistTenant = (tenant: Record<string, unknown>) => {
     localStorage.setItem(`musicos360_tenant_${tenant.id}`, JSON.stringify(tenant));
     localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
@@ -213,67 +202,13 @@ export default function Register() {
     const tenant = buildTenant(all);
 
     try {
-      if (useClerkMode && signUp && all.email && all.password) {
-        const result = await signUp.create({
-          emailAddress: all.email,
-          password:     all.password,
-          firstName:    all.fullName?.split(" ")[0] ?? "",
-          lastName:     all.fullName?.split(" ").slice(1).join(" ") ?? "",
-        });
-
-        if (result.status === "complete") {
-          /* Salva ANTES de setActive para não perder com redirect */
-          persistTenant(tenant);
-          if (setActive) await setActive({ session: result.createdSessionId });
-          toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
-          navigate("/");
-        } else {
-          /* Clerk exige verificação — salva tenant no localStorage AGORA antes de qualquer redirect */
-          persistTenant(tenant);
-          await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
-          setSavedTenant(tenant);
-          setPendingVerification(true);
-          toast.info("Código enviado para " + all.email + ". Digite-o abaixo.");
-        }
-      } else {
-        /* Modo mock — sem Clerk */
-        persistTenant(tenant);
-        toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
-        navigate("/");
-      }
+      persistTenant(tenant);
+      toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
+      navigate("/");
     } catch (err: unknown) {
-      const clerkErr = err as { errors?: { code?: string; message: string }[] };
-      const clerkError = clerkErr?.errors?.[0];
-      if (clerkError?.code === "form_identifier_exists") {
-        toast.error("Este email já está cadastrado. Faça login ou use outro email.");
-      } else {
-        toast.error(clerkError?.message ?? "Erro ao criar conta. Tente novamente.");
-      }
+      toast.error((err as { message?: string })?.message ?? "Erro ao criar conta. Tente novamente.");
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  /* ── Handler verificação de email ── */
-  const onVerifyCode = async () => {
-    if (!verifyCode.trim() || !signUp || !setActive) return;
-    setVerifyLoading(true);
-    try {
-      const result = await signUp.attemptEmailAddressVerification({ code: verifyCode.trim() });
-      if (result.status === "complete") {
-        /* Tenant já está no localStorage — só ativa sessão e redireciona */
-        const tenantName = savedTenant?.name as string | undefined;
-        await setActive({ session: result.createdSessionId });
-        toast.success(`Empresa "${tenantName ?? ""}" criada com sucesso!`);
-        navigate("/");
-      } else {
-        toast.error("Verificação incompleta. Tente novamente.");
-      }
-    } catch (err: unknown) {
-      const clerkErr = err as { errors?: { message: string }[] };
-      toast.error(clerkErr?.errors?.[0]?.message ?? "Código inválido.");
-    } finally {
-      setVerifyLoading(false);
     }
   };
 
@@ -520,345 +455,151 @@ export default function Register() {
                   className={inputCls}
                   placeholder="Lander Records Workspace"
                   {...form3.register("workspaceName")}
-                  data-testid="input-workspace-name"
                   onBlur={handleSlugSuggest}
+                  data-testid="input-workspace-name"
                 />
               </Field>
 
-              <Field label="Slug / URL da Empresa" error={form3.formState.errors.slug?.message}>
-                <div className="flex items-center gap-0">
-                  <div className="flex items-center h-11 px-3 rounded-l-lg border border-r-0 border-white/10 bg-white/[0.03] text-gray-500 text-sm whitespace-nowrap shrink-0">
-                    musicos360.com/
-                  </div>
+              <Field label="Slug (URL)" error={form3.formState.errors.slug?.message}>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">musicos360.com/</span>
                   <input
-                    className="flex h-11 flex-1 rounded-r-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors"
-                    placeholder="minha-gravadora"
+                    className={inputCls + " pl-[108px]"}
+                    placeholder="lander-records"
                     {...form3.register("slug")}
                     data-testid="input-slug"
-                    onChange={(e) => form3.setValue("slug", slugify(e.target.value))}
                   />
                 </div>
-                {form3.watch("slug") && (
-                  <p className="text-[11px] text-gray-500 mt-1">
-                    URL: <span className="text-primary font-mono">musicos360.com/{form3.watch("slug")}</span>
-                  </p>
-                )}
               </Field>
-
-              {/* Workspace preview card */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 mt-2">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center border border-primary/30">
-                    <Music className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-[13px] font-semibold text-white">{workspaceName || "Nome do Workspace"}</p>
-                    <p className="text-[11px] text-gray-500 font-mono">
-                      musicos360.com/{form3.watch("slug") || "seu-slug"}
-                    </p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center">
-                  {[
-                    { label: "Artistas",    n: "—" },
-                    { label: "Projetos",    n: "—" },
-                    { label: "Usuários",    n: "1" },
-                  ].map(({ label, n }) => (
-                    <div key={label} className="rounded-lg bg-white/5 p-2">
-                      <p className="text-base font-bold text-white">{n}</p>
-                      <p className="text-[10px] text-gray-500">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
 
               <StepActions step={step} setStep={setStep} isLoading={isLoading} />
             </form>
           )}
 
-          {/* ── VERIFICAÇÃO DE EMAIL (Clerk) ── */}
-          {pendingVerification && (
-            <div className="space-y-5 flex-1">
-              <div className="flex items-center gap-2 mb-2">
-                <ShieldCheck className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-semibold text-white">Confirme seu Email</h2>
-              </div>
-              <p className="text-sm text-gray-400">
-                Enviamos um código de verificação para <span className="text-white font-medium">{data.email}</span>. Digite-o abaixo para ativar sua conta.
-              </p>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                placeholder="000000"
-                value={verifyCode}
-                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ""))}
-                className="flex h-14 w-full rounded-lg border border-white/20 bg-white/5 px-4 text-2xl text-center text-white tracking-[0.5em] placeholder:text-gray-600 focus:outline-none focus:ring-2 focus:ring-primary/60 transition-colors"
-                data-testid="input-verify-code"
-              />
-              <Button
-                type="button"
-                onClick={onVerifyCode}
-                disabled={verifyLoading || verifyCode.length < 6}
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-sm tracking-wider rounded-xl gap-2"
-                data-testid="button-verify-code"
-              >
-                {verifyLoading ? (
-                  <><Loader2 className="h-4 w-4 animate-spin" />VERIFICANDO...</>
-                ) : (
-                  <><ShieldCheck className="h-4 w-4" />CONFIRMAR CÓDIGO</>
-                )}
-              </Button>
-              <button
-                type="button"
-                onClick={() => setPendingVerification(false)}
-                className="w-full flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-300 text-[12.5px] transition-colors"
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Voltar
-              </button>
-            </div>
-          )}
-
           {/* ── STEP 4 — ATIVAÇÃO ── */}
-          {step === 4 && !pendingVerification && (
+          {step === 4 && (
             <form onSubmit={form4.handleSubmit(onStep4)} className="space-y-5 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Rocket className="h-5 w-5 text-primary" />
                 <h2 className="text-base font-semibold text-white">Plano & Ativação</h2>
               </div>
 
-              {/* Plan selection */}
-              <div className="space-y-1">
-                <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">Período Trial</label>
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { value: "trial_7",  label: "7 dias",  desc: "Ideal para avaliar" },
-                    { value: "trial_14", label: "14 dias", desc: "Recomendado", recommended: true },
-                  ].map(({ value, label, desc, recommended }) => {
-                    const selected = form4.watch("plan") === value;
-                    return (
-                      <label
-                        key={value}
-                        className={cn(
-                          "relative flex flex-col gap-1 rounded-xl border p-4 cursor-pointer transition-all",
-                          selected ? "border-primary bg-primary/10" : "border-white/10 bg-white/5 hover:border-white/20",
-                        )}
-                        data-testid={`plan-${value}`}
-                      >
-                        <input type="radio" value={value} {...form4.register("plan")} className="sr-only" />
-                        {recommended && (
-                          <span className="absolute -top-2 right-3 text-[9px] font-bold bg-primary text-white px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Recomendado
-                          </span>
-                        )}
-                        <p className="text-[15px] font-bold text-white">{label}</p>
-                        <p className="text-[11px] text-gray-400">{desc}</p>
-                        <p className="text-[11px] text-primary font-medium">Gratuito</p>
-                      </label>
-                    );
-                  })}
-                </div>
+              {/* Plan selector */}
+              <div className="grid grid-cols-2 gap-3">
+                {([
+                  { value: "trial_7",  label: "Trial 7 dias",  desc: "Ideal para avaliação rápida", icon: Zap },
+                  { value: "trial_14", label: "Trial 14 dias", desc: "Mais tempo para explorar",    icon: ShieldCheck },
+                ] as const).map((plan) => {
+                  const Icon = plan.icon;
+                  const isSelected = form4.watch("plan") === plan.value;
+                  return (
+                    <button
+                      key={plan.value}
+                      type="button"
+                      onClick={() => form4.setValue("plan", plan.value)}
+                      className={cn(
+                        "flex flex-col items-start gap-1 p-4 rounded-lg border text-left transition-all",
+                        isSelected
+                          ? "border-primary bg-primary/10"
+                          : "border-white/10 bg-white/5 hover:border-white/20",
+                      )}
+                    >
+                      <Icon className={cn("h-5 w-5 mb-1", isSelected ? "text-primary" : "text-gray-400")} />
+                      <span className="text-sm font-semibold text-white">{plan.label}</span>
+                      <span className="text-[11px] text-gray-400">{plan.desc}</span>
+                    </button>
+                  );
+                })}
               </div>
 
-              {/* Summary */}
-              <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4 space-y-2">
-                <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Resumo do Cadastro</p>
-                {[
-                  { label: "Empresa",    value: data.companyName ?? "—" },
-                  { label: "CNPJ",       value: data.cnpj         ?? "—" },
-                  { label: "Admin",      value: data.fullName      ?? "—" },
-                  { label: "Email",      value: data.email         ?? "—" },
-                  { label: "Workspace",  value: data.workspaceName ?? "—" },
-                  { label: "URL",        value: `musicos360.com/${data.slug ?? "—"}` },
-                ].map(({ label, value }) => (
-                  <div key={label} className="flex items-center justify-between text-[12px]">
-                    <span className="text-gray-500">{label}</span>
-                    <span className="text-white font-medium truncate max-w-[200px] text-right">{value}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Checkboxes */}
+              {/* Terms */}
               <div className="space-y-3">
                 {[
-                  {
-                    field: "acceptTerms" as const,
-                    label: "Li e aceito os Termos de Uso do MUSIC OS 360",
-                    error: form4.formState.errors.acceptTerms?.message,
-                    testid: "checkbox-terms",
-                  },
-                  {
-                    field: "acceptLgpd" as const,
-                    label: "Li e aceito a Política de Privacidade (LGPD)",
-                    error: form4.formState.errors.acceptLgpd?.message,
-                    testid: "checkbox-lgpd",
-                  },
-                ].map(({ field, label, error, testid }) => (
-                  <div key={field} className="space-y-1">
-                    <label className="flex items-start gap-3 cursor-pointer group">
-                      <input
-                        type="checkbox"
-                        data-testid={testid}
-                        className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 text-primary focus:ring-primary"
-                        {...form4.register(field)}
-                      />
-                      <span className="text-[12px] text-gray-400 group-hover:text-gray-300 transition-colors leading-snug">
-                        {label}
-                      </span>
-                    </label>
-                    {error && <p className="text-[11px] text-red-400 pl-7">{error}</p>}
-                  </div>
+                  { field: "acceptTerms" as const, label: "Aceito os Termos de Uso e Política de Privacidade" },
+                  { field: "acceptLgpd" as const,  label: "Aceito o tratamento de dados conforme a LGPD" },
+                ].map(({ field, label }) => (
+                  <label key={field} className="flex items-start gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 accent-primary"
+                      {...form4.register(field)}
+                      data-testid={`checkbox-${field}`}
+                    />
+                    <span className="text-[12px] text-gray-400">{label}</span>
+                  </label>
                 ))}
+                {(form4.formState.errors.acceptTerms || form4.formState.errors.acceptLgpd) && (
+                  <p className="text-[11.5px] text-red-400">
+                    {form4.formState.errors.acceptTerms?.message ?? form4.formState.errors.acceptLgpd?.message}
+                  </p>
+                )}
               </div>
 
-              {/* Clerk bot-protection anchor — obrigatório para custom signup flows */}
-              <div id="clerk-captcha" />
-
-              <Button
-                type="submit"
-                className="w-full h-12 bg-primary hover:bg-primary/90 text-white font-bold text-sm tracking-wider rounded-xl gap-2"
-                disabled={isLoading}
-                data-testid="button-criar-empresa"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    CRIANDO EMPRESA...
-                  </>
-                ) : (
-                  <>
-                    <Rocket className="h-4 w-4" />
-                    CRIAR EMPRESA
-                  </>
-                )}
-              </Button>
-
-              <button
-                type="button"
-                className="w-full flex items-center justify-center gap-1.5 text-gray-500 hover:text-gray-300 text-[12.5px] transition-colors"
-                onClick={() => setStep(3)}
-              >
-                <ArrowLeft className="h-3.5 w-3.5" /> Voltar
-              </button>
+              <StepActions step={step} setStep={setStep} isLoading={isLoading} isLastStep />
             </form>
           )}
 
-          {/* Footer */}
-          <div className="mt-8 pt-6 border-t border-white/10 text-center">
-            <p className="text-xs text-gray-600">Copyright © MUSIC OS 360. Todos os direitos reservados.</p>
-          </div>
         </div>
       </div>
 
-      {/* ── RIGHT — hero ── */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-gray-900 via-gray-800 to-black flex-col">
-
-        {/* BG glows */}
-        <div className="absolute inset-0 opacity-25 pointer-events-none">
-          <div className="absolute top-1/4 left-1/3 w-80 h-80 bg-primary rounded-full blur-3xl" />
-          <div className="absolute bottom-1/4 right-1/4 w-56 h-56 bg-primary/50 rounded-full blur-3xl" />
+      {/* ── RIGHT — marketing panel ── */}
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-gray-950 to-black border-l border-white/5 px-12 py-16">
+        <div className="mb-10">
+          <h2 className="text-2xl font-bold text-white mb-2">Tudo para sua música crescer</h2>
+          <p className="text-sm text-gray-400">Um sistema completo para gravadoras, editoras e distribuidoras.</p>
         </div>
-
-        {/* Content */}
-        <div className="relative z-10 flex flex-col h-full px-12 py-12">
-          {/* Logo + title */}
-          <div className="flex items-center gap-3 mb-auto">
-            <img
-              src="/lovable-uploads/a21a1ab1-df8a-4b7b-a1e4-0e36f63eff02.png"
-              alt="MUSIC OS 360"
-              className="h-12 w-12 object-contain"
-            />
-            <div>
-              <p className="text-base font-bold text-white tracking-widest">MUSIC OS 360</p>
-              <p className="text-[11px] text-gray-400 tracking-wider">ERP OPERACIONAL MUSICAL</p>
+        <div className="grid grid-cols-2 gap-5">
+          {benefits.map(({ icon: Icon, title, desc }) => (
+            <div key={title} className="flex gap-3">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Icon className="h-4.5 w-4.5 text-primary" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-white">{title}</p>
+                <p className="text-[11.5px] text-gray-500 mt-0.5 leading-snug">{desc}</p>
+              </div>
             </div>
-          </div>
-
-          {/* Main headline */}
-          <div className="my-10">
-            <h2 className="text-4xl font-black text-white leading-tight mb-4">
-              O sistema que a<br />
-              <span className="text-primary">indústria musical</span><br />
-              precisava.
-            </h2>
-            <p className="text-gray-400 text-base leading-relaxed max-w-sm">
-              Centralize artistas, catálogo, contratos, financeiro e distribuição em um único lugar. Plataforma enterprise para gravadoras e editoras.
-            </p>
-          </div>
-
-          {/* Benefits grid */}
-          <div className="grid grid-cols-2 gap-3 mb-10">
-            {benefits.map(({ icon: Icon, title, desc }) => (
-              <div
-                key={title}
-                className="rounded-xl border border-white/10 bg-white/[0.04] p-3.5 hover:border-primary/30 hover:bg-primary/[0.04] transition-all duration-200"
-              >
-                <div className="flex items-center gap-2 mb-1.5">
-                  <div className="h-6 w-6 rounded-md bg-primary/20 flex items-center justify-center">
-                    <Icon className="h-3.5 w-3.5 text-primary" />
-                  </div>
-                  <p className="text-[12px] font-semibold text-white">{title}</p>
-                </div>
-                <p className="text-[11px] text-gray-500 leading-snug">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          {/* Trust badges */}
-          <div className="flex items-center gap-4">
-            {[
-              { icon: ShieldCheck, label: "LGPD Compliant" },
-              { icon: Zap,         label: "99.9% Uptime" },
-              { icon: Globe,       label: "Multi-tenant" },
-            ].map(({ icon: Icon, label }) => (
-              <div key={label} className="flex items-center gap-1.5 text-[11px] text-gray-500">
-                <Icon className="h-3.5 w-3.5 text-primary" />
-                {label}
-              </div>
-            ))}
-          </div>
+          ))}
         </div>
       </div>
+
     </div>
   );
 }
 
 /* ── Step navigation actions ── */
 function StepActions({
-  step,
-  setStep,
-  isLoading,
+  step, setStep, isLoading, isLastStep = false,
 }: {
   step: number;
-  setStep: (n: number) => void;
+  setStep: (s: number) => void;
   isLoading: boolean;
+  isLastStep?: boolean;
 }) {
   return (
-    <div className="flex items-center gap-3 pt-2">
+    <div className="flex gap-3 mt-auto pt-4">
       {step > 1 && (
         <Button
           type="button"
           variant="outline"
-          className="flex-1 h-11 border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white gap-1.5"
+          className="flex-1 border-white/10 text-gray-400 hover:text-white hover:border-white/20"
           onClick={() => setStep(step - 1)}
-          data-testid="button-back"
+          disabled={isLoading}
         >
-          <ArrowLeft className="h-4 w-4" /> Voltar
+          <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
         </Button>
       )}
       <Button
         type="submit"
-        className="flex-1 h-11 bg-primary hover:bg-primary/90 text-white font-bold tracking-wider gap-1.5"
+        className="flex-1 bg-primary hover:bg-primary/90"
         disabled={isLoading}
-        data-testid="button-next"
       >
         {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
+          <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Criando...</>
+        ) : isLastStep ? (
+          <><Rocket className="h-4 w-4 mr-1" /> Ativar Workspace</>
         ) : (
-          <>
-            {step === 3 ? "Continuar" : "Próximo"}
-            <ArrowRight className="h-4 w-4" />
-          </>
+          <>Próximo <ArrowRight className="h-4 w-4 ml-1" /></>
         )}
       </Button>
     </div>

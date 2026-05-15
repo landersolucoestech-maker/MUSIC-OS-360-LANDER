@@ -10,6 +10,5 @@
  * O frontend usa sempre os adapters em integrations/adapters/.
  */
 
-export { CLERK_CLIENT_STUB }   from "./clerk.client";
 export { STRIPE_CLIENT_STUB }  from "./stripe.client";
 export { RESEND_CLIENT_STUB }  from "./resend.client";

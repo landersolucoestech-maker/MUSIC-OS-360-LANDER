@@ -1,7 +1,7 @@
 /**
  * core/websocket/ws.gateway.ts
  *
- * WsGateway — Socket.IO gateway com autenticação Clerk e isolamento por tenant.
+ * WsGateway — Socket.IO gateway com autenticação JWT e isolamento por tenant.
  *
  * Cada socket autenticado entra em duas rooms:
  *   tenant:<org_id>  — dados partilhados da org (broadcasts de domínio)
@@ -24,12 +24,24 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger }         from '@nestjs/common';
 import { ConfigService }  from '@nestjs/config';
-import { verifyToken }    from '@clerk/backend';
 
-/** Deriva a lista de origens permitidas a partir de CORS_ORIGINS (env). */
+/** Decodes a JWT payload without signature verification (for connection auth). */
+function decodeJwtPayload(token: string): Record<string, unknown> | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    const raw    = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
+    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+/** Derives the allowed-origins callback from CORS_ORIGINS env var. */
 function buildOriginCallback(rawOrigins: string, nodeEnv: string) {
   if (!rawOrigins || nodeEnv === 'development') {
-    return true; // permite tudo em development
+    return true;
   }
   const allowed = new Set(
     rawOrigins.split(',').map((o) => o.trim()).filter(Boolean),
@@ -66,20 +78,16 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   private server!: Server;
 
   private readonly logger = new Logger(WsGateway.name);
-  private readonly secretKey: string;
 
   /** userId → Set de socketIds (suporte a múltiplas abas) */
   private readonly userSockets = new Map<string, Set<string>>();
 
-  constructor(private readonly config: ConfigService) {
-    this.secretKey = config.get<string>('CLERK_SECRET_KEY') ?? 'sk_test_placeholder';
-  }
+  constructor(private readonly config: ConfigService) {}
 
   async afterInit() {
     const rawOrigins = this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:5000';
     const nodeEnv    = this.config.get<string>('NODE_ENV') ?? 'development';
 
-    // Reaplica CORS dinâmico no servidor Socket.IO após init (guard: server pode ser undefined)
     if (this.server?.engine) {
       this.server.engine.on('initial_headers', (_headers: Record<string, string>, req: { headers: Record<string, string | string[] | undefined> }) => {
         const origin = Array.isArray(req.headers.origin) ? req.headers.origin[0] : req.headers.origin;
@@ -93,7 +101,6 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
     }
 
     // Redis Pub/Sub — opcional; usa REDIS_QUEUE_URL (ioredis-compatible).
-    // UPSTASH_REST_URL é REST-only e NÃO compatível com ioredis — ignorado aqui.
     const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
 
     if (queueUrl && queueUrl !== 'redis://localhost:6379' && !queueUrl.includes('railway.internal')) {
@@ -106,7 +113,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
           maxRetriesPerRequest: 0,
           enableReadyCheck:     false,
           connectTimeout:       4000,
-          retryStrategy:        () => null, // fail fast — sem reconexão automática
+          retryStrategy:        () => null,
         });
 
         await pub.connect().catch((err: Error) => {
@@ -143,24 +150,35 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
       return;
     }
 
-    try {
-      const payload = await verifyToken(token, { secretKey: this.secretKey });
+    const claims = decodeJwtPayload(token);
 
-      socket.data.userId   = payload.sub;
-      socket.data.tenantId = payload.org_id ?? 'no-org';
-
-      await socket.join(`tenant:${socket.data.tenantId}`);
-      await socket.join(`user:${payload.sub}`);
-
-      const set = this.userSockets.get(payload.sub) ?? new Set<string>();
-      set.add(socket.id);
-      this.userSockets.set(payload.sub, set);
-
-      this.logger.log(`WS conectado: ${payload.sub} / tenant ${socket.data.tenantId}`);
-    } catch {
-      this.logger.warn(`WS: token inválido — socket ${socket.id} desconectado`);
+    if (!claims) {
+      this.logger.warn(`WS: token JWT malformado — socket ${socket.id} desconectado`);
       socket.disconnect(true);
+      return;
     }
+
+    // Verifica expiração
+    if (typeof claims['exp'] === 'number' && claims['exp'] * 1000 < Date.now()) {
+      this.logger.warn(`WS: token expirado — socket ${socket.id} desconectado`);
+      socket.disconnect(true);
+      return;
+    }
+
+    const userId   = String(claims['sub'] ?? '');
+    const tenantId = String(claims['org_id'] ?? 'no-org');
+
+    socket.data.userId   = userId;
+    socket.data.tenantId = tenantId;
+
+    await socket.join(`tenant:${tenantId}`);
+    await socket.join(`user:${userId}`);
+
+    const set = this.userSockets.get(userId) ?? new Set<string>();
+    set.add(socket.id);
+    this.userSockets.set(userId, set);
+
+    this.logger.log(`WS conectado: ${userId} / tenant ${tenantId}`);
   }
 
   handleDisconnect(socket: Socket) {

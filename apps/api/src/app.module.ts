@@ -2,12 +2,12 @@
  * app.module.ts
  *
  * Módulo raiz do MUSIC OS 360 API.
- * Infraestrutura completa:
- *   - Neon PostgreSQL (Drizzle ORM)
- *   - Upstash Redis (cache / rate-limit)
+ * Infraestrutura:
+ *   - PostgreSQL (Drizzle ORM / node-postgres)
+ *   - Cache em memória (InMemoryCacheClient)
  *   - Cloudflare R2 (file storage)
- *   - BullMQ + Railway Redis (filas assíncronas)
- *   - Clerk (autenticação JWT + webhook sync)
+ *   - BullMQ + Redis (filas assíncronas)
+ *   - JWT (autenticação)
  */
 
 import { Module } from '@nestjs/common';
@@ -52,10 +52,10 @@ import { ArtistGoalsModule }       from './modules/artist-goals/artist-goals.mod
 import { ContentDetectionsModule } from './modules/content-detections/content-detections.module';
 import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
 import { HrModule }                from './modules/hr/hr.module';
-import { ClerkAuthGuard }    from './core/guards/clerk-auth.guard';
-import { TenantGuard }       from './core/guards/tenant.guard';
-import { RolesGuard }        from './core/guards/roles.guard';
-import { RateLimitGuard }    from './core/guards/rate-limit.guard';
+import { JwtAuthGuard }    from './core/guards/clerk-auth.guard';
+import { TenantGuard }     from './core/guards/tenant.guard';
+import { RolesGuard }      from './core/guards/roles.guard';
+import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
 @Module({
   imports: [
@@ -65,10 +65,10 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
       validate: validateEnv,
     }),
 
-    // ── Neon PostgreSQL (Drizzle ORM) ─────────────────────────────────────────
+    // ── PostgreSQL (Drizzle ORM / node-postgres) ──────────────────────────────
     DatabaseModule,
 
-    // ── Upstash Redis (cache / rate-limit) ────────────────────────────────────
+    // ── Cache em memória ─────────────────────────────────────────────────────
     CacheModule,
 
     // ── Cloudflare R2 (file storage) ──────────────────────────────────────────
@@ -77,13 +77,13 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
     // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
     CoreModule,
 
-    // ── Auth (Clerk JWT + Webhook Sync) ───────────────────────────────────────
+    // ── Auth (JWT) ────────────────────────────────────────────────────────────
     AuthModule,
 
-    // ── Filas (BullMQ + QueueModule) — só quando Redis ioredis está disponível
+    // ── Filas (BullMQ) — só quando Redis ioredis está disponível ─────────────
     QueueModule.register(),
 
-    // ── WebSocket Gateway (Socket.IO + Redis Pub/Sub) ─────────────────────────
+    // ── WebSocket Gateway ─────────────────────────────────────────────────────
     WsModule,
 
     // ── Módulos de domínio ────────────────────────────────────────────────────
@@ -130,7 +130,7 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas
-    // Ordem: RateLimitGuard → ClerkAuthGuard → TenantGuard → RolesGuard
+    // Ordem: RateLimitGuard → JwtAuthGuard → TenantGuard → RolesGuard
     Reflector,
     {
       provide:  APP_GUARD,
@@ -138,7 +138,7 @@ import { RateLimitGuard }    from './core/guards/rate-limit.guard';
     },
     {
       provide:  APP_GUARD,
-      useClass: ClerkAuthGuard,
+      useClass: JwtAuthGuard,
     },
     {
       provide:  APP_GUARD,

@@ -6,11 +6,18 @@ const ROLES    = ['owner', 'manager', 'editor', 'viewer', 'accountant', 'artist'
 const STATUSES = ['active', 'inactive', 'suspended', 'invited'] as const;
 
 export class CreateUserDto {
-  @ApiProperty() @IsString() clerkId!: string;
+  /** User identifier stored in clerk_user_id column. */
+  @ApiProperty({ description: 'Identificador único do utilizador (JWT sub)' })
+  @IsString()
+  userId!: string;
+
   @ApiProperty() @IsEmail() email!: string;
+
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) fullName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
+
   @ApiProperty({ enum: ROLES }) @IsIn(ROLES) role!: string;
+
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }
 

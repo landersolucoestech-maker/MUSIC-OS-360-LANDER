@@ -1,13 +1,10 @@
 /**
  * shared/integrations/contracts/auth.contract.ts
  *
- * Contrato de autenticação — implementação alvo: Clerk.
- *
- * ESTADO ACTUAL: standalone/mock — AuthProvider em app/providers/AuthProvider.tsx
- * MIGRAÇÃO FUTURA: substituir AuthProvider por ClerkProvider mantendo este contrato.
+ * Contrato de autenticação — implementação: NestJS JWT.
  *
  * Qualquer componente que precise de dados de auth deve depender de IAuthProvider,
- * nunca de @clerk/react directamente.
+ * nunca de um SDK de auth de terceiro directamente.
  */
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────
@@ -52,9 +49,9 @@ export interface AuthInviteParams {
 /**
  * IAuthProvider — contrato que todo provider de autenticação deve implementar.
  *
- * Implementações previstas:
+ * Implementações:
  *   - MockAuthProvider  (standalone, já em uso)
- *   - ClerkAuthProvider (produção, migração futura)
+ *   - NestAuthProvider  (produção, JWT via NestJS)
  */
 export interface IAuthProvider {
   /** Sessão activa, ou null se não autenticado */
@@ -93,9 +90,9 @@ export interface AuthProviderCapabilities {
   supportsAuditLog: boolean;
 }
 
-export const CLERK_CAPABILITIES: AuthProviderCapabilities = {
-  supportsSSO: true,
-  supportsMFA: true,
+export const JWT_AUTH_CAPABILITIES: AuthProviderCapabilities = {
+  supportsSSO: false,
+  supportsMFA: false,
   supportsPasswordReset: true,
   supportsInvites: true,
   supportsAuditLog: true,

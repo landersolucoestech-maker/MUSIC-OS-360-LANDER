@@ -15,7 +15,6 @@ export const QUEUE_NAMES = {
   WEBHOOKS:           'webhooks',
   EXPORTS:            'exports',
   IMPORTS:            'imports',
-  CLERK_SYNC:         'clerk-sync',
   BILLING:            'billing',
   UPLOADS_PROCESS:    'uploads-process',
 } as const;

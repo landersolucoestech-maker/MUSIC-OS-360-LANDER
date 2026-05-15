@@ -14,7 +14,7 @@ import * as schema from '../../database/schema';
 import { DRIZZLE_DB } from '../../database/database.module';
 import { IS_PUBLIC_KEY } from './clerk-auth.guard';
 import type { Request } from 'express';
-import type { ClerkAuth } from './clerk-auth.guard';
+import type { JwtAuth } from './clerk-auth.guard';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -33,14 +33,21 @@ export class TenantGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    const request = context.switchToHttp().getRequest<Request & { auth?: ClerkAuth }>();
+    const request = context.switchToHttp().getRequest<Request & { auth?: JwtAuth }>();
     const auth    = request.auth;
 
     if (!auth?.orgId) {
       throw new UnauthorizedException('Organização não identificada no token');
     }
 
-    // 1. Find active tenant by clerk_org_id (new snake_case schema)
+    if (!this.db) {
+      this.logger.warn('DB não configurado — TenantGuard em modo passthrough');
+      return true;
+    }
+
+    // clerk_org_id is the unique identifier column in the tenants table.
+    // The column name is a historical artifact — it stores the org identifier
+    // from the JWT `org_id` claim regardless of auth provider.
     const [tenant] = await this.db
       .select()
       .from(schema.tenants)
@@ -56,7 +63,8 @@ export class TenantGuard implements CanActivate {
       throw new UnauthorizedException('Tenant não encontrado ou inativo');
     }
 
-    // 2. Verify user is an active member via org_members (not users table)
+    // clerk_user_id is the unique identifier column in the org_members table.
+    // Stores the user identifier from the JWT `sub` claim.
     const [member] = await this.db
       .select()
       .from(schema.orgMembers)

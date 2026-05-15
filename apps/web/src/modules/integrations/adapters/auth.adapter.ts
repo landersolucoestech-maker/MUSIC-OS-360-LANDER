@@ -2,7 +2,7 @@
  * integrations/adapters/auth.adapter.ts
  *
  * Adapter de autenticação — selecciona MockAuthProvider (standalone)
- * ou ClerkAuthProvider (produção) sem expor detalhes ao código de domínio.
+ * ou NestAuthProvider (produção) sem expor detalhes ao código de domínio.
  *
  * REGRA: módulos NUNCA importam o provider directamente.
  * Importam sempre daqui.
@@ -16,19 +16,13 @@ import type { IAuthProvider } from "@/modules/integrations/dto";
 import { MOCK_MODE } from "@/shared/lib/env";
 import { mockAuthProvider } from "@/modules/integrations/providers";
 
-/**
- * MIGRAÇÃO: quando Clerk estiver configurado, substituir este bloco:
- *
- *   import { ClerkAuthProvider } from "@/modules/integrations/providers/clerk/clerk-auth.provider";
- *   const realProvider = new ClerkAuthProvider({ publishableKey: import.meta.env.VITE_CLERK_KEY });
- */
-
 function resolveAuthProvider(): IAuthProvider {
   if (MOCK_MODE) return mockAuthProvider;
 
-  // PRODUÇÃO: Clerk provider (a implementar quando backend estiver pronto)
-  // return realAuthProvider;
-  return mockAuthProvider; // fallback enquanto real não está implementado
+  // PRODUÇÃO: NestAuthProvider via JWT
+  // import { nestAuthProvider } from "@/modules/integrations/providers/nest/nest-auth.provider";
+  // return nestAuthProvider;
+  return mockAuthProvider;
 }
 
 export const authAdapter: IAuthProvider = resolveAuthProvider();

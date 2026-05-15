@@ -1,8 +1,8 @@
 import { createParamDecorator, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
-import type { ClerkAuth } from '../guards/clerk-auth.guard';
+import type { JwtAuth } from '../guards/clerk-auth.guard';
 
 export const CurrentUser = createParamDecorator(
-  (_: unknown, ctx: ExecutionContext): ClerkAuth | undefined =>
-    ctx.switchToHttp().getRequest<Request & { auth?: ClerkAuth }>().auth,
+  (_: unknown, ctx: ExecutionContext): JwtAuth | undefined =>
+    ctx.switchToHttp().getRequest<Request & { auth?: JwtAuth }>().auth,
 );

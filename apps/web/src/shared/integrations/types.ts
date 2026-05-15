@@ -16,8 +16,6 @@
  * Usado como chave no registry, em queryKeys, e em localStorage.
  */
 export type IntegrationId =
-  // Auth
-  | "clerk"
   // Storage
   | "r2"
   // Email
@@ -50,7 +48,6 @@ export type IntegrationId =
 // ─── Categorias ───────────────────────────────────────────────────────────────
 
 export type IntegrationCategory =
-  | "auth"
   | "storage"
   | "email"
   | "payments"
@@ -94,7 +91,7 @@ export interface IntegrationMeta {
   credentialsKey?: string;
   /**
    * Indica se a integração é obrigatória para o funcionamento
-   * básico da plataforma (ex.: auth).
+   * básico da plataforma.
    */
   required?: boolean;
 }

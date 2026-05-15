@@ -14,17 +14,6 @@ import type { IntegrationCategory, IntegrationId, IntegrationMeta } from "./type
 // ─── Registry ─────────────────────────────────────────────────────────────────
 
 export const INTEGRATION_REGISTRY: Record<IntegrationId, IntegrationMeta> = {
-  // ── Auth ──────────────────────────────────────────────────────────────────
-  clerk: {
-    id: "clerk",
-    name: "Clerk",
-    category: "auth",
-    description: "Autenticação e gestão de utilizadores com suporte a multi-tenant, SSO e MFA.",
-    docsUrl: "https://clerk.com/docs",
-    credentialsKey: "musicos360_clerk_credentials",
-    required: true,
-  },
-
   // ── Storage ───────────────────────────────────────────────────────────────
   r2: {
     id: "r2",
@@ -173,6 +162,16 @@ export const INTEGRATION_REGISTRY: Record<IntegrationId, IntegrationMeta> = {
     description: "Registro e conciliação de obras e fonogramas via ABRAMUS (mock funcional).",
     docsUrl: "https://www.abramus.org.br",
     credentialsKey: "musicos360_abramus_credentials",
+  },
+
+  // ── Music Monitoring (ACRCloud) ───────────────────────────────────────────
+  acrcloud: {
+    id: "acrcloud",
+    name: "ACRCloud",
+    category: "music-monitoring",
+    description: "Reconhecimento de áudio e monitoramento de uso não autorizado.",
+    docsUrl: "https://www.acrcloud.com/docs",
+    credentialsKey: "musicos360_acrcloud_credentials",
   },
 
   // ── Chat ──────────────────────────────────────────────────────────────────

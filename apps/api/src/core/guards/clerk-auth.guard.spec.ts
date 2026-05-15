@@ -1,46 +1,40 @@
 import 'reflect-metadata';
-import { ClerkAuthGuard, IS_PUBLIC_KEY } from './clerk-auth.guard';
+import { JwtAuthGuard, ClerkAuthGuard, IS_PUBLIC_KEY } from './clerk-auth.guard';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 
-jest.mock('@clerk/backend', () => ({
-  verifyToken: jest.fn(),
-}));
+/** Generates a minimal unsigned JWT token for testing. */
+function makeJwt(payload: Record<string, unknown>): string {
+  const header  = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64url');
+  const body    = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  return `${header}.${body}.fake-signature`;
+}
 
-import { verifyToken } from '@clerk/backend';
-const mockVerifyToken = verifyToken as jest.Mock;
-
-function makeGuard(isPublic = false, configOverride?: Partial<Record<string, string>>): ClerkAuthGuard {
+function makeGuard(isPublic = false): JwtAuthGuard {
   const config = {
-    get: jest.fn().mockImplementation((key: string) => {
-      const cfg: Record<string, string> = {
-        CLERK_SECRET_KEY: 'sk_test_placeholder',
-        ...configOverride,
-      };
-      return cfg[key];
-    }),
+    get: jest.fn(),
   } as unknown as ConfigService;
 
   const reflector = {
     getAllAndOverride: jest.fn().mockReturnValue(isPublic),
   } as unknown as Reflector;
 
-  return new ClerkAuthGuard(config, reflector);
+  return new JwtAuthGuard(config, reflector);
 }
 
 function makeContext(opts: {
   isPublic?: boolean;
   authHeader?: string;
-  sessionCookie?: string;
+  cookie?: string;
 } = {}) {
   const request: Record<string, unknown> = { headers: {}, cookies: {} };
 
   if (opts.authHeader) {
     (request.headers as Record<string, string>)['authorization'] = opts.authHeader;
   }
-  if (opts.sessionCookie) {
-    (request.cookies as Record<string, string>)['__session'] = opts.sessionCookie;
+  if (opts.cookie) {
+    (request.cookies as Record<string, string>)['musicos360_rt'] = opts.cookie;
   }
 
   return {
@@ -49,20 +43,21 @@ function makeContext(opts: {
     switchToHttp: jest.fn().mockReturnValue({
       getRequest: jest.fn().mockReturnValue(request),
     }),
-  } as any;
+  } as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 }
 
-describe('ClerkAuthGuard', () => {
-  afterEach(() => {
-    jest.clearAllMocks();
+describe('JwtAuthGuard (ClerkAuthGuard alias)', () => {
+  afterEach(() => jest.clearAllMocks());
+
+  it('ClerkAuthGuard é um alias de JwtAuthGuard', () => {
+    expect(ClerkAuthGuard).toBe(JwtAuthGuard);
   });
 
   it('rota @Public() retorna true sem verificar token', async () => {
-    const guard = makeGuard(true);
-    const ctx   = makeContext();
+    const guard  = makeGuard(true);
+    const ctx    = makeContext();
     const result = await guard.canActivate(ctx);
     expect(result).toBe(true);
-    expect(mockVerifyToken).not.toHaveBeenCalled();
   });
 
   it('ausência de token lança UnauthorizedException', async () => {
@@ -71,23 +66,30 @@ describe('ClerkAuthGuard', () => {
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
 
-  it('token inválido lança UnauthorizedException', async () => {
-    mockVerifyToken.mockRejectedValue(new Error('invalid token'));
+  it('token JWT malformado lança UnauthorizedException', async () => {
     const guard = makeGuard(false);
-    const ctx   = makeContext({ authHeader: 'Bearer bad-token' });
+    const ctx   = makeContext({ authHeader: 'Bearer not-a-jwt' });
+    await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+  });
+
+  it('token expirado lança UnauthorizedException', async () => {
+    const expired = makeJwt({ sub: 'user_1', exp: Math.floor(Date.now() / 1000) - 3600 });
+    const guard   = makeGuard(false);
+    const ctx     = makeContext({ authHeader: `Bearer ${expired}` });
     await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
   });
 
   it('token Bearer válido define request.auth e retorna true', async () => {
-    mockVerifyToken.mockResolvedValue({
-      sub: 'user_abc123',
-      sid: 'sess_xyz',
-      org_id: 'org_tenant1',
+    const token = makeJwt({
+      sub:      'user_abc123',
+      sid:      'sess_xyz',
+      org_id:   'org_tenant1',
       org_role: 'admin',
+      exp:      Math.floor(Date.now() / 1000) + 3600,
     });
 
-    const guard = makeGuard(false);
-    const ctx   = makeContext({ authHeader: 'Bearer valid-token' });
+    const guard  = makeGuard(false);
+    const ctx    = makeContext({ authHeader: `Bearer ${token}` });
     const result = await guard.canActivate(ctx);
 
     expect(result).toBe(true);
@@ -100,16 +102,23 @@ describe('ClerkAuthGuard', () => {
     });
   });
 
-  it('token via cookie __session é aceite quando sem Authorization header', async () => {
-    mockVerifyToken.mockResolvedValue({
+  it('token via cookie musicos360_rt é aceite quando sem Authorization header', async () => {
+    const token = makeJwt({
       sub: 'user_cookie',
       sid: 'sess_cookie',
+      exp: Math.floor(Date.now() / 1000) + 3600,
     });
 
-    const guard = makeGuard(false);
-    const ctx   = makeContext({ sessionCookie: 'cookie-token-value' });
+    const guard  = makeGuard(false);
+    const ctx    = makeContext({ cookie: token });
     const result = await guard.canActivate(ctx);
+
     expect(result).toBe(true);
-    expect(mockVerifyToken).toHaveBeenCalledWith('cookie-token-value', expect.any(Object));
+    const request = ctx.switchToHttp().getRequest();
+    expect(request.auth.userId).toBe('user_cookie');
+  });
+
+  it('IS_PUBLIC_KEY é exportado', () => {
+    expect(IS_PUBLIC_KEY).toBe('isPublic');
   });
 });

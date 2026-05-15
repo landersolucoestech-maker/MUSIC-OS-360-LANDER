@@ -4,7 +4,6 @@
  * Barrel de todos os hooks de integração.
  *
  * Organização por categoria:
- *   - Auth              → useClerk
  *   - Storage           → useR2
  *   - Email             → useResend
  *   - Payments          → useStripe
@@ -17,9 +16,6 @@
  *   - Music Monitoring  → useACRCloud
  *   - Chat              → useChat
  */
-
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-export * from "./useClerk";
 
 // ─── Storage ──────────────────────────────────────────────────────────────────
 export * from "./useR2";
