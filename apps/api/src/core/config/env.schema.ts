@@ -12,11 +12,13 @@ const envSchema = z.object({
   // Redis (BullMQ Queues via ioredis — deve ser URL acessível)
   REDIS_QUEUE_URL: z.string().optional(),
 
-  // Auth (Supabase JWT)
-  // SUPABASE_JWT_SECRET: Settings > API > JWT Secret no painel do Supabase
-  SUPABASE_JWT_SECRET: z.string().default('dev_supabase_jwt_secret_placeholder'),
+  // Auth (Supabase — JWKS via ES256)
+  // SUPABASE_URL: URL base do projeto (ex: https://xxxx.supabase.co)
+  // O guard derivará o JWKS endpoint: <SUPABASE_URL>/auth/v1/.well-known/jwks.json
+  // Fallback automático para VITE_SUPABASE_URL se não definido separadamente.
+  SUPABASE_URL: z.string().optional(),
 
-  // Auth (JWT legado — mantido para compatibilidade com tokens existentes em dev)
+  // Auth (JWT legado — mantido para compatibilidade)
   JWT_SECRET: z.string().default('dev_jwt_secret_placeholder'),
   JWT_EXPIRES_IN: z.string().default('1h'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
