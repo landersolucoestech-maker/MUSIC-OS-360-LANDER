@@ -80,51 +80,73 @@ function AuthPage() {
       <div className="w-full lg:w-[44%]" style={{
         display:"flex", flexDirection:"column",
         position:"relative", overflow:"hidden",
-        background:"linear-gradient(180deg, #07101f 0%, #050d1a 100%)",
+        background:"#07101f",
       }}>
+
+        {/* Blue glow radial — bottom-left corner */}
+        <div style={{
+          position:"absolute", bottom:"-60px", left:"-60px",
+          width:"380px", height:"380px", borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)",
+          pointerEvents:"none",
+        }}/>
+        {/* Subtle top-right glow */}
+        <div style={{
+          position:"absolute", top:"-40px", right:"-40px",
+          width:"220px", height:"220px", borderRadius:"50%",
+          background:"radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
+          pointerEvents:"none",
+        }}/>
 
         <Particles />
 
         <div style={{
           position:"relative", zIndex:10,
           display:"flex", flexDirection:"column",
-          height:"100%", padding:"40px 48px",
+          height:"100%", padding:"36px 52px",
         }}>
 
-          {/* Logo */}
-          <div style={{ display:"flex", alignItems:"center", gap:"16px", marginBottom:"24px" }}>
-            <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", height:"54px" }}>
-              {[20,32,44,54,44,32,20].map((h,i) => (
-                <div key={i} style={{
-                  width:"5px", height:`${h}px`, borderRadius:"3px",
-                  background:"linear-gradient(to top, #1d4ed8, #3b82f6)",
-                  boxShadow:"0 0 8px rgba(59,130,246,0.7)",
-                }}/>
-              ))}
+          {/* ─ Centre block: logo + tagline + form ─ */}
+          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center", gap:"0" }}>
+
+            {/* Logo */}
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:"18px", marginBottom:"20px" }}>
+              <div style={{ display:"flex", alignItems:"flex-end", gap:"4px", height:"56px" }}>
+                {[20,32,44,56,44,32,20].map((h,i) => (
+                  <div key={i} style={{
+                    width:"5px", height:`${h}px`, borderRadius:"3px",
+                    background:"linear-gradient(to top, #1d4ed8, #3b82f6)",
+                    boxShadow:"0 0 10px rgba(59,130,246,0.8)",
+                  }}/>
+                ))}
+              </div>
+              <div style={{ lineHeight:1.05 }}>
+                <div style={{ color:"#fff", fontWeight:900, fontSize:"32px", letterSpacing:"2px" }}>MUSIC</div>
+                <div style={{ color:"#3b82f6", fontWeight:900, fontSize:"32px", letterSpacing:"2px" }}>OS 360</div>
+              </div>
             </div>
-            <div style={{ lineHeight:1.08 }}>
-              <div style={{ color:"#fff", fontWeight:900, fontSize:"30px", letterSpacing:"2px" }}>MUSIC</div>
-              <div style={{ color:"#3b82f6", fontWeight:900, fontSize:"30px", letterSpacing:"2px" }}>OS 360</div>
+
+            {/* Tagline */}
+            <div style={{ textAlign:"center", marginBottom:"28px" }}>
+              <p style={{ color:"#fff", fontWeight:700, fontSize:"15px", marginBottom:"6px" }}>
+                Sistema de Gestão Musical
+              </p>
+              <p style={{ color:"#6b7280", fontSize:"13px", lineHeight:1.65 }}>
+                Plataforma completa para gestão operacional<br/>da indústria musical.
+              </p>
             </div>
+
+            {/* Form */}
+            <div>
+              {mode==="login"  && <LoginForm  onForgot={()=>setMode("forgot")}/>}
+              {mode==="forgot" && <ForgotForm onBack={()=>setMode("login")}/>}
+            </div>
+
           </div>
 
-          {/* Tagline */}
-          <div style={{ marginBottom:"36px" }}>
-            <p style={{ color:"#fff", fontWeight:700, fontSize:"15px", marginBottom:"6px" }}>Sistema de Gestão Musical</p>
-            <p style={{ color:"#6b7280", fontSize:"13px", lineHeight:1.65, textAlign:"center" }}>
-              Plataforma completa para gestão operacional<br/>da indústria musical.
-            </p>
-          </div>
-
-          {/* Form */}
-          <div style={{ flex:1, display:"flex", flexDirection:"column", justifyContent:"center" }}>
-            {mode==="login"  && <LoginForm  onForgot={()=>setMode("forgot")}/>}
-            {mode==="forgot" && <ForgotForm onBack={()=>setMode("login")}/>}
-          </div>
-
-          {/* Footer */}
-          <div style={{ marginTop:"24px" }}>
-            <div style={{ display:"flex", justifyContent:"center", gap:"28px", marginBottom:"14px" }}>
+          {/* Footer — pinned to bottom */}
+          <div style={{ paddingTop:"20px" }}>
+            <div style={{ display:"flex", justifyContent:"center", gap:"28px", marginBottom:"12px" }}>
               {[Facebook,Instagram,MessageCircle,Globe].map((Icon,i) => (
                 <a key={i} href="#"
                   style={{ color:"#4b5563", transition:"color .2s" }}
@@ -137,6 +159,7 @@ function AuthPage() {
               © MUSIC OS 360. Todos os direitos reservados.
             </p>
           </div>
+
         </div>
       </div>
 
