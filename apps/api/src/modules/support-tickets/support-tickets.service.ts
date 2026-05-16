@@ -117,6 +117,25 @@ export class SupportTicketsService {
         });
       });
 
+      // Emit WORKFLOW_TRANSITIONED for every ticket status change
+      this.events.emitTyped(DOMAIN_EVENTS.WORKFLOW_TRANSITIONED, {
+        tenantId,
+        userId,
+        aggregateType: 'support_ticket',
+        aggregateId:   id,
+        payload: {
+          entityType:     'support_ticket',
+          entityId:       id,
+          tenantId,
+          fromStatus:     current.status,
+          toStatus:       toStatus as string,
+          actorId:        userId,
+          actorRole,
+          reason:         null,
+          transitionedAt: new Date().toISOString(),
+        },
+      });
+
       // Emit TICKET_RESOLVED when ticket is resolved
       if (toStatus === SupportTicketStatus.RESOLVED) {
         this.events.emitTyped(DOMAIN_EVENTS.TICKET_RESOLVED, {

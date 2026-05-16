@@ -16,6 +16,7 @@ import { NotFoundException } from '@nestjs/common';
 function makeEventsMock() {
   return {
     emit:      jest.fn(),
+    emitTyped: jest.fn(),
     emitAsync: jest.fn().mockResolvedValue([]),
     on:        jest.fn(),
     off:       jest.fn(),

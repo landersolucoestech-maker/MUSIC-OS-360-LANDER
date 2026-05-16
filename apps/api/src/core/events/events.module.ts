@@ -1,9 +1,10 @@
 import { Global, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
-import { EventsService } from './events.service';
-import { DomainEventLogService } from './domain-event-log.service';
-import { NotificationHandler } from './notification.handler';
+import { EventsService }          from './events.service';
+import { DomainEventLogService }  from './domain-event-log.service';
+import { NotificationHandler }    from './notification.handler';
 import { UniversalEventLogHandler } from './universal-event-log.handler';
+import { WorkflowEventsHandler }  from './workflow-events.handler';
 
 @Global()
 @Module({
@@ -23,6 +24,7 @@ import { UniversalEventLogHandler } from './universal-event-log.handler';
     DomainEventLogService,
     UniversalEventLogHandler,
     NotificationHandler,
+    WorkflowEventsHandler,
   ],
   exports: [
     EventsService,

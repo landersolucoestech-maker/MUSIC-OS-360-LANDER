@@ -118,8 +118,27 @@ export class CampaignsService {
         });
       });
 
-      // Emit domain events on status transitions
+      // Emit WORKFLOW_TRANSITIONED for every campaign status change
       const now = new Date().toISOString();
+      this.events.emitTyped(DOMAIN_EVENTS.WORKFLOW_TRANSITIONED, {
+        tenantId,
+        userId,
+        aggregateType: 'campaign',
+        aggregateId:   id,
+        payload: {
+          entityType:     'campaign',
+          entityId:       id,
+          tenantId,
+          fromStatus:     current.status,
+          toStatus:       toStatus as string,
+          actorId:        userId,
+          actorRole,
+          reason:         null,
+          transitionedAt: now,
+        },
+      });
+
+      // Emit domain events on status transitions
       if (toStatus === CampaignStatus.ATIVA) {
         this.events.emitTyped(DOMAIN_EVENTS.CAMPAIGN_STARTED, {
           tenantId,

@@ -4,8 +4,10 @@
  * Concrete automations triggered by release domain events.
  *
  * ReleaseApproved →
- *   1. Enqueue checklist notification (capa, ISRC, UPC, distribuidora).
- *   2. Enqueue distribution validation report.
+ *   1. Persist checklist notification for the approver.
+ *   2. Persist artist-targeted notification (if artistId present).
+ *   3. Enqueue WorkflowTask job (distribution validation checklist).
+ *   4. Enqueue distribution validation report.
  *
  * ReleaseDistributed →
  *   1. Enqueue post-distribution report generation.
@@ -78,9 +80,49 @@ export class ReleaseEventsHandler {
       }
     }
 
-    // 2. Enqueue distribution validation report
+    // 2. Persist artist-targeted notification when artistId is known
+    if (this.notifRepo && artistId) {
+      try {
+        await this.notifRepo.save(
+          this.notifRepo.create({
+            id:        randomUUID(),
+            tenant_id: event.tenantId,
+            user_id:   artistId,
+            title:     `Seu lançamento foi aprovado: "${titulo}"`,
+            body:      `O lançamento "${titulo}" foi aprovado por ${approvedBy} e segue para distribuição. Aguarde o checklist de validação.`,
+            type:      'release.approved.artist',
+            entity:    'release',
+            entity_id: releaseId,
+            read_at:   null,
+            metadata:  { artistId, approvedBy, correlationId: event.correlationId ?? null },
+          }),
+        );
+        this.logger.log(
+          `ReleaseEventsHandler: artist notification persisted for artist="${artistId}" release="${releaseId}"`,
+        );
+      } catch (err) {
+        this.logger.error(`ReleaseEventsHandler: failed to persist artist notification — ${String(err)}`);
+      }
+    }
+
     if (this.queue) {
       try {
+        // 3. Enqueue WorkflowTask: distribution validation checklist
+        await this.queue.addNotification({
+          job:           'create-workflow-task',
+          taskType:      'release-distribution-checklist',
+          entityType:    'release',
+          entityId:      releaseId,
+          titulo,
+          artistId:      artistId ?? null,
+          assignedTo:    approvedBy,
+          tenantId:      event.tenantId,
+          dueOffsetDays: 3,
+          checklist:     APPROVAL_CHECKLIST,
+          correlationId: event.correlationId ?? null,
+        });
+
+        // 4. Enqueue distribution validation report
         await this.queue.addReport('release-approval-validation', {
           releaseId,
           titulo,
@@ -89,7 +131,7 @@ export class ReleaseEventsHandler {
           correlationId: event.correlationId ?? null,
         });
       } catch (err) {
-        this.logger.warn(`ReleaseEventsHandler: failed to enqueue validation report for "${releaseId}" — ${String(err)}`);
+        this.logger.warn(`ReleaseEventsHandler: failed to enqueue tasks for "${releaseId}" — ${String(err)}`);
       }
     }
   }
@@ -98,7 +140,6 @@ export class ReleaseEventsHandler {
   async onReleaseDistributed(event: DomainEvent<ReleaseDistributedPayload>): Promise<void> {
     const { releaseId, titulo, distribuidora } = event.payload;
 
-    // Enqueue post-distribution performance report
     if (this.queue) {
       try {
         await this.queue.addReport('release-distribution-report', {
@@ -121,7 +162,6 @@ export class ReleaseEventsHandler {
   async onReleasePublished(event: DomainEvent<ReleasePublishedPayload>): Promise<void> {
     const { releaseId, titulo } = event.payload;
 
-    // Enqueue content-detection monitoring setup
     if (this.queue) {
       try {
         await this.queue.addNotification({

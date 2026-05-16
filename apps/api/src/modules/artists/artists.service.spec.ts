@@ -4,13 +4,14 @@ import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService } from '../../core/events/events.service';
 import { NotFoundException } from '@nestjs/common';
 
-function makeEventsMock(): jest.Mocked<Pick<EventsService, 'emit' | 'emitAsync' | 'on' | 'off'>> {
+function makeEventsMock(): jest.Mocked<Pick<EventsService, 'emit' | 'emitTyped' | 'emitAsync' | 'on' | 'off'>> {
   return {
     emit:      jest.fn(),
+    emitTyped: jest.fn(),
     emitAsync: jest.fn().mockResolvedValue([]),
     on:        jest.fn(),
     off:       jest.fn(),
-  } as unknown as jest.Mocked<Pick<EventsService, 'emit' | 'emitAsync' | 'on' | 'off'>>;
+  } as unknown as jest.Mocked<Pick<EventsService, 'emit' | 'emitTyped' | 'emitAsync' | 'on' | 'off'>>;
 }
 
 function makeEncryptionMock(): jest.Mocked<EncryptionService> {

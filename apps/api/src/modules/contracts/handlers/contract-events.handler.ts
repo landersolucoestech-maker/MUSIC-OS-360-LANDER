@@ -6,6 +6,7 @@
  * ContractSigned →
  *   1. Update ArtistEntity.status to 'contratado' (when artistId linked).
  *   2. Enqueue signed-contract email to signatários.
+ *   3. Enqueue jurídico (legal department) notification for contract filing.
  *
  * ContractExpired →
  *   1. Enqueue alert email to responsável.
@@ -77,6 +78,37 @@ export class ContractEventsHandler {
       } catch (err) {
         this.logger.warn(
           `ContractEventsHandler: failed to enqueue mail for contract "${contractId}" — ${String(err)}`,
+        );
+      }
+    }
+
+    // 3. Enqueue jurídico (legal department) notification for contract filing
+    if (this.queue) {
+      try {
+        await this.queue.addNotification({
+          tenantId:   event.tenantId,
+          userId:     'role:juridico',
+          type:       'contract.signed.juridico',
+          title:      `Contrato assinado para arquivo jurídico: "${titulo}"`,
+          message:    `O contrato "${titulo}" foi assinado por ${signedBy} em ${signedAt}. Realize o arquivamento e registre o número de protocolo.`,
+          entityType: 'contract',
+          entityId:   contractId,
+          metadata: {
+            contractId,
+            titulo,
+            signedBy,
+            signedAt,
+            artistId: artistId ?? null,
+            action:   'archive_and_register',
+            correlationId: event.correlationId ?? null,
+          },
+        });
+        this.logger.log(
+          `ContractEventsHandler: jurídico notification enqueued for contract "${contractId}"`,
+        );
+      } catch (err) {
+        this.logger.warn(
+          `ContractEventsHandler: failed to enqueue jurídico notification for contract "${contractId}" — ${String(err)}`,
         );
       }
     }
