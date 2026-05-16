@@ -16,9 +16,28 @@ export const MOCK_MODE: boolean =
   import.meta.env.VITE_USE_MOCK !== "false" &&
   import.meta.env.VITE_MOCK_MODE !== "false";
 
-/** URL base da API backend. String vazia = URLs relativas (same-domain). */
-export const API_BASE_URL: string =
-  (import.meta.env.VITE_API_URL as string | undefined) ?? "";
+/**
+ * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).
+ *
+ * Sanitização defensiva: remove sufixos /api/v1 ou /api caso VITE_API_URL já os
+ * contenha — evita a duplicação "http://host/api/api/v1/..." que ocorre quando
+ * VITE_API_URL=http://localhost:3001/api e api-client.ts já anexa /api/v1.
+ *
+ * Regra: VITE_API_URL deve ser APENAS o host/porta, sem path:
+ *   CORRECTO: http://localhost:3001
+ *   ERRADO:   http://localhost:3001/api
+ *   ERRADO:   http://localhost:3001/api/v1
+ */
+function sanitizeApiBase(raw: string): string {
+  return raw
+    .replace(/\/api\/v1\/?$/, "")   // remove sufixo /api/v1
+    .replace(/\/api\/?$/, "")        // remove sufixo /api
+    .replace(/\/$/, "");             // remove trailing slash
+}
+
+export const API_BASE_URL: string = sanitizeApiBase(
+  (import.meta.env.VITE_API_URL as string | undefined) ?? "",
+);
 
 /** true em ambiente de desenvolvimento Vite (npm run dev). */
 export const IS_DEV: boolean = import.meta.env.DEV === true;
