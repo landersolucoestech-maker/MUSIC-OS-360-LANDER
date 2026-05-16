@@ -6,6 +6,7 @@ import { EncryptionService } from '../../core/security/encryption.service';
 import type { CreateArtistDto } from './dto/create-artist.dto';
 import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
+import { ArtistStatus } from '@music-os-360/types';
 
 @Injectable()
 export class ArtistsService {
@@ -56,7 +57,7 @@ export class ArtistsService {
       nome_artistico:      dto.nome_artistico,
       nome_civil:          dto.nome_civil          ?? null,
       tipo:                dto.tipo                ?? 'solo',
-      status:              dto.status              ?? 'em_negociacao',
+      status:              (dto.status as ArtistStatus) ?? ArtistStatus.EM_NEGOCIACAO,
       genero_musical:      dto.genero_musical      ?? null,
       observacoes:         dto.observacoes         ?? null,
       foto_url:            dto.foto_url            ?? null,

@@ -7,6 +7,7 @@ import type { CreateEmployeeDto }     from './dto/create-employee.dto';
 import type { UpdateEmployeeDto }     from './dto/update-employee.dto';
 import type { CreatePayrollEntryDto } from './dto/create-payroll-entry.dto';
 import type { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
+import { EmployeeStatus } from '@music-os-360/types';
 
 @Injectable()
 export class HrService {
@@ -74,7 +75,7 @@ export class HrService {
       cargo:              dto.cargo         ?? null,
       departamento:       dto.departamento  ?? null,
       tipo_contrato:      dto.tipo_contrato ?? 'clt',
-      status:             dto.status        ?? 'ativo',
+      status:             (dto.status as EmployeeStatus) ?? EmployeeStatus.ATIVO,
       email_encrypted:    this.enc.encryptNullable((dto as any).email),
       telefone_encrypted: this.enc.encryptNullable((dto as any).telefone),
       cpf_encrypted:      this.enc.encryptNullable((dto as any).cpf),
@@ -85,7 +86,7 @@ export class HrService {
       metadata:           (dto as any).metadata      ?? {},
       created_by:         userId,
     });
-    return this.mapEmployee(await this.empRepo!.save(entity));
+    return this.mapEmployee((await this.empRepo!.save(entity)) as EmployeeEntity);
   }
 
   async updateEmployee(tenantId: string, userId: string, id: string, dto: UpdateEmployeeDto) {

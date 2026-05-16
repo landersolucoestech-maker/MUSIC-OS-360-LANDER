@@ -19,6 +19,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE }     from '../../database/database.module';
 import { UploadEntity }    from '../../database/entities';
 import { StorageService }  from '../../storage/storage.service';
+import { UploadStatus }    from '@music-os-360/types';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
@@ -79,7 +80,7 @@ export class UploadsController {
       category:      dto.category,
       entity:        dto.entity   ?? null,
       entity_id:     dto.entityId ?? null,
-      status:        'pending',
+      status:        UploadStatus.PENDING,
     });
     await repo.save(entity);
 

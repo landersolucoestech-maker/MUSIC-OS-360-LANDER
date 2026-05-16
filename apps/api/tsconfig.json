@@ -18,7 +18,9 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@shared-types/*": ["../../packages/shared-types/src/*"]
+      "@shared-types/*": ["../../packages/shared-types/src/*"],
+      "@music-os-360/types": ["../../packages/types/src/index.ts"],
+      "@music-os-360/types/*": ["../../packages/types/src/*"]
     }
   },
   "include": ["src/**/*"],

@@ -3,6 +3,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ReleaseEntity } from '../../database/entities';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
+import { ReleaseStatus } from '@music-os-360/types';
 
 @Injectable()
 export class ReleasesService {
@@ -52,7 +53,7 @@ export class ReleasesService {
       data_lancamento: dto.releasedAt  ? new Date(dto.releasedAt) : null,
       plataformas:     dto.platforms   ?? [],
       capa_url:        dto.coverUrl    ?? null,
-      status:          'planejamento',
+      status:          ReleaseStatus.PLANEJAMENTO,
       metadata:        dto.metadata    ?? {},
       created_by:      userId,
       updated_by:      userId,

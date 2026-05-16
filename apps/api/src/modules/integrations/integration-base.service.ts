@@ -4,6 +4,7 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { IntegrationEntity, OAuthConnectionEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { IntegrationStatus } from '@music-os-360/types';
 
 @Injectable()
 export class IntegrationBaseService {
@@ -31,9 +32,9 @@ export class IntegrationBaseService {
       .getOne();
 
     if (existing) {
-      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: 'connected', failure_count: 0, updated_at: new Date() } as any);
+      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: IntegrationStatus.CONNECTED, failure_count: 0, updated_at: new Date() } as any);
     } else {
-      const entity = this.integRepo!.create({ tenant_id: tenantId, provider, status: 'connected', credentials_encrypted });
+      const entity = this.integRepo!.create({ tenant_id: tenantId, provider, status: IntegrationStatus.CONNECTED, credentials_encrypted });
       await this.integRepo!.save(entity);
     }
   }

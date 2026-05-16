@@ -18,6 +18,7 @@ import {
   OrganizationEntity,
   WebhookEventEntity,
 } from '../../database/entities';
+import { WebhookEventStatus } from '@music-os-360/types';
 import { WsGateway } from '../../core/websocket/ws.gateway';
 
 // ── Stripe CJS/ESM interop ────────────────────────────────────────────────────
@@ -187,7 +188,7 @@ export class BillingService {
       .where('w.external_id = :externalId', { externalId: event.id })
       .getOne();
 
-    if (existing?.status === 'processed') {
+    if (existing?.status === WebhookEventStatus.PROCESSED) {
       this.logger.log(`Webhook já processado: ${event.id}`);
       return { received: true };
     }
@@ -199,7 +200,7 @@ export class BillingService {
         event_type:  event.type,
         external_id: event.id,
         payload:     event as unknown as Record<string, unknown>,
-        status:      'pending',
+        status:      WebhookEventStatus.PENDING,
       });
       await this.webhookRepo!.save(entity).catch(() => { /* idempotência */ });
     }

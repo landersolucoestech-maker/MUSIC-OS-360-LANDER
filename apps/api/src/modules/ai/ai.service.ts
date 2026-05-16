@@ -10,6 +10,7 @@ import { ConfigService }              from '@nestjs/config';
 import { DataSource, Repository }     from 'typeorm';
 import { DATA_SOURCE }                from '../../database/database.module';
 import { AIJobEntity }                from '../../database/entities';
+import { AIJobStatus }                from '@music-os-360/types';
 
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   'gpt-4o':                   { input: 5.00,  output: 15.00  },
@@ -68,7 +69,7 @@ export class AIService {
     for (const attempt of providers) {
       try {
         const result = await attempt();
-        await this.recordJob({ ...opts, ...result, status: 'completed' });
+        await this.recordJob({ ...opts, ...result, status: AIJobStatus.COMPLETED });
         return result;
       } catch (err) {
         lastError = err;
@@ -135,7 +136,7 @@ export class AIService {
     return (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
   }
 
-  private async recordJob(data: AICompletionOptions & AICompletionResult & { status: string }): Promise<void> {
+  private async recordJob(data: AICompletionOptions & AICompletionResult & { status: AIJobStatus }): Promise<void> {
     if (!this.repo) return;
     try {
       const entity = this.repo.create({

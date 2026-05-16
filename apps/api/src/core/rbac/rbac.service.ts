@@ -1,44 +1,193 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
+import { SystemRole, FunctionalRole } from '@music-os-360/types';
 
-export type Role = 'OWNER' | 'ADMIN' | 'MANAGER' | 'FINANCIAL' | 'MARKETING' | 'ARTIST' | 'RADIO' | 'TV';
+/**
+ * AnyRole — union de roles de sistema e roles funcionais.
+ * SystemRole: roles hierárquicos armazenados em OrgMemberEntity.role
+ * FunctionalRole: roles operacionais/domínio (financial, marketing, etc.)
+ */
+export type AnyRole = SystemRole | FunctionalRole;
 
-const ROLE_HIERARCHY: Record<Role, number> = {
-  OWNER: 100, ADMIN: 90, MANAGER: 70,
-  FINANCIAL: 60, MARKETING: 50, RADIO: 40, TV: 40, ARTIST: 30,
+/**
+ * @deprecated Use SystemRole de @music-os-360/types
+ * Mantido para compatibilidade com código legado que importa daqui.
+ */
+export type Role = AnyRole;
+
+/** Hierarquia numérica dos SystemRoles — quanto maior o número, mais permissões */
+const ROLE_HIERARCHY: Record<string, number> = {
+  [SystemRole.SUPER_ADMIN]:  100,
+  [SystemRole.TENANT_OWNER]: 90,
+  [SystemRole.OWNER]:        90,
+  [SystemRole.ADMIN]:        80,
+  [SystemRole.EDITOR]:       60,
+  [SystemRole.MANAGER]:      70,
+  [SystemRole.VIEWER]:       10,
+  [FunctionalRole.FINANCIAL]: 60,
+  [FunctionalRole.MARKETING]: 50,
+  [FunctionalRole.ARTIST]:    30,
+  [FunctionalRole.RADIO]:     40,
+  [FunctionalRole.TV]:        40,
 };
 
-export type Resource = 'artist' | 'catalog' | 'contracts' | 'accounting' | 'crm' | 'marketing' | 'monitoring' | 'releases' | 'projects' | 'events' | 'inventory' | 'rh' | 'settings' | 'licensing' | 'leads' | 'analytics';
+export type Resource =
+  | 'artist'
+  | 'catalog'
+  | 'contracts'
+  | 'accounting'
+  | 'crm'
+  | 'marketing'
+  | 'monitoring'
+  | 'releases'
+  | 'projects'
+  | 'events'
+  | 'inventory'
+  | 'rh'
+  | 'settings'
+  | 'licensing'
+  | 'leads'
+  | 'analytics';
+
 export type Action = 'read' | 'create' | 'update' | 'delete' | 'export' | 'approve';
 
-const ROLE_PERMISSIONS: Record<Role, Array<`${Resource}:${Action}`>> = {
-  OWNER: ['artist:read','artist:create','artist:update','artist:delete','catalog:read','catalog:create','catalog:update','catalog:delete','contracts:read','contracts:create','contracts:update','contracts:delete','accounting:read','accounting:create','accounting:update','accounting:delete','settings:read','settings:update'],
-  ADMIN: ['artist:read','artist:create','artist:update','artist:delete','catalog:read','catalog:create','catalog:update','catalog:delete','contracts:read','contracts:create','contracts:update','contracts:delete','accounting:read','accounting:create','accounting:update','accounting:delete','settings:read','settings:update'],
-  MANAGER: ['artist:read','artist:create','artist:update','catalog:read','catalog:create','catalog:update','contracts:read','contracts:create','accounting:read','crm:read','crm:create','crm:update','marketing:read','marketing:create','marketing:update'],
-  FINANCIAL: ['accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export','artist:read','contracts:read'],
-  MARKETING: ['marketing:read','marketing:create','marketing:update','marketing:delete','analytics:read','releases:read','releases:create','artist:read','catalog:read'],
-  ARTIST: ['artist:read','catalog:read','releases:read'],
-  RADIO: ['catalog:read','monitoring:read','licensing:read'],
-  TV: ['catalog:read','monitoring:read','licensing:read'],
+const ROLE_PERMISSIONS: Record<string, Array<`${Resource}:${Action}`>> = {
+  // ── System Roles ────────────────────────────────────────────────────────────
+  [SystemRole.SUPER_ADMIN]: [
+    'artist:read','artist:create','artist:update','artist:delete',
+    'catalog:read','catalog:create','catalog:update','catalog:delete',
+    'contracts:read','contracts:create','contracts:update','contracts:delete',
+    'accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export',
+    'crm:read','crm:create','crm:update','crm:delete',
+    'marketing:read','marketing:create','marketing:update','marketing:delete',
+    'monitoring:read','monitoring:create','monitoring:update','monitoring:delete',
+    'releases:read','releases:create','releases:update','releases:delete','releases:approve',
+    'projects:read','projects:create','projects:update','projects:delete',
+    'events:read','events:create','events:update','events:delete',
+    'inventory:read','inventory:create','inventory:update','inventory:delete',
+    'rh:read','rh:create','rh:update','rh:delete',
+    'settings:read','settings:update',
+    'licensing:read','licensing:create','licensing:update','licensing:delete',
+    'leads:read','leads:create','leads:update','leads:delete',
+    'analytics:read',
+  ],
+  [SystemRole.TENANT_OWNER]: [
+    'artist:read','artist:create','artist:update','artist:delete',
+    'catalog:read','catalog:create','catalog:update','catalog:delete',
+    'contracts:read','contracts:create','contracts:update','contracts:delete',
+    'accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export',
+    'crm:read','crm:create','crm:update','crm:delete',
+    'marketing:read','marketing:create','marketing:update','marketing:delete',
+    'releases:read','releases:create','releases:update','releases:delete','releases:approve',
+    'settings:read','settings:update',
+    'leads:read','leads:create','leads:update',
+    'analytics:read',
+  ],
+  [SystemRole.OWNER]: [
+    'artist:read','artist:create','artist:update','artist:delete',
+    'catalog:read','catalog:create','catalog:update','catalog:delete',
+    'contracts:read','contracts:create','contracts:update','contracts:delete',
+    'accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export',
+    'crm:read','crm:create','crm:update','crm:delete',
+    'marketing:read','marketing:create','marketing:update','marketing:delete',
+    'releases:read','releases:create','releases:update','releases:delete','releases:approve',
+    'settings:read','settings:update',
+    'leads:read','leads:create','leads:update',
+    'analytics:read',
+  ],
+  [SystemRole.ADMIN]: [
+    'artist:read','artist:create','artist:update','artist:delete',
+    'catalog:read','catalog:create','catalog:update','catalog:delete',
+    'contracts:read','contracts:create','contracts:update','contracts:delete',
+    'accounting:read','accounting:create','accounting:update','accounting:delete',
+    'settings:read','settings:update',
+    'releases:read','releases:create','releases:update',
+    'crm:read','crm:create','crm:update',
+    'leads:read','leads:create','leads:update',
+    'analytics:read',
+  ],
+  [SystemRole.MANAGER]: [
+    'artist:read','artist:create','artist:update',
+    'catalog:read','catalog:create','catalog:update',
+    'contracts:read','contracts:create',
+    'accounting:read',
+    'crm:read','crm:create','crm:update',
+    'marketing:read','marketing:create','marketing:update',
+    'releases:read','releases:create',
+    'leads:read','leads:create','leads:update',
+  ],
+  [SystemRole.EDITOR]: [
+    'artist:read','artist:update',
+    'catalog:read','catalog:create','catalog:update',
+    'releases:read','releases:create','releases:update',
+    'marketing:read','marketing:create','marketing:update',
+  ],
+  [SystemRole.VIEWER]: [
+    'artist:read',
+    'catalog:read',
+    'releases:read',
+  ],
+  // ── Functional Roles ────────────────────────────────────────────────────────
+  [FunctionalRole.FINANCIAL]: [
+    'accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export',
+    'artist:read',
+    'contracts:read',
+  ],
+  [FunctionalRole.MARKETING]: [
+    'marketing:read','marketing:create','marketing:update','marketing:delete',
+    'analytics:read',
+    'releases:read','releases:create',
+    'artist:read',
+    'catalog:read',
+  ],
+  [FunctionalRole.ARTIST]: [
+    'artist:read',
+    'catalog:read',
+    'releases:read',
+  ],
+  [FunctionalRole.RADIO]: [
+    'catalog:read',
+    'monitoring:read',
+    'licensing:read',
+  ],
+  [FunctionalRole.TV]: [
+    'catalog:read',
+    'monitoring:read',
+    'licensing:read',
+  ],
 };
 
 @Injectable()
 export class RbacService {
-  hasRole(userRole: Role, required: Role): boolean {
+  hasRole(userRole: string, required: string): boolean {
     return (ROLE_HIERARCHY[userRole] ?? 0) >= (ROLE_HIERARCHY[required] ?? 0);
   }
 
-  can(role: Role, resource: Resource, action: Action): boolean {
+  can(role: string, resource: Resource, action: Action): boolean {
     const perms = ROLE_PERMISSIONS[role] ?? [];
     return perms.includes(`${resource}:${action}`);
   }
 
-  assertCan(role: Role, resource: Resource, action: Action): void {
+  assertCan(role: string, resource: Resource, action: Action): void {
     if (!this.can(role, resource, action)) {
-      throw new ForbiddenException(`Permissão negada: ${role} não pode ${action} em ${resource}`);
+      throw new ForbiddenException(
+        `Permissão negada: role '${role}' não pode realizar '${action}' em '${resource}'`,
+      );
     }
   }
 
-  getPermissions(role: Role): string[] {
+  getPermissions(role: string): string[] {
     return ROLE_PERMISSIONS[role] ?? [];
+  }
+
+  getHierarchyLevel(role: string): number {
+    return ROLE_HIERARCHY[role] ?? 0;
+  }
+
+  isSystemRole(role: string): role is SystemRole {
+    return Object.values(SystemRole).includes(role as SystemRole);
+  }
+
+  isFunctionalRole(role: string): role is FunctionalRole {
+    return Object.values(FunctionalRole).includes(role as FunctionalRole);
   }
 }
