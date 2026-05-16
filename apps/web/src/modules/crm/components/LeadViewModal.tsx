@@ -17,6 +17,7 @@ import { Progress } from "@/shared/ui/progress";
 import { formatCurrency, formatDate, formatDateTime } from "@/shared/lib/format-utils";
 import { useLeadInteractions, TIPO_INTERACAO_OPTIONS, TIPO_INTERACAO_LABELS } from "../hooks/useLeadInteractions";
 import { STATUS_LABELS, ORIGEM_LABELS, useLeads } from "../hooks/useLeads";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import {
   Mail,
   Phone,
@@ -140,6 +141,15 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
           <DialogDescription>
             Lead criado em {formatDate(lead.created_at)}
           </DialogDescription>
+          {Array.isArray(lead.allowed_transitions) && (
+            <WorkflowTransitionPanel
+              currentStatus={lead.status_lead ?? lead.status ?? ""}
+              allowedTransitions={lead.allowed_transitions}
+              onTransition={async (to) => { await updateLead.mutateAsync({ id: lead.id, status: to } as any); }}
+              isLoading={updateLead.isPending}
+              className="mt-1"
+            />
+          )}
         </DialogHeader>
 
         <div className="space-y-5 py-4">

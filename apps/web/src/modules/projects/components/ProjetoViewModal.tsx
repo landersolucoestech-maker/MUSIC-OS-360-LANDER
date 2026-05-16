@@ -7,6 +7,8 @@ import { Separator } from "@/shared/ui/separator";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "lucide-react";
 import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 
 interface ProjetoViewModalProps {
   open: boolean;
@@ -25,6 +27,8 @@ function capitalize(s: string) {
 
 export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps>(
   function ProjetoViewModal({ open, onOpenChange, projeto }, ref) {
+    const { updateProjeto } = useProjetos();
+
     if (!projeto) return null;
 
     const musicas = parseMusicasFromProjeto(projeto);
@@ -66,6 +70,15 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     {getStatusBadge(projeto.status)}
                     <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
                   </div>
+                  {Array.isArray(projeto.allowed_transitions) && (
+                    <WorkflowTransitionPanel
+                      currentStatus={projeto.status ?? ""}
+                      allowedTransitions={projeto.allowed_transitions}
+                      onTransition={async (to) => { await updateProjeto.mutateAsync({ id: projeto.id, status: to } as any); }}
+                      isLoading={updateProjeto.isPending}
+                      className="mt-1.5"
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     📅 Cadastrado em: {projeto.created_at ? new Date(projeto.created_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
                   </p>

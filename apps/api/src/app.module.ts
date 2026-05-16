@@ -53,6 +53,7 @@ import { ArtistGoalsModule }       from './modules/artist-goals/artist-goals.mod
 import { ContentDetectionsModule } from './modules/content-detections/content-detections.module';
 import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
 import { HrModule }                from './modules/hr/hr.module';
+import { WorkflowModule }         from './core/workflow/workflow.module';
 import { JwtAuthGuard }    from './core/guards/clerk-auth.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
@@ -128,6 +129,9 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ContentDetectionsModule,
     EcadReportsModule,
     HrModule,
+
+    // ── Workflow Engine (state machine global) ────────────────────────────────
+    WorkflowModule,
   ],
   providers: [
     // Guards globais aplicados a TODAS as rotas

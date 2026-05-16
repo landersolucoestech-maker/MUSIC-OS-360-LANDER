@@ -20,6 +20,8 @@ import { DocumentTimeline } from "@/modules/contracts/components/DocumentTimelin
 import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
 import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 import { SendForSigningDialog } from "@/modules/contracts/components/SendForSigningDialog";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useContratos } from "@/modules/contracts/hooks/useContratos";
 
 interface ContratoViewModalProps {
   open: boolean;
@@ -33,6 +35,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   const navigate = useNavigate();
   const { data: allDocuments = [] } = useDocuments();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const { updateContrato } = useContratos();
 
   if (!contrato) return null;
 
@@ -89,6 +92,15 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                     <DocumentStatusBadge status={vinculadoDoc.status} />
                   )}
                 </div>
+                {Array.isArray((contrato as any).allowed_transitions) && (
+                  <WorkflowTransitionPanel
+                    currentStatus={contrato.status ?? ""}
+                    allowedTransitions={(contrato as any).allowed_transitions}
+                    onTransition={async (to) => { await updateContrato.mutateAsync({ id: contrato.id, status: to } as any); }}
+                    isLoading={updateContrato.isPending}
+                    className="mt-2"
+                  />
+                )}
               </div>
             </div>
           </DialogHeader>

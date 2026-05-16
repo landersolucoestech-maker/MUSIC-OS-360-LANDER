@@ -957,6 +957,24 @@ export class LeaveRequestEntity {
   employee: Relation<EmployeeEntity>;
 }
 
+// ─── Workflow Transitions (histórico de transições de estado) ─────────────────
+@Entity('workflow_transitions')
+@Index(['tenant_id', 'entity_type', 'entity_id'])
+@Index(['tenant_id'])
+export class WorkflowTransitionEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 100 }) entity_type: string;
+  @Column({ type: 'uuid' }) entity_id: string;
+  @Column({ type: 'varchar', length: 100 }) from_status: string;
+  @Column({ type: 'varchar', length: 100 }) to_status: string;
+  @Column({ type: 'varchar', length: 255 }) actor_id: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) actor_role: string | null;
+  @Column({ type: 'text', nullable: true }) reason: string | null;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+}
+
 // ─── All entities array (for DataSource registration) ─────────────────────────
 export const ALL_ENTITIES = [
   OrganizationEntity,
@@ -994,4 +1012,5 @@ export const ALL_ENTITIES = [
   EmployeeEntity,
   PayrollEntryEntity,
   LeaveRequestEntity,
+  WorkflowTransitionEntity,
 ];

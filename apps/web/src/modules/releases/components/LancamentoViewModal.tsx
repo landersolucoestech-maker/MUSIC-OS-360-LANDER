@@ -6,6 +6,8 @@ import { Music, Mic2, Clock } from "lucide-react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -52,8 +54,9 @@ function aggregateField(faixas: any[], key: string): string {
 }
 
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
-  const { artistas }   = useArtistas();
-  const { fonogramas } = useFonogramas();
+  const { artistas }            = useArtistas();
+  const { fonogramas }          = useFonogramas();
+  const { updateLancamento }    = useLancamentos();
 
   if (!lancamento) return null;
 
@@ -97,6 +100,15 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                 <span className="text-xs text-muted-foreground">{dataFormatada}</span>
               )}
             </div>
+            {Array.isArray(lancamento.allowed_transitions) && (
+              <WorkflowTransitionPanel
+                currentStatus={lancamento.status ?? ""}
+                allowedTransitions={lancamento.allowed_transitions}
+                onTransition={async (to) => { await updateLancamento.mutateAsync({ id: lancamento.id, status: to } as any); }}
+                isLoading={updateLancamento.isPending}
+                className="mt-2"
+              />
+            )}
           </div>
         </div>
 

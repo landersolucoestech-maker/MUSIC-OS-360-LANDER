@@ -4,12 +4,16 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { ReleaseEntity } from '../../database/entities';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
 import { ReleaseStatus } from '@music-os-360/types';
+import { WorkflowService } from '../../core/workflow/workflow.service';
 
 @Injectable()
 export class ReleasesService {
   private readonly repo: Repository<ReleaseEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    private readonly workflowService: WorkflowService,
+  ) {
     if (ds) this.repo = ds.getRepository(ReleaseEntity);
   }
 
@@ -19,11 +23,11 @@ export class ReleasesService {
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL');
 
-    if (q.status)      qb.andWhere('r.status = :status',             { status:      q.status });
-    if (q.type)        qb.andWhere('r.tipo = :tipo',                 { tipo:        q.type });
-    if (q.artistId)    qb.andWhere('r.artista_id = :artistaId',      { artistaId:   q.artistId });
+    if (q.status)      qb.andWhere('r.status = :status',               { status:      q.status });
+    if (q.type)        qb.andWhere('r.tipo = :tipo',                   { tipo:        q.type });
+    if (q.artistId)    qb.andWhere('r.artista_id = :artistaId',        { artistaId:   q.artistId });
     if (q.distributor) qb.andWhere('r.distribuidora = :distribuidora', { distribuidora: q.distributor });
-    if (q.search)      qb.andWhere('r.titulo ILIKE :search',         { search:      `%${q.search}%` });
+    if (q.search)      qb.andWhere('r.titulo ILIKE :search',           { search:      `%${q.search}%` });
 
     qb.orderBy('r.created_at', q.ascending ? 'ASC' : 'DESC')
       .skip(q.offset ?? 0)
@@ -33,13 +37,14 @@ export class ReleasesService {
     return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
   }
 
-  async findById(tenantId: string, id: string): Promise<ReleaseEntity> {
+  async findById(tenantId: string, id: string, actorRole?: string): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const result = await this.repo!
       .createQueryBuilder('r')
       .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
       .getOne();
     if (!result) throw new NotFoundException('Lançamento não encontrado');
-    return result;
+    const allowed_transitions = this.workflowService.getAllowedTransitions('release', result.status, actorRole);
+    return { ...result, allowed_transitions };
   }
 
   async create(tenantId: string, userId: string, dto: CreateReleaseDto): Promise<ReleaseEntity> {
@@ -61,13 +66,27 @@ export class ReleasesService {
     return this.repo!.save(entity as any) as any;
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateReleaseDto): Promise<ReleaseEntity> {
-    await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  async update(tenantId: string, userId: string, id: string, dto: UpdateReleaseDto, actorRole?: string): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
+    const current = await this.findById(tenantId, id, actorRole);
+
     const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
+
+    if (dto.status != null && dto.status !== current.status) {
+      await this.workflowService.transition({
+        entityType: 'release',
+        entityId:   id,
+        tenantId,
+        actorId:    userId,
+        actorRole,
+        fromStatus: current.status,
+        toStatus:   dto.status,
+        entity:     current as unknown as Record<string, unknown>,
+      });
+      updates.status = dto.status;
+    }
+
     if (dto.title       != null) updates.titulo          = dto.title;
     if (dto.type        != null) updates.tipo            = dto.type;
-    if (dto.status      != null) updates.status          = dto.status;
     if (dto.artistId    != null) updates.artista_id      = dto.artistId;
     if (dto.upc         != null) updates.upc             = dto.upc;
     if (dto.distributor != null) updates.distribuidora   = dto.distributor;
@@ -77,7 +96,7 @@ export class ReleasesService {
     if (dto.metadata    != null) updates.metadata        = dto.metadata;
 
     await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
-    return this.findById(tenantId, id);
+    return this.findById(tenantId, id, actorRole);
   }
 
   async remove(tenantId: string, id: string) {
