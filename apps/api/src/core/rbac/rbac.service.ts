@@ -23,11 +23,19 @@ const ROLE_HIERARCHY: Record<string, number> = {
   [SystemRole.EDITOR]:       60,
   [SystemRole.MANAGER]:      70,
   [SystemRole.VIEWER]:       10,
-  [FunctionalRole.FINANCIAL]: 60,
-  [FunctionalRole.MARKETING]: 50,
-  [FunctionalRole.ARTIST]:    30,
-  [FunctionalRole.RADIO]:     40,
-  [FunctionalRole.TV]:        40,
+  [FunctionalRole.FINANCIAL]:         60,
+  [FunctionalRole.ACCOUNTING]:        60,
+  [FunctionalRole.JURIDICO]:          55,
+  [FunctionalRole.MARKETING]:         50,
+  [FunctionalRole.MARKETING_MANAGER]: 55,
+  [FunctionalRole.ARTIST]:            30,
+  [FunctionalRole.ARTISTA]:           30,
+  [FunctionalRole.PRODUTOR]:          40,
+  [FunctionalRole.COMERCIAL]:         45,
+  [FunctionalRole.COLABORADOR]:       20,
+  [FunctionalRole.RH_MANAGER]:        55,
+  [FunctionalRole.RADIO]:             40,
+  [FunctionalRole.TV]:                40,
 };
 
 export type Resource =
@@ -153,6 +161,50 @@ const ROLE_PERMISSIONS: Record<string, Array<`${Resource}:${Action}`>> = {
     'catalog:read',
     'monitoring:read',
     'licensing:read',
+  ],
+  [FunctionalRole.ACCOUNTING]: [
+    'accounting:read','accounting:create','accounting:update','accounting:delete','accounting:export',
+    'artist:read',
+    'contracts:read',
+  ],
+  [FunctionalRole.JURIDICO]: [
+    'contracts:read','contracts:create','contracts:update',
+    'artist:read',
+    'licensing:read','licensing:create','licensing:update',
+  ],
+  [FunctionalRole.MARKETING_MANAGER]: [
+    'marketing:read','marketing:create','marketing:update','marketing:delete','marketing:approve',
+    'analytics:read',
+    'releases:read','releases:create','releases:update',
+    'artist:read',
+    'catalog:read',
+    'leads:read','leads:create','leads:update',
+  ],
+  [FunctionalRole.ARTISTA]: [
+    'artist:read',
+    'catalog:read',
+    'releases:read',
+  ],
+  [FunctionalRole.PRODUTOR]: [
+    'artist:read',
+    'catalog:read','catalog:create','catalog:update',
+    'releases:read','releases:create','releases:update',
+    'projects:read','projects:create','projects:update',
+  ],
+  [FunctionalRole.COMERCIAL]: [
+    'crm:read','crm:create','crm:update',
+    'leads:read','leads:create','leads:update','leads:delete',
+    'artist:read',
+    'contracts:read',
+  ],
+  [FunctionalRole.COLABORADOR]: [
+    'artist:read',
+    'catalog:read',
+    'releases:read',
+  ],
+  [FunctionalRole.RH_MANAGER]: [
+    'rh:read','rh:create','rh:update','rh:delete',
+    'artist:read',
   ],
 };
 

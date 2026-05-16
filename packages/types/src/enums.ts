@@ -33,13 +33,22 @@ export enum SystemRole {
 /**
  * FunctionalRole — roles funcionais/domínio usados no RBAC service.
  * Não são roles de sistema; representam funções operacionais dentro do tenant.
+ * Inclui todos os roles de negócio presentes no frontend (auth.ts AppRole).
  */
 export enum FunctionalRole {
-  FINANCIAL  = "financial",
-  MARKETING  = "marketing",
-  ARTIST     = "artist",
-  RADIO      = "radio",
-  TV         = "tv",
+  FINANCIAL          = "financial",
+  ACCOUNTING         = "accounting",
+  JURIDICO           = "juridico",
+  MARKETING          = "marketing",
+  MARKETING_MANAGER  = "marketing_manager",
+  ARTIST             = "artist",
+  ARTISTA            = "artista",
+  PRODUTOR           = "produtor",
+  COMERCIAL          = "comercial",
+  COLABORADOR        = "colaborador",
+  RH_MANAGER         = "rh_manager",
+  RADIO              = "radio",
+  TV                 = "tv",
 }
 
 /** Union de todos os roles reconhecidos pelo sistema */

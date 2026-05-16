@@ -531,7 +531,8 @@ export const createNotificationSchema = z.object({
   user_id:   z.string().min(1).max(255),
   title:     z.string().min(1).max(255),
   body:      z.string().max(5000).nullable().optional(),
-  type:      z.nativeEnum(NotificationType).default(NotificationType.INFO),
+  /** Accepts NotificationType enum values OR arbitrary domain event identifiers (e.g. 'contract:expiring') */
+  type:      z.string().min(1).max(100).default(NotificationType.INFO),
   entity:    z.string().max(100).nullable().optional(),
   entity_id: z.string().max(255).nullable().optional(),
   metadata:  jsonb,
