@@ -5,7 +5,7 @@
  * Backend nunca recebe o arquivo — apenas gera URLs e regista metadados.
  *
  * POST /uploads/presign        → URL pré-assinada (PUT) + registo no banco
- * POST /uploads/:fileId/confirm → marca status='confirmed'
+ * POST /uploads/:fileId/confirm → marca status='confirmed' + emite ASSET_UPLOADED
  * GET  /uploads/:fileId/download → URL temporária de download (GET signed)
  */
 
@@ -23,6 +23,7 @@ import { UploadStatus }    from '@music-os-360/types';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
@@ -34,6 +35,7 @@ export class UploadsController {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly storage: StorageService,
+    private readonly events: EventsService,
   ) {
     if (ds) this.repo = ds.getRepository(UploadEntity);
   }
@@ -94,6 +96,7 @@ export class UploadsController {
   @ApiOperation({ summary: 'Confirmar que upload foi concluído' })
   async confirm(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { userId: string },
     @Param('fileId') fileId:  string,
   ) {
     const repo = this.requireRepo();
@@ -107,6 +110,24 @@ export class UploadsController {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await repo.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
     this.logger.log(`Upload confirmado: ${fileId}`);
+
+    // Emit ASSET_UPLOADED domain event — triggers media processing via UploadEventsHandler
+    this.events.emitTyped(DOMAIN_EVENTS.ASSET_UPLOADED, {
+      tenantId:      tenant.id,
+      userId:        user.userId,
+      aggregateType: 'upload',
+      aggregateId:   row.id,
+      payload: {
+        uploadId:   row.id,
+        tenantId:   tenant.id,
+        entityType: row.entity    ?? 'unknown',
+        entityId:   row.entity_id ?? 'unknown',
+        fileName:   row.original_name,
+        mimeType:   row.mime_type,
+        uploadedBy: user.userId,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
 
     return repo.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
   }

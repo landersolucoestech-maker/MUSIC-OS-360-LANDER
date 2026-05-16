@@ -1,13 +1,12 @@
 /**
  * notification.handler.ts
  *
- * Cross-cutting @OnEvent listener that converts domain events into:
- *  1. Persistent domain_event_log records (via DomainEventLogService).
- *  2. Persistent in-app NotificationEntity records (for the acting/affected user).
- *  3. Real-time WebSocket broadcasts to the tenant room (via WsGateway).
+ * Responsible ONLY for user-facing notifications:
+ *  1. Persists in-app NotificationEntity for the acting/affected user.
+ *  2. Broadcasts real-time WebSocket notification to the tenant room.
  *
- * All three actions are fire-and-forget; errors are caught and logged
- * without affecting the calling request.
+ * Event-log persistence is handled entirely by UniversalEventLogHandler
+ * (single @OnEvent('**') wildcard) — not duplicated here.
  */
 
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
@@ -15,7 +14,6 @@ import { OnEvent }    from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
 import { DataSource, Repository } from 'typeorm';
 import { WsGateway } from '../websocket/ws.gateway';
-import { DomainEventLogService } from './domain-event-log.service';
 import { DOMAIN_EVENTS } from './events.service';
 import { CorrelationContext } from './correlation.context';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -37,26 +35,27 @@ import type {
 } from './domain-events.types';
 
 /** Human-readable notification titles per event type */
-const EVENT_LABELS: Record<string, (payload: Record<string, unknown>) => string> = {
-  [DOMAIN_EVENTS.ARTIST_CREATED]:       (p) => `Artista criado: ${p['nomeArtistico'] ?? ''}`,
-  [DOMAIN_EVENTS.ARTIST_UPDATED]:       (p) => `Artista actualizado: ${p['nomeArtistico'] ?? ''}`,
-  [DOMAIN_EVENTS.CONTRACT_SIGNED]:      (p) => `Contrato assinado: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.CONTRACT_EXPIRED]:     (p) => `Contrato vencido: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.RELEASE_PUBLISHED]:    (p) => `Lançamento publicado: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.RELEASE_APPROVED]:     (p) => `Lançamento aprovado: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.RELEASE_DISTRIBUTED]:  (p) => `Lançamento distribuído: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.CAMPAIGN_STARTED]:     (p) => `Campanha iniciada: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.CAMPAIGN_ENDED]:       (p) => `Campanha encerrada: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.LEAD_CONVERTED]:       (p) => `Lead convertido: ${p['nome'] ?? ''}`,
-  [DOMAIN_EVENTS.TICKET_RESOLVED]:      (p) => `Ticket resolvido: ${p['titulo'] ?? ''}`,
-  [DOMAIN_EVENTS.WORKFLOW_TRANSITIONED]:(p) => `Transição de estado: ${p['entityType'] ?? ''} → ${p['toStatus'] ?? ''}`,
-  [DOMAIN_EVENTS.TRANSACTION_CREATED]:  (p) => `Transacção registada: ${p['tipo'] ?? ''} ${p['valor'] ?? ''}`,
-  [DOMAIN_EVENTS.ASSET_UPLOADED]:       (p) => `Ficheiro enviado: ${p['fileName'] ?? ''}`,
-  [DOMAIN_EVENTS.TENANT_CREATED]:       (p) => `Conta criada: ${p['name'] ?? ''}`,
-  [DOMAIN_EVENTS.USER_INVITED]:         (p) => `Utilizador convidado: ${p['email'] ?? ''}`,
+const EVENT_LABELS: Record<string, (p: Record<string, unknown>) => string> = {
+  [DOMAIN_EVENTS.ARTIST_CREATED]:        (p) => `Artista criado: ${p['nomeArtistico'] ?? ''}`,
+  [DOMAIN_EVENTS.ARTIST_UPDATED]:        (p) => `Artista actualizado: ${p['nomeArtistico'] ?? ''}`,
+  [DOMAIN_EVENTS.CONTRACT_SIGNED]:       (p) => `Contrato assinado: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.CONTRACT_EXPIRED]:      (p) => `Contrato vencido: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.RELEASE_PUBLISHED]:     (p) => `Lançamento publicado: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.RELEASE_APPROVED]:      (p) => `Lançamento aprovado: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.RELEASE_DISTRIBUTED]:   (p) => `Lançamento distribuído: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.CAMPAIGN_STARTED]:      (p) => `Campanha iniciada: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.CAMPAIGN_ENDED]:        (p) => `Campanha encerrada: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.LEAD_CONVERTED]:        (p) => `Lead convertido: ${p['nome'] ?? ''}`,
+  [DOMAIN_EVENTS.TICKET_RESOLVED]:       (p) => `Ticket resolvido: ${p['titulo'] ?? ''}`,
+  [DOMAIN_EVENTS.WORKFLOW_TRANSITIONED]: (p) => `Transição: ${p['entityType'] ?? ''} → ${p['toStatus'] ?? ''}`,
+  [DOMAIN_EVENTS.TRANSACTION_CREATED]:   (p) => `Transacção: ${p['tipo'] ?? ''} ${p['valor'] ?? ''}`,
+  [DOMAIN_EVENTS.ASSET_UPLOADED]:        (p) => `Ficheiro enviado: ${p['fileName'] ?? ''}`,
+  [DOMAIN_EVENTS.TENANT_CREATED]:        (p) => `Conta criada: ${p['name'] ?? ''}`,
+  [DOMAIN_EVENTS.USER_INVITED]:          (p) => `Utilizador convidado: ${p['email'] ?? ''}`,
+  [DOMAIN_EVENTS.TAKEDOWN_REQUESTED]:    (p) => `Takedown solicitado: ${p['entityId'] ?? ''}`,
 };
 
-/** Extracts aggregate entity + id from event for NotificationEntity.entity / entity_id */
+/** Aggregate entity type per event (for NotificationEntity.entity field) */
 const EVENT_AGGREGATE: Record<string, string> = {
   [DOMAIN_EVENTS.ARTIST_CREATED]:        'artist',
   [DOMAIN_EVENTS.ARTIST_UPDATED]:        'artist',
@@ -72,6 +71,7 @@ const EVENT_AGGREGATE: Record<string, string> = {
   [DOMAIN_EVENTS.WORKFLOW_TRANSITIONED]: 'workflow',
   [DOMAIN_EVENTS.TRANSACTION_CREATED]:   'transaction',
   [DOMAIN_EVENTS.ASSET_UPLOADED]:        'upload',
+  [DOMAIN_EVENTS.TAKEDOWN_REQUESTED]:    'takedown',
 };
 
 @Injectable()
@@ -81,13 +81,12 @@ export class NotificationHandler {
 
   constructor(
     @Optional() private readonly wsGateway: WsGateway,
-    private readonly eventLog: DomainEventLogService,
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
   ) {
     if (ds) this.notifRepo = ds.getRepository(NotificationEntity);
   }
 
-  // ── Handlers per event group ──────────────────────────────────────────────
+  // ── Event listeners ───────────────────────────────────────────────────────
 
   @OnEvent('artist.*')
   async onArtistEvent(event: DomainEvent<ArtistCreatedPayload | ArtistUpdatedPayload>): Promise<void> {
@@ -134,6 +133,11 @@ export class NotificationHandler {
     await this.handle(event);
   }
 
+  @OnEvent('takedown.requested')
+  async onTakedownRequested(event: DomainEvent<unknown>): Promise<void> {
+    await this.handle(event);
+  }
+
   @OnEvent('tenant.created')
   async onTenantCreated(event: DomainEvent<unknown>): Promise<void> {
     await this.handle(event);
@@ -144,34 +148,26 @@ export class NotificationHandler {
     await this.handle(event);
   }
 
-  // ── Shared processing ─────────────────────────────────────────────────────
+  // ── Shared: persist in-app notification + WS broadcast ───────────────────
 
   private async handle<T>(event: DomainEvent<T>): Promise<void> {
-    // Attach correlationId from AsyncLocalStorage if not already set
-    const corrId    = event.correlationId ?? CorrelationContext.get();
-    const enriched: DomainEvent<T> = corrId ? { ...event, correlationId: corrId } : event;
-    const payload   = event.payload as Record<string, unknown>;
-    const labelFn   = EVENT_LABELS[event.type];
-    const title     = labelFn ? labelFn(payload) : event.type;
+    const corrId  = event.correlationId ?? CorrelationContext.get();
+    const payload = event.payload as Record<string, unknown>;
+    const labelFn = EVENT_LABELS[event.type];
+    const title   = labelFn ? labelFn(payload) : event.type;
 
-    // 1. Persist to domain_event_log (append-only audit)
-    const now = new Date();
-    await this.eventLog.persist(enriched, { processedAt: now });
-
-    // 2. Persist in-app NotificationEntity for the acting user (when available)
+    // 1. Persist in-app notification for acting user (when userId is available)
     if (this.notifRepo && event.userId) {
       try {
-        const aggregateType = EVENT_AGGREGATE[event.type] ?? null;
-        const aggregateId   = event.aggregateId ?? null;
-        const notification  = this.notifRepo.create({
+        const notification = this.notifRepo.create({
           id:        randomUUID(),
           tenant_id: event.tenantId,
           user_id:   event.userId,
           title,
           body:      null,
           type:      event.type,
-          entity:    aggregateType,
-          entity_id: aggregateId,
+          entity:    event.aggregateType ?? EVENT_AGGREGATE[event.type] ?? null,
+          entity_id: event.aggregateId   ?? null,
           read_at:   null,
           metadata: {
             correlationId: corrId ?? null,
@@ -186,7 +182,7 @@ export class NotificationHandler {
       }
     }
 
-    // 3. Broadcast real-time WebSocket notification to entire tenant room
+    // 2. Real-time WS broadcast to entire tenant room
     if (!this.wsGateway) return;
     try {
       this.wsGateway.sendToTenant(event.tenantId, 'notification', {

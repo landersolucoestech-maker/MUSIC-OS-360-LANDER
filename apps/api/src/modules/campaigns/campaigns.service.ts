@@ -6,6 +6,7 @@ import { CampaignEntity } from '../../database/entities';
 import type { CreateCampaignDto, UpdateCampaignDto, QueryCampaignDto } from './dto/campaigns.dto';
 import { CampaignStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @Injectable()
 export class CampaignsService {
@@ -15,6 +16,7 @@ export class CampaignsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -86,6 +88,7 @@ export class CampaignsService {
     const current = await this.findById(tenantId, id, actorRole);
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
+    const toStatus = dtoMap['status'] as string | undefined;
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
@@ -104,16 +107,50 @@ export class CampaignsService {
         actorId:    userId,
         actorRole,
         fromStatus: current.status,
-        toStatus:   dtoMap['status'] as string,
+        toStatus:   toStatus as string,
         entity:     current as unknown as Record<string, unknown>,
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
         await em.update(CampaignEntity, { id, tenant_id: tenantId }, {
           ...nonStatusUpdates,
-          status: dtoMap['status'] as CampaignStatus,
+          status: toStatus as CampaignStatus,
         });
       });
+
+      // Emit domain events on status transitions
+      const now = new Date().toISOString();
+      if (toStatus === CampaignStatus.ATIVA) {
+        this.events.emitTyped(DOMAIN_EVENTS.CAMPAIGN_STARTED, {
+          tenantId,
+          userId,
+          aggregateType: 'campaign',
+          aggregateId:   id,
+          payload: {
+            campaignId: id,
+            tenantId,
+            titulo:     current.nome,
+            startedBy:  userId,
+            startedAt:  now,
+          },
+        });
+      } else if (
+        toStatus === CampaignStatus.CONCLUIDA ||
+        toStatus === CampaignStatus.CANCELADA
+      ) {
+        this.events.emitTyped(DOMAIN_EVENTS.CAMPAIGN_ENDED, {
+          tenantId,
+          userId,
+          aggregateType: 'campaign',
+          aggregateId:   id,
+          payload: {
+            campaignId: id,
+            tenantId,
+            titulo:     current.nome,
+            endedAt:    now,
+          },
+        });
+      }
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<CampaignEntity>,

@@ -6,6 +6,7 @@ import { LeadEntity } from '../../database/entities';
 import type { CreateLeadDto, UpdateLeadDto, QueryLeadDto } from './dto/leads.dto';
 import { LeadStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @Injectable()
 export class LeadsService {
@@ -15,6 +16,7 @@ export class LeadsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -85,6 +87,7 @@ export class LeadsService {
     const current = await this.findById(tenantId, id, actorRole);
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
+    const toStatus = dtoMap['status'] as string | undefined;
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
@@ -103,16 +106,34 @@ export class LeadsService {
         actorId:    userId,
         actorRole,
         fromStatus: current.status,
-        toStatus:   dtoMap['status'] as string,
+        toStatus:   toStatus as string,
         entity:     current as unknown as Record<string, unknown>,
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
         await em.update(LeadEntity, { id, tenant_id: tenantId }, {
           ...nonStatusUpdates,
-          status: dtoMap['status'] as LeadStatus,
+          status: toStatus as LeadStatus,
         });
       });
+
+      // Emit LEAD_CONVERTED when lead is won/closed (FECHADO)
+      if (toStatus === LeadStatus.FECHADO) {
+        this.events.emitTyped(DOMAIN_EVENTS.LEAD_CONVERTED, {
+          tenantId,
+          userId,
+          aggregateType: 'lead',
+          aggregateId:   id,
+          payload: {
+            leadId:      id,
+            tenantId,
+            nome:        current.nome,
+            empresa:     current.empresa ?? null,
+            convertedBy: userId,
+            convertedAt: new Date().toISOString(),
+          },
+        });
+      }
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<LeadEntity>,

@@ -5,6 +5,7 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { SupportTicketEntity } from '../../database/entities';
 import { SupportTicketStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import type { CreateSupportTicketDto, UpdateSupportTicketDto, QuerySupportTicketDto } from './dto/support-tickets.dto';
 
 @Injectable()
@@ -15,6 +16,7 @@ export class SupportTicketsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -86,6 +88,7 @@ export class SupportTicketsService {
     const current = await this.findById(tenantId, id, actorRole);
     const dtoMap  = dto as Record<string, unknown>;
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
+    const toStatus = dtoMap['status'] as string | undefined;
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
@@ -103,16 +106,33 @@ export class SupportTicketsService {
         actorId:    userId,
         actorRole,
         fromStatus: current.status,
-        toStatus:   dtoMap['status'] as string,
+        toStatus:   toStatus as string,
         entity:     current as unknown as Record<string, unknown>,
       };
       await this.ds!.transaction(async (em) => {
         await this.workflowService.transitionInTx(req, em);
         await em.update(SupportTicketEntity, { id, tenant_id: tenantId }, {
           ...nonStatusUpdates,
-          status: dtoMap['status'] as SupportTicketStatus,
+          status: toStatus as SupportTicketStatus,
         });
       });
+
+      // Emit TICKET_RESOLVED when ticket is resolved
+      if (toStatus === SupportTicketStatus.RESOLVED) {
+        this.events.emitTyped(DOMAIN_EVENTS.TICKET_RESOLVED, {
+          tenantId,
+          userId,
+          aggregateType: 'support_ticket',
+          aggregateId:   id,
+          payload: {
+            ticketId:   id,
+            tenantId,
+            titulo:     current.subject,
+            resolvedBy: userId,
+            resolvedAt: new Date().toISOString(),
+          },
+        });
+      }
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<SupportTicketEntity>,
