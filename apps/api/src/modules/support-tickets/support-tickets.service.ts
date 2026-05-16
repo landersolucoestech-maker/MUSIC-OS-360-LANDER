@@ -1,5 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { SupportTicketEntity } from '../../database/entities';
 import { SupportTicketStatus } from '@music-os-360/types';
@@ -113,7 +114,10 @@ export class SupportTicketsService {
         });
       });
     } else {
-      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
+      await this.repo!.update(
+        { id, tenant_id: tenantId } as FindOptionsWhere<SupportTicketEntity>,
+        nonStatusUpdates as QueryDeepPartialEntity<SupportTicketEntity>,
+      );
     }
 
     return this.findById(tenantId, id, actorRole);
@@ -121,7 +125,10 @@ export class SupportTicketsService {
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as FindOptionsWhere<SupportTicketEntity>,
+      { deleted_at: new Date() } as QueryDeepPartialEntity<SupportTicketEntity>,
+    );
     return { deleted: true };
   }
 }

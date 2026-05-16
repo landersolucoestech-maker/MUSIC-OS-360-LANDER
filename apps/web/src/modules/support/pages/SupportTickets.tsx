@@ -130,18 +130,8 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
             {ticket.subject}
           </SheetTitle>
 
-          {/* Controls — status, priority, resolve, open full */}
+          {/* Controls — priority and open full (status controlled by WorkflowTransitionPanel below) */}
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <Select value={ticket.status} onValueChange={(v) => onUpdate(ticket.id, { status: v as TicketStatus })}>
-              <SelectTrigger className="h-7 text-xs w-38" data-testid="select-drawer-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([k, v]) => (
-                  <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={ticket.priority} onValueChange={(v) => onUpdate(ticket.id, { priority: v as TicketPriority })}>
               <SelectTrigger className="h-7 text-xs w-32" data-testid="select-drawer-priority">
                 <SelectValue />
@@ -152,17 +142,6 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
                 ))}
               </SelectContent>
             </Select>
-            {ticket.status !== "resolved" && ticket.status !== "closed" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                onClick={() => onUpdate(ticket.id, { status: "resolved" })}
-                data-testid="button-drawer-resolve"
-              >
-                <CheckCircle2 className="h-3 w-3" /> Resolver
-              </Button>
-            )}
             <Link to={`/support/tickets/${ticket.id}`} className="ml-auto">
               <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground">
                 <ExternalLink className="h-3 w-3" /> Abrir completo
