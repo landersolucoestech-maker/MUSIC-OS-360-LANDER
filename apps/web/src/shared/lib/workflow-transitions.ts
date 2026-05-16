@@ -140,3 +140,27 @@ export function getWorkflowAllowedTransitions(
   if (!defs) return [];
   return buildAllowed(defs, currentStatus);
 }
+
+/**
+ * Resolves the allowed transitions to render for a given entity.
+ *
+ * Priority rules:
+ *  1. In HTTP mode the API detail endpoint returns `allowed_transitions` on the
+ *     entity, filtered by the actor's role and any workflow guards.  This is the
+ *     authoritative list — always prefer it.
+ *  2. In mock mode the entity has no `allowed_transitions` field (mock data does
+ *     not include it), so fall back to the local workflow definition mirror.
+ *
+ * Use this function in every view modal / drawer that renders a WorkflowTransitionPanel.
+ * Never call `getWorkflowAllowedTransitions` directly in UI components.
+ */
+export function resolveAllowedTransitions(
+  entityType: WorkflowEntityType,
+  currentStatus: string | null | undefined,
+  serverTransitions?: { to: string; label?: string }[] | null,
+): WorkflowTransition[] {
+  if (Array.isArray(serverTransitions) && serverTransitions.length > 0) {
+    return serverTransitions.map(t => ({ to: t.to, label: t.label ?? t.to }));
+  }
+  return getWorkflowAllowedTransitions(entityType, currentStatus);
+}

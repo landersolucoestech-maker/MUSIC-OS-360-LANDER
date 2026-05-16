@@ -10,7 +10,7 @@ import { Separator } from "@/shared/ui/separator";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
-import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Target, DollarSign, Calendar, MousePointer, BarChart3, User } from "lucide-react";
 import type { ElementType } from "react";
@@ -46,7 +46,8 @@ export function CampanhaViewModal({ open, onOpenChange, campanha }: CampanhaView
 
   if (!campanha) return null;
 
-  const allowedTransitions = getWorkflowAllowedTransitions('campaign', campanha.status as string | null);
+  const campanhaWithWorkflow = campanha as typeof campanha & { allowed_transitions?: WorkflowTransition[] };
+  const allowedTransitions = resolveAllowedTransitions('campaign', campanha.status as string | null, campanhaWithWorkflow.allowed_transitions);
   const ctr = campanha.cliques && campanha.impressoes && campanha.impressoes > 0
     ? ((campanha.cliques / campanha.impressoes) * 100).toFixed(2) + '%'
     : null;
