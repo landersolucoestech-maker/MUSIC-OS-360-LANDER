@@ -2,11 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { EventEmitter2 } from '@nestjs/event-emitter';
 
 export interface DomainEvent<T = unknown> {
-  type: string;
-  tenantId: string;
-  userId?: string;
-  payload: T;
-  occurredAt: string;
+  type:           string;
+  tenantId:       string;
+  userId?:        string;
+  correlationId?: string;
+  payload:        T;
+  occurredAt:     string;
 }
 
 /**
@@ -36,13 +37,42 @@ export class EventsService {
 
 /** Nomes de eventos de domínio padronizados */
 export const DOMAIN_EVENTS = {
-  ARTIST_CREATED: 'artist.created',
-  ARTIST_UPDATED: 'artist.updated',
-  CONTRACT_SIGNED: 'contract.signed',
-  CONTRACT_EXPIRED: 'contract.expired',
-  TRANSACTION_CREATED: 'transaction.created',
-  RELEASE_PUBLISHED: 'release.published',
-  TAKEDOWN_REQUESTED: 'takedown.requested',
-  TENANT_CREATED: 'tenant.created',
-  USER_INVITED: 'user.invited',
+  // Artists
+  ARTIST_CREATED:        'artist.created',
+  ARTIST_UPDATED:        'artist.updated',
+
+  // Contracts
+  CONTRACT_SIGNED:       'contract.signed',
+  CONTRACT_EXPIRED:      'contract.expired',
+
+  // Accounting
+  TRANSACTION_CREATED:   'transaction.created',
+
+  // Releases
+  RELEASE_PUBLISHED:     'release.published',
+  RELEASE_APPROVED:      'release.approved',
+  RELEASE_DISTRIBUTED:   'release.distributed',
+
+  // Monitoring
+  TAKEDOWN_REQUESTED:    'takedown.requested',
+
+  // Marketing / CRM
+  CAMPAIGN_STARTED:      'campaign.started',
+  CAMPAIGN_ENDED:        'campaign.ended',
+  LEAD_CONVERTED:        'lead.converted',
+
+  // Assets
+  ASSET_UPLOADED:        'asset.uploaded',
+
+  // Support
+  TICKET_RESOLVED:       'ticket.resolved',
+
+  // Workflow
+  WORKFLOW_TRANSITIONED: 'workflow.transitioned',
+
+  // Tenant / Users
+  TENANT_CREATED:        'tenant.created',
+  USER_INVITED:          'user.invited',
 } as const;
+
+export type DomainEventType = typeof DOMAIN_EVENTS[keyof typeof DOMAIN_EVENTS];

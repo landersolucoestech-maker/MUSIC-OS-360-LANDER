@@ -6,6 +6,8 @@ import { ReleaseEntity } from '../../database/entities';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
 import { ReleaseStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { CorrelationContext } from '../../core/events/correlation.context';
 
 @Injectable()
 export class ReleasesService {
@@ -15,6 +17,7 @@ export class ReleasesService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -114,6 +117,78 @@ export class ReleasesService {
           status: dto.status,
         });
       });
+
+      // Emit WORKFLOW_TRANSITIONED for all status changes
+      this.events.emit({
+        type:          DOMAIN_EVENTS.WORKFLOW_TRANSITIONED,
+        tenantId,
+        userId,
+        correlationId: CorrelationContext.get(),
+        occurredAt:    new Date().toISOString(),
+        payload: {
+          entityType:     'release',
+          entityId:       id,
+          tenantId,
+          fromStatus:     current.status,
+          toStatus:       dto.status as string,
+          actorId:        userId,
+          actorRole,
+          reason:         null,
+          transitionedAt: new Date().toISOString(),
+        },
+      });
+
+      // Emit specialised events per target status
+      const nowIso = new Date().toISOString();
+      if (dto.status === ReleaseStatus.APPROVED) {
+        this.events.emit({
+          type:          DOMAIN_EVENTS.RELEASE_APPROVED,
+          tenantId,
+          userId,
+          correlationId: CorrelationContext.get(),
+          occurredAt:    nowIso,
+          payload: {
+            releaseId:  id,
+            tenantId,
+            titulo:     current.titulo,
+            artistId:   current.artista_id,
+            approvedBy: userId,
+            approvedAt: nowIso,
+          },
+        });
+      } else if (dto.status === ReleaseStatus.DISTRIBUTED) {
+        this.events.emit({
+          type:          DOMAIN_EVENTS.RELEASE_DISTRIBUTED,
+          tenantId,
+          userId,
+          correlationId: CorrelationContext.get(),
+          occurredAt:    nowIso,
+          payload: {
+            releaseId:     id,
+            tenantId,
+            titulo:        current.titulo,
+            artistId:      current.artista_id,
+            distribuidora: current.distribuidora,
+            plataformas:   current.plataformas as unknown[],
+            distributedAt: nowIso,
+          },
+        });
+      } else if (dto.status === ReleaseStatus.RELEASED) {
+        this.events.emit({
+          type:          DOMAIN_EVENTS.RELEASE_PUBLISHED,
+          tenantId,
+          userId,
+          correlationId: CorrelationContext.get(),
+          occurredAt:    nowIso,
+          payload: {
+            releaseId:   id,
+            tenantId,
+            titulo:      current.titulo,
+            artistId:    current.artista_id,
+            publishedAt: nowIso,
+          },
+        });
+      }
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<ReleaseEntity>,

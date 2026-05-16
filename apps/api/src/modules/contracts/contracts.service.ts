@@ -8,6 +8,8 @@ import type { UpdateContractDto } from './dto/update-contract.dto';
 import type { QueryContractDto }  from './dto/query-contract.dto';
 import { ContractStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { CorrelationContext } from '../../core/events/correlation.context';
 
 
 @Injectable()
@@ -18,6 +20,7 @@ export class ContractsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -117,6 +120,65 @@ export class ContractsService {
           status: dtoMap['status'] as ContractStatus,
         });
       });
+
+      const nowIso = new Date().toISOString();
+
+      // WORKFLOW_TRANSITIONED for all contract status changes
+      this.events.emit({
+        type:          DOMAIN_EVENTS.WORKFLOW_TRANSITIONED,
+        tenantId,
+        userId,
+        correlationId: CorrelationContext.get(),
+        occurredAt:    nowIso,
+        payload: {
+          entityType:     'contract',
+          entityId:       id,
+          tenantId,
+          fromStatus:     current.status,
+          toStatus:       dtoMap['status'] as string,
+          actorId:        userId,
+          actorRole,
+          reason:         null,
+          transitionedAt: nowIso,
+        },
+      });
+
+      // CONTRACT_SIGNED when transitioning to assinado
+      if (dtoMap['status'] === ContractStatus.ASSINADO) {
+        this.events.emit({
+          type:          DOMAIN_EVENTS.CONTRACT_SIGNED,
+          tenantId,
+          userId,
+          correlationId: CorrelationContext.get(),
+          occurredAt:    nowIso,
+          payload: {
+            contractId: id,
+            tenantId,
+            titulo:     current.titulo,
+            artistId:   current.artista_id,
+            signedBy:   userId,
+            signedAt:   nowIso,
+          },
+        });
+      }
+
+      // CONTRACT_EXPIRED when transitioning to vencido
+      if (dtoMap['status'] === ContractStatus.VENCIDO) {
+        this.events.emit({
+          type:          DOMAIN_EVENTS.CONTRACT_EXPIRED,
+          tenantId,
+          userId,
+          correlationId: CorrelationContext.get(),
+          occurredAt:    nowIso,
+          payload: {
+            contractId: id,
+            tenantId,
+            titulo:     current.titulo,
+            artistId:   current.artista_id,
+            expiredAt:  nowIso,
+          },
+        });
+      }
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,

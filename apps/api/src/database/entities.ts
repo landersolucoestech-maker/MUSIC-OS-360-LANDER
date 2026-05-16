@@ -975,6 +975,24 @@ export class WorkflowTransitionEntity {
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
 }
 
+// ─── Domain Event Log (append-only audit of domain events) ───────────────────
+/** Append-only — records every domain event emitted in the system. */
+@Entity('domain_event_log')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'event_type'])
+@Index(['correlation_id'])
+@Index(['occurred_at'])
+export class DomainEventLogEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid', nullable: true }) tenant_id: string | null;
+  @Column({ type: 'varchar', length: 100 }) event_type: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) actor_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) correlation_id: string | null;
+  @Column({ type: 'jsonb' }) payload: Record<string, unknown>;
+  @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }) occurred_at: Date;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+}
+
 // ─── All entities array (for DataSource registration) ─────────────────────────
 export const ALL_ENTITIES = [
   OrganizationEntity,
@@ -1013,4 +1031,5 @@ export const ALL_ENTITIES = [
   PayrollEntryEntity,
   LeaveRequestEntity,
   WorkflowTransitionEntity,
+  DomainEventLogEntity,
 ];

@@ -3,6 +3,8 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { CorrelationContext } from '../../core/events/correlation.context';
 import type { CreateArtistDto } from './dto/create-artist.dto';
 import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
@@ -15,6 +17,7 @@ export class ArtistsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly encryption: EncryptionService,
+    private readonly events: EventsService,
   ) {
     if (ds) this.repo = ds.getRepository(ArtistEntity);
   }
@@ -72,31 +75,70 @@ export class ArtistsService {
       created_by:          userId,
       updated_by:          userId,
     });
-    return this.repo!.save(entity as any) as any;
+    const saved = await (this.repo!.save(entity as any) as any);
+
+    this.events.emit({
+      type:           DOMAIN_EVENTS.ARTIST_CREATED,
+      tenantId,
+      userId,
+      correlationId:  CorrelationContext.get(),
+      occurredAt:     new Date().toISOString(),
+      payload: {
+        artistId:      saved.id,
+        tenantId,
+        nomeArtistico: saved.nome_artistico,
+        tipo:          saved.tipo,
+        status:        saved.status,
+        createdBy:     userId,
+      },
+    });
+
+    return saved;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<ArtistEntity> {
     await this.findById(tenantId, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
-    if (dto.nome_artistico    != null) updates.nome_artistico    = dto.nome_artistico;
-    if (dto.nome_civil        != null) updates.nome_civil        = dto.nome_civil;
-    if (dto.tipo              != null) updates.tipo              = dto.tipo;
-    if (dto.status            != null) updates.status            = dto.status;
-    if (dto.genero_musical    != null) updates.genero_musical    = dto.genero_musical;
-    if (dto.observacoes       != null) updates.observacoes       = dto.observacoes;
-    if (dto.foto_url          != null) updates.foto_url          = dto.foto_url;
-    if (dto.banner_url        != null) updates.banner_url        = dto.banner_url;
-    if (dto.spotify_artist_id != null) updates.spotify_artist_id = dto.spotify_artist_id;
-    if (dto.youtube_channel_id != null) updates.youtube_channel_id = dto.youtube_channel_id;
-    if (dto.especialidades    != null) updates.especialidades    = dto.especialidades;
-    if (dto.metadata          != null) updates.metadata          = dto.metadata;
-    if ((dto as any).email    !== undefined) updates.email_encrypted    = this.encryption.encryptNullable((dto as any).email);
-    if ((dto as any).telefone !== undefined) updates.telefone_encrypted = this.encryption.encryptNullable((dto as any).telefone);
-    if ((dto as any).cpf_cnpj !== undefined) updates.cpf_cnpj_encrypted = this.encryption.encryptNullable((dto as any).cpf_cnpj);
+    const changedFields: string[] = [];
+
+    if (dto.nome_artistico    != null) { updates.nome_artistico    = dto.nome_artistico;    changedFields.push('nome_artistico'); }
+    if (dto.nome_civil        != null) { updates.nome_civil        = dto.nome_civil;        changedFields.push('nome_civil'); }
+    if (dto.tipo              != null) { updates.tipo              = dto.tipo;              changedFields.push('tipo'); }
+    if (dto.status            != null) { updates.status            = dto.status;            changedFields.push('status'); }
+    if (dto.genero_musical    != null) { updates.genero_musical    = dto.genero_musical;    changedFields.push('genero_musical'); }
+    if (dto.observacoes       != null) { updates.observacoes       = dto.observacoes;       changedFields.push('observacoes'); }
+    if (dto.foto_url          != null) { updates.foto_url          = dto.foto_url;          changedFields.push('foto_url'); }
+    if (dto.banner_url        != null) { updates.banner_url        = dto.banner_url;        changedFields.push('banner_url'); }
+    if (dto.spotify_artist_id != null) { updates.spotify_artist_id = dto.spotify_artist_id; changedFields.push('spotify_artist_id'); }
+    if (dto.youtube_channel_id != null) { updates.youtube_channel_id = dto.youtube_channel_id; changedFields.push('youtube_channel_id'); }
+    if (dto.especialidades    != null) { updates.especialidades    = dto.especialidades;    changedFields.push('especialidades'); }
+    if (dto.metadata          != null) { updates.metadata          = dto.metadata;          changedFields.push('metadata'); }
+    if ((dto as any).email    !== undefined) { updates.email_encrypted    = this.encryption.encryptNullable((dto as any).email);    changedFields.push('email'); }
+    if ((dto as any).telefone !== undefined) { updates.telefone_encrypted = this.encryption.encryptNullable((dto as any).telefone); changedFields.push('telefone'); }
+    if ((dto as any).cpf_cnpj !== undefined) { updates.cpf_cnpj_encrypted = this.encryption.encryptNullable((dto as any).cpf_cnpj); changedFields.push('cpf_cnpj'); }
 
     await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
-    return this.findById(tenantId, id);
+    const result = await this.findById(tenantId, id);
+
+    if (changedFields.length > 0) {
+      this.events.emit({
+        type:          DOMAIN_EVENTS.ARTIST_UPDATED,
+        tenantId,
+        userId,
+        correlationId: CorrelationContext.get(),
+        occurredAt:    new Date().toISOString(),
+        payload: {
+          artistId:      id,
+          tenantId,
+          nomeArtistico: result.nome_artistico,
+          changedFields,
+          updatedBy:     userId,
+        },
+      });
+    }
+
+    return result;
   }
 
   async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {

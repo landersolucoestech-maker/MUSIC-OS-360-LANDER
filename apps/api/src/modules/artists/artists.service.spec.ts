@@ -1,7 +1,17 @@
 import 'reflect-metadata';
 import { ArtistsService } from './artists.service';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { EventsService } from '../../core/events/events.service';
 import { NotFoundException } from '@nestjs/common';
+
+function makeEventsMock(): jest.Mocked<Pick<EventsService, 'emit' | 'emitAsync' | 'on' | 'off'>> {
+  return {
+    emit:      jest.fn(),
+    emitAsync: jest.fn().mockResolvedValue([]),
+    on:        jest.fn(),
+    off:       jest.fn(),
+  } as unknown as jest.Mocked<Pick<EventsService, 'emit' | 'emitAsync' | 'on' | 'off'>>;
+}
 
 function makeEncryptionMock(): jest.Mocked<EncryptionService> {
   return {
@@ -81,7 +91,7 @@ describe('ArtistsService', () => {
     db._selectChain.offset  = jest.fn().mockReturnValue(db._selectChain);
     db._selectChain.limit   = jest.fn().mockResolvedValue([artistA]);
 
-    const service = new ArtistsService(db as any, enc);
+    const service = new ArtistsService(db as any, enc, makeEventsMock() as any);
     const result  = await service.list(TENANT_A, {});
     expect(result.data).toEqual([artistA]);
     expect(result.meta.total).toBe(1);
@@ -95,7 +105,7 @@ describe('ArtistsService', () => {
     db._selectChain.where = jest.fn().mockReturnValue(db._selectChain);
     db._selectChain.limit = jest.fn().mockResolvedValue([artistA]);
 
-    const service = new ArtistsService(db as any, enc);
+    const service = new ArtistsService(db as any, enc, makeEventsMock() as any);
     const result  = await service.findById(TENANT_A, 'artist-001');
     expect(result).toEqual(artistA);
   });
@@ -108,7 +118,7 @@ describe('ArtistsService', () => {
     db._selectChain.where = jest.fn().mockReturnValue(db._selectChain);
     db._selectChain.limit = jest.fn().mockResolvedValue([]);
 
-    const service = new ArtistsService(db as any, enc);
+    const service = new ArtistsService(db as any, enc, makeEventsMock() as any);
     await expect(service.findById(TENANT_A, 'inexistente')).rejects.toThrow(NotFoundException);
   });
 
@@ -134,7 +144,7 @@ describe('ArtistsService', () => {
     db._insertChain.values    = jest.fn().mockReturnValue(db._insertChain);
     db._insertChain.returning = jest.fn().mockResolvedValue([created]);
 
-    const service = new ArtistsService(db as any, enc);
+    const service = new ArtistsService(db as any, enc, makeEventsMock() as any);
     const result  = await service.create(TENANT_A, USER_ID, dto as any);
 
     expect(enc.encryptNullable).toHaveBeenCalledWith(dto.email);
@@ -164,7 +174,7 @@ describe('ArtistsService', () => {
     db._updateChain.set  = jest.fn().mockReturnValue(db._updateChain);
     db._updateChain.where = jest.fn().mockResolvedValue([]);
 
-    const service = new ArtistsService(db as any, enc);
+    const service = new ArtistsService(db as any, enc, makeEventsMock() as any);
     const result  = await service.softDelete(TENANT_A, 'artist-001');
 
     expect(result).toEqual({ deleted: true });

@@ -10,7 +10,17 @@
 import 'reflect-metadata';
 import { ArtistsService } from './artists.service';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { EventsService } from '../../core/events/events.service';
 import { NotFoundException } from '@nestjs/common';
+
+function makeEventsMock() {
+  return {
+    emit:      jest.fn(),
+    emitAsync: jest.fn().mockResolvedValue([]),
+    on:        jest.fn(),
+    off:       jest.fn(),
+  } as unknown as EventsService;
+}
 
 const TENANT_A = 'tenant-alpha';
 const TENANT_B = 'tenant-beta';
@@ -70,7 +80,7 @@ describe('Tenant Isolation — ArtistsService', () => {
         update: jest.fn(),
       };
 
-      const service = new ArtistsService(db as any, enc);
+      const service = new ArtistsService(db as any, enc, makeEventsMock());
       const result  = await service.list(TENANT_A, {});
 
       expect(result.data).toHaveLength(1);
@@ -89,7 +99,7 @@ describe('Tenant Isolation — ArtistsService', () => {
 
       const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
 
-      const service = new ArtistsService(db as any, enc);
+      const service = new ArtistsService(db as any, enc, makeEventsMock());
       const result  = await service.findById(TENANT_A, artistOfA.id);
       expect(result.id).toBe(artistOfA.id);
     });
@@ -103,7 +113,7 @@ describe('Tenant Isolation — ArtistsService', () => {
 
       const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
 
-      const service = new ArtistsService(db as any, enc);
+      const service = new ArtistsService(db as any, enc, makeEventsMock());
       await expect(service.findById(TENANT_B, artistOfA.id)).rejects.toThrow(NotFoundException);
     });
   });
@@ -118,7 +128,7 @@ describe('Tenant Isolation — ArtistsService', () => {
 
       const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
 
-      const service = new ArtistsService(db as any, enc);
+      const service = new ArtistsService(db as any, enc, makeEventsMock());
       await expect(
         service.update(TENANT_B, USER_ID, artistOfA.id, { nome_artistico: 'Hack' }),
       ).rejects.toThrow(NotFoundException);

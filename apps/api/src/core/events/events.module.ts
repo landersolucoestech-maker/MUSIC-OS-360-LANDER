@@ -1,6 +1,8 @@
 import { Global, Module } from '@nestjs/common';
 import { EventEmitterModule } from '@nestjs/event-emitter';
 import { EventsService } from './events.service';
+import { DomainEventLogService } from './domain-event-log.service';
+import { NotificationHandler } from './notification.handler';
 
 @Global()
 @Module({
@@ -10,12 +12,19 @@ import { EventsService } from './events.service';
       delimiter: '.',
       newListener: false,
       removeListener: false,
-      maxListeners: 20,
+      maxListeners: 30,
       verboseMemoryLeak: false,
       ignoreErrors: false,
     }),
   ],
-  providers: [EventsService],
-  exports: [EventsService],
+  providers: [
+    EventsService,
+    DomainEventLogService,
+    NotificationHandler,
+  ],
+  exports: [
+    EventsService,
+    DomainEventLogService,
+  ],
 })
 export class DomainEventsModule {}
