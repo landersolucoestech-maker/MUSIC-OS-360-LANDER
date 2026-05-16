@@ -60,7 +60,8 @@ const ENTITY_TABLE_MAP: Record<string, string> = {
 /** Request shape expected inside the interceptor */
 interface AuditRequest {
   auth?:        { userId?: string; orgRole?: string };
-  tenant?:      { id?: string; orgId?: string };
+  /** tenant is a TypeORM entity — fields are snake_case */
+  tenant?:      { id?: string; orgId?: string; org_id?: string };
   ip?:          string;
   requestId?:   string;
   method?:      string;
@@ -125,7 +126,8 @@ export class AuditInterceptor implements NestInterceptor {
             const correlationId = CorrelationContext.get() ?? null;
             const sessionId    = request.headers?.['x-session-id'] ?? null;
             const actorRole    = request.auth?.orgRole ?? null;
-            const orgId        = request.tenant?.orgId ?? null;
+            // tenant is a TypeORM entity — fields are snake_case (org_id, not orgId)
+            const orgId = (request.tenant?.['org_id'] as string | undefined) ?? null;
 
             await this.auditService.log({
               tenantId:       tenantId,

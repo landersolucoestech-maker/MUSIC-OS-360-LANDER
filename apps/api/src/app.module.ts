@@ -11,7 +11,8 @@
  */
 
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './core/interceptors/audit.interceptor';
 import { RequestIdMiddleware }  from './core/middleware/request-id.middleware';
 import { CorrelationMiddleware } from './core/middleware/correlation.middleware';
 import { ConfigModule } from '@nestjs/config';
@@ -139,6 +140,11 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     WorkflowModule,
   ],
   providers: [
+    // Interceptor global — processa @Audit() em todas as rotas com DI completo
+    {
+      provide:  APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
     // Guards globais aplicados a TODAS as rotas
     // Ordem: RateLimitGuard → JwtAuthGuard → TenantGuard → RolesGuard
     Reflector,

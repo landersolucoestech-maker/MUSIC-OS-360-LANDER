@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
+import { Audit }                from '../../core/interceptors/audit.interceptor';
 import { HrService }             from './hr.service';
 import { CreateEmployeeDto }     from './dto/create-employee.dto';
 import { UpdateEmployeeDto }     from './dto/update-employee.dto';
@@ -48,6 +49,7 @@ export class HrController {
 
   @Post('employees')
   @RequireRole('manager')
+  @Audit('employee.created')
   @ApiOperation({ summary: 'Criar funcionário' })
   createEmployee(
     @CurrentTenant() tenant: { id: string },
@@ -59,6 +61,7 @@ export class HrController {
 
   @Patch('employees/:id')
   @RequireRole('manager')
+  @Audit('employee.updated')
   @ApiOperation({ summary: 'Actualizar funcionário' })
   updateEmployee(
     @CurrentTenant() tenant: { id: string },
@@ -71,6 +74,7 @@ export class HrController {
 
   @Delete('employees/:id')
   @RequireRole('admin')
+  @Audit('employee.deleted')
   @ApiOperation({ summary: 'Desactivar funcionário (soft delete)' })
   removeEmployee(
     @CurrentTenant() tenant: { id: string },
@@ -101,6 +105,7 @@ export class HrController {
 
   @Post('payroll')
   @RequireRole('manager')
+  @Audit('payroll.created')
   @ApiOperation({ summary: 'Lançar entrada na folha de pagamento' })
   createPayroll(
     @CurrentTenant() tenant: { id: string },
@@ -131,6 +136,7 @@ export class HrController {
 
   @Post('leave-requests')
   @RequireRole('editor')
+  @Audit('leave_request.created')
   @ApiOperation({ summary: 'Criar pedido de ausência' })
   createLeaveRequest(
     @CurrentTenant() tenant: { id: string },
@@ -142,6 +148,7 @@ export class HrController {
 
   @Patch('leave-requests/:id/approve')
   @RequireRole('manager')
+  @Audit('leave_request.approved')
   @ApiOperation({ summary: 'Aprovar pedido de ausência (manager+)' })
   approveLeaveRequest(
     @CurrentTenant() tenant: { id: string },

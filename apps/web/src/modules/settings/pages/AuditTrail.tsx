@@ -5,7 +5,9 @@
  * Acesso restrito a OWNER/ADMIN.
  *
  * - MOCK_MODE=true  → dados vêm do useAuditTrail (mock estático)
- * - MOCK_MODE=false → dados vêm de GET /audit-logs via useAuditTrail + storage.list
+ * - MOCK_MODE=false → chama GET /audit-logs via storage.list
+ *
+ * Filtros: search free-text, entity_type, action_group, date range (from/to)
  */
 
 import { useState, useMemo } from "react";
@@ -24,10 +26,11 @@ import {
 } from "@/shared/ui/table";
 import {
   ShieldCheck, Search, ChevronDown, ChevronRight,
-  User, Clock, RefreshCw, Loader2,
+  User, Clock, RefreshCw, Loader2, X,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useAuditTrail, type AuditLogEntry } from "@/modules/settings/hooks/useAuditTrail";
 
 // ── Action badge helpers ───────────────────────────────────────────────────────
@@ -131,9 +134,14 @@ export default function AuditTrail() {
   const [search,       setSearch]       = useState("");
   const [entityFilter, setEntityFilter] = useState("all");
   const [actionFilter, setActionFilter] = useState("all");
+  const [fromDate,     setFromDate]     = useState("");
+  const [toDate,       setToDate]       = useState("");
   const [expandedId,   setExpandedId]   = useState<string | null>(null);
 
-  const { data: entries = [], isLoading, refetch } = useAuditTrail({});
+  const { data: entries = [], isLoading, refetch } = useAuditTrail({
+    fromDate: fromDate || undefined,
+    toDate:   toDate   || undefined,
+  });
 
   const entities = useMemo(() => {
     const set = new Set(entries.map(e => e.entity));
@@ -161,9 +169,23 @@ export default function AuditTrail() {
             )
           : entry.action.endsWith(`.${actionFilter}`));
 
-      return matchSearch && matchEntity && matchAction;
+      const entryDate = new Date(entry.created_at);
+      const matchFrom = !fromDate || entryDate >= new Date(fromDate);
+      const matchTo   = !toDate   || entryDate <= new Date(toDate + "T23:59:59Z");
+
+      return matchSearch && matchEntity && matchAction && matchFrom && matchTo;
     });
-  }, [entries, search, entityFilter, actionFilter]);
+  }, [entries, search, entityFilter, actionFilter, fromDate, toDate]);
+
+  const hasActiveFilters = search || entityFilter !== "all" || actionFilter !== "all" || fromDate || toDate;
+
+  const clearFilters = () => {
+    setSearch("");
+    setEntityFilter("all");
+    setActionFilter("all");
+    setFromDate("");
+    setToDate("");
+  };
 
   const toggleExpand = (id: string) => {
     setExpandedId(prev => prev === id ? null : id);
@@ -228,24 +250,40 @@ export default function AuditTrail() {
         {/* Filters */}
         <Card className="border-border/50">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Search className="w-4 h-4" />
-              Filtros
-            </CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-sm font-medium flex items-center gap-2">
+                <Search className="w-4 h-4" />
+                Filtros
+              </CardTitle>
+              {hasActiveFilters && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 gap-1 text-xs text-muted-foreground"
+                  onClick={clearFilters}
+                  data-testid="button-audit-clear-filters"
+                >
+                  <X className="w-3 h-3" />
+                  Limpar filtros
+                </Button>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="relative col-span-1">
+            <div className="grid grid-cols-4 gap-3">
+              {/* Search */}
+              <div className="relative col-span-2">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   data-testid="input-audit-search"
-                  placeholder="Pesquisar por acção, actor, ID…"
+                  placeholder="Pesquisar por acção, actor, ID, correlation…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   className="pl-9"
                 />
               </div>
 
+              {/* Entity */}
               <Select value={entityFilter} onValueChange={setEntityFilter}>
                 <SelectTrigger data-testid="select-audit-entity">
                   <SelectValue placeholder="Entidade" />
@@ -259,6 +297,7 @@ export default function AuditTrail() {
                 </SelectContent>
               </Select>
 
+              {/* Action */}
               <Select value={actionFilter} onValueChange={setActionFilter}>
                 <SelectTrigger data-testid="select-audit-action">
                   <SelectValue placeholder="Tipo de acção" />
@@ -272,6 +311,26 @@ export default function AuditTrail() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Date range row */}
+            <div className="grid grid-cols-2 gap-3 mt-3">
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">De (data inicial)</p>
+                <DatePickerField
+                  value={fromDate}
+                  onChange={setFromDate}
+                  placeholder="Seleccionar data inicial"
+                />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground mb-1.5">Até (data final)</p>
+                <DatePickerField
+                  value={toDate}
+                  onChange={setToDate}
+                  placeholder="Seleccionar data final"
+                />
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -280,7 +339,7 @@ export default function AuditTrail() {
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="text-sm font-medium">
-                {isLoading ? "A carregar…" : `Eventos (${filtered.length})`}
+                {isLoading ? "A carregar…" : `Eventos (${filtered.length}${filtered.length !== entries.length ? ` de ${entries.length}` : ""})`}
               </CardTitle>
               <CardDescription className="text-xs">
                 Clique numa linha para expandir o diff before/after
