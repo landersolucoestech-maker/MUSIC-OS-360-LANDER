@@ -92,17 +92,18 @@ export class AuditInterceptor implements NestInterceptor {
     let beforeSnapshot: Record<string, unknown> | null = null;
 
     const captureBeforeAndHandle = async (): Promise<Observable<unknown>> => {
-      // Attempt to load the entity state before the mutation (PATCH / DELETE)
+      // Attempt to load the entity state before the mutation (PATCH / DELETE).
+      // Using ds.query() with positional params returns real column names (no alias prefix),
+      // which is required for computeDiff to produce a correct before/after diff.
       if (entityId && tenantId && this.ds) {
         const table = ENTITY_TABLE_MAP[entityName];
         if (table) {
           try {
-            beforeSnapshot = await this.ds
-              .createQueryBuilder()
-              .select('e')
-              .from(table, 'e')
-              .where('e.id = :id AND e.tenant_id = :tenantId', { id: entityId, tenantId })
-              .getRawOne() as Record<string, unknown> | null;
+            const rows = await this.ds.query(
+              `SELECT * FROM "${table}" WHERE id = $1 AND tenant_id = $2 LIMIT 1`,
+              [entityId, tenantId],
+            ) as Record<string, unknown>[];
+            beforeSnapshot = rows[0] ?? null;
           } catch {
             // Non-critical — proceed without before snapshot
           }

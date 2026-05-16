@@ -22,7 +22,7 @@ export class AuditLogController {
   constructor(private readonly svc: AuditLogService) {}
 
   @Get()
-  @RequireRole('owner')
+  @RequireRole('admin')
   @ApiOperation({ summary: 'Listar audit trail paginado (OWNER/ADMIN only)' })
   list(
     @CurrentTenant() t: { id: string },
@@ -32,7 +32,7 @@ export class AuditLogController {
   }
 
   @Get(':id')
-  @RequireRole('owner')
+  @RequireRole('admin')
   @ApiOperation({ summary: 'Detalhe de um audit log (OWNER/ADMIN only)' })
   findById(
     @CurrentTenant() t: { id: string },

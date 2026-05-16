@@ -16,6 +16,17 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './entities';
 import { MigrationValidatorService } from './migration-validator.service';
+import { InitialSchema20240101000000 }                from './migrations/20240101000000_InitialSchema';
+import { WorkflowTransitions20240601000001 }          from './migrations/20240601000001_WorkflowTransitions';
+import { DomainEventLog20240602000001 }               from './migrations/20240602000001_DomainEventLog';
+import { AuditLogEnterpriseColumns20260516000001 }    from './migrations/20260516000001_AuditLogEnterpriseColumns';
+
+const ALL_MIGRATIONS = [
+  InitialSchema20240101000000,
+  WorkflowTransitions20240601000001,
+  DomainEventLog20240602000001,
+  AuditLogEnterpriseColumns20260516000001,
+] as const;
 
 export const DATA_SOURCE = Symbol('DATA_SOURCE');
 
@@ -41,6 +52,7 @@ export const DATA_SOURCE = Symbol('DATA_SOURCE');
           type:           'postgres',
           url,
           entities:       ALL_ENTITIES,
+          migrations:     [...ALL_MIGRATIONS],
           synchronize:    false,  // NUNCA true — schema gerido via migrations
           logging:        config.get('NODE_ENV') !== 'production',
           ssl:            config.get('NODE_ENV') === 'production'

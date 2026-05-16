@@ -78,6 +78,7 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   deteccoes:           "/content-detections",
   documentos_funcionario: "/hr/employees",
   support_tickets:        "/support-tickets",
+  audit_logs:             "/audit-logs",
 };
 
 /**
