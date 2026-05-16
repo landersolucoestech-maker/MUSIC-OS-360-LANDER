@@ -1,13 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import type { JwtAuth }    from '../../core/guards/clerk-auth.guard';
 import { ContractsService }        from './contracts.service';
 import { CreateContractDto }       from './dto/create-contract.dto';
@@ -16,7 +16,6 @@ import { QueryContractDto }        from './dto/query-contract.dto';
 
 @ApiTags('Contracts')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('contracts')
 export class ContractsController {
   constructor(private readonly service: ContractsService) {}

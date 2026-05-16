@@ -11,10 +11,10 @@
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, ServiceUnavailableException, Logger, Inject, UseInterceptors,
+  NotFoundException, ServiceUnavailableException, Logger, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { DataSource, Repository } from 'typeorm';
 
 import { DATA_SOURCE }     from '../../database/database.module';
@@ -28,7 +28,6 @@ import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('uploads')
 export class UploadsController {
   private readonly logger = new Logger(UploadsController.name);

@@ -1,13 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { TransactionsService }     from './transactions.service';
 import { CreateTransactionDto }    from './dto/create-transaction.dto';
 import { UpdateTransactionDto }    from './dto/update-transaction.dto';
@@ -15,7 +15,6 @@ import { QueryTransactionDto }     from './dto/query-transaction.dto';
 
 @ApiTags('Transactions')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('transactions')
 export class TransactionsController {
   constructor(private readonly service: TransactionsService) {}

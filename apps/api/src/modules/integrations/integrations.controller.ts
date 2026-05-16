@@ -1,10 +1,10 @@
 import {
   Controller, Post, Get, Delete, Body, Param, Query,
-  HttpCode, HttpStatus, Request, UseInterceptors,
+  HttpCode, HttpStatus, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RequireRole } from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { ACRCloudService }    from './acrcloud/acrcloud.service';
 import { AutentiqueService }  from './autentique/autentique.service';
 import { SpotifyService }     from './spotify/spotify.service';
@@ -26,7 +26,6 @@ import {
 
 @ApiTags('Integrations')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @RequireRole('editor')
 @Controller('integrations')
 export class IntegrationsController {
@@ -69,6 +68,7 @@ export class IntegrationsController {
 
   @Post('acrcloud/recognize')
   @RequireRole('editor')
+  @Audit('integration.acr_recognized')
   @ApiOperation({ summary: 'Identificar música por áudio (ACRCloud)' })
   @HttpCode(HttpStatus.OK)
   recognizeAudio(@Body() dto: RecognizeAudioDto) {
@@ -88,6 +88,7 @@ export class IntegrationsController {
 
   @Post('autentique/send')
   @RequireRole('editor')
+  @Audit('integration.document_sent')
   @ApiOperation({ summary: 'Enviar contrato para assinatura via Autentique' })
   sendForSignature(@Request() req: any, @Body() dto: SendForSignatureDto) {
     return this.autentique.sendForSignature({
@@ -127,6 +128,7 @@ export class IntegrationsController {
 
   @Post('spotify/sync-artist')
   @RequireRole('editor')
+  @Audit('integration.spotify_synced')
   @ApiOperation({ summary: 'Sincronizar métricas de artista no Spotify' })
   @HttpCode(HttpStatus.OK)
   syncSpotifyArtist(@Request() req: any, @Body() dto: SyncSpotifyArtistDto) {
@@ -525,6 +527,7 @@ export class IntegrationsController {
 
   @Post('abramus/register-work')
   @RequireRole('manager')
+  @Audit('integration.abramus_work_registered')
   @ApiOperation({ summary: 'Registrar obra no Abramus (manager+)' })
   abramusRegisterWork(@Request() req: any, @Body() body: any) {
     return this.abramus.registerWork(req.tenant?.id ?? req.tenantId, body);

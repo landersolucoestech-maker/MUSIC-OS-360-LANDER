@@ -3,13 +3,12 @@
  *
  * Hook de leitura do Audit Trail.
  * - MOCK_MODE=true  → devolve dados mock estáticos (sem backend)
- * - MOCK_MODE=false → chama GET /audit-logs via storage.list
- *
- * O storage.list já serializa os filtros como query params para HTTP mode.
+ * - MOCK_MODE=false → chama GET /audit-logs via api.get directamente,
+ *   desembrulhando { data: AuditLogEntry[] } do envelope TransformInterceptor.
  */
 
 import { useQuery } from "@tanstack/react-query";
-import { storage } from "@/shared/lib/storage";
+import { api } from "@/shared/lib/api-client";
 import { MOCK_MODE } from "@/shared/lib/env";
 
 export interface AuditLogEntry {
@@ -169,20 +168,28 @@ export function useAuditTrail(filters: AuditTrailFilters = {}) {
       if (MOCK_MODE) {
         return MOCK_AUDIT_TRAIL;
       }
-      return storage.list<AuditLogEntry>("audit_logs", {
-        filters: {
-          action:        filters.action,
-          entity:        filters.entity,
-          entityId:      filters.entityId,
-          actorRole:     filters.actorRole,
-          correlationId: filters.correlationId,
-          fromDate:      filters.fromDate,
-          toDate:        filters.toDate,
-        },
-        limit:   filters.limit  ?? 100,
-        offset:  filters.offset ?? 0,
-        orderBy: { column: "created_at", ascending: false },
-      });
+
+      const params = new URLSearchParams();
+      if (filters.action)        params.set("action",        filters.action);
+      if (filters.entity)        params.set("entity",        filters.entity);
+      if (filters.entityId)      params.set("entityId",      filters.entityId);
+      if (filters.actorRole)     params.set("actorRole",     filters.actorRole);
+      if (filters.correlationId) params.set("correlationId", filters.correlationId);
+      if (filters.fromDate)      params.set("fromDate",      filters.fromDate);
+      if (filters.toDate)        params.set("toDate",        filters.toDate);
+      params.set("limit",  String(filters.limit  ?? 100));
+      params.set("offset", String(filters.offset ?? 0));
+      params.set("orderBy",    "created_at");
+      params.set("ascending",  "false");
+
+      const qs = params.toString();
+      const response = await api.get<{ data: AuditLogEntry[] } | AuditLogEntry[]>(
+        `/audit-logs${qs ? `?${qs}` : ""}`,
+      );
+
+      if (Array.isArray(response)) return response;
+      if (response && "data" in response && Array.isArray(response.data)) return response.data;
+      return [];
     },
     staleTime: 30_000,
   });

@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import {
@@ -9,7 +9,7 @@ import {
 import { CurrentTenant }    from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }      from '../../core/decorators/current-user.decorator';
 import { RequireRole }      from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { ArtistsService }   from './artists.service';
 import { CreateArtistDto }  from './dto/create-artist.dto';
 import { UpdateArtistDto }  from './dto/update-artist.dto';
@@ -17,7 +17,6 @@ import { QueryArtistDto }   from './dto/query-artist.dto';
 
 @ApiTags('Artists')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('artists')
 export class ArtistsController {
   constructor(private readonly service: ArtistsService) {}

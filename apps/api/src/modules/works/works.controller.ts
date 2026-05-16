@@ -1,13 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { WorksService }    from './works.service';
 import { CreateWorkDto }   from './dto/create-work.dto';
 import { UpdateWorkDto }   from './dto/update-work.dto';
@@ -15,7 +15,6 @@ import { QueryWorkDto }    from './dto/query-work.dto';
 
 @ApiTags('Works')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('works')
 export class WorksController {
   constructor(private readonly service: WorksService) {}

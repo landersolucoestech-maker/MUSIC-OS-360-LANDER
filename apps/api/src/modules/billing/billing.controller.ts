@@ -14,21 +14,20 @@
 
 import {
   Controller, Post, Get, Body, Headers,
-  Req, RawBodyRequest, UseInterceptors,
+  Req, RawBodyRequest,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { Public }          from '../../core/decorators/public.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { BillingService }  from './billing.service';
 import { CreateCheckoutDto, CreatePortalDto } from './dto/billing.dto';
 import type { Request }    from 'express';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
-@UseInterceptors(AuditInterceptor)
 @Controller('billing')
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
