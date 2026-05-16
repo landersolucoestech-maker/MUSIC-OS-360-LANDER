@@ -8,6 +8,7 @@ import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator'
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }    from '../../core/guards/clerk-auth.guard';
 import { ContractsService }        from './contracts.service';
 import { CreateContractDto }       from './dto/create-contract.dto';
 import { UpdateContractDto }       from './dto/update-contract.dto';
@@ -32,9 +33,10 @@ export class ContractsController {
   @ApiOperation({ summary: 'Obter contrato por ID' })
   findById(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.findById(tenant.id, id);
+    return this.service.findById(tenant.id, id, user?.orgRole ?? undefined);
   }
 
   @Post()
@@ -43,7 +45,7 @@ export class ContractsController {
   @ApiOperation({ summary: 'Criar contrato' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   JwtAuth,
     @Body()          dto:    CreateContractDto,
   ) {
     return this.service.create(tenant.id, user.userId, dto);
@@ -55,11 +57,11 @@ export class ContractsController {
   @ApiOperation({ summary: 'Actualizar contrato' })
   update(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body()          dto:    UpdateContractDto,
   ) {
-    return this.service.update(tenant.id, user.userId, id, dto);
+    return this.service.update(tenant.id, user.userId, id, dto, user?.orgRole ?? undefined);
   }
 
   @Delete(':id')

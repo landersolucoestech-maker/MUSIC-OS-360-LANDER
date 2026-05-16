@@ -2,13 +2,17 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { SupportTicketEntity } from '../../database/entities';
+import { WorkflowService } from '../../core/workflow/workflow.service';
 import type { CreateSupportTicketDto, UpdateSupportTicketDto, QuerySupportTicketDto } from './dto/support-tickets.dto';
 
 @Injectable()
 export class SupportTicketsService {
   private readonly repo: Repository<SupportTicketEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    private readonly workflowService: WorkflowService,
+  ) {
     if (ds) this.repo = ds.getRepository(SupportTicketEntity);
   }
 
@@ -30,13 +34,18 @@ export class SupportTicketsService {
     return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
   }
 
-  async findById(tenantId: string, id: string): Promise<SupportTicketEntity> {
+  async findById(
+    tenantId: string,
+    id: string,
+    actorRole?: string,
+  ): Promise<SupportTicketEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const result = await this.repo!
       .createQueryBuilder('t')
       .where('t.id = :id AND t.tenant_id = :tenantId AND t.deleted_at IS NULL', { id, tenantId })
       .getOne();
     if (!result) throw new NotFoundException('Ticket não encontrado');
-    return result;
+    const allowed_transitions = this.workflowService.getAllowedTransitions('ticket', result.status, actorRole);
+    return { ...result, allowed_transitions };
   }
 
   async create(tenantId: string, userId: string, dto: CreateSupportTicketDto): Promise<SupportTicketEntity> {
@@ -45,16 +54,41 @@ export class SupportTicketsService {
     return this.repo!.save(entity as any) as any;
   }
 
-  async update(tenantId: string, id: string, dto: UpdateSupportTicketDto): Promise<SupportTicketEntity> {
-    await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
-    return this.findById(tenantId, id);
+  async update(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateSupportTicketDto,
+    actorRole?: string,
+  ): Promise<SupportTicketEntity & { allowed_transitions: { to: string; label?: string }[] }> {
+    const current = await this.findById(tenantId, id, actorRole);
+    const dtoAny = dto as any;
+    const updates: Record<string, unknown> = { updated_at: new Date() };
+
+    if (dtoAny.status != null && dtoAny.status !== current.status) {
+      await this.workflowService.transition({
+        entityType: 'ticket',
+        entityId:   id,
+        tenantId,
+        fromStatus: current.status,
+        toStatus:   dtoAny.status,
+        actorId:    userId,
+        actorRole,
+        entity:     current as unknown as Record<string, unknown>,
+      });
+      updates.status = dtoAny.status;
+    }
+
+    const { status: _s, ...rest } = dtoAny;
+    void _s;
+    Object.assign(updates, rest);
+
+    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    return this.findById(tenantId, id, actorRole);
   }
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }

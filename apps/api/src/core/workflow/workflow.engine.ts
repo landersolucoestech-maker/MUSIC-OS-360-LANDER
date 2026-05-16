@@ -15,7 +15,10 @@ import {
 export class WorkflowEngine<TState extends string = string> {
   constructor(private readonly definition: WorkflowDefinition<TState>) {}
 
-  /** Returns all transitions the actor can take from the current status */
+  /**
+   * Returns all transitions the actor can take from the current status.
+   * Deny-by-default: if a transition declares roles and actorRole is absent, it is excluded.
+   */
   getAllowedTransitions(
     currentStatus: TState,
     actorRole?: string,
@@ -24,18 +27,28 @@ export class WorkflowEngine<TState extends string = string> {
       .filter((t) => {
         const froms = Array.isArray(t.from) ? t.from : [t.from];
         if (!froms.includes(currentStatus)) return false;
-        if (t.roles && actorRole && !t.roles.includes(actorRole)) return false;
+        // Deny-by-default: if transition has role restrictions and no actorRole provided, deny.
+        if (t.roles) {
+          if (!actorRole) return false;
+          if (!t.roles.includes(actorRole)) return false;
+        }
         return true;
       })
       .map((t) => ({ to: t.to, label: t.label }));
   }
 
-  /** Returns true if the transition from→to is defined (role-agnostic) */
+  /**
+   * Returns true if the transition from→to is permitted for the given actor role.
+   * Deny-by-default: if transition declares roles and actorRole is absent, returns false.
+   */
   canTransition(fromStatus: TState, toStatus: TState, actorRole?: string): boolean {
     return this.definition.transitions.some((t) => {
       const froms = Array.isArray(t.from) ? t.from : [t.from];
       if (!froms.includes(fromStatus) || t.to !== toStatus) return false;
-      if (t.roles && actorRole && !t.roles.includes(actorRole)) return false;
+      if (t.roles) {
+        if (!actorRole) return false;
+        if (!t.roles.includes(actorRole)) return false;
+      }
       return true;
     });
   }
@@ -58,13 +71,24 @@ export class WorkflowEngine<TState extends string = string> {
       );
     }
 
-    if (matched.roles && actorRole && !matched.roles.includes(actorRole)) {
-      throw new WorkflowTransitionError(
-        `Permissão insuficiente: role '${actorRole}' não pode executar '${fromStatus}' → '${toStatus}'`,
-        fromStatus,
-        toStatus,
-        'role_not_authorized',
-      );
+    // Deny-by-default: if transition declares roles, actorRole MUST be present and authorized.
+    if (matched.roles) {
+      if (!actorRole) {
+        throw new WorkflowTransitionError(
+          `Acesso negado: autenticação obrigatória para a transição '${fromStatus}' → '${toStatus}'`,
+          fromStatus,
+          toStatus,
+          'actor_role_missing',
+        );
+      }
+      if (!matched.roles.includes(actorRole)) {
+        throw new WorkflowTransitionError(
+          `Permissão insuficiente: role '${actorRole}' não pode executar '${fromStatus}' → '${toStatus}'`,
+          fromStatus,
+          toStatus,
+          'role_not_authorized',
+        );
+      }
     }
 
     if (matched.guard) {
