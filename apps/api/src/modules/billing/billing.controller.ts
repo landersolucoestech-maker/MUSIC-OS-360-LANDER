@@ -69,6 +69,7 @@ export class BillingController {
 
   @Post('webhooks/stripe')
   @Public()
+  @Audit('billing.subscription_event')
   @ApiOperation({ summary: 'Webhook Stripe (HMAC validado, sem autenticação)' })
   webhook(
     @Headers('stripe-signature') signature: string,

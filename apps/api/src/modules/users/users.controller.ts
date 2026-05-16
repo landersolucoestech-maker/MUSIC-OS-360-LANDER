@@ -5,7 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/users.dto';
+import { CreateUserDto, UpdateUserDto, AssignRoleDto, QueryUserDto } from './dto/users.dto';
 
 @ApiTags('Users') @ApiBearerAuth() @Controller('users')
 export class UsersController {
@@ -22,6 +22,9 @@ export class UsersController {
 
   @Patch(':id') @RequireRole('manager') @Audit('user.updated') @ApiOperation({ summary: 'Actualizar utilizador' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) { return this.svc.update(t.id, id, dto); }
+
+  @Patch(':id/role') @RequireRole('owner') @Audit('user.role_changed') @ApiOperation({ summary: 'Alterar role do utilizador (owner+)' })
+  assignRole(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignRoleDto) { return this.svc.assignRole(t.id, id, dto.role); }
 
   @Delete(':id') @RequireRole('owner') @Audit('user.deleted') @ApiOperation({ summary: 'Desactivar utilizador' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }

@@ -68,6 +68,7 @@ interface AuditRequest {
   url?:         string;
   params?:      Record<string, string>;
   headers?:     Record<string, string>;
+  body?:        Record<string, unknown>;
 }
 
 @Injectable()
@@ -87,7 +88,17 @@ export class AuditInterceptor implements NestInterceptor {
     // Derive entity name from the action prefix (e.g. "contract.updated" → "contract")
     const entityName = action.split('.')[0];
     const tenantId   = request.tenant?.id  ?? null;
-    const entityId   = request.params?.['id'] ?? null;
+
+    // Generalised entity-id extraction:
+    //  1. Prefer params.id (most common REST pattern)
+    //  2. Fallback to any first route param (handles fileId, contractId, …)
+    //  3. Fallback to body.id (POST mutations that embed the id in the payload)
+    const params = request.params ?? {};
+    const entityId: string | null =
+      params['id'] ??
+      (Object.values(params)[0] as string | undefined) ??
+      (request.body?.['id'] as string | undefined) ??
+      null;
 
     // Snapshot captured before the handler fires
     let beforeSnapshot: Record<string, unknown> | null = null;

@@ -97,6 +97,12 @@ export class UsersService {
     return this.findById(tenantId, id);
   }
 
+  async assignRole(tenantId: string, id: string, role: string): Promise<OrgMemberEntity> {
+    await this.findById(tenantId, id);
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { role, updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
+  }
+
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
     await this.repo!.update({ id, tenant_id: tenantId } as any, { is_active: false, updated_at: new Date() } as any);

@@ -25,6 +25,12 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
 }
 
+export class AssignRoleDto {
+  @ApiProperty({ enum: ROLES, description: 'Novo role a atribuir ao utilizador' })
+  @IsIn(ROLES)
+  role!: string;
+}
+
 export class QueryUserDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() role?: string;
