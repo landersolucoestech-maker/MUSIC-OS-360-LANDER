@@ -349,7 +349,7 @@ export const createReleaseSchema = z.object({
   artista_id:      uuid.nullable().optional(),
   titulo:          nonEmpty,
   tipo:            z.enum(['album','ep','single','mixtape','compilacao']).default('single'),
-  status:          z.nativeEnum(ReleaseStatus).default(ReleaseStatus.PLANEJAMENTO),
+  status:          z.nativeEnum(ReleaseStatus).default(ReleaseStatus.DRAFT),
   distribuidora:   z.string().max(255).nullable().optional(),
   upc:             z.string().max(20).nullable().optional(),
   data_lancamento: z.coerce.date().nullable().optional(),

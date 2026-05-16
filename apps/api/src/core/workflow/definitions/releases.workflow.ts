@@ -2,7 +2,8 @@
  * releases.workflow.ts
  *
  * Workflow de ciclo de vida para Lançamentos (Releases).
- * Estados: planejamento → em_preparacao → analise → aprovado → agendado → distribuido → publicado → arquivado / cancelado
+ * Conforme spec: draft → metadata_pending → assets_pending → review → approved →
+ *                scheduled → distributed → released → archived / cancelled
  */
 
 import { ReleaseStatus } from '@music-os-360/types';
@@ -11,74 +12,87 @@ import { WorkflowDefinition } from '../workflow.types';
 export const RELEASES_WORKFLOW: WorkflowDefinition<string> = {
   name:         'releases',
   entityType:   'release',
-  initialState: ReleaseStatus.PLANEJAMENTO,
+  initialState: ReleaseStatus.DRAFT,
   states: Object.values(ReleaseStatus),
   transitions: [
     {
-      from:  ReleaseStatus.PLANEJAMENTO,
-      to:    ReleaseStatus.EM_PREPARACAO,
-      label: 'Iniciar Preparação',
+      from:  ReleaseStatus.DRAFT,
+      to:    ReleaseStatus.METADATA_PENDING,
+      label: 'Preencher Metadados',
       roles: ['super_admin','tenant_owner','owner','admin','editor','manager','produtor','marketing_manager'],
     },
     {
-      from:  ReleaseStatus.EM_PREPARACAO,
-      to:    ReleaseStatus.ANALISE,
-      label: 'Enviar para Análise',
+      from:  ReleaseStatus.METADATA_PENDING,
+      to:    ReleaseStatus.ASSETS_PENDING,
+      label: 'Enviar Assets',
       roles: ['super_admin','tenant_owner','owner','admin','editor','manager','produtor','marketing_manager'],
       guard: async (ctx) => {
         const entity = ctx.entity;
-        if (!entity['capa_url'] && !entity['coverUrl']) {
-          return { allowed: false, reason: 'Lançamento precisa de capa (cover art) antes de ir para análise' };
+        if (!entity['titulo'] && !entity['title']) {
+          return { allowed: false, reason: 'Lançamento precisa de título antes de avançar para Assets' };
         }
         return { allowed: true };
       },
     },
     {
-      from:  [ReleaseStatus.ANALISE, ReleaseStatus.EM_ANALISE],
-      to:    ReleaseStatus.APROVADO,
+      from:  ReleaseStatus.ASSETS_PENDING,
+      to:    ReleaseStatus.REVIEW,
+      label: 'Enviar para Revisão',
+      roles: ['super_admin','tenant_owner','owner','admin','editor','manager','produtor','marketing_manager'],
+      guard: async (ctx) => {
+        const entity = ctx.entity;
+        if (!entity['capa_url'] && !entity['coverUrl']) {
+          return { allowed: false, reason: 'Lançamento precisa de capa (cover art) antes de ir para revisão' };
+        }
+        return { allowed: true };
+      },
+    },
+    {
+      from:  ReleaseStatus.REVIEW,
+      to:    ReleaseStatus.APPROVED,
       label: 'Aprovar',
       roles: ['super_admin','tenant_owner','owner','admin','manager','marketing_manager'],
     },
     {
-      from:  [ReleaseStatus.ANALISE, ReleaseStatus.EM_ANALISE],
-      to:    ReleaseStatus.EM_PREPARACAO,
-      label: 'Solicitar Revisão',
+      from:  ReleaseStatus.REVIEW,
+      to:    ReleaseStatus.ASSETS_PENDING,
+      label: 'Solicitar Revisão de Assets',
       roles: ['super_admin','tenant_owner','owner','admin','manager','marketing_manager'],
     },
     {
-      from:  ReleaseStatus.APROVADO,
-      to:    ReleaseStatus.AGENDADO,
+      from:  ReleaseStatus.APPROVED,
+      to:    ReleaseStatus.SCHEDULED,
       label: 'Agendar Distribuição',
       roles: ['super_admin','tenant_owner','owner','admin','manager','marketing_manager'],
     },
     {
-      from:  ReleaseStatus.AGENDADO,
-      to:    ReleaseStatus.DISTRIBUIDO,
+      from:  ReleaseStatus.SCHEDULED,
+      to:    ReleaseStatus.DISTRIBUTED,
       label: 'Confirmar Distribuição',
       roles: ['super_admin','tenant_owner','owner','admin','manager'],
     },
     {
-      from:  ReleaseStatus.DISTRIBUIDO,
-      to:    ReleaseStatus.PUBLICADO,
+      from:  ReleaseStatus.DISTRIBUTED,
+      to:    ReleaseStatus.RELEASED,
       label: 'Publicado nas Plataformas',
       roles: ['super_admin','tenant_owner','owner','admin','manager'],
     },
     {
       from:  [
-        ReleaseStatus.PLANEJAMENTO,
-        ReleaseStatus.EM_PREPARACAO,
-        ReleaseStatus.ANALISE,
-        ReleaseStatus.EM_ANALISE,
-        ReleaseStatus.APROVADO,
-        ReleaseStatus.AGENDADO,
+        ReleaseStatus.DRAFT,
+        ReleaseStatus.METADATA_PENDING,
+        ReleaseStatus.ASSETS_PENDING,
+        ReleaseStatus.REVIEW,
+        ReleaseStatus.APPROVED,
+        ReleaseStatus.SCHEDULED,
       ],
-      to:    ReleaseStatus.CANCELADO,
+      to:    ReleaseStatus.CANCELLED,
       label: 'Cancelar',
       roles: ['super_admin','tenant_owner','owner','admin','manager'],
     },
     {
-      from:  ReleaseStatus.PUBLICADO,
-      to:    ReleaseStatus.ARQUIVADO,
+      from:  ReleaseStatus.RELEASED,
+      to:    ReleaseStatus.ARCHIVED,
       label: 'Arquivar',
       roles: ['super_admin','tenant_owner','owner','admin'],
     },

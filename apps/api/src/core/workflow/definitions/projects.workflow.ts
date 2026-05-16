@@ -2,7 +2,7 @@
  * projects.workflow.ts
  *
  * Workflow de ciclo de vida para Projetos musicais.
- * Estados: planejamento → em_andamento → revisao → concluido / cancelado
+ * Conforme spec: planejamento → em_andamento → revisao → concluido / cancelado
  */
 
 import { ProjectStatus } from '@music-os-360/types';
@@ -21,31 +21,19 @@ export const PROJECTS_WORKFLOW: WorkflowDefinition<string> = {
       roles: ['super_admin','tenant_owner','owner','admin','manager','produtor'],
     },
     {
-      from:  ProjectStatus.PLANEJAMENTO,
-      to:    ProjectStatus.PRODUCAO,
-      label: 'Iniciar Produção',
+      from:  ProjectStatus.EM_ANDAMENTO,
+      to:    ProjectStatus.REVISAO,
+      label: 'Enviar para Revisão',
       roles: ['super_admin','tenant_owner','owner','admin','manager','produtor'],
     },
     {
-      from:  [ProjectStatus.EM_ANDAMENTO, ProjectStatus.PRODUCAO],
-      to:    ProjectStatus.POS_PRODUCAO,
-      label: 'Pós-Produção',
-      roles: ['super_admin','tenant_owner','owner','admin','manager','produtor'],
-    },
-    {
-      from:  [ProjectStatus.EM_ANDAMENTO, ProjectStatus.PRODUCAO, ProjectStatus.POS_PRODUCAO],
-      to:    ProjectStatus.PAUSADO,
-      label: 'Pausar Projeto',
+      from:  ProjectStatus.REVISAO,
+      to:    ProjectStatus.EM_ANDAMENTO,
+      label: 'Solicitar Alterações',
       roles: ['super_admin','tenant_owner','owner','admin','manager'],
     },
     {
-      from:  ProjectStatus.PAUSADO,
-      to:    ProjectStatus.EM_ANDAMENTO,
-      label: 'Retomar Projeto',
-      roles: ['super_admin','tenant_owner','owner','admin','manager','produtor'],
-    },
-    {
-      from:  [ProjectStatus.POS_PRODUCAO, ProjectStatus.EM_ANDAMENTO],
+      from:  ProjectStatus.REVISAO,
       to:    ProjectStatus.CONCLUIDO,
       label: 'Concluir Projeto',
       roles: ['super_admin','tenant_owner','owner','admin','manager'],
@@ -54,9 +42,7 @@ export const PROJECTS_WORKFLOW: WorkflowDefinition<string> = {
       from:  [
         ProjectStatus.PLANEJAMENTO,
         ProjectStatus.EM_ANDAMENTO,
-        ProjectStatus.PRODUCAO,
-        ProjectStatus.POS_PRODUCAO,
-        ProjectStatus.PAUSADO,
+        ProjectStatus.REVISAO,
       ],
       to:    ProjectStatus.CANCELADO,
       label: 'Cancelar Projeto',

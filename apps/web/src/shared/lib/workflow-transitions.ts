@@ -29,18 +29,21 @@ function buildAllowed(defs: RawDef[], currentStatus: string): WorkflowTransition
 }
 
 // ─── Releases ───────────────────────────────────────────────────────────────
+// Conforme spec: draft → metadata_pending → assets_pending → review → approved →
+//                scheduled → distributed → released → archived / cancelled
 
 const RELEASES_DEFS: RawDef[] = [
-  { from: 'planejamento',  to: 'em_preparacao', label: 'Iniciar Preparação' },
-  { from: 'em_preparacao', to: 'analise',        label: 'Enviar para Análise' },
-  { from: ['analise', 'em_analise'], to: 'aprovado',       label: 'Aprovar' },
-  { from: ['analise', 'em_analise'], to: 'em_preparacao',  label: 'Solicitar Revisão' },
-  { from: 'aprovado',      to: 'agendado',       label: 'Agendar Distribuição' },
-  { from: 'agendado',      to: 'distribuido',    label: 'Confirmar Distribuição' },
-  { from: 'distribuido',   to: 'publicado',      label: 'Publicado nas Plataformas' },
-  { from: ['planejamento', 'em_preparacao', 'analise', 'em_analise', 'aprovado', 'agendado'],
-    to: 'cancelado', label: 'Cancelar' },
-  { from: 'publicado',     to: 'arquivado',      label: 'Arquivar' },
+  { from: 'draft',             to: 'metadata_pending', label: 'Preencher Metadados' },
+  { from: 'metadata_pending',  to: 'assets_pending',   label: 'Enviar Assets' },
+  { from: 'assets_pending',    to: 'review',           label: 'Enviar para Revisão' },
+  { from: 'review',            to: 'approved',         label: 'Aprovar' },
+  { from: 'review',            to: 'assets_pending',   label: 'Solicitar Revisão de Assets' },
+  { from: 'approved',          to: 'scheduled',        label: 'Agendar Distribuição' },
+  { from: 'scheduled',         to: 'distributed',      label: 'Confirmar Distribuição' },
+  { from: 'distributed',       to: 'released',         label: 'Publicado nas Plataformas' },
+  { from: ['draft', 'metadata_pending', 'assets_pending', 'review', 'approved', 'scheduled'],
+    to: 'cancelled', label: 'Cancelar' },
+  { from: 'released',          to: 'archived',         label: 'Arquivar' },
 ];
 
 // ─── Contracts ──────────────────────────────────────────────────────────────
@@ -84,15 +87,14 @@ const CAMPAIGNS_DEFS: RawDef[] = [
 ];
 
 // ─── Projects ───────────────────────────────────────────────────────────────
+// Conforme spec: planejamento → em_andamento → revisao → concluido / cancelado
 
 const PROJECTS_DEFS: RawDef[] = [
-  { from: 'planejamento',                        to: 'em_andamento',  label: 'Iniciar Projeto' },
-  { from: 'planejamento',                        to: 'producao',      label: 'Iniciar Produção' },
-  { from: ['em_andamento', 'producao'],          to: 'pos_producao',  label: 'Pós-Produção' },
-  { from: ['em_andamento', 'producao', 'pos_producao'], to: 'pausado', label: 'Pausar Projeto' },
-  { from: 'pausado',                             to: 'em_andamento',  label: 'Retomar Projeto' },
-  { from: ['pos_producao', 'em_andamento'],      to: 'concluido',     label: 'Concluir Projeto' },
-  { from: ['planejamento', 'em_andamento', 'producao', 'pos_producao', 'pausado'],
+  { from: 'planejamento',                      to: 'em_andamento', label: 'Iniciar Projeto' },
+  { from: 'em_andamento',                      to: 'revisao',      label: 'Enviar para Revisão' },
+  { from: 'revisao',                           to: 'em_andamento', label: 'Solicitar Alterações' },
+  { from: 'revisao',                           to: 'concluido',    label: 'Concluir Projeto' },
+  { from: ['planejamento', 'em_andamento', 'revisao'],
     to: 'cancelado', label: 'Cancelar Projeto' },
 ];
 

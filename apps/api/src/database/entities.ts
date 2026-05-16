@@ -565,7 +565,7 @@ export class ReleaseEntity {
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'varchar', length: 100, default: 'single' }) tipo: string;
-  @Column({ type: 'varchar', length: 50, default: ReleaseStatus.PLANEJAMENTO }) status: ReleaseStatus;
+  @Column({ type: 'varchar', length: 50, default: ReleaseStatus.DRAFT }) status: ReleaseStatus;
   @Column({ type: 'varchar', length: 255, nullable: true }) distribuidora: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) upc: string | null;
   @Column({ type: 'timestamp', nullable: true }) data_lancamento: Date | null;

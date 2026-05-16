@@ -138,20 +138,20 @@ export enum PhonogramStatus {
 
 /**
  * ReleaseStatus — ciclo de vida de um lançamento musical.
- * Cobre todos os estados: planejamento → distribuição → publicação → arquivado.
+ * Conforme spec: draft → metadata_pending → assets_pending → review → approved →
+ *                scheduled → distributed → released → archived / cancelled
  */
 export enum ReleaseStatus {
-  PLANEJAMENTO  = "planejamento",
-  EM_PREPARACAO = "em_preparacao",
-  ANALISE       = "analise",
-  EM_ANALISE    = "em_analise",
-  APROVADO      = "aprovado",
-  AGENDADO      = "agendado",
-  ENTREGUE      = "entregue",
-  DISTRIBUIDO   = "distribuido",
-  PUBLICADO     = "publicado",
-  ARQUIVADO     = "arquivado",
-  CANCELADO     = "cancelado",
+  DRAFT            = "draft",
+  METADATA_PENDING = "metadata_pending",
+  ASSETS_PENDING   = "assets_pending",
+  REVIEW           = "review",
+  APPROVED         = "approved",
+  SCHEDULED        = "scheduled",
+  DISTRIBUTED      = "distributed",
+  RELEASED         = "released",
+  ARCHIVED         = "archived",
+  CANCELLED        = "cancelled",
 }
 
 // ─── Shares (Participações) ───────────────────────────────────────────────────
@@ -270,16 +270,14 @@ export enum ContentDetectionStatus {
 
 /**
  * ProjectStatus — ciclo de vida de um projecto musical.
- * Superset: inclui estados frontend (producao/pos_producao/pausado) e backend (em_andamento).
+ * Conforme spec: planejamento → em_andamento → revisao → concluido / cancelado
  */
 export enum ProjectStatus {
   PLANEJAMENTO  = "planejamento",
-  PRODUCAO      = "producao",
-  POS_PRODUCAO  = "pos_producao",
   EM_ANDAMENTO  = "em_andamento",
+  REVISAO       = "revisao",
   CONCLUIDO     = "concluido",
   CANCELADO     = "cancelado",
-  PAUSADO       = "pausado",
 }
 
 // ─── Eventos ─────────────────────────────────────────────────────────────────

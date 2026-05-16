@@ -67,7 +67,7 @@ export class ReleasesService {
       data_lancamento: dto.releasedAt  ? new Date(dto.releasedAt) : null,
       plataformas:     dto.platforms   ?? [],
       capa_url:        dto.coverUrl    ?? null,
-      status:          ReleaseStatus.PLANEJAMENTO,
+      status:          ReleaseStatus.DRAFT,
       metadata:        dto.metadata    ?? {},
       created_by:      userId,
       updated_by:      userId,
