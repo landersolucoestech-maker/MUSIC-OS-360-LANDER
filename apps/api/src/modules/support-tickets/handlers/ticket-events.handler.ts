@@ -87,9 +87,10 @@ export class TicketEventsHandler {
       }
     }
 
-    // 2. Persist in-app notification for the ticket creator
-    const notifyUserId = event.userId ?? createdBy;
-    if (this.notifRepo && notifyUserId) {
+    // 2. Persist in-app notification for the ticket requester (createdBy)
+    //    Priority: createdBy (requester who opened the ticket), NOT event.userId (resolver).
+    const requesterUserId = createdBy;
+    if (this.notifRepo && requesterUserId) {
       try {
         const slaText = slaCompliant === null
           ? ''
@@ -101,9 +102,9 @@ export class TicketEventsHandler {
           this.notifRepo.create({
             id:        randomUUID(),
             tenant_id: tenantId,
-            user_id:   notifyUserId,
-            title:     `Ticket resolvido: "${titulo}"${slaText}`,
-            body:      `Ticket resolvido por ${resolvedBy} em ${resolvedAt}.`,
+            user_id:   requesterUserId,
+            title:     `Seu ticket foi resolvido: "${titulo}"${slaText}`,
+            body:      `Ticket resolvido por ${resolvedBy} em ${resolvedAt}. Por favor avalie o atendimento.`,
             type:      DOMAIN_EVENTS.TICKET_RESOLVED,
             entity:    'support_ticket',
             entity_id: ticketId,
@@ -112,9 +113,13 @@ export class TicketEventsHandler {
               resolvedBy,
               resolvedAt,
               slaCompliant: slaCompliant ?? null,
+              recipient:    'requester',
               correlationId: event.correlationId ?? null,
             },
           }),
+        );
+        this.logger.log(
+          `TicketEventsHandler: requester notification persisted for ticket "${ticketId}" → user="${requesterUserId}"`,
         );
       } catch (err) {
         this.logger.error(
