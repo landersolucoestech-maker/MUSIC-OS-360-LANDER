@@ -15,7 +15,7 @@
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { storage } from '@/shared/lib/storage';
+import { storage, type StorageRow } from '@/shared/lib/storage';
 
 interface UseWorkflowTransitionOptions {
   table: string;
@@ -34,7 +34,7 @@ export function useWorkflowTransition({
 
   const mutation = useMutation({
     mutationFn: async (toStatus: string) => {
-      await storage.update(table, id, { status: toStatus } as any);
+      await storage.update<StorageRow>(table, id, { status: toStatus });
     },
     onSuccess: (_data, toStatus) => {
       queryClient.invalidateQueries({ queryKey });

@@ -7,7 +7,7 @@ import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
-import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -54,9 +54,13 @@ function aggregateField(faixas: any[], key: string): string {
 }
 
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
-  const { artistas }            = useArtistas();
-  const { fonogramas }          = useFonogramas();
-  const { updateLancamento }    = useLancamentos();
+  const { artistas }   = useArtistas();
+  const { fonogramas } = useFonogramas();
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'lancamentos',
+    id:       lancamento?.id ?? '',
+    queryKey: ['lancamentos'],
+  });
 
   if (!lancamento) return null;
 
@@ -104,8 +108,8 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
               <WorkflowTransitionPanel
                 currentStatus={lancamento.status ?? ""}
                 allowedTransitions={lancamento.allowed_transitions}
-                onTransition={async (to) => { await updateLancamento.mutateAsync({ id: lancamento.id, status: to } as any); }}
-                isLoading={updateLancamento.isPending}
+                onTransition={workflowTransition}
+                isLoading={isTransitionPending}
                 className="mt-2"
               />
             )}

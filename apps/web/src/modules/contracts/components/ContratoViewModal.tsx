@@ -21,12 +21,17 @@ import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
 import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 import { SendForSigningDialog } from "@/modules/contracts/components/SendForSigningDialog";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+// useContratos removed — workflow transitions use useWorkflowTransition hook
+
+interface ContratoWithWorkflow extends ContratoWithRelations {
+  allowed_transitions?: { to: string; label?: string }[];
+}
 
 interface ContratoViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contrato?: ContratoWithRelations;
+  contrato?: ContratoWithWorkflow;
   onEdit?: () => void;
 }
 
@@ -35,7 +40,11 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   const navigate = useNavigate();
   const { data: allDocuments = [] } = useDocuments();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
-  const { updateContrato } = useContratos();
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'contratos',
+    id:       contrato?.id ?? '',
+    queryKey: ['contratos'],
+  });
 
   if (!contrato) return null;
 
@@ -92,12 +101,12 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                     <DocumentStatusBadge status={vinculadoDoc.status} />
                   )}
                 </div>
-                {Array.isArray((contrato as any).allowed_transitions) && (
+                {Array.isArray(contrato.allowed_transitions) && (
                   <WorkflowTransitionPanel
                     currentStatus={contrato.status ?? ""}
-                    allowedTransitions={(contrato as any).allowed_transitions}
-                    onTransition={async (to) => { await updateContrato.mutateAsync({ id: contrato.id, status: to } as any); }}
-                    isLoading={updateContrato.isPending}
+                    allowedTransitions={contrato.allowed_transitions}
+                    onTransition={workflowTransition}
+                    isLoading={isTransitionPending}
                     className="mt-2"
                   />
                 )}

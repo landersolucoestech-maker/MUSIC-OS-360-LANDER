@@ -8,13 +8,17 @@ import { WorkflowService } from '../../core/workflow/workflow.service';
 
 @Injectable()
 export class ReleasesService {
+  private readonly ds:   DataSource | null = null;
   private readonly repo: Repository<ReleaseEntity> | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
   ) {
-    if (ds) this.repo = ds.getRepository(ReleaseEntity);
+    if (ds) {
+      this.ds   = ds;
+      this.repo = ds.getRepository(ReleaseEntity);
+    }
   }
 
   async list(tenantId: string, q: QueryReleaseDto) {
@@ -37,7 +41,11 @@ export class ReleasesService {
     return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
   }
 
-  async findById(tenantId: string, id: string, actorRole?: string): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
+  async findById(
+    tenantId: string,
+    id: string,
+    actorRole?: string,
+  ): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const result = await this.repo!
       .createQueryBuilder('r')
       .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
@@ -66,36 +74,49 @@ export class ReleasesService {
     return this.repo!.save(entity as any) as any;
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateReleaseDto, actorRole?: string): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
+  async update(
+    tenantId: string,
+    userId: string,
+    id: string,
+    dto: UpdateReleaseDto,
+    actorRole?: string,
+  ): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const current = await this.findById(tenantId, id, actorRole);
+    const statusChanging = dto.status != null && dto.status !== current.status;
 
-    const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
+    const nonStatusUpdates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
+    if (dto.title       != null) nonStatusUpdates.titulo          = dto.title;
+    if (dto.type        != null) nonStatusUpdates.tipo            = dto.type;
+    if (dto.artistId    != null) nonStatusUpdates.artista_id      = dto.artistId;
+    if (dto.upc         != null) nonStatusUpdates.upc             = dto.upc;
+    if (dto.distributor != null) nonStatusUpdates.distribuidora   = dto.distributor;
+    if (dto.releasedAt  != null) nonStatusUpdates.data_lancamento = new Date(dto.releasedAt);
+    if (dto.platforms   != null) nonStatusUpdates.plataformas     = dto.platforms;
+    if (dto.coverUrl    != null) nonStatusUpdates.capa_url        = dto.coverUrl;
+    if (dto.metadata    != null) nonStatusUpdates.metadata        = dto.metadata;
 
-    if (dto.status != null && dto.status !== current.status) {
-      await this.workflowService.transition({
-        entityType: 'release',
+    if (statusChanging) {
+      const req = {
+        entityType: 'release' as const,
         entityId:   id,
         tenantId,
         actorId:    userId,
         actorRole,
         fromStatus: current.status,
-        toStatus:   dto.status,
+        toStatus:   dto.status as string,
         entity:     current as unknown as Record<string, unknown>,
+      };
+      await this.ds!.transaction(async (em) => {
+        await this.workflowService.transitionInTx(req, em);
+        await em.update(ReleaseEntity, { id, tenant_id: tenantId }, {
+          ...nonStatusUpdates,
+          status: dto.status,
+        });
       });
-      updates.status = dto.status;
+    } else {
+      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
     }
 
-    if (dto.title       != null) updates.titulo          = dto.title;
-    if (dto.type        != null) updates.tipo            = dto.type;
-    if (dto.artistId    != null) updates.artista_id      = dto.artistId;
-    if (dto.upc         != null) updates.upc             = dto.upc;
-    if (dto.distributor != null) updates.distribuidora   = dto.distributor;
-    if (dto.releasedAt  != null) updates.data_lancamento = new Date(dto.releasedAt);
-    if (dto.platforms   != null) updates.plataformas     = dto.platforms;
-    if (dto.coverUrl    != null) updates.capa_url        = dto.coverUrl;
-    if (dto.metadata    != null) updates.metadata        = dto.metadata;
-
-    await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
     return this.findById(tenantId, id, actorRole);
   }
 

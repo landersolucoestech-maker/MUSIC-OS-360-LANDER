@@ -23,12 +23,19 @@ import {
   TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS, TICKET_CATEGORY_LABELS,
 } from "../hooks/useSupport";
 import type { SupportTicket, TicketStatus, TicketPriority, TicketCategory } from "../types";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+
 import {
   Plus, Search, Ticket,
   Clock, AlertCircle, CheckCircle2,
   Send, User, Shield, Tag, Calendar, ExternalLink,
   ChevronDown, UserCheck, CalendarClock, Filter,
 } from "lucide-react";
+
+interface TicketWithWorkflow extends SupportTicket {
+  allowed_transitions?: { to: string; label?: string }[];
+}
 
 /* ── colours ── */
 const STATUS_COLOR: Record<TicketStatus, string> = {
@@ -64,13 +71,18 @@ function toDatetimeLocal(iso: string) {
 
 /* ── Drawer panel — receives updateTicket from parent so both share the same state ── */
 interface DrawerProps {
-  ticket: SupportTicket;
+  ticket: TicketWithWorkflow;
   onClose: () => void;
   onUpdate: (id: string, changes: Partial<SupportTicket>) => void;
 }
 
 function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
   const { messages, addMessage } = useTicketMessages(ticket.id);
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'support_tickets',
+    id:       ticket.id,
+    queryKey: ['support_tickets'],
+  });
   const [reply, setReply]        = useState("");
   const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline ?? ""));
   const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");
@@ -154,6 +166,15 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               </Button>
             </Link>
           </div>
+          {Array.isArray(ticket.allowed_transitions) && ticket.allowed_transitions.length > 0 && (
+            <WorkflowTransitionPanel
+              currentStatus={ticket.status}
+              allowedTransitions={ticket.allowed_transitions}
+              onTransition={workflowTransition}
+              isLoading={isTransitionPending}
+              className="mt-1"
+            />
+          )}
         </SheetHeader>
 
         <div className="flex flex-1 overflow-hidden">

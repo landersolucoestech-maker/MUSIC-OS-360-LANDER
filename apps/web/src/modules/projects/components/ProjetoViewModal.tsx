@@ -8,7 +8,7 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "lucide-react";
 import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
-import { useProjetos } from "@/modules/projects/hooks/useProjetos";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
 
 interface ProjetoViewModalProps {
   open: boolean;
@@ -27,7 +27,11 @@ function capitalize(s: string) {
 
 export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps>(
   function ProjetoViewModal({ open, onOpenChange, projeto }, ref) {
-    const { updateProjeto } = useProjetos();
+    const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+      table:    'projetos',
+      id:       projeto?.id ?? '',
+      queryKey: ['projetos'],
+    });
 
     if (!projeto) return null;
 
@@ -74,8 +78,8 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     <WorkflowTransitionPanel
                       currentStatus={projeto.status ?? ""}
                       allowedTransitions={projeto.allowed_transitions}
-                      onTransition={async (to) => { await updateProjeto.mutateAsync({ id: projeto.id, status: to } as any); }}
-                      isLoading={updateProjeto.isPending}
+                      onTransition={workflowTransition}
+                      isLoading={isTransitionPending}
                       className="mt-1.5"
                     />
                   )}

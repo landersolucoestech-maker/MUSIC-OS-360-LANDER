@@ -2,11 +2,15 @@
  * workflow.service.ts
  *
  * Injectable NestJS service that wraps WorkflowEngine instances.
- * Handles: transition execution, history persistence, allowed_transitions exposure.
+ *
+ * Two execution modes:
+ *  - transition(req)          → standalone validation + history persist (own connection)
+ *  - transitionInTx(req, em)  → validation + history persist inside a caller-managed
+ *                               EntityManager/transaction (atomic with entity update)
  */
 
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
-import { DataSource, Repository, FindOptionsWhere, FindOptionsOrder } from 'typeorm';
+import { DataSource, Repository, EntityManager, FindOptionsWhere, FindOptionsOrder } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { WorkflowTransitionEntity } from '../../database/entities';
 import { WorkflowEngine } from './workflow.engine';
@@ -62,8 +66,53 @@ export class WorkflowService {
     return engine.getAllowedTransitions(currentStatus, actorRole);
   }
 
-  /** Validates and executes a state transition, persisting history. */
+  /**
+   * Validates and executes a state transition, persisting history.
+   * Uses its own repository connection — NOT transactionally safe with the caller's entity update.
+   * Use transitionInTx() when you need atomicity with the entity status write.
+   */
   async transition(req: TransitionRequest): Promise<TransitionResult> {
+    await this.runValidation(req);
+    await this.writeHistory(req, this.historyRepo);
+    return { success: true, fromStatus: req.fromStatus, toStatus: req.toStatus };
+  }
+
+  /**
+   * Validates and persists history inside the provided EntityManager.
+   * Call this from within a dataSource.transaction() block so that
+   * history + entity status write are committed atomically.
+   *
+   * @example
+   *   await dataSource.transaction(async (em) => {
+   *     await workflowService.transitionInTx(req, em);
+   *     await em.update(MyEntity, { id }, { status: req.toStatus, updated_at: new Date() });
+   *   });
+   */
+  async transitionInTx(req: TransitionRequest, em: EntityManager): Promise<TransitionResult> {
+    await this.runValidation(req);
+    await this.writeHistory(req, em.getRepository(WorkflowTransitionEntity));
+    return { success: true, fromStatus: req.fromStatus, toStatus: req.toStatus };
+  }
+
+  /** Returns paginated transition history for an entity. */
+  async getHistory(tenantId: string, entityType: string, entityId: string, limit = 50) {
+    if (!this.historyRepo) return [];
+
+    const where: FindOptionsWhere<WorkflowTransitionEntity> = {
+      tenant_id:   tenantId,
+      entity_type: entityType,
+      entity_id:   entityId,
+    };
+    const order: FindOptionsOrder<WorkflowTransitionEntity> = {
+      created_at: 'DESC',
+    };
+
+    return this.historyRepo.find({ where, order, take: limit });
+  }
+
+  // ─── Private helpers ────────────────────────────────────────────────────────
+
+  private async runValidation(req: TransitionRequest): Promise<void> {
     const engine = this.engines.get(req.entityType);
     if (!engine) {
       throw new BadRequestException(
@@ -91,32 +140,15 @@ export class WorkflowService {
       }
       throw err;
     }
-
-    await this.persistHistory(req);
-
-    return { success: true, fromStatus: req.fromStatus, toStatus: req.toStatus };
   }
 
-  /** Returns paginated transition history for an entity. */
-  async getHistory(tenantId: string, entityType: string, entityId: string, limit = 50) {
-    if (!this.historyRepo) return [];
+  private async writeHistory(
+    req: TransitionRequest,
+    repo: Repository<WorkflowTransitionEntity> | null,
+  ): Promise<void> {
+    if (!repo) return;
 
-    const where: FindOptionsWhere<WorkflowTransitionEntity> = {
-      tenant_id:   tenantId,
-      entity_type: entityType,
-      entity_id:   entityId,
-    };
-    const order: FindOptionsOrder<WorkflowTransitionEntity> = {
-      created_at: 'DESC',
-    };
-
-    return this.historyRepo.find({ where, order, take: limit });
-  }
-
-  private async persistHistory(req: TransitionRequest): Promise<void> {
-    if (!this.historyRepo) return;
-
-    const entry = this.historyRepo.create({
+    const entry = repo.create({
       tenant_id:   req.tenantId,
       entity_type: req.entityType,
       entity_id:   req.entityId,
@@ -128,6 +160,6 @@ export class WorkflowService {
       metadata:    {},
     });
 
-    await this.historyRepo.save(entry);
+    await repo.save(entry);
   }
 }
