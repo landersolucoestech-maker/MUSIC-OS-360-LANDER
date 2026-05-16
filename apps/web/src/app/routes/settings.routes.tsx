@@ -12,6 +12,7 @@ const Perfil = lazy(() => import("@/modules/settings/pages/Perfil"));
 const Usuarios = lazy(() => import("@/modules/settings/pages/Usuarios"));
 const Auditoria = lazy(() => import("@/shared/pages/Auditoria"));
 const Billing = lazy(() => import("@/modules/settings/pages/Billing"));
+const AuditTrail = lazy(() => import("@/modules/settings/pages/AuditTrail"));
 
 export function settingsRoutes(P: SuspenseRouteComponent) {
   return (
@@ -24,6 +25,10 @@ export function settingsRoutes(P: SuspenseRouteComponent) {
       <Route
         path="/auditoria"
         element={<P><AdminRoute><Auditoria /></AdminRoute></P>}
+      />
+      <Route
+        path="/settings/audit"
+        element={<P><AdminRoute><AuditTrail /></AdminRoute></P>}
       />
     </>
   );

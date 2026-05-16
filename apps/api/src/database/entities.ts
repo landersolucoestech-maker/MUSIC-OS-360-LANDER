@@ -765,20 +765,40 @@ export class WebhookEventEntity {
 @Entity('audit_logs')
 @Index(['tenant_id'])
 @Index(['tenant_id', 'entity'])
+@Index(['tenant_id', 'entity', 'entity_id'])
 @Index(['user_id'])
 @Index(['created_at'])
+@Index(['correlation_id'])
 export class AuditLogEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
+  /** Tenant isolation — mandatory for all non-system events */
   @Column({ type: 'uuid', nullable: true }) tenant_id: string | null;
+  /** Organisation owning this tenant (billing boundary) */
+  @Column({ type: 'uuid', nullable: true }) org_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) user_id: string | null;
+  /** Actor role at the time of the action (OWNER, ADMIN, EDITOR, …) */
+  @Column({ type: 'varchar', length: 50, nullable: true }) actor_role: string | null;
   @Column({ type: 'varchar', length: 100 }) action: string;
   @Column({ type: 'varchar', length: 100 }) entity: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) entity_id: string | null;
+  /** Snapshot before mutation */
   @Column({ type: 'jsonb', nullable: true }) before: Record<string, unknown> | null;
+  /** Snapshot after mutation */
   @Column({ type: 'jsonb', nullable: true }) after: Record<string, unknown> | null;
+  /** Only the fields that actually changed (subset of before/after) */
+  @Column({ type: 'jsonb', nullable: true }) diff: Record<string, unknown> | null;
   @Column({ type: 'varchar', length: 45, nullable: true }) ip_address: string | null;
   @Column({ type: 'text', nullable: true }) user_agent: string | null;
+  /** Matches request_id / X-Request-Id header */
   @Column({ type: 'varchar', length: 255, nullable: true }) request_id: string | null;
+  /** From AsyncLocalStorage — links to domain event correlation_id */
+  @Column({ type: 'varchar', length: 255, nullable: true }) correlation_id: string | null;
+  /** Browser/client session identifier if provided */
+  @Column({ type: 'varchar', length: 255, nullable: true }) session_id: string | null;
+  /** HTTP method of the originating request */
+  @Column({ type: 'varchar', length: 10, nullable: true }) http_method: string | null;
+  /** HTTP path of the originating request */
+  @Column({ type: 'text', nullable: true }) http_path: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
 }

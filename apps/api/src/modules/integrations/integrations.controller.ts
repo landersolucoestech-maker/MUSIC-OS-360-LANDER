@@ -1,9 +1,10 @@
 import {
   Controller, Post, Get, Delete, Body, Param, Query,
-  HttpCode, HttpStatus, Request,
+  HttpCode, HttpStatus, Request, UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { RequireRole } from '../../core/decorators/roles.decorator';
+import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
 import { ACRCloudService }    from './acrcloud/acrcloud.service';
 import { AutentiqueService }  from './autentique/autentique.service';
 import { SpotifyService }     from './spotify/spotify.service';
@@ -25,6 +26,7 @@ import {
 
 @ApiTags('Integrations')
 @ApiBearerAuth()
+@UseInterceptors(AuditInterceptor)
 @RequireRole('editor')
 @Controller('integrations')
 export class IntegrationsController {
@@ -77,6 +79,7 @@ export class IntegrationsController {
 
   @Post('autentique/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar token de API Autentique (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureAutentique(@Request() req: any, @Body() dto: ConfigureAutentiqueDto) {
@@ -115,6 +118,7 @@ export class IntegrationsController {
 
   @Post('spotify/callback')
   @RequireRole('editor')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Callback OAuth Spotify' })
   @HttpCode(HttpStatus.OK)
   spotifyCallback(@Body() dto: SpotifyConnectDto) {
@@ -131,6 +135,7 @@ export class IntegrationsController {
 
   @Delete('spotify/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar conta Spotify (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   spotifyDisconnect(@Request() req: any) {
@@ -201,6 +206,7 @@ export class IntegrationsController {
 
   @Post('soundcloud/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar credenciais SoundCloud (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureSoundCloud(
@@ -219,6 +225,7 @@ export class IntegrationsController {
 
   @Delete('soundcloud/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar SoundCloud (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   soundCloudDisconnect(@Request() req: any) {
@@ -250,6 +257,7 @@ export class IntegrationsController {
 
   @Post('apple-music/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar Apple Music Developer Token (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureAppleMusic(
@@ -268,6 +276,7 @@ export class IntegrationsController {
 
   @Delete('apple-music/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar Apple Music (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   appleMusicDisconnect(@Request() req: any) {
@@ -311,6 +320,7 @@ export class IntegrationsController {
 
   @Post('instagram/callback')
   @RequireRole('editor')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Callback OAuth Instagram' })
   @HttpCode(HttpStatus.OK)
   instagramCallback(@Body() body: { code: string; state: string }) {
@@ -333,6 +343,7 @@ export class IntegrationsController {
 
   @Delete('instagram/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar Instagram (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   instagramDisconnect(@Request() req: any) {
@@ -343,6 +354,7 @@ export class IntegrationsController {
 
   @Post('tiktok/ads/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar TikTok Ads (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureTikTokAds(
@@ -363,6 +375,7 @@ export class IntegrationsController {
 
   @Delete('tiktok/ads/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar TikTok Ads (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   tiktokAdsDisconnect(@Request() req: any) {
@@ -398,6 +411,7 @@ export class IntegrationsController {
 
   @Post('tiktok/callback')
   @RequireRole('editor')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Callback OAuth TikTok orgânico' })
   @HttpCode(HttpStatus.OK)
   tiktokCallback(@Body() body: { code: string; state: string }) {
@@ -408,6 +422,7 @@ export class IntegrationsController {
 
   @Post('google-ads/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar Google Ads (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureGoogleAds(
@@ -426,6 +441,7 @@ export class IntegrationsController {
 
   @Post('google-ads/callback')
   @RequireRole('editor')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Callback OAuth Google Ads' })
   @HttpCode(HttpStatus.OK)
   googleAdsCallback(@Body() body: { code: string; state: string }) {
@@ -441,6 +457,7 @@ export class IntegrationsController {
 
   @Delete('google-ads/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar Google Ads (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   googleAdsDisconnect(@Request() req: any) {
@@ -458,6 +475,7 @@ export class IntegrationsController {
 
   @Post('abramus/configure')
   @RequireRole('admin')
+  @Audit('integration.connected')
   @ApiOperation({ summary: 'Configurar credenciais Abramus (admin+)' })
   @HttpCode(HttpStatus.OK)
   configureAbramus(
@@ -476,6 +494,7 @@ export class IntegrationsController {
 
   @Delete('abramus/disconnect')
   @RequireRole('admin')
+  @Audit('integration.disconnected')
   @ApiOperation({ summary: 'Desconectar Abramus (admin+)' })
   @HttpCode(HttpStatus.NO_CONTENT)
   abramusDisconnect(@Request() req: any) {

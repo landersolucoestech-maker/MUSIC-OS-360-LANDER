@@ -11,9 +11,10 @@
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, ServiceUnavailableException, Logger, Inject,
+  NotFoundException, ServiceUnavailableException, Logger, Inject, UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
 import { DataSource, Repository } from 'typeorm';
 
 import { DATA_SOURCE }     from '../../database/database.module';
@@ -27,6 +28,7 @@ import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
+@UseInterceptors(AuditInterceptor)
 @Controller('uploads')
 export class UploadsController {
   private readonly logger = new Logger(UploadsController.name);
@@ -53,6 +55,7 @@ export class UploadsController {
   // ── POST /uploads/presign ────────────────────────────────────────────────────
 
   @Post('presign')
+  @Audit('upload.presigned')
   @ApiOperation({ summary: 'Obter URL pré-assinada para upload directo ao R2' })
   async presign(
     @CurrentTenant() tenant: { id: string },
@@ -93,6 +96,7 @@ export class UploadsController {
   // ── POST /uploads/:fileId/confirm ────────────────────────────────────────────
 
   @Post(':fileId/confirm')
+  @Audit('upload.confirmed')
   @ApiOperation({ summary: 'Confirmar que upload foi concluído' })
   async confirm(
     @CurrentTenant() tenant: { id: string },
