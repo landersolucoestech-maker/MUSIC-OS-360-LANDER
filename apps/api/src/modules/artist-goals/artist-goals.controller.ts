@@ -1,21 +1,24 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe,
 } from '@nestjs/common';
-import { ClerkAuthGuard }    from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }       from '../../core/guards/tenant.guard';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }     from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }       from '../../core/decorators/current-user.decorator';
-import { ArtistGoalsService } from './artist-goals.service';
-import { CreateArtistGoalDto } from './dto/create-artist-goal.dto';
-import { UpdateArtistGoalDto } from './dto/update-artist-goal.dto';
+import { RequireRole }       from '../../core/decorators/roles.decorator';
+import { ArtistGoalsService }   from './artist-goals.service';
+import { CreateArtistGoalDto }  from './dto/create-artist-goal.dto';
+import { UpdateArtistGoalDto }  from './dto/update-artist-goal.dto';
 
-@UseGuards(ClerkAuthGuard, TenantGuard)
+@ApiTags('ArtistGoals')
+@ApiBearerAuth()
 @Controller('artist-goals')
 export class ArtistGoalsController {
   constructor(private readonly svc: ArtistGoalsService) {}
 
   @Get()
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Listar metas de artistas do tenant' })
   list(
     @CurrentTenant() tenant: { id: string },
     @Query('artista_id') artista_id?: string,
@@ -32,6 +35,8 @@ export class ArtistGoalsController {
   }
 
   @Get(':id')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Obter meta de artista por ID' })
   findOne(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -40,25 +45,31 @@ export class ArtistGoalsController {
   }
 
   @Post()
+  @RequireRole('editor')
+  @ApiOperation({ summary: 'Criar meta de artista' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Body() dto: CreateArtistGoalDto,
   ) {
-    return this.svc.create(tenant.id, user.sub, dto);
+    return this.svc.create(tenant.id, user.userId, dto);
   }
 
   @Patch(':id')
+  @RequireRole('editor')
+  @ApiOperation({ summary: 'Actualizar meta de artista' })
   update(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateArtistGoalDto,
   ) {
-    return this.svc.update(tenant.id, user.sub, id, dto);
+    return this.svc.update(tenant.id, user.userId, id, dto);
   }
 
   @Delete(':id')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Remover meta de artista (soft delete)' })
   remove(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,

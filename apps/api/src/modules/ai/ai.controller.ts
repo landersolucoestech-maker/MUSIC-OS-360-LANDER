@@ -3,6 +3,7 @@ import {
   HttpCode, HttpStatus, Request,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { RequireRole } from '../../core/decorators/roles.decorator';
 import { AIService }              from './ai.service';
 import {
   AICompletionDto,
@@ -12,7 +13,8 @@ import {
 } from './dto/ai.dto';
 
 @ApiTags('AI Gateway')
-@ApiBearerAuth('Clerk JWT')
+@ApiBearerAuth()
+@RequireRole('editor')
 @Controller('ai')
 export class AIController {
   constructor(private readonly ai: AIService) {}
@@ -24,21 +26,20 @@ export class AIController {
   @HttpCode(HttpStatus.OK)
   complete(@Request() req: any, @Body() dto: AICompletionDto) {
     return this.ai.complete({
-      tenantId:    req.tenantId,
-      userId:      req.userId,
-      skill:       dto.skill,
-      prompt:      dto.prompt,
+      tenantId:     req.tenant?.id ?? req.tenantId,
+      userId:       req.auth?.userId ?? req.userId,
+      skill:        dto.skill,
+      prompt:       dto.prompt,
       systemPrompt: dto.systemPrompt,
-      maxTokens:   dto.maxTokens,
-      temperature: dto.temperature,
-      jsonMode:    dto.jsonMode,
+      maxTokens:    dto.maxTokens,
+      temperature:  dto.temperature,
+      jsonMode:     dto.jsonMode,
     });
   }
 
   /**
    * /generate — alias do /complete para compatibilidade com o frontend.
    * O frontend (useAI.ts / AIGenerateButton) envia { prompt, type }.
-   * Mapeamos `type` para `skill` e retornamos { content } como esperado.
    */
   @Post('generate')
   @ApiOperation({ summary: 'Alias de /complete para o frontend (useAI hook)' })
@@ -48,8 +49,8 @@ export class AIController {
     @Body() body: { prompt: string; type?: string },
   ): Promise<{ content: string }> {
     const result = await this.ai.complete({
-      tenantId: req.tenantId,
-      userId:   req.userId,
+      tenantId: req.tenant?.id ?? req.tenantId,
+      userId:   req.auth?.userId ?? req.userId,
       skill:    body.type ?? 'general',
       prompt:   body.prompt,
     });
@@ -62,7 +63,12 @@ export class AIController {
   @ApiOperation({ summary: 'Gerar biografia de artista' })
   @HttpCode(HttpStatus.OK)
   async biography(@Request() req: any, @Body() dto: GenerateBiographyDto) {
-    const content = await this.ai.generateBiography(req.tenantId, req.userId, dto.artistName, dto.context);
+    const content = await this.ai.generateBiography(
+      req.tenant?.id ?? req.tenantId,
+      req.auth?.userId ?? req.userId,
+      dto.artistName,
+      dto.context,
+    );
     return { content };
   }
 
@@ -70,23 +76,33 @@ export class AIController {
   @ApiOperation({ summary: 'Gerar copy para campanha de marketing' })
   @HttpCode(HttpStatus.OK)
   async campaignCopy(@Request() req: any, @Body() dto: GenerateCampaignCopyDto) {
-    const content = await this.ai.generateCampaignCopy(req.tenantId, req.userId, dto);
+    const content = await this.ai.generateCampaignCopy(
+      req.tenant?.id ?? req.tenantId,
+      req.auth?.userId ?? req.userId,
+      dto,
+    );
     return { content };
   }
 
   @Post('analyze-contract')
-  @ApiOperation({ summary: 'Analisar contrato e identificar cláusulas problemáticas' })
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Analisar contrato e identificar cláusulas problemáticas (manager+)' })
   @HttpCode(HttpStatus.OK)
   async analyzeContract(@Request() req: any, @Body() dto: AnalyzeContractDto) {
-    const content = await this.ai.analyzeContract(req.tenantId, req.userId, dto.contractText);
+    const content = await this.ai.analyzeContract(
+      req.tenant?.id ?? req.tenantId,
+      req.auth?.userId ?? req.userId,
+      dto.contractText,
+    );
     return { content };
   }
 
   // ─── Cost summary ─────────────────────────────────────────────────────────
 
   @Get('cost-summary')
-  @ApiOperation({ summary: 'Resumo de custos de AI do tenant' })
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Resumo de custos de AI do tenant (admin+)' })
   getCostSummary(@Request() req: any) {
-    return this.ai.getCostSummary(req.tenantId);
+    return this.ai.getCostSummary(req.tenant?.id ?? req.tenantId);
   }
 }

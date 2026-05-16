@@ -50,10 +50,14 @@ export class TenantGuard implements CanActivate {
       return true;
     }
 
-    // clerk_org_id stores the org identifier from the JWT `org_id` claim.
+    // Primary lookup: org_id UUID (Supabase app_metadata.org_id → organizations.id).
+    // Fallback:       clerk_org_id for tenants provisioned before the Supabase migration.
     const tenant = await this.tenantRepo
       .createQueryBuilder('t')
-      .where('t.clerk_org_id = :orgId AND t.deleted_at IS NULL', { orgId: auth.orgId })
+      .where(
+        '(t.org_id::text = :orgId OR t.clerk_org_id = :orgId) AND t.deleted_at IS NULL',
+        { orgId: auth.orgId },
+      )
       .getOne();
 
     if (!tenant || !tenant.active) {
@@ -61,6 +65,7 @@ export class TenantGuard implements CanActivate {
     }
 
     // clerk_user_id stores the user identifier from the JWT `sub` claim.
+    // With Supabase, `sub` is a UUID — same column, different value format.
     const member = await this.memberRepo
       .createQueryBuilder('m')
       .where(

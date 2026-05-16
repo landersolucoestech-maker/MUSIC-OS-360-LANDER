@@ -1,21 +1,11 @@
-/**
- * modules/artists/artists.controller.ts
- *
- * ArtistsController — CRUD de artistas protegido por Clerk + TenantGuard + RolesGuard.
- * Todas as mutações são auditadas via @Audit().
- */
-
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, UseInterceptors,
+  Body, Param, Query, UseInterceptors,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import {
   ApiTags, ApiBearerAuth, ApiOperation, ApiResponse,
 } from '@nestjs/swagger';
-import { ClerkAuthGuard }   from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }      from '../../core/guards/tenant.guard';
-import { RolesGuard }       from '../../core/guards/roles.guard';
 import { CurrentTenant }    from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }      from '../../core/decorators/current-user.decorator';
 import { RequireRole }      from '../../core/decorators/roles.decorator';
@@ -27,7 +17,6 @@ import { QueryArtistDto }   from './dto/query-artist.dto';
 
 @ApiTags('Artists')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard, TenantGuard, RolesGuard)
 @UseInterceptors(AuditInterceptor)
 @Controller('artists')
 export class ArtistsController {
