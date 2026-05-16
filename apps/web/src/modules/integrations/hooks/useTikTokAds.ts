@@ -14,6 +14,8 @@ import { MOCK_MODE } from "@/shared/lib/env";
 export interface TikTokAdsStatus {
   connected: boolean;
   last_sync_at?: string | null;
+  advertiser_id?: string | null;
+  app_id?: string | null;
 }
 
 export interface TikTokAdsCredentials {

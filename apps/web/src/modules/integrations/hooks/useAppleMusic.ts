@@ -14,6 +14,9 @@ import { MOCK_MODE } from "@/shared/lib/env";
 export interface AppleMusicStatus {
   connected: boolean;
   last_sync_at?: string | null;
+  team_id?: string | null;
+  key_id?: string | null;
+  artist_id?: string | null;
 }
 
 export interface AppleMusicCredentials {

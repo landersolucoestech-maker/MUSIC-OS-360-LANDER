@@ -64,7 +64,7 @@ export class ArtistGoalsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateArtistGoalDto,
   ) {
-    return this.svc.update(tenant.id, user.userId, id, dto);
+    return this.svc.update(tenant.id, id, dto);
   }
 
   @Delete(':id')
@@ -74,6 +74,6 @@ export class ArtistGoalsController {
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.softDelete(tenant.id, id);
+    return this.svc.remove(tenant.id, id);
   }
 }

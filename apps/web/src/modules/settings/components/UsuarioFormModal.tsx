@@ -288,7 +288,7 @@ export function UsuarioFormModal({ open, onOpenChange, usuario, mode }: UsuarioF
         await updateUsuario.mutateAsync({
           id: usuario.id,
           full_name: data.nome,
-          phone: data.telefone,
+          phone: data.telefone ?? undefined,
           cargo: data.nivel_acesso || undefined,
         });
       } else if (mode === "create") {

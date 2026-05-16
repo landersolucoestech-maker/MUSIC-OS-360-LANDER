@@ -42,7 +42,7 @@ export class ContractTemplatesController {
   @Audit('contract_template.updated')
   @ApiOperation({ summary: 'Actualizar template' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContractTemplateDto) {
-    return this.svc.update(t.id, u?.sub ?? '', id, dto);
+    return this.svc.update(t.id, id, dto);
   }
 
   @Delete(':id')

@@ -1067,7 +1067,7 @@ export default function RegistroMusicas() {
                               >
                                 {obra.status === "registrado" ? "Registrado" : obra.status === "analise" ? "Em Análise" : "Pendente"}
                               </Badge>
-                              <ObraTipoBadge tipo={obra.tipo_obra} />
+                              <ObraTipoBadge tipo={obra.tipo_obra as string | null | undefined} />
                             </div>
                           </TableCell>
                           <TableCell className="py-3 text-sm">{obra.cod_abramus || "-"}</TableCell>
@@ -1107,7 +1107,7 @@ export default function RegistroMusicas() {
                                   title={obra.status === "analise" ? "Obra em análise — aguarde a conclusão antes de registrar um fonograma" : undefined}
                                   onClick={() => {
                                     setActiveTab("fonogramas");
-                                    setFonogramaModal({ open: true, mode: "create", fonograma: { obra_id: obra.id } });
+                                    setFonogramaModal({ open: true, mode: "create", fonograma: { id: "", obra_id: obra.id } as Fonograma });
                                   }}
                                 >
                                   <Disc className="h-4 w-4 mr-2" />
@@ -1158,7 +1158,7 @@ export default function RegistroMusicas() {
               obraSeed = { projeto_id: pendingProjetoId };
             }
           }
-          setObraModal({ open: true, mode: "create", obra: obraSeed, tipoObra: tipo });
+          setObraModal({ open: true, mode: "create", obra: obraSeed as Obra | undefined, tipoObra: tipo });
           setPendingProjetoId(null);
         }}
       />
@@ -1179,13 +1179,13 @@ export default function RegistroMusicas() {
         open={fonogramaModal.open} 
         onOpenChange={(open) => setFonogramaModal({ ...fonogramaModal, open })} 
         mode={fonogramaModal.mode}
-        fonograma={fonogramaModal.fonograma}
+        fonograma={fonogramaModal.fonograma as import("@/modules/catalog/components/FonogramaFormModal").FonogramaFormInput | null | undefined}
         onSaved={(info) => setContratoModal({ open: true, prefill: info })}
       />
       <FonogramaViewModal 
         open={fonogramaViewModal.open} 
         onOpenChange={(open) => setFonogramaViewModal({ ...fonogramaViewModal, open })} 
-        fonograma={fonogramaViewModal.fonograma}
+        fonograma={fonogramaViewModal.fonograma as import("@/modules/catalog/components/FonogramaViewModal").FonogramaViewData | null | undefined}
       />
       <DeleteConfirmModal
         open={deleteModal.open}

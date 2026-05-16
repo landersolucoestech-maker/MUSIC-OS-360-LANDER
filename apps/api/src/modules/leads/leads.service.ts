@@ -41,7 +41,7 @@ export class LeadsService {
 
   async create(tenantId: string, userId: string, dto: CreateLeadDto): Promise<LeadEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateLeadDto): Promise<LeadEntity> {

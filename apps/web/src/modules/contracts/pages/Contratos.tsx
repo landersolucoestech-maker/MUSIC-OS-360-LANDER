@@ -359,7 +359,7 @@ export default function Contratos() {
                         <TableCell><SigningPlatformBadge platform={contrato.signing_platform} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
-                            <StatusBadge status={contrato.status} />
+                            <StatusBadge status={contrato.status ?? ""} />
                             {nearExpiry && (
                               <span className="inline-flex items-center gap-1 text-[10px] text-warning border border-warning/20 bg-warning/10 rounded-sm px-1.5 py-0.5 font-medium">
                                 <AlertCircle className="h-3 w-3" />{diff}d

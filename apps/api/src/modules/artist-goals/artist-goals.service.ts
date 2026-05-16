@@ -41,7 +41,7 @@ export class ArtistGoalsService {
 
   async create(tenantId: string, userId: string, dto: CreateArtistGoalDto): Promise<ArtistGoalEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: any): Promise<ArtistGoalEntity> {

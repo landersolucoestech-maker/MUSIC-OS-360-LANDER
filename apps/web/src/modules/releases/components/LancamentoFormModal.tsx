@@ -571,10 +571,10 @@ export function LancamentoFormModal({
     setExtraFields((prev) => ({ ...prev, [k]: v }));
 
   // ── Derived labels ────────────────────────────────────────────────────────
-  const projetoLabel = formData.projetoSeed
-    ? (projetos.find((p) => p.id === formData.projetoSeed)?.titulo ??
+  const projetoLabel: string = formData.projetoSeed
+    ? ((projetos.find((p) => p.id === formData.projetoSeed)?.titulo ??
       projetos.find((p) => p.id === formData.projetoSeed)?.nome ??
-      "")
+      "") as string)
     : "";
   const artistaLabel = formData.artista_id
     ? (artistas.find((a) => a.id === formData.artista_id)?.nome_artistico ?? "")

@@ -561,7 +561,7 @@ export default function OAuthPopupPage() {
       case "tiktok": return (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#010101", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <SvgTikTok size={22} color="white" />
+            <SvgTikTok size={22} />
           </div>
         </div>
       );
@@ -744,7 +744,7 @@ export default function OAuthPopupPage() {
                 <div style={{ fontSize: 13, color: textSub }}>{cfg.tagline}</div>
               </div>
             )}
-            <div style={{ width: "100%", height: 1, backgroundColor: divColor, margin: "0 -40px 16px", width: "calc(100% + 80px)" }} />
+            <div style={{ height: 1, backgroundColor: divColor, margin: "0 -40px 16px", width: "calc(100% + 80px)" }} />
 
             {/* CHOOSE */}
             {step === "choose" && (

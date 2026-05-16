@@ -101,3 +101,27 @@ export interface LeadInteraction {
 }
 
 export type LeadInteractionInsert = Omit<LeadInteraction, "id" | "user_id" | "created_at">;
+
+export interface Contato {
+  id: string;
+  user_id?: string;
+  nome: string;
+  email?: string | null;
+  telefone?: string | null;
+  cargo?: string | null;
+  empresa?: string | null;
+  categoria?: string | null;
+  subcategoria?: string | null;
+  instagram?: string | null;
+  website?: string | null;
+  cidade?: string | null;
+  estado?: string | null;
+  observacoes?: string | null;
+  tags?: string[] | null;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export type ContatoInsert = Omit<Contato, "id" | "user_id" | "created_at" | "updated_at">;
+export type ContatoUpdate = Partial<ContatoInsert>;

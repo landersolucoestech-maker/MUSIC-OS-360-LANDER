@@ -175,7 +175,7 @@ export default function Licenciamento() {
                         <TableCell>{licenca.clientes?.nome || "-"}</TableCell>
                         <TableCell><Badge variant="outline">{licenca.tipo_uso}</Badge></TableCell>
                         <TableCell className="font-semibold text-success">{formatCurrency(licenca.valor || 0)}</TableCell>
-                        <TableCell>{getStatusBadge(licenca.status)}</TableCell>
+                        <TableCell>{getStatusBadge(licenca.status ?? "")}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

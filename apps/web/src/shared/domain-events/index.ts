@@ -33,6 +33,8 @@ export const DomainEvents = {
   CONTRACT_UPDATED:          "CONTRACT_UPDATED",
   CONTRACT_DELETED:          "CONTRACT_DELETED",
   CONTRACT_SIGNED:           "CONTRACT_SIGNED",
+  CONTRACT_SENT_FOR_SIGNING:  "contrato.sent_for_signing",
+  CONTRACT_SIGNING_CANCELLED: "contrato.signing_cancelled",
   CONTRACT_TEMPLATE_CREATED: "CONTRACT_TEMPLATE_CREATED",
   CONTRACT_TEMPLATE_UPDATED: "CONTRACT_TEMPLATE_UPDATED",
   CONTRACT_TEMPLATE_DELETED: "CONTRACT_TEMPLATE_DELETED",
@@ -41,11 +43,16 @@ export const DomainEvents = {
   RELEASE_CREATED: "RELEASE_CREATED",
   RELEASE_UPDATED: "RELEASE_UPDATED",
   RELEASE_DELETED: "RELEASE_DELETED",
+  LANCAMENTO_APPROVED: "lancamento.approved",
+  LANCAMENTO_REJECTED: "lancamento.rejected",
 
   // Shares (gestão de participação em obras/fonogramas)
   SHARE_CREATED: "SHARE_CREATED",
   SHARE_UPDATED: "SHARE_UPDATED",
   SHARE_DELETED: "SHARE_DELETED",
+
+  // Utilizadores / Tenant
+  USER_INVITED: "user.invited",
 
   // CRM / Leads
   LEAD_CAPTURED:  "LEAD_CAPTURED",
@@ -153,6 +160,11 @@ export type DomainEventPayloads = {
   INVOICE_UPDATED:       { id: string; numero?: string; cliente_id?: string; valor?: number; org_id: string };
   INVOICE_DELETED:       { id: string; org_id: string };
   AUDIT_ENTRY_CREATED:   AuditEntryCreatedPayload;
+  "user.invited":               { tenantId: string; email: string; role: string };
+  "contrato.sent_for_signing":  { contratoId: string; signers: unknown[]; org_id?: string };
+  "contrato.signing_cancelled": { contratoId: string; reason?: string; org_id?: string };
+  "lancamento.approved":        { lancamentoId: string; reason?: string };
+  "lancamento.rejected":        { lancamentoId: string; reason?: string };
 };
 
 // ─── Event Bus ───────────────────────────────────────────────────────────────

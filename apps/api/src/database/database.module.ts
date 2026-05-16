@@ -6,12 +6,16 @@
  *
  * Graceful standalone mode: if DATABASE_URL is not set the provider returns
  * null — services and guards check for this and bypass DB calls safely.
+ *
+ * Inclui MigrationValidatorService que verifica, no boot, se existem
+ * migrations pendentes (fatal em produção, warn em dev).
  */
 
 import { Module, Global, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './entities';
+import { MigrationValidatorService } from './migration-validator.service';
 
 export const DATA_SOURCE = Symbol('DATA_SOURCE');
 
@@ -37,11 +41,12 @@ export const DATA_SOURCE = Symbol('DATA_SOURCE');
           type:           'postgres',
           url,
           entities:       ALL_ENTITIES,
-          synchronize:    false,
+          synchronize:    false,  // NUNCA true — schema gerido via migrations
           logging:        config.get('NODE_ENV') !== 'production',
           ssl:            config.get('NODE_ENV') === 'production'
                             ? { rejectUnauthorized: false }
                             : false,
+          migrationsTableName: 'musicos360_migrations',
         });
 
         try {
@@ -54,7 +59,8 @@ export const DATA_SOURCE = Symbol('DATA_SOURCE');
         }
       },
     },
+    MigrationValidatorService,
   ],
-  exports: [DATA_SOURCE],
+  exports: [DATA_SOURCE, MigrationValidatorService],
 })
 export class DatabaseModule {}

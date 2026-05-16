@@ -41,7 +41,7 @@ const STARTER_FEATURES: PlanFeatures = {
 
 const ALL_ENABLED = Object.fromEntries(
   Object.keys(STARTER_FEATURES).map((k) => [k, true]),
-) as PlanFeatures;
+) as unknown as PlanFeatures;
 
 export function usePlanFeatures() {
   const queryClient = useQueryClient();

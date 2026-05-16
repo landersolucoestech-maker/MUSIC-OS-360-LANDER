@@ -204,7 +204,7 @@ export default function MarketingCalendario() {
                         {toStringArray(conteudo.plataforma).map((p) => (
                           <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
                         ))}
-                        <Badge className={`text-xs ${getStatusColor(conteudo.status)}`}>{getStatusLabel(conteudo.status)}</Badge>
+                        <Badge className={`text-xs ${getStatusColor(conteudo.status ?? "")}`}>{getStatusLabel(conteudo.status ?? "")}</Badge>
                         {toStringArray(conteudo.tipo_conteudo).map((t) => (
                           <Badge key={t} variant="outline" className="text-xs">{t}</Badge>
                         ))}

@@ -29,11 +29,11 @@ export default function Perfil() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [formData, setFormData] = useState({
-    nome: userSettings.full_name || user?.name || "Admin MusicOS 360",
-    email: user?.email || "admin@musicos360.com",
+    nome: userSettings.full_name || (user?.name as string | undefined) || "Admin MusicOS 360",
+    email: (user?.email as string | undefined) || "admin@musicos360.com",
     telefone: userSettings.phone || "(33)99917-9552",
     setor: userSettings.cargo || "Administrativo",
-    nivelAcesso: user?.role === "admin" ? "Administrador" : "Usuário",
+    nivelAcesso: (user?.role as string | undefined) === "admin" ? "Administrador" : "Usuário",
   });
 
   const handleSave = async () => {
@@ -47,11 +47,11 @@ export default function Perfil() {
 
   const handleCancel = () => {
     setFormData({
-      nome: userSettings.full_name || user?.name || "Admin MusicOS 360",
-      email: user?.email || "admin@musicos360.com",
+      nome: userSettings.full_name || (user?.name as string | undefined) || "Admin MusicOS 360",
+      email: (user?.email as string | undefined) || "admin@musicos360.com",
       telefone: userSettings.phone || "(33)99917-9552",
       setor: userSettings.cargo || "Administrativo",
-      nivelAcesso: user?.role === "admin" ? "Administrador" : "Usuário",
+      nivelAcesso: (user?.role as string | undefined) === "admin" ? "Administrador" : "Usuário",
     });
     setIsEditing(false);
   };

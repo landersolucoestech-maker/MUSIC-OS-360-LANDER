@@ -42,7 +42,7 @@ export class SupportTicketsService {
   async create(tenantId: string, userId: string, dto: CreateSupportTicketDto): Promise<SupportTicketEntity> {
     const ticketNumber = `TKT-${Date.now().toString(36).toUpperCase()}`;
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), ticket_number: ticketNumber, created_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateSupportTicketDto): Promise<SupportTicketEntity> {

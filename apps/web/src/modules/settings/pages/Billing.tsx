@@ -11,7 +11,7 @@ import { CreditCard, Zap, Shield, Star, ArrowRight, ExternalLink, Loader2, Check
 import { Button }   from "@/shared/ui/button";
 import { Badge }    from "@/shared/ui/badge";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/shared/ui/card";
-import { PageHeader } from "@/shared/layouts";
+import { PageHeader } from "@/shared/components/PageHeader";
 import { toast } from "sonner";
 import { stripeClient, type BillingSubscription } from "@/modules/integrations/clients/stripe.client";
 import { useWsEvent } from "@/shared/hooks/useWsEvent";
@@ -153,7 +153,6 @@ export default function Billing() {
       <PageHeader
         title="Billing"
         description="Gerencie o seu plano e assinatura"
-        icon={<CreditCard className="h-5 w-5" />}
       />
 
       {/* Plano actual */}

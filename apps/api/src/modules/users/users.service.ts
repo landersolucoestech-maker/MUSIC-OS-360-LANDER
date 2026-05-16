@@ -64,7 +64,7 @@ export class UsersService {
       role:          dto.role,
       is_active:     true,
     });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateUserDto): Promise<OrgMemberEntity> {

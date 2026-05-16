@@ -312,7 +312,7 @@ export default function RH() {
   const handleExportFolha = () => {
     const data = filteredFolha.map((fp) => ({
       ...fp,
-      funcionario_nome: getFuncionarioNome(fp.funcionario_id),
+      funcionario_nome: getFuncionarioNome(fp.funcionario_id ?? null),
     }));
     exportToCSV(data, folhaColumns, "folha_pagamento");
   };
@@ -320,7 +320,7 @@ export default function RH() {
   const handleExportFerias = () => {
     const data = filteredFerias.map((fa) => ({
       ...fa,
-      funcionario_nome: getFuncionarioNome(fa.funcionario_id),
+      funcionario_nome: getFuncionarioNome(fa.funcionario_id ?? null),
     }));
     exportToCSV(data, feriasColumns, "ferias_ausencias");
   };
@@ -328,7 +328,7 @@ export default function RH() {
   const handleExportDocumentos = () => {
     const data = (documentos || []).map((d) => ({
       ...d,
-      funcionario_nome: getFuncionarioNome(d.funcionario_id),
+      funcionario_nome: getFuncionarioNome(d.funcionario_id ?? null),
     }));
     exportToCSV(data, documentosColumns, "documentos_funcionario");
   };
@@ -699,7 +699,7 @@ export default function RH() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground text-xs" data-testid={`text-usuario-vinculo-${f.id}`}>
-                        {getUsuarioNome(f.vinculo_usuario_id) || "—"}
+                        {getUsuarioNome(f.vinculo_usuario_id ?? null) || "—"}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
@@ -762,7 +762,7 @@ export default function RH() {
                 <TableBody>
                   {filteredFolha.map((fp) => (
                     <TableRow key={fp.id} data-testid={`row-folha-${fp.id}`}>
-                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id)}</TableCell>
+                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id ?? null)}</TableCell>
                       <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
                       <TableCell className="text-right">{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
                       <TableCell className="text-right text-destructive">
@@ -838,7 +838,7 @@ export default function RH() {
                 <TableBody>
                   {filteredFerias.map((fa) => (
                     <TableRow key={fa.id} data-testid={`row-ferias-${fa.id}`}>
-                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id)}</TableCell>
+                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id ?? null)}</TableCell>
                       <TableCell className="text-muted-foreground">
                         {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
                       </TableCell>
@@ -983,7 +983,7 @@ export default function RH() {
                             </TableCell>
                             <TableCell>
                               <a
-                                href={doc.url_arquivo}
+                                href={doc.url_arquivo ?? undefined}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-primary hover:underline"

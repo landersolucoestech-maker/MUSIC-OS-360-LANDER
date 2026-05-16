@@ -41,7 +41,7 @@ export class EcadReportsService {
 
   async create(tenantId: string, userId: string, dto: CreateEcadReportDto): Promise<EcadReportEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: any): Promise<EcadReportEntity> {

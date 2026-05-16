@@ -19,6 +19,8 @@ import { resolveSigningAdapter } from "@/modules/integrations/adapters/signing.a
 import type { SigningProviderId } from "@/modules/integrations/adapters/signing.adapter";
 import { emailAdapter }          from "@/modules/integrations/adapters/email.adapter";
 import { storageAdapter }        from "@/modules/integrations/adapters/storage.adapter";
+import type { StorageBucket }    from "@/shared/integrations/contracts/storage.contract";
+import type { SignerRole }       from "@/shared/integrations/contracts/signing.contract";
 import { emit }                  from "@/shared/domain-events";
 
 export type { SigningProviderId };
@@ -75,14 +77,20 @@ export const signingService = {
       }
     }
 
-    const fileUrl = await storageAdapter.presignedUrl({ bucket, key: fileKey });
+    const fileUrl = await storageAdapter.presignedUrl({ bucket: bucket as StorageBucket, key: fileKey });
 
     const expiresAt = new Date(Date.now() + deadline_days * 86_400_000).toISOString();
+
+    const typedSigners = signers.map(s => ({
+      name:  s.name,
+      email: s.email,
+      role:  (s.role ?? "signer") as SignerRole,
+    }));
 
     const doc = await adapter.createDocument({
       title,
       document:    fileUrl,
-      signers,
+      signers:     typedSigners,
       expires_at:  expiresAt,
       contrato_id: contratoId,
     });
@@ -93,7 +101,7 @@ export const signingService = {
       await emailAdapter.send({
         to:           { name: signer.name, email: signer.email },
         subject:      `Assinatura digital solicitada: ${title}`,
-        template_id:  "signing-invite",
+        template_id:  "signing-requested",
         template_vars: {
           signer_name:   signer.name,
           doc_title:     title,
@@ -106,9 +114,7 @@ export const signingService = {
 
     emit("contrato.sent_for_signing", {
       contratoId,
-      documentId: doc.id,
-      signers:    signers.map(s => s.email),
-      provider,
+      signers: signers.map(s => s.email) as unknown[],
     });
 
     return {
@@ -129,7 +135,7 @@ export const signingService = {
   ): Promise<void> {
     const adapter = resolveSigningAdapter(provider);
     await adapter.cancelDocument(documentId);
-    emit("contrato.signing_cancelled", { contratoId, documentId, provider });
+    emit("contrato.signing_cancelled", { contratoId });
   },
 
   /**

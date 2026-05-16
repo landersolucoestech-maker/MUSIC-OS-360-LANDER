@@ -34,15 +34,18 @@ export class AuditInterceptor implements NestInterceptor {
     if (!action) return next.handle();
 
     const request   = context.switchToHttp().getRequest<{
-      auth?:    { userId?: string };
-      tenant?:  { id?: string };
-      ip?:      string;
-      headers?: Record<string, string>;
+      auth?:      { userId?: string };
+      tenant?:    { id?: string };
+      ip?:        string;
+      requestId?: string;
+      headers?:   Record<string, string>;
     }>();
 
     return next.handle().pipe(
       tap(async (result: unknown) => {
         const resultObj = result as Record<string, unknown> | null;
+        // Usa requestId injectado pelo RequestIdMiddleware; fallback para header
+        const requestId = request.requestId ?? request.headers?.['x-request-id'];
         await this.auditService.log({
           tenantId:  request.tenant?.id  ?? null,
           userId:    request.auth?.userId ?? null,
@@ -54,7 +57,7 @@ export class AuditInterceptor implements NestInterceptor {
           after:     result,
           ip:        request.ip,
           userAgent: request.headers?.['user-agent'],
-          requestId: request.headers?.['x-request-id'],
+          requestId,
         });
       }),
     );

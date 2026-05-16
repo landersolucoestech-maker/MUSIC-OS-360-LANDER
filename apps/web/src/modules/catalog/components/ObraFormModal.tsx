@@ -377,18 +377,18 @@ export function ObraFormModal({
   }, [open, obra, projetos]);
 
   // Lista de projetos concluídos filtrada pelo termo digitado
-  const projetosConcluidosFiltrados: ProjetoWithRelations[] = projetos
-    .filter((p: ProjetoWithRelations) => p.status === "concluido")
-    .filter((p: ProjetoWithRelations) => {
-      if (!buscaProjeto) return true;
+  const projetosConcluidosFiltrados: ProjetoWithRelations[] = [];
+  for (const p of projetos as ProjetoWithRelations[]) {
+    const pStatus = p.status as string | null | undefined;
+    if (pStatus !== "concluido") continue;
+    if (buscaProjeto) {
       const termo = buscaProjeto.toLowerCase();
       const pNome = (p.titulo ?? (p as { nome?: string }).nome ?? "") as string;
       const pArtistaNome = (p.artistas?.nome_artistico ?? "") as string;
-      return (
-        pNome.toLowerCase().includes(termo) ||
-        pArtistaNome.toLowerCase().includes(termo)
-      );
-    });
+      if (!pNome.toLowerCase().includes(termo) && !pArtistaNome.toLowerCase().includes(termo)) continue;
+    }
+    projetosConcluidosFiltrados.push(p);
+  }
 
   const [participacaoOpen, setParticipacaoOpen] = useState(true);
   const [outrosTitulosOpen, setOutrosTitulosOpen] = useState(false);
@@ -669,14 +669,15 @@ export function ObraFormModal({
                           : "Projetos concluídos disponíveis"}
                       </p>
                       {projetosConcluidosFiltrados.length > 0 ? (
-                        projetosConcluidosFiltrados.map((p) => {
+                        (projetosConcluidosFiltrados as ProjetoWithRelations[]).map((p) => {
+                          const pId = p.id as string;
                           const pNomeDisplay = (p.titulo ??
                             (p as { nome?: string }).nome ??
                             "") as string;
                           const pArtistaNomeDisplay = (p.artistas?.nome_artistico ?? "") as string;
                           const selectProjeto = () => {
                             setProjetoSelecionado({
-                              id: p.id,
+                              id: pId,
                               nome: pNomeDisplay,
                               artistaNome: pArtistaNomeDisplay || null,
                             });
@@ -732,10 +733,10 @@ export function ObraFormModal({
                           };
                           return (
                             <div
-                              key={p.id}
+                              key={pId}
                               role="option"
                               tabIndex={0}
-                              aria-selected={projetoSelecionado?.id === p.id}
+                              aria-selected={(projetoSelecionado as ProjetoSelecionado | null)?.id === pId}
                               className="flex items-center gap-3 p-2 hover:bg-muted focus:bg-muted focus:outline-none rounded-lg cursor-pointer transition-colors"
                               onClick={selectProjeto}
                               onKeyDown={(e) => {

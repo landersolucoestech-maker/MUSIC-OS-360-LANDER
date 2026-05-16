@@ -48,7 +48,14 @@ export const MARKETING_PLATFORM_CATEGORY: Record<MarketingPlatformId, MarketingC
   corp_deezer:      "corporate_metrics",
   corp_soundcloud:  "corporate_metrics",
   corp_apple_music: "corporate_metrics",
+  corp_instagram:   "corporate_metrics",
+  corp_tiktok:      "corporate_metrics",
+  corp_youtube:     "corporate_metrics",
   // Tráfego pago
+  meta_ads:         "paid_ads",
+  google_ads:       "paid_ads",
+  tiktok_ads:       "paid_ads",
+  youtube_ads:      "paid_ads",
   spotify_ads:      "paid_ads",
   deezer_ads:       "paid_ads",
   apple_music_ads:  "paid_ads",
@@ -105,6 +112,34 @@ const MOCK_ACCOUNTS: Record<MarketingPlatformId, { accountName: string; accountI
   soundcloud_ads: {
     accountName: "Music Business — SoundCloud Ads",
     accountId:   "SC-ADV-567890",
+  },
+  corp_instagram: {
+    accountName: "Music Business — Instagram Corporativo",
+    accountId:   "IG-CORP-123456",
+  },
+  corp_tiktok: {
+    accountName: "Music Business — TikTok Corporativo",
+    accountId:   "TT-CORP-789012",
+  },
+  corp_youtube: {
+    accountName: "Music Business — YouTube Corporativo",
+    accountId:   "YT-CORP-345678",
+  },
+  meta_ads: {
+    accountName: "Music Business — Meta Ads Manager",
+    accountId:   "META-ADV-901234",
+  },
+  google_ads: {
+    accountName: "Music Business — Google Ads",
+    accountId:   "GADS-567890",
+  },
+  tiktok_ads: {
+    accountName: "Music Business — TikTok Ads Manager",
+    accountId:   "TT-ADV-123456",
+  },
+  youtube_ads: {
+    accountName: "Music Business — YouTube Ads",
+    accountId:   "YT-ADV-789012",
   },
 };
 

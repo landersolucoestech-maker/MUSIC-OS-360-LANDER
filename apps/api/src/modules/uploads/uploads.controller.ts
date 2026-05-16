@@ -11,7 +11,7 @@
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, Logger, Inject,
+  NotFoundException, ServiceUnavailableException, Logger, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { DataSource, Repository } from 'typeorm';
@@ -37,6 +37,16 @@ export class UploadsController {
     if (ds) this.repo = ds.getRepository(UploadEntity);
   }
 
+  /** Lança 503 se a base de dados não estiver disponível */
+  private requireRepo(): Repository<UploadEntity> {
+    if (!this.repo) {
+      throw new ServiceUnavailableException(
+        'Base de dados não configurada — uploads de metadados indisponíveis.',
+      );
+    }
+    return this.repo;
+  }
+
   // ── POST /uploads/presign ────────────────────────────────────────────────────
 
   @Post('presign')
@@ -46,6 +56,7 @@ export class UploadsController {
     @CurrentUser()   user:   { userId: string },
     @Body()          dto:    PresignUploadDto,
   ) {
+    const repo = this.requireRepo();
     const { presignedUrl, key, fileId } = await this.storage.createPresignedUpload({
       tenantId:  tenant.id,
       userId:    user.userId,
@@ -57,7 +68,7 @@ export class UploadsController {
       entityId:  dto.entityId,
     });
 
-    const entity = this.repo!.create({
+    const entity = repo.create({
       tenant_id:     tenant.id,
       user_id:       user.userId,
       file_id:       fileId,
@@ -70,7 +81,7 @@ export class UploadsController {
       entity_id:     dto.entityId ?? null,
       status:        'pending',
     });
-    await this.repo!.save(entity);
+    await repo.save(entity);
 
     this.logger.log(`Presign registado: ${fileId} / tenant ${tenant.id}`);
     return { presignedUrl, key, fileId };
@@ -84,7 +95,8 @@ export class UploadsController {
     @CurrentTenant() tenant: { id: string },
     @Param('fileId') fileId:  string,
   ) {
-    const row = await this.repo!
+    const repo = this.requireRepo();
+    const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
       .getOne();
@@ -92,10 +104,10 @@ export class UploadsController {
     if (!row) throw new NotFoundException('Upload não encontrado');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
+    await repo.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
     this.logger.log(`Upload confirmado: ${fileId}`);
 
-    return this.repo!.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
+    return repo.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
   }
 
   // ── GET /uploads/:fileId/download ────────────────────────────────────────────
@@ -106,7 +118,8 @@ export class UploadsController {
     @CurrentTenant() tenant: { id: string },
     @Param('fileId') fileId:  string,
   ) {
-    const row = await this.repo!
+    const repo = this.requireRepo();
+    const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
       .getOne();

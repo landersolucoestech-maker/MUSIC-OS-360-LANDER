@@ -77,7 +77,7 @@ export const notificationsService = {
     await emailAdapter.send({
       to,
       subject:      `Contrato a expirar em ${daysRemaining} dias: ${contratoTitle}`,
-      template_id:  "contrato-expiry-alert",
+      template_id:  "contract-expiry-alert",
       template_vars: { contrato_title: contratoTitle, days_remaining: daysRemaining },
     });
 
@@ -93,7 +93,7 @@ export const notificationsService = {
     await emailAdapter.send({
       to,
       subject:      `Lançamento ${status === "approved" ? "aprovado" : "rejeitado"}: ${lancamentoTitle}`,
-      template_id:  `lancamento-${status}`,
+      template_id:  status === "approved" ? "release-approved" : "release-rejected",
       template_vars: { lancamento_title: lancamentoTitle, reason: reason ?? "" },
     });
 

@@ -64,7 +64,7 @@ interface ArquivoAudioInput {
   size: number;
 }
 
-type FonogramaFormInput = Partial<FonogramaRow> & {
+export type FonogramaFormInput = Partial<FonogramaRow> & {
   // camelCase aliases used by some callers / earlier in-memory shape
   codAbramus?: string | null;
   codEcad?: string | null;

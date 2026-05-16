@@ -74,7 +74,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   {contrato.titulo}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <StatusBadge status={contrato.status} />
+                  <StatusBadge status={contrato.status ?? ""} />
                   <SigningPlatformBadge platform={contrato.signing_platform} />
                   {expirando && (
                     <Badge className="bg-warning/10 text-warning border-warning/20 text-[11px] border gap-1">
@@ -421,7 +421,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {lancamentoVinculado.tipo || "—"}
                           </Badge>
-                          <StatusBadge status={lancamentoVinculado.status} />
+                          <StatusBadge status={lancamentoVinculado.status ?? ""} />
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
                           <div>

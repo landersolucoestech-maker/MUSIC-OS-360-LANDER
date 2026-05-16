@@ -71,6 +71,6 @@ export class ContentDetectionsController {
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.softDelete(tenant.id, id);
+    return this.svc.remove(tenant.id, id);
   }
 }

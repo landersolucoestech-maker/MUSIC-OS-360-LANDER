@@ -14,6 +14,8 @@ import { MOCK_MODE } from "@/shared/lib/env";
 export interface GoogleAdsStatus {
   connected: boolean;
   last_sync_at?: string | null;
+  manager_account_id?: string | null;
+  client_id?: string | null;
 }
 
 export interface GoogleAdsCredentials {

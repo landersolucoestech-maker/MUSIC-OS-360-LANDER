@@ -17,7 +17,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const ctx       = host.switchToHttp();
     const response  = ctx.getResponse<Response>();
     const request   = ctx.getRequest<Request>();
-    const requestId = (request.headers['x-request-id'] as string) || uuidv4();
+    // requestId foi injectado pelo RequestIdMiddleware; fallback defensivo
+    const requestId = request.requestId ?? (request.headers['x-request-id'] as string) ?? uuidv4();
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Erro interno do servidor';

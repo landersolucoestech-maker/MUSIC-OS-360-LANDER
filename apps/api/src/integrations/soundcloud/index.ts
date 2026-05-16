@@ -1,5 +1,5 @@
 export { SoundCloudApiClient }   from './client/soundcloud.client';
-export { SoundcloudService }     from './services';
+export { SoundCloudService }     from './services';
 export type {
   SoundCloudUser,
   SoundCloudTrack,

@@ -49,6 +49,18 @@ export interface ContratoWithRelations extends Contrato {
   clientes?: ClienteRef | null;
 }
 
-export type TemplateContrato = Tables<"templates_contratos">;
-export type TemplateContratoInsert = Omit<TablesInsert<"templates_contratos">, "user_id" | "id" | "created_at" | "updated_at">;
-export type TemplateContratoUpdate = Omit<TablesUpdate<"templates_contratos">, "id" | "user_id" | "created_at" | "updated_at">;
+export interface TemplateContrato {
+  id: string;
+  user_id?: string | null;
+  nome: string;
+  tipo_servico: string;
+  conteudo: string;
+  descricao?: string | null;
+  ativo: boolean;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export type TemplateContratoInsert = Omit<TemplateContrato, "id" | "user_id" | "created_at" | "updated_at">;
+export type TemplateContratoUpdate = Partial<TemplateContratoInsert>;

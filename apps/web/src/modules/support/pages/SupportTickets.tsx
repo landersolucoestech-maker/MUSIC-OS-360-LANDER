@@ -72,7 +72,7 @@ interface DrawerProps {
 function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
   const { messages, addMessage } = useTicketMessages(ticket.id);
   const [reply, setReply]        = useState("");
-  const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline));
+  const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline ?? ""));
   const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");
   const bottomRef                = useRef<HTMLDivElement>(null);
 
@@ -108,7 +108,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               {TICKET_STATUS_LABELS[ticket.status]}
             </Badge>
             <Badge variant="outline" className="text-[9.5px] h-4 px-1.5 border border-border/60 text-muted-foreground ml-1">
-              {TICKET_CATEGORY_LABELS[ticket.category]}
+              {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
             </Badge>
           </div>
           <SheetTitle className="text-[15px] font-semibold text-left leading-snug">
@@ -164,7 +164,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               <p className="text-[12.5px] text-muted-foreground leading-relaxed">{ticket.description}</p>
               <div className="flex flex-wrap gap-3 mt-2 text-[10.5px] text-muted-foreground">
                 <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.created_by}</span>
-                <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category]}</span>
+                <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}</span>
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatShort(ticket.created_at)}</span>
               </div>
             </div>
@@ -485,7 +485,7 @@ export default function SupportTickets() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
-                          {TICKET_CATEGORY_LABELS[ticket.category]}
+                          {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
                         </Badge>
                       </TableCell>
                       <TableCell>

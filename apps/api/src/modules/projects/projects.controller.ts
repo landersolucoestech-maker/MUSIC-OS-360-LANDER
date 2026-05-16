@@ -24,5 +24,5 @@ export class ProjectsController {
   update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateProjectDto) { return this.svc.update(t.id, u?.sub ?? '', id, dto); }
 
   @Delete(':id') @RequireRole('manager') @Audit('project.deleted') @ApiOperation({ summary: 'Cancelar projecto' })
-  remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }
+  remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.softDelete(t.id, id); }
 }

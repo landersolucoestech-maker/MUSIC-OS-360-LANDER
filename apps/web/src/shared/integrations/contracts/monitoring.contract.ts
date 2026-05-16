@@ -19,6 +19,7 @@ export type AnalyticsEventName =
   | "user.signed_in"
   | "user.signed_out"
   | "user.invited"
+  | "user.invite_sent"
   // Catalog
   | "obra.created"
   | "obra.updated"
@@ -36,6 +37,7 @@ export type AnalyticsEventName =
   | "contrato.sent_for_signing"
   | "contrato.signed"
   | "contrato.expired"
+  | "contrato.expiry_alert_sent"
   // CRM
   | "lead.created"
   | "lead.converted"

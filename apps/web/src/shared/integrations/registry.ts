@@ -182,6 +182,13 @@ export const INTEGRATION_REGISTRY: Record<IntegrationId, IntegrationMeta> = {
     description: "Comunicação interna entre membros do time: mensagens, canais e notificações.",
     credentialsKey: "musicos360_chat_credentials",
   },
+  musicroomchat: {
+    id: "musicroomchat",
+    name: "MusicRoom Chat",
+    category: "chat",
+    description: "Canal de chat de sala musical — discussões por projecto, artista e lançamento.",
+    credentialsKey: "musicos360_musicroomchat_credentials",
+  },
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────

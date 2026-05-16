@@ -13,7 +13,7 @@
  *   const updated = contratoMapper.applySigningStatus(contrato, signingDoc);
  */
 
-import type { CreateDocumentInput, SigningDocument } from "@/modules/integrations/dto";
+import type { CreateSigningDocumentParams as CreateDocumentInput, SigningDocument } from "@/modules/integrations/dto";
 
 /** Entidade de domínio Contrato (fonte: mockData). */
 export interface ContratoEntity {
@@ -34,20 +34,18 @@ export const contratoMapper = {
   /**
    * Converte um Contrato para o input de criação de documento de assinatura.
    */
-  toSigningInput(contrato: ContratoEntity, deadline_days = 7): CreateDocumentInput {
+  toSigningInput(contrato: ContratoEntity, _deadline_days = 7): CreateDocumentInput {
     return {
       title:    contrato.titulo,
-      document: {
-        url: contrato.fileKey
-          ? `/storage/${contrato.bucket ?? "documents"}/${contrato.fileKey}`
-          : undefined,
-      },
+      document: contrato.fileKey
+        ? `/storage/${contrato.bucket ?? "documents"}/${contrato.fileKey}`
+        : "",
       signers: contrato.partes.map(p => ({
         name:  p.nome,
         email: p.email,
-        role:  p.papel,
+        role:  p.papel as import("@/shared/integrations/contracts/signing.contract").SignerRole,
       })),
-      deadline_days,
+      expires_at: contrato.expiresAt,
     };
   },
 
@@ -60,11 +58,13 @@ export const contratoMapper = {
     signingDoc: SigningDocument,
   ): Partial<ContratoEntity> {
     const statusMap: Record<SigningDocument["status"], ContratoEntity["status"]> = {
-      pending:   "aguardando_assinatura",
-      signed:    "assinado",
-      rejected:  "rejeitado",
-      expired:   "expirado",
-      cancelled: "cancelado",
+      draft:            "rascunho",
+      pending:          "aguardando_assinatura",
+      partially_signed: "parcialmente_assinado",
+      completed:        "assinado",
+      refused:          "rejeitado",
+      expired:          "expirado",
+      cancelled:        "cancelado",
     };
 
     return {

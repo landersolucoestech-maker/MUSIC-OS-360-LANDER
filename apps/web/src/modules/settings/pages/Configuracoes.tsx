@@ -364,7 +364,7 @@ export default function Configuracoes() {
     try {
       await createRole.mutateAsync({ 
         name: newRoleName, 
-        description: newRoleDescription || undefined,
+        description: newRoleDescription || null,
         is_system: false,
         priority: 50,
       });
