@@ -117,6 +117,25 @@ export class LeadsService {
         });
       });
 
+      // Emit WORKFLOW_TRANSITIONED for every lead status change
+      this.events.emitTyped(DOMAIN_EVENTS.WORKFLOW_TRANSITIONED, {
+        tenantId,
+        userId,
+        aggregateType: 'lead',
+        aggregateId:   id,
+        payload: {
+          entityType:     'lead',
+          entityId:       id,
+          tenantId,
+          fromStatus:     current.status,
+          toStatus:       toStatus as string,
+          actorId:        userId,
+          actorRole,
+          reason:         null,
+          transitionedAt: new Date().toISOString(),
+        },
+      });
+
       // Emit LEAD_CONVERTED when lead is won/closed (FECHADO)
       if (toStatus === LeadStatus.FECHADO) {
         this.events.emitTyped(DOMAIN_EVENTS.LEAD_CONVERTED, {

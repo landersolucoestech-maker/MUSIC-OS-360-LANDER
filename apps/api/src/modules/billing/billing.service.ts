@@ -20,6 +20,7 @@ import {
 } from '../../database/entities';
 import { WebhookEventStatus } from '@music-os-360/types';
 import { WsGateway } from '../../core/websocket/ws.gateway';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 // ── Stripe CJS/ESM interop ────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -95,6 +96,7 @@ export class BillingService {
     private readonly config: ConfigService,
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly ws: WsGateway,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.subRepo     = ds.getRepository(BillingSubscriptionEntity);
@@ -282,6 +284,29 @@ export class BillingService {
 
     this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan });
     this.logger.log(`Plano atualizado: org ${org_id} → ${plan}`);
+
+    // Emit TENANT_CREATED to bootstrap categories/templates/roles for the newly activated tenant
+    const tenantRecord = await this.tenantRepo!
+      .createQueryBuilder('t')
+      .select(['t.id', 't.name', 't.slug', 't.plan'])
+      .where('t.id = :tenantId', { tenantId: tenant_id })
+      .getOne();
+
+    if (tenantRecord) {
+      this.events.emitTyped(DOMAIN_EVENTS.TENANT_CREATED, {
+        tenantId:      tenant_id,
+        userId:        'billing:checkout',
+        aggregateType: 'tenant',
+        aggregateId:   tenant_id,
+        payload: {
+          tenantId: tenant_id,
+          name:     tenantRecord.name,
+          slug:     tenantRecord.slug,
+          plan:     plan as string,
+        },
+      });
+      this.logger.log(`BillingService: TENANT_CREATED emitted for tenant=${tenant_id} plan=${plan}`);
+    }
   }
 
   private async onSubUpdated(sub: StripeSubscription) {
