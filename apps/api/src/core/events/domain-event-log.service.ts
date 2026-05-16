@@ -2,7 +2,7 @@
  * domain-event-log.service.ts
  *
  * Persists every domain event to the `domain_event_log` table (append-only).
- * Injected into the DomainEventsModule and used by DomainEventLogHandler.
+ * Injected into the DomainEventsModule and used by NotificationHandler.
  *
  * In DB-less / test environments (ds === null) all writes are no-ops.
  */
@@ -22,21 +22,29 @@ export class DomainEventLogService {
     if (ds) this.repo = ds.getRepository(DomainEventLogEntity);
   }
 
-  async persist<T>(event: DomainEvent<T>): Promise<void> {
+  async persist<T>(
+    event: DomainEvent<T>,
+    opts?: { processedAt?: Date; error?: string },
+  ): Promise<void> {
     if (!this.repo) return;
     try {
       const entry = this.repo.create({
         tenant_id:      event.tenantId ?? null,
         event_type:     event.type,
-        actor_id:       event.userId  ?? null,
+        aggregate_type: event.aggregateType ?? null,
+        aggregate_id:   event.aggregateId   ?? null,
+        actor_id:       event.userId        ?? null,
         correlation_id: event.correlationId ?? null,
         payload:        event.payload as Record<string, unknown>,
         occurred_at:    new Date(event.occurredAt),
+        processed_at:   opts?.processedAt ?? null,
+        error:          opts?.error        ?? null,
       });
       await this.repo.save(entry);
     } catch (err) {
       this.logger.error(
-        `DomainEventLogService: failed to persist event "${event.type}" — ${String(err)}`,
+        `DomainEventLogService: failed to persist event "${event.type}" ` +
+        `aggregate=${event.aggregateType}:${event.aggregateId} — ${String(err)}`,
       );
     }
   }

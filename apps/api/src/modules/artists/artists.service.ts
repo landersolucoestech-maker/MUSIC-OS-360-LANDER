@@ -4,7 +4,6 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
-import { CorrelationContext } from '../../core/events/correlation.context';
 import type { CreateArtistDto } from './dto/create-artist.dto';
 import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
@@ -77,12 +76,11 @@ export class ArtistsService {
     });
     const saved = await (this.repo!.save(entity as any) as any);
 
-    this.events.emit({
-      type:           DOMAIN_EVENTS.ARTIST_CREATED,
+    this.events.emitTyped(DOMAIN_EVENTS.ARTIST_CREATED, {
       tenantId,
       userId,
-      correlationId:  CorrelationContext.get(),
-      occurredAt:     new Date().toISOString(),
+      aggregateType: 'artist',
+      aggregateId:   saved.id,
       payload: {
         artistId:      saved.id,
         tenantId,
@@ -122,12 +120,11 @@ export class ArtistsService {
     const result = await this.findById(tenantId, id);
 
     if (changedFields.length > 0) {
-      this.events.emit({
-        type:          DOMAIN_EVENTS.ARTIST_UPDATED,
+      this.events.emitTyped(DOMAIN_EVENTS.ARTIST_UPDATED, {
         tenantId,
         userId,
-        correlationId: CorrelationContext.get(),
-        occurredAt:    new Date().toISOString(),
+        aggregateType: 'artist',
+        aggregateId:   id,
         payload: {
           artistId:      id,
           tenantId,

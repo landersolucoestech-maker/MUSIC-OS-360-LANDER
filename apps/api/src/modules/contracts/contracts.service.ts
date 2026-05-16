@@ -9,7 +9,6 @@ import type { QueryContractDto }  from './dto/query-contract.dto';
 import { ContractStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
-import { CorrelationContext } from '../../core/events/correlation.context';
 
 
 @Injectable()
@@ -124,12 +123,11 @@ export class ContractsService {
       const nowIso = new Date().toISOString();
 
       // WORKFLOW_TRANSITIONED for all contract status changes
-      this.events.emit({
-        type:          DOMAIN_EVENTS.WORKFLOW_TRANSITIONED,
+      this.events.emitTyped(DOMAIN_EVENTS.WORKFLOW_TRANSITIONED, {
         tenantId,
         userId,
-        correlationId: CorrelationContext.get(),
-        occurredAt:    nowIso,
+        aggregateType: 'contract',
+        aggregateId:   id,
         payload: {
           entityType:     'contract',
           entityId:       id,
@@ -145,12 +143,11 @@ export class ContractsService {
 
       // CONTRACT_SIGNED when transitioning to assinado
       if (dtoMap['status'] === ContractStatus.ASSINADO) {
-        this.events.emit({
-          type:          DOMAIN_EVENTS.CONTRACT_SIGNED,
+        this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_SIGNED, {
           tenantId,
           userId,
-          correlationId: CorrelationContext.get(),
-          occurredAt:    nowIso,
+          aggregateType: 'contract',
+          aggregateId:   id,
           payload: {
             contractId: id,
             tenantId,
@@ -164,12 +161,11 @@ export class ContractsService {
 
       // CONTRACT_EXPIRED when transitioning to vencido
       if (dtoMap['status'] === ContractStatus.VENCIDO) {
-        this.events.emit({
-          type:          DOMAIN_EVENTS.CONTRACT_EXPIRED,
+        this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_EXPIRED, {
           tenantId,
           userId,
-          correlationId: CorrelationContext.get(),
-          occurredAt:    nowIso,
+          aggregateType: 'contract',
+          aggregateId:   id,
           payload: {
             contractId: id,
             tenantId,

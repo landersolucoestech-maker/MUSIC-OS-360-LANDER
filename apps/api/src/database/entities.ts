@@ -982,14 +982,19 @@ export class WorkflowTransitionEntity {
 @Index(['tenant_id', 'event_type'])
 @Index(['correlation_id'])
 @Index(['occurred_at'])
+@Index(['aggregate_type', 'aggregate_id'])
 export class DomainEventLogEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid', nullable: true }) tenant_id: string | null;
   @Column({ type: 'varchar', length: 100 }) event_type: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) aggregate_type: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) aggregate_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) actor_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) correlation_id: string | null;
   @Column({ type: 'jsonb' }) payload: Record<string, unknown>;
   @Column({ type: 'timestamp', default: () => 'CURRENT_TIMESTAMP' }) occurred_at: Date;
+  @Column({ type: 'timestamp', nullable: true }) processed_at: Date | null;
+  @Column({ type: 'text', nullable: true }) error: string | null;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
 }
 
