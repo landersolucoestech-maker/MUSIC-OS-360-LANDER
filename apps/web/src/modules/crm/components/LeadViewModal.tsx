@@ -19,6 +19,7 @@ import { useLeadInteractions, TIPO_INTERACAO_OPTIONS, TIPO_INTERACAO_LABELS } fr
 import { STATUS_LABELS, ORIGEM_LABELS, useLeads } from "../hooks/useLeads";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 import {
   Mail,
   Phone,
@@ -92,6 +93,8 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
 
   if (!lead) return null;
 
+  const allowedTransitions = getWorkflowAllowedTransitions('lead', lead.status_lead ?? lead.status);
+
   const handleAddInteraction = () => {
     if (!descricaoInteracao.trim()) return;
     setSubmittingInteraction(true);
@@ -147,10 +150,10 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
           <DialogDescription>
             Lead criado em {formatDate(lead.created_at)}
           </DialogDescription>
-          {Array.isArray(lead.allowed_transitions) && (
+          {allowedTransitions.length > 0 && (
             <WorkflowTransitionPanel
               currentStatus={lead.status_lead ?? lead.status ?? ""}
-              allowedTransitions={lead.allowed_transitions}
+              allowedTransitions={allowedTransitions}
               onTransition={workflowTransition}
               isLoading={isTransitionPending}
               className="mt-1"

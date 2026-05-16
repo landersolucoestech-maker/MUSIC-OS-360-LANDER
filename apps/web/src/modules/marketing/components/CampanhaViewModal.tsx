@@ -10,6 +10,7 @@ import { Separator } from "@/shared/ui/separator";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Target, DollarSign, Calendar, MousePointer, BarChart3, User } from "lucide-react";
 import type { ElementType } from "react";
@@ -45,6 +46,7 @@ export function CampanhaViewModal({ open, onOpenChange, campanha }: CampanhaView
 
   if (!campanha) return null;
 
+  const allowedTransitions = getWorkflowAllowedTransitions('campaign', campanha.status as string | null);
   const ctr = campanha.cliques && campanha.impressoes && campanha.impressoes > 0
     ? ((campanha.cliques / campanha.impressoes) * 100).toFixed(2) + '%'
     : null;
@@ -66,10 +68,10 @@ export function CampanhaViewModal({ open, onOpenChange, campanha }: CampanhaView
           <DialogDescription>
             Campanha criada em {formatDate(campanha.created_at ?? '')}
           </DialogDescription>
-          {Array.isArray(campanha.allowed_transitions) && campanha.allowed_transitions.length > 0 && (
+          {allowedTransitions.length > 0 && (
             <WorkflowTransitionPanel
               currentStatus={campanha.status ?? ''}
-              allowedTransitions={campanha.allowed_transitions}
+              allowedTransitions={allowedTransitions}
               onTransition={workflowTransition}
               isLoading={isTransitionPending}
               className="mt-1"

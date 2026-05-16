@@ -77,6 +77,7 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   relatorios_ecad:     "/ecad-reports",
   deteccoes:           "/content-detections",
   documentos_funcionario: "/hr/employees",
+  support_tickets:        "/support/tickets",
 };
 
 /**

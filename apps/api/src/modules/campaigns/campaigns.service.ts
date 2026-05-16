@@ -1,5 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { CampaignEntity } from '../../database/entities';
 import type { CreateCampaignDto, UpdateCampaignDto, QueryCampaignDto } from './dto/campaigns.dto';
@@ -63,9 +64,12 @@ export class CampaignsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateCampaignDto): Promise<CampaignEntity> {
+    const { status: _clientStatus, ...rest } = dto as unknown as Record<string, unknown>;
+    void _clientStatus;
     const entity = this.repo!.create({
       tenant_id:  tenantId,
-      ...(dto as unknown as Record<string, unknown>),
+      ...(rest as Record<string, unknown>),
+      status:     CampaignStatus.RASCUNHO,
       created_by: userId,
       updated_by: userId,
     } as Partial<CampaignEntity>);
@@ -111,7 +115,10 @@ export class CampaignsService {
         });
       });
     } else {
-      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
+      await this.repo!.update(
+        { id, tenant_id: tenantId } as FindOptionsWhere<CampaignEntity>,
+        nonStatusUpdates as QueryDeepPartialEntity<CampaignEntity>,
+      );
     }
 
     return this.findById(tenantId, id, actorRole);
@@ -119,7 +126,10 @@ export class CampaignsService {
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as FindOptionsWhere<CampaignEntity>,
+      { deleted_at: new Date() } as QueryDeepPartialEntity<CampaignEntity>,
+    );
     return { deleted: true };
   }
 }

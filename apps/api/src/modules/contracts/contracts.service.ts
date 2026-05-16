@@ -1,5 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ContractEntity } from '../../database/entities';
 import type { CreateContractDto } from './dto/create-contract.dto';
@@ -117,7 +118,10 @@ export class ContractsService {
         });
       });
     } else {
-      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
+      await this.repo!.update(
+        { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,
+        nonStatusUpdates as QueryDeepPartialEntity<ContractEntity>,
+      );
     }
 
     return this.findById(tenantId, id, actorRole);
@@ -125,7 +129,10 @@ export class ContractsService {
 
   async softDelete(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,
+      { deleted_at: new Date() } as QueryDeepPartialEntity<ContractEntity>,
+    );
     return { deleted: true };
   }
 }

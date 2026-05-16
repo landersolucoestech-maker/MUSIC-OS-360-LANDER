@@ -1,5 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ReleaseEntity } from '../../database/entities';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
@@ -71,7 +72,7 @@ export class ReleasesService {
       created_by:      userId,
       updated_by:      userId,
     });
-    return this.repo!.save(entity as any) as any;
+    return this.repo!.save(entity);
   }
 
   async update(
@@ -114,7 +115,10 @@ export class ReleasesService {
         });
       });
     } else {
-      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
+      await this.repo!.update(
+        { id, tenant_id: tenantId } as FindOptionsWhere<ReleaseEntity>,
+        nonStatusUpdates as QueryDeepPartialEntity<ReleaseEntity>,
+      );
     }
 
     return this.findById(tenantId, id, actorRole);
@@ -122,7 +126,10 @@ export class ReleasesService {
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as FindOptionsWhere<ReleaseEntity>,
+      { deleted_at: new Date() } as QueryDeepPartialEntity<ReleaseEntity>,
+    );
     return { deleted: true };
   }
 }

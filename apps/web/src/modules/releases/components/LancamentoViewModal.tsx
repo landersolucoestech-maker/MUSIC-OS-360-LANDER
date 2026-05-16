@@ -8,6 +8,7 @@ import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -64,6 +65,7 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
 
   if (!lancamento) return null;
 
+  const allowedTransitions = getWorkflowAllowedTransitions('release', lancamento.status);
   const tipo     = (lancamento.tipo ?? "single").toLowerCase();
   const tipoInfo = TIPO_MAP[tipo] ?? { label: tipo.toUpperCase(), color: "bg-muted text-muted-foreground" };
 
@@ -104,10 +106,10 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                 <span className="text-xs text-muted-foreground">{dataFormatada}</span>
               )}
             </div>
-            {Array.isArray(lancamento.allowed_transitions) && (
+            {allowedTransitions.length > 0 && (
               <WorkflowTransitionPanel
                 currentStatus={lancamento.status ?? ""}
-                allowedTransitions={lancamento.allowed_transitions}
+                allowedTransitions={allowedTransitions}
                 onTransition={workflowTransition}
                 isLoading={isTransitionPending}
                 className="mt-2"

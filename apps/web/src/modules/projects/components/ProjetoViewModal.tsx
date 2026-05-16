@@ -9,6 +9,7 @@ import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "l
 import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 
 interface ProjetoViewModalProps {
   open: boolean;
@@ -35,6 +36,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
 
     if (!projeto) return null;
 
+    const allowedTransitions = getWorkflowAllowedTransitions('project', projeto.status);
     const musicas = parseMusicasFromProjeto(projeto);
 
     const getStatusBadge = (status: string) => {
@@ -74,10 +76,10 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     {getStatusBadge(projeto.status)}
                     <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
                   </div>
-                  {Array.isArray(projeto.allowed_transitions) && (
+                  {allowedTransitions.length > 0 && (
                     <WorkflowTransitionPanel
                       currentStatus={projeto.status ?? ""}
-                      allowedTransitions={projeto.allowed_transitions}
+                      allowedTransitions={allowedTransitions}
                       onTransition={workflowTransition}
                       isLoading={isTransitionPending}
                       className="mt-1.5"

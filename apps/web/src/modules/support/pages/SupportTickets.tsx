@@ -25,6 +25,7 @@ import {
 import type { SupportTicket, TicketStatus, TicketPriority, TicketCategory } from "../types";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 
 import {
   Plus, Search, Ticket,
@@ -83,6 +84,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
     id:       ticket.id,
     queryKey: ['support_tickets'],
   });
+  const allowedTransitions = getWorkflowAllowedTransitions('ticket', ticket.status);
   const [reply, setReply]        = useState("");
   const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline ?? ""));
   const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");
@@ -166,10 +168,10 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               </Button>
             </Link>
           </div>
-          {Array.isArray(ticket.allowed_transitions) && ticket.allowed_transitions.length > 0 && (
+          {allowedTransitions.length > 0 && (
             <WorkflowTransitionPanel
               currentStatus={ticket.status}
-              allowedTransitions={ticket.allowed_transitions}
+              allowedTransitions={allowedTransitions}
               onTransition={workflowTransition}
               isLoading={isTransitionPending}
               className="mt-1"

@@ -22,7 +22,7 @@ import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlat
 import { SendForSigningDialog } from "@/modules/contracts/components/SendForSigningDialog";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
-// useContratos removed — workflow transitions use useWorkflowTransition hook
+import { getWorkflowAllowedTransitions } from "@/shared/lib/workflow-transitions";
 
 interface ContratoWithWorkflow extends ContratoWithRelations {
   allowed_transitions?: { to: string; label?: string }[];
@@ -48,6 +48,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
 
   if (!contrato) return null;
 
+  const allowedTransitions = getWorkflowAllowedTransitions('contract', contrato.status);
   const vinculadoDoc = allDocuments.find((d) => d.contract_id === contrato.id);
   const contratoSigners = Array.isArray(contrato.signers) ? contrato.signers : [];
 
@@ -101,10 +102,10 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                     <DocumentStatusBadge status={vinculadoDoc.status} />
                   )}
                 </div>
-                {Array.isArray(contrato.allowed_transitions) && (
+                {allowedTransitions.length > 0 && (
                   <WorkflowTransitionPanel
                     currentStatus={contrato.status ?? ""}
-                    allowedTransitions={contrato.allowed_transitions}
+                    allowedTransitions={allowedTransitions}
                     onTransition={workflowTransition}
                     isLoading={isTransitionPending}
                     className="mt-2"

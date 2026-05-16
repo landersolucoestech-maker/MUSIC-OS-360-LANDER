@@ -1,5 +1,6 @@
 import { Injectable, Inject, NotFoundException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
+import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { LeadEntity } from '../../database/entities';
 import type { CreateLeadDto, UpdateLeadDto, QueryLeadDto } from './dto/leads.dto';
@@ -62,9 +63,12 @@ export class LeadsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateLeadDto): Promise<LeadEntity> {
+    const { status: _clientStatus, ...rest } = dto as unknown as Record<string, unknown>;
+    void _clientStatus;
     const entity = this.repo!.create({
       tenant_id:  tenantId,
-      ...(dto as unknown as Record<string, unknown>),
+      ...(rest as Record<string, unknown>),
+      status:     LeadStatus.NOVO,
       created_by: userId,
       updated_by: userId,
     } as Partial<LeadEntity>);
@@ -110,7 +114,10 @@ export class LeadsService {
         });
       });
     } else {
-      await this.repo!.update({ id, tenant_id: tenantId } as any, nonStatusUpdates as any);
+      await this.repo!.update(
+        { id, tenant_id: tenantId } as FindOptionsWhere<LeadEntity>,
+        nonStatusUpdates as QueryDeepPartialEntity<LeadEntity>,
+      );
     }
 
     return this.findById(tenantId, id, actorRole);
@@ -118,7 +125,10 @@ export class LeadsService {
 
   async remove(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as FindOptionsWhere<LeadEntity>,
+      { deleted_at: new Date() } as QueryDeepPartialEntity<LeadEntity>,
+    );
     return { deleted: true };
   }
 }
