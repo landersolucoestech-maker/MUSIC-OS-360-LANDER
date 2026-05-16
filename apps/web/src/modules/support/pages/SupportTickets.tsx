@@ -25,6 +25,7 @@ import {
 import type { SupportTicket, TicketStatus, TicketPriority, TicketCategory } from "../types";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
 import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 import {
@@ -84,8 +85,12 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
     id:       ticket.id,
     queryKey: ['support_tickets'],
   });
-  const ticketWithWorkflow = ticket as typeof ticket & { allowed_transitions?: WorkflowTransition[] };
-  const allowedTransitions = resolveAllowedTransitions('ticket', ticket.status, ticketWithWorkflow.allowed_transitions);
+  const { data: detail } = useEntityDetail<TicketWithWorkflow>('support_tickets', ticket.id);
+  const allowedTransitions = resolveAllowedTransitions(
+    'ticket',
+    detail?.status ?? ticket.status,
+    detail?.allowed_transitions,
+  );
   const [reply, setReply]        = useState("");
   const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline ?? ""));
   const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");

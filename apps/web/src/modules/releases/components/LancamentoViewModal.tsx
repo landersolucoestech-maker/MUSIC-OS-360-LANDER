@@ -8,6 +8,7 @@ import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
 import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 interface LancamentoViewModalProps {
@@ -63,10 +64,17 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
     queryKey: ['lancamentos'],
   });
 
+  const { data: detail } = useEntityDetail<typeof lancamento & { allowed_transitions?: WorkflowTransition[] }>(
+    'lancamentos', lancamento?.id, open,
+  );
+
   if (!lancamento) return null;
 
-  const lancamentoWithWorkflow = lancamento as typeof lancamento & { allowed_transitions?: WorkflowTransition[] };
-  const allowedTransitions = resolveAllowedTransitions('release', lancamento.status, lancamentoWithWorkflow.allowed_transitions);
+  const allowedTransitions = resolveAllowedTransitions(
+    'release',
+    detail?.status ?? lancamento.status,
+    detail?.allowed_transitions,
+  );
   const tipo     = (lancamento.tipo ?? "single").toLowerCase();
   const tipoInfo = TIPO_MAP[tipo] ?? { label: tipo.toUpperCase(), color: "bg-muted text-muted-foreground" };
 

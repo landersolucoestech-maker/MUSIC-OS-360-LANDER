@@ -9,6 +9,7 @@ import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "l
 import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
 import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 interface ProjetoViewModalProps {
@@ -34,10 +35,17 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
       queryKey: ['projetos'],
     });
 
+    const { data: detail } = useEntityDetail<typeof projeto & { allowed_transitions?: WorkflowTransition[] }>(
+      'projetos', projeto?.id, open,
+    );
+
     if (!projeto) return null;
 
-    const projetoWithWorkflow = projeto as typeof projeto & { allowed_transitions?: WorkflowTransition[] };
-    const allowedTransitions = resolveAllowedTransitions('project', projeto.status, projetoWithWorkflow.allowed_transitions);
+    const allowedTransitions = resolveAllowedTransitions(
+      'project',
+      detail?.status ?? projeto.status,
+      detail?.allowed_transitions,
+    );
     const musicas = parseMusicasFromProjeto(projeto);
 
     const getStatusBadge = (status: string) => {

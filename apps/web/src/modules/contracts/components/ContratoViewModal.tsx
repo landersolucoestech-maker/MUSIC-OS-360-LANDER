@@ -22,6 +22,7 @@ import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlat
 import { SendForSigningDialog } from "@/modules/contracts/components/SendForSigningDialog";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
 import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 interface ContratoWithWorkflow extends ContratoWithRelations {
@@ -46,10 +47,15 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
     queryKey: ['contratos'],
   });
 
+  const { data: detail } = useEntityDetail<ContratoWithWorkflow>('contratos', contrato?.id, open);
+
   if (!contrato) return null;
 
-  const contratoWithWorkflow = contrato as ContratoWithWorkflow;
-  const allowedTransitions = resolveAllowedTransitions('contract', contrato.status, contratoWithWorkflow.allowed_transitions);
+  const allowedTransitions = resolveAllowedTransitions(
+    'contract',
+    detail?.status ?? contrato.status,
+    detail?.allowed_transitions,
+  );
   const vinculadoDoc = allDocuments.find((d) => d.contract_id === contrato.id);
   const contratoSigners = Array.isArray(contrato.signers) ? contrato.signers : [];
 

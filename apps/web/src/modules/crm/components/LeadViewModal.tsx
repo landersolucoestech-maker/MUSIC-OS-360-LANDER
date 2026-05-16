@@ -19,6 +19,7 @@ import { useLeadInteractions, TIPO_INTERACAO_OPTIONS, TIPO_INTERACAO_LABELS } fr
 import { STATUS_LABELS, ORIGEM_LABELS, useLeads } from "../hooks/useLeads";
 import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
 import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
 import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 import {
   Mail,
@@ -86,6 +87,9 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
     id:       lead?.id ?? '',
     queryKey: ['leads'],
   });
+  const { data: detail } = useEntityDetail<typeof lead & { allowed_transitions?: WorkflowTransition[] }>(
+    'leads', lead?.id, open,
+  );
   const [showInteractionForm, setShowInteractionForm] = useState(false);
   const [tipoInteracao, setTipoInteracao] = useState("ligacao");
   const [descricaoInteracao, setDescricaoInteracao] = useState("");
@@ -93,8 +97,8 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
 
   if (!lead) return null;
 
-  const leadWithWorkflow = lead as typeof lead & { allowed_transitions?: WorkflowTransition[] };
-  const allowedTransitions = resolveAllowedTransitions('lead', lead.status_lead ?? lead.status, leadWithWorkflow.allowed_transitions);
+  const currentStatus = detail?.status_lead ?? detail?.status ?? lead.status_lead ?? lead.status;
+  const allowedTransitions = resolveAllowedTransitions('lead', currentStatus, detail?.allowed_transitions);
 
   const handleAddInteraction = () => {
     if (!descricaoInteracao.trim()) return;
