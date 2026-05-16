@@ -22,8 +22,39 @@ import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
 import { setAccessToken } from "@/shared/lib/api-client";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { MOCK_MODE, IS_DEV } from "@/shared/lib/env";
 import { getSupabaseClient } from "@/lib/supabase";
+
+// ─── DEV logging ──────────────────────────────────────────────────────────────
+
+function devLog(label: string, data?: unknown): void {
+  if (!IS_DEV) return;
+  if (data !== undefined) {
+    console.log(`[MUSIC OS 360 Auth] ${label}`, data);
+  } else {
+    console.log(`[MUSIC OS 360 Auth] ${label}`);
+  }
+}
+
+function decodeJwtClaims(token: string): Record<string, unknown> {
+  try {
+    const b64 = token.split(".")[1];
+    return JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
+  } catch { return {}; }
+}
+
+function logJwtClaims(token: string, event: string): void {
+  if (!IS_DEV) return;
+  const claims  = decodeJwtClaims(token);
+  const appMeta = claims["app_metadata"] as Record<string, unknown> | undefined;
+  devLog(`${event} — JWT claims:`, {
+    sub:      claims["sub"],
+    email:    claims["email"],
+    org_id:   appMeta?.["org_id"] ?? claims["org_id"] ?? "(não encontrado — hook ativo?)",
+    role:     appMeta?.["role"]   ?? claims["role"]   ?? "(não encontrado)",
+    exp:      claims["exp"] ? new Date((claims["exp"] as number) * 1000).toISOString() : undefined,
+  });
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -105,16 +136,31 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     // Reactivo: escuta mudanças de sessão (login, logout, refresh automático)
-    const { data: { subscription } } = sb.auth.onAuthStateChange((_event, sbSession) => {
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, sbSession) => {
       if (sbSession) {
         const s = mapSupabaseSession(sbSession);
         setSession(s);
         setUser(s.user);
         setAccessToken(sbSession.access_token);
+
+        // DEV: logar claims do JWT a cada evento de sessão
+        logJwtClaims(sbSession.access_token, event);
+        devLog(`Tenant resolvido: ${s.user.org_id ?? "(sem org — hook ativo?)"}`);
+        devLog(`Role resolvida: ${s.user.role ?? "(sem role)"}`);
+
+        // Notificar outros hooks (ex: useSyncTenantFromJWT) que o token foi renovado.
+        // Disparado em TOKEN_REFRESHED para forçar re-sync de claims sem reload.
+        if (event === "TOKEN_REFRESHED") {
+          window.dispatchEvent(new CustomEvent("musicos360:auth:tokenRefreshed", {
+            detail: { access_token: sbSession.access_token },
+          }));
+          devLog("TOKEN_REFRESHED — evento musicos360:auth:tokenRefreshed despachado");
+        }
       } else {
         setSession(null);
         setUser(null);
         setAccessToken(null);
+        devLog(`Sessão encerrada (${event})`);
       }
       setLoading(false);
     });

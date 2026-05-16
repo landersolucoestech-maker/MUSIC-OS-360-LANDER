@@ -1,0 +1,91 @@
+Quero finalizar corretamente a integração multi-tenant + Supabase JWT claims do MUSIC OS 360.
+
+Analise TODO o projeto atual e implemente automaticamente o enrichment do JWT com org_id e role, garantindo compatibilidade completa com:
+
+- TenantGuard
+- RolesGuard
+- RLS do Supabase
+- RBAC já implementado
+- Supabase Auth
+- login persistente
+- multi-tenant isolation
+
+Objetivo:
+O token JWT do usuário autenticado PRECISA conter:
+
+{
+  "app_metadata": {
+    "org_id": "...",
+    "role": "..."
+  }
+}
+
+Tarefas obrigatórias:
+
+1. Analise a estrutura atual:
+- tabela organizations
+- organization_members
+- relação user ↔ tenant
+- AuthContext
+- Supabase client
+- guards NestJS
+- RLS SQL
+- fluxo de login
+
+2. Crie a solução mais correta e production-ready possível para enrichment automático do JWT.
+
+3. Preferência:
+- usar Supabase Custom Access Token Hook OU mecanismo equivalente moderno suportado oficialmente
+- evitar hacks no frontend
+- evitar depender de localStorage
+- evitar inserir org_id manualmente no dashboard
+
+4. O sistema deve:
+- detectar automaticamente o tenant do usuário
+- inserir org_id no JWT
+- inserir role no JWT
+- funcionar após login
+- funcionar após refresh token
+- funcionar após reload
+- funcionar com persistSession=true
+
+5. Implementar:
+- SQL necessário
+- functions
+- triggers
+- auth hooks
+- backend adjustments
+- frontend adjustments
+- qualquer migration necessária
+
+6. Validar:
+- auth.jwt()
+- claims presentes
+- RLS funcionando
+- isolamento entre tenants
+- RolesGuard funcionando
+- TenantGuard funcionando
+
+7. Corrigir qualquer inconsistência encontrada:
+- UUID vs text
+- role mismatch
+- nullable org_id
+- refresh token stale claims
+- duplicated auth listeners
+- race conditions
+
+8. Adicionar logs claros em DEV:
+- JWT claims carregadas
+- tenant resolvido
+- role resolvida
+- token refresh detectado
+
+9. Produzir:
+- código completo
+- SQL completo
+- arquivos alterados
+- explicação técnica do fluxo
+- checklist final de validação
+
+10. Não usar soluções temporárias.
+Quero arquitetura production-grade e compatível com escalabilidade SaaS multi-tenant.
