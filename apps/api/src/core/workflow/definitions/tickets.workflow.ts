@@ -8,7 +8,7 @@
 import { SupportTicketStatus } from '@music-os-360/types';
 import { WorkflowDefinition } from '../workflow.types';
 
-export const TICKETS_WORKFLOW: WorkflowDefinition<SupportTicketStatus> = {
+export const TICKETS_WORKFLOW: WorkflowDefinition<string> = {
   name:         'tickets',
   entityType:   'ticket',
   initialState: SupportTicketStatus.OPEN,

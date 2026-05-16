@@ -6,7 +6,7 @@
  */
 
 import { Injectable, Inject, BadRequestException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, FindOptionsWhere, FindOptionsOrder } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { WorkflowTransitionEntity } from '../../database/entities';
 import { WorkflowEngine } from './workflow.engine';
@@ -46,9 +46,9 @@ export class WorkflowService {
     }
   }
 
-  /** Register a workflow definition. Called once per domain module at startup. */
-  register<TState extends string>(definition: WorkflowDefinition<TState>): void {
-    this.engines.set(definition.entityType, new WorkflowEngine(definition as WorkflowDefinition<string>));
+  /** Register a workflow definition. Called once per domain at startup via WorkflowBootstrap. */
+  register(definition: WorkflowDefinition<string>): void {
+    this.engines.set(definition.entityType, new WorkflowEngine(definition));
   }
 
   /** Returns transitions available to the actor from the current status. */
@@ -100,15 +100,22 @@ export class WorkflowService {
   /** Returns paginated transition history for an entity. */
   async getHistory(tenantId: string, entityType: string, entityId: string, limit = 50) {
     if (!this.historyRepo) return [];
-    return this.historyRepo.find({
-      where: { tenant_id: tenantId, entity_type: entityType, entity_id: entityId } as any,
-      order: { created_at: 'DESC' } as any,
-      take: limit,
-    });
+
+    const where: FindOptionsWhere<WorkflowTransitionEntity> = {
+      tenant_id:   tenantId,
+      entity_type: entityType,
+      entity_id:   entityId,
+    };
+    const order: FindOptionsOrder<WorkflowTransitionEntity> = {
+      created_at: 'DESC',
+    };
+
+    return this.historyRepo.find({ where, order, take: limit });
   }
 
   private async persistHistory(req: TransitionRequest): Promise<void> {
     if (!this.historyRepo) return;
+
     const entry = this.historyRepo.create({
       tenant_id:   req.tenantId,
       entity_type: req.entityType,
@@ -119,7 +126,8 @@ export class WorkflowService {
       actor_role:  req.actorRole ?? null,
       reason:      req.reason ?? null,
       metadata:    {},
-    } as any);
-    await this.historyRepo.save(entry as any);
+    });
+
+    await this.historyRepo.save(entry);
   }
 }

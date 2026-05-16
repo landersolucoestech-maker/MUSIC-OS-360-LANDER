@@ -49,10 +49,12 @@ export class ContractsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateContractDto): Promise<ContractEntity> {
+    const { status: _ignoredStatus, ...dtoRest } = dto as any;
+    void _ignoredStatus;
     const entity = this.repo!.create({
       tenant_id:  tenantId,
+      ...dtoRest,
       status:     ContractStatus.RASCUNHO,
-      ...(dto as any),
       created_by: userId,
       updated_by: userId,
     });

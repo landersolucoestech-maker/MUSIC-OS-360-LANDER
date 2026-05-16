@@ -8,7 +8,7 @@
 import { CampaignStatus } from '@music-os-360/types';
 import { WorkflowDefinition } from '../workflow.types';
 
-export const CAMPAIGNS_WORKFLOW: WorkflowDefinition<CampaignStatus> = {
+export const CAMPAIGNS_WORKFLOW: WorkflowDefinition<string> = {
   name:         'campaigns',
   entityType:   'campaign',
   initialState: CampaignStatus.RASCUNHO,

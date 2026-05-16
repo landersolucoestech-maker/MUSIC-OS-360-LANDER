@@ -8,7 +8,7 @@
 import { ReleaseStatus } from '@music-os-360/types';
 import { WorkflowDefinition } from '../workflow.types';
 
-export const RELEASES_WORKFLOW: WorkflowDefinition<ReleaseStatus> = {
+export const RELEASES_WORKFLOW: WorkflowDefinition<string> = {
   name:         'releases',
   entityType:   'release',
   initialState: ReleaseStatus.PLANEJAMENTO,

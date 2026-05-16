@@ -19,11 +19,11 @@ export class WorkflowBootstrap implements OnModuleInit {
   constructor(private readonly workflowService: WorkflowService) {}
 
   onModuleInit(): void {
-    this.workflowService.register(RELEASES_WORKFLOW  as any);
-    this.workflowService.register(CONTRACTS_WORKFLOW as any);
-    this.workflowService.register(LEADS_WORKFLOW     as any);
-    this.workflowService.register(CAMPAIGNS_WORKFLOW as any);
-    this.workflowService.register(PROJECTS_WORKFLOW  as any);
-    this.workflowService.register(TICKETS_WORKFLOW   as any);
+    this.workflowService.register(RELEASES_WORKFLOW);
+    this.workflowService.register(CONTRACTS_WORKFLOW);
+    this.workflowService.register(LEADS_WORKFLOW);
+    this.workflowService.register(CAMPAIGNS_WORKFLOW);
+    this.workflowService.register(PROJECTS_WORKFLOW);
+    this.workflowService.register(TICKETS_WORKFLOW);
   }
 }

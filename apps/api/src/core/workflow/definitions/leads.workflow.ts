@@ -8,7 +8,7 @@
 import { LeadStatus } from '@music-os-360/types';
 import { WorkflowDefinition } from '../workflow.types';
 
-export const LEADS_WORKFLOW: WorkflowDefinition<LeadStatus> = {
+export const LEADS_WORKFLOW: WorkflowDefinition<string> = {
   name:         'leads',
   entityType:   'lead',
   initialState: LeadStatus.NOVO,

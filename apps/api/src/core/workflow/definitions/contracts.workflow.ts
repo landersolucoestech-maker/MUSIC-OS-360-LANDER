@@ -8,7 +8,7 @@
 import { ContractStatus } from '@music-os-360/types';
 import { WorkflowDefinition } from '../workflow.types';
 
-export const CONTRACTS_WORKFLOW: WorkflowDefinition<ContractStatus> = {
+export const CONTRACTS_WORKFLOW: WorkflowDefinition<string> = {
   name:         'contracts',
   entityType:   'contract',
   initialState: ContractStatus.RASCUNHO,

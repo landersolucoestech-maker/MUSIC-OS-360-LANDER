@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsString, IsOptional, IsIn, IsEmail, IsNumber, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import { LeadStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
+const STATUSES = Object.values(LeadStatus) as string[];
 const STAGES   = ['prospect', 'qualified', 'proposal', 'negotiation', 'won', 'lost'] as const;
-const STATUSES = ['new', 'active', 'closed'] as const;
 
 export class CreateLeadDto {
   @ApiProperty() @IsString() @MaxLength(255) name!: string;
@@ -19,8 +20,8 @@ export class CreateLeadDto {
 }
 
 export class UpdateLeadDto extends PartialType(CreateLeadDto) {
-  @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
-  @ApiPropertyOptional({ enum: STAGES })   @IsOptional() @IsIn(STAGES)   stage?: string;
+  @ApiPropertyOptional({ enum: LeadStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
+  @ApiPropertyOptional({ enum: STAGES })     @IsOptional() @IsIn(STAGES)   stage?: string;
 }
 
 export class QueryLeadDto extends PaginationDto {
