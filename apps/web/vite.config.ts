@@ -162,10 +162,10 @@ export default defineConfig({
   server: {
     allowedHosts: true,
     proxy: {
-      "/api": { target: "http://localhost:3001", changeOrigin: true },
-      "/projects/upload-audio": { target: "http://localhost:3001", changeOrigin: true },
-      "/projects/audio": { target: "http://localhost:3001", changeOrigin: true },
-      "/socket.io": { target: "http://localhost:3001", changeOrigin: true, ws: true },
+      "/api": { target: "http://127.0.0.1:3001", changeOrigin: true },
+      "/projects/upload-audio": { target: "http://127.0.0.1:3001", changeOrigin: true },
+      "/projects/audio": { target: "http://127.0.0.1:3001", changeOrigin: true },
+      "/socket.io": { target: "http://127.0.0.1:3001", changeOrigin: true, ws: true },
     },
   },
 });

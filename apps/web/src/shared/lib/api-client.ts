@@ -114,7 +114,7 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   };
   if (_accessToken) headers["Authorization"] = `Bearer ${_accessToken}`;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1${path}`, {
     ...init,
     headers,
     credentials: "include",
