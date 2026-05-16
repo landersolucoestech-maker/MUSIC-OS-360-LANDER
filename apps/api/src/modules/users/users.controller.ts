@@ -18,7 +18,7 @@ export class UsersController {
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
 
   @Post() @RequireRole('owner') @Audit('user.created') @ApiOperation({ summary: 'Criar utilizador' })
-  create(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Body() dto: CreateUserDto) { return this.svc.create(t.id, dto); }
+  create(@CurrentTenant() t: { id: string }, @CurrentUser() u: { userId: string }, @Body() dto: CreateUserDto) { return this.svc.create(t.id, dto, u.userId); }
 
   @Patch(':id') @RequireRole('manager') @Audit('user.updated') @ApiOperation({ summary: 'Actualizar utilizador' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) { return this.svc.update(t.id, id, dto); }

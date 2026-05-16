@@ -7,7 +7,7 @@
  *   1. Query UploadEntity to obtain size_bytes for validation.
  *   2. Validate MIME type against allowed list; reject if unsupported.
  *   3. Validate file size; reject if exceeds per-category limit.
- *   4. Update UploadEntity.status = 'processing' (or 'rejected' on failure).
+ *   4. Update UploadEntity.status = 'processing' (or 'error' on validation failure).
  *   5. Enqueue media processing job for valid audio/video/image assets.
  */
 
@@ -16,6 +16,7 @@ import { OnEvent } from '@nestjs/event-emitter';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { UploadEntity } from '../../../database/entities';
+import { UploadStatus } from '@music-os-360/types';
 import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
@@ -98,7 +99,7 @@ export class UploadEventsHandler {
       if (this.uploadRepo) {
         await this.uploadRepo.update(
           { id: uploadId, tenant_id: tenantId },
-          { status: 'rejected' as any, metadata: { rejectionReason: `MIME type "${mimeType}" not allowed` } as any },
+          { status: UploadStatus.ERROR, metadata: { rejectionReason: `MIME type "${mimeType}" not allowed` } },
         ).catch(() => {/* ignore */});
       }
       if (this.queue) {
@@ -125,7 +126,7 @@ export class UploadEventsHandler {
       if (this.uploadRepo) {
         await this.uploadRepo.update(
           { id: uploadId, tenant_id: tenantId },
-          { status: 'rejected' as any, metadata: { rejectionReason: `File size ${sizeMb} MB exceeds limit ${maxMb} MB` } as any },
+          { status: UploadStatus.ERROR, metadata: { rejectionReason: `File size ${sizeMb} MB exceeds limit ${maxMb} MB` } },
         ).catch(() => {/* ignore */});
       }
       if (this.queue) {
