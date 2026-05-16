@@ -159,7 +159,12 @@ export function resolveAllowedTransitions(
   currentStatus: string | null | undefined,
   serverTransitions?: { to: string; label?: string }[] | null,
 ): WorkflowTransition[] {
-  if (Array.isArray(serverTransitions) && serverTransitions.length > 0) {
+  // When serverTransitions is an array (even empty) the backend is authoritative:
+  //   • non-empty → those are the role-filtered allowed moves
+  //   • empty     → backend intentionally denied all moves for this actor/status
+  // Only fall back to local mirror when serverTransitions is undefined/null,
+  // which only happens in mock mode where the entity has no allowed_transitions field.
+  if (Array.isArray(serverTransitions)) {
     return serverTransitions.map(t => ({ to: t.to, label: t.label ?? t.to }));
   }
   return getWorkflowAllowedTransitions(entityType, currentStatus);
