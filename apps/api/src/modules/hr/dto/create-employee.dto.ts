@@ -1,11 +1,12 @@
-import { IsString, IsOptional, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsDateString, IsEnum } from 'class-validator';
+import { EmployeeStatus } from '@music-os-360/types';
 
 export class CreateEmployeeDto {
   @IsString() nome: string;
   @IsOptional() @IsString() cargo?: string;
   @IsOptional() @IsString() departamento?: string;
   @IsOptional() @IsString() tipo_contrato?: string;
-  @IsOptional() @IsString() status?: string;
+  @IsOptional() @IsEnum(EmployeeStatus) status?: EmployeeStatus;
   @IsOptional() @IsString() email?: string;
   @IsOptional() @IsString() telefone?: string;
   @IsOptional() @IsString() cpf?: string;

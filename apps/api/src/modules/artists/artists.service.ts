@@ -57,7 +57,7 @@ export class ArtistsService {
       nome_artistico:      dto.nome_artistico,
       nome_civil:          dto.nome_civil          ?? null,
       tipo:                dto.tipo                ?? 'solo',
-      status:              (dto.status as ArtistStatus) ?? ArtistStatus.EM_NEGOCIACAO,
+      status:              dto.status ?? ArtistStatus.EM_NEGOCIACAO,
       genero_musical:      dto.genero_musical      ?? null,
       observacoes:         dto.observacoes         ?? null,
       foto_url:            dto.foto_url            ?? null,

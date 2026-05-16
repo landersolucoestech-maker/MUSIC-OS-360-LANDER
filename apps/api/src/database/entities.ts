@@ -9,7 +9,7 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn, Index,
-  ManyToOne, OneToMany, JoinColumn, Relation,
+  ManyToOne, OneToMany, ManyToMany, JoinColumn, JoinTable, Relation,
 } from 'typeorm';
 
 import {
@@ -173,13 +173,11 @@ export class ArtistEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
-  // Domain note: In music industry, a Work (obra) relates to Artist via Phonograms
-  // (Artist performs/records a Phonogram of a Work). Navigate:
-  //   Artist → phonograms → PhonogramEntity → work → WorkEntity
-  // No direct Artist→Work FK exists (many-to-many via Phonogram/Share).
-
   @OneToMany(() => PhonogramEntity, (p) => p.artist)
   phonograms: Relation<PhonogramEntity[]>;
+
+  @OneToMany(() => WorkEntity, (w) => w.artist)
+  works: Relation<WorkEntity[]>;
 
   @OneToMany(() => ReleaseEntity, (r) => r.artist)
   releases: Relation<ReleaseEntity[]>;
@@ -214,6 +212,7 @@ export class WorkEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) origem_externa: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) origem_externa_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) origem_externa_sincronizado_em: Date | null;
+  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -222,11 +221,18 @@ export class WorkEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
+  @ManyToOne(() => ArtistEntity, (a) => a.works, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'artista_id' })
+  artist: Relation<ArtistEntity> | null;
+
   @OneToMany(() => PhonogramEntity, (p) => p.work)
   phonograms: Relation<PhonogramEntity[]>;
 
   @OneToMany(() => ShareEntity, (s) => s.work)
   shares: Relation<ShareEntity[]>;
+
+  @ManyToMany(() => ReleaseEntity, (r) => r.works)
+  releases: Relation<ReleaseEntity[]>;
 }
 
 // ─── Phonograms (fonogramas) ───────────────────────────────────────────────────
@@ -573,14 +579,17 @@ export class ReleaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
-  // Domain note: Release→Shares has no direct FK. Shares (participações) belong
-  // to Works (obras), not Releases. To reach shares from a release:
-  //   Release → artist → phonograms → PhonogramEntity → work → WorkEntity → shares
-  // A Release→Work join table (release_tracks) is a planned future enhancement.
-
   @ManyToOne(() => ArtistEntity, (a) => a.releases, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'artista_id' })
   artist: Relation<ArtistEntity> | null;
+
+  @ManyToMany(() => WorkEntity, (w) => w.releases)
+  @JoinTable({
+    name: 'release_works',
+    joinColumn:        { name: 'release_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'work_id',    referencedColumnName: 'id' },
+  })
+  works: Relation<WorkEntity[]>;
 }
 
 // ─── Shares (Participações) ───────────────────────────────────────────────────

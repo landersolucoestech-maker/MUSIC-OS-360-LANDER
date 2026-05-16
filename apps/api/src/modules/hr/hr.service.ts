@@ -75,7 +75,7 @@ export class HrService {
       cargo:              dto.cargo         ?? null,
       departamento:       dto.departamento  ?? null,
       tipo_contrato:      dto.tipo_contrato ?? 'clt',
-      status:             (dto.status as EmployeeStatus) ?? EmployeeStatus.ATIVO,
+      status:             dto.status ?? EmployeeStatus.ATIVO,
       email_encrypted:    this.enc.encryptNullable((dto as any).email),
       telefone_encrypted: this.enc.encryptNullable((dto as any).telefone),
       cpf_encrypted:      this.enc.encryptNullable((dto as any).cpf),

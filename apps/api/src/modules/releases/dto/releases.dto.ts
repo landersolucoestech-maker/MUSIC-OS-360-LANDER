@@ -1,13 +1,13 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, MaxLength } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { ReleaseStatus } from '@music-os-360/types';
 
-const TYPES    = ['album', 'ep', 'single', 'compilation', 'live', 'other'] as const;
-const STATUSES = ['planning', 'scheduled', 'released', 'pulled', 'archived'] as const;
+const TYPES = ['album', 'ep', 'single', 'compilacao', 'live', 'outro'] as const;
 
 export class CreateReleaseDto {
   @ApiProperty() @IsString() @MaxLength(500) title!: string;
-  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) type!: string;
+  @ApiProperty({ enum: TYPES }) @IsString() type!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) upc?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() distributor?: string;
@@ -18,11 +18,14 @@ export class CreateReleaseDto {
 }
 
 export class UpdateReleaseDto extends PartialType(CreateReleaseDto) {
-  @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+  @ApiPropertyOptional({ enum: ReleaseStatus })
+  @IsOptional()
+  @IsEnum(ReleaseStatus)
+  status?: ReleaseStatus;
 }
 
 export class QueryReleaseDto extends PaginationDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
+  @ApiPropertyOptional({ enum: ReleaseStatus }) @IsOptional() @IsEnum(ReleaseStatus) status?: ReleaseStatus;
   @ApiPropertyOptional() @IsOptional() @IsString() type?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() distributor?: string;

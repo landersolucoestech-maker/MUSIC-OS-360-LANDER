@@ -1,5 +1,6 @@
-import { IsString, IsOptional, MaxLength, IsObject, IsArray } from 'class-validator';
+import { IsString, IsOptional, MaxLength, IsObject, IsArray, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ArtistStatus } from '@music-os-360/types';
 
 export class CreateArtistDto {
   @ApiProperty({ example: 'Seu Jorge' })
@@ -18,10 +19,10 @@ export class CreateArtistDto {
   @IsString()
   tipo?: string;
 
-  @ApiPropertyOptional({ example: 'em_negociacao' })
+  @ApiPropertyOptional({ enum: ArtistStatus, example: ArtistStatus.EM_NEGOCIACAO })
   @IsOptional()
-  @IsString()
-  status?: string;
+  @IsEnum(ArtistStatus)
+  status?: ArtistStatus;
 
   @ApiPropertyOptional({ example: 'MPB' })
   @IsOptional()
