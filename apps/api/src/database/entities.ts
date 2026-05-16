@@ -173,8 +173,13 @@ export class ArtistEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
-  // Note: Works associate with artists via Shares/Phonograms, not direct FK —
-  // no direct @OneToMany here. Use WorkEntity → PhonogramEntity → ArtistEntity.
+  // Domain note: In music industry, a Work (obra) relates to Artist via Phonograms
+  // (Artist performs/records a Phonogram of a Work). Navigate:
+  //   Artist → phonograms → PhonogramEntity → work → WorkEntity
+  // No direct Artist→Work FK exists (many-to-many via Phonogram/Share).
+
+  @OneToMany(() => PhonogramEntity, (p) => p.artist)
+  phonograms: Relation<PhonogramEntity[]>;
 
   @OneToMany(() => ReleaseEntity, (r) => r.artist)
   releases: Relation<ReleaseEntity[]>;
@@ -257,6 +262,11 @@ export class PhonogramEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
+  // Artist→Works navigation: Artist → phonograms → PhonogramEntity → work → WorkEntity
+  @ManyToOne(() => ArtistEntity, (a) => a.phonograms, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'artista_id' })
+  artist: Relation<ArtistEntity> | null;
+
   @ManyToOne(() => WorkEntity, (w) => w.phonograms, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'obra_id' })
   work: Relation<WorkEntity> | null;
@@ -563,6 +573,11 @@ export class ReleaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
+  // Domain note: Release→Shares has no direct FK. Shares (participações) belong
+  // to Works (obras), not Releases. To reach shares from a release:
+  //   Release → artist → phonograms → PhonogramEntity → work → WorkEntity → shares
+  // A Release→Work join table (release_tracks) is a planned future enhancement.
+
   @ManyToOne(() => ArtistEntity, (a) => a.releases, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'artista_id' })
   artist: Relation<ArtistEntity> | null;

@@ -22,7 +22,9 @@
 
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@music-os-360/types": ["../../packages/types/src/index.ts"],
+      "@music-os-360/types/*": ["../../packages/types/src/*.ts"]
     }
   },
   "include": ["src"]

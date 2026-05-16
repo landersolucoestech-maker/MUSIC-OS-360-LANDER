@@ -19,14 +19,27 @@ import {
 import { Reflector } from '@nestjs/core';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import type { Request } from 'express';
+import { SystemRole, FunctionalRole } from '@music-os-360/types';
 
+/**
+ * ROLE_HIERARCHY — fonte única de verdade para hierarquia de roles.
+ * Alinhado com RbacService. Quanto maior o número, mais permissões.
+ * tenant_owner e owner são equivalentes (nível 90) mas mantidos separados
+ * para compatibilidade com dados legados.
+ */
 export const ROLE_HIERARCHY: Record<string, number> = {
-  viewer:      1,
-  editor:      2,
-  manager:     3,
-  admin:       4,
-  owner:       5,
-  super_admin: 6,
+  [SystemRole.SUPER_ADMIN]:  100,
+  [SystemRole.TENANT_OWNER]: 90,
+  [SystemRole.OWNER]:        90,
+  [SystemRole.ADMIN]:        80,
+  [SystemRole.MANAGER]:      70,
+  [SystemRole.EDITOR]:       60,
+  [SystemRole.VIEWER]:       10,
+  [FunctionalRole.FINANCIAL]: 60,
+  [FunctionalRole.MARKETING]: 50,
+  [FunctionalRole.ARTIST]:    30,
+  [FunctionalRole.RADIO]:     40,
+  [FunctionalRole.TV]:        40,
 };
 
 @Injectable()
@@ -46,7 +59,7 @@ export class RolesGuard implements CanActivate {
     if (!currentMember) return true;
 
     // 'role' is the column name in OrgMemberEntity
-    const memberRole  = (currentMember as Record<string, unknown>)?.['role'] as string ?? 'viewer';
+    const memberRole  = (currentMember as Record<string, unknown>)?.['role'] as string ?? SystemRole.VIEWER;
     const memberLevel = ROLE_HIERARCHY[memberRole] ?? 0;
     const minRequired = Math.min(...required.map((r) => ROLE_HIERARCHY[r] ?? 99));
 
