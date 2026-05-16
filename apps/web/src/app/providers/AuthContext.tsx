@@ -123,8 +123,21 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
-    const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
-    if (error) return { error: { message: error.message, status: error.status } };
+    const sb = getSupabaseClient();
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      return { error: { message: error.message, status: error.status } };
+    }
+
+    if (data.session) {
+      localStorage.setItem(
+        "musicos360_debug_session",
+        JSON.stringify(data.session),
+      );
+    }
+
     return { error: null };
   };
 
