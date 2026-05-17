@@ -228,6 +228,8 @@ export function ContentModal({
       data_publicacao:    selectedDate ? selectedDate.toISOString().slice(0, 10) : null,
       horario_publicacao: data.horario || null,
       campanha_relacionada: data.campanha_relacionada || null,
+      thumbnail_url:      media.previewUrl ?? null,
+      url:                media.previewUrl ?? null,
       meta_plataforma:    buildMetaPlataforma(),
     };
     try {

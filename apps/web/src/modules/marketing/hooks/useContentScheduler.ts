@@ -24,17 +24,14 @@ export function useContentScheduler(): UseContentSchedulerReturn {
   ): Promise<SchedulePostResult> => {
     const { scheduledAt, ...rest } = payload;
 
-    const newConteudo = await addConteudo.mutateAsync({
+    const newConteudo: ConteudoWithRelations = await addConteudo.mutateAsync({
       ...rest,
       status:             "agendado",
       data_publicacao:    scheduledAt.slice(0, 10),
       horario_publicacao: scheduledAt.slice(11, 16),
     });
 
-    const result = await publishingService.schedulePost(
-      newConteudo as unknown as ConteudoWithRelations,
-      scheduledAt,
-    );
+    const result = await publishingService.schedulePost(newConteudo, scheduledAt);
 
     return result;
   }, [addConteudo]);
