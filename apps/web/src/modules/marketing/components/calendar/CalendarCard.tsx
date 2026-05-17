@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2, SendHorizonal } from "lucide-react";
+import { useState, useRef, useCallback } from "react";
+import { MoreHorizontal, Pencil, Trash2, SendHorizonal, Eye, Heart, MessageCircle } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
@@ -9,6 +9,9 @@ import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteud
 import {
   InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, TwitterXIcon, LinkedInIcon,
 } from "./platform-icons";
+import { instagramService } from "@/modules/marketing/services/instagram.service";
+import { tiktokService }    from "@/modules/marketing/services/tiktok.service";
+import { youtubeService }   from "@/modules/marketing/services/youtube.service";
 
 const STATUS_STYLES: Record<string, { dot: string; label: string; text: string; bg: string }> = {
   agendado:   { dot: "bg-blue-400",    label: "Agendado",   text: "text-blue-600 dark:text-blue-400",   bg: "bg-blue-50 dark:bg-blue-950/30" },
@@ -56,6 +59,86 @@ const TIPO_ASPECT: Record<string, string> = {
   anuncio:  "aspect-video",
 };
 
+interface EngagementStats {
+  reach:    number;
+  likes:    number;
+  comments: number;
+}
+
+async function fetchEngagementStats(conteudoId: string, plataforma: string | null): Promise<EngagementStats> {
+  switch (plataforma) {
+    case "instagram": {
+      const d = await instagramService.getAnalytics(conteudoId);
+      return { reach: d.reach, likes: d.likes, comments: d.comments };
+    }
+    case "tiktok": {
+      const d = await tiktokService.getAnalytics(conteudoId);
+      return { reach: d.view_count, likes: d.like_count, comments: d.comment_count };
+    }
+    case "youtube": {
+      const d = await youtubeService.getAnalytics(conteudoId);
+      return { reach: d.view_count, likes: d.like_count, comments: d.comment_count };
+    }
+    default:
+      return { reach: 0, likes: 0, comments: 0 };
+  }
+}
+
+function formatStat(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000)     return `${(n / 1_000).toFixed(1)}k`;
+  return String(n);
+}
+
+function StatsSkeleton() {
+  return (
+    <div className="flex items-center gap-2 mt-1.5" data-testid="engagement-stats-skeleton">
+      {[0, 1, 2].map((i) => (
+        <div key={i} className="h-3 rounded bg-muted animate-pulse" style={{ width: i === 0 ? 36 : 28 }} />
+      ))}
+    </div>
+  );
+}
+
+function StatsRow({ stats }: { stats: EngagementStats }) {
+  return (
+    <div
+      className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground"
+      data-testid="engagement-stats-row"
+    >
+      <span className="flex items-center gap-0.5" data-testid="stat-reach">
+        <Eye className="h-3 w-3 shrink-0" />
+        {formatStat(stats.reach)}
+      </span>
+      <span className="text-muted-foreground/40" aria-hidden>•</span>
+      <span className="flex items-center gap-0.5" data-testid="stat-likes">
+        <Heart className="h-3 w-3 shrink-0 text-rose-400" />
+        {formatStat(stats.likes)}
+      </span>
+      <span className="text-muted-foreground/40" aria-hidden>•</span>
+      <span className="flex items-center gap-0.5" data-testid="stat-comments">
+        <MessageCircle className="h-3 w-3 shrink-0" />
+        {formatStat(stats.comments)}
+      </span>
+    </div>
+  );
+}
+
+function StatsError() {
+  return (
+    <div
+      className="flex items-center gap-1.5 mt-1.5 text-[10px] text-muted-foreground/50"
+      data-testid="engagement-stats-error"
+    >
+      <Eye className="h-3 w-3 shrink-0" />—
+      <span className="text-muted-foreground/40" aria-hidden>•</span>
+      <Heart className="h-3 w-3 shrink-0" />—
+      <span className="text-muted-foreground/40" aria-hidden>•</span>
+      <MessageCircle className="h-3 w-3 shrink-0" />—
+    </div>
+  );
+}
+
 function getFirstPlataforma(p: string | string[] | null | undefined): string | null {
   if (!p) return null;
   const arr = Array.isArray(p) ? p : [p];
@@ -86,6 +169,12 @@ interface CalendarCardProps {
 
 export function CalendarCard({ conteudo, onEdit, onDelete, onPublish, compact = false }: CalendarCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [statsState, setStatsState] = useState<{
+    status: "idle" | "loading" | "done" | "error";
+    data: EngagementStats | null;
+  }>({ status: "idle", data: null });
+  const fetchedRef = useRef(false);
+
   const plat        = getFirstPlataforma(conteudo.plataforma);
   const tipo        = getFirstTipo(conteudo.tipo_conteudo);
   const status      = conteudo.status ?? "rascunho";
@@ -95,6 +184,19 @@ export function CalendarCard({ conteudo, onEdit, onDelete, onPublish, compact = 
   const platColor   = plat ? (PLAT_COLOR[plat] ?? "bg-muted-foreground") : "bg-muted-foreground";
   const platPill    = plat ? (PLAT_PILL_COLOR[plat] ?? "bg-muted text-muted-foreground") : "bg-muted text-muted-foreground";
   const aspectClass = tipo ? (TIPO_ASPECT[tipo] ?? "aspect-video") : "aspect-video";
+  const isPublished = status === "publicado";
+
+  const handleMouseEnter = useCallback(() => {
+    if (!isPublished || fetchedRef.current) return;
+    fetchedRef.current = true;
+    setStatsState({ status: "loading", data: null });
+    fetchEngagementStats(conteudo.id, plat).then((data) => {
+      setStatsState({ status: "done", data });
+    }).catch(() => {
+      setStatsState({ status: "error", data: null });
+      fetchedRef.current = false;
+    });
+  }, [isPublished, conteudo.id, plat]);
 
   /* ── COMPACT MODE (weekly grid pill) ── */
   if (compact) {
@@ -143,6 +245,7 @@ export function CalendarCard({ conteudo, onEdit, onDelete, onPublish, compact = 
     <div
       className="group relative rounded-xl overflow-hidden border border-border/60 bg-card shadow-sm hover:shadow-md hover:border-border/80 transition-all cursor-pointer select-none"
       onClick={() => onEdit(conteudo)}
+      onMouseEnter={handleMouseEnter}
       data-testid={`calendar-card-${conteudo.id}`}
     >
       {/* Thumbnail area */}
@@ -195,6 +298,14 @@ export function CalendarCard({ conteudo, onEdit, onDelete, onPublish, compact = 
             <span className="text-[10px] text-muted-foreground capitalize">{tipo}</span>
           )}
         </div>
+
+        {/* Engagement stats — only for published posts */}
+        {isPublished && statsState.status === "loading" && <StatsSkeleton />}
+        {isPublished && statsState.status === "done" && statsState.data && (
+          <StatsRow stats={statsState.data} />
+        )}
+        {isPublished && statsState.status === "error" && <StatsError />}
+
         {onPublish && status !== "publicado" && (
           <button
             type="button"
