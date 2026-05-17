@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { stripeClient } from '@/modules/integrations/clients/stripe.client';
-import { MOCK_MODE }    from '@/shared/lib/env';
+import { MOCK_MODE, DEV_AUTH_BYPASS } from '@/shared/lib/env';
 
 export interface PlanFeatures {
   moduleArtists:     boolean;
@@ -61,7 +61,7 @@ export function usePlanFeatures() {
     return () => window.removeEventListener('billing:plan_upgraded', handler);
   }, [queryClient]);
 
-  if (MOCK_MODE) {
+  if (MOCK_MODE || DEV_AUTH_BYPASS) {
     return { features: ALL_ENABLED, plan: 'enterprise' as const, status: 'active', isLoading: false, isTrialing: false, isCancelled: false };
   }
 
