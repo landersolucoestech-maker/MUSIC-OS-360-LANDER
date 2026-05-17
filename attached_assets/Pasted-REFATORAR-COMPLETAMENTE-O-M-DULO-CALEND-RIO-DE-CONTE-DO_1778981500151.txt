@@ -1,0 +1,346 @@
+REFATORAR COMPLETAMENTE O MÓDULO “CALENDÁRIO DE CONTEÚDO” PARA UMA EXPERIÊNCIA VISUAL REAL DE PLANEJAMENTO EDITORIAL.
+
+IMPORTANTE:
+
+* NÃO alterar a sidebar existente.
+* NÃO alterar estrutura global do layout.
+* NÃO transformar em kanban.
+* NÃO implementar drag and drop.
+* NÃO criar visual de ERP/admin panel.
+* NÃO criar tabelas tradicionais.
+* NÃO usar excesso de badges.
+* NÃO manter o layout atual baseado em lista + modal CRUD administrativo.
+
+OBJETIVO:
+Transformar o módulo em um calendário editorial visual moderno, semelhante a ferramentas profissionais de social media e planejamento de conteúdo.
+
+A experiência deve parecer:
+
+* plataforma criativa
+* painel editorial
+* social media manager
+* calendário operacional de conteúdo
+
+REFERÊNCIAS VISUAIS:
+
+* Later
+* Planoly
+* Metricool
+* Notion Calendar
+* Linear (densidade visual)
+* ferramentas modernas de social media
+
+==================================================
+ESTRUTURA NOVA DA TELA
+======================
+
+MANTER:
+
+* sidebar atual
+* topbar atual
+* sistema de autenticação
+* hooks e integrações existentes
+
+SUBSTITUIR COMPLETAMENTE:
+
+* lista de conteúdos atual
+* estrutura visual atual
+* cards atuais
+* layout administrativo atual
+
+==================================================
+LAYOUT PRINCIPAL
+================
+
+A área principal deve conter:
+
+1. Header superior
+2. Barra de filtros
+3. Calendário visual semanal
+4. Cards visuais de conteúdo
+
+==================================================
+HEADER
+======
+
+No topo da página:
+
+Título:
+“Calendário de Conteúdo”
+
+Descrição:
+“Planeje, visualize e organize suas publicações.”
+
+À direita:
+
+* botão “+ Novo Conteúdo”
+* seletor de visualização:
+
+  * Semana
+  * Mês
+  * Feed
+
+Inicialmente:
+implementar apenas “Semana”.
+
+==================================================
+FILTROS
+=======
+
+Adicionar barra horizontal compacta contendo:
+
+* plataformas
+* status
+* tipo de conteúdo
+* busca
+
+VISUAL:
+
+* clean
+* minimalista
+* moderno
+* compacto
+
+NÃO usar visual corporativo pesado.
+
+==================================================
+CALENDÁRIO
+==========
+
+O calendário deve ser o elemento principal da tela.
+
+Implementar visual semanal:
+
+SEG
+TER
+QUA
+QUI
+SEX
+SAB
+DOM
+
+Com horários na lateral esquerda:
+
+08:00
+10:00
+12:00
+14:00
+16:00
+18:00
+20:00
+
+Cada coluna representa um dia.
+Cada linha representa horário.
+
+==================================================
+CONTEÚDOS
+=========
+
+Os conteúdos devem aparecer como CARDS VISUAIS dentro do calendário.
+
+Cada card deve conter:
+
+* thumbnail/imagem
+* horário
+* título curto
+* ícone da plataforma
+* status discreto
+* borda suave
+* visual moderno
+
+EXEMPLO VISUAL:
+
+[thumbnail]
+18:00
+Reels lançamento
+Instagram
+
+IMPORTANTE:
+
+* cards compactos
+* modernos
+* aparência de mídia/social
+* NÃO parecer tabela
+* NÃO parecer ERP
+
+==================================================
+CORES E VISUAL
+==============
+
+VISUAL:
+
+* clean
+* premium
+* minimalista
+* moderno
+* focado em mídia
+
+USAR:
+
+* muito espaço em branco
+* sombras suaves
+* bordas sutis
+* thumbnails grandes
+* ícones pequenos
+* tipografia limpa
+
+EVITAR:
+
+* excesso de texto
+* excesso de labels
+* excesso de badges
+* aparência administrativa
+
+==================================================
+MODAL “NOVO CONTEÚDO”
+=====================
+
+O modal continuará existindo como POPUP.
+
+NÃO usar drawer lateral.
+
+Porém:
+refatorar completamente o visual do modal.
+
+==================================================
+NOVO MODAL — ESTRUTURA
+======================
+
+Modal moderno dividido em duas áreas:
+
+ESQUERDA:
+
+* preview visual do conteúdo
+* thumbnail grande
+* preview estilo rede social
+* upload de mídia
+
+DIREITA:
+
+* formulário simplificado
+
+==================================================
+FORMULÁRIO SIMPLIFICADO
+=======================
+
+MANTER APENAS:
+
+* título
+* plataforma
+* tipo de conteúdo
+* data
+* horário
+* legenda/copy
+* upload mídia
+* status
+
+TODO O RESTANTE:
+mover para:
+“Configurações avançadas”
+
+COLAPSADO.
+
+==================================================
+IMPORTANTE SOBRE UX
+===================
+
+O usuário deve conseguir:
+
+* abrir modal
+* criar conteúdo
+* agendar
+
+em menos de 30 segundos.
+
+O sistema deve parecer:
+
+* rápido
+* visual
+* moderno
+* focado em creators/social media
+
+NÃO deve parecer:
+
+* formulário administrativo
+* dashboard financeiro
+* ERP
+* CRM corporativo
+
+==================================================
+COMPORTAMENTO
+=============
+
+Ao clicar em um horário do calendário:
+
+abrir modal “Novo Conteúdo”
+com:
+
+* data preenchida
+* horário preenchido
+
+Exemplo:
+clique em sexta às 18h →
+modal abre já com:
+16/05/2026 18:00
+
+==================================================
+ESTRUTURA TÉCNICA
+=================
+
+REFATORAR COMPONENTES EM:
+
+/components/calendar/
+
+* CalendarHeader
+* CalendarFilters
+* WeeklyCalendar
+* CalendarCard
+* ContentModal
+
+NÃO deixar lógica gigante em um único componente.
+
+==================================================
+MODELAGEM
+=========
+
+Padronizar conteúdo para:
+
+type Conteudo = {
+id: string;
+
+titulo: string;
+
+thumbnail_url?: string;
+
+plataformas: string[];
+
+tipo: string;
+
+status:
+| "draft"
+| "scheduled"
+| "published"
+| "failed";
+
+scheduled_at: string;
+
+legenda?: string;
+};
+
+==================================================
+RESULTADO FINAL ESPERADO
+========================
+
+A tela deve parecer:
+
+* ferramenta real de social media
+* calendário editorial visual
+* sistema moderno de publicação
+* plataforma criativa musical
+
+E NÃO:
+
+* CRUD administrativo
+* formulário ERP
+* lista corporativa
+* painel interno genérico
