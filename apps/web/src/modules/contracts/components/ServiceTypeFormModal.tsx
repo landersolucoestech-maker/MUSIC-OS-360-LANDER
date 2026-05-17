@@ -281,30 +281,31 @@ export function ServiceTypeFormModal({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Nome */}
-                <div className="space-y-2">
-                  <Label htmlFor="name">Nome *</Label>
-                  <Input
-                    id="name"
-                    {...form.register("name")}
-                    placeholder="Ex: Agenciamento Artístico"
-                    data-testid="input-type-name"
-                  />
-                  {form.formState.errors.name && (
-                    <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
-                  )}
-                </div>
+                {/* Nome + Descrição — 2 colunas */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">Nome *</Label>
+                    <Input
+                      id="name"
+                      {...form.register("name")}
+                      placeholder="Ex: Agenciamento Artístico"
+                      data-testid="input-type-name"
+                    />
+                    {form.formState.errors.name && (
+                      <p className="text-xs text-destructive">{form.formState.errors.name.message}</p>
+                    )}
+                  </div>
 
-                {/* Descrição */}
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição</Label>
-                  <Textarea
-                    id="description"
-                    {...form.register("description")}
-                    placeholder="Descreva o tipo de contrato..."
-                    rows={2}
-                    data-testid="textarea-type-description"
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="description">Descrição</Label>
+                    <Textarea
+                      id="description"
+                      {...form.register("description")}
+                      placeholder="Descreva o tipo de contrato..."
+                      rows={2}
+                      data-testid="textarea-type-description"
+                    />
+                  </div>
                 </div>
 
                 {/* Tipos de Cliente */}
@@ -360,7 +361,7 @@ export function ServiceTypeFormModal({
                 {/* Campos Financeiros — 2 colunas */}
                 <div className="space-y-2">
                   <Label>Campos financeiros exibidos no formulário</Label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {FINANCIAL_CHECKBOXES.map(({ key, label }) => (
                       <div key={key} className="flex items-center gap-2">
                         <Checkbox
