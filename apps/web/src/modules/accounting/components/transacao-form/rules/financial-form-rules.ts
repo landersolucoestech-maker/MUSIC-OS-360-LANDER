@@ -11,139 +11,152 @@ import {
 } from "@/modules/accounting/lib/transacao-constants";
 
 export interface FinancialFormRules {
-  exibirTipoCliente:    boolean;
-  exibirCategoria:      boolean;
-  exibirSubcategoria:   boolean;
+  exibirTipoCliente:      boolean;
+  exibirCategoria:        boolean;
+  exibirSubcategoria:     boolean;
   exibirItemInvestimento: boolean;
-  exibirArtista:        boolean;
-  exibirProjeto:        boolean;
-  projetoObrigatorio:   boolean;
-  exibirEvento:         boolean;
-  exibirFornecedor:     boolean;
+  exibirArtista:          boolean;
+  exibirProjeto:          boolean;
+  projetoObrigatorio:     boolean;
+  exibirEvento:           boolean;
+  exibirFornecedor:       boolean;
   exibirOrgaoArrecadador: boolean;
-  exibirMotivoViagem:   boolean;
-  exibirNomePublicidade: boolean;
-  exibirParcelamento:   boolean;
-  labelTipoCliente:     string;
+  exibirMotivoViagem:     boolean;
+  exibirNomePublicidade:  boolean;
+  exibirParcelamento:     boolean;
+  labelTipoCliente:       string;
 }
 
-export function computeFinancialRules(f: TransacaoFormData): FinancialFormRules {
-  const isImposto      = f.tipoTransacao === "imposto";
+// ── Rule context ─────────────────────────────────────────────────────────────
+// Intermediate booleans derived from formData that predicates can reference.
+interface RuleContext {
+  isImposto:      boolean;
+  isTransferencia: boolean;
+  isInvestimento: boolean;
+  isDespesa:      boolean;
+  isReceita:      boolean;
+  isEmpresa:      boolean;
+  isArtista:      boolean;
+  isPessoa:       boolean;
+  isEmpresaOuPessoa: boolean;
+  isDespesaServico:             boolean;
+  isDespesaMarketing:           boolean;
+  isDespesaViagem:              boolean;
+  isDespesaProduto:             boolean;
+  isDespesaSuporteFinanceiro:   boolean;
+  isDespesaArtistaCaches:       boolean;
+  isDespesaArtistaSuporteFinanceiro: boolean;
+  isReceitaMusical: boolean;
+  isReceitaServico: boolean;
+  isReceitaProduto: boolean;
+  hasTipoTransacao: boolean;
+}
+
+function buildContext(f: TransacaoFormData): RuleContext {
+  const isImposto       = f.tipoTransacao === "imposto";
   const isTransferencia = f.tipoTransacao === "transferencia";
   const isInvestimento  = f.tipoTransacao === "investimento";
   const isDespesa       = f.tipoTransacao === "despesa";
   const isReceita       = f.tipoTransacao === "receita";
-
-  const isEmpresa        = f.tipoCliente === "empresa";
-  const isArtista        = f.tipoCliente === "artista";
-  const isPessoa         = f.tipoCliente === "pessoa";
+  const isEmpresa       = f.tipoCliente === "empresa";
+  const isArtista       = f.tipoCliente === "artista";
+  const isPessoa        = f.tipoCliente === "pessoa";
   const isEmpresaOuPessoa = isEmpresa || isPessoa;
-
-  const exibirTipoCliente = Boolean(f.tipoTransacao && !isImposto && !isTransferencia && !isInvestimento);
-
-  const categorias    = getCategoriasParaTipoTransacao(f.tipoTransacao, f.tipoCliente);
-  const exibirCategoria = categorias.length > 0 && Boolean(f.tipoCliente || isImposto || isTransferencia || isInvestimento);
-
-  const subcategorias   = getSubcategoriasParaCategoria(f.tipoTransacao, f.tipoCliente, f.categoria);
-  const exibirSubcategoria = subcategorias.length > 0;
-
-  const itensInvestimento  = getItensInvestimentoPorCategoria(f.categoria);
-  const exibirItemInvestimento = isInvestimento && Boolean(f.categoria) && itensInvestimento.length > 0;
-
-  // ── Despesa Empresa/Pessoa ──────────────────────────────────────────────────
-  const isDespesaServico  = isDespesa && isEmpresaOuPessoa && f.categoria === "servicos";
-  const exibirArtistaServicoObrigatorio  = isDespesaServico && servicosDespesaComArtistaEProjeto.includes(f.subcategoria);
-  const exibirProjetoServicoObrigatorio  = exibirArtistaServicoObrigatorio;
-
-  const isDespesaMarketing = isDespesa && isEmpresaOuPessoa && f.categoria === "marketing";
-  const exibirArtistaMarketingObrigatorio = isDespesaMarketing && Boolean(f.subcategoria);
-  const exibirProjetoMarketingOpcional    = exibirArtistaMarketingObrigatorio && Boolean(f.artistaVinculado);
-
-  const isDespesaViagem = isDespesa && isEmpresaOuPessoa && f.categoria === "viagens";
-  const exibirArtistaViagemObrigatorio = isDespesaViagem && Boolean(f.subcategoria);
-  const exibirMotivoViagem             = exibirArtistaViagemObrigatorio;
-
-  const isDespesaProduto = isDespesa && isEmpresaOuPessoa && f.categoria === "produtos";
-  const exibirArtistaProdutoObrigatorio = isDespesaProduto && Boolean(f.subcategoria);
-  const exibirEventoProdutoObrigatorio  = isDespesaProduto && produtosDespesaComEvento.includes(f.subcategoria);
-
-  const isDespesaSuporteFinanceiro = isDespesa && isEmpresaOuPessoa && f.categoria === "suporte-financeiro";
-  const exibirArtistaSuporteFinanceiro = isDespesaSuporteFinanceiro;
-
-  // ── Despesa Artista ─────────────────────────────────────────────────────────
-  const isDespesaArtistaCaches = isDespesa && isArtista && f.categoria === "caches";
-  const exibirArtistaArtistaCaches   = isDespesaArtistaCaches && Boolean(f.subcategoria);
-  const exibirEventoArtistaCaches    = isDespesaArtistaCaches && f.subcategoria === "show-evento";
-  const exibirNomePublicidade        = isDespesaArtistaCaches && f.subcategoria === "publicidade";
-
-  const isDespesaArtistaSuporteFinanceiro   = isDespesa && isArtista && f.categoria === "suporte-financeiro";
-  const exibirArtistaArtistaSuporteFinanceiro = isDespesaArtistaSuporteFinanceiro;
-
-  // ── Receitas ────────────────────────────────────────────────────────────────
-  const isReceitaMusical = isReceita && isEmpresaOuPessoa && f.categoria === "receitas-musicais";
-  const exibirArtistaReceitaMusical = isReceitaMusical && Boolean(f.subcategoria);
-  const exibirProjetoReceitaMusical = isReceitaMusical && receitasMusicaisComArtistaEProjeto.includes(f.subcategoria);
-  const exibirEventoReceitaMusical  = isReceitaMusical && ["participacao-show-evento", "venda-show-fechado"].includes(f.subcategoria);
-
-  const isReceitaServico = isReceita && isEmpresaOuPessoa && f.categoria === "servicos";
-  const exibirArtistaServicoReceita = isReceitaServico && (
-    servicosReceitaComArtistaEProjeto.includes(f.subcategoria) ||
-    servicosReceitaComArtista.includes(f.subcategoria)
-  );
-  const exibirProjetoServicoReceita = isReceitaServico && servicosReceitaComArtistaEProjeto.includes(f.subcategoria);
-
-  const isReceitaProduto = isReceita && isEmpresaOuPessoa && f.categoria === "produtos";
-  const exibirArtistaProdutoReceita = isReceitaProduto && Boolean(f.subcategoria);
-
-  // ── Consolidação ────────────────────────────────────────────────────────────
-  const exibirArtista =
-    exibirArtistaServicoObrigatorio ||
-    exibirArtistaMarketingObrigatorio ||
-    exibirArtistaViagemObrigatorio ||
-    exibirArtistaProdutoObrigatorio ||
-    exibirArtistaSuporteFinanceiro ||
-    exibirArtistaArtistaCaches ||
-    exibirArtistaArtistaSuporteFinanceiro ||
-    exibirArtistaReceitaMusical ||
-    exibirArtistaServicoReceita ||
-    exibirArtistaProdutoReceita;
-
-  const exibirProjeto =
-    exibirProjetoServicoObrigatorio ||
-    exibirProjetoMarketingOpcional ||
-    exibirProjetoReceitaMusical ||
-    exibirProjetoServicoReceita;
-
-  const projetoObrigatorio =
-    exibirProjetoServicoObrigatorio ||
-    exibirProjetoReceitaMusical ||
-    exibirProjetoServicoReceita;
-
-  const exibirEvento =
-    exibirEventoProdutoObrigatorio ||
-    exibirEventoArtistaCaches ||
-    exibirEventoReceitaMusical;
-
-  const exibirFornecedor      = (isDespesa || isReceita) && isEmpresaOuPessoa;
-  const exibirOrgaoArrecadador = isImposto;
-  const exibirParcelamento    = f.tipoPagamento === "parcelado";
-
-  const labelTipoCliente = isDespesa ? "Para quem pagar *" : isReceita ? "Receber de *" : "Tipo de Cliente *";
-
   return {
-    exibirTipoCliente,
-    exibirCategoria,
-    exibirSubcategoria,
-    exibirItemInvestimento,
-    exibirArtista,
-    exibirProjeto,
-    projetoObrigatorio,
-    exibirEvento,
-    exibirFornecedor,
-    exibirOrgaoArrecadador,
-    exibirMotivoViagem,
-    exibirNomePublicidade,
-    exibirParcelamento,
-    labelTipoCliente,
+    isImposto, isTransferencia, isInvestimento, isDespesa, isReceita,
+    isEmpresa, isArtista, isPessoa, isEmpresaOuPessoa,
+    isDespesaServico:             isDespesa && isEmpresaOuPessoa && f.categoria === "servicos",
+    isDespesaMarketing:           isDespesa && isEmpresaOuPessoa && f.categoria === "marketing",
+    isDespesaViagem:              isDespesa && isEmpresaOuPessoa && f.categoria === "viagens",
+    isDespesaProduto:             isDespesa && isEmpresaOuPessoa && f.categoria === "produtos",
+    isDespesaSuporteFinanceiro:   isDespesa && isEmpresaOuPessoa && f.categoria === "suporte-financeiro",
+    isDespesaArtistaCaches:       isDespesa && isArtista && f.categoria === "caches",
+    isDespesaArtistaSuporteFinanceiro: isDespesa && isArtista && f.categoria === "suporte-financeiro",
+    isReceitaMusical: isReceita && isEmpresaOuPessoa && f.categoria === "receitas-musicais",
+    isReceitaServico: isReceita && isEmpresaOuPessoa && f.categoria === "servicos",
+    isReceitaProduto: isReceita && isEmpresaOuPessoa && f.categoria === "produtos",
+    hasTipoTransacao: Boolean(f.tipoTransacao),
   };
+}
+
+// ── DISPLAY_RULES — the single configurable source of truth for every boolean ─
+// Each entry is a pure predicate (f, ctx) → boolean.
+// To add, remove, or change a rule, edit only this map — no other code needs to change.
+type BooleanRuleKey = Exclude<keyof FinancialFormRules, "labelTipoCliente">;
+type RulePredicate  = (f: TransacaoFormData, ctx: RuleContext) => boolean;
+
+export const DISPLAY_RULES: Record<BooleanRuleKey, RulePredicate> = {
+  exibirTipoCliente: (_f, ctx) =>
+    ctx.hasTipoTransacao && !ctx.isImposto && !ctx.isTransferencia && !ctx.isInvestimento,
+
+  exibirCategoria: (f, ctx) => {
+    const categorias = getCategoriasParaTipoTransacao(f.tipoTransacao, f.tipoCliente);
+    return categorias.length > 0 && Boolean(f.tipoCliente || ctx.isImposto || ctx.isTransferencia || ctx.isInvestimento);
+  },
+
+  exibirSubcategoria: (f) => {
+    const subs = getSubcategoriasParaCategoria(f.tipoTransacao, f.tipoCliente, f.categoria);
+    return subs.length > 0;
+  },
+
+  exibirItemInvestimento: (f, ctx) => {
+    const itens = getItensInvestimentoPorCategoria(f.categoria);
+    return ctx.isInvestimento && Boolean(f.categoria) && itens.length > 0;
+  },
+
+  exibirArtista: (f, ctx) =>
+    (ctx.isDespesaServico  && servicosDespesaComArtistaEProjeto.includes(f.subcategoria)) ||
+    (ctx.isDespesaMarketing && Boolean(f.subcategoria)) ||
+    (ctx.isDespesaViagem   && Boolean(f.subcategoria)) ||
+    (ctx.isDespesaProduto  && Boolean(f.subcategoria)) ||
+    ctx.isDespesaSuporteFinanceiro ||
+    (ctx.isDespesaArtistaCaches && Boolean(f.subcategoria)) ||
+    ctx.isDespesaArtistaSuporteFinanceiro ||
+    (ctx.isReceitaMusical && Boolean(f.subcategoria)) ||
+    (ctx.isReceitaServico && (
+      servicosReceitaComArtistaEProjeto.includes(f.subcategoria) ||
+      servicosReceitaComArtista.includes(f.subcategoria)
+    )) ||
+    (ctx.isReceitaProduto && Boolean(f.subcategoria)),
+
+  exibirProjeto: (f, ctx) =>
+    (ctx.isDespesaServico   && servicosDespesaComArtistaEProjeto.includes(f.subcategoria)) ||
+    (ctx.isDespesaMarketing && Boolean(f.subcategoria) && Boolean(f.artistaVinculado)) ||
+    (ctx.isReceitaMusical   && receitasMusicaisComArtistaEProjeto.includes(f.subcategoria)) ||
+    (ctx.isReceitaServico   && servicosReceitaComArtistaEProjeto.includes(f.subcategoria)),
+
+  projetoObrigatorio: (f, ctx) =>
+    (ctx.isDespesaServico  && servicosDespesaComArtistaEProjeto.includes(f.subcategoria)) ||
+    (ctx.isReceitaMusical  && receitasMusicaisComArtistaEProjeto.includes(f.subcategoria)) ||
+    (ctx.isReceitaServico  && servicosReceitaComArtistaEProjeto.includes(f.subcategoria)),
+
+  exibirEvento: (f, ctx) =>
+    (ctx.isDespesaProduto      && produtosDespesaComEvento.includes(f.subcategoria)) ||
+    (ctx.isDespesaArtistaCaches && f.subcategoria === "show-evento") ||
+    (ctx.isReceitaMusical       && ["participacao-show-evento", "venda-show-fechado"].includes(f.subcategoria)),
+
+  exibirFornecedor: (_f, ctx) => (ctx.isDespesa || ctx.isReceita) && ctx.isEmpresaOuPessoa,
+
+  exibirOrgaoArrecadador: (_f, ctx) => ctx.isImposto,
+
+  exibirMotivoViagem: (f, ctx) => ctx.isDespesaViagem && Boolean(f.subcategoria),
+
+  exibirNomePublicidade: (f, ctx) => ctx.isDespesaArtistaCaches && f.subcategoria === "publicidade",
+
+  exibirParcelamento: (f) => f.tipoPagamento === "parcelado",
+};
+
+// ── computeFinancialRules — applies DISPLAY_RULES map + derives label ─────────
+export function computeFinancialRules(f: TransacaoFormData): FinancialFormRules {
+  const ctx = buildContext(f);
+
+  const booleans = Object.fromEntries(
+    (Object.entries(DISPLAY_RULES) as [BooleanRuleKey, RulePredicate][]).map(
+      ([key, predicate]) => [key, predicate(f, ctx)],
+    ),
+  ) as Record<BooleanRuleKey, boolean>;
+
+  const labelTipoCliente = ctx.isDespesa ? "Para quem pagar" : ctx.isReceita ? "Receber de" : "Tipo de Cliente";
+
+  return { ...booleans, labelTipoCliente };
 }

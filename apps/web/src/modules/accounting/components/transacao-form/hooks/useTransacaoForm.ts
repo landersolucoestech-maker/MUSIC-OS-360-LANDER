@@ -6,14 +6,15 @@ import {
 } from "@/modules/accounting/lib/transacao-constants";
 import { transacaoToFormFields } from "@/modules/accounting/mappers";
 import { applyResets } from "@/modules/accounting/components/transacao-form/rules/financial-reset-rules";
-import { validateTransacaoForm, type ValidationErrors } from "@/modules/accounting/components/transacao-form/validation/financial-form-validation";
 import type { FinancialFormRules } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
+import { useFinancialValidation } from "./useFinancialValidation";
+import type { ValidationErrors } from "@/modules/accounting/components/transacao-form/validation/financial-form-validation";
 
 interface UseTransacaoFormOptions {
-  open:          boolean;
-  mode:          "create" | "edit" | "view";
-  transacao?:    Record<string, unknown>;
-  onClose:       () => void;
+  open:       boolean;
+  mode:       "create" | "edit" | "view";
+  transacao?: Record<string, unknown>;
+  onClose:    () => void;
 }
 
 export interface UseTransacaoFormReturn {
@@ -21,7 +22,6 @@ export interface UseTransacaoFormReturn {
   errors:       ValidationErrors;
   isSubmitting: boolean;
   updateField:  (field: keyof TransacaoFormData, value: string) => void;
-  validate:     (rules: FinancialFormRules) => boolean;
   handleSubmit: (e: React.FormEvent, rules: FinancialFormRules) => Promise<void>;
   handleFileUpload:  (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleRemoveAnexo: () => void;
@@ -33,15 +33,18 @@ export function useTransacaoForm({
   transacao,
   onClose,
 }: UseTransacaoFormOptions): UseTransacaoFormReturn {
-  const [formData, setFormData]       = useState<TransacaoFormData>(initialFormData);
-  const [errors, setErrors]           = useState<ValidationErrors>({});
+  const [formData, setFormData]         = useState<TransacaoFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Single source of truth for errors — all validation state lives here
+  const validation = useFinancialValidation();
 
   useEffect(() => {
     if (open) {
       setFormData(transacaoToFormFields(transacao ?? null));
     }
-    setErrors({});
+    validation.clearAllErrors();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [transacao, open]);
 
   const updateField = useCallback((field: keyof TransacaoFormData, value: string) => {
@@ -49,19 +52,10 @@ export function useTransacaoForm({
       const resets = applyResets(field, value);
       return { ...prev, [field]: value, ...resets };
     });
-    setErrors(prev => {
-      if (!prev[field]) return prev;
-      const next = { ...prev };
-      delete next[field];
-      return next;
-    });
+    // Clear validation error for the field that just changed
+    validation.clearFieldError(field);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  const validate = useCallback((rules: FinancialFormRules): boolean => {
-    const newErrors = validateTransacaoForm(formData, rules);
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  }, [formData]);
 
   const handleSubmit = useCallback(async (
     e: React.FormEvent,
@@ -70,7 +64,9 @@ export function useTransacaoForm({
     e.preventDefault();
     if (mode === "view") return;
 
-    if (!validate(rules)) {
+    // Delegate validation entirely to useFinancialValidation
+    const isValid = validation.validate(formData, rules);
+    if (!isValid) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -94,7 +90,8 @@ export function useTransacaoForm({
     } finally {
       setIsSubmitting(false);
     }
-  }, [formData, mode, validate, onClose]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formData, mode, onClose]);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,10 +108,9 @@ export function useTransacaoForm({
 
   return {
     formData,
-    errors,
+    errors:       validation.errors,
     isSubmitting,
     updateField,
-    validate,
     handleSubmit,
     handleFileUpload,
     handleRemoveAnexo,
