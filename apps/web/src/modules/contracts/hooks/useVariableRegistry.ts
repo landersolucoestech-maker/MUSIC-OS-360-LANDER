@@ -48,12 +48,12 @@ function buildSeeds(): RegistryVariable[] {
 function load(): RegistryVariable[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return buildSeeds();
-    const parsed = JSON.parse(raw) as RegistryVariable[];
-    // Empty array also triggers seeds (e.g. user cleared all)
-    return parsed.length === 0 ? buildSeeds() : parsed;
+    // Seeds only on first use — when the key has never been written.
+    // An empty array is valid user state (user deleted everything) and must not be replaced.
+    if (raw === null) return buildSeeds();
+    return JSON.parse(raw) as RegistryVariable[];
   } catch {
-    return buildSeeds();
+    return [];
   }
 }
 
