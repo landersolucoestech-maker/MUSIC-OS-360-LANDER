@@ -8,7 +8,9 @@ import {
 import {
   computeFinancialRules,
   type FinancialFormRules,
+  DISPLAY_RULES,
 } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
+import { getStoredOverrides, buildKey } from "./useRuleOverrides";
 
 interface Projeto { id: string; artista_id?: string | null; titulo: string }
 interface Evento  { id: string; artista_id?: string | null; titulo: string; data_inicio?: string | null }
@@ -33,7 +35,22 @@ export function useFinancialRules({
   projetos,
   eventos,
 }: UseFinancialRulesOptions): FinancialRulesResult {
-  const rules = useMemo(() => computeFinancialRules(formData), [formData]);
+  const rules = useMemo(() => {
+    const computed = computeFinancialRules(formData);
+    const stored   = getStoredOverrides();
+    if (Object.keys(stored).length === 0) return computed;
+
+    // Apply stored overrides for matching combination
+    const { tipoTransacao, tipoCliente, categoria } = formData;
+    const overridden = { ...computed };
+    for (const ruleKey of Object.keys(DISPLAY_RULES) as (keyof typeof DISPLAY_RULES)[]) {
+      const k = buildKey(tipoTransacao, tipoCliente, categoria, ruleKey);
+      if (k in stored) {
+        (overridden as Record<string, unknown>)[ruleKey] = stored[k];
+      }
+    }
+    return overridden;
+  }, [formData]);
 
   const categorias = useMemo(
     () => getCategoriasParaTipoTransacao(formData.tipoTransacao, formData.tipoCliente),
