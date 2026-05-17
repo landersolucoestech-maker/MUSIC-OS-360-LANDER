@@ -73,15 +73,12 @@ export function useTransacaoForm({
 
     setIsSubmitting(true);
     try {
-      let observacaoFinal = formData.observacao || "";
-      if (rules.exibirMotivoViagem && formData.motivoViagem) {
-        const prefixo = "[MOTIVO VIAGEM]: ";
-        if (!observacaoFinal.includes(prefixo)) {
-          observacaoFinal = `${prefixo}${formData.motivoViagem}\n${observacaoFinal}`.trim();
-        }
-      }
-      void observacaoFinal;
-
+      // TODO(api-integration): build submit payload here.
+      // When wiring real API: append motivoViagem to observacao
+      // if (rules.exibirMotivoViagem && formData.motivoViagem) {
+      //   const prefixo = "[MOTIVO VIAGEM]: ";
+      //   if (!observacao.includes(prefixo)) observacao = `${prefixo}${formData.motivoViagem}\n${observacao}`.trim();
+      // }
       await new Promise(resolve => setTimeout(resolve, 500));
       toast.success(mode === "create" ? "Transação criada com sucesso!" : "Transação atualizada com sucesso!");
       onClose();

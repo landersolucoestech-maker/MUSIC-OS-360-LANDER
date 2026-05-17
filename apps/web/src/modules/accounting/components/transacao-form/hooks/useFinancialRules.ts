@@ -10,7 +10,6 @@ import {
   type FinancialFormRules,
 } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
 
-interface Artista { id: string; artista_id?: string | null }
 interface Projeto { id: string; artista_id?: string | null; titulo: string }
 interface Evento  { id: string; artista_id?: string | null; titulo: string; data_inicio?: string | null }
 
