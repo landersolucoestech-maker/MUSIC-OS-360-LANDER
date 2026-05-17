@@ -85,6 +85,24 @@ export function CalendarFilters({
         })}
       </div>
 
+      {/* ── Search + filter icon ── */}
+      <div className="relative flex-1 min-w-[200px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+        <Input
+          placeholder="Buscar conteúdo..."
+          className="pl-9 pr-10 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
+          value={search}
+          onChange={(e) => onSearchChange(e.target.value)}
+          data-testid="input-search-calendar"
+        />
+        <button
+          title="Configurações de filtro"
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
       {/* ── Status dropdown ── */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -101,7 +119,7 @@ export function CalendarFilters({
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuContent align="end" className="w-44">
           {STATUS_OPTIONS.map((s) => (
             <DropdownMenuItem
               key={s.value}
@@ -133,7 +151,7 @@ export function CalendarFilters({
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
+        <DropdownMenuContent align="end" className="w-44">
           {TIPO_OPTIONS.map((t) => (
             <DropdownMenuItem
               key={t.value}
@@ -147,24 +165,6 @@ export function CalendarFilters({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
-
-      {/* ── Search + filter icon ── */}
-      <div className="relative flex-1 min-w-[200px]">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-        <Input
-          placeholder="Buscar conteúdo..."
-          className="pl-9 pr-10 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
-          data-testid="input-search-calendar"
-        />
-        <button
-          title="Configurações de filtro"
-          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
-      </div>
     </div>
   );
 }
