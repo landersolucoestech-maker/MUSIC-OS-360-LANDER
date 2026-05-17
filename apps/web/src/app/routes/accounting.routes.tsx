@@ -5,6 +5,7 @@ import type { SuspenseRouteComponent } from "./types";
 const Accounting = lazy(() => import("@/modules/accounting/pages/Financeiro"));
 const Contabilidade = lazy(() => import("@/modules/accounting/pages/Contabilidade"));
 const NotaFiscal = lazy(() => import("@/modules/accounting/pages/NotaFiscal"));
+const TransacaoRules = lazy(() => import("@/modules/accounting/pages/TransacaoRules"));
 
 export function accountingRoutes(P: SuspenseRouteComponent) {
   return (
@@ -12,6 +13,7 @@ export function accountingRoutes(P: SuspenseRouteComponent) {
       <Route path="/accounting" element={<P><Accounting /></P>} />
       <Route path="/accounting/contabilidade" element={<P><Contabilidade /></P>} />
       <Route path="/accounting/nota-fiscal" element={<P><NotaFiscal /></P>} />
+      <Route path="/accounting/rules" element={<P><TransacaoRules /></P>} />
     </>
   );
 }
