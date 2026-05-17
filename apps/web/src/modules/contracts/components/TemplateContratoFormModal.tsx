@@ -21,6 +21,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { X, Plus, Save, Upload, FileText, ChevronDown, Check, Search } from "lucide-react";
 import type { TemplateContrato, TemplateContratoInsert } from "@/modules/contracts/hooks/useTemplatesContratos";
+import type { ContractServiceType } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { templateContratoSchema, type TemplateContratoFormData } from "@/modules/contracts/lib/template-contrato-schema";
@@ -48,7 +49,7 @@ interface TemplateContratoFormModalProps {
   onOpenChange: (open: boolean) => void;
   template: TemplateContrato | null;
   onSave: (data: TemplateContratoInsert) => void;
-  tiposServico: string[];
+  tiposServico: ContractServiceType[];
 }
 
 export function TemplateContratoFormModal({
@@ -64,8 +65,6 @@ export function TemplateContratoFormModal({
   const [rodape, setRodape] = useState<AnexoFile | null>(null);
   const cabecalhoRef = useRef<HTMLInputElement>(null);
   const rodapeRef = useRef<HTMLInputElement>(null);
-
-  const [outrosNome, setOutrosNome] = useState("");
 
   const [artistasSelecionados, setArtistasSelecionados] = useState<string[]>([]);
   const [contatosSelecionados, setContatosSelecionados] = useState<string[]>([]);
@@ -121,7 +120,6 @@ export function TemplateContratoFormModal({
         );
         setArtistasSelecionados((t.artistas_ids as string[]) ?? []);
         setContatosSelecionados((t.clientes_ids as string[]) ?? []);
-        setOutrosNome((t.outros_nome as string) ?? "");
       } else {
         reset({ nome: "", tipo_servico: "", ativo: true });
         setClausulas([]);
@@ -129,7 +127,6 @@ export function TemplateContratoFormModal({
         setRodape(null);
         setArtistasSelecionados([]);
         setContatosSelecionados([]);
-        setOutrosNome("");
       }
       setArtistaSearch("");
       setContatoSearch("");
@@ -231,13 +228,9 @@ export function TemplateContratoFormModal({
   );
 
   const onSubmit = (data: TemplateContratoFormData) => {
-    const tipoFinal = data.tipo_servico === "Outros"
-      ? (outrosNome.trim() || "Outros")
-      : data.tipo_servico;
-
     onSave({
       nome: data.nome,
-      tipo_servico: tipoFinal,
+      tipo_servico: data.tipo_servico,
       descricao: "",
       conteudo: buildConteudo(),
       variaveis: extractVariaveis(),
@@ -247,7 +240,6 @@ export function TemplateContratoFormModal({
       party_origin: partyOrigin,
       artistas_ids: isArtistico ? artistasSelecionados : [],
       clientes_ids: isCRM ? contatosSelecionados : [],
-      outros_nome: data.tipo_servico === "Outros" ? outrosNome.trim() : "",
     } as TemplateContratoInsert);
   };
 
@@ -283,8 +275,8 @@ export function TemplateContratoFormModal({
                   </SelectTrigger>
                   <SelectContent>
                     {tiposServico.map((tipo) => (
-                      <SelectItem key={tipo} value={tipo}>
-                        {tipo}
+                      <SelectItem key={tipo.slug} value={tipo.name}>
+                        {tipo.name}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -292,21 +284,6 @@ export function TemplateContratoFormModal({
                 <FieldError error={errors.tipo_servico?.message} />
               </div>
             </div>
-
-            {tipoSelecionado === "Outros" && (
-              <div className="space-y-1.5">
-                <Label htmlFor="outros_nome">
-                  Nome do tipo de contrato <span className="text-destructive">*</span>
-                </Label>
-                <Input
-                  id="outros_nome"
-                  placeholder="Ex: Contrato de Cessão de Direitos"
-                  value={outrosNome}
-                  onChange={(e) => setOutrosNome(e.target.value)}
-                  data-testid="input-outros-nome"
-                />
-              </div>
-            )}
 
             <div className="flex items-center gap-3">
               <Switch

@@ -30,7 +30,6 @@ import {
   type TemplateContrato,
   type TemplateContratoInsert,
 } from "@/modules/contracts/hooks/useTemplatesContratos";
-import { CONTRACT_TYPES } from "@/modules/contracts/constants/contract-types";
 import {
   useContractServiceTypes,
   type ContractServiceType,
@@ -38,24 +37,6 @@ import {
 } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { ServiceTypeFormModal } from "@/modules/contracts/components/ServiceTypeFormModal";
-
-const TIPOS_SERVICO = [
-  ...[
-    ...CONTRACT_TYPES.SERVICOS,
-    ...CONTRACT_TYPES.COLABORADORES,
-    ...CONTRACT_TYPES.ARTISTICOS,
-    ...CONTRACT_TYPES.FONOGRAFICOS,
-    ...CONTRACT_TYPES.EDITORIAIS,
-    ...CONTRACT_TYPES.LICENCIAMENTO,
-    ...CONTRACT_TYPES.SHOWS,
-    ...CONTRACT_TYPES.DISTRIBUICAO,
-    ...CONTRACT_TYPES.PARCERIAS,
-    ...CONTRACT_TYPES.MARCAS_PUBLICIDADE,
-    ...CONTRACT_TYPES.JURIDICOS,
-    ...CONTRACT_TYPES.RESCISAO,
-  ].sort((a, b) => a.localeCompare(b, "pt-BR")),
-  "Outros",
-];
 
 const CLIENT_TYPE_LABELS: Record<string, string> = {
   artista: "Artista",
@@ -88,6 +69,7 @@ export default function TemplatesContratos() {
     archive: archiveType,
     isSlugInUse,
   } = useContractServiceTypes();
+  const activeServiceTypes = allServiceTypes.filter((t) => t.active);
   const { contratos } = useContratos();
   const [isTypeFormOpen, setIsTypeFormOpen] = useState(false);
   const [isArchiveOpen, setIsArchiveOpen] = useState(false);
@@ -201,8 +183,8 @@ export default function TemplatesContratos() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="todos">Todos os tipos</SelectItem>
-                  {TIPOS_SERVICO.map((tipo) => (
-                    <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
+                  {activeServiceTypes.map((tipo) => (
+                    <SelectItem key={tipo.slug} value={tipo.name}>{tipo.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -417,7 +399,7 @@ export default function TemplatesContratos() {
           onOpenChange={setIsFormOpen}
           template={selectedTemplate}
           onSave={handleSave}
-          tiposServico={TIPOS_SERVICO}
+          tiposServico={activeServiceTypes}
         />
         <TemplateContratoViewModal
           open={isViewOpen}
