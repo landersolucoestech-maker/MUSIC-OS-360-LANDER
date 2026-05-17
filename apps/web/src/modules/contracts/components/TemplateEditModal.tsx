@@ -284,8 +284,8 @@ export function TemplateEditModal({
     setCustomVar("");
     setAiSuggestions([]);
     setAiSheetOpen(false);
-    setHeaderImage((template as Record<string, unknown>).header_image as string | null ?? null);
-    setFooterImage((template as Record<string, unknown>).footer_image as string | null ?? null);
+    setHeaderImage(template.header_image ?? null);
+    setFooterImage(template.footer_image ?? null);
   }, [template]);
 
   // ── Insert at cursor — must be before any early return ─────────────────

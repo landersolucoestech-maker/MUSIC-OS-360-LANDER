@@ -56,6 +56,9 @@ export interface TemplateContrato {
   conteudo: string;
   descricao?: string | null;
   ativo: boolean;
+  variables_manifest?: string | null;
+  header_image?: string | null;
+  footer_image?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
