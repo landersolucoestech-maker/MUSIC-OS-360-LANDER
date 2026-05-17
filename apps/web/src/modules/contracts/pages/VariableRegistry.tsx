@@ -37,19 +37,36 @@ function isValidSlug(v: string): boolean {
   return SLUG_REGEX.test(v) && v.length >= 2;
 }
 
-// ── Import file validation ─────────────────────────────────────────────────
+// ── Import file validation + normalisation ────────────────────────────────
 
-function isValidImportRow(v: unknown): v is RegistryVariable {
-  if (!v || typeof v !== "object") return false;
+interface ImportRow {
+  name: string;
+  group: string;
+  field: string;
+  placeholder: string;
+  internalGroup?: string;
+}
+
+/** Returns a normalised ImportRow or null if the record is not usable. */
+function normaliseImportRow(v: unknown): ImportRow | null {
+  if (!v || typeof v !== "object") return null;
   const r = v as Record<string, unknown>;
-  return (
-    typeof r.group === "string" &&
-    typeof r.field === "string" &&
-    typeof r.placeholder === "string" &&
-    r.group.trim().length > 0 &&
-    r.field.trim().length > 0 &&
-    r.placeholder.trim().length > 0
-  );
+  const group =
+    typeof r.group === "string" ? r.group.trim() : "";
+  const field =
+    typeof r.field === "string" ? r.field.trim() : "";
+  const placeholder =
+    typeof r.placeholder === "string" ? r.placeholder.trim() : "";
+  if (!group || !field || !placeholder) return null;
+  // `name` is required by the UI — fall back to "GROUP.FIELD" if missing/blank
+  const rawName =
+    typeof r.name === "string" ? r.name.trim() : "";
+  const name = rawName || `${group}.${field}`;
+  const internalGroup =
+    typeof r.internalGroup === "string" && r.internalGroup.trim()
+      ? r.internalGroup.trim()
+      : undefined;
+  return { name, group, field, placeholder, internalGroup };
 }
 
 // ── Empty state ────────────────────────────────────────────────────────────
@@ -264,7 +281,7 @@ function VariableFormModal({
 // ── Import confirmation dialog ─────────────────────────────────────────────
 
 interface ImportPreview {
-  incoming: RegistryVariable[];
+  incoming: ImportRow[];
   willAdd: number;
   willSkip: number;
 }
@@ -385,18 +402,24 @@ export default function VariableRegistry() {
       try {
         const parsed = JSON.parse(ev.target?.result as string);
         if (!Array.isArray(parsed)) throw new Error("not an array");
-        const valid = parsed.filter(isValidImportRow);
+
+        // Normalise each row — filters out invalid entries
+        const valid: ImportRow[] = parsed
+          .map(normaliseImportRow)
+          .filter((r): r is ImportRow => r !== null);
         if (valid.length === 0) throw new Error("no valid rows");
 
-        const existingPlaceholders = new Set(
-          variables.map((v) => v.placeholder.toLowerCase()),
-        );
+        // Build seen set starting from existing registry placeholders.
+        // Update it as we iterate so intra-file duplicates are counted correctly.
+        const seen = new Set(variables.map((v) => v.placeholder.toLowerCase()));
         let willAdd = 0;
         let willSkip = 0;
-        for (const v of valid) {
-          if (existingPlaceholders.has(v.placeholder.toLowerCase())) {
+        for (const row of valid) {
+          const key = row.placeholder.toLowerCase();
+          if (seen.has(key)) {
             willSkip++;
           } else {
+            seen.add(key);
             willAdd++;
           }
         }
@@ -410,7 +433,14 @@ export default function VariableRegistry() {
 
   function handleConfirmImport() {
     if (!importPreview) return;
-    const { added, skipped } = importVariables(importPreview.incoming);
+    // Convert ImportRow → RegistryVariable with dummy id/createdAt;
+    // importVariables() will regenerate both fields.
+    const asVars: RegistryVariable[] = importPreview.incoming.map((row) => ({
+      ...row,
+      id: "",
+      createdAt: "",
+    }));
+    const { added, skipped } = importVariables(asVars);
     setImportPreview(null);
     if (skipped > 0) {
       toast.success(`${added} variável(eis) importada(s) — ${skipped} já existiam`);
