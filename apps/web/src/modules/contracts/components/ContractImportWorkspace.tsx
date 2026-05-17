@@ -106,11 +106,11 @@ function highlightVariablesInText(
 
 function highlightPlaceholdersInText(text: string) {
   if (!text) return <span className="whitespace-pre-wrap text-sm leading-relaxed" />;
-  const parts = text.split(/(\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\})/g);
+  const parts = text.split(/(\{\{[A-Z_]+\.[A-Z_]+\}\})/g);
   return (
     <span className="whitespace-pre-wrap text-sm leading-relaxed font-serif">
       {parts.map((part, i) => {
-        if (/^\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\}$/.test(part)) {
+        if (/^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(part)) {
           return (
             <mark
               key={i}
@@ -618,7 +618,11 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
               {/* Left: document with highlights */}
               <div className="flex flex-col flex-1 min-w-0 border-r border-border">
                 <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between gap-3">
-                  {/* Toggle: Original / Template */}
+                  {/* Title + Toggle: Original / Template */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                    <span className="text-xs font-medium">Documento com variáveis destacadas</span>
+                  </div>
                   <div className="flex items-center rounded-md border border-border overflow-hidden shrink-0">
                     <button
                       type="button"
