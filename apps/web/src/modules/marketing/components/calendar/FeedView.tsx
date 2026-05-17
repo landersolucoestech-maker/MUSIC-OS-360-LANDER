@@ -53,7 +53,11 @@ export function FeedView({ conteudos, onEdit, onDelete, onPublish }: FeedViewPro
         label: date === "sem-data"
           ? "Sem data"
           : format(new Date(date + "T00:00"), "EEEE, d 'de' MMMM yyyy", { locale: ptBR }),
-        items,
+        items: [...items].sort((a, b) => {
+          const ta = `${getDate(a) ?? ""}T${a.horario_publicacao?.slice(0, 5) ?? "00:00"}`;
+          const tb = `${getDate(b) ?? ""}T${b.horario_publicacao?.slice(0, 5) ?? "00:00"}`;
+          return tb.localeCompare(ta);
+        }),
       }));
   }, [conteudos, sortMode]);
 

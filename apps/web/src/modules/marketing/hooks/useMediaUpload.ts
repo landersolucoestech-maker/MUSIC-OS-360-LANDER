@@ -25,12 +25,21 @@ export function useMediaUpload(): UseMediaUploadReturn {
     error: null, isUploading: false, mediaType: null,
   });
 
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const objectUrls = useRef<string[]>([]);
+
+  const revokeObjectUrls = useCallback(() => {
+    objectUrls.current.forEach((url) => {
+      try { URL.revokeObjectURL(url); } catch { /* ignore */ }
+    });
+    objectUrls.current = [];
+  }, []);
 
   const reset = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
+    revokeObjectUrls();
     setState({ file: null, previewUrl: null, progress: 0, error: null, isUploading: false, mediaType: null });
-  }, []);
+  }, [revokeObjectUrls]);
 
   const generateThumbnail = useCallback(async (videoFile: File): Promise<string | null> => {
     return new Promise((resolve) => {
@@ -70,12 +79,18 @@ export function useMediaUpload(): UseMediaUploadReturn {
 
     setState((s) => ({ ...s, file, error: null, isUploading: true, progress: 0, mediaType }));
 
+    revokeObjectUrls();
+
     let previewUrl: string | null = null;
     if (isVideo) {
       previewUrl = await generateThumbnail(file);
-      if (!previewUrl) previewUrl = URL.createObjectURL(file);
+      if (!previewUrl) {
+        previewUrl = URL.createObjectURL(file);
+        objectUrls.current.push(previewUrl);
+      }
     } else {
       previewUrl = URL.createObjectURL(file);
+      objectUrls.current.push(previewUrl);
     }
 
     const simulateProgress = (step: number) => {

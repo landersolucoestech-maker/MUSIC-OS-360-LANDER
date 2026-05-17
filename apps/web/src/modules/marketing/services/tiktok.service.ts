@@ -47,13 +47,19 @@ export const tiktokService = {
   },
 
   async getAnalytics(conteudoId: string): Promise<TikTokAnalytics> {
-    await delay(200);
-    return {
-      view_count:    Math.floor(Math.random() * 50000 + 1000),
-      like_count:    Math.floor(Math.random() * 5000 + 50),
-      comment_count: Math.floor(Math.random() * 300),
-      share_count:   Math.floor(Math.random() * 1000),
-      play_count:    conteudoId ? Math.floor(Math.random() * 80000 + 2000) : 0,
-    };
+    if (MOCK_MODE) {
+      await delay(200);
+      return {
+        view_count:    Math.floor(Math.random() * 50000 + 1000),
+        like_count:    Math.floor(Math.random() * 5000 + 50),
+        comment_count: Math.floor(Math.random() * 300),
+        share_count:   Math.floor(Math.random() * 1000),
+        play_count:    conteudoId ? Math.floor(Math.random() * 80000 + 2000) : 0,
+      };
+    }
+    throw new NotImplementedError(
+      "tiktok.getAnalytics",
+      "Analytics do TikTok não disponível em produção. Ative em Configurações → Integrações.",
+    );
   },
 };

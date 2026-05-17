@@ -48,14 +48,20 @@ export const instagramService = {
   },
 
   async getAnalytics(conteudoId: string): Promise<InstagramAnalytics> {
-    await delay(200);
-    return {
-      impressions:  Math.floor(Math.random() * 8000 + 500),
-      reach:        Math.floor(Math.random() * 5000 + 300),
-      likes:        Math.floor(Math.random() * 600 + 10),
-      comments:     Math.floor(Math.random() * 80),
-      saved:        Math.floor(Math.random() * 200),
-      video_views:  conteudoId ? Math.floor(Math.random() * 3000) : undefined,
-    };
+    if (MOCK_MODE) {
+      await delay(200);
+      return {
+        impressions:  Math.floor(Math.random() * 8000 + 500),
+        reach:        Math.floor(Math.random() * 5000 + 300),
+        likes:        Math.floor(Math.random() * 600 + 10),
+        comments:     Math.floor(Math.random() * 80),
+        saved:        Math.floor(Math.random() * 200),
+        video_views:  conteudoId ? Math.floor(Math.random() * 3000) : undefined,
+      };
+    }
+    throw new NotImplementedError(
+      "instagram.getAnalytics",
+      "Analytics do Instagram não disponível em produção. Ative em Configurações → Integrações.",
+    );
   },
 };

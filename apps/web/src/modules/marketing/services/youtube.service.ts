@@ -49,13 +49,19 @@ export const youtubeService = {
   },
 
   async getAnalytics(conteudoId: string): Promise<YouTubeAnalytics> {
-    await delay(200);
-    return {
-      view_count:          Math.floor(Math.random() * 100000 + 500),
-      like_count:          Math.floor(Math.random() * 8000 + 100),
-      comment_count:       Math.floor(Math.random() * 500),
-      subscriber_gained:   Math.floor(Math.random() * 200),
-      watch_time_minutes:  conteudoId ? Math.floor(Math.random() * 50000 + 1000) : 0,
-    };
+    if (MOCK_MODE) {
+      await delay(200);
+      return {
+        view_count:          Math.floor(Math.random() * 100000 + 500),
+        like_count:          Math.floor(Math.random() * 8000 + 100),
+        comment_count:       Math.floor(Math.random() * 500),
+        subscriber_gained:   Math.floor(Math.random() * 200),
+        watch_time_minutes:  conteudoId ? Math.floor(Math.random() * 50000 + 1000) : 0,
+      };
+    }
+    throw new NotImplementedError(
+      "youtube.getAnalytics",
+      "Analytics do YouTube não disponível em produção. Ative em Configurações → Integrações.",
+    );
   },
 };
