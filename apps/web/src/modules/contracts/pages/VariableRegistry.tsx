@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -373,15 +374,18 @@ export default function VariableRegistry() {
   // ── Export ───────────────────────────────────────────────────────────────
 
   function handleExport() {
-    const json = JSON.stringify(variables, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
+    const rows = variables.map((v) => ({
+      Nome: v.name,
+      Alias: v.group,
+      "Nomenclatura Interna": v.internalGroup ?? "",
+      Campo: v.field,
+      Placeholder: v.placeholder,
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Variáveis");
     const date = new Date().toISOString().slice(0, 10);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = `variaveis-template-${date}.json`;
-    anchor.click();
-    URL.revokeObjectURL(url);
+    XLSX.writeFile(wb, `variaveis-template-${date}.xlsx`);
     toast.success(`${variables.length} variáveis exportadas`);
   }
 
@@ -400,11 +404,27 @@ export default function VariableRegistry() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       try {
-        const parsed = JSON.parse(ev.target?.result as string);
-        if (!Array.isArray(parsed)) throw new Error("not an array");
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        if (!ws) throw new Error("no sheet");
 
-        // Normalise each row — filters out invalid entries
-        const valid: ImportRow[] = parsed
+        // sheet_to_json returns rows as plain objects keyed by header names
+        const rawRows: unknown[] = XLSX.utils.sheet_to_json(ws, { defval: "" });
+
+        // Map spreadsheet column names → our internal field names
+        const remapped = rawRows.map((r) => {
+          const row = r as Record<string, unknown>;
+          return {
+            name:          row["Nome"]                  ?? row["name"]          ?? "",
+            group:         row["Alias"]                 ?? row["group"]         ?? "",
+            field:         row["Campo"]                 ?? row["field"]         ?? "",
+            placeholder:   row["Placeholder"]           ?? row["placeholder"]   ?? "",
+            internalGroup: row["Nomenclatura Interna"]  ?? row["internalGroup"] ?? "",
+          };
+        });
+
+        const valid: ImportRow[] = remapped
           .map(normaliseImportRow)
           .filter((r): r is ImportRow => r !== null);
         if (valid.length === 0) throw new Error("no valid rows");
@@ -429,7 +449,7 @@ export default function VariableRegistry() {
       }
     };
     reader.onerror = () => toast.error("Ficheiro inválido — verifique o formato");
-    reader.readAsText(file);
+    reader.readAsArrayBuffer(file);
   }
 
   function handleConfirmImport() {
@@ -487,7 +507,7 @@ export default function VariableRegistry() {
       <input
         ref={fileInputRef}
         type="file"
-        accept=".json"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         className="hidden"
         onChange={handleFileChange}
         data-testid="input-file-import"
