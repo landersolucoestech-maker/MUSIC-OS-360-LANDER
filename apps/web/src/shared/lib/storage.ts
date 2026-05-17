@@ -14,7 +14,7 @@ import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { getCurrentOrgId } from "./tenant";
 import { TenantError, NotFoundError, TransactionError, ConflictError, IntegrationError } from "./errors";
 import { api, TABLE_ENDPOINT, PENDING_TABLES } from "./api-client";
-import { MOCK_MODE } from "./env";
+import { MOCK_MODE, DEV_AUTH_BYPASS } from "./env";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -375,4 +375,4 @@ const httpStorage = {
  * Em modo HTTP: chamadas REST ao backend NestJS (fallback in-memory para tabelas sem endpoint).
  * Ambas as implementações partilham a mesma interface async — sem cast inseguro.
  */
-export const storage: typeof mockStorage = MOCK_MODE ? mockStorage : httpStorage;
+export const storage: typeof mockStorage = (MOCK_MODE || DEV_AUTH_BYPASS) ? mockStorage : httpStorage;
