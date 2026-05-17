@@ -153,6 +153,13 @@ export default function MarketingCalendario() {
           {/* ── Toolbar: nav + filters ── */}
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                className="text-xs font-medium text-muted-foreground hover:text-foreground border border-border/60 rounded-lg px-2.5 h-8 bg-muted/60 hover:bg-muted transition-colors"
+                onClick={goToToday}
+                data-testid="button-today"
+              >
+                Hoje
+              </button>
               <Button
                 variant="outline"
                 size="icon"
@@ -188,14 +195,6 @@ export default function MarketingCalendario() {
               viewMode={viewMode}
               onViewModeChange={setViewMode}
             />
-
-            <button
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-              onClick={goToToday}
-              data-testid="button-today"
-            >
-              Hoje
-            </button>
           </div>
 
           {/* ── Views ── */}
