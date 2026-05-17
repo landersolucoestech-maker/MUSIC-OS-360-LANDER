@@ -104,6 +104,29 @@ function highlightVariablesInText(
   );
 }
 
+function highlightPlaceholdersInText(text: string) {
+  if (!text) return <span className="whitespace-pre-wrap text-sm leading-relaxed" />;
+  const parts = text.split(/(\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\})/g);
+  return (
+    <span className="whitespace-pre-wrap text-sm leading-relaxed font-serif">
+      {parts.map((part, i) => {
+        if (/^\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\}$/.test(part)) {
+          return (
+            <mark
+              key={i}
+              className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded font-mono text-xs text-foreground"
+              title={part}
+            >
+              {part}
+            </mark>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </span>
+  );
+}
+
 function EditableField({
   label,
   value,
@@ -284,6 +307,7 @@ export function ContractImportWorkspace({
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
   const [analyzeError, setAnalyzeError] = useState<string | null>(null);
+  const [previewMode, setPreviewMode] = useState<"original" | "template">("original");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -422,6 +446,7 @@ export function ContractImportWorkspace({
     setTemplateName("");
     setTemplateDesc("");
     setAnalyzeError(null);
+    setPreviewMode("original");
   }, []);
 
   const handleClose = useCallback(() => {
@@ -592,13 +617,40 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
             <div className="flex flex-1 min-h-0 overflow-hidden">
               {/* Left: document with highlights */}
               <div className="flex flex-col flex-1 min-w-0 border-r border-border">
-                <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                    <span className="text-xs font-medium">Documento com variáveis destacadas</span>
+                <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between gap-3">
+                  {/* Toggle: Original / Template */}
+                  <div className="flex items-center rounded-md border border-border overflow-hidden shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode("original")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        previewMode === "original"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-transparent text-muted-foreground hover:bg-muted"
+                      }`}
+                      data-testid="toggle-preview-original"
+                    >
+                      <FileText className="h-3 w-3" />
+                      Original
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPreviewMode("template")}
+                      className={`flex items-center gap-1.5 px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        previewMode === "template"
+                          ? "bg-primary text-primary-foreground"
+                          : "bg-transparent text-muted-foreground hover:bg-muted"
+                      }`}
+                      data-testid="toggle-preview-template"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Template
+                    </button>
                   </div>
+
+                  {/* Clause type badges */}
                   {parseResult && parseResult.clauseTypes.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1 min-w-0">
                       {parseResult.clauseTypes.slice(0, 5).map((ct) => (
                         <span
                           key={ct}
@@ -615,11 +667,25 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                     </div>
                   )}
                 </div>
+
                 <ScrollArea className="flex-1">
                   <div className="px-6 py-4 min-h-full" data-testid="contract-editor">
-                    {highlightVariablesInText(rawText, variables, activeVariableId)}
+                    {previewMode === "original"
+                      ? highlightVariablesInText(rawText, variables, activeVariableId)
+                      : highlightPlaceholdersInText(applyVariablesToText(rawText, variables))}
                   </div>
                 </ScrollArea>
+
+                {previewMode === "template" && (
+                  <div className="px-4 py-2 border-t border-border shrink-0 flex items-center gap-1.5">
+                    <mark className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded font-mono text-[10px] text-foreground">
+                      {"{{PLACEHOLDER}}"}
+                    </mark>
+                    <span className="text-[10px] text-muted-foreground">
+                      = variável aceite · será substituída pelo valor real em cada contrato gerado
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Right: variable panel */}
