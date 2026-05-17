@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Patch, Delete,
+  Controller, Get, Post, Put, Patch, Delete,
   Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
@@ -7,11 +7,16 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit }           from '../../core/interceptors/audit.interceptor';
+import { ZodValidationPipe } from '../../core/pipes/zod-validation.pipe';
 import { TransactionsService }     from './transactions.service';
-import { CreateTransactionDto }    from './dto/create-transaction.dto';
-import { UpdateTransactionDto }    from './dto/update-transaction.dto';
 import { QueryTransactionDto }     from './dto/query-transaction.dto';
+import {
+  createTransacaoSchema,
+  patchTransacaoSchema,
+  type CreateTransacaoDto,
+  type PatchTransacaoDto,
+} from './validators/transacao.validator';
 
 @ApiTags('Transactions')
 @ApiBearerAuth()
@@ -43,22 +48,35 @@ export class TransactionsController {
   create(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   { userId: string },
-    @Body()          dto:    CreateTransactionDto,
+    @Body(new ZodValidationPipe(createTransacaoSchema)) dto: CreateTransacaoDto,
   ) {
     return this.service.create(tenant.id, user.userId, dto);
+  }
+
+  @Put(':id')
+  @RequireRole('editor')
+  @Audit('transaction.updated')
+  @ApiOperation({ summary: 'Actualizar transacção (full replace — same rules as create)' })
+  replace(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { userId: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body(new ZodValidationPipe(createTransacaoSchema)) dto: CreateTransacaoDto,
+  ) {
+    return this.service.update(tenant.id, user.userId, id, dto);
   }
 
   @Patch(':id')
   @RequireRole('editor')
   @Audit('transaction.updated')
-  @ApiOperation({ summary: 'Actualizar transacção' })
+  @ApiOperation({ summary: 'Actualizar transacção (partial update)' })
   update(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
-    @Body()          dto:    UpdateTransactionDto,
+    @Body(new ZodValidationPipe(patchTransacaoSchema)) dto: PatchTransacaoDto,
   ) {
-    return this.service.update(tenant.id, user.userId, id, dto);
+    return this.service.patch(tenant.id, user.userId, id, dto);
   }
 
   @Delete(':id')
