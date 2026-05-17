@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -16,7 +16,21 @@ import {
   SelectValue,
 } from "@/shared/ui/select";
 import { ScrollArea } from "@/shared/ui/scroll-area";
+import { Upload, FileText, X, Plus } from "lucide-react";
 import type { ContractServiceType, ContractServiceTypeInsert, ClientType, FinancialModel } from "@/modules/contracts/hooks/useContractServiceTypes";
+
+const ACCEPT_DOCS = ".pdf,.doc,.docx,.png,.jpg,.jpeg";
+
+interface Clausula {
+  id: string;
+  titulo: string;
+  conteudo: string;
+}
+
+interface AnexoFile {
+  nome: string;
+  dataUrl: string | null;
+}
 
 const schema = z.object({
   name: z.string().min(2, "Nome obrigatório"),
@@ -68,6 +82,42 @@ export function ServiceTypeFormModal({
 }: ServiceTypeFormModalProps) {
   const isEditing = !!serviceType;
 
+  const [cabecalho, setCabecalho] = useState<AnexoFile | null>(null);
+  const [rodape, setRodape] = useState<AnexoFile | null>(null);
+  const [clausulas, setClausulas] = useState<Clausula[]>([]);
+  const cabecalhoRef = useRef<HTMLInputElement>(null);
+  const rodapeRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: (v: AnexoFile | null) => void,
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setter({ nome: file.name, dataUrl: (ev.target?.result as string) ?? null });
+    };
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  };
+
+  const handleAddClausula = () => {
+    setClausulas((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), titulo: `CLÁUSULA ${prev.length + 1}ª`, conteudo: "" },
+    ]);
+  };
+
+  const handleRemoveClausula = (id: string) =>
+    setClausulas((prev) => prev.filter((c) => c.id !== id));
+
+  const handleClausulaChange = (id: string, field: "titulo" | "conteudo", value: string) =>
+    setClausulas((prev) => prev.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
+
+  const buildConteudo = (): string =>
+    clausulas.map((c) => `${c.titulo}\n${c.conteudo}`).join("\n\n");
+
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -87,6 +137,22 @@ export function ServiceTypeFormModal({
     },
   });
 
+  const parseClausulasFromContent = (content: string): Clausula[] => {
+    const lines = content.split("\n");
+    const result: Clausula[] = [];
+    let current: Clausula | null = null;
+    for (const line of lines) {
+      if (line.match(/^CLÁUSULA|^Cláusula|^\d+\./)) {
+        if (current) result.push(current);
+        current = { id: crypto.randomUUID(), titulo: line.trim(), conteudo: "" };
+      } else if (current) {
+        current.conteudo += line + "\n";
+      }
+    }
+    if (current) result.push(current);
+    return result;
+  };
+
   useEffect(() => {
     if (open) {
       if (serviceType) {
@@ -105,6 +171,17 @@ export function ServiceTypeFormModal({
           active: serviceType.active,
           sort_order: serviceType.sort_order,
         });
+        setCabecalho(
+          serviceType.header_image_url
+            ? { nome: "cabeçalho", dataUrl: serviceType.header_image_url }
+            : null,
+        );
+        setRodape(
+          serviceType.footer_image_url
+            ? { nome: "rodapé", dataUrl: serviceType.footer_image_url }
+            : null,
+        );
+        setClausulas(parseClausulasFromContent(serviceType.conteudo ?? ""));
       } else {
         form.reset({
           name: "",
@@ -121,6 +198,9 @@ export function ServiceTypeFormModal({
           active: true,
           sort_order: 1,
         });
+        setCabecalho(null);
+        setRodape(null);
+        setClausulas([]);
       }
     }
   }, [open, serviceType, form]);
@@ -141,6 +221,9 @@ export function ServiceTypeFormModal({
       ...values,
       description: values.description || null,
       default_financial_category: values.default_financial_category || null,
+      header_image_url: cabecalho?.dataUrl ?? null,
+      footer_image_url: rodape?.dataUrl ?? null,
+      conteudo: buildConteudo(),
     });
   });
 
@@ -303,6 +386,155 @@ export function ServiceTypeFormModal({
                 <Label htmlFor="active" className="font-normal cursor-pointer">Ativo</Label>
               </div>
             )}
+
+            {/* Cabeçalho e Rodapé */}
+            <div className="rounded-lg border border-border p-4 space-y-4">
+              <h3 className="font-medium text-foreground">Cabeçalho e Rodapé</h3>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Cabeçalho */}
+                <div className="space-y-2">
+                  <Label>Cabeçalho do Contrato</Label>
+                  <input
+                    ref={cabecalhoRef}
+                    type="file"
+                    accept={ACCEPT_DOCS}
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, setCabecalho)}
+                    data-testid="input-file-cabecalho"
+                  />
+                  {cabecalho ? (
+                    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+                      <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="flex-1 truncate text-sm">{cabecalho.nome}</span>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setCabecalho(null)}
+                        data-testid="remove-cabecalho"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2 text-muted-foreground"
+                      onClick={() => cabecalhoRef.current?.click()}
+                      data-testid="button-upload-cabecalho"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Anexar cabeçalho
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">PDF, Word ou imagem (PNG/JPG)</p>
+                </div>
+
+                {/* Rodapé */}
+                <div className="space-y-2">
+                  <Label>Rodapé do Contrato</Label>
+                  <input
+                    ref={rodapeRef}
+                    type="file"
+                    accept={ACCEPT_DOCS}
+                    className="hidden"
+                    onChange={(e) => handleFileChange(e, setRodape)}
+                    data-testid="input-file-rodape"
+                  />
+                  {rodape ? (
+                    <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+                      <FileText className="h-4 w-4 shrink-0 text-primary" />
+                      <span className="flex-1 truncate text-sm">{rodape.nome}</span>
+                      <button
+                        type="button"
+                        className="text-muted-foreground hover:text-destructive"
+                        onClick={() => setRodape(null)}
+                        data-testid="remove-rodape"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="w-full gap-2 text-muted-foreground"
+                      onClick={() => rodapeRef.current?.click()}
+                      data-testid="button-upload-rodape"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Anexar rodapé
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">PDF, Word ou imagem (PNG/JPG)</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Cláusulas */}
+            <div className="rounded-lg border border-border p-4 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-medium text-foreground">Cláusulas</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleAddClausula}
+                  className="gap-2"
+                  data-testid="button-add-clausula"
+                >
+                  <Plus className="h-4 w-4" />
+                  Adicionar Cláusula
+                </Button>
+              </div>
+
+              {clausulas.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground text-sm">
+                  Nenhuma cláusula adicionada. Clique em "Adicionar Cláusula" para começar.
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {clausulas.map((clausula, index) => (
+                    <div key={clausula.id} className="rounded-lg border border-border p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <span className="font-medium text-sm">Cláusula {index + 1}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleRemoveClausula(clausula.id)}
+                          className="text-destructive hover:text-destructive h-7 w-7"
+                          data-testid={`remove-clausula-${clausula.id}`}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Título</Label>
+                        <Input
+                          value={clausula.titulo}
+                          onChange={(e) => handleClausulaChange(clausula.id, "titulo", e.target.value)}
+                          placeholder="Ex: DO OBJETO"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Conteúdo</Label>
+                        <Textarea
+                          value={clausula.conteudo}
+                          onChange={(e) => handleClausulaChange(clausula.id, "conteudo", e.target.value)}
+                          placeholder="Texto da cláusula... Use {{VARIAVEL}} para campos dinâmicos."
+                          rows={4}
+                          className="text-sm"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Variáveis disponíveis: {"{{CONTRACTED_NAME}}"}, {"{{ROYALTIES_PERCENTAGE}}"}, {"{{START_DATE}}"}, {"{{END_DATE}}"}, {"{{FIXED_VALUE}}"}, {"{{ADVANCE_AMOUNT}}"}, {"{{FINANCIAL_SUPPORT}}"}, {"{{WORK_TITLE}}"}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </form>
         </ScrollArea>
         <DialogFooter>

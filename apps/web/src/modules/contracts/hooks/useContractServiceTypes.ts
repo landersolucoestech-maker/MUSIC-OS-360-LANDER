@@ -21,6 +21,9 @@ export interface ContractServiceType {
   default_financial_category: string | null;
   active: boolean;
   sort_order: number;
+  header_image_url: string | null;
+  footer_image_url: string | null;
+  conteudo: string;
   created_at: string;
   updated_at: string;
 }
@@ -56,6 +59,9 @@ function rowToType(row: StorageRow): ContractServiceType {
       row.default_financial_category != null ? String(row.default_financial_category) : null,
     active: Boolean(row.active),
     sort_order: Number(row.sort_order ?? 0),
+    header_image_url: row.header_image_url != null ? String(row.header_image_url) : null,
+    footer_image_url: row.footer_image_url != null ? String(row.footer_image_url) : null,
+    conteudo: String(row.conteudo ?? ""),
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
   };

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +8,6 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Textarea } from "@/shared/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -19,7 +18,7 @@ import {
 import { Switch } from "@/shared/ui/switch";
 import { Badge } from "@/shared/ui/badge";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
-import { X, Plus, Save, Upload, FileText, ChevronDown, Check, Search } from "lucide-react";
+import { X, Save, ChevronDown, Check, Search } from "lucide-react";
 import type { TemplateContrato, TemplateContratoInsert } from "@/modules/contracts/hooks/useTemplatesContratos";
 import type { ContractServiceType } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useForm } from "react-hook-form";
@@ -30,19 +29,6 @@ import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useCRMContatos } from "@/modules/contracts/hooks/useCRMContatos";
 import { getContractPartyOrigin } from "@/modules/contracts/mappers/contract-party-origin.mapper";
 import { cn } from "@/shared/lib/utils";
-
-const ACCEPT_DOCS = ".pdf,.doc,.docx,.png,.jpg,.jpeg";
-
-interface Clausula {
-  id: string;
-  titulo: string;
-  conteudo: string;
-}
-
-interface AnexoFile {
-  nome: string;
-  dataUrl: string | null;
-}
 
 interface TemplateContratoFormModalProps {
   open: boolean;
@@ -59,13 +45,6 @@ export function TemplateContratoFormModal({
   onSave,
   tiposServico,
 }: TemplateContratoFormModalProps) {
-  const [clausulas, setClausulas] = useState<Clausula[]>([]);
-
-  const [cabecalho, setCabecalho] = useState<AnexoFile | null>(null);
-  const [rodape, setRodape] = useState<AnexoFile | null>(null);
-  const cabecalhoRef = useRef<HTMLInputElement>(null);
-  const rodapeRef = useRef<HTMLInputElement>(null);
-
   const [artistasSelecionados, setArtistasSelecionados] = useState<string[]>([]);
   const [contatosSelecionados, setContatosSelecionados] = useState<string[]>([]);
   const [artistaSearch, setArtistaSearch] = useState("");
@@ -107,24 +86,10 @@ export function TemplateContratoFormModal({
           tipo_servico: (t.tipo_servico as string) ?? "",
           ativo: (t.ativo as boolean) ?? true,
         });
-        setClausulas(parseClausulasFromContent((t.conteudo as string) ?? ""));
-        setCabecalho(
-          (t.header_image_url as string)
-            ? { nome: "cabeçalho", dataUrl: t.header_image_url as string }
-            : null
-        );
-        setRodape(
-          (t.footer_image_url as string)
-            ? { nome: "rodapé", dataUrl: t.footer_image_url as string }
-            : null
-        );
         setArtistasSelecionados((t.artistas_ids as string[]) ?? []);
         setContatosSelecionados((t.clientes_ids as string[]) ?? []);
       } else {
         reset({ nome: "", tipo_servico: "", ativo: true });
-        setClausulas([]);
-        setCabecalho(null);
-        setRodape(null);
         setArtistasSelecionados([]);
         setContatosSelecionados([]);
       }
@@ -147,63 +112,6 @@ export function TemplateContratoFormModal({
       setArtistasSelecionados([]);
     }
   }, [partyOrigin, isArtistico, isCRM]);
-
-  const parseClausulasFromContent = (content: string): Clausula[] => {
-    const lines = content.split("\n");
-    const clausulasTemp: Clausula[] = [];
-    let currentClausula: Clausula | null = null;
-
-    for (const line of lines) {
-      if (line.match(/^CLÁUSULA|^Cláusula|^\d+\./)) {
-        if (currentClausula) clausulasTemp.push(currentClausula);
-        currentClausula = { id: crypto.randomUUID(), titulo: line.trim(), conteudo: "" };
-      } else if (currentClausula) {
-        currentClausula.conteudo += line + "\n";
-      }
-    }
-    if (currentClausula) clausulasTemp.push(currentClausula);
-    return clausulasTemp;
-  };
-
-  const handleAddClausula = () => {
-    setClausulas([...clausulas, {
-      id: crypto.randomUUID(),
-      titulo: `CLÁUSULA ${clausulas.length + 1}ª`,
-      conteudo: "",
-    }]);
-  };
-
-  const handleRemoveClausula = (id: string) =>
-    setClausulas(clausulas.filter((c) => c.id !== id));
-
-  const handleClausulaChange = (id: string, field: "titulo" | "conteudo", value: string) =>
-    setClausulas(clausulas.map((c) => (c.id === id ? { ...c, [field]: value } : c)));
-
-  const buildConteudo = (): string =>
-    clausulas.map((c) => `${c.titulo}\n${c.conteudo}`).join("\n\n");
-
-  const extractVariaveis = (): string[] => {
-    const regex = /\{\{([A-Z_]+)\}\}/g;
-    const extracted = new Set<string>();
-    for (const match of buildConteudo().matchAll(regex)) {
-      extracted.add(match[1]);
-    }
-    return Array.from(extracted);
-  };
-
-  const handleFileChange = (
-    e: React.ChangeEvent<HTMLInputElement>,
-    setter: (v: AnexoFile | null) => void
-  ) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      setter({ nome: file.name, dataUrl: ev.target?.result as string ?? null });
-    };
-    reader.readAsDataURL(file);
-    e.target.value = "";
-  };
 
   const toggleArtista = (id: string) => {
     setArtistasSelecionados((prev) =>
@@ -232,11 +140,11 @@ export function TemplateContratoFormModal({
       nome: data.nome,
       tipo_servico: data.tipo_servico,
       descricao: "",
-      conteudo: buildConteudo(),
-      variaveis: extractVariaveis(),
+      conteudo: "",
+      variaveis: [],
       ativo: data.ativo,
-      header_image_url: cabecalho?.dataUrl ?? null,
-      footer_image_url: rodape?.dataUrl ?? null,
+      header_image_url: null,
+      footer_image_url: null,
       party_origin: partyOrigin,
       artistas_ids: isArtistico ? artistasSelecionados : [],
       clientes_ids: isCRM ? contatosSelecionados : [],
@@ -478,155 +386,6 @@ export function TemplateContratoFormModal({
               )}
             </div>
           )}
-
-          {/* Cabeçalho e Rodapé */}
-          <div className="rounded-lg border border-border p-4 space-y-4">
-            <h3 className="font-medium text-foreground">Cabeçalho e Rodapé</h3>
-            <div className="grid gap-4 md:grid-cols-2">
-              {/* Cabeçalho */}
-              <div className="space-y-2">
-                <Label>Cabeçalho do Contrato</Label>
-                <input
-                  ref={cabecalhoRef}
-                  type="file"
-                  accept={ACCEPT_DOCS}
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, setCabecalho)}
-                  data-testid="input-file-cabecalho"
-                />
-                {cabecalho ? (
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-                    <FileText className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="flex-1 truncate text-sm">{cabecalho.nome}</span>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => setCabecalho(null)}
-                      data-testid="remove-cabecalho"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full gap-2 text-muted-foreground"
-                    onClick={() => cabecalhoRef.current?.click()}
-                    data-testid="button-upload-cabecalho"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Anexar cabeçalho
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">PDF, Word ou imagem (PNG/JPG)</p>
-              </div>
-
-              {/* Rodapé */}
-              <div className="space-y-2">
-                <Label>Rodapé do Contrato</Label>
-                <input
-                  ref={rodapeRef}
-                  type="file"
-                  accept={ACCEPT_DOCS}
-                  className="hidden"
-                  onChange={(e) => handleFileChange(e, setRodape)}
-                  data-testid="input-file-rodape"
-                />
-                {rodape ? (
-                  <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
-                    <FileText className="h-4 w-4 shrink-0 text-primary" />
-                    <span className="flex-1 truncate text-sm">{rodape.nome}</span>
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-destructive"
-                      onClick={() => setRodape(null)}
-                      data-testid="remove-rodape"
-                    >
-                      <X className="h-4 w-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="w-full gap-2 text-muted-foreground"
-                    onClick={() => rodapeRef.current?.click()}
-                    data-testid="button-upload-rodape"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Anexar rodapé
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">PDF, Word ou imagem (PNG/JPG)</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Cláusulas */}
-          <div className="rounded-lg border border-border p-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-medium text-foreground">Cláusulas</h3>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleAddClausula}
-                className="gap-2"
-                data-testid="button-add-clausula"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar Cláusula
-              </Button>
-            </div>
-
-            {clausulas.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground text-sm">
-                Nenhuma cláusula adicionada. Clique em "Adicionar Cláusula" para começar.
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {clausulas.map((clausula, index) => (
-                  <div key={clausula.id} className="rounded-lg border border-border p-4 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">Cláusula {index + 1}</span>
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleRemoveClausula(clausula.id)}
-                        className="text-destructive hover:text-destructive h-7 w-7"
-                        data-testid={`remove-clausula-${clausula.id}`}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Título</Label>
-                      <Input
-                        value={clausula.titulo}
-                        onChange={(e) => handleClausulaChange(clausula.id, "titulo", e.target.value)}
-                        placeholder="Ex: DO OBJETO"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Conteúdo</Label>
-                      <Textarea
-                        value={clausula.conteudo}
-                        onChange={(e) => handleClausulaChange(clausula.id, "conteudo", e.target.value)}
-                        placeholder="Texto da cláusula... Use {{VARIAVEL}} para campos dinâmicos."
-                        rows={4}
-                        className="text-sm"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Variáveis disponíveis: {"{{CONTRACTED_NAME}}"}, {"{{ROYALTIES_PERCENTAGE}}"}, {"{{START_DATE}}"}, {"{{END_DATE}}"}, {"{{FIXED_VALUE}}"}, {"{{ADVANCE_AMOUNT}}"}, {"{{FINANCIAL_SUPPORT}}"}, {"{{WORK_TITLE}}"}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
 
           <div className="flex justify-end gap-3 pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
