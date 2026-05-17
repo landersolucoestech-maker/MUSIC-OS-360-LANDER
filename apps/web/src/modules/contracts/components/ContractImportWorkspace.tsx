@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import {
-  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X,
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -28,57 +28,6 @@ interface ContractImportWorkspaceProps {
   onOpenChange: (open: boolean) => void;
   onSave: (data: TemplateContratoInsert) => void;
 }
-
-// ── Default variable groups ────────────────────────────────────────────────
-
-const DEFAULT_VARIABLE_GROUPS: { label: string; vars: string[] }[] = [
-  {
-    label: "Envolvidos",
-    vars: [
-      "PARTY.NAME", "PARTY.CPF", "PARTY.CNPJ", "PARTY.RG",
-      "PARTY.EMAIL", "PARTY.PHONE", "PARTY.ADDRESS",
-      "PARTY.NATIONALITY", "PARTY.MARITAL_STATUS",
-      "PARTY.PROFESSION", "PARTY.ARTISTIC_NAME",
-    ],
-  },
-  {
-    label: "Financeiro",
-    vars: [
-      "PAYMENT.AMOUNT", "PAYMENT.CURRENCY", "PAYMENT.METHOD",
-      "PAYMENT.DUE_DATE", "PAYMENT.DUE_DAY", "PAYMENT.INSTALLMENTS",
-      "PAYMENT.DOWN_PAYMENT", "PAYMENT.FINAL_PAYMENT",
-      "PAYMENT.RECURRENCE", "PAYMENT.LATE_INTEREST", "PAYMENT.FINE",
-      "PAYMENT.ROYALTIES_PERCENTAGE", "PAYMENT.COMMISSION_PERCENTAGE",
-    ],
-  },
-  {
-    label: "Contrato",
-    vars: [
-      "CONTRACT.START_DATE", "CONTRACT.END_DATE", "CONTRACT.DURATION",
-      "CONTRACT.RENEWAL", "CONTRACT.TERRITORY", "CONTRACT.JURISDICTION",
-      "CONTRACT.CONFIDENTIALITY_PERIOD",
-    ],
-  },
-  {
-    label: "Obra",
-    vars: [
-      "WORK.TITLE", "WORK.ISRC", "WORK.ISWC", "WORK.UPC", "WORK.RELEASE_DATE",
-    ],
-  },
-  {
-    label: "Evento",
-    vars: [
-      "EVENT.DATE", "EVENT.LOCATION", "EVENT.CACHE",
-      "EVENT.HOSPITALITY", "EVENT.RIDER",
-    ],
-  },
-  {
-    label: "Audiovisual",
-    vars: [
-      "VIDEO.RESOLUTION", "VIDEO.SCRIPT", "VIDEO.DELIVERY_DATE", "VIDEO.FORMAT",
-    ],
-  },
-];
 
 // ── Regex helpers ──────────────────────────────────────────────────────────
 
@@ -113,60 +62,6 @@ function HighlightedPreview({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </p>
-  );
-}
-
-// ── Variable group accordion ───────────────────────────────────────────────
-
-interface VarGroupProps {
-  label: string;
-  vars: string[];
-  onInsert: (placeholder: string) => void;
-  searchQuery: string;
-}
-
-function VarGroup({ label, vars, onInsert, searchQuery }: VarGroupProps) {
-  const [open, setOpen] = useState(true);
-
-  const visible = searchQuery
-    ? vars.filter((v) => v.toLowerCase().includes(searchQuery.toLowerCase()))
-    : vars;
-
-  if (visible.length === 0) return null;
-
-  return (
-    <div className="mb-2">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
-        data-testid={`button-vargroup-${label}`}
-      >
-        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-        {label}
-      </button>
-      {open && (
-        <div className="space-y-0.5 pl-1">
-          {visible.map((v) => (
-            <div
-              key={v}
-              className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
-            >
-              <span className="font-mono text-[11px] text-foreground/80 truncate">{`{{${v}}}`}</span>
-              <button
-                type="button"
-                onClick={() => onInsert(`{{${v}}}`)}
-                className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
-                title={`Inserir {{${v}}}`}
-                data-testid={`button-insert-var-${v}`}
-              >
-                <Plus className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
   );
 }
 
@@ -566,21 +461,16 @@ export function ContractImportWorkspace({
                 />
               </div>
 
-              {/* Variable list */}
+              {/* Variable list — Minhas Variáveis only */}
               <ScrollArea className="flex-1 px-3">
-                {DEFAULT_VARIABLE_GROUPS.map((group) => (
-                  <VarGroup
-                    key={group.label}
-                    label={group.label}
-                    vars={group.vars}
-                    onInsert={insertAtCursor}
-                    searchQuery={search}
-                  />
-                ))}
-
-                {/* Registry section */}
-                {filteredRegistryVars.length > 0 && (
-                  <div className="mt-2 mb-2">
+                {filteredRegistryVars.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
+                    {search
+                      ? "Nenhuma variável encontrada"
+                      : "Nenhuma variável criada. Aceda a Contratos → Variáveis para criar."}
+                  </p>
+                ) : (
+                  <div className="mb-2">
                     <div className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                       <ChevronDown className="h-3 w-3" />
                       Minhas Variáveis
