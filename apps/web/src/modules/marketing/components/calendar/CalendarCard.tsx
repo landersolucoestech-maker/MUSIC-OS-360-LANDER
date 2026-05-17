@@ -52,7 +52,7 @@ const TIPO_ASPECT: Record<string, string> = {
   video:    "aspect-video",
   shorts:   "aspect-[9/16]",
   carrossel: "aspect-square",
-  post:     "aspect-square",
+  post:     "aspect-video",
   anuncio:  "aspect-video",
 };
 

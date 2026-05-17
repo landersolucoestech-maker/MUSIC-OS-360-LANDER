@@ -46,7 +46,7 @@ export function FeedView({ conteudos, onEdit, onDelete }: FeedViewProps) {
       map.get(d)!.push(c);
     });
     return Array.from(map.entries())
-      .sort(([a], [b]) => (a === "sem-data" ? 1 : b === "sem-data" ? -1 : a.localeCompare(b)))
+      .sort(([a], [b]) => (a === "sem-data" ? 1 : b === "sem-data" ? -1 : b.localeCompare(a)))
       .map(([date, items]) => ({
         date,
         label: date === "sem-data"

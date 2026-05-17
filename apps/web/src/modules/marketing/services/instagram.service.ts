@@ -1,21 +1,17 @@
+import { MOCK_MODE } from "@/shared/lib/env";
 import { IntegrationError } from "@/shared/lib/errors";
 
-export interface InstagramPostPayload {
+export interface InstagramSchedulePayload {
+  conteudoId:   string;
   caption:      string;
-  media_url:    string;
-  media_type:   "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
+  media_url?:   string;
+  media_type?:  "IMAGE" | "VIDEO" | "CAROUSEL_ALBUM";
   hashtags?:    string[];
-  location_id?: string;
+  location?:    string;
+  scheduledAt:  string;
 }
 
-export interface InstagramPostResult {
-  id:           string;
-  permalink:    string;
-  timestamp:    string;
-  media_type:   string;
-}
-
-export interface InstagramInsight {
+export interface InstagramAnalytics {
   impressions:  number;
   reach:        number;
   likes:        number;
@@ -24,49 +20,42 @@ export interface InstagramInsight {
   video_views?: number;
 }
 
-async function delay(ms = 400) {
+async function delay(ms = 350) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 export const instagramService = {
-  async publishPost(payload: InstagramPostPayload): Promise<InstagramPostResult> {
-    await delay();
-    const enabled = false;
-    if (!enabled) {
-      throw new IntegrationError(
-        "instagram",
-        "Publicação no Instagram não está habilitada neste ambiente. Configure a integração em Configurações → Integrações.",
-      );
+  async schedulePost(payload: InstagramSchedulePayload): Promise<{ id: string; scheduledAt: string }> {
+    if (MOCK_MODE) {
+      await delay();
+      return { id: `ig-sched-${Date.now()}`, scheduledAt: payload.scheduledAt };
     }
-    return {
-      id:         `ig-mock-${Date.now()}`,
-      permalink:  `https://www.instagram.com/p/mock-${Date.now()}/`,
-      timestamp:  new Date().toISOString(),
-      media_type: payload.media_type,
-    };
+    throw new IntegrationError(
+      "instagram",
+      "Instagram API não configurada. Ative a integração em Configurações → Integrações.",
+    );
   },
 
-  async schedulePost(payload: InstagramPostPayload & { scheduled_publish_time: string }): Promise<{ id: string; status: "SCHEDULED" }> {
-    await delay();
-    const enabled = false;
-    if (!enabled) {
-      throw new IntegrationError(
-        "instagram",
-        "Agendamento no Instagram não está habilitado neste ambiente.",
-      );
+  async publishNow(conteudoId: string): Promise<{ url: string }> {
+    if (MOCK_MODE) {
+      await delay();
+      return { url: `https://www.instagram.com/p/mock-${conteudoId}/` };
     }
-    return { id: `ig-scheduled-${Date.now()}`, status: "SCHEDULED" };
+    throw new IntegrationError(
+      "instagram",
+      "Instagram API não configurada. Ative a integração em Configurações → Integrações.",
+    );
   },
 
-  async getInsights(mediaId: string): Promise<InstagramInsight> {
-    await delay();
+  async getAnalytics(conteudoId: string): Promise<InstagramAnalytics> {
+    await delay(200);
     return {
       impressions:  Math.floor(Math.random() * 8000 + 500),
       reach:        Math.floor(Math.random() * 5000 + 300),
       likes:        Math.floor(Math.random() * 600 + 10),
       comments:     Math.floor(Math.random() * 80),
       saved:        Math.floor(Math.random() * 200),
-      video_views:  mediaId ? Math.floor(Math.random() * 3000) : undefined,
+      video_views:  conteudoId ? Math.floor(Math.random() * 3000) : undefined,
     };
   },
 };

@@ -1,56 +1,76 @@
-import { useState, useCallback } from "react";
+import { useCallback } from "react";
+import { startOfWeek, endOfWeek, parseISO, isWithinInterval } from "date-fns";
+import { useConteudos } from "./useConteudos";
+import type { ConteudoInsert, ConteudoWithRelations } from "./useConteudos";
 import { publishingService } from "../services/publishing.service";
-import type { PublishResult, ScheduleResult } from "../services/publishing.service";
-import type { ConteudoWithRelations } from "../types/marketing.types";
+import type { PublishNowResult, SchedulePostResult } from "../services/publishing.service";
 
-export type SchedulerStatus = "idle" | "publishing" | "scheduling" | "success" | "error";
+export type { PublishNowResult, SchedulePostResult };
 
-export interface ContentSchedulerState {
-  status:        SchedulerStatus;
-  publishResult?: PublishResult;
-  scheduleResult?: ScheduleResult;
-  error?:        string;
-}
-
-export interface UseContentSchedulerReturn extends ContentSchedulerState {
-  publish:  (conteudo: ConteudoWithRelations, mediaUrl?: string) => Promise<PublishResult>;
-  schedule: (conteudo: ConteudoWithRelations, scheduledAt: string, mediaUrl?: string) => Promise<ScheduleResult>;
-  reset:    () => void;
+export interface UseContentSchedulerReturn {
+  conteudos:          ConteudoWithRelations[];
+  isLoading:          boolean;
+  scheduleContent:    (payload: ConteudoInsert & { scheduledAt: string }) => Promise<SchedulePostResult>;
+  publishNow:         (conteudo: ConteudoWithRelations) => Promise<PublishNowResult>;
+  getScheduledForWeek:(weekStart: Date) => ConteudoWithRelations[];
+  getByStatus:        (status: string) => ConteudoWithRelations[];
 }
 
 export function useContentScheduler(): UseContentSchedulerReturn {
-  const [state, setState] = useState<ContentSchedulerState>({ status: "idle" });
+  const { conteudos, isLoading, addConteudo, updateConteudo } = useConteudos();
 
-  const reset = useCallback(() => setState({ status: "idle" }), []);
+  const scheduleContent = useCallback(async (
+    payload: ConteudoInsert & { scheduledAt: string },
+  ): Promise<SchedulePostResult> => {
+    const { scheduledAt, ...rest } = payload;
 
-  const publish = useCallback(async (
-    conteudo: ConteudoWithRelations,
-    mediaUrl = "",
-  ): Promise<PublishResult> => {
-    setState({ status: "publishing" });
-    const result = await publishingService.publish(conteudo, mediaUrl);
-    if (result.success) {
-      setState({ status: "success", publishResult: result });
-    } else {
-      setState({ status: "error", publishResult: result, error: result.error });
-    }
+    const newConteudo = await addConteudo.mutateAsync({
+      ...rest,
+      status:             "agendado",
+      data_publicacao:    scheduledAt.slice(0, 10),
+      horario_publicacao: scheduledAt.slice(11, 16),
+    });
+
+    const result = await publishingService.schedulePost(
+      newConteudo as unknown as ConteudoWithRelations,
+      scheduledAt,
+    );
+
     return result;
-  }, []);
+  }, [addConteudo]);
 
-  const schedule = useCallback(async (
+  const publishNow = useCallback(async (
     conteudo: ConteudoWithRelations,
-    scheduledAt: string,
-    mediaUrl = "",
-  ): Promise<ScheduleResult> => {
-    setState({ status: "scheduling" });
-    const result = await publishingService.schedule(conteudo, scheduledAt, mediaUrl);
-    if (result.success) {
-      setState({ status: "success", scheduleResult: result });
-    } else {
-      setState({ status: "error", scheduleResult: result, error: result.error });
-    }
-    return result;
-  }, []);
+  ): Promise<PublishNowResult> => {
+    const result = await publishingService.publishNow(conteudo);
 
-  return { ...state, publish, schedule, reset };
+    if (result.success) {
+      await updateConteudo.mutateAsync({
+        id:     conteudo.id,
+        status: "publicado",
+        url:    result.url ?? null,
+      });
+    }
+
+    return result;
+  }, [updateConteudo]);
+
+  const getScheduledForWeek = useCallback((weekStart: Date): ConteudoWithRelations[] => {
+    const ws = startOfWeek(weekStart, { weekStartsOn: 1 });
+    const we = endOfWeek(weekStart,   { weekStartsOn: 1 });
+    return conteudos.filter((c) => {
+      const dateStr = c.data_publicacao;
+      if (!dateStr) return false;
+      try {
+        const d = parseISO(dateStr.slice(0, 10));
+        return isWithinInterval(d, { start: ws, end: we });
+      } catch { return false; }
+    });
+  }, [conteudos]);
+
+  const getByStatus = useCallback((status: string): ConteudoWithRelations[] => {
+    return conteudos.filter((c) => c.status === status);
+  }, [conteudos]);
+
+  return { conteudos, isLoading, scheduleContent, publishNow, getScheduledForWeek, getByStatus };
 }

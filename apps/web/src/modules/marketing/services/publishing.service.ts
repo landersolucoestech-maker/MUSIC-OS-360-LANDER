@@ -6,19 +6,30 @@ import { IntegrationError } from "@/shared/lib/errors";
 
 export type PublishPlatform = "instagram" | "tiktok" | "youtube" | "facebook" | "twitter" | "linkedin";
 
-export interface PublishResult {
-  platform:  PublishPlatform;
-  success:   boolean;
-  external_id?: string;
-  url?:         string;
-  error?:       string;
+export interface PublishNowResult {
+  platform:    PublishPlatform;
+  success:     boolean;
+  url?:        string;
+  error?:      string;
 }
 
-export interface ScheduleResult {
-  platform:   PublishPlatform;
-  success:    boolean;
-  scheduled_at: string;
-  error?:     string;
+export interface SchedulePostResult {
+  platform:    PublishPlatform;
+  success:     boolean;
+  id?:         string;
+  scheduledAt?: string;
+  error?:      string;
+}
+
+export interface PlatformAnalytics {
+  impressions?:   number;
+  reach?:         number;
+  likes?:         number;
+  comments?:      number;
+  views?:         number;
+  shares?:        number;
+  saved?:         number;
+  [key: string]:  number | undefined;
 }
 
 function getFirstPlatform(c: ConteudoWithRelations): PublishPlatform | null {
@@ -32,7 +43,10 @@ function getMeta(c: ConteudoWithRelations): Record<string, unknown> {
 }
 
 export const publishingService = {
-  async publish(conteudo: ConteudoWithRelations, mediaUrl = ""): Promise<PublishResult> {
+  async schedulePost(
+    conteudo: ConteudoWithRelations,
+    scheduledAt: string,
+  ): Promise<SchedulePostResult> {
     const platform = getFirstPlatform(conteudo);
     if (!platform) return { platform: "instagram", success: false, error: "Nenhuma plataforma selecionada" };
 
@@ -40,87 +54,87 @@ export const publishingService = {
 
     try {
       if (platform === "instagram") {
-        const result = await instagramService.publishPost({
-          caption:    conteudo.legenda ?? "",
-          media_url:  mediaUrl,
-          media_type: (meta.carrossel as boolean) ? "CAROUSEL_ALBUM" : "IMAGE",
-          hashtags:   (meta.hashtags as string[] | undefined) ?? [],
-          location_id: (meta.location as string | undefined),
+        const r = await instagramService.schedulePost({
+          conteudoId:  conteudo.id,
+          caption:     conteudo.legenda ?? "",
+          hashtags:    (meta.hashtags as string[] | undefined) ?? [],
+          location:    (meta.location  as string | undefined),
+          media_type:  (meta.carrossel as boolean) ? "CAROUSEL_ALBUM" : "IMAGE",
+          scheduledAt,
         });
-        return { platform, success: true, external_id: result.id, url: result.permalink };
+        return { platform, success: true, id: r.id, scheduledAt: r.scheduledAt };
       }
 
       if (platform === "tiktok") {
-        const result = await tiktokService.publishVideo({
+        const r = await tiktokService.schedulePost({
+          conteudoId:    conteudo.id,
           title:         conteudo.titulo ?? "",
-          video_url:     mediaUrl,
-          privacy_level: (meta.tkPrivacy === "friends" ? "MUTUAL_FOLLOW_FRIENDS" : meta.tkPrivacy === "private" ? "SELF_ONLY" : "PUBLIC_TO_EVERYONE"),
+          privacy_level: (meta.tkPrivacy as "public" | "friends" | "private" | undefined) ?? "public",
+          duration_secs: (meta.tkDuration as number | undefined),
+          thumbnail_url: (meta.tkThumbnail as string | undefined),
+          scheduledAt,
         });
-        return { platform, success: true, external_id: result.publish_id, url: result.share_url };
+        return { platform, success: true, id: r.id, scheduledAt: r.scheduledAt };
       }
 
       if (platform === "youtube") {
-        const result = await youtubeService.uploadVideo({
+        const r = await youtubeService.schedulePost({
+          conteudoId:     conteudo.id,
           title:          conteudo.titulo ?? "",
           description:    conteudo.legenda ?? "",
-          tags:           (meta.ytTags as string[] | undefined) ?? [],
-          privacy_status: (meta.ytPrivacy as "public" | "unlisted" | "private" | undefined) ?? "public",
-          video_url:      mediaUrl,
+          tags:           (meta.ytTags     as string[] | undefined) ?? [],
+          privacy_status: (meta.ytPrivacy  as "public" | "unlisted" | "private" | undefined) ?? "public",
+          thumbnail_url:  (meta.ytThumbnail as string | undefined),
+          scheduledAt,
         });
-        return { platform, success: true, external_id: result.id, url: result.url };
+        return { platform, success: true, id: r.id, scheduledAt: r.scheduledAt };
       }
 
-      throw new IntegrationError(platform, `Publicação em ${platform} não está disponível.`);
+      throw new IntegrationError(platform, `Agendamento em ${platform} não disponível.`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      return { platform, success: false, error: msg };
+      return { platform, success: false, error: err instanceof Error ? err.message : "Erro desconhecido" };
     }
   },
 
-  async schedule(conteudo: ConteudoWithRelations, scheduledAt: string, mediaUrl = ""): Promise<ScheduleResult> {
+  async publishNow(conteudo: ConteudoWithRelations): Promise<PublishNowResult> {
     const platform = getFirstPlatform(conteudo);
-    if (!platform) return { platform: "instagram", success: false, scheduled_at: scheduledAt, error: "Nenhuma plataforma selecionada" };
-
-    const meta = getMeta(conteudo);
+    if (!platform) return { platform: "instagram", success: false, error: "Nenhuma plataforma selecionada" };
 
     try {
       if (platform === "instagram") {
-        await instagramService.schedulePost({
-          caption:    conteudo.legenda ?? "",
-          media_url:  mediaUrl,
-          media_type: (meta.carrossel as boolean) ? "CAROUSEL_ALBUM" : "IMAGE",
-          hashtags:   (meta.hashtags as string[] | undefined) ?? [],
-          scheduled_publish_time: scheduledAt,
-        });
-        return { platform, success: true, scheduled_at: scheduledAt };
+        const r = await instagramService.publishNow(conteudo.id);
+        return { platform, success: true, url: r.url };
       }
-
       if (platform === "tiktok") {
-        await tiktokService.scheduleVideo({
-          title:         conteudo.titulo ?? "",
-          video_url:     mediaUrl,
-          privacy_level: (meta.tkPrivacy === "friends" ? "MUTUAL_FOLLOW_FRIENDS" : meta.tkPrivacy === "private" ? "SELF_ONLY" : "PUBLIC_TO_EVERYONE"),
-          scheduled_publish_time: scheduledAt,
-        });
-        return { platform, success: true, scheduled_at: scheduledAt };
+        const r = await tiktokService.publishNow(conteudo.id);
+        return { platform, success: true, url: r.url };
       }
-
       if (platform === "youtube") {
-        await youtubeService.scheduleVideo({
-          title:          conteudo.titulo ?? "",
-          description:    conteudo.legenda ?? "",
-          tags:           (meta.ytTags as string[] | undefined) ?? [],
-          privacy_status: (meta.ytPrivacy as "public" | "unlisted" | "private" | undefined) ?? "public",
-          video_url:      mediaUrl,
-          publish_at:     scheduledAt,
-        });
-        return { platform, success: true, scheduled_at: scheduledAt };
+        const r = await youtubeService.publishNow(conteudo.id);
+        return { platform, success: true, url: r.url };
       }
-
-      throw new IntegrationError(platform, `Agendamento em ${platform} não está disponível.`);
+      throw new IntegrationError(platform, `Publicação em ${platform} não disponível.`);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : "Erro desconhecido";
-      return { platform, success: false, scheduled_at: scheduledAt, error: msg };
+      return { platform, success: false, error: err instanceof Error ? err.message : "Erro desconhecido" };
     }
+  },
+
+  async getAnalytics(conteudo: ConteudoWithRelations): Promise<PlatformAnalytics> {
+    const platform = getFirstPlatform(conteudo);
+    if (!platform) return {};
+
+    if (platform === "instagram") {
+      const r = await instagramService.getAnalytics(conteudo.id);
+      return { impressions: r.impressions, reach: r.reach, likes: r.likes, comments: r.comments, saved: r.saved };
+    }
+    if (platform === "tiktok") {
+      const r = await tiktokService.getAnalytics(conteudo.id);
+      return { views: r.view_count, likes: r.like_count, comments: r.comment_count, shares: r.share_count };
+    }
+    if (platform === "youtube") {
+      const r = await youtubeService.getAnalytics(conteudo.id);
+      return { views: r.view_count, likes: r.like_count, comments: r.comment_count };
+    }
+    return {};
   },
 };

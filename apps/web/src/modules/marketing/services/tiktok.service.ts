@@ -1,20 +1,17 @@
+import { MOCK_MODE } from "@/shared/lib/env";
 import { IntegrationError } from "@/shared/lib/errors";
 
-export interface TikTokPostPayload {
+export interface TikTokSchedulePayload {
+  conteudoId:    string;
   title:         string;
-  video_url:     string;
-  privacy_level: "PUBLIC_TO_EVERYONE" | "MUTUAL_FOLLOW_FRIENDS" | "SELF_ONLY";
-  disable_duet?: boolean;
-  disable_stitch?: boolean;
-  disable_comment?: boolean;
+  video_url?:    string;
+  privacy_level: "public" | "friends" | "private";
+  duration_secs?: number;
+  thumbnail_url?: string;
+  scheduledAt:   string;
 }
 
-export interface TikTokPostResult {
-  publish_id: string;
-  share_url?: string;
-}
-
-export interface TikTokVideoStats {
+export interface TikTokAnalytics {
   view_count:    number;
   like_count:    number;
   comment_count: number;
@@ -22,46 +19,41 @@ export interface TikTokVideoStats {
   play_count:    number;
 }
 
-async function delay(ms = 400) {
+async function delay(ms = 350) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 export const tiktokService = {
-  async publishVideo(payload: TikTokPostPayload): Promise<TikTokPostResult> {
-    await delay();
-    const enabled = false;
-    if (!enabled) {
-      throw new IntegrationError(
-        "tiktok",
-        "Publicação no TikTok não está habilitada. Configure a integração em Configurações → Integrações.",
-      );
+  async schedulePost(payload: TikTokSchedulePayload): Promise<{ id: string; scheduledAt: string }> {
+    if (MOCK_MODE) {
+      await delay();
+      return { id: `tt-sched-${Date.now()}`, scheduledAt: payload.scheduledAt };
     }
-    return {
-      publish_id: `tt-mock-${Date.now()}`,
-      share_url:  `https://www.tiktok.com/@user/video/mock-${Date.now()}`,
-    };
+    throw new IntegrationError(
+      "tiktok",
+      "TikTok API não configurada. Ative a integração em Configurações → Integrações.",
+    );
   },
 
-  async scheduleVideo(payload: TikTokPostPayload & { scheduled_publish_time: string }): Promise<{ publish_id: string; status: "SCHEDULED" }> {
-    await delay();
-    const enabled = false;
-    if (!enabled) {
-      throw new IntegrationError(
-        "tiktok",
-        "Agendamento no TikTok não está habilitado neste ambiente.",
-      );
+  async publishNow(conteudoId: string): Promise<{ url: string }> {
+    if (MOCK_MODE) {
+      await delay();
+      return { url: `https://www.tiktok.com/@user/video/mock-${conteudoId}` };
     }
-    return { publish_id: `tt-scheduled-${Date.now()}`, status: "SCHEDULED" };
+    throw new IntegrationError(
+      "tiktok",
+      "TikTok API não configurada. Ative a integração em Configurações → Integrações.",
+    );
   },
 
-  async getVideoStats(videoId: string): Promise<TikTokVideoStats> {
-    await delay();
+  async getAnalytics(conteudoId: string): Promise<TikTokAnalytics> {
+    await delay(200);
     return {
       view_count:    Math.floor(Math.random() * 50000 + 1000),
       like_count:    Math.floor(Math.random() * 5000 + 50),
       comment_count: Math.floor(Math.random() * 300),
       share_count:   Math.floor(Math.random() * 1000),
-      play_count:    videoId ? Math.floor(Math.random() * 80000 + 2000) : 0,
+      play_count:    conteudoId ? Math.floor(Math.random() * 80000 + 2000) : 0,
     };
   },
 };

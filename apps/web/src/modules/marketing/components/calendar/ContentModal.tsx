@@ -125,7 +125,9 @@ export function ContentModal({
   open, onOpenChange, initialData, mode, prefilledDate, prefilledHour,
 }: ContentModalProps) {
   const { addConteudo, updateConteudo } = useConteudos();
-  const media = useMediaUpload();
+  const media         = useMediaUpload();
+  const ytThumbMedia  = useMediaUpload();
+  const tkThumbMedia  = useMediaUpload();
 
   const [selectedPlataforma, setSelectedPlataforma] = useState<string>("instagram");
   const [selectedTipo, setSelectedTipo]             = useState<string>("post");
@@ -141,7 +143,8 @@ export function ContentModal({
   const [ytPrivacy, setYtPrivacy] = useState("public");
   const [ytTags, setYtTags]       = useState<string[]>([]);
 
-  const [tkPrivacy, setTkPrivacy] = useState("public");
+  const [tkPrivacy, setTkPrivacy]   = useState("public");
+  const [tkDuration, setTkDuration] = useState<string>("");
 
   const {
     register, handleSubmit, reset, watch,
@@ -157,6 +160,8 @@ export function ContentModal({
   useEffect(() => {
     if (!open) return;
     media.reset();
+    ytThumbMedia.reset();
+    tkThumbMedia.reset();
     if (initialData) {
       reset({
         titulo:   initialData.titulo ?? "",
@@ -179,6 +184,7 @@ export function ContentModal({
       setYtPrivacy((meta.ytPrivacy as string | undefined) ?? "public");
       setYtTags((meta.ytTags as string[] | undefined) ?? []);
       setTkPrivacy((meta.tkPrivacy as string | undefined) ?? "public");
+      setTkDuration(String((meta.tkDuration as number | undefined) ?? ""));
     } else {
       reset({ titulo: "", legenda: "", horario: prefilledHour ?? "", campanha_relacionada: "" });
       setSelectedPlataforma("instagram");
@@ -187,7 +193,7 @@ export function ContentModal({
       setSelectedDate(prefilledDate ?? undefined);
       setIgHashtags([]); setIgLocation(""); setIgCarrossel(false);
       setYtPrivacy("public"); setYtTags([]);
-      setTkPrivacy("public");
+      setTkPrivacy("public"); setTkDuration("");
     }
   }, [open, initialData, prefilledDate, prefilledHour, reset]);
 
@@ -196,10 +202,18 @@ export function ContentModal({
       return { hashtags: igHashtags, location: igLocation, carrossel: igCarrossel };
     }
     if (selectedPlataforma === "youtube") {
-      return { ytPrivacy, ytTags };
+      return {
+        ytPrivacy,
+        ytTags,
+        ytThumbnail: ytThumbMedia.previewUrl ?? null,
+      };
     }
     if (selectedPlataforma === "tiktok") {
-      return { tkPrivacy };
+      return {
+        tkPrivacy,
+        tkDuration:  tkDuration ? Number(tkDuration) : null,
+        tkThumbnail: tkThumbMedia.previewUrl ?? null,
+      };
     }
     return {};
   };
@@ -540,34 +554,56 @@ export function ContentModal({
                           onRemove={(i) => setYtTags((prev) => prev.filter((_, idx) => idx !== i))}
                           placeholder="música, lançamento, indie…"
                         />
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium">Thumbnail personalizada</Label>
+                          <MediaUploader media={ytThumbMedia} compact />
+                        </div>
                       </>
                     )}
 
                     {/* ── TIKTOK ── */}
                     {selectedPlataforma === "tiktok" && (
-                      <div className="space-y-1">
-                        <Label className="text-xs font-medium flex items-center gap-1.5">
-                          <Hash className="h-3 w-3 text-muted-foreground" /> Privacidade
-                        </Label>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button type="button" variant="outline" className="w-full h-8 justify-between text-xs rounded-lg font-normal">
-                              <span className="flex items-center gap-2">
-                                {currentTkPrivacy.icon}
-                                {currentTkPrivacy.label}
-                              </span>
-                              <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent className="w-40">
-                            {TK_PRIVACY.map((p) => (
-                              <DropdownMenuItem key={p.value} onClick={() => setTkPrivacy(p.value)} className="flex items-center gap-2 text-xs">
-                                {p.icon} {p.label}
-                              </DropdownMenuItem>
-                            ))}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                      <>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium flex items-center gap-1.5">
+                            <Hash className="h-3 w-3 text-muted-foreground" /> Privacidade
+                          </Label>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button type="button" variant="outline" className="w-full h-8 justify-between text-xs rounded-lg font-normal">
+                                <span className="flex items-center gap-2">
+                                  {currentTkPrivacy.icon}
+                                  {currentTkPrivacy.label}
+                                </span>
+                                <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent className="w-40">
+                              {TK_PRIVACY.map((p) => (
+                                <DropdownMenuItem key={p.value} onClick={() => setTkPrivacy(p.value)} className="flex items-center gap-2 text-xs">
+                                  {p.icon} {p.label}
+                                </DropdownMenuItem>
+                              ))}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-medium">Duração do vídeo (segundos)</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={600}
+                            value={tkDuration}
+                            onChange={(e) => setTkDuration(e.target.value)}
+                            placeholder="Ex: 60"
+                            className="h-8 rounded-lg text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-medium">Thumbnail personalizada</Label>
+                          <MediaUploader media={tkThumbMedia} compact />
+                        </div>
+                      </>
                     )}
                   </div>
                 )}
