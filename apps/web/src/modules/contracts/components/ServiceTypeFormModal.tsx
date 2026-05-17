@@ -339,25 +339,6 @@ export function ServiceTypeFormModal({
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                {/* Modelo Financeiro */}
-                <div className="space-y-2">
-                  <Label>Modelo Financeiro</Label>
-                  <Select
-                    value={form.watch("financial_model")}
-                    onValueChange={(v) => form.setValue("financial_model", v as FinancialModel)}
-                  >
-                    <SelectTrigger data-testid="select-financial-model">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
-                      <SelectItem value="royalties">Royalties</SelectItem>
-                      <SelectItem value="misto">Misto (Fixo + Royalties)</SelectItem>
-                      <SelectItem value="recorrente">Recorrente</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
                 {/* Campos Financeiros — 2 colunas */}
                 <div className="space-y-2">
                   <Label>Campos financeiros exibidos no formulário</Label>
