@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import {
-  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X, ImageUp,
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X, ImageUp, Variable,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -269,6 +269,7 @@ export function ContractImportWorkspace({
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
 
+  const [showVarPanel, setShowVarPanel] = useState(true);
   const [headerImage, setHeaderImage] = useState<string | null>(null);
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
@@ -454,6 +455,16 @@ export function ContractImportWorkspace({
 
             <div className="flex items-center gap-2 shrink-0">
               <Button
+                variant={showVarPanel ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setShowVarPanel((v) => !v)}
+                data-testid="button-toggle-var-panel"
+              >
+                <Variable className="h-3.5 w-3.5 mr-1.5" />
+                Variáveis
+              </Button>
+
+              <Button
                 variant="outline"
                 size="sm"
                 onClick={handleAiSuggest}
@@ -512,7 +523,8 @@ export function ContractImportWorkspace({
             </div>
 
             {/* ── Right: variable panel ── */}
-            <div className="w-72 flex flex-col overflow-hidden bg-background">
+            {showVarPanel && (
+            <div className="w-72 flex flex-col overflow-hidden bg-background border-l">
               {/* Search */}
               <div className="px-3 pt-3 pb-2 shrink-0">
                 <Input
@@ -636,6 +648,7 @@ export function ContractImportWorkspace({
                 })}
               </div>
             </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>
