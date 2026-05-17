@@ -3,7 +3,6 @@ import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Sheet,
@@ -178,6 +177,23 @@ interface AiSuggestion {
   originalText: string;
   placeholder: string;
   accepted: boolean | null;
+  occurrenceIndex: number;
+}
+
+/** Replace the Nth (0-based) occurrence of `search` in `str` with `replacement`. */
+function replaceNthOccurrence(str: string, search: string, replacement: string, n: number): string {
+  let count = 0;
+  let pos = 0;
+  while (pos < str.length) {
+    const found = str.indexOf(search, pos);
+    if (found === -1) return str;
+    if (count === n) {
+      return str.slice(0, found) + replacement + str.slice(found + search.length);
+    }
+    count++;
+    pos = found + search.length;
+  }
+  return str;
 }
 
 interface AiSuggestionsSheetProps {
@@ -350,12 +366,20 @@ export function ContractImportWorkspace({
     setAiLoading(true);
     try {
       const result = await parseContractText(text);
-      const suggestions: AiSuggestion[] = result.variables.map((v: SemanticVariable) => ({
-        id: v.id,
-        originalText: v.originalText,
-        placeholder: v.placeholder,
-        accepted: null,
-      }));
+      // Track per-originalText occurrence counter so each suggestion targets
+      // its specific occurrence (not always the first substring match).
+      const occurrenceCounters = new Map<string, number>();
+      const suggestions: AiSuggestion[] = result.variables.map((v: SemanticVariable) => {
+        const seen = occurrenceCounters.get(v.originalText) ?? 0;
+        occurrenceCounters.set(v.originalText, seen + 1);
+        return {
+          id: v.id,
+          originalText: v.originalText,
+          placeholder: v.placeholder,
+          accepted: null,
+          occurrenceIndex: seen,
+        };
+      });
       setAiSuggestions(suggestions);
       setAiSheetOpen(true);
       if (suggestions.length === 0) {
@@ -371,7 +395,12 @@ export function ContractImportWorkspace({
   function handleAcceptSuggestion(id: string) {
     const suggestion = aiSuggestions.find((s) => s.id === id);
     if (!suggestion) return;
-    const next = text.replace(suggestion.originalText, suggestion.placeholder);
+    const next = replaceNthOccurrence(
+      text,
+      suggestion.originalText,
+      suggestion.placeholder,
+      suggestion.occurrenceIndex,
+    );
     if (next === text) {
       toast.warning("Texto original não encontrado — pode já ter sido substituído");
     } else {

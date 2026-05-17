@@ -365,6 +365,7 @@ export default function VariableRegistry() {
       </div>
 
       <VariableFormModal
+        key={createOpen ? "create-open" : "create-closed"}
         open={createOpen}
         onOpenChange={setCreateOpen}
         mode="create"
@@ -373,6 +374,7 @@ export default function VariableRegistry() {
 
       {editTarget && (
         <VariableFormModal
+          key={editTarget.id}
           open={!!editTarget}
           onOpenChange={(v) => { if (!v) setEditTarget(null); }}
           mode="edit"
