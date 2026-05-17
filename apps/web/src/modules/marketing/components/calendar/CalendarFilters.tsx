@@ -148,26 +148,23 @@ export function CalendarFilters({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ── Search ── */}
-      <div className="relative flex-1 min-w-[180px]">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+      {/* ── Search + filter icon ── */}
+      <div className="relative flex-1 min-w-[200px]">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
           placeholder="Buscar conteúdo..."
-          className="pl-9 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
+          className="pl-9 pr-10 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           data-testid="input-search-calendar"
         />
+        <button
+          title="Configurações de filtro"
+          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <SlidersHorizontal className="h-3.5 w-3.5" />
+        </button>
       </div>
-
-      <Button
-        variant="ghost"
-        size="sm"
-        className="h-9 w-9 p-0 rounded-xl text-muted-foreground hover:text-foreground"
-        title="Configurações de filtro"
-      >
-        <SlidersHorizontal className="h-4 w-4" />
-      </Button>
     </div>
   );
 }
