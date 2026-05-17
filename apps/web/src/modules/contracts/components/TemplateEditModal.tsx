@@ -283,9 +283,7 @@ export function TemplateEditModal({
     setAiSheetOpen(false);
   }, [template]);
 
-  if (!template) return null;
-
-  // ── Insert at cursor ───────────────────────────────────────────────────
+  // ── Insert at cursor — must be before any early return ─────────────────
 
   const insertAtCursor = useCallback((snippet: string) => {
     const el = textareaRef.current;
@@ -303,6 +301,8 @@ export function TemplateEditModal({
       el.setSelectionRange(pos, pos);
     });
   }, [text]);
+
+  if (!template) return null;
 
   // ── Create custom variable ─────────────────────────────────────────────
 
