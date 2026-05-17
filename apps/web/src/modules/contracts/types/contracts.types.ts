@@ -95,6 +95,7 @@ export interface ContractVariable {
   id: string;
   key: string;
   label: string;
+  description?: string;
   type: VariableType;
   source: "participant" | "financial" | "work" | "system" | "custom";
   category: VariableCategory;
@@ -170,3 +171,39 @@ export interface BrandingSettings {
   marginLeft: number;
   marginRight: number;
 }
+
+/**
+ * ContractTemplate — a fully-resolved contract type with all engine data.
+ * Represents a ContractServiceType enriched with participant variables,
+ * clauses, financial configuration, music work, signatures, and branding.
+ * Compatible with ContractServiceType (subset/alias used at creation time).
+ */
+export interface ContractTemplate {
+  id: string;
+  name: string;
+  slug: string;
+  description: string | null;
+  category: string | null;
+  clientTypes: string[];
+  active: boolean;
+  sortOrder: number;
+  participants: Participant[];
+  variables: ContractVariable[];
+  clauses: ContractClause[];
+  financial: FinancialSettings;
+  musicWork: MusicWork;
+  signature: SignatureSettings;
+  branding: BrandingSettings;
+  conteudo: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Converts a ContractServiceType (storage model) to ContractTemplate (domain model).
+ * Provides the canonical mapping between the flat storage row and the rich domain object.
+ */
+export type ContractTemplateSubset = Pick<
+  ContractTemplate,
+  "id" | "name" | "slug" | "description" | "category" | "active" | "participants" | "variables"
+>;

@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import { contractsService } from "@/modules/contracts/services/contracts.service";
 import type { StorageRow } from "@/shared/lib/storage";
 import type {
+  ContractVariable,
   Participant,
   MusicWork,
   SignatureSettings,
@@ -34,6 +35,7 @@ export interface ContractServiceType {
   created_at: string;
   updated_at: string;
   participants: Participant[];
+  variables: ContractVariable[];
   music_work: MusicWork | null;
   signature_settings: SignatureSettings | null;
   branding_settings: BrandingSettings | null;
@@ -91,6 +93,7 @@ function rowToType(row: StorageRow): ContractServiceType {
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
     participants: parseJson<Participant[]>(row.participants, []),
+    variables: parseJson<ContractVariable[]>(row.variables, []),
     music_work: parseJson<MusicWork | null>(row.music_work, null),
     signature_settings: parseJson<SignatureSettings | null>(row.signature_settings, null),
     branding_settings: parseJson<BrandingSettings | null>(row.branding_settings, null),

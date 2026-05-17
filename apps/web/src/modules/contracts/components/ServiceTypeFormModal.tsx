@@ -178,10 +178,19 @@ function VariableAutocomplete({
                   key={v.key}
                   type="button"
                   onClick={() => { onInsert(v.key); onOpenChange(false); onSearchChange(""); }}
-                  className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors flex items-start gap-2"
+                  className="w-full text-left px-2 py-1.5 rounded text-xs hover:bg-muted transition-colors"
                 >
-                  <span className="font-mono text-primary shrink-0">{`{{${v.key}}}`}</span>
-                  <span className="text-muted-foreground truncate">{v.label}</span>
+                  <div className="flex items-start gap-2">
+                    <span className="font-mono text-primary shrink-0 mt-0.5">{`{{${v.key}}}`}</span>
+                    <div className="min-w-0">
+                      <p className="text-foreground truncate leading-tight">{v.label}</p>
+                      {(v.description || v.example) && (
+                        <p className="text-muted-foreground text-[10px] leading-tight truncate">
+                          {v.description ? v.description : `Ex: ${v.example}`}
+                        </p>
+                      )}
+                    </div>
+                  </div>
                 </button>
               ))}
             </div>
@@ -352,6 +361,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       footer_image_url: branding.footerImageUrl,
       conteudo: buildConteudo(),
       participants,
+      variables: allVariables,
       music_work: musicWork,
       signature_settings: signatureSettings,
       branding_settings: branding,

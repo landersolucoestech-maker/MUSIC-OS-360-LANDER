@@ -1,6 +1,6 @@
 import { storage } from "@/shared/lib/storage";
 
-const JSON_FIELDS = ["participants", "music_work", "signature_settings", "branding_settings"] as const;
+const JSON_FIELDS = ["participants", "variables", "music_work", "signature_settings", "branding_settings"] as const;
 
 function serializeJsonFields(data: Record<string, unknown>): Record<string, unknown> {
   const out = { ...data };
