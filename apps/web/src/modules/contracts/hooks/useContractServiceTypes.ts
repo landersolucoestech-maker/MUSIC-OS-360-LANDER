@@ -2,6 +2,12 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { contractsService } from "@/modules/contracts/services/contracts.service";
 import type { StorageRow } from "@/shared/lib/storage";
+import type {
+  Participant,
+  MusicWork,
+  SignatureSettings,
+  BrandingSettings,
+} from "@/modules/contracts/types/contracts.types";
 
 export type ClientType = "artista" | "pessoa_fisica" | "pessoa_juridica";
 export type FinancialModel = "valor_fixo" | "royalties" | "misto" | "recorrente";
@@ -11,6 +17,7 @@ export interface ContractServiceType {
   name: string;
   slug: string;
   description: string | null;
+  category: string | null;
   client_types: ClientType[];
   financial_model: FinancialModel;
   requires_royalties: boolean;
@@ -26,6 +33,15 @@ export interface ContractServiceType {
   conteudo: string;
   created_at: string;
   updated_at: string;
+  participants: Participant[];
+  music_work: MusicWork | null;
+  signature_settings: SignatureSettings | null;
+  branding_settings: BrandingSettings | null;
+  financial_currency: string;
+  financial_payment_frequency: string;
+  financial_penalty_percentage: number | null;
+  financial_interest_percentage: number | null;
+  financial_due_days: number | null;
 }
 
 export type ContractServiceTypeInsert = Omit<ContractServiceType, "id" | "created_at" | "updated_at">;
@@ -42,12 +58,22 @@ export function slugify(text: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+function parseJson<T>(value: unknown, fallback: T): T {
+  if (value == null) return fallback;
+  if (typeof value === "object") return value as T;
+  if (typeof value === "string") {
+    try { return JSON.parse(value) as T; } catch { return fallback; }
+  }
+  return fallback;
+}
+
 function rowToType(row: StorageRow): ContractServiceType {
   return {
     id: String(row.id ?? ""),
     name: String(row.name ?? ""),
     slug: String(row.slug ?? ""),
     description: row.description != null ? String(row.description) : null,
+    category: row.category != null ? String(row.category) : null,
     client_types: Array.isArray(row.client_types) ? (row.client_types as ClientType[]) : [],
     financial_model: (row.financial_model as FinancialModel) ?? "valor_fixo",
     requires_royalties: Boolean(row.requires_royalties),
@@ -64,6 +90,15 @@ function rowToType(row: StorageRow): ContractServiceType {
     conteudo: String(row.conteudo ?? ""),
     created_at: String(row.created_at ?? ""),
     updated_at: String(row.updated_at ?? ""),
+    participants: parseJson<Participant[]>(row.participants, []),
+    music_work: parseJson<MusicWork | null>(row.music_work, null),
+    signature_settings: parseJson<SignatureSettings | null>(row.signature_settings, null),
+    branding_settings: parseJson<BrandingSettings | null>(row.branding_settings, null),
+    financial_currency: String(row.financial_currency ?? "BRL"),
+    financial_payment_frequency: String(row.financial_payment_frequency ?? "unico"),
+    financial_penalty_percentage: row.financial_penalty_percentage != null ? Number(row.financial_penalty_percentage) : null,
+    financial_interest_percentage: row.financial_interest_percentage != null ? Number(row.financial_interest_percentage) : null,
+    financial_due_days: row.financial_due_days != null ? Number(row.financial_due_days) : null,
   };
 }
 

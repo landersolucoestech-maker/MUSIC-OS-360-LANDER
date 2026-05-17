@@ -1,4 +1,3 @@
-import type { Tables, TablesInsert, TablesUpdate } from "@/shared/types/database";
 import type { ArtistaRef, ClienteRef } from "@/shared/types/refs";
 import type { ContratoStatus, ContratoTipo } from "@/shared/types/enums";
 import type { ContratoSigner } from "@/modules/contracts/lib/contrato-schema";
@@ -64,3 +63,110 @@ export interface TemplateContrato {
 
 export type TemplateContratoInsert = Omit<TemplateContrato, "id" | "user_id" | "created_at" | "updated_at">;
 export type TemplateContratoUpdate = Partial<TemplateContratoInsert>;
+
+// ─── Contract Template Engine Types ──────────────────────────────────────────
+
+export type ParticipantRole =
+  | "CONTRATANTE"
+  | "CONTRATADO"
+  | "ARTISTA"
+  | "PRODUTOR"
+  | "EMPRESA"
+  | "LABEL"
+  | "EMPRESARIO"
+  | "COMPOSITOR"
+  | "TESTEMUNHA"
+  | "REPRESENTANTE_LEGAL";
+
+export type EntityType = "pessoa_fisica" | "pessoa_juridica";
+
+export type VariableCategory =
+  | "participantes"
+  | "financeiro"
+  | "obra_musical"
+  | "vigencia"
+  | "assinatura"
+  | "sistema"
+  | "personalizada";
+
+export type VariableType = "text" | "number" | "date" | "percentage" | "currency" | "boolean";
+
+export interface ContractVariable {
+  id: string;
+  key: string;
+  label: string;
+  type: VariableType;
+  source: "participant" | "financial" | "work" | "system" | "custom";
+  category: VariableCategory;
+  required: boolean;
+  example: string;
+  participantReference?: string;
+}
+
+export interface Participant {
+  id: string;
+  role: ParticipantRole;
+  entityType: EntityType;
+  label?: string;
+  variables: ContractVariable[];
+}
+
+export interface ContractClause {
+  id: string;
+  title: string;
+  content: string;
+  variablesUsed: string[];
+  category?: string;
+  order: number;
+  required: boolean;
+  editable: boolean;
+  aiGenerated: boolean;
+}
+
+export interface FinancialSettings {
+  royaltiesEnabled: boolean;
+  fixedValueEnabled: boolean;
+  advanceEnabled: boolean;
+  supportEnabled: boolean;
+  allowInstallments: boolean;
+  currency: string;
+  paymentFrequency: "unico" | "mensal" | "trimestral" | "anual";
+  penaltyPercentage: number | null;
+  interestPercentage: number | null;
+  defaultDueDays: number | null;
+  defaultFinancialCategory: string | null;
+}
+
+export interface MusicWork {
+  title: string;
+  isrc: string;
+  upc: string;
+  genre: string;
+  language: string;
+  releaseDate: string;
+  platforms: string[];
+  distributionType: "exclusiva" | "nao_exclusiva" | "licenca" | "";
+}
+
+export interface SignatureSettings {
+  enabled: boolean;
+  signatureOrder: string[];
+  requireWitnesses: boolean;
+  provider: "autentique" | "docusign" | "";
+  auditTrail: boolean;
+}
+
+export interface BrandingSettings {
+  headerImageUrl: string | null;
+  footerImageUrl: string | null;
+  logoUrl: string | null;
+  watermarkEnabled: boolean;
+  watermarkText: string;
+  textAlignment: "left" | "center" | "justify";
+  fontFamily: string;
+  pageNumbers: boolean;
+  marginTop: number;
+  marginBottom: number;
+  marginLeft: number;
+  marginRight: number;
+}

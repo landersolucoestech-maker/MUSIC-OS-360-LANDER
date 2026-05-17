@@ -44,12 +44,6 @@ const CLIENT_TYPE_LABELS: Record<string, string> = {
   pessoa_juridica: "Pessoa Jurídica",
 };
 
-const FINANCIAL_MODEL_LABELS: Record<string, string> = {
-  valor_fixo: "Valor Fixo",
-  royalties: "Royalties",
-  misto: "Misto",
-  recorrente: "Recorrente",
-};
 
 export default function TemplatesContratos() {
   const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } = useTemplatesContratos();
@@ -298,9 +292,10 @@ export default function TemplatesContratos() {
                       <TableRow>
                         <TableHead className="w-8">#</TableHead>
                         <TableHead>Nome</TableHead>
+                        <TableHead>Categoria</TableHead>
                         <TableHead>Tipo de Cliente</TableHead>
-                        <TableHead>Modelo Financeiro</TableHead>
                         <TableHead>Campos Financeiros</TableHead>
+                        <TableHead>Envolvidos</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="w-[80px]">Ações</TableHead>
                       </TableRow>
@@ -322,6 +317,13 @@ export default function TemplatesContratos() {
                             </div>
                           </TableCell>
                           <TableCell>
+                            {t.category ? (
+                              <Badge variant="secondary" className="text-xs">{t.category}</Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
                             <div className="flex flex-wrap gap-1">
                               {t.client_types.map((ct) => (
                                 <Badge key={ct} variant="outline" className="text-xs">
@@ -329,11 +331,6 @@ export default function TemplatesContratos() {
                                 </Badge>
                               ))}
                             </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-xs">
-                              {FINANCIAL_MODEL_LABELS[t.financial_model] ?? t.financial_model}
-                            </Badge>
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1">
@@ -347,6 +344,13 @@ export default function TemplatesContratos() {
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </div>
+                          </TableCell>
+                          <TableCell>
+                            {t.participants && t.participants.length > 0 ? (
+                              <span className="text-sm">{t.participants.length} envolvido{t.participants.length !== 1 ? "s" : ""}</span>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
                           </TableCell>
                           <TableCell>
                             <Badge variant={t.active ? "default" : "secondary"}>
