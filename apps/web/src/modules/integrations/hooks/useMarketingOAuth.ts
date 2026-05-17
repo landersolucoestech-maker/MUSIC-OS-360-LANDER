@@ -26,6 +26,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { MOCK_MODE } from "@/shared/lib/env";
 import type {
   MarketingPlatformId,
   MarketingCategory,
@@ -173,9 +174,27 @@ export function useMarketingOAuth() {
     saveConnections(connections);
   }, [connections]);
 
-  /** Simula fluxo OAuth: popup → token → armazena conexão (~1.8s delay) */
+  /**
+   * Stores an OAuth connection.
+   *
+   * In MOCK_MODE: simulates a ~1.8s OAuth handshake using mock account data.
+   * access_token is optional in mock mode (demo tokens are accepted).
+   *
+   * In production (MOCK_MODE=false): access_token MUST be present — it is the
+   * real token received from the platform via the popup → OAuthCallbackPage →
+   * postMessage flow.  Calling connect() without a token in production indicates
+   * the OAuth flow did not complete and nothing should be persisted as "connected".
+   * This keeps UI state consistent with what platform services expect:
+   * a missing token means "not configured", not "connected but broken".
+   */
   const connect = useCallback(
-    async (platform: MarketingPlatformId, scopes: string[]): Promise<void> => {
+    async (platform: MarketingPlatformId, scopes: string[], access_token?: string): Promise<void> => {
+      // Guard: in production, do not persist a connection without a real token.
+      if (!MOCK_MODE && !access_token) {
+        console.warn(`[useMarketingOAuth] connect(${platform}) called without access_token in production — ignoring.`);
+        return;
+      }
+
       return new Promise((resolve) => {
         setTimeout(() => {
           const mock = MOCK_ACCOUNTS[platform];
@@ -186,13 +205,14 @@ export function useMarketingOAuth() {
             ...prev,
             [platform]: {
               platform,
-              connected:   true,
-              accountName: mock.accountName,
-              accountId:   mock.accountId,
-              connectedAt: now,
+              connected:    true,
+              accountName:  mock.accountName,
+              accountId:    mock.accountId,
+              connectedAt:  now,
               expiresAt,
               scopes,
-              category: MARKETING_PLATFORM_CATEGORY[platform],
+              category:     MARKETING_PLATFORM_CATEGORY[platform],
+              access_token,
             } satisfies IMarketingOAuthConnection,
           }));
           resolve();

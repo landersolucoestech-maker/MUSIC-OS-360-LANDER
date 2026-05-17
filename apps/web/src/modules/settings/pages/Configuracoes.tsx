@@ -1750,8 +1750,8 @@ export default function Configuracoes() {
                 open={Boolean(oauthDialogPlatform)}
                 onOpenChange={(val) => { if (!val) setOauthDialogPlatform(null); }}
                 platform={oauthDialogPlatform}
-                onConnect={async (platform, scopes) => {
-                  await connectMarketing(platform, scopes);
+                onConnect={async (platform, scopes, access_token) => {
+                  await connectMarketing(platform, scopes, access_token);
                   toast.success(`${platform} conectado com sucesso.`);
                   setOauthDialogPlatform(null);
                 }}

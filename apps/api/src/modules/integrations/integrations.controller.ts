@@ -1,10 +1,14 @@
 import {
   Controller, Post, Get, Delete, Body, Param, Query,
-  HttpCode, HttpStatus, Request,
+  HttpCode, HttpStatus, Request, BadRequestException, InternalServerErrorException,
 } from '@nestjs/common';
+import { ConfigService }              from '@nestjs/config';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { RequireRole } from '../../core/decorators/roles.decorator';
-import { Audit } from '../../core/interceptors/audit.interceptor';
+import { randomUUID }    from 'crypto';
+import { RequireRole }   from '../../core/decorators/roles.decorator';
+import { Public }        from '../../core/decorators/public.decorator';
+import { Audit }         from '../../core/interceptors/audit.interceptor';
+import { CacheService }  from '../../core/cache/cache.service';
 import { ACRCloudService }    from './acrcloud/acrcloud.service';
 import { AutentiqueService }  from './autentique/autentique.service';
 import { SpotifyService }     from './spotify/spotify.service';
@@ -22,6 +26,8 @@ import {
   RecognizeAudioDto,
   SpotifyConnectDto,
   SyncSpotifyArtistDto,
+  OAuthInitDto,
+  OAuthExchangeDto,
 } from './dto/integrations.dto';
 
 @ApiTags('Integrations')
@@ -41,7 +47,125 @@ export class IntegrationsController {
     private readonly tiktok:      TikTokService,
     private readonly googleAds:   GoogleAdsService,
     private readonly abramus:     AbramusService,
+    private readonly config:      ConfigService,
+    private readonly cache:       CacheService,
   ) {}
+
+  // ─── OAuth init (authenticated) ────────────────────────────────────────────
+
+  /**
+   * Step 1 of the marketing OAuth flow.
+   * Must be called by an authenticated user before the popup is opened.
+   * Issues a short-lived, single-use `exchange_token` that is stored server-side
+   * in the in-memory cache.  The token is later presented to POST /oauth/exchange,
+   * binding the code exchange to this authenticated session.  This prevents the
+   * exchange endpoint from being used as an open token-exchange broker.
+   */
+  @Post('oauth/init')
+  @RequireRole('editor')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Emite exchange_token de uso único para iniciar fluxo OAuth de marketing' })
+  oauthInit(@Body() dto: OAuthInitDto): { exchange_token: string } {
+    const token = randomUUID();
+    // TTL: 10 min — enough for the popup OAuth flow to complete.
+    this.cache.set(`oauth_exchange:${token}`, { platform: dto.platform }, 10 * 60 * 1000);
+    return { exchange_token: token };
+  }
+
+  // ─── OAuth exchange (public, requires server-issued exchange_token) ─────────
+
+  /**
+   * Step 2 of the marketing OAuth flow (called from popup callback page).
+   *
+   * Although this endpoint is `@Public()` (no Bearer auth — the popup window has
+   * no access to the user's session), it is protected by the server-issued
+   * `exchange_token` from POST /oauth/init.  That token:
+   *   1. Can only be issued by an authenticated user (step 1).
+   *   2. Is single-use — consumed immediately on first valid request.
+   *   3. Expires after 10 minutes.
+   *
+   * The redirect_uri is constructed from APP_URL config — it is never accepted
+   * from the client, preventing open-redirect / token-hijacking attacks.
+   */
+  @Post('oauth/exchange')
+  @Public()
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Troca código de autorização OAuth por access_token' })
+  async oauthExchange(@Body() dto: OAuthExchangeDto): Promise<{ access_token: string; platform: string }> {
+    const { code, platform, exchange_token } = dto;
+
+    // Validate and consume the server-issued exchange token.
+    const cacheKey = `oauth_exchange:${exchange_token}`;
+    const entry = this.cache.get<{ platform: string }>(cacheKey);
+    if (!entry) {
+      throw new BadRequestException('exchange_token inválido ou expirado. Inicie a autorização novamente.');
+    }
+    if (entry.platform !== platform) {
+      throw new BadRequestException('exchange_token não corresponde à plataforma solicitada.');
+    }
+    // Single-use: delete immediately after validation.
+    this.cache.delete(cacheKey);
+
+    // Construct redirect_uri from server config — never trust the client value.
+    const appUrl      = this.config.get<string>('APP_URL') ?? 'http://localhost:5000';
+    const redirect_uri = `${appUrl}/oauth/callback`;
+
+    const isInstagram = platform === 'corp_instagram' || platform === 'meta_business';
+    const isTikTok    = platform === 'corp_tiktok'    || platform === 'tiktok_business';
+    const isYouTube   = platform === 'corp_youtube'   || platform === 'youtube_business' || platform === 'google_business';
+
+    try {
+      if (isInstagram) {
+        const appId     = this.config.get<string>('META_APP_ID')     ?? '';
+        const appSecret = this.config.get<string>('META_APP_SECRET') ?? '';
+        if (!appId || !appSecret) throw new BadRequestException('META_APP_ID / META_APP_SECRET não configurados');
+
+        const url = `https://graph.facebook.com/v18.0/oauth/access_token?client_id=${appId}&redirect_uri=${encodeURIComponent(redirect_uri)}&client_secret=${appSecret}&code=${code}`;
+        const res  = await fetch(url);
+        const json = await res.json() as Record<string, unknown>;
+        if (json['error']) {
+          const errObj = json['error'] as Record<string, unknown>;
+          throw new BadRequestException((errObj['message'] as string | undefined) ?? 'Meta OAuth error');
+        }
+        return { access_token: json['access_token'] as string, platform };
+      }
+
+      if (isTikTok) {
+        const clientKey    = this.config.get<string>('TIKTOK_CLIENT_KEY')    ?? '';
+        const clientSecret = this.config.get<string>('TIKTOK_CLIENT_SECRET') ?? '';
+        if (!clientKey || !clientSecret) throw new BadRequestException('TIKTOK_CLIENT_KEY / TIKTOK_CLIENT_SECRET não configurados');
+
+        const res  = await fetch('https://open.tiktokapis.com/v2/oauth/token/', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body:    new URLSearchParams({ client_key: clientKey, client_secret: clientSecret, code, grant_type: 'authorization_code', redirect_uri }),
+        });
+        const json = await res.json() as Record<string, unknown>;
+        if (json['error']) throw new BadRequestException((json['error_description'] as string | undefined) ?? (json['error'] as string));
+        return { access_token: json['access_token'] as string, platform };
+      }
+
+      if (isYouTube) {
+        const clientId     = this.config.get<string>('GOOGLE_CLIENT_ID')     ?? '';
+        const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
+        if (!clientId || !clientSecret) throw new BadRequestException('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados');
+
+        const res  = await fetch('https://oauth2.googleapis.com/token', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body:    new URLSearchParams({ code, client_id: clientId, client_secret: clientSecret, redirect_uri, grant_type: 'authorization_code' }),
+        });
+        const json = await res.json() as Record<string, unknown>;
+        if (json['error']) throw new BadRequestException((json['error_description'] as string | undefined) ?? (json['error'] as string));
+        return { access_token: json['access_token'] as string, platform };
+      }
+
+      throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
+    } catch (err) {
+      if (err instanceof BadRequestException) throw err;
+      throw new InternalServerErrorException(`Falha na troca OAuth: ${(err as Error).message}`);
+    }
+  }
 
   // ─── Status geral ──────────────────────────────────────────────────────────
 
