@@ -335,7 +335,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     const { valid: extraValid, clausulaErrors: clausErrors } = validateExtraState();
 
     if (!extraValid) {
-      if (Object.keys(clausErrors).length > 0) { setActiveTab("clausulas"); return; }
+      if (Object.keys(clausErrors).length > 0) { setActiveTab("financeiro"); return; }
       return;
     }
 
@@ -412,9 +412,8 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
   const formErrors = form.formState.errors;
   const tabHasError: Record<string, boolean> = {
     geral: !!(formErrors.name || formErrors.slug || formErrors.client_types || formErrors.start_date || formErrors.end_date),
-    financeiro: false,
+    financeiro: Object.keys(clausulaErrors).length > 0,
     obra: false,
-    clausulas: Object.keys(clausulaErrors).length > 0,
     assinaturas: false,
     branding: false,
     preview: false,
@@ -426,7 +425,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     { value: "geral", label: "Geral", icon: Settings2 },
     { value: "financeiro", label: "Financeiro", icon: DollarSign },
     { value: "obra", label: "Obra Musical", icon: Music },
-    { value: "clausulas", label: "Cláusulas", icon: FileText },
     { value: "assinaturas", label: "Assinaturas", icon: FileSignature },
     { value: "branding", label: "Branding", icon: Palette },
     { value: "preview", label: "Preview", icon: Eye },
@@ -644,76 +642,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                         </div>
                       </CardContent>
                     </Card>
-                  </TabsContent>
 
-                  {/* ── Tab 4: Obra Musical ── */}
-                  <TabsContent value="obra" className="mt-0 space-y-4">
-                    <Card>
-                      <CardHeader className="pb-3"><CardTitle className={sectionLabel}>Dados da Obra</CardTitle></CardHeader>
-                      <CardContent className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Título da Obra</Label>
-                            <Input value={musicWork.title} onChange={(e) => setMusicWork((w) => ({ ...w, title: e.target.value }))} placeholder="Ex: Minha Música" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Tipo de Distribuição</Label>
-                            <Select value={musicWork.distributionType} onValueChange={(v) => setMusicWork((w) => ({ ...w, distributionType: v as MusicWork["distributionType"] }))}>
-                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="exclusiva">Exclusiva</SelectItem>
-                                <SelectItem value="nao_exclusiva">Não Exclusiva</SelectItem>
-                                <SelectItem value="licenca">Licença</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>ISRC</Label>
-                            <Input value={musicWork.isrc} onChange={(e) => setMusicWork((w) => ({ ...w, isrc: e.target.value }))} placeholder="Ex: BRBMG2400001" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>UPC</Label>
-                            <Input value={musicWork.upc} onChange={(e) => setMusicWork((w) => ({ ...w, upc: e.target.value }))} placeholder="Ex: 012345678905" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Gênero</Label>
-                            <Select value={musicWork.genre} onValueChange={(v) => setMusicWork((w) => ({ ...w, genre: v }))}>
-                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                              <SelectContent>{MUSIC_GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Idioma</Label>
-                            <Select value={musicWork.language} onValueChange={(v) => setMusicWork((w) => ({ ...w, language: v }))}>
-                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                              <SelectContent>{MUSIC_LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Data de Lançamento</Label>
-                            <Input type="date" value={musicWork.releaseDate} onChange={(e) => setMusicWork((w) => ({ ...w, releaseDate: e.target.value }))} />
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label>Plataformas de Distribuição</Label>
-                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                            {MUSIC_PLATFORMS.map((p) => {
-                              const checked = musicWork.platforms.includes(p);
-                              return (
-                                <div key={p} className="flex items-center gap-2">
-                                  <Checkbox id={`plat-${p}`} checked={checked} onCheckedChange={(v) => setMusicWork((w) => ({ ...w, platforms: v ? [...w.platforms, p] : w.platforms.filter((x) => x !== p) }))} />
-                                  <Label htmlFor={`plat-${p}`} className="font-normal cursor-pointer text-sm">{p}</Label>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* ── Tab 5: Cláusulas ── */}
-                  <TabsContent value="clausulas" className="mt-0 space-y-4">
                     <Card>
                       <CardHeader className="pb-3">
                         <div className="flex items-center justify-between">
@@ -819,7 +748,73 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                     />
                   </TabsContent>
 
-                  {/* ── Tab 6: Assinaturas ── */}
+                  {/* ── Tab 4: Obra Musical ── */}
+                  <TabsContent value="obra" className="mt-0 space-y-4">
+                    <Card>
+                      <CardHeader className="pb-3"><CardTitle className={sectionLabel}>Dados da Obra</CardTitle></CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label>Título da Obra</Label>
+                            <Input value={musicWork.title} onChange={(e) => setMusicWork((w) => ({ ...w, title: e.target.value }))} placeholder="Ex: Minha Música" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Tipo de Distribuição</Label>
+                            <Select value={musicWork.distributionType} onValueChange={(v) => setMusicWork((w) => ({ ...w, distributionType: v as MusicWork["distributionType"] }))}>
+                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="exclusiva">Exclusiva</SelectItem>
+                                <SelectItem value="nao_exclusiva">Não Exclusiva</SelectItem>
+                                <SelectItem value="licenca">Licença</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>ISRC</Label>
+                            <Input value={musicWork.isrc} onChange={(e) => setMusicWork((w) => ({ ...w, isrc: e.target.value }))} placeholder="Ex: BRBMG2400001" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>UPC</Label>
+                            <Input value={musicWork.upc} onChange={(e) => setMusicWork((w) => ({ ...w, upc: e.target.value }))} placeholder="Ex: 012345678905" />
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Gênero</Label>
+                            <Select value={musicWork.genre} onValueChange={(v) => setMusicWork((w) => ({ ...w, genre: v }))}>
+                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                              <SelectContent>{MUSIC_GENRES.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Idioma</Label>
+                            <Select value={musicWork.language} onValueChange={(v) => setMusicWork((w) => ({ ...w, language: v }))}>
+                              <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                              <SelectContent>{MUSIC_LANGUAGES.map((l) => <SelectItem key={l} value={l}>{l}</SelectItem>)}</SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Data de Lançamento</Label>
+                            <Input type="date" value={musicWork.releaseDate} onChange={(e) => setMusicWork((w) => ({ ...w, releaseDate: e.target.value }))} />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Plataformas de Distribuição</Label>
+                          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                            {MUSIC_PLATFORMS.map((p) => {
+                              const checked = musicWork.platforms.includes(p);
+                              return (
+                                <div key={p} className="flex items-center gap-2">
+                                  <Checkbox id={`plat-${p}`} checked={checked} onCheckedChange={(v) => setMusicWork((w) => ({ ...w, platforms: v ? [...w.platforms, p] : w.platforms.filter((x) => x !== p) }))} />
+                                  <Label htmlFor={`plat-${p}`} className="font-normal cursor-pointer text-sm">{p}</Label>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  {/* ── Tab 5: Assinaturas ── */}
                   <TabsContent value="assinaturas" className="mt-0 space-y-4">
                     <Card>
                       <CardHeader className="pb-3"><CardTitle className={sectionLabel}>Configuração de Assinatura Digital</CardTitle></CardHeader>
