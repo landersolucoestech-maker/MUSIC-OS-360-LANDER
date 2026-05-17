@@ -148,13 +148,20 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
     );
   }
 
-  const data = await response.json() as { content?: string; error?: string };
+  const raw = await response.json() as {
+    content?: string;
+    data?: { content?: string };
+    error?: string;
+  };
+  // TransformInterceptor global do NestJS envolve a resposta em { data: ... }
+  // Aceitar ambas as shapes para compatibilidade
+  const content = raw.data?.content ?? raw.content;
 
-  if (!data.content) {
+  if (!content) {
     throw new Error("O servidor de IA retornou uma resposta vazia. Tente novamente.");
   }
 
-  let jsonStr = data.content.trim();
+  let jsonStr = content.trim();
   const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
   if (fenceMatch) jsonStr = fenceMatch[1].trim();
 
