@@ -4,12 +4,13 @@ const ACCEPTED_FORMATS = ["image/jpeg", "image/png", "image/gif", "image/webp", 
 const MAX_SIZE_BYTES   = 200 * 1024 * 1024; // 200 MB
 
 export interface MediaUploadState {
-  file:       File | null;
-  previewUrl: string | null;
-  progress:   number;
-  error:      string | null;
-  isUploading: boolean;
-  mediaType:  "image" | "video" | null;
+  file:             File | null;
+  previewUrl:       string | null;
+  videoPlaybackUrl: string | null;
+  progress:         number;
+  error:            string | null;
+  isUploading:      boolean;
+  mediaType:        "image" | "video" | null;
 }
 
 export interface UseMediaUploadReturn extends MediaUploadState {
@@ -21,24 +22,29 @@ export interface UseMediaUploadReturn extends MediaUploadState {
 
 export function useMediaUpload(): UseMediaUploadReturn {
   const [state, setState] = useState<MediaUploadState>({
-    file: null, previewUrl: null, progress: 0,
-    error: null, isUploading: false, mediaType: null,
+    file: null, previewUrl: null, videoPlaybackUrl: null,
+    progress: 0, error: null, isUploading: false, mediaType: null,
   });
 
-  const timerRef   = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const objectUrls = useRef<string[]>([]);
+  const timerRef        = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const objectUrls      = useRef<string[]>([]);
+  const playbackUrlRef  = useRef<string | null>(null);
 
   const revokeObjectUrls = useCallback(() => {
     objectUrls.current.forEach((url) => {
       try { URL.revokeObjectURL(url); } catch { /* ignore */ }
     });
     objectUrls.current = [];
+    if (playbackUrlRef.current) {
+      try { URL.revokeObjectURL(playbackUrlRef.current); } catch { /* ignore */ }
+      playbackUrlRef.current = null;
+    }
   }, []);
 
   const reset = useCallback(() => {
     if (timerRef.current) clearTimeout(timerRef.current);
     revokeObjectUrls();
-    setState({ file: null, previewUrl: null, progress: 0, error: null, isUploading: false, mediaType: null });
+    setState({ file: null, previewUrl: null, videoPlaybackUrl: null, progress: 0, error: null, isUploading: false, mediaType: null });
   }, [revokeObjectUrls]);
 
   const generateThumbnail = useCallback(async (videoFile: File): Promise<string | null> => {
@@ -82,10 +88,16 @@ export function useMediaUpload(): UseMediaUploadReturn {
     revokeObjectUrls();
 
     let previewUrl: string | null = null;
+    let videoPlaybackUrl: string | null = null;
+
     if (isVideo) {
+      const playbackObjUrl = URL.createObjectURL(file);
+      playbackUrlRef.current = playbackObjUrl;
+      videoPlaybackUrl = playbackObjUrl;
+
       previewUrl = await generateThumbnail(file);
       if (!previewUrl) {
-        previewUrl = URL.createObjectURL(file);
+        previewUrl = playbackObjUrl;
         objectUrls.current.push(previewUrl);
       }
     } else {
@@ -95,7 +107,7 @@ export function useMediaUpload(): UseMediaUploadReturn {
 
     const simulateProgress = (step: number) => {
       if (step >= 100) {
-        setState((s) => ({ ...s, progress: 100, isUploading: false, previewUrl }));
+        setState((s) => ({ ...s, progress: 100, isUploading: false, previewUrl, videoPlaybackUrl }));
         return;
       }
       const next = Math.min(step + Math.floor(Math.random() * 18 + 8), 100);
@@ -108,12 +120,13 @@ export function useMediaUpload(): UseMediaUploadReturn {
 
   const preload = useCallback((url: string, type: "image" | "video" = "image") => {
     setState({
-      file:        null,
-      previewUrl:  url,
-      progress:    100,
-      error:       null,
-      isUploading: false,
-      mediaType:   type,
+      file:             null,
+      previewUrl:       url,
+      videoPlaybackUrl: type === "video" ? url : null,
+      progress:         100,
+      error:            null,
+      isUploading:      false,
+      mediaType:        type,
     });
   }, []);
 
