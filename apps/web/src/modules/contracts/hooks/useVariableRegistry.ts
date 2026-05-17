@@ -124,5 +124,40 @@ export function useVariableRegistry() {
     setVariables((prev) => prev.filter((v) => v.id !== id));
   }, []);
 
-  return { variables, addVariable, updateVariable, removeVariable };
+  /**
+   * Merge incoming variables into the registry.
+   * Skips entries whose `placeholder` already exists (case-insensitive).
+   * Regenerates `id` and `createdAt` for each imported entry.
+   * Returns { added, skipped } counts.
+   */
+  const importVariables = useCallback(
+    (incoming: RegistryVariable[]): { added: number; skipped: number } => {
+      let added = 0;
+      let skipped = 0;
+      setVariables((prev) => {
+        const existingPlaceholders = new Set(
+          prev.map((v) => v.placeholder.toLowerCase()),
+        );
+        const toAdd: RegistryVariable[] = [];
+        for (const v of incoming) {
+          if (existingPlaceholders.has(v.placeholder.toLowerCase())) {
+            skipped++;
+          } else {
+            existingPlaceholders.add(v.placeholder.toLowerCase());
+            toAdd.push({
+              ...v,
+              id: generateId(),
+              createdAt: new Date().toISOString(),
+            });
+            added++;
+          }
+        }
+        return [...prev, ...toAdd];
+      });
+      return { added, skipped };
+    },
+    [],
+  );
+
+  return { variables, addVariable, updateVariable, removeVariable, importVariables };
 }

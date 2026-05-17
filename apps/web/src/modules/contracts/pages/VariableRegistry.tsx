@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/shared/ui/dialog";
 import {
   Table,
@@ -34,6 +35,21 @@ function normalizeSlug(v: string): string {
 
 function isValidSlug(v: string): boolean {
   return SLUG_REGEX.test(v) && v.length >= 2;
+}
+
+// ── Import file validation ─────────────────────────────────────────────────
+
+function isValidImportRow(v: unknown): v is RegistryVariable {
+  if (!v || typeof v !== "object") return false;
+  const r = v as Record<string, unknown>;
+  return (
+    typeof r.group === "string" &&
+    typeof r.field === "string" &&
+    typeof r.placeholder === "string" &&
+    r.group.trim().length > 0 &&
+    r.field.trim().length > 0 &&
+    r.placeholder.trim().length > 0
+  );
 }
 
 // ── Empty state ────────────────────────────────────────────────────────────
@@ -245,15 +261,86 @@ function VariableFormModal({
   );
 }
 
+// ── Import confirmation dialog ─────────────────────────────────────────────
+
+interface ImportPreview {
+  incoming: RegistryVariable[];
+  willAdd: number;
+  willSkip: number;
+}
+
+function ImportConfirmDialog({
+  preview,
+  onConfirm,
+  onCancel,
+}: {
+  preview: ImportPreview | null;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <Dialog open={!!preview} onOpenChange={(v) => { if (!v) onCancel(); }}>
+      <DialogContent className="max-w-sm" data-testid="dialog-import-confirm">
+        <DialogHeader>
+          <DialogTitle>Confirmar Importação</DialogTitle>
+          <DialogDescription>
+            O ficheiro contém <strong>{preview?.incoming.length ?? 0}</strong> variável(eis).
+          </DialogDescription>
+        </DialogHeader>
+
+        {preview && (
+          <div className="space-y-2 py-1">
+            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">A adicionar</span>
+              <span className="font-semibold text-primary">{preview.willAdd}</span>
+            </div>
+            <div className="flex items-center justify-between rounded-md border bg-muted/40 px-3 py-2 text-sm">
+              <span className="text-muted-foreground">Já existem (ignoradas)</span>
+              <span className="font-semibold text-muted-foreground">{preview.willSkip}</span>
+            </div>
+            {preview.willAdd === 0 && (
+              <p className="text-xs text-muted-foreground pt-1">
+                Todas as variáveis do ficheiro já existem no registo.
+              </p>
+            )}
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button
+            variant="outline"
+            onClick={onCancel}
+            data-testid="button-import-cancel"
+          >
+            Cancelar
+          </Button>
+          <Button
+            onClick={onConfirm}
+            disabled={!preview || preview.willAdd === 0}
+            data-testid="button-import-confirm"
+          >
+            {preview && preview.willAdd > 0
+              ? `Importar ${preview.willAdd} variável(eis)`
+              : "Importar"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function VariableRegistry() {
-  const { variables, addVariable, updateVariable, removeVariable } =
+  const { variables, addVariable, updateVariable, removeVariable, importVariables } =
     useVariableRegistry();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<RegistryVariable | null>(null);
   const [search, setSearch] = useState("");
+  const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const filtered = variables.filter((v) => {
     const q = search.toLowerCase();
@@ -265,6 +352,74 @@ export default function VariableRegistry() {
       (v.internalGroup?.toLowerCase().includes(q) ?? false)
     );
   });
+
+  // ── Export ───────────────────────────────────────────────────────────────
+
+  function handleExport() {
+    const json = JSON.stringify(variables, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const date = new Date().toISOString().slice(0, 10);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `variaveis-template-${date}.json`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${variables.length} variável(eis) exportada(s)`);
+  }
+
+  // ── Import ───────────────────────────────────────────────────────────────
+
+  function handleImportClick() {
+    fileInputRef.current?.click();
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    // Reset so the same file can be re-selected after cancel
+    e.target.value = "";
+
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const parsed = JSON.parse(ev.target?.result as string);
+        if (!Array.isArray(parsed)) throw new Error("not an array");
+        const valid = parsed.filter(isValidImportRow);
+        if (valid.length === 0) throw new Error("no valid rows");
+
+        const existingPlaceholders = new Set(
+          variables.map((v) => v.placeholder.toLowerCase()),
+        );
+        let willAdd = 0;
+        let willSkip = 0;
+        for (const v of valid) {
+          if (existingPlaceholders.has(v.placeholder.toLowerCase())) {
+            willSkip++;
+          } else {
+            willAdd++;
+          }
+        }
+        setImportPreview({ incoming: valid, willAdd, willSkip });
+      } catch {
+        toast.error("Ficheiro inválido — verifique o formato");
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function handleConfirmImport() {
+    if (!importPreview) return;
+    const { added, skipped } = importVariables(importPreview.incoming);
+    setImportPreview(null);
+    if (skipped > 0) {
+      toast.success(`${added} variável(eis) importada(s) — ${skipped} já existiam`);
+    } else {
+      toast.success(`${added} variável(eis) importada(s)`);
+    }
+  }
+
+  // ── CRUD ─────────────────────────────────────────────────────────────────
 
   function handleCreate(values: VariableFormState) {
     addVariable(values.name, values.group, values.field, values.internalGroup || undefined);
@@ -297,10 +452,24 @@ export default function VariableRegistry() {
 
   return (
     <div className="flex flex-col h-full">
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        className="hidden"
+        onChange={handleFileChange}
+        data-testid="input-file-import"
+      />
+
       <PageHeader
         title="Variáveis de Template"
         description="Crie, organize e reutilize placeholders em qualquer contrato"
         actions={{
+          import: true,
+          export: true,
+          onImport: handleImportClick,
+          onExport: handleExport,
           custom: (
             <Button
               onClick={() => setCreateOpen(true)}
@@ -433,6 +602,12 @@ export default function VariableRegistry() {
           onSubmit={handleEdit}
         />
       )}
+
+      <ImportConfirmDialog
+        preview={importPreview}
+        onConfirm={handleConfirmImport}
+        onCancel={() => setImportPreview(null)}
+      />
     </div>
   );
 }
