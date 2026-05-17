@@ -41,4 +41,20 @@ export const contractsService = {
   async getTemplate(id: string) {
     return storage.findById("contract_templates", id);
   },
+
+  async listContractServiceTypes() {
+    return storage.list("contract_service_types");
+  },
+
+  async createContractServiceType(data: Record<string, unknown>) {
+    return storage.create("contract_service_types", data as never);
+  },
+
+  async updateContractServiceType(id: string, patch: Record<string, unknown>) {
+    return storage.update("contract_service_types", id, { ...patch, updated_at: new Date().toISOString() });
+  },
+
+  async archiveContractServiceType(id: string) {
+    return storage.update("contract_service_types", id, { active: false, updated_at: new Date().toISOString() });
+  },
 };

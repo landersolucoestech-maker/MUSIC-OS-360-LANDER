@@ -23,34 +23,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
+import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
+import type { ClientType } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { UserPlus, X } from "lucide-react";
-
-// ── Labels ───────────────────────────────────────────────────────────────────
-const ARTISTA_SERVICE_LABELS: Record<string, string> = {
-  empresariamento: "Empresariamento",
-  empresariamento_suporte: "Empresariamento com suporte",
-  gestao: "Gestão",
-  agenciamento: "Agenciamento",
-  edicao: "Edição",
-  distribuicao: "Distribuição",
-  marketing: "Marketing",
-  producao_musical: "Produção Musical",
-  producao_audiovisual: "Produção Audiovisual",
-  licenciamento: "Licenciamento",
-};
-
-const EMPRESA_SERVICE_LABELS: Record<string, string> = {
-  producao_musical: "Produção Musical",
-  marketing: "Marketing",
-  producao_audiovisual: "Produção Audiovisual",
-  publicidade: "Publicidade",
-  parceria: "Parceria",
-  shows: "Shows",
-  licenciamento: "Licenciamento",
-  outros: "Outros",
-};
-
-const EMPRESA_SERVICE_KEYS = Object.keys(EMPRESA_SERVICE_LABELS);
 
 const STATUS_LABELS: Record<string, string> = {
   rascunho: "Rascunho",
@@ -84,13 +59,18 @@ const ContractForm = ({
   const { clientes } = useClientes();
   const { lancamentos } = useLancamentos();
 
-  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
-  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
-
   const form = useForm<ContratoFormData>({
     resolver: zodResolver(contratoSchema),
     defaultValues: { status: "rascunho", registry_office: false, signers: [], ...initialData },
   });
+
+  const clientTypeValue = form.watch("client_type") as ClientType | undefined;
+  const serviceTypeValue = form.watch("service_type");
+  const { serviceTypes } = useContractServiceTypes(clientTypeValue ?? null);
+  const selectedType = serviceTypes.find((t) => t.slug === serviceTypeValue);
+
+  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
+  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
   const { fields: signerFields, append: appendSigner, remove: removeSigner } = useFieldArray({
     control: form.control,
@@ -104,12 +84,6 @@ const ContractForm = ({
   }, [initialData, form]);
 
   const handleManualSubmit = () => form.handleSubmit(onSubmit)();
-
-  const getFilteredServiceTypes = () => {
-    const clientType = form.watch("client_type");
-    if (clientType === "pessoa_juridica") return Object.entries(EMPRESA_SERVICE_LABELS);
-    return Object.entries(ARTISTA_SERVICE_LABELS);
-  };
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -141,10 +115,7 @@ const ContractForm = ({
                 value={form.watch("client_type")}
                 onValueChange={(value) => {
                   form.setValue("client_type", value as ContratoFormData["client_type"]);
-                  const current = form.watch("service_type");
-                  if (value === "pessoa_juridica" && current && !EMPRESA_SERVICE_KEYS.includes(current)) {
-                    form.setValue("service_type", undefined as any);
-                  }
+                  form.setValue("service_type", undefined as any);
                 }}
               >
                 <SelectTrigger data-testid="select-client-type">
@@ -172,8 +143,8 @@ const ContractForm = ({
                   <SelectValue placeholder="Selecione o tipo de serviço" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getFilteredServiceTypes().map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
+                  {serviceTypes.map((t) => (
+                    <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -339,7 +310,9 @@ const ContractForm = ({
         <CardHeader><CardTitle>Valores</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {(form.watch("client_type") === "pessoa_juridica" || form.watch("client_type") === "pessoa_fisica") && (
+            {/* PJ / PF sem tipo selecionado: mostra valor fixo direto */}
+            {(clientTypeValue === "pessoa_juridica" || clientTypeValue === "pessoa_fisica") &&
+              !selectedType?.allow_payment_type_select && (
               <div className="space-y-2">
                 <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
                 <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
@@ -347,70 +320,74 @@ const ContractForm = ({
               </div>
             )}
 
-            {form.watch("client_type") === "artista" &&
-              ["agenciamento", "gestao", "empresariamento", "empresariamento_suporte"].includes(form.watch("service_type") || "") && (
-                <>
+            {/* Artista: royalties direto (sem select de tipo de pagamento) */}
+            {clientTypeValue === "artista" && selectedType?.requires_royalties && !selectedType?.allow_payment_type_select && (
+              <div className="space-y-2">
+                <Label htmlFor="royalties_percentage">Royalties (%)</Label>
+                <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                  {...form.register("royalties_percentage", { valueAsNumber: true })} />
+              </div>
+            )}
+
+            {/* Artista: adiantamento */}
+            {clientTypeValue === "artista" && selectedType?.requires_advance && (
+              <div className="space-y-2">
+                <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
+                <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("advance_payment", { valueAsNumber: true })} />
+              </div>
+            )}
+
+            {/* Artista: suporte financeiro mensal */}
+            {clientTypeValue === "artista" && selectedType?.requires_financial_support && (
+              <div className="space-y-2">
+                <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
+                <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("financial_support", { valueAsNumber: true })} />
+              </div>
+            )}
+
+            {/* Artista: select de tipo de pagamento (valor fixo ou royalties) */}
+            {clientTypeValue === "artista" && selectedType?.allow_payment_type_select && (
+              <>
+                <div className="space-y-2">
+                  <Label>Tipo de Pagamento</Label>
+                  <Select
+                    value={form.watch("payment_type")}
+                    onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de pagamento" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
+                      <SelectItem value="royalties">Royalties</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.watch("payment_type") === "valor_fixo" && (
                   <div className="space-y-2">
-                    <Label htmlFor="royalties_percentage">Royalties (%)</Label>
-                    <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                    <Label htmlFor="fixed_value_prod">Valor do Serviço (R$)</Label>
+                    <Input id="fixed_value_prod" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("fixed_value", { valueAsNumber: true })} />
+                  </div>
+                )}
+                {form.watch("payment_type") === "royalties" && (
+                  <div className="space-y-2">
+                    <Label htmlFor="royalties_pct_prod">Royalties (%)</Label>
+                    <Input id="royalties_pct_prod" type="number" step="0.01" min="0" max="100" placeholder="0,00"
                       {...form.register("royalties_percentage", { valueAsNumber: true })} />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
-                    <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
-                      {...form.register("advance_payment", { valueAsNumber: true })} />
-                  </div>
-                  {form.watch("service_type") === "empresariamento_suporte" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
-                      <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
-                        {...form.register("financial_support", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                </>
-              )}
+                )}
+              </>
+            )}
 
-            {form.watch("client_type") === "artista" &&
-              ["producao_musical", "edicao", "distribuicao"].includes(form.watch("service_type") || "") && (
-                <>
-                  <div className="space-y-2">
-                    <Label>Tipo de Pagamento</Label>
-                    <Select
-                      value={form.watch("payment_type")}
-                      onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione o tipo de pagamento" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
-                        <SelectItem value="royalties">Royalties</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {form.watch("payment_type") === "valor_fixo" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="fixed_value_prod">Valor do Serviço (R$)</Label>
-                      <Input id="fixed_value_prod" type="number" step="0.01" placeholder="0,00"
-                        {...form.register("fixed_value", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                  {form.watch("payment_type") === "royalties" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="royalties_pct_prod">Royalties (%)</Label>
-                      <Input id="royalties_pct_prod" type="number" step="0.01" min="0" max="100" placeholder="0,00"
-                        {...form.register("royalties_percentage", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                </>
-              )}
-
-            {form.watch("client_type") === "artista" &&
-              ["producao_audiovisual", "marketing"].includes(form.watch("service_type") || "") && (
-                <div className="space-y-2">
-                  <Label htmlFor="fixed_value_av">Valor Fixo do Serviço (R$)</Label>
-                  <Input id="fixed_value_av" type="number" step="0.01" placeholder="0,00"
-                    {...form.register("fixed_value", { valueAsNumber: true })} />
-                </div>
-              )}
+            {/* Artista: valor fixo direto (sem select) */}
+            {clientTypeValue === "artista" && selectedType?.requires_fixed_value && !selectedType?.allow_payment_type_select && (
+              <div className="space-y-2">
+                <Label htmlFor="fixed_value_artista">Valor Fixo do Serviço (R$)</Label>
+                <Input id="fixed_value_artista" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("fixed_value", { valueAsNumber: true })} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
