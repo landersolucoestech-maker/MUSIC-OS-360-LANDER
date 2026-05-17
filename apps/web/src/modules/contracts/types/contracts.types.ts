@@ -172,6 +172,43 @@ export interface BrandingSettings {
   marginRight: number;
 }
 
+// ─── Semantic Contract Intelligence Engine Types ──────────────────────────────
+
+export type SemanticClauseType =
+  | "financeira"
+  | "autoral"
+  | "royalties"
+  | "exclusividade"
+  | "confidencialidade"
+  | "inadimplencia"
+  | "distribuicao_digital"
+  | "licenciamento"
+  | "rescisao"
+  | "assinatura"
+  | "prazo"
+  | "objeto";
+
+export interface SemanticVariable {
+  id: string;
+  originalText: string;
+  context: string;
+  inferredEntity: string;
+  placeholder: string;
+  accepted: boolean;
+}
+
+export interface SemanticParseResult {
+  variables: SemanticVariable[];
+  clauseTypes: SemanticClauseType[];
+  rawText: string;
+}
+
+export interface SemanticTemplateManifest {
+  variables: SemanticVariable[];
+  clauseTypes: SemanticClauseType[];
+  generatedAt: string;
+}
+
 /**
  * ContractTemplate — a fully-resolved contract type with all engine data.
  * Represents a ContractServiceType enriched with participant variables,

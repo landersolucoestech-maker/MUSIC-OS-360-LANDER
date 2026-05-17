@@ -1,67 +1,214 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
 import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent } from "@/shared/ui/card";
-import { Loader2, Plus, Edit2, Archive, Settings } from "lucide-react";
+import { Card, CardContent, CardHeader } from "@/shared/ui/card";
+import { Loader2, Plus, Trash2, FileText, Sparkles, Eye, ChevronRight } from "lucide-react";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import {
-  useContractServiceTypes,
-  type ContractServiceType,
-  type ContractServiceTypeInsert,
-} from "@/modules/contracts/hooks/useContractServiceTypes";
-import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { ServiceTypeFormModal } from "@/modules/contracts/components/ServiceTypeFormModal";
+  useTemplatesContratos,
+  type TemplateContrato,
+  type TemplateContratoInsert,
+} from "@/modules/contracts/hooks/useTemplatesContratos";
+import { ContractImportWorkspace } from "@/modules/contracts/components/ContractImportWorkspace";
+import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
+import type { SemanticClauseType, SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
 
-const CLIENT_TYPE_LABELS: Record<string, string> = {
-  artista: "Artista",
-  pessoa_fisica: "Pessoa Física",
-  pessoa_juridica: "Pessoa Jurídica",
+const CLAUSE_TYPE_LABELS: Record<SemanticClauseType, string> = {
+  financeira: "Financeira",
+  autoral: "Autoral",
+  royalties: "Royalties",
+  exclusividade: "Exclusividade",
+  confidencialidade: "Confidencialidade",
+  inadimplencia: "Inadimplência",
+  distribuicao_digital: "Distribuição Digital",
+  licenciamento: "Licenciamento",
+  rescisao: "Rescisão",
+  assinatura: "Assinatura",
+  prazo: "Prazo",
+  objeto: "Objeto",
 };
 
+const CLAUSE_TYPE_COLORS: Record<SemanticClauseType, string> = {
+  financeira: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
+  autoral: "bg-purple-500/10 text-purple-700 border-purple-500/20",
+  royalties: "bg-amber-500/10 text-amber-700 border-amber-500/20",
+  exclusividade: "bg-blue-500/10 text-blue-700 border-blue-500/20",
+  confidencialidade: "bg-slate-500/10 text-slate-700 border-slate-500/20",
+  inadimplencia: "bg-red-500/10 text-red-700 border-red-500/20",
+  distribuicao_digital: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
+  licenciamento: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20",
+  rescisao: "bg-orange-500/10 text-orange-700 border-orange-500/20",
+  assinatura: "bg-teal-500/10 text-teal-700 border-teal-500/20",
+  prazo: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
+  objeto: "bg-sky-500/10 text-sky-700 border-sky-500/20",
+};
+
+function parseManifest(template: TemplateContrato): SemanticTemplateManifest | null {
+  const raw = template["variables_manifest"];
+  if (!raw) return null;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return parsed as SemanticTemplateManifest;
+  } catch {
+    return null;
+  }
+}
+
+function countVariables(template: TemplateContrato): number {
+  const manifest = parseManifest(template);
+  return manifest?.variables?.length ?? 0;
+}
+
+function getClauseTypes(template: TemplateContrato): SemanticClauseType[] {
+  const manifest = parseManifest(template);
+  return manifest?.clauseTypes ?? [];
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "—";
+  try {
+    return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+  } catch {
+    return "—";
+  }
+}
+
+function TemplateCard({
+  template,
+  onDelete,
+  onView,
+}: {
+  template: TemplateContrato;
+  onDelete: () => void;
+  onView: () => void;
+}) {
+  const varCount = countVariables(template);
+  const clauseTypes = getClauseTypes(template);
+  const isSemantic = template.tipo_servico === "semantico";
+
+  return (
+    <Card
+      className="group hover:border-primary/30 transition-colors cursor-pointer"
+      onClick={onView}
+      data-testid={`card-template-${template.id}`}
+    >
+      <CardHeader className="pb-2 pt-4 px-4">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2.5 min-w-0">
+            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
+              {isSemantic
+                ? <Sparkles className="h-4 w-4 text-primary" />
+                : <FileText className="h-4 w-4 text-muted-foreground" />
+              }
+            </div>
+            <div className="min-w-0">
+              <p className="font-semibold text-sm leading-tight truncate">{template.nome}</p>
+              {template.descricao && (
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">{template.descricao}</p>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              data-testid={`button-view-template-${template.id}`}
+            >
+              <Eye className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              data-testid={`button-delete-template-${template.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent className="px-4 pb-4 space-y-3">
+        <div className="flex flex-wrap gap-1">
+          {isSemantic && varCount > 0 && (
+            <Badge variant="secondary" className="text-[10px] gap-1">
+              <Sparkles className="h-2.5 w-2.5" />
+              {varCount} variáveis
+            </Badge>
+          )}
+          {clauseTypes.slice(0, 3).map((ct) => (
+            <span
+              key={ct}
+              className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${CLAUSE_TYPE_COLORS[ct]}`}
+            >
+              {CLAUSE_TYPE_LABELS[ct]}
+            </span>
+          ))}
+          {clauseTypes.length > 3 && (
+            <span className="text-[10px] px-1.5 py-0.5 rounded border text-muted-foreground border-border">
+              +{clauseTypes.length - 3}
+            </span>
+          )}
+          {!isSemantic && (
+            <Badge variant="outline" className="text-[10px]">{template.tipo_servico || "Padrão"}</Badge>
+          )}
+          <Badge
+            variant={template.ativo ? "default" : "secondary"}
+            className="text-[10px]"
+          >
+            {template.ativo ? "Ativo" : "Inativo"}
+          </Badge>
+        </div>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{formatDate(template.created_at)}</span>
+          <ChevronRight className="h-3.5 w-3.5" />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function TemplatesContratos() {
-  const {
-    allServiceTypes,
-    isLoading,
-    create: createType,
-    update: updateType,
-    archive: archiveType,
-    isSlugInUse,
-  } = useContractServiceTypes();
-  const { contratos } = useContratos();
+  const { templates, isLoading, addTemplate, deleteTemplate } = useTemplatesContratos();
 
-  const [isTypeFormOpen, setIsTypeFormOpen] = useState(false);
-  const [isArchiveOpen, setIsArchiveOpen] = useState(false);
-  const [selectedType, setSelectedType] = useState<ContractServiceType | null>(null);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState<TemplateContrato | null>(null);
 
-  const handleAddType = () => { setSelectedType(null); setIsTypeFormOpen(true); };
-  const handleEditType = (t: ContractServiceType) => { setSelectedType(t); setIsTypeFormOpen(true); };
-  const handleArchiveClick = (t: ContractServiceType) => { setSelectedType(t); setIsArchiveOpen(true); };
-  const handleArchiveConfirm = () => {
-    if (selectedType) { archiveType.mutate(selectedType.id); setIsArchiveOpen(false); setSelectedType(null); }
+  const handleSave = (data: TemplateContratoInsert) => {
+    addTemplate.mutate(data);
   };
-  const handleSaveType = (data: ContractServiceTypeInsert) => {
-    if (selectedType) { updateType.mutate({ id: selectedType.id, ...data }); }
-    else { createType.mutate(data); }
-    setIsTypeFormOpen(false);
-    setSelectedType(null);
+
+  const handleDeleteClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsDeleteOpen(true);
   };
+
+  const handleDeleteConfirm = () => {
+    if (selectedTemplate) {
+      deleteTemplate.mutate(selectedTemplate.id);
+      setIsDeleteOpen(false);
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleViewClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsViewOpen(true);
+  };
+
+  const semanticCount = templates.filter((t) => t.tipo_servico === "semantico").length;
+  const activeCount = templates.filter((t) => t.ativo).length;
+  const totalVars = templates.reduce((acc, t) => acc + countVariables(t), 0);
 
   if (isLoading) {
     return (
-      <MainLayout
-        title="Tipos de Contrato"
-        description="Configure os tipos de contrato disponíveis no sistema"
-      >
+      <MainLayout title="Templates de Contrato" description="Motor semântico de templates contratuais">
         <div className="flex items-center justify-center h-40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -69,177 +216,96 @@ export default function TemplatesContratos() {
     );
   }
 
-  const ativos    = allServiceTypes.filter((t) => t.active).length;
-  const arquivados = allServiceTypes.filter((t) => !t.active).length;
-
   return (
     <MainLayout
-      title="Tipos de Contrato"
-      description="Configure os tipos de contrato disponíveis no sistema"
+      title="Templates de Contrato"
+      description="Transforme qualquer contrato em template reutilizável com inteligência semântica"
     >
       <div className="space-y-6">
         {/* Stats */}
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-4">
           {[
-            { title: "Total de Tipos",  value: allServiceTypes.length, color: "text-foreground" },
-            { title: "Ativos",          value: ativos,                 color: "text-success"    },
-            { title: "Arquivados",      value: arquivados,             color: "text-muted-foreground" },
-          ].map(({ title, value, color }) => (
+            { title: "Total de Templates", value: templates.length, sub: "todos os tipos", icon: FileText },
+            { title: "Semânticos (IA)", value: semanticCount, sub: "gerados por IA", icon: Sparkles },
+            { title: "Ativos", value: activeCount, sub: "disponíveis", icon: FileText },
+            { title: "Variáveis Mapeadas", value: totalVars, sub: "em todos os templates", icon: Sparkles },
+          ].map(({ title, value, sub, icon: Icon }) => (
             <Card key={title}>
-              <div className="flex flex-row items-center justify-between space-y-0 p-6 pb-2">
+              <div className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
                 <p className="text-sm font-medium">{title}</p>
-                <Settings className="h-4 w-4 text-muted-foreground" />
+                <Icon className="h-4 w-4 text-muted-foreground" />
               </div>
-              <div className="px-6 pb-6">
-                <div className={`text-2xl font-bold ${color}`}>{value}</div>
+              <div className="px-5 pb-5">
+                <div className="text-2xl font-bold">{value}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
               </div>
             </Card>
           ))}
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between">
-          <p className="text-sm text-muted-foreground max-w-xl">
-            Configure os tipos de serviço disponíveis ao criar contratos. Os tipos definem quais campos financeiros aparecem no formulário.
-          </p>
-          <Button size="sm" className="gap-2" onClick={handleAddType} data-testid="button-novo-tipo-contrato">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">Contract Intelligence Engine</p>
+            <p className="text-xs text-muted-foreground max-w-xl">
+              Importe qualquer contrato (PDF, DOCX ou texto) e o sistema detecta automaticamente
+              todas as variáveis dinâmicas com análise semântica e jurídica contextual.
+            </p>
+          </div>
+          <Button
+            className="gap-2 shrink-0"
+            onClick={() => setIsWorkspaceOpen(true)}
+            data-testid="button-novo-template"
+          >
             <Plus className="h-4 w-4" />
-            Novo Tipo
+            Novo Template
           </Button>
         </div>
 
-        {/* Tabela */}
-        <Card>
-          <CardContent className="p-0">
-            {isLoading ? (
-              <div className="flex items-center justify-center h-32">
-                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-              </div>
-            ) : allServiceTypes.length === 0 ? (
-              <div className="p-6">
-                <EmptyState
-                  icon={Settings}
-                  title="Nenhum tipo de contrato cadastrado"
-                  description="Crie tipos de contrato para organizar seus serviços."
-                  action={{ label: "Novo Tipo", onClick: handleAddType }}
-                />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-8">#</TableHead>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Categoria</TableHead>
-                    <TableHead>Tipo de Cliente</TableHead>
-                    <TableHead>Campos Financeiros</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[80px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {allServiceTypes.map((t) => (
-                    <TableRow
-                      key={t.id}
-                      data-testid={`row-service-type-${t.id}`}
-                      className={!t.active ? "opacity-50" : ""}
-                    >
-                      <TableCell className="text-muted-foreground text-xs">{t.sort_order}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{t.name}</p>
-                          {t.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">{t.description}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {t.category ? (
-                          <Badge variant="secondary" className="text-xs">{t.category}</Badge>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {t.client_types.map((ct) => (
-                            <Badge key={ct} variant="outline" className="text-xs">
-                              {CLIENT_TYPE_LABELS[ct] ?? ct}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {t.requires_royalties && <Badge variant="outline" className="text-xs">Royalties</Badge>}
-                          {t.requires_fixed_value && <Badge variant="outline" className="text-xs">Valor Fixo</Badge>}
-                          {t.requires_advance && <Badge variant="outline" className="text-xs">Adiantamento</Badge>}
-                          {t.requires_financial_support && <Badge variant="outline" className="text-xs">Suporte Fin.</Badge>}
-                          {t.allow_installments && <Badge variant="outline" className="text-xs">Parcelamento</Badge>}
-                          {!t.requires_royalties && !t.requires_fixed_value && !t.requires_advance &&
-                           !t.requires_financial_support && !t.allow_installments && (
-                            <span className="text-xs text-muted-foreground">—</span>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={t.active ? "default" : "secondary"}>
-                          {t.active ? "Ativo" : "Arquivado"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={() => handleEditType(t)}
-                            data-testid={`button-edit-type-${t.id}`}
-                          >
-                            <Edit2 className="h-3.5 w-3.5" />
-                          </Button>
-                          {t.active && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleArchiveClick(t)}
-                              disabled={isSlugInUse(t.slug, contratos as Array<Record<string, unknown>>)}
-                              title={
-                                isSlugInUse(t.slug, contratos as Array<Record<string, unknown>>)
-                                  ? "Tipo em uso em contratos — não pode ser arquivado"
-                                  : "Arquivar tipo"
-                              }
-                              data-testid={`button-archive-type-${t.id}`}
-                            >
-                              <Archive className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
+        {/* Template list */}
+        {templates.length === 0 ? (
+          <Card>
+            <CardContent className="p-8">
+              <EmptyState
+                icon={Sparkles}
+                title="Nenhum template criado ainda"
+                description="Clique em 'Novo Template' para importar um contrato e gerar um template inteligente com detecção automática de variáveis."
+                action={{ label: "Novo Template", onClick: () => setIsWorkspaceOpen(true) }}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {templates.map((t) => (
+              <TemplateCard
+                key={t.id}
+                template={t}
+                onDelete={() => handleDeleteClick(t)}
+                onView={() => handleViewClick(t)}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
-      {/* Modais */}
-      <ServiceTypeFormModal
-        open={isTypeFormOpen}
-        onOpenChange={setIsTypeFormOpen}
-        serviceType={selectedType}
-        onSave={handleSaveType}
-        existingSlugs={allServiceTypes.filter((t) => t.id !== selectedType?.id).map((t) => t.slug)}
+      <ContractImportWorkspace
+        open={isWorkspaceOpen}
+        onOpenChange={setIsWorkspaceOpen}
+        onSave={handleSave}
       />
+
+      <TemplateContratoViewModal
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        template={selectedTemplate}
+      />
+
       <DeleteConfirmModal
-        open={isArchiveOpen}
-        onOpenChange={setIsArchiveOpen}
-        onConfirm={handleArchiveConfirm}
-        title="Arquivar Tipo de Contrato"
-        description={`Tem certeza que deseja arquivar o tipo "${selectedType?.name}"? Ele não aparecerá mais na lista ao criar contratos.`}
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        onConfirm={handleDeleteConfirm}
+        title="Excluir Template"
+        description={`Tem certeza que deseja excluir o template "${selectedTemplate?.nome}"? Esta ação não pode ser desfeita.`}
       />
     </MainLayout>
   );
