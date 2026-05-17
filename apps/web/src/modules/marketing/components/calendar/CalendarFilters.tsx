@@ -5,20 +5,20 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { cn } from "@/shared/lib/utils";
 import {
   InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, TwitterXIcon, LinkedInIcon,
 } from "./platform-icons";
 
 const PLATAFORMAS = [
-  { value: "instagram", icon: <InstagramIcon className="h-3.5 w-3.5" />, color: "text-pink-500" },
-  { value: "tiktok",    icon: <TikTokIcon    className="h-3.5 w-3.5" />, color: "text-foreground" },
-  { value: "youtube",   icon: <YouTubeIcon   className="h-3.5 w-3.5" />, color: "text-red-500" },
-  { value: "facebook",  icon: <FacebookIcon  className="h-3.5 w-3.5" />, color: "text-blue-500" },
-  { value: "twitter",   icon: <TwitterXIcon  className="h-3.5 w-3.5" />, color: "text-sky-500" },
-  { value: "linkedin",  icon: <LinkedInIcon  className="h-3.5 w-3.5" />, color: "text-blue-700" },
+  { value: "instagram", label: "Instagram", icon: <InstagramIcon className="h-3.5 w-3.5" />, color: "text-pink-500" },
+  { value: "tiktok",    label: "TikTok",    icon: <TikTokIcon    className="h-3.5 w-3.5" />, color: "text-foreground" },
+  { value: "youtube",   label: "YouTube",   icon: <YouTubeIcon   className="h-3.5 w-3.5" />, color: "text-red-500" },
+  { value: "facebook",  label: "Facebook",  icon: <FacebookIcon  className="h-3.5 w-3.5" />, color: "text-blue-500" },
+  { value: "twitter",   label: "X (Twitter)", icon: <TwitterXIcon className="h-3.5 w-3.5" />, color: "text-sky-500" },
+  { value: "linkedin",  label: "LinkedIn",  icon: <LinkedInIcon  className="h-3.5 w-3.5" />, color: "text-blue-700" },
 ];
 
 const STATUS_OPTIONS = [
@@ -60,32 +60,19 @@ export function CalendarFilters({
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === status) ?? STATUS_OPTIONS[0];
   const currentTipo   = TIPO_OPTIONS.find((t) => t.value === tipo)     ?? TIPO_OPTIONS[0];
 
+  const plataformaLabel = plataformas.length === 0
+    ? "Plataformas"
+    : plataformas.length === 1
+      ? PLATAFORMAS.find((p) => p.value === plataformas[0])?.label ?? "Plataformas"
+      : `${plataformas.length} plataformas`;
+
+  const firstSelected = plataformas.length === 1
+    ? PLATAFORMAS.find((p) => p.value === plataformas[0])
+    : null;
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
-      {/* ── Platform icon toggles ── */}
-      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40">
-        {PLATAFORMAS.map((p) => {
-          const active = plataformas.includes(p.value);
-          return (
-            <button
-              key={p.value}
-              onClick={() => onPlataformaToggle(p.value)}
-              title={p.value}
-              data-testid={`filter-plat-${p.value}`}
-              className={cn(
-                "h-7 w-7 rounded-lg flex items-center justify-center transition-all",
-                active
-                  ? `bg-background shadow-sm ${p.color}`
-                  : "text-muted-foreground/50 hover:text-muted-foreground",
-              )}
-            >
-              {p.icon}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* ── Search + filter icon ── */}
+      {/* ── Search ── */}
       <div className="relative flex-1 min-w-[200px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
@@ -96,6 +83,54 @@ export function CalendarFilters({
           data-testid="input-search-calendar"
         />
       </div>
+
+      {/* ── Plataformas dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-plataformas"
+          >
+            {firstSelected && (
+              <span className={firstSelected.color}>{firstSelected.icon}</span>
+            )}
+            {plataformaLabel}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-48">
+          <DropdownMenuItem
+            onClick={() => {
+              PLATAFORMAS.forEach((p) => {
+                if (plataformas.includes(p.value)) onPlataformaToggle(p.value);
+              });
+            }}
+            className="flex items-center gap-2 text-sm"
+            data-testid="filter-plat-all"
+          >
+            <span className="flex-1">Todas as plataformas</span>
+            {plataformas.length === 0 && <Check className="h-3.5 w-3.5 text-primary" />}
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {PLATAFORMAS.map((p) => {
+            const active = plataformas.includes(p.value);
+            return (
+              <DropdownMenuItem
+                key={p.value}
+                onClick={() => onPlataformaToggle(p.value)}
+                className="flex items-center gap-2 text-sm"
+                data-testid={`filter-plat-${p.value}`}
+              >
+                <span className={p.color}>{p.icon}</span>
+                <span className="flex-1">{p.label}</span>
+                {active && <Check className="h-3.5 w-3.5 text-primary" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* ── Status dropdown ── */}
       <DropdownMenu>
