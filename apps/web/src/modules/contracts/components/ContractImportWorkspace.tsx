@@ -278,10 +278,13 @@ function VariableCard({
           onChange={(v) => {
             const updates: Partial<SemanticVariable> = { originalText: v };
             if (!variable.placeholder && v.trim()) {
-              updates.placeholder =
-                "{{CONTRATO." +
-                v.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") +
-                "}}";
+              const slug = v
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "")
+                .toUpperCase()
+                .replace(/[^A-Z0-9]+/g, "_")
+                .replace(/^_+|_+$/g, "");
+              updates.placeholder = slug ? `{{CONTRATO.${slug}}}` : "";
             }
             onUpdate(updates);
           }}
