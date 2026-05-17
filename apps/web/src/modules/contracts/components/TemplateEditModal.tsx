@@ -87,6 +87,24 @@ function parseManifest(template: TemplateContrato): SemanticTemplateManifest {
   }
 }
 
+function renderPreviewWithPlaceholders(content: string) {
+  const parts = content.split(/(\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\})/g);
+  return parts.map((part, i) => {
+    if (/^\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\}$/.test(part)) {
+      return (
+        <mark
+          key={i}
+          className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded font-mono text-xs text-foreground"
+          title={part}
+        >
+          {part}
+        </mark>
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
 interface VariableRowProps {
   variable: SemanticVariable;
   onChange: (updates: Partial<SemanticVariable>) => void;
@@ -477,21 +495,61 @@ export function TemplateEditModal({
               {/* ── TAB: conteudo ── */}
               {activeTab === "conteudo" && (
                 <div className="space-y-3">
-                  <div>
-                    <p className="text-sm font-medium">Conteúdo do Template</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      Texto do contrato com os placeholders já substituídos.
-                      Os valores dinâmicos aparecem como{" "}
-                      <span className="font-mono text-primary">{"{{NAMESPACE.CAMPO}}"}</span>
-                    </p>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <p className="text-sm font-medium">Conteúdo do Template</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Edite o texto à esquerda. Os placeholders{" "}
+                        <span className="font-mono text-primary">{"{{NAMESPACE.CAMPO}}"}</span>{" "}
+                        são destacados na pré-visualização à direita.
+                      </p>
+                    </div>
+                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                      {conteudo.length.toLocaleString("pt-BR")} chars
+                    </Badge>
                   </div>
-                  <Textarea
-                    value={conteudo}
-                    onChange={(e) => setConteudo(e.target.value)}
-                    placeholder="Conteúdo do template com placeholders..."
-                    className="font-mono text-xs min-h-[400px] resize-none"
-                    data-testid="textarea-conteudo"
-                  />
+
+                  <div className="grid grid-cols-2 gap-3 min-h-[420px]">
+                    {/* Editor */}
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                        Editor
+                      </p>
+                      <Textarea
+                        value={conteudo}
+                        onChange={(e) => setConteudo(e.target.value)}
+                        placeholder="Conteúdo do template com placeholders..."
+                        className="flex-1 font-mono text-xs resize-none h-[400px]"
+                        data-testid="textarea-conteudo"
+                      />
+                    </div>
+
+                    {/* Preview */}
+                    <div className="flex flex-col gap-1.5">
+                      <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
+                        Pré-visualização
+                      </p>
+                      <div className="rounded-md border border-border bg-muted/20 p-4 overflow-y-auto h-[400px]">
+                        {conteudo ? (
+                          <p className="text-sm leading-relaxed whitespace-pre-wrap font-serif">
+                            {renderPreviewWithPlaceholders(conteudo)}
+                          </p>
+                        ) : (
+                          <p className="text-xs text-muted-foreground italic">
+                            Digite o conteúdo no editor para visualizar aqui…
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[10px] text-muted-foreground">
+                    Dica: os placeholders marcados em{" "}
+                    <mark className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded text-foreground not-italic">
+                      amarelo
+                    </mark>{" "}
+                    serão substituídos pelos valores reais ao gerar cada contrato.
+                  </p>
                 </div>
               )}
             </div>

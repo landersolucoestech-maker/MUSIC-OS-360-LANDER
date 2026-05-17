@@ -12,6 +12,7 @@ import {
   Edit2, Trash2, AlertCircle, ChevronRight, FileSearch,
 } from "lucide-react";
 import { toast } from "sonner";
+import mammoth from "mammoth";
 import type {
   SemanticVariable,
   SemanticParseResult,
@@ -288,13 +289,42 @@ export function ContractImportWorkspace({
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      setRawText(content ?? "");
-    };
-    reader.readAsText(file, "UTF-8");
     e.target.value = "";
+
+    const ext = file.name.split(".").pop()?.toLowerCase() ?? "";
+
+    if (ext === "docx" || ext === "doc") {
+      const reader = new FileReader();
+      reader.onload = async (ev) => {
+        try {
+          const arrayBuffer = ev.target?.result as ArrayBuffer;
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const text = result.value.trim();
+          if (!text) {
+            toast.error("Não foi possível extrair texto deste arquivo. Tente copiar e colar o conteúdo manualmente.");
+            return;
+          }
+          setRawText(text);
+          setAnalyzeError(null);
+          toast.success(`Arquivo "${file.name}" carregado — ${text.length.toLocaleString("pt-BR")} caracteres extraídos.`);
+        } catch {
+          toast.error("Erro ao extrair texto do arquivo Word. Tente copiar e colar o conteúdo manualmente.");
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const content = ev.target?.result as string;
+        setRawText(content ?? "");
+        setAnalyzeError(null);
+        toast.success(`Arquivo "${file.name}" carregado.`);
+      };
+      reader.onerror = () => {
+        toast.error("Erro ao ler o arquivo. Tente copiar e colar o conteúdo.");
+      };
+      reader.readAsText(file, "UTF-8");
+    }
   }, []);
 
   const handleAnalyze = useCallback(async () => {
