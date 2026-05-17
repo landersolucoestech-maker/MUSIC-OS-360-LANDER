@@ -326,9 +326,13 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     }
 
     const clausErrors: Record<string, string> = {};
-    for (const c of clausulas) {
-      if (!c.titulo.trim()) clausErrors[c.id] = "Título da cláusula é obrigatório.";
-      else if (!c.conteudo.trim()) clausErrors[c.id] = "Conteúdo da cláusula não pode estar vazio.";
+    if (clausulas.length === 0) {
+      clausErrors["__empty"] = "Adicione ao menos 1 cláusula ao contrato.";
+    } else {
+      for (const c of clausulas) {
+        if (!c.titulo.trim()) clausErrors[c.id] = "Título da cláusula é obrigatório.";
+        else if (!c.conteudo.trim()) clausErrors[c.id] = "Conteúdo da cláusula não pode estar vazio.";
+      }
     }
     setClausulaErrors(clausErrors);
     if (Object.keys(clausErrors).length > 0) valid = false;
@@ -447,7 +451,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     envolvidos: participants.length === 0 || !!participantError,
     financeiro: false,
     obra: false,
-    clausulas: clausulas.some((c) => clausulaErrors[c.id]),
+    clausulas: Object.keys(clausulaErrors).length > 0,
     assinaturas: false,
     branding: false,
     preview: false,
@@ -500,11 +504,33 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                     <Card>
                       <CardHeader className="pb-3"><CardTitle className={sectionLabel}>Identificação</CardTitle></CardHeader>
                       <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="name">Nome *</Label>
+                          <Input id="name" {...form.register("name")} placeholder="Ex: Agenciamento Artístico" data-testid="input-type-name" />
+                          {formErrors.name && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{formErrors.name.message}</p>}
+                        </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-2">
-                            <Label htmlFor="name">Nome *</Label>
-                            <Input id="name" {...form.register("name")} placeholder="Ex: Agenciamento Artístico" data-testid="input-type-name" />
-                            {formErrors.name && <p className="text-xs text-destructive flex items-center gap-1"><AlertCircle className="h-3 w-3" />{formErrors.name.message}</p>}
+                            <Label>Tipo de Contrato *</Label>
+                            <Select
+                              value={form.watch("financial_model")}
+                              onValueChange={(v) => form.setValue("financial_model", v as FinancialModel)}
+                            >
+                              <SelectTrigger data-testid="select-financial-model">
+                                <SelectValue placeholder="Selecione..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
+                                <SelectItem value="royalties">Royalties</SelectItem>
+                                <SelectItem value="misto">Misto</SelectItem>
+                                <SelectItem value="recorrente">Recorrente</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            {formErrors.financial_model && (
+                              <p className="text-xs text-destructive flex items-center gap-1">
+                                <AlertCircle className="h-3 w-3" />{formErrors.financial_model.message}
+                              </p>
+                            )}
                           </div>
                           <div className="space-y-2">
                             <Label>Categoria</Label>
@@ -842,8 +868,10 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                       </CardHeader>
                       <CardContent>
                         {clausulas.length === 0 ? (
-                          <div className="text-center py-10 text-muted-foreground text-sm border border-dashed border-border rounded-lg">
-                            Nenhuma cláusula adicionada. Clique em "Adicionar Cláusula" para começar.
+                          <div className={`text-center py-10 text-sm border border-dashed rounded-lg ${clausulaErrors["__empty"] ? "border-destructive/50 bg-destructive/5 text-destructive" : "border-border text-muted-foreground"}`}>
+                            {clausulaErrors["__empty"]
+                              ? <span className="flex items-center justify-center gap-1"><AlertCircle className="h-4 w-4" />{clausulaErrors["__empty"]}</span>
+                              : "Nenhuma cláusula adicionada. Clique em \"Adicionar Cláusula\" para começar."}
                           </div>
                         ) : (
                           <div className="space-y-4">
