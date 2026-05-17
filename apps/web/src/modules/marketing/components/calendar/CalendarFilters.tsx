@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search } from "lucide-react";
+import { Check, ChevronDown, LayoutGrid, Search } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import {
@@ -40,13 +40,14 @@ const TIPO_OPTIONS = [
   { value: "carrossel", label: "Carrossel" },
 ];
 
-type ViewMode = "dia" | "semana" | "mes" | "ano";
+export type ViewMode = "dia" | "semana" | "mes" | "ano" | "feed";
 
-const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+const VIEW_OPTIONS: { value: ViewMode; label: string; icon?: React.ReactNode }[] = [
   { value: "dia",    label: "Dia" },
   { value: "semana", label: "Semana" },
   { value: "mes",    label: "Mês" },
   { value: "ano",    label: "Ano" },
+  { value: "feed",   label: "Feed", icon: <LayoutGrid className="h-3 w-3" /> },
 ];
 
 interface CalendarFiltersProps {
@@ -117,6 +118,7 @@ export function CalendarFilters({
               className="flex items-center gap-2 text-sm"
               data-testid={`view-${v.value}`}
             >
+              {v.icon && <span className="text-muted-foreground">{v.icon}</span>}
               <span className="flex-1">{v.label}</span>
               {viewMode === v.value && <Check className="h-3.5 w-3.5 text-primary" />}
             </DropdownMenuItem>

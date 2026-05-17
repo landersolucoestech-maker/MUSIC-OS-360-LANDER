@@ -15,13 +15,13 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
 import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
 import { CalendarFilters } from "@/modules/marketing/components/calendar/CalendarFilters";
+import type { ViewMode } from "@/modules/marketing/components/calendar/CalendarFilters";
 import { WeeklyCalendar } from "@/modules/marketing/components/calendar/WeeklyCalendar";
 import { DayCalendar } from "@/modules/marketing/components/calendar/DayCalendar";
 import { MonthCalendar } from "@/modules/marketing/components/calendar/MonthCalendar";
 import { YearCalendar } from "@/modules/marketing/components/calendar/YearCalendar";
+import { FeedView } from "@/modules/marketing/components/calendar/FeedView";
 import { ContentModal } from "@/modules/marketing/components/calendar/ContentModal";
-
-type ViewMode = "dia" | "semana" | "mes" | "ano";
 
 export default function MarketingCalendario() {
   const { conteudos, isLoading, deleteConteudo } = useConteudos();
@@ -245,6 +245,14 @@ export default function MarketingCalendario() {
                     setCurrentDate(month);
                     setViewMode("mes");
                   }}
+                />
+              )}
+
+              {viewMode === "feed" && (
+                <FeedView
+                  conteudos={filteredConteudos}
+                  onEdit={handleEdit}
+                  onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
                 />
               )}
             </>
