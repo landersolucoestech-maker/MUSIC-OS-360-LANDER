@@ -64,6 +64,7 @@ interface VariableFormState {
   name: string;
   group: string;
   field: string;
+  internalGroup: string;
 }
 
 interface VariableFormModalProps {
@@ -84,18 +85,19 @@ function VariableFormModal({
   const [name, setName] = useState(initial?.name ?? "");
   const [group, setGroup] = useState(initial?.group ?? "");
   const [field, setField] = useState(initial?.field ?? "");
+  const [internalGroup, setInternalGroup] = useState(initial?.internalGroup ?? "");
 
   const groupNorm = normalizeSlug(group);
   const fieldNorm = normalizeSlug(field);
   const preview =
     isValidSlug(groupNorm) && isValidSlug(fieldNorm)
       ? `{{${groupNorm}.${fieldNorm}}}`
-      : "{{GRUPO.CAMPO}}";
+      : "{{ALIAS.CAMPO}}";
 
   const nameError = name.trim().length === 0 ? "Nome é obrigatório" : null;
   const groupError =
     group.trim().length === 0
-      ? "Grupo é obrigatório"
+      ? "Alias é obrigatório"
       : !isValidSlug(groupNorm)
         ? "Mínimo 2 caracteres (letras/números/_)"
         : null;
@@ -110,7 +112,12 @@ function VariableFormModal({
 
   function handleSubmit() {
     if (!canSubmit) return;
-    onSubmit({ name: name.trim(), group: groupNorm, field: fieldNorm });
+    onSubmit({
+      name: name.trim(),
+      group: groupNorm,
+      field: fieldNorm,
+      internalGroup: internalGroup.trim(),
+    });
     onOpenChange(false);
   }
 
@@ -119,13 +126,14 @@ function VariableFormModal({
       setName(initial?.name ?? "");
       setGroup(initial?.group ?? "");
       setField(initial?.field ?? "");
+      setInternalGroup(initial?.internalGroup ?? "");
     }
     onOpenChange(v);
   }
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md" data-testid="dialog-variable-form">
+      <DialogContent className="max-w-lg" data-testid="dialog-variable-form">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Nova Variável" : "Editar Variável"}
@@ -133,6 +141,7 @@ function VariableFormModal({
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Name */}
           <div className="space-y-1.5">
             <Label htmlFor="vr-name">Nome amigável</Label>
             <Input
@@ -147,9 +156,13 @@ function VariableFormModal({
             )}
           </div>
 
+          {/* Alias + Internal side by side */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="vr-group">Grupo / Contexto</Label>
+              <Label htmlFor="vr-group">
+                Alias Visual / Jurídico
+                <span className="ml-1 text-[10px] font-normal text-muted-foreground">(aparece no placeholder)</span>
+              </Label>
               <Input
                 id="vr-group"
                 placeholder="Ex: ARTISTA"
@@ -161,26 +174,53 @@ function VariableFormModal({
                 <p className="text-xs text-destructive">{groupError}</p>
               )}
             </div>
+
             <div className="space-y-1.5">
-              <Label htmlFor="vr-field">Campo</Label>
+              <Label htmlFor="vr-internal">
+                Nomenclatura Interna
+                <span className="ml-1 text-[10px] font-normal text-muted-foreground">(opcional)</span>
+              </Label>
               <Input
-                id="vr-field"
-                placeholder="Ex: NAME"
-                value={field}
-                onChange={(e) => setField(e.target.value)}
-                data-testid="input-variable-field"
+                id="vr-internal"
+                placeholder="Ex: artist"
+                value={internalGroup}
+                onChange={(e) => setInternalGroup(e.target.value)}
+                data-testid="input-variable-internal"
               />
-              {fieldError && (
-                <p className="text-xs text-destructive">{fieldError}</p>
-              )}
+              <p className="text-[10px] text-muted-foreground leading-tight">
+                Organização interna — não aparece no placeholder
+              </p>
             </div>
           </div>
 
-          <div className="rounded-md border bg-muted/40 px-4 py-3 flex items-center gap-2">
+          {/* Field */}
+          <div className="space-y-1.5">
+            <Label htmlFor="vr-field">Campo</Label>
+            <Input
+              id="vr-field"
+              placeholder="Ex: NAME"
+              value={field}
+              onChange={(e) => setField(e.target.value)}
+              data-testid="input-variable-field"
+            />
+            {fieldError && (
+              <p className="text-xs text-destructive">{fieldError}</p>
+            )}
+          </div>
+
+          {/* Preview */}
+          <div className="rounded-md border bg-muted/40 px-4 py-3 flex items-center gap-3">
             <Braces className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-sm font-mono text-primary font-medium">
-              {preview}
-            </span>
+            <div className="flex-1 min-w-0">
+              <span className="text-sm font-mono text-primary font-medium">
+                {preview}
+              </span>
+              {internalGroup.trim() && (
+                <span className="ml-3 text-xs text-muted-foreground">
+                  → grupo interno: <span className="font-mono">{internalGroup.trim()}</span>
+                </span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -221,12 +261,13 @@ export default function VariableRegistry() {
       v.name.toLowerCase().includes(q) ||
       v.placeholder.toLowerCase().includes(q) ||
       v.group.toLowerCase().includes(q) ||
-      v.field.toLowerCase().includes(q)
+      v.field.toLowerCase().includes(q) ||
+      (v.internalGroup?.toLowerCase().includes(q) ?? false)
     );
   });
 
   function handleCreate(values: VariableFormState) {
-    addVariable(values.name, values.group, values.field);
+    addVariable(values.name, values.group, values.field, values.internalGroup || undefined);
     toast.success("Variável criada com sucesso");
   }
 
@@ -236,8 +277,9 @@ export default function VariableRegistry() {
       name: values.name,
       group: values.group,
       field: values.field,
+      internalGroup: values.internalGroup || undefined,
     });
-    toast.success("Variável atualizada");
+    toast.success("Variável actualizada");
     setEditTarget(null);
   }
 
@@ -289,7 +331,8 @@ export default function VariableRegistry() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Nome</TableHead>
-                    <TableHead>Grupo</TableHead>
+                    <TableHead>Alias</TableHead>
+                    <TableHead>Nomenclatura Interna</TableHead>
                     <TableHead>Campo</TableHead>
                     <TableHead>Placeholder</TableHead>
                     <TableHead className="w-28 text-right">Acções</TableHead>
@@ -299,7 +342,7 @@ export default function VariableRegistry() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="text-center text-muted-foreground py-10"
                       >
                         Nenhuma variável encontrada para "{search}"
@@ -311,6 +354,9 @@ export default function VariableRegistry() {
                         <TableCell className="font-medium">{v.name}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{v.group}</Badge>
+                        </TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground">
+                          {v.internalGroup ?? <span className="opacity-30">—</span>}
                         </TableCell>
                         <TableCell className="font-mono text-xs text-muted-foreground">
                           {v.field}
@@ -382,6 +428,7 @@ export default function VariableRegistry() {
             name: editTarget.name,
             group: editTarget.group,
             field: editTarget.field,
+            internalGroup: editTarget.internalGroup ?? "",
           }}
           onSubmit={handleEdit}
         />
