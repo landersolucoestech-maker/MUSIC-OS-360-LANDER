@@ -396,7 +396,7 @@ export function ServiceTypeFormModal({
                   <p className="text-xs text-muted-foreground">Variáveis disponíveis para uso nas cláusulas:</p>
                   <div className="flex flex-wrap gap-1.5">
                     {TEMPLATE_VARIABLES.map((v) => (
-                      <Badge key={v} variant="outline" className="font-mono text-[10px]">
+                      <Badge key={v} variant="outline" className="font-mono text-[10px] font-normal">
                         {v}
                       </Badge>
                     ))}
