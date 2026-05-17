@@ -1,5 +1,11 @@
 import { useState, useCallback, useMemo } from "react";
-import { addWeeks, subWeeks, startOfWeek, endOfWeek, format } from "date-fns";
+import {
+  addDays, subDays,
+  addWeeks, subWeeks, startOfWeek,
+  addMonths, subMonths, startOfMonth,
+  addYears, subYears, startOfYear,
+  endOfWeek, format,
+} from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, CalendarDays, Plus } from "lucide-react";
 import { MainLayout } from "@/shared/components/MainLayout";
@@ -10,35 +16,37 @@ import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
 import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
 import { CalendarFilters } from "@/modules/marketing/components/calendar/CalendarFilters";
 import { WeeklyCalendar } from "@/modules/marketing/components/calendar/WeeklyCalendar";
+import { DayCalendar } from "@/modules/marketing/components/calendar/DayCalendar";
+import { MonthCalendar } from "@/modules/marketing/components/calendar/MonthCalendar";
+import { YearCalendar } from "@/modules/marketing/components/calendar/YearCalendar";
 import { ContentModal } from "@/modules/marketing/components/calendar/ContentModal";
 
-type ViewMode = "semana" | "mes" | "feed";
+type ViewMode = "dia" | "semana" | "mes" | "ano";
 
 const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+  { value: "dia",    label: "Dia" },
   { value: "semana", label: "Semana" },
   { value: "mes",    label: "Mês" },
-  { value: "feed",   label: "Feed" },
+  { value: "ano",    label: "Ano" },
 ];
 
 export default function MarketingCalendario() {
   const { conteudos, isLoading, deleteConteudo } = useConteudos();
 
-  const [viewMode, setViewMode]   = useState<ViewMode>("semana");
-  const [weekStart, setWeekStart] = useState<Date>(() =>
-    startOfWeek(new Date(), { weekStartsOn: 1 }),
-  );
+  const [viewMode, setViewMode] = useState<ViewMode>("semana");
+  const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
-  const [search, setSearch]               = useState("");
-  const [filterPlats, setFilterPlats]     = useState<string[]>([]);
-  const [filterStatus, setFilterStatus]   = useState("all");
-  const [filterTipo, setFilterTipo]       = useState("all");
+  const [search, setSearch]             = useState("");
+  const [filterPlats, setFilterPlats]   = useState<string[]>([]);
+  const [filterStatus, setFilterStatus] = useState("all");
+  const [filterTipo, setFilterTipo]     = useState("all");
 
-  const [modalOpen, setModalOpen]         = useState(false);
-  const [modalMode, setModalMode]         = useState<"create" | "edit">("create");
+  const [modalOpen, setModalOpen]       = useState(false);
+  const [modalMode, setModalMode]       = useState<"create" | "edit">("create");
   const [selectedConteudo, setSelectedConteudo] = useState<ConteudoWithRelations | null>(null);
   const [prefilledDate, setPrefilledDate] = useState<Date | null>(null);
   const [prefilledHour, setPrefilledHour] = useState<string | null>(null);
-  const [deleteModal, setDeleteModal]     = useState<{ open: boolean; conteudo?: ConteudoWithRelations }>({ open: false });
+  const [deleteModal, setDeleteModal]   = useState<{ open: boolean; conteudo?: ConteudoWithRelations }>({ open: false });
 
   const handleNovoConteudo = () => {
     setSelectedConteudo(null);
@@ -74,6 +82,37 @@ export default function MarketingCalendario() {
   const onPlataformaToggle = (v: string) =>
     setFilterPlats((prev) => prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]);
 
+  const goToToday = () => setCurrentDate(new Date());
+
+  const goPrev = () => {
+    if (viewMode === "dia")    setCurrentDate((d) => subDays(d, 1));
+    if (viewMode === "semana") setCurrentDate((d) => subWeeks(d, 1));
+    if (viewMode === "mes")    setCurrentDate((d) => subMonths(d, 1));
+    if (viewMode === "ano")    setCurrentDate((d) => subYears(d, 1));
+  };
+
+  const goNext = () => {
+    if (viewMode === "dia")    setCurrentDate((d) => addDays(d, 1));
+    if (viewMode === "semana") setCurrentDate((d) => addWeeks(d, 1));
+    if (viewMode === "mes")    setCurrentDate((d) => addMonths(d, 1));
+    if (viewMode === "ano")    setCurrentDate((d) => addYears(d, 1));
+  };
+
+  const periodLabel = useMemo(() => {
+    if (viewMode === "dia") {
+      return format(currentDate, "EEEE, d 'de' MMMM yyyy", { locale: ptBR });
+    }
+    if (viewMode === "semana") {
+      const ws = startOfWeek(currentDate, { weekStartsOn: 1 });
+      const we = endOfWeek(currentDate, { weekStartsOn: 1 });
+      return `${format(ws, "d")} — ${format(we, "d 'de' MMMM, yyyy", { locale: ptBR })}`;
+    }
+    if (viewMode === "mes") {
+      return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
+    }
+    return format(currentDate, "yyyy");
+  }, [viewMode, currentDate]);
+
   const filteredConteudos = useMemo(() => {
     return conteudos.filter((c: ConteudoWithRelations) => {
       if (search) {
@@ -96,10 +135,7 @@ export default function MarketingCalendario() {
     });
   }, [conteudos, search, filterPlats, filterStatus, filterTipo]);
 
-  const weekLabel = useMemo(() => {
-    const end = endOfWeek(weekStart, { weekStartsOn: 1 });
-    return `${format(weekStart, "d")} — ${format(end, "d 'de' MMMM, yyyy", { locale: ptBR })}`;
-  }, [weekStart]);
+  const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const headerActions = (
     <div className="flex items-center gap-3">
@@ -139,30 +175,32 @@ export default function MarketingCalendario() {
         actions={headerActions}
       >
         <div className="space-y-4">
+          {/* ── Toolbar: nav + filters ── */}
           <div className="flex items-center gap-3">
-            {viewMode === "semana" && (
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => setWeekStart((w) => subWeeks(w, 1))}
-                  data-testid="button-prev-week"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="h-8 w-8 rounded-lg"
-                  onClick={() => setWeekStart((w) => addWeeks(w, 1))}
-                  data-testid="button-next-week"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
-                <span className="text-sm font-medium text-muted-foreground capitalize whitespace-nowrap">{weekLabel}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={goPrev}
+                data-testid="button-prev"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="outline"
+                size="icon"
+                className="h-8 w-8 rounded-lg"
+                onClick={goNext}
+                data-testid="button-next"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span className="text-sm font-medium text-muted-foreground capitalize whitespace-nowrap">
+                {periodLabel}
+              </span>
+            </div>
+
             <CalendarFilters
               search={search}
               onSearchChange={setSearch}
@@ -173,28 +211,37 @@ export default function MarketingCalendario() {
               tipo={filterTipo}
               onTipoChange={setFilterTipo}
             />
-            {viewMode === "semana" && (
-              <button
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
-                onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-                data-testid="button-today"
-              >
-                Hoje
-              </button>
-            )}
+
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+              onClick={goToToday}
+              data-testid="button-today"
+            >
+              Hoje
+            </button>
           </div>
 
-          {viewMode === "semana" && (
+          {/* ── Views ── */}
+          {isLoading ? (
+            <div className="flex items-center justify-center h-96 text-muted-foreground">
+              <div className="flex flex-col items-center gap-3">
+                <CalendarDays className="h-10 w-10 animate-pulse" />
+                <span className="text-sm">Carregando calendário…</span>
+              </div>
+            </div>
+          ) : (
             <>
+              {viewMode === "dia" && (
+                <DayCalendar
+                  day={currentDate}
+                  conteudos={filteredConteudos}
+                  onEdit={handleEdit}
+                  onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
+                  onSlotClick={handleSlotClick}
+                />
+              )}
 
-              {isLoading ? (
-                <div className="flex items-center justify-center h-96 text-muted-foreground">
-                  <div className="flex flex-col items-center gap-3">
-                    <CalendarDays className="h-10 w-10 animate-pulse" />
-                    <span className="text-sm">Carregando calendário…</span>
-                  </div>
-                </div>
-              ) : (
+              {viewMode === "semana" && (
                 <WeeklyCalendar
                   weekStart={weekStart}
                   conteudos={filteredConteudos}
@@ -203,17 +250,28 @@ export default function MarketingCalendario() {
                   onSlotClick={handleSlotClick}
                 />
               )}
-            </>
-          )}
 
-          {viewMode !== "semana" && (
-            <div className="flex flex-col items-center justify-center h-64 rounded-2xl border border-dashed border-border/50 text-muted-foreground gap-3">
-              <CalendarDays className="h-10 w-10 opacity-30" />
-              <p className="text-sm">Vista "{VIEW_OPTIONS.find((v) => v.value === viewMode)?.label}" em breve</p>
-              <Button variant="ghost" size="sm" className="text-xs" onClick={() => setViewMode("semana")}>
-                Voltar para Semana
-              </Button>
-            </div>
+              {viewMode === "mes" && (
+                <MonthCalendar
+                  month={startOfMonth(currentDate)}
+                  conteudos={filteredConteudos}
+                  onEdit={handleEdit}
+                  onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
+                  onSlotClick={handleSlotClick}
+                />
+              )}
+
+              {viewMode === "ano" && (
+                <YearCalendar
+                  year={startOfYear(currentDate)}
+                  conteudos={filteredConteudos}
+                  onMonthClick={(month) => {
+                    setCurrentDate(month);
+                    setViewMode("mes");
+                  }}
+                />
+              )}
+            </>
           )}
         </div>
 

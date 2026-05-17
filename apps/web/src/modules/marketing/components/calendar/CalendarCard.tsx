@@ -65,9 +65,38 @@ export function CalendarCard({ conteudo, onEdit, onDelete, compact = false }: Ca
   const horario = getHorario(conteudo);
   const thumbnail = (conteudo as any).thumbnail_url as string | null | undefined;
 
+  if (compact) {
+    return (
+      <div
+        className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-muted/60 hover:bg-muted cursor-pointer transition-colors group"
+        onClick={() => onEdit(conteudo)}
+        data-testid={`calendar-card-${conteudo.id}`}
+      >
+        <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${statusStyle.dot}`} />
+        <span className="text-[10px] font-medium text-foreground truncate flex-1">
+          {conteudo.titulo ?? "Sem título"}
+        </span>
+        <div className="opacity-0 group-hover:opacity-100 flex gap-0.5 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <button
+            className="hover:text-foreground text-muted-foreground/60 transition-colors"
+            onClick={() => onEdit(conteudo)}
+          >
+            <Pencil className="h-2.5 w-2.5" />
+          </button>
+          <button
+            className="hover:text-destructive text-muted-foreground/60 transition-colors"
+            onClick={() => onDelete(conteudo)}
+          >
+            <Trash2 className="h-2.5 w-2.5" />
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
-      className={`group relative rounded-xl overflow-hidden border border-border/60 bg-card shadow-sm hover:shadow-md hover:border-border transition-all cursor-pointer select-none ${compact ? "text-[10px]" : "text-xs"}`}
+      className="group relative rounded-xl overflow-hidden border border-border/60 bg-card shadow-sm hover:shadow-md hover:border-border transition-all cursor-pointer select-none text-xs"
       onClick={() => onEdit(conteudo)}
       data-testid={`calendar-card-${conteudo.id}`}
     >
