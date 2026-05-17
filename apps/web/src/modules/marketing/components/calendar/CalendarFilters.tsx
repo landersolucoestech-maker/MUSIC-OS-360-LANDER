@@ -84,6 +84,69 @@ export function CalendarFilters({
         />
       </div>
 
+      {/* ── Tipo dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-tipo"
+          >
+            {currentTipo.label}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {TIPO_OPTIONS.map((t) => (
+            <DropdownMenuItem
+              key={t.value}
+              onClick={() => onTipoChange(t.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`filter-tipo-${t.value}`}
+            >
+              <span className="flex-1">{t.label}</span>
+              {tipo === t.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ── Status dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-status"
+          >
+            {"dot" in currentStatus && currentStatus.dot && (
+              <span className={`h-2 w-2 rounded-full ${currentStatus.dot}`} />
+            )}
+            {currentStatus.label}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {STATUS_OPTIONS.map((s) => (
+            <DropdownMenuItem
+              key={s.value}
+              onClick={() => onStatusChange(s.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`filter-status-${s.value}`}
+            >
+              {"dot" in s && s.dot
+                ? <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+                : <span className="h-2 w-2" />
+              }
+              <span className="flex-1">{s.label}</span>
+              {status === s.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
       {/* ── Plataformas dropdown ── */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -100,7 +163,7 @@ export function CalendarFilters({
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
+        <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem
             onClick={() => {
               PLATAFORMAS.forEach((p) => {
@@ -129,69 +192,6 @@ export function CalendarFilters({
               </DropdownMenuItem>
             );
           })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* ── Status dropdown ── */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
-            data-testid="dropdown-status"
-          >
-            {"dot" in currentStatus && currentStatus.dot && (
-              <span className={`h-2 w-2 rounded-full ${currentStatus.dot}`} />
-            )}
-            {currentStatus.label}
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          {STATUS_OPTIONS.map((s) => (
-            <DropdownMenuItem
-              key={s.value}
-              onClick={() => onStatusChange(s.value)}
-              className="flex items-center gap-2 text-sm"
-              data-testid={`filter-status-${s.value}`}
-            >
-              {"dot" in s && s.dot
-                ? <span className={`h-2 w-2 rounded-full ${s.dot}`} />
-                : <span className="h-2 w-2" />
-              }
-              <span className="flex-1">{s.label}</span>
-              {status === s.value && <Check className="h-3.5 w-3.5 text-primary" />}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
-      {/* ── Tipo dropdown ── */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
-            data-testid="dropdown-tipo"
-          >
-            {currentTipo.label}
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          {TIPO_OPTIONS.map((t) => (
-            <DropdownMenuItem
-              key={t.value}
-              onClick={() => onTipoChange(t.value)}
-              className="flex items-center gap-2 text-sm"
-              data-testid={`filter-tipo-${t.value}`}
-            >
-              <span className="flex-1">{t.label}</span>
-              {tipo === t.value && <Check className="h-3.5 w-3.5 text-primary" />}
-            </DropdownMenuItem>
-          ))}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
