@@ -320,83 +320,88 @@ const ContractForm = ({
         <CardHeader><CardTitle>Valores</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {/* PJ / PF sem tipo selecionado: mostra valor fixo direto */}
-            {(clientTypeValue === "pessoa_juridica" || clientTypeValue === "pessoa_fisica") &&
-              !selectedType?.allow_installments && (
-              <div className="space-y-2">
-                <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
-                <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
-                  {...form.register("fixed_value", { valueAsNumber: true })} />
-              </div>
-            )}
-
-            {/* Artista: royalties direto (sem select de tipo de pagamento) */}
-            {clientTypeValue === "artista" && selectedType?.requires_royalties && !selectedType?.allow_installments && (
-              <div className="space-y-2">
-                <Label htmlFor="royalties_percentage">Royalties (%)</Label>
-                <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
-                  {...form.register("royalties_percentage", { valueAsNumber: true })} />
-              </div>
-            )}
-
-            {/* Artista: adiantamento */}
-            {clientTypeValue === "artista" && selectedType?.requires_advance && (
-              <div className="space-y-2">
-                <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
-                <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
-                  {...form.register("advance_payment", { valueAsNumber: true })} />
-              </div>
-            )}
-
-            {/* Artista: suporte financeiro mensal */}
-            {clientTypeValue === "artista" && selectedType?.requires_financial_support && (
-              <div className="space-y-2">
-                <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
-                <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
-                  {...form.register("financial_support", { valueAsNumber: true })} />
-              </div>
-            )}
-
-            {/* Artista: select de tipo de pagamento (valor fixo ou royalties) */}
-            {clientTypeValue === "artista" && selectedType?.allow_installments && (
+            {selectedType ? (
               <>
-                <div className="space-y-2">
-                  <Label>Tipo de Pagamento</Label>
-                  <Select
-                    value={form.watch("payment_type")}
-                    onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecione o tipo de pagamento" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
-                      <SelectItem value="royalties">Royalties</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.watch("payment_type") === "valor_fixo" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="fixed_value_prod">Valor do Serviço (R$)</Label>
-                    <Input id="fixed_value_prod" type="number" step="0.01" placeholder="0,00"
-                      {...form.register("fixed_value", { valueAsNumber: true })} />
-                  </div>
+                {/* Selecionar tipo de pagamento (valor fixo ou royalties) — para qualquer tipo de cliente */}
+                {selectedType.allow_installments && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Tipo de Pagamento</Label>
+                      <Select
+                        value={form.watch("payment_type")}
+                        onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
+                      >
+                        <SelectTrigger data-testid="select-payment-type">
+                          <SelectValue placeholder="Selecione o tipo de pagamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
+                          <SelectItem value="royalties">Royalties</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {form.watch("payment_type") === "valor_fixo" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="fixed_value_sel">Valor do Serviço (R$)</Label>
+                        <Input id="fixed_value_sel" type="number" step="0.01" placeholder="0,00"
+                          {...form.register("fixed_value", { valueAsNumber: true })} />
+                      </div>
+                    )}
+                    {form.watch("payment_type") === "royalties" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="royalties_pct_sel">Royalties (%)</Label>
+                        <Input id="royalties_pct_sel" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                          {...form.register("royalties_percentage", { valueAsNumber: true })} />
+                      </div>
+                    )}
+                  </>
                 )}
-                {form.watch("payment_type") === "royalties" && (
+
+                {/* Royalties direto (tipo não usa seletor de pagamento) */}
+                {selectedType.requires_royalties && !selectedType.allow_installments && (
                   <div className="space-y-2">
-                    <Label htmlFor="royalties_pct_prod">Royalties (%)</Label>
-                    <Input id="royalties_pct_prod" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                    <Label htmlFor="royalties_percentage">Royalties (%)</Label>
+                    <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
                       {...form.register("royalties_percentage", { valueAsNumber: true })} />
                   </div>
                 )}
-              </>
-            )}
 
-            {/* Artista: valor fixo direto (sem select) */}
-            {clientTypeValue === "artista" && selectedType?.requires_fixed_value && !selectedType?.allow_installments && (
-              <div className="space-y-2">
-                <Label htmlFor="fixed_value_artista">Valor Fixo do Serviço (R$)</Label>
-                <Input id="fixed_value_artista" type="number" step="0.01" placeholder="0,00"
-                  {...form.register("fixed_value", { valueAsNumber: true })} />
-              </div>
+                {/* Valor fixo direto (tipo não usa seletor de pagamento) */}
+                {selectedType.requires_fixed_value && !selectedType.allow_installments && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fixed_value">Valor Fixo do Serviço (R$)</Label>
+                    <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("fixed_value", { valueAsNumber: true })} />
+                  </div>
+                )}
+
+                {/* Adiantamento */}
+                {selectedType.requires_advance && (
+                  <div className="space-y-2">
+                    <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
+                    <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("advance_payment", { valueAsNumber: true })} />
+                  </div>
+                )}
+
+                {/* Suporte financeiro mensal */}
+                {selectedType.requires_financial_support && (
+                  <div className="space-y-2">
+                    <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
+                    <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("financial_support", { valueAsNumber: true })} />
+                  </div>
+                )}
+              </>
+            ) : (
+              /* Sem tipo selecionado: campo de valor genérico (fallback) */
+              clientTypeValue && (
+                <div className="space-y-2">
+                  <Label htmlFor="fixed_value_default">Valor do Contrato (R$)</Label>
+                  <Input id="fixed_value_default" type="number" step="0.01" placeholder="0,00"
+                    {...form.register("fixed_value", { valueAsNumber: true })} />
+                </div>
+              )
             )}
           </div>
         </CardContent>

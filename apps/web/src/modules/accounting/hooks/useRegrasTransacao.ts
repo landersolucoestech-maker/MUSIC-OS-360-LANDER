@@ -25,7 +25,10 @@ export function useRegrasTransacao() {
 
   const query = useQuery<RegraTransacao[]>({
     queryKey: [...QUERY_KEYS.REGRAS_TRANSACAO],
-    queryFn: () => accountingService.listRegrasTransacao() as unknown as Promise<RegraTransacao[]>,
+    queryFn: async (): Promise<RegraTransacao[]> => {
+      const rows = await accountingService.listRegrasTransacao();
+      return rows as unknown as RegraTransacao[];
+    },
   });
 
   const createMutation = useMutation({
