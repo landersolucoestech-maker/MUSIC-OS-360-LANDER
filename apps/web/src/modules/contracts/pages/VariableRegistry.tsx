@@ -382,7 +382,7 @@ export default function VariableRegistry() {
     anchor.download = `variaveis-template-${date}.json`;
     anchor.click();
     URL.revokeObjectURL(url);
-    toast.success(`${variables.length} variável(eis) exportada(s)`);
+    toast.success(`${variables.length} variáveis exportadas`);
   }
 
   // ── Import ───────────────────────────────────────────────────────────────
@@ -428,6 +428,7 @@ export default function VariableRegistry() {
         toast.error("Ficheiro inválido — verifique o formato");
       }
     };
+    reader.onerror = () => toast.error("Ficheiro inválido — verifique o formato");
     reader.readAsText(file);
   }
 
@@ -443,9 +444,9 @@ export default function VariableRegistry() {
     const { added, skipped } = importVariables(asVars);
     setImportPreview(null);
     if (skipped > 0) {
-      toast.success(`${added} variável(eis) importada(s) — ${skipped} já existiam`);
+      toast.success(`${added} variáveis importadas (${skipped} já existiam)`);
     } else {
-      toast.success(`${added} variável(eis) importada(s)`);
+      toast.success(`${added} variáveis importadas`);
     }
   }
 
