@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import {
-  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, Check, X,
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -62,6 +62,62 @@ function HighlightedPreview({ text }: { text: string }) {
         return <span key={i}>{part}</span>;
       })}
     </p>
+  );
+}
+
+// ── Registry variable group accordion ─────────────────────────────────────
+
+interface RegistryVarGroupProps {
+  label: string;
+  vars: import("@/modules/contracts/hooks/useVariableRegistry").RegistryVariable[];
+  onInsert: (placeholder: string) => void;
+}
+
+function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
+  const [open, setOpen] = useState(true);
+  if (vars.length === 0) return null;
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        data-testid={`button-vargroup-${label}`}
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {label}
+      </button>
+      {open && (
+        <div className="space-y-0.5 pl-1">
+          {vars.map((v) => (
+            <div
+              key={v.id}
+              className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
+            >
+              <div className="min-w-0">
+                <span className="font-mono text-[11px] text-foreground/80 truncate block">
+                  {v.placeholder}
+                </span>
+                {v.name && (
+                  <span className="text-[10px] text-muted-foreground truncate block leading-tight">
+                    {v.name}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onInsert(v.placeholder)}
+                className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                title={`Inserir ${v.placeholder}`}
+                data-testid={`button-insert-registry-${v.id}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -461,7 +517,7 @@ export function ContractImportWorkspace({
                 />
               </div>
 
-              {/* Variable list — Minhas Variáveis only */}
+              {/* Variable list — grouped by v.group */}
               <ScrollArea className="flex-1 px-3">
                 {filteredRegistryVars.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
@@ -470,39 +526,22 @@ export function ContractImportWorkspace({
                       : "Nenhuma variável criada. Aceda a Contratos → Variáveis para criar."}
                   </p>
                 ) : (
-                  <div className="mb-2">
-                    <div className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                      <ChevronDown className="h-3 w-3" />
-                      Minhas Variáveis
-                    </div>
-                    <div className="space-y-0.5 pl-1">
-                      {filteredRegistryVars.map((v) => (
-                        <div
-                          key={v.id}
-                          className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
-                        >
-                          <div className="min-w-0">
-                            <span className="font-mono text-[11px] text-foreground/80 truncate block">
-                              {v.placeholder}
-                            </span>
-                            {v.name && (
-                              <span className="text-[10px] text-muted-foreground truncate block leading-tight">
-                                {v.name}
-                              </span>
-                            )}
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => insertAtCursor(v.placeholder)}
-                            className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
-                            title={`Inserir ${v.placeholder}`}
-                            data-testid={`button-insert-registry-${v.id}`}
-                          >
-                            <Plus className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                  <div className="pt-1">
+                    {Array.from(
+                      filteredRegistryVars.reduce((map, v) => {
+                        const key = v.group || "Outros";
+                        if (!map.has(key)) map.set(key, []);
+                        map.get(key)!.push(v);
+                        return map;
+                      }, new Map<string, typeof filteredRegistryVars>()),
+                    ).map(([groupLabel, groupVars]) => (
+                      <RegistryVarGroup
+                        key={groupLabel}
+                        label={groupLabel}
+                        vars={groupVars}
+                        onInsert={insertAtCursor}
+                      />
+                    ))}
                   </div>
                 )}
               </ScrollArea>
