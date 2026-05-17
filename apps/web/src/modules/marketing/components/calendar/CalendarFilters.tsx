@@ -124,23 +124,33 @@ export function CalendarFilters({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* ── View mode switcher ── */}
-      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40 shrink-0">
-        {VIEW_OPTIONS.map((v) => (
-          <button
-            key={v.value}
-            onClick={() => onViewModeChange(v.value)}
-            data-testid={`view-${v.value}`}
-            className={`px-3 h-7 rounded-lg text-xs font-medium transition-all ${
-              viewMode === v.value
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
+      {/* ── View mode dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted shrink-0"
+            data-testid="dropdown-view-mode"
           >
-            {v.label}
-          </button>
-        ))}
-      </div>
+            {VIEW_OPTIONS.find((v) => v.value === viewMode)?.label ?? "Semana"}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-36">
+          {VIEW_OPTIONS.map((v) => (
+            <DropdownMenuItem
+              key={v.value}
+              onClick={() => onViewModeChange(v.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`view-${v.value}`}
+            >
+              <span className="flex-1">{v.label}</span>
+              {viewMode === v.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       {/* ── Status dropdown ── */}
       <DropdownMenu>
