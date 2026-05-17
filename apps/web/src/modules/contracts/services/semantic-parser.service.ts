@@ -57,7 +57,8 @@ IMPORTANTE:
 - Detecte apenas valores que variam por instância (nomes, valores, datas, percentuais, identificadores)
 - NÃO detecte texto estático do contrato
 - Deduplication: se o mesmo valor aparece múltiplas vezes, inclua apenas uma vez
-- Máximo de 40 variáveis por documento`;
+- Máximo de 40 variáveis por documento
+- NUNCA retorne placeholders genéricos como VARIABLE.FIELD_1 — se não conseguir determinar o namespace correto, omita a variável`;
 
 interface RawAIVariable {
   id?: string;
@@ -77,21 +78,32 @@ function generateId(): string {
   return `sv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+const ALLOWED_NAMESPACES = new Set([
+  "CONTRATANTE", "CONTRATADO", "ARTISTA", "PRODUTOR", "EMPRESA", "LABEL",
+  "PAYMENT", "FINANCIAL", "CONTRACT", "PHONOGRAM", "BEAT", "VIDEO",
+  "WORK", "DISTRIBUTION", "CONTRATADA",
+]);
+
 function validatePlaceholder(placeholder: string): boolean {
-  return /^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(placeholder);
+  if (!/^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(placeholder)) return false;
+  const namespace = placeholder.slice(2, placeholder.indexOf("."));
+  return ALLOWED_NAMESPACES.has(namespace);
 }
 
-function normalizeVariable(raw: RawAIVariable, index: number): SemanticVariable {
-  const placeholder = typeof raw.placeholder === "string" && validatePlaceholder(raw.placeholder)
-    ? raw.placeholder
-    : `{{VARIABLE.FIELD_${index + 1}}}`;
+function tryNormalizeVariable(raw: RawAIVariable): SemanticVariable | null {
+  if (typeof raw.placeholder !== "string" || !validatePlaceholder(raw.placeholder)) {
+    return null;
+  }
+  if (typeof raw.originalText !== "string" || !raw.originalText.trim()) {
+    return null;
+  }
 
   return {
-    id: typeof raw.id === "string" ? raw.id : generateId(),
-    originalText: typeof raw.originalText === "string" ? raw.originalText.trim() : `[valor ${index + 1}]`,
+    id: typeof raw.id === "string" && raw.id.trim() ? raw.id : generateId(),
+    originalText: raw.originalText.trim(),
     context: typeof raw.context === "string" ? raw.context.trim() : "Contexto não identificado",
     inferredEntity: typeof raw.inferredEntity === "string" ? raw.inferredEntity.trim() : "Dado dinâmico",
-    placeholder,
+    placeholder: raw.placeholder,
     accepted: true,
   };
 }
@@ -109,77 +121,6 @@ function normalizeClauseTypes(types: unknown[]): SemanticClauseType[] {
   );
 }
 
-function buildMockResult(text: string): SemanticParseResult {
-  const variables: SemanticVariable[] = [
-    {
-      id: generateId(),
-      originalText: "Lander Produtora Musical Ltda",
-      context: "Razão social da empresa contratada identificada no preâmbulo do contrato",
-      inferredEntity: "Razão social — Pessoa Jurídica",
-      placeholder: "{{CONTRATADA.COMPANY_NAME}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "R$ 5.000,00",
-      context: "Valor do cachê ou honorário fixo previsto na cláusula financeira",
-      inferredEntity: "Valor monetário — Pagamento",
-      placeholder: "{{PAYMENT.AMOUNT}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "10%",
-      context: "Percentual de multa por descumprimento contratual",
-      inferredEntity: "Percentual de penalidade",
-      placeholder: "{{FINANCIAL.BREACH_FINE_PERCENTAGE}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "1% ao mês",
-      context: "Taxa de juros moratórios por atraso no pagamento",
-      inferredEntity: "Taxa de juros de mora",
-      placeholder: "{{FINANCIAL.LATE_INTEREST_RATE}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "PIX",
-      context: "Modalidade de pagamento estabelecida na cláusula de pagamento",
-      inferredEntity: "Método de pagamento",
-      placeholder: "{{PAYMENT.METHOD}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "01/01/2025",
-      context: "Data de início de vigência do contrato",
-      inferredEntity: "Data de início",
-      placeholder: "{{CONTRACT.START_DATE}}",
-      accepted: true,
-    },
-    {
-      id: generateId(),
-      originalText: "31/12/2025",
-      context: "Data de término de vigência do contrato",
-      inferredEntity: "Data de fim",
-      placeholder: "{{CONTRACT.END_DATE}}",
-      accepted: true,
-    },
-  ];
-
-  const clauseTypes: SemanticClauseType[] = ["financeira", "prazo", "objeto"];
-
-  if (text.toLowerCase().includes("royalt")) clauseTypes.push("royalties");
-  if (text.toLowerCase().includes("exclusiv")) clauseTypes.push("exclusividade");
-  if (text.toLowerCase().includes("confidencial")) clauseTypes.push("confidencialidade");
-  if (text.toLowerCase().includes("distribui")) clauseTypes.push("distribuicao_digital");
-  if (text.toLowerCase().includes("licenci")) clauseTypes.push("licenciamento");
-
-  return { variables, clauseTypes: [...new Set(clauseTypes)], rawText: text };
-}
-
 export async function parseContractText(text: string): Promise<SemanticParseResult> {
   const trimmed = text.trim();
   if (!trimmed) {
@@ -188,41 +129,54 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
 
   const userPrompt = `Analise semanticamente o seguinte contrato e retorne o JSON conforme as instruções do sistema:\n\n${trimmed.slice(0, 12000)}`;
 
-  try {
-    const response = await fetch("/api/ai/generate", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt: userPrompt, systemPrompt: SYSTEM_PROMPT, type: "contract_parse" }),
-    });
+  const response = await fetch("/api/ai/generate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      prompt: userPrompt,
+      systemPrompt: SYSTEM_PROMPT,
+      type: "contract_parse",
+      jsonMode: true,
+      maxTokens: 3000,
+    }),
+  });
 
-    if (!response.ok) {
-      console.warn("[semantic-parser] API error, using mock result");
-      return buildMockResult(trimmed);
-    }
-
-    const data = await response.json() as { content?: string; error?: string };
-
-    if (!data.content) {
-      return buildMockResult(trimmed);
-    }
-
-    let jsonStr = data.content.trim();
-    const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-    if (fenceMatch) jsonStr = fenceMatch[1].trim();
-
-    const parsed = JSON.parse(jsonStr) as RawAIResponse;
-
-    const variables = Array.isArray(parsed.variables)
-      ? parsed.variables.slice(0, 40).map((v, i) => normalizeVariable(v, i))
-      : [];
-
-    const clauseTypes = normalizeClauseTypes(parsed.clauseTypes ?? []);
-
-    return { variables, clauseTypes, rawText: trimmed };
-  } catch (err) {
-    console.warn("[semantic-parser] Parse failed, using mock result:", err);
-    return buildMockResult(trimmed);
+  if (!response.ok) {
+    const errBody = await response.text().catch(() => "");
+    throw new Error(
+      `Erro na análise semântica (HTTP ${response.status})${errBody ? `: ${errBody.slice(0, 200)}` : ""}`,
+    );
   }
+
+  const data = await response.json() as { content?: string; error?: string };
+
+  if (!data.content) {
+    throw new Error("O servidor de IA retornou uma resposta vazia. Tente novamente.");
+  }
+
+  let jsonStr = data.content.trim();
+  const fenceMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
+  if (fenceMatch) jsonStr = fenceMatch[1].trim();
+
+  let parsed: RawAIResponse;
+  try {
+    parsed = JSON.parse(jsonStr) as RawAIResponse;
+  } catch {
+    throw new Error(
+      "A IA retornou um formato inválido. Verifique se o documento é um contrato válido e tente novamente.",
+    );
+  }
+
+  const variables = Array.isArray(parsed.variables)
+    ? parsed.variables
+        .slice(0, 40)
+        .map((v) => tryNormalizeVariable(v))
+        .filter((v): v is SemanticVariable => v !== null)
+    : [];
+
+  const clauseTypes = normalizeClauseTypes(parsed.clauseTypes ?? []);
+
+  return { variables, clauseTypes, rawText: trimmed };
 }
 
 export function applyVariablesToText(

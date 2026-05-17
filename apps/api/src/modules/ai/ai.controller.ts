@@ -46,13 +46,16 @@ export class AIController {
   @HttpCode(HttpStatus.OK)
   async generate(
     @Request() req: any,
-    @Body() body: { prompt: string; type?: string },
+    @Body() body: { prompt: string; type?: string; systemPrompt?: string; jsonMode?: boolean; maxTokens?: number },
   ): Promise<{ content: string }> {
     const result = await this.ai.complete({
-      tenantId: req.tenant?.id ?? req.tenantId,
-      userId:   req.auth?.userId ?? req.userId,
-      skill:    body.type ?? 'general',
-      prompt:   body.prompt,
+      tenantId:     req.tenant?.id ?? req.tenantId,
+      userId:       req.auth?.userId ?? req.userId,
+      skill:        body.type ?? 'general',
+      prompt:       body.prompt,
+      systemPrompt: body.systemPrompt,
+      jsonMode:     body.jsonMode,
+      maxTokens:    body.maxTokens,
     });
     return { content: result.content ?? '' };
   }

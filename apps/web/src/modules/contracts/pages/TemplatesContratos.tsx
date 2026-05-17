@@ -3,16 +3,21 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader } from "@/shared/ui/card";
-import { Loader2, Plus, Trash2, FileText, Sparkles, Eye, ChevronRight } from "lucide-react";
+import {
+  Loader2, Plus, Trash2, FileText, Sparkles, Eye,
+  ChevronRight, Pencil,
+} from "lucide-react";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import {
   useTemplatesContratos,
   type TemplateContrato,
   type TemplateContratoInsert,
+  type TemplateContratoUpdate,
 } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { ContractImportWorkspace } from "@/modules/contracts/components/ContractImportWorkspace";
 import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
+import { TemplateEditModal } from "@/modules/contracts/components/TemplateEditModal";
 import type { SemanticClauseType, SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
 
 const CLAUSE_TYPE_LABELS: Record<SemanticClauseType, string> = {
@@ -57,19 +62,21 @@ function parseManifest(template: TemplateContrato): SemanticTemplateManifest | n
 }
 
 function countVariables(template: TemplateContrato): number {
-  const manifest = parseManifest(template);
-  return manifest?.variables?.length ?? 0;
+  return parseManifest(template)?.variables?.length ?? 0;
 }
 
 function getClauseTypes(template: TemplateContrato): SemanticClauseType[] {
-  const manifest = parseManifest(template);
-  return manifest?.clauseTypes ?? [];
+  return parseManifest(template)?.clauseTypes ?? [];
 }
 
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "—";
   try {
-    return new Date(dateStr).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric" });
+    return new Date(dateStr).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
   } catch {
     return "—";
   }
@@ -79,10 +86,12 @@ function TemplateCard({
   template,
   onDelete,
   onView,
+  onEdit,
 }: {
   template: TemplateContrato;
   onDelete: () => void;
   onView: () => void;
+  onEdit: () => void;
 }) {
   const varCount = countVariables(template);
   const clauseTypes = getClauseTypes(template);
@@ -97,25 +106,35 @@ function TemplateCard({
       <CardHeader className="pb-2 pt-4 px-4">
         <div className="flex items-start justify-between gap-2">
           <div className="flex items-start gap-2.5 min-w-0">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
-              {isSemantic
-                ? <Sparkles className="h-4 w-4 text-primary" />
-                : <FileText className="h-4 w-4 text-muted-foreground" />
-              }
+            <div
+              className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
+                isSemantic ? "bg-primary/10" : "bg-muted"
+              }`}
+            >
+              {isSemantic ? (
+                <Sparkles className="h-4 w-4 text-primary" />
+              ) : (
+                <FileText className="h-4 w-4 text-muted-foreground" />
+              )}
             </div>
             <div className="min-w-0">
               <p className="font-semibold text-sm leading-tight truncate">{template.nome}</p>
               {template.descricao && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">{template.descricao}</p>
+                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
+                  {template.descricao}
+                </p>
               )}
             </div>
           </div>
+
+          {/* Action buttons — visible on hover */}
           <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
             <Button
               variant="ghost"
               size="icon"
               className="h-7 w-7"
               onClick={(e) => { e.stopPropagation(); onView(); }}
+              title="Visualizar"
               data-testid={`button-view-template-${template.id}`}
             >
               <Eye className="h-3.5 w-3.5" />
@@ -123,8 +142,19 @@ function TemplateCard({
             <Button
               variant="ghost"
               size="icon"
+              className="h-7 w-7"
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              title="Editar"
+              data-testid={`button-edit-template-${template.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
               className="h-7 w-7 text-muted-foreground hover:text-destructive"
               onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              title="Excluir"
               data-testid={`button-delete-template-${template.id}`}
             >
               <Trash2 className="h-3.5 w-3.5" />
@@ -132,6 +162,7 @@ function TemplateCard({
           </div>
         </div>
       </CardHeader>
+
       <CardContent className="px-4 pb-4 space-y-3">
         <div className="flex flex-wrap gap-1">
           {isSemantic && varCount > 0 && (
@@ -154,15 +185,15 @@ function TemplateCard({
             </span>
           )}
           {!isSemantic && (
-            <Badge variant="outline" className="text-[10px]">{template.tipo_servico || "Padrão"}</Badge>
+            <Badge variant="outline" className="text-[10px]">
+              {template.tipo_servico || "Padrão"}
+            </Badge>
           )}
-          <Badge
-            variant={template.ativo ? "default" : "secondary"}
-            className="text-[10px]"
-          >
+          <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">
             {template.ativo ? "Ativo" : "Inativo"}
           </Badge>
         </div>
+
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>{formatDate(template.created_at)}</span>
           <ChevronRight className="h-3.5 w-3.5" />
@@ -173,15 +204,21 @@ function TemplateCard({
 }
 
 export default function TemplatesContratos() {
-  const { templates, isLoading, addTemplate, deleteTemplate } = useTemplatesContratos();
+  const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } =
+    useTemplatesContratos();
 
   const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen]       = useState(false);
+  const [isViewOpen, setIsViewOpen]           = useState(false);
+  const [isEditOpen, setIsEditOpen]           = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateContrato | null>(null);
 
   const handleSave = (data: TemplateContratoInsert) => {
     addTemplate.mutate(data);
+  };
+
+  const handleEditSave = (id: string, data: TemplateContratoUpdate) => {
+    updateTemplate.mutate({ id, data });
   };
 
   const handleDeleteClick = (t: TemplateContrato) => {
@@ -202,13 +239,21 @@ export default function TemplatesContratos() {
     setIsViewOpen(true);
   };
 
+  const handleEditClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsEditOpen(true);
+  };
+
   const semanticCount = templates.filter((t) => t.tipo_servico === "semantico").length;
-  const activeCount = templates.filter((t) => t.ativo).length;
-  const totalVars = templates.reduce((acc, t) => acc + countVariables(t), 0);
+  const activeCount   = templates.filter((t) => t.ativo).length;
+  const totalVars     = templates.reduce((acc, t) => acc + countVariables(t), 0);
 
   if (isLoading) {
     return (
-      <MainLayout title="Templates de Contrato" description="Motor semântico de templates contratuais">
+      <MainLayout
+        title="Templates de Contrato"
+        description="Motor semântico de templates contratuais"
+      >
         <div className="flex items-center justify-center h-40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
@@ -225,10 +270,10 @@ export default function TemplatesContratos() {
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           {[
-            { title: "Total de Templates", value: templates.length, sub: "todos os tipos", icon: FileText },
-            { title: "Semânticos (IA)", value: semanticCount, sub: "gerados por IA", icon: Sparkles },
-            { title: "Ativos", value: activeCount, sub: "disponíveis", icon: FileText },
-            { title: "Variáveis Mapeadas", value: totalVars, sub: "em todos os templates", icon: Sparkles },
+            { title: "Total de Templates", value: templates.length,  sub: "todos os tipos",         icon: FileText  },
+            { title: "Semânticos (IA)",     value: semanticCount,    sub: "gerados por IA",          icon: Sparkles  },
+            { title: "Ativos",              value: activeCount,      sub: "disponíveis",             icon: FileText  },
+            { title: "Variáveis Mapeadas",  value: totalVars,        sub: "em todos os templates",   icon: Sparkles  },
           ].map(({ title, value, sub, icon: Icon }) => (
             <Card key={title}>
               <div className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
@@ -262,7 +307,7 @@ export default function TemplatesContratos() {
           </Button>
         </div>
 
-        {/* Template list */}
+        {/* Template grid */}
         {templates.length === 0 ? (
           <Card>
             <CardContent className="p-8">
@@ -280,14 +325,16 @@ export default function TemplatesContratos() {
               <TemplateCard
                 key={t.id}
                 template={t}
-                onDelete={() => handleDeleteClick(t)}
                 onView={() => handleViewClick(t)}
+                onEdit={() => handleEditClick(t)}
+                onDelete={() => handleDeleteClick(t)}
               />
             ))}
           </div>
         )}
       </div>
 
+      {/* Modals */}
       <ContractImportWorkspace
         open={isWorkspaceOpen}
         onOpenChange={setIsWorkspaceOpen}
@@ -298,6 +345,13 @@ export default function TemplatesContratos() {
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
         template={selectedTemplate}
+      />
+
+      <TemplateEditModal
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        template={selectedTemplate}
+        onSave={handleEditSave}
       />
 
       <DeleteConfirmModal

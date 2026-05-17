@@ -59,16 +59,23 @@ interface ContractImportWorkspaceProps {
 
 type Step = "import" | "analyzing" | "review" | "naming";
 
-function highlightVariablesInText(text: string, variables: SemanticVariable[], activeId: string | null) {
-  if (!text || variables.length === 0) return <span className="whitespace-pre-wrap text-sm leading-relaxed">{text}</span>;
+function highlightVariablesInText(
+  text: string,
+  variables: SemanticVariable[],
+  activeId: string | null,
+) {
+  if (!text || variables.length === 0)
+    return <span className="whitespace-pre-wrap text-sm leading-relaxed">{text}</span>;
 
   const accepted = variables.filter((v) => v.accepted);
-  if (accepted.length === 0) return <span className="whitespace-pre-wrap text-sm leading-relaxed">{text}</span>;
+  if (accepted.length === 0)
+    return <span className="whitespace-pre-wrap text-sm leading-relaxed">{text}</span>;
 
   const sorted = [...accepted].sort((a, b) => b.originalText.length - a.originalText.length);
-  const pattern = sorted.map((v) => v.originalText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|");
+  const pattern = sorted
+    .map((v) => v.originalText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
+    .join("|");
   const regex = new RegExp(`(${pattern})`, "g");
-
   const parts = text.split(regex);
 
   return (
@@ -96,37 +103,91 @@ function highlightVariablesInText(text: string, variables: SemanticVariable[], a
   );
 }
 
+function EditableField({
+  label,
+  value,
+  onChange,
+  mono,
+  validate,
+  placeholder,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+  validate?: (v: string) => boolean;
+  placeholder?: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+
+  const commit = () => {
+    const trimmed = draft.trim();
+    if (trimmed && (!validate || validate(trimmed))) {
+      onChange(trimmed);
+    } else {
+      setDraft(value);
+    }
+    setEditing(false);
+  };
+
+  if (editing) {
+    return (
+      <div className="space-y-0.5">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</span>
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onBlur={commit}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") commit();
+            if (e.key === "Escape") { setDraft(value); setEditing(false); }
+          }}
+          className={`h-6 text-[10px] px-1.5 py-0 ${mono ? "font-mono" : ""}`}
+          placeholder={placeholder}
+          autoFocus
+        />
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="group/field space-y-0.5 cursor-pointer"
+      onClick={() => { setDraft(value); setEditing(true); }}
+      title={`Clique para editar ${label.toLowerCase()}`}
+    >
+      <div className="flex items-center justify-between gap-1">
+        <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">{label}</span>
+        <Edit2 className="h-2.5 w-2.5 text-muted-foreground opacity-0 group-hover/field:opacity-100 transition-opacity" />
+      </div>
+      <p className={`text-[10px] leading-snug ${mono ? "font-mono text-primary bg-primary/5 rounded px-1.5 py-0.5 truncate" : "text-foreground line-clamp-2"}`}>
+        {value}
+      </p>
+    </div>
+  );
+}
+
 function VariableCard({
   variable,
   isActive,
   onActivate,
   onToggleAccept,
   onRemove,
-  onEditPlaceholder,
+  onUpdate,
 }: {
   variable: SemanticVariable;
   isActive: boolean;
   onActivate: () => void;
   onToggleAccept: () => void;
   onRemove: () => void;
-  onEditPlaceholder: (newPlaceholder: string) => void;
+  onUpdate: (updates: Partial<SemanticVariable>) => void;
 }) {
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(variable.placeholder);
-
-  const commitEdit = () => {
-    const trimmed = draft.trim();
-    if (trimmed && /^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(trimmed)) {
-      onEditPlaceholder(trimmed);
-    } else {
-      setDraft(variable.placeholder);
-    }
-    setEditing(false);
-  };
+  const validatePlaceholder = (v: string) => /^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(v);
 
   return (
     <div
-      className={`rounded-lg border p-3 space-y-2 transition-colors cursor-pointer ${
+      className={`rounded-lg border p-3 space-y-2.5 transition-colors cursor-pointer ${
         isActive
           ? "border-primary/50 bg-primary/5"
           : variable.accepted
@@ -136,21 +197,26 @@ function VariableCard({
       onClick={onActivate}
       data-testid={`variable-card-${variable.id}`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 space-y-1">
-          <div className="flex items-center gap-1.5">
-            <ChevronRight className={`h-3 w-3 shrink-0 transition-transform ${isActive ? "text-primary rotate-90" : "text-muted-foreground"}`} />
-            <p className="text-xs font-medium text-muted-foreground truncate">{variable.inferredEntity}</p>
-          </div>
-          <p className="text-sm font-semibold leading-tight truncate text-foreground">"{variable.originalText}"</p>
-          <p className="text-xs text-muted-foreground leading-snug line-clamp-2">{variable.context}</p>
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <ChevronRight
+            className={`h-3 w-3 shrink-0 transition-transform ${
+              isActive ? "text-primary rotate-90" : "text-muted-foreground"
+            }`}
+          />
+          <span className="text-[10px] text-muted-foreground font-medium truncate">
+            Variável detectada
+          </span>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
+        <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleAccept(); }}
+            onClick={onToggleAccept}
             className={`h-5 w-5 rounded flex items-center justify-center transition-colors ${
-              variable.accepted ? "bg-primary/10 text-primary hover:bg-primary/20" : "bg-muted text-muted-foreground hover:bg-muted/80"
+              variable.accepted
+                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                : "bg-muted text-muted-foreground hover:bg-muted/80"
             }`}
             title={variable.accepted ? "Remover da substituição" : "Incluir na substituição"}
             data-testid={`toggle-variable-${variable.id}`}
@@ -159,7 +225,7 @@ function VariableCard({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            onClick={onRemove}
             className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
             title="Remover variável"
             data-testid={`remove-variable-${variable.id}`}
@@ -169,44 +235,46 @@ function VariableCard({
         </div>
       </div>
 
-      <Separator className="my-1" />
+      <Separator />
 
-      <div className="space-y-1">
-        <div className="flex items-center justify-between gap-1">
-          <span className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">Placeholder</span>
-          {!editing && (
-            <button
-              type="button"
-              onClick={(e) => { e.stopPropagation(); setEditing(true); setDraft(variable.placeholder); }}
-              className="h-4 w-4 flex items-center justify-center text-muted-foreground hover:text-primary transition-colors"
-              title="Editar placeholder"
-            >
-              <Edit2 className="h-3 w-3" />
-            </button>
-          )}
-        </div>
-        {editing ? (
-          <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              className="h-6 text-[10px] font-mono px-1.5 py-0"
-              onBlur={commitEdit}
-              onKeyDown={(e) => { if (e.key === "Enter") commitEdit(); if (e.key === "Escape") { setDraft(variable.placeholder); setEditing(false); } }}
-              autoFocus
-            />
-          </div>
-        ) : (
-          <p className="font-mono text-[10px] text-primary bg-primary/5 rounded px-1.5 py-0.5 truncate">
-            {variable.placeholder}
-          </p>
-        )}
+      {/* Editable fields */}
+      <div className="space-y-2" onClick={(e) => e.stopPropagation()}>
+        <EditableField
+          label="Texto original"
+          value={variable.originalText}
+          onChange={(v) => onUpdate({ originalText: v })}
+          placeholder={`"valor encontrado no contrato"`}
+        />
+        <EditableField
+          label="Tipo de dado"
+          value={variable.inferredEntity}
+          onChange={(v) => onUpdate({ inferredEntity: v })}
+          placeholder="Ex: Valor monetário — Pagamento"
+        />
+        <EditableField
+          label="Contexto jurídico"
+          value={variable.context}
+          onChange={(v) => onUpdate({ context: v })}
+          placeholder="Descreva o contexto desta variável..."
+        />
+        <EditableField
+          label="Placeholder"
+          value={variable.placeholder}
+          onChange={(v) => onUpdate({ placeholder: v })}
+          validate={validatePlaceholder}
+          mono
+          placeholder="{{NAMESPACE.CAMPO}}"
+        />
       </div>
     </div>
   );
 }
 
-export function ContractImportWorkspace({ open, onOpenChange, onSave }: ContractImportWorkspaceProps) {
+export function ContractImportWorkspace({
+  open,
+  onOpenChange,
+  onSave,
+}: ContractImportWorkspaceProps) {
   const [step, setStep] = useState<Step>("import");
   const [rawText, setRawText] = useState("");
   const [parseResult, setParseResult] = useState<SemanticParseResult | null>(null);
@@ -214,8 +282,8 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
   const [activeVariableId, setActiveVariableId] = useState<string | null>(null);
   const [templateName, setTemplateName] = useState("");
   const [templateDesc, setTemplateDesc] = useState("");
+  const [analyzeError, setAnalyzeError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
 
   const handleFileUpload = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -235,15 +303,22 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
       return;
     }
     setStep("analyzing");
+    setAnalyzeError(null);
     try {
       const result = await parseContractText(rawText);
       setParseResult(result);
       setVariables(result.variables);
       setStep("review");
-      toast.success(`${result.variables.length} variáveis detectadas.`);
-    } catch {
-      toast.error("Erro ao analisar o contrato. Tente novamente.");
+      if (result.variables.length === 0) {
+        toast.warning("Nenhuma variável detectada. Verifique se o documento contém dados dinâmicos.");
+      } else {
+        toast.success(`${result.variables.length} variáveis detectadas.`);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Erro ao analisar o contrato.";
+      setAnalyzeError(msg);
       setStep("import");
+      toast.error(msg);
     }
   }, [rawText]);
 
@@ -254,16 +329,19 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
   }, []);
 
   const handleToggleAccept = useCallback((id: string) => {
-    setVariables((prev) => prev.map((v) => v.id === id ? { ...v, accepted: !v.accepted } : v));
+    setVariables((prev) => prev.map((v) => (v.id === id ? { ...v, accepted: !v.accepted } : v)));
   }, []);
 
-  const handleRemove = useCallback((id: string) => {
-    setVariables((prev) => prev.filter((v) => v.id !== id));
-    if (activeVariableId === id) setActiveVariableId(null);
-  }, [activeVariableId]);
+  const handleRemove = useCallback(
+    (id: string) => {
+      setVariables((prev) => prev.filter((v) => v.id !== id));
+      if (activeVariableId === id) setActiveVariableId(null);
+    },
+    [activeVariableId],
+  );
 
-  const handleEditPlaceholder = useCallback((id: string, newPlaceholder: string) => {
-    setVariables((prev) => prev.map((v) => v.id === id ? { ...v, placeholder: newPlaceholder } : v));
+  const handleUpdateVariable = useCallback((id: string, updates: Partial<SemanticVariable>) => {
+    setVariables((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
   }, []);
 
   const handleGenerateTemplate = useCallback(() => {
@@ -313,6 +391,7 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
     setActiveVariableId(null);
     setTemplateName("");
     setTemplateDesc("");
+    setAnalyzeError(null);
   }, []);
 
   const handleClose = useCallback(() => {
@@ -326,6 +405,7 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="max-w-[95vw] w-[1400px] h-[92vh] flex flex-col p-0 gap-0">
+        {/* Header */}
         <DialogHeader className="px-6 pt-5 pb-4 border-b border-border shrink-0">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -337,24 +417,40 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
                 <p className="text-xs text-muted-foreground mt-0.5">
                   {step === "import" && "Importe o contrato para análise semântica"}
                   {step === "analyzing" && "Analisando semanticamente o documento..."}
-                  {step === "review" && `${totalCount} variáveis detectadas — ${acceptedCount} aceitas`}
+                  {step === "review" &&
+                    `${totalCount} variáveis detectadas — ${acceptedCount} aceitas — clique em qualquer campo para editar`}
                   {step === "naming" && "Nomeie e salve o template"}
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               {step === "import" && (
-                <Button onClick={handleAnalyze} disabled={!rawText.trim()} className="gap-2" data-testid="button-analyze-contract">
+                <Button
+                  onClick={handleAnalyze}
+                  disabled={!rawText.trim()}
+                  className="gap-2"
+                  data-testid="button-analyze-contract"
+                >
                   <Sparkles className="h-4 w-4" />
                   Analisar Contrato
                 </Button>
               )}
               {step === "review" && (
                 <>
-                  <Button variant="outline" onClick={() => setStep("import")} className="gap-2" data-testid="button-back-import">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep("import")}
+                    className="gap-2"
+                    data-testid="button-back-import"
+                  >
                     Voltar
                   </Button>
-                  <Button onClick={handleGenerateTemplate} disabled={acceptedCount === 0} className="gap-2" data-testid="button-generate-template">
+                  <Button
+                    onClick={handleGenerateTemplate}
+                    disabled={acceptedCount === 0}
+                    className="gap-2"
+                    data-testid="button-generate-template"
+                  >
                     <Save className="h-4 w-4" />
                     Gerar Template
                   </Button>
@@ -362,10 +458,19 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
               )}
               {step === "naming" && (
                 <>
-                  <Button variant="outline" onClick={() => setStep("review")} className="gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setStep("review")}
+                    className="gap-2"
+                  >
                     Voltar
                   </Button>
-                  <Button onClick={handleSave} disabled={!templateName.trim()} className="gap-2" data-testid="button-save-template">
+                  <Button
+                    onClick={handleSave}
+                    disabled={!templateName.trim()}
+                    className="gap-2"
+                    data-testid="button-save-template"
+                  >
                     <Save className="h-4 w-4" />
                     Salvar Template
                   </Button>
@@ -377,9 +482,9 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
 
         <div className="flex flex-1 min-h-0 overflow-hidden">
 
-          {/* ── STEP: import ── */}
+          {/* ── STEP: import / analyzing ── */}
           {(step === "import" || step === "analyzing") && (
-            <div className="flex flex-1 min-h-0 flex-col p-6 gap-4">
+            <div className="flex flex-1 min-h-0 flex-col p-6 gap-4 relative">
               <div className="flex items-center gap-4 shrink-0">
                 <div
                   className="flex items-center gap-2 cursor-pointer rounded-lg border border-dashed border-border px-4 py-2.5 hover:border-primary/50 hover:bg-primary/5 transition-colors text-sm text-muted-foreground"
@@ -398,6 +503,13 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
                 />
                 <span className="text-xs text-muted-foreground">ou cole o texto abaixo</span>
               </div>
+
+              {analyzeError && (
+                <div className="shrink-0 flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2.5 text-xs text-destructive">
+                  <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <span>{analyzeError}</span>
+                </div>
+              )}
 
               <Textarea
                 value={rawText}
@@ -434,7 +546,9 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                     </div>
                     <div className="flex gap-1.5 mt-1">
                       {["Entidades", "Financeiro", "Cláusulas", "Variáveis"].map((label) => (
-                        <Badge key={label} variant="outline" className="text-[10px] animate-pulse">{label}</Badge>
+                        <Badge key={label} variant="outline" className="text-[10px] animate-pulse">
+                          {label}
+                        </Badge>
                       ))}
                     </div>
                   </div>
@@ -446,7 +560,7 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
           {/* ── STEP: review ── */}
           {step === "review" && (
             <div className="flex flex-1 min-h-0 overflow-hidden">
-              {/* Left: document editor */}
+              {/* Left: document with highlights */}
               <div className="flex flex-col flex-1 min-w-0 border-r border-border">
                 <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -472,28 +586,28 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                   )}
                 </div>
                 <ScrollArea className="flex-1">
-                  <div
-                    ref={editorRef}
-                    className="px-6 py-4 min-h-full"
-                    data-testid="contract-editor"
-                  >
+                  <div className="px-6 py-4 min-h-full" data-testid="contract-editor">
                     {highlightVariablesInText(rawText, variables, activeVariableId)}
                   </div>
                 </ScrollArea>
               </div>
 
               {/* Right: variable panel */}
-              <div className="w-80 xl:w-96 shrink-0 flex flex-col min-h-0">
+              <div className="w-80 xl:w-[420px] shrink-0 flex flex-col min-h-0">
                 <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between">
                   <span className="text-xs font-medium">Variáveis Detectadas</span>
                   <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">{acceptedCount}/{totalCount} aceitas</span>
+                    <span className="text-xs text-muted-foreground">
+                      {acceptedCount}/{totalCount}
+                    </span>
                     {acceptedCount < totalCount && (
                       <Button
                         size="sm"
                         variant="ghost"
                         className="h-6 px-2 text-[10px]"
-                        onClick={() => setVariables((prev) => prev.map((v) => ({ ...v, accepted: true })))}
+                        onClick={() =>
+                          setVariables((prev) => prev.map((v) => ({ ...v, accepted: true })))
+                        }
                         data-testid="button-accept-all"
                       >
                         Aceitar todas
@@ -508,7 +622,9 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                       <div className="flex flex-col items-center justify-center py-12 gap-2 text-center">
                         <AlertCircle className="h-6 w-6 text-muted-foreground" />
                         <p className="text-sm text-muted-foreground">Nenhuma variável detectada</p>
-                        <p className="text-xs text-muted-foreground">Tente um documento com mais dados dinâmicos</p>
+                        <p className="text-xs text-muted-foreground">
+                          Tente um documento com mais dados dinâmicos
+                        </p>
                       </div>
                     ) : (
                       variables.map((v) => (
@@ -519,7 +635,7 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                           onActivate={() => handleActivateVariable(v.id)}
                           onToggleAccept={() => handleToggleAccept(v.id)}
                           onRemove={() => handleRemove(v.id)}
-                          onEditPlaceholder={(p) => handleEditPlaceholder(v.id, p)}
+                          onUpdate={(updates) => handleUpdateVariable(v.id, updates)}
                         />
                       ))
                     )}
@@ -528,12 +644,18 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
 
                 <div className="p-3 border-t border-border shrink-0">
                   <div className="rounded-lg bg-muted/50 px-3 py-2 space-y-1">
-                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Legenda</p>
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                      Como usar
+                    </p>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <mark className="bg-primary/10 text-primary rounded px-1 font-mono text-[10px]">valor</mark>
+                      <mark className="bg-primary/10 text-primary rounded px-1 font-mono text-[10px]">
+                        valor
+                      </mark>
                       <span>texto substituído por placeholder</span>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">Clique numa variável para localizar no documento</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Clique em qualquer campo da variável para editar antes de salvar
+                    </p>
                   </div>
                 </div>
               </div>
@@ -551,7 +673,7 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     <Badge variant="outline" className="text-xs">
-                      {acceptedCount} variáveis
+                      {acceptedCount} variáveis aceitas
                     </Badge>
                     {parseResult?.clauseTypes.slice(0, 4).map((ct) => (
                       <span
@@ -564,7 +686,11 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                   </div>
                   <p className="text-xs text-muted-foreground">
                     {rawText.length.toLocaleString("pt-BR")} caracteres →{" "}
-                    {applyVariablesToText(rawText, variables.filter((v) => v.accepted)).length.toLocaleString("pt-BR")} no template
+                    {applyVariablesToText(
+                      rawText,
+                      variables.filter((v) => v.accepted),
+                    ).length.toLocaleString("pt-BR")}{" "}
+                    no template
                   </p>
                 </div>
 
@@ -594,15 +720,21 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                 </div>
 
                 <div className="rounded-lg border border-border p-3 space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Variáveis que serão substituídas</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Variáveis que serão substituídas
+                  </p>
                   <div className="space-y-1 max-h-48 overflow-y-auto">
-                    {variables.filter((v) => v.accepted).map((v) => (
-                      <div key={v.id} className="flex items-center gap-2 text-xs">
-                        <span className="text-muted-foreground flex-1 truncate">"{v.originalText}"</span>
-                        <X className="h-3 w-3 text-muted-foreground shrink-0" />
-                        <span className="font-mono text-primary shrink-0">{v.placeholder}</span>
-                      </div>
-                    ))}
+                    {variables
+                      .filter((v) => v.accepted)
+                      .map((v) => (
+                        <div key={v.id} className="flex items-center gap-2 text-xs">
+                          <span className="text-muted-foreground flex-1 truncate">
+                            "{v.originalText}"
+                          </span>
+                          <X className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="font-mono text-primary shrink-0">{v.placeholder}</span>
+                        </div>
+                      ))}
                   </div>
                 </div>
               </div>
