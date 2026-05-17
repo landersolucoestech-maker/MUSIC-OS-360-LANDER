@@ -419,6 +419,14 @@ function buildSeedData(): Record<string, unknown[]> {
   ],
   team_members: [],
   team_invites: [],
+
+  regras_transacao: [
+    { id: "rt-001", user_id: UID, nome: "Receita Musical com Projeto", descricao: "Transações de receita musical devem vincular artista e projeto obrigatoriamente.", tipoTransacao: "receita", tipoCliente: "empresa", categoria: "receitas-musicais", camposVisiveis: ["categoria","subcategoria","artista","projeto","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","projeto","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-002", user_id: UID, nome: "Despesa de Show / Cachê Artista", descricao: "Pagamentos de cachê para artistas devem ter evento vinculado.", tipoTransacao: "despesa", tipoCliente: "artista", categoria: "caches", camposVisiveis: ["categoria","subcategoria","artista","evento","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","evento","valor","data"], prioridade: 2, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-003", user_id: UID, nome: "Imposto Federal — Órgão Arrecadador", descricao: "Todo recolhimento de imposto deve identificar o órgão arrecadador.", tipoTransacao: "imposto", tipoCliente: "all", categoria: "all", camposVisiveis: ["categoria","orgaoArrecadador","formaPagamento","valor","data"], camposObrigatorios: ["orgaoArrecadador","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-004", user_id: UID, nome: "Despesa de Produção Audiovisual", descricao: "Serviços de produção audiovisual exigem artista e projeto associados.", tipoTransacao: "despesa", tipoCliente: "empresa", categoria: "servicos", camposVisiveis: ["categoria","subcategoria","artista","projeto","fornecedor","formaPagamento","valor","data"], camposObrigatorios: ["subcategoria","artista","projeto","valor","data"], prioridade: 3, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-005", user_id: UID, nome: "Investimento em Equipamentos", descricao: "Compra de equipamentos deve categorizar o item de investimento.", tipoTransacao: "investimento", tipoCliente: "all", categoria: "equipamentos", camposVisiveis: ["categoria","itemInvestimento","formaPagamento","valor","data"], camposObrigatorios: ["itemInvestimento","valor","data"], prioridade: 2, ativo: false, created_at: NOW, updated_at: NOW },
+  ],
   };
 }
 
@@ -448,6 +456,17 @@ function patchMockData(data: Record<string, unknown[]>): void {
       if (!art001.video_apresentacao_url) art001.video_apresentacao_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
       if (!art001.documentos) art001.documentos = [{ nome: "Press Kit 2025", url: "https://exemplo.com/presskit-vitoria-2025.pdf" }, { nome: "Rider Técnico", url: "https://exemplo.com/rider-vitoria.pdf" }];
     }
+  }
+
+  // regras_transacao — seed inicial (Task #27-rules): tabela nova, injeta se ausente
+  if (!data["regras_transacao"] || (data["regras_transacao"] as unknown[]).length === 0) {
+    data["regras_transacao"] = [
+      { id: "rt-001", user_id: UID, nome: "Receita Musical com Projeto", descricao: "Transações de receita musical devem vincular artista e projeto obrigatoriamente.", tipoTransacao: "receita", tipoCliente: "empresa", categoria: "receitas-musicais", camposVisiveis: ["categoria","subcategoria","artista","projeto","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","projeto","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-002", user_id: UID, nome: "Despesa de Show / Cachê Artista", descricao: "Pagamentos de cachê para artistas devem ter evento vinculado.", tipoTransacao: "despesa", tipoCliente: "artista", categoria: "caches", camposVisiveis: ["categoria","subcategoria","artista","evento","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","evento","valor","data"], prioridade: 2, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-003", user_id: UID, nome: "Imposto Federal — Órgão Arrecadador", descricao: "Todo recolhimento de imposto deve identificar o órgão arrecadador.", tipoTransacao: "imposto", tipoCliente: "all", categoria: "all", camposVisiveis: ["categoria","orgaoArrecadador","formaPagamento","valor","data"], camposObrigatorios: ["orgaoArrecadador","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-004", user_id: UID, nome: "Despesa de Produção Audiovisual", descricao: "Serviços de produção audiovisual exigem artista e projeto associados.", tipoTransacao: "despesa", tipoCliente: "empresa", categoria: "servicos", camposVisiveis: ["categoria","subcategoria","artista","projeto","fornecedor","formaPagamento","valor","data"], camposObrigatorios: ["subcategoria","artista","projeto","valor","data"], prioridade: 3, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-005", user_id: UID, nome: "Investimento em Equipamentos", descricao: "Compra de equipamentos deve categorizar o item de investimento.", tipoTransacao: "investimento", tipoCliente: "all", categoria: "equipamentos", camposVisiveis: ["categoria","itemInvestimento","formaPagamento","valor","data"], camposObrigatorios: ["itemInvestimento","valor","data"], prioridade: 2, ativo: false, created_at: NOW, updated_at: NOW },
+    ] as unknown[];
   }
 
   // projetos — patch 2026-05: adiciona campo `tipo` e JSON `descricao` nos projetos seed

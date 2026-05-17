@@ -1,445 +1,637 @@
 import { useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { PageHeader } from "@/shared/components/PageHeader";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Input } from "@/shared/ui/input";
+import { Label } from "@/shared/ui/label";
+import { Textarea } from "@/shared/ui/textarea";
+import { Switch } from "@/shared/ui/switch";
+import { Checkbox } from "@/shared/ui/checkbox";
 import {
-  CheckCircle2, XCircle, Info, Settings2, Pencil, Eye, RotateCcw, AlertTriangle,
-} from "lucide-react";
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/ui/select";
 import {
-  tiposTransacao,
-  tiposCliente,
-  initialFormData,
-  getCategoriasParaTipoTransacao,
-} from "@/modules/accounting/lib/transacao-constants";
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
+} from "@/shared/ui/dialog";
 import {
-  computeFinancialRules,
-  DISPLAY_RULES,
-} from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/shared/ui/alert-dialog";
 import {
-  useRuleOverrides,
-} from "@/modules/accounting/components/transacao-form/hooks/useRuleOverrides";
-import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/shared/ui/table";
+import { Plus, Pencil, Trash2, Search, Filter } from "lucide-react";
+import { useRegrasTransacao, type RegraTransacao, type RegraTransacaoInsert } from "../hooks/useRegrasTransacao";
 
-// ── Rule labels ───────────────────────────────────────────────────────────────
-const RULE_META: Record<string, { label: string; description: string }> = {
-  exibirTipoCliente:      { label: "Tipo de Cliente",      description: "Para quem pagar / Receber de" },
-  exibirCategoria:        { label: "Categoria",             description: "Categoria da transação" },
-  exibirSubcategoria:     { label: "Subcategoria",          description: "Tipo / Subcategoria" },
-  exibirItemInvestimento: { label: "Item de Investimento",  description: "Item específico (só em Investimento)" },
-  exibirArtista:          { label: "Artista Vinculado",     description: "Artista relacionado à transação" },
-  exibirProjeto:          { label: "Projeto / Música",      description: "Projeto ou música vinculada" },
-  projetoObrigatorio:     { label: "Projeto Obrigatório",   description: "Projeto é campo obrigatório (vs opcional)" },
-  exibirEvento:           { label: "Show / Evento",         description: "Evento vinculado à transação" },
-  exibirFornecedor:       { label: "Fornecedor / Cliente",  description: "Vínculo com CRM" },
-  exibirOrgaoArrecadador: { label: "Órgão Arrecadador",     description: "Receita Federal, Prefeitura, etc." },
-  exibirMotivoViagem:     { label: "Motivo da Viagem",      description: "Texto livre — append nas observações" },
-  exibirNomePublicidade:  { label: "Nome da Publicidade",   description: "Nome da campanha/comercial" },
-  exibirParcelamento:     { label: "Parcelamento",          description: "Campos de parcelas e intervalo" },
+// ── Opções de selects ──────────────────────────────────────────────────────────
+
+const TIPOS_TRANSACAO = [
+  { value: "all",          label: "Todos os tipos" },
+  { value: "receita",      label: "Receita" },
+  { value: "despesa",      label: "Despesa" },
+  { value: "investimento", label: "Investimento" },
+  { value: "imposto",      label: "Imposto" },
+  { value: "transferencia", label: "Transferência" },
+];
+
+const TIPOS_CLIENTE = [
+  { value: "all",     label: "Todos" },
+  { value: "empresa", label: "Empresa" },
+  { value: "artista", label: "Artista" },
+  { value: "pessoa",  label: "Pessoa" },
+];
+
+const CATEGORIAS = [
+  { value: "all",                label: "Todas as categorias" },
+  { value: "receitas-musicais",  label: "Receitas Musicais" },
+  { value: "caches",             label: "Cachês" },
+  { value: "servicos",           label: "Serviços" },
+  { value: "produtos",           label: "Produtos" },
+  { value: "administrativo",     label: "Administrativo" },
+  { value: "marketing",          label: "Marketing" },
+  { value: "viagens",            label: "Viagens" },
+  { value: "equipamentos",       label: "Equipamentos" },
+  { value: "suporte-financeiro", label: "Suporte Financeiro" },
+  { value: "impostos",           label: "Impostos" },
+];
+
+const CAMPOS_DISPONIVEIS: { key: string; label: string; grupo: string }[] = [
+  { key: "categoria",         label: "Categoria",           grupo: "Base" },
+  { key: "subcategoria",      label: "Subcategoria",        grupo: "Base" },
+  { key: "descricao",         label: "Descrição",           grupo: "Base" },
+  { key: "valor",             label: "Valor",               grupo: "Base" },
+  { key: "data",              label: "Data",                grupo: "Base" },
+  { key: "status",            label: "Status",              grupo: "Base" },
+  { key: "observacao",        label: "Observação",          grupo: "Base" },
+  { key: "artista",           label: "Artista Vinculado",   grupo: "Vínculos" },
+  { key: "projeto",           label: "Projeto Vinculado",   grupo: "Vínculos" },
+  { key: "contrato",          label: "Contrato Vinculado",  grupo: "Vínculos" },
+  { key: "evento",            label: "Evento Vinculado",    grupo: "Vínculos" },
+  { key: "fornecedor",        label: "Fornecedor / Cliente", grupo: "Vínculos" },
+  { key: "orgaoArrecadador",  label: "Órgão Arrecadador",   grupo: "Vínculos" },
+  { key: "formaPagamento",    label: "Forma de Pagamento",  grupo: "Pagamento" },
+  { key: "tipoPagamento",     label: "Tipo de Pagamento",   grupo: "Pagamento" },
+  { key: "parcelas",          label: "Parcelas",            grupo: "Pagamento" },
+  { key: "itemInvestimento",  label: "Item de Investimento", grupo: "Específicos" },
+  { key: "motivoViagem",      label: "Motivo de Viagem",    grupo: "Específicos" },
+  { key: "nomePublicidade",   label: "Nome da Publicidade", grupo: "Específicos" },
+  { key: "anexo",             label: "Anexo",               grupo: "Específicos" },
+];
+
+const TIPO_BADGE: Record<string, string> = {
+  receita:       "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  despesa:       "bg-rose-500/10 text-rose-400 border-rose-500/20",
+  investimento:  "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  imposto:       "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  transferencia: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  all:           "bg-muted text-muted-foreground border-border",
 };
 
-const RULE_KEYS = Object.keys(RULE_META) as (keyof typeof RULE_META)[];
+const labelFor = (opts: { value: string; label: string }[], val: string) =>
+  opts.find((o) => o.value === val)?.label ?? val;
 
-// ── Matrix row ────────────────────────────────────────────────────────────────
-interface MatrixRow {
-  tipoTransacao: string;
-  tipoCliente:   string;
-  categoria:     string;
-  computed:      Record<string, boolean>;
+// ── Form vazio ────────────────────────────────────────────────────────────────
+
+const EMPTY_FORM: RegraTransacaoInsert = {
+  nome: "",
+  descricao: "",
+  tipoTransacao: "all",
+  tipoCliente: "all",
+  categoria: "all",
+  camposVisiveis: ["categoria", "valor", "data"],
+  camposObrigatorios: ["valor", "data"],
+  prioridade: 10,
+  ativo: true,
+};
+
+// ── Modal Criar / Editar ──────────────────────────────────────────────────────
+
+interface RegraModalProps {
+  open: boolean;
+  regra: RegraTransacao | null;
+  isSubmitting: boolean;
+  onClose: () => void;
+  onSubmit: (data: RegraTransacaoInsert) => void;
 }
 
-function buildMatrixRows(): MatrixRow[] {
-  const rows: MatrixRow[] = [];
-  const tipos = tiposTransacao.map(t => t.value);
-  const clientes = ["", "empresa", "artista", "pessoa"];
+function RegraModal({ open, regra, isSubmitting, onClose, onSubmit }: RegraModalProps) {
+  const [form, setForm] = useState<RegraTransacaoInsert>(() =>
+    regra ? {
+      nome: regra.nome,
+      descricao: regra.descricao,
+      tipoTransacao: regra.tipoTransacao,
+      tipoCliente: regra.tipoCliente,
+      categoria: regra.categoria,
+      camposVisiveis: regra.camposVisiveis,
+      camposObrigatorios: regra.camposObrigatorios,
+      prioridade: regra.prioridade,
+      ativo: regra.ativo,
+    } : { ...EMPTY_FORM }
+  );
 
-  for (const tipo of tipos) {
-    const clienteOpts = tipo === "imposto" || tipo === "transferencia" || tipo === "investimento"
-      ? [""]
-      : clientes;
-
-    for (const cliente of clienteOpts) {
-      const baseData: TransacaoFormData = { ...initialFormData, tipoTransacao: tipo, tipoCliente: cliente };
-      const categorias = getCategoriasParaTipoTransacao(tipo, cliente);
-
-      if (categorias.length === 0) {
-        const r = computeFinancialRules(baseData);
-        rows.push({ tipoTransacao: tipo, tipoCliente: cliente, categoria: "", computed: r as unknown as Record<string, boolean> });
-      } else {
-        for (const cat of categorias) {
-          const data: TransacaoFormData = { ...baseData, categoria: cat.value };
-          const r = computeFinancialRules(data);
-          rows.push({ tipoTransacao: tipo, tipoCliente: cliente, categoria: cat.value, computed: r as unknown as Record<string, boolean> });
-        }
-      }
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen) {
+      setForm(regra ? {
+        nome: regra.nome,
+        descricao: regra.descricao,
+        tipoTransacao: regra.tipoTransacao,
+        tipoCliente: regra.tipoCliente,
+        categoria: regra.categoria,
+        camposVisiveis: regra.camposVisiveis,
+        camposObrigatorios: regra.camposObrigatorios,
+        prioridade: regra.prioridade,
+        ativo: regra.ativo,
+      } : { ...EMPTY_FORM });
     }
-  }
-  return rows;
-}
+    if (!isOpen) onClose();
+  };
 
-// ── Tipo badge ────────────────────────────────────────────────────────────────
-function TipoTransacaoBadge({ tipo }: { tipo: string }) {
-  const map: Record<string, string> = {
-    receita:      "bg-green-500/15 text-green-400 border-green-500/30",
-    despesa:      "bg-red-500/15 text-red-400 border-red-500/30",
-    investimento: "bg-blue-500/15 text-blue-400 border-blue-500/30",
-    imposto:      "bg-orange-500/15 text-orange-400 border-orange-500/30",
-    transferencia:"bg-purple-500/15 text-purple-400 border-purple-500/30",
+  const toggleCampoVisivel = (key: string, checked: boolean) => {
+    setForm((f) => {
+      const visiveis = checked
+        ? [...f.camposVisiveis, key]
+        : f.camposVisiveis.filter((k) => k !== key);
+      const obrigatorios = f.camposObrigatorios.filter((k) => visiveis.includes(k));
+      return { ...f, camposVisiveis: visiveis, camposObrigatorios: obrigatorios };
+    });
   };
-  const labels: Record<string, string> = {
-    receita: "Receita", despesa: "Despesa", investimento: "Investimento",
-    imposto: "Imposto", transferencia: "Transferência",
+
+  const toggleCampoObrigatorio = (key: string, checked: boolean) => {
+    setForm((f) => ({
+      ...f,
+      camposObrigatorios: checked
+        ? [...f.camposObrigatorios, key]
+        : f.camposObrigatorios.filter((k) => k !== key),
+    }));
   };
+
+  const handleSubmit = () => {
+    if (!form.nome.trim()) return;
+    onSubmit(form);
+  };
+
+  const gruposOrdem = ["Base", "Vínculos", "Pagamento", "Específicos"];
+
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs border font-medium ${map[tipo] ?? ""}`}>
-      {labels[tipo] ?? tipo}
-    </span>
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{regra ? "Editar Regra" : "Nova Regra de Transação"}</DialogTitle>
+          <DialogDescription>
+            {regra
+              ? "Edite os parâmetros desta regra de validação de transações."
+              : "Configure os campos visíveis e obrigatórios para este cenário de transação."}
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-5 py-2">
+          {/* Nome */}
+          <div className="space-y-1.5">
+            <Label htmlFor="rule-nome">Nome da regra <span className="text-destructive">*</span></Label>
+            <Input
+              id="rule-nome"
+              data-testid="input-rule-nome"
+              placeholder="Ex: Despesa de Show com Artista"
+              value={form.nome}
+              onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+            />
+          </div>
+
+          {/* Descrição */}
+          <div className="space-y-1.5">
+            <Label htmlFor="rule-descricao">Descrição</Label>
+            <Textarea
+              id="rule-descricao"
+              data-testid="input-rule-descricao"
+              placeholder="Explique quando esta regra se aplica…"
+              rows={2}
+              value={form.descricao}
+              onChange={(e) => setForm((f) => ({ ...f, descricao: e.target.value }))}
+            />
+          </div>
+
+          {/* Tipo transação + Tipo cliente */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Tipo de Transação</Label>
+              <Select
+                value={form.tipoTransacao}
+                onValueChange={(v) => setForm((f) => ({ ...f, tipoTransacao: v }))}
+              >
+                <SelectTrigger data-testid="select-rule-tipoTransacao">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_TRANSACAO.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Tipo de Cliente</Label>
+              <Select
+                value={form.tipoCliente}
+                onValueChange={(v) => setForm((f) => ({ ...f, tipoCliente: v }))}
+              >
+                <SelectTrigger data-testid="select-rule-tipoCliente">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {TIPOS_CLIENTE.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Categoria + Prioridade */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1.5">
+              <Label>Categoria</Label>
+              <Select
+                value={form.categoria}
+                onValueChange={(v) => setForm((f) => ({ ...f, categoria: v }))}
+              >
+                <SelectTrigger data-testid="select-rule-categoria">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {CATEGORIAS.map((c) => (
+                    <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="rule-prioridade">Prioridade</Label>
+              <Input
+                id="rule-prioridade"
+                data-testid="input-rule-prioridade"
+                type="number"
+                min={1}
+                max={99}
+                value={form.prioridade}
+                onChange={(e) => setForm((f) => ({ ...f, prioridade: Number(e.target.value) }))}
+              />
+              <p className="text-xs text-muted-foreground">Menor número = maior prioridade</p>
+            </div>
+          </div>
+
+          {/* Campos */}
+          <div className="space-y-3">
+            <div>
+              <Label className="text-sm font-semibold">Configuração de campos</Label>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Selecione quais campos aparecem e quais são obrigatórios neste cenário.
+              </p>
+            </div>
+            <div className="rounded-lg border border-border overflow-hidden">
+              <div className="grid grid-cols-[1fr_80px_80px] text-xs font-semibold text-muted-foreground bg-muted/40 px-3 py-2 border-b border-border">
+                <span>Campo</span>
+                <span className="text-center">Visível</span>
+                <span className="text-center">Obrigatório</span>
+              </div>
+              {gruposOrdem.map((grupo) => {
+                const campos = CAMPOS_DISPONIVEIS.filter((c) => c.grupo === grupo);
+                return (
+                  <div key={grupo}>
+                    <div className="px-3 py-1.5 bg-muted/20 border-b border-border">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+                        {grupo}
+                      </span>
+                    </div>
+                    {campos.map((campo) => {
+                      const visivel = form.camposVisiveis.includes(campo.key);
+                      const obrigatorio = form.camposObrigatorios.includes(campo.key);
+                      return (
+                        <div
+                          key={campo.key}
+                          className="grid grid-cols-[1fr_80px_80px] items-center px-3 py-2 border-b border-border/50 last:border-b-0 hover:bg-muted/10"
+                        >
+                          <span className="text-sm">{campo.label}</span>
+                          <div className="flex justify-center">
+                            <Checkbox
+                              data-testid={`check-visivel-${campo.key}`}
+                              checked={visivel}
+                              onCheckedChange={(checked) =>
+                                toggleCampoVisivel(campo.key, checked === true)
+                              }
+                            />
+                          </div>
+                          <div className="flex justify-center">
+                            <Checkbox
+                              data-testid={`check-obrigatorio-${campo.key}`}
+                              checked={obrigatorio}
+                              disabled={!visivel}
+                              onCheckedChange={(checked) =>
+                                toggleCampoObrigatorio(campo.key, checked === true)
+                              }
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Ativo */}
+          <div className="flex items-center justify-between rounded-lg border border-border px-4 py-3">
+            <div>
+              <p className="text-sm font-medium">Regra ativa</p>
+              <p className="text-xs text-muted-foreground">Quando inativa, a regra não é aplicada ao formulário</p>
+            </div>
+            <Switch
+              data-testid="switch-rule-ativo"
+              checked={form.ativo}
+              onCheckedChange={(v) => setForm((f) => ({ ...f, ativo: v }))}
+            />
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+            Cancelar
+          </Button>
+          <Button
+            data-testid="button-submit-rule"
+            onClick={handleSubmit}
+            disabled={isSubmitting || !form.nome.trim()}
+          >
+            {isSubmitting ? "Salvando…" : regra ? "Salvar alterações" : "Criar regra"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-// ── Rule cell (read-only or editable) ─────────────────────────────────────────
-interface RuleCellProps {
-  isActive:    boolean;
-  isOverriden: boolean;
-  isEditMode:  boolean;
-  onToggle:    () => void;
-}
-
-function RuleCell({ isActive, isOverriden, isEditMode, onToggle }: RuleCellProps) {
-  if (!isEditMode) {
-    return isActive
-      ? <CheckCircle2 className={`h-3.5 w-3.5 mx-auto ${isOverriden ? "text-amber-400" : "text-green-500"}`} />
-      : <XCircle      className={`h-3.5 w-3.5 mx-auto ${isOverriden ? "text-amber-400/50" : "text-muted-foreground/25"}`} />;
-  }
-  return (
-    <button
-      onClick={onToggle}
-      title={isOverriden ? "Override activo — clique para remover" : "Clique para forçar este campo"}
-      className={`h-5 w-5 rounded flex items-center justify-center mx-auto transition-colors border ${
-        isActive
-          ? isOverriden
-            ? "bg-amber-500/20 border-amber-500/50 hover:bg-amber-500/30"
-            : "bg-green-500/20 border-green-500/40 hover:bg-red-500/20 hover:border-red-500/40"
-          : isOverriden
-            ? "bg-amber-500/20 border-amber-500/50 hover:bg-amber-500/30"
-            : "bg-muted/40 border-border hover:bg-green-500/20 hover:border-green-500/40"
-      }`}
-    >
-      {isActive
-        ? <CheckCircle2 className={`h-3 w-3 ${isOverriden ? "text-amber-400" : "text-green-500"}`} />
-        : <XCircle      className={`h-3 w-3 ${isOverriden ? "text-amber-400" : "text-muted-foreground/30"}`} />
-      }
-    </button>
-  );
-}
-
-// ── Page ─────────────────────────────────────────────────────────────────────
-const NONE_SENTINEL = "__none__";
+// ── Página principal ──────────────────────────────────────────────────────────
 
 export default function TransacaoRules() {
-  const [filterTipo,    setFilterTipo]    = useState<string>("all");
-  const [filterCliente, setFilterCliente] = useState<string>("all");
-  const [activeTab,     setActiveTab]     = useState<"matrix" | "catalog">("matrix");
-  const [isEditMode,    setIsEditMode]    = useState(false);
+  const { regras, isLoading, createRegra, updateRegra, deleteRegra, isCreating, isUpdating, isDeleting } =
+    useRegrasTransacao();
 
-  const allRows = useMemo(() => buildMatrixRows(), []);
+  const [search, setSearch] = useState("");
+  const [filterTipo, setFilterTipo] = useState("all");
+  const [filterAtivo, setFilterAtivo] = useState("all");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<RegraTransacao | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<RegraTransacao | null>(null);
 
-  const { overrides, toggleOverride, clearOverrides, hasOverrides, getEffective } = useRuleOverrides();
-
-  const filteredRows = useMemo(() => {
-    const clienteFilter = filterCliente === NONE_SENTINEL ? "" : filterCliente;
-    return allRows.filter(row => {
-      if (filterTipo !== "all" && row.tipoTransacao !== filterTipo) return false;
-      if (clienteFilter !== "all" && row.tipoCliente !== clienteFilter) return false;
+  const filtered = useMemo(() => {
+    return regras.filter((r) => {
+      if (search && !r.nome.toLowerCase().includes(search.toLowerCase()) &&
+          !r.descricao.toLowerCase().includes(search.toLowerCase())) return false;
+      if (filterTipo !== "all" && r.tipoTransacao !== filterTipo) return false;
+      if (filterAtivo === "ativo" && !r.ativo) return false;
+      if (filterAtivo === "inativo" && r.ativo) return false;
       return true;
     });
-  }, [allRows, filterTipo, filterCliente]);
+  }, [regras, search, filterTipo, filterAtivo]);
 
-  const overrideCount = Object.keys(overrides).length;
-  const totalRules    = Object.keys(DISPLAY_RULES).length;
-  const totalCombos   = allRows.length;
+  const openCreate = () => {
+    setEditTarget(null);
+    setModalOpen(true);
+  };
+
+  const openEdit = (regra: RegraTransacao) => {
+    setEditTarget(regra);
+    setModalOpen(true);
+  };
+
+  const handleSubmit = (data: RegraTransacaoInsert) => {
+    if (editTarget) {
+      updateRegra({ id: editTarget.id, data });
+    } else {
+      createRegra(data);
+    }
+    setModalOpen(false);
+  };
+
+  const handleDelete = () => {
+    if (deleteTarget) {
+      deleteRegra(deleteTarget.id);
+      setDeleteTarget(null);
+    }
+  };
 
   return (
     <MainLayout>
-      <div className="space-y-6 p-6">
-        {/* ── Header ── */}
-        <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <Settings2 className="h-6 w-6 text-primary" />
-              <h1 className="text-2xl font-semibold">Regras de Transações</h1>
-            </div>
-            <p className="text-muted-foreground text-sm max-w-2xl">
-              Mapa configurável das regras que controlam quais campos aparecem no formulário.
-              Derivadas do{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">DISPLAY_RULES</code> map em{" "}
-              <code className="text-xs bg-muted px-1 py-0.5 rounded">financial-form-rules.ts</code>.
-              {hasOverrides && (
-                <span className="ml-2 text-amber-400">
-                  {overrideCount} override{overrideCount > 1 ? "s" : ""} activo{overrideCount > 1 ? "s" : ""}.
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{totalRules}</p>
-              <p className="text-xs text-muted-foreground">Regras</p>
-            </div>
-            <div className="text-center">
-              <p className="text-2xl font-bold text-primary">{totalCombos}</p>
-              <p className="text-xs text-muted-foreground">Combinações</p>
-            </div>
-            {hasOverrides && (
-              <div className="text-center">
-                <p className="text-2xl font-bold text-amber-400">{overrideCount}</p>
-                <p className="text-xs text-muted-foreground">Overrides</p>
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* ── Override warning ── */}
-        {hasOverrides && (
-          <Card className="border-amber-500/30 bg-amber-500/5">
-            <CardContent className="py-3 px-4 flex items-center gap-3">
-              <AlertTriangle className="h-4 w-4 text-amber-400 shrink-0" />
-              <p className="text-sm text-amber-300 flex-1">
-                Existem <strong>{overrideCount}</strong> override{overrideCount > 1 ? "s" : ""} activos. O formulário de transação
-                irá usar estas configurações em vez das regras base.
-              </p>
-              <Button
-                size="sm"
-                variant="outline"
-                className="border-amber-500/40 text-amber-400 hover:bg-amber-500/10 shrink-0"
-                onClick={clearOverrides}
-              >
-                <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
-                Limpar overrides
+      <div className="p-6 space-y-6">
+        <PageHeader
+          title="Regras de Transação"
+          description="Configure os campos visíveis e obrigatórios para cada cenário de lançamento financeiro."
+          actions={{
+            custom: (
+              <Button data-testid="button-nova-regra" onClick={openCreate}>
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Regra
               </Button>
-            </CardContent>
-          </Card>
-        )}
+            ),
+          }}
+        />
 
-        {/* ── Tabs ── */}
-        <div className="flex items-center justify-between border-b border-border">
-          <div className="flex gap-1">
-            {(["matrix", "catalog"] as const).map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                  activeTab === tab
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab === "matrix" ? "Matriz de Campos" : "Catálogo de Regras"}
-              </button>
-            ))}
+        {/* Filtros */}
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              data-testid="input-search-rules"
+              className="pl-9"
+              placeholder="Buscar por nome ou descrição…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
           </div>
-          {activeTab === "matrix" && (
-            <Button
-              size="sm"
-              variant={isEditMode ? "default" : "outline"}
-              onClick={() => setIsEditMode(v => !v)}
-              className={isEditMode ? "bg-primary text-primary-foreground" : ""}
-            >
-              {isEditMode
-                ? <><Eye className="h-3.5 w-3.5 mr-1.5" />Modo Visualização</>
-                : <><Pencil className="h-3.5 w-3.5 mr-1.5" />Editar Regras</>
-              }
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
+            <Select value={filterTipo} onValueChange={setFilterTipo}>
+              <SelectTrigger data-testid="select-filter-tipo" className="w-44">
+                <SelectValue placeholder="Tipo de transação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os tipos</SelectItem>
+                <SelectItem value="receita">Receita</SelectItem>
+                <SelectItem value="despesa">Despesa</SelectItem>
+                <SelectItem value="investimento">Investimento</SelectItem>
+                <SelectItem value="imposto">Imposto</SelectItem>
+                <SelectItem value="transferencia">Transferência</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={filterAtivo} onValueChange={setFilterAtivo}>
+              <SelectTrigger data-testid="select-filter-ativo" className="w-32">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="ativo">Ativos</SelectItem>
+                <SelectItem value="inativo">Inativos</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
-        {/* ── Edit mode hint ── */}
-        {isEditMode && (
-          <Card className="border-primary/30 bg-primary/5">
-            <CardContent className="py-2.5 px-4 flex items-center gap-2">
-              <Pencil className="h-3.5 w-3.5 text-primary shrink-0" />
-              <p className="text-xs text-primary/80">
-                <strong>Modo Edição activo.</strong> Clique em qualquer célula da matriz para forçar ou suprimir um campo
-                para aquela combinação. As alterações são aplicadas imediatamente ao formulário de transação.
-                Células a <span className="text-amber-400 font-medium">amarelo</span> têm override activo.
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ── MATRIZ DE CAMPOS ── */}
-        {activeTab === "matrix" && (
-          <div className="space-y-4">
-            {/* Filters */}
-            <Card className="bg-muted/20 border-border">
-              <CardContent className="pt-4 pb-3">
-                <div className="flex flex-wrap gap-4 items-center">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Tipo:</span>
-                    <Select value={filterTipo} onValueChange={setFilterTipo}>
-                      <SelectTrigger className="w-44 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        {tiposTransacao.map(t => (
-                          <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Cliente:</span>
-                    <Select value={filterCliente} onValueChange={setFilterCliente}>
-                      <SelectTrigger className="w-44 h-8 text-sm">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos</SelectItem>
-                        <SelectItem value={NONE_SENTINEL}>— (sem tipo cliente)</SelectItem>
-                        {tiposCliente.map(c => (
-                          <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <span className="text-xs text-muted-foreground ml-auto">
-                    {filteredRows.length} combinaçõe{filteredRows.length !== 1 ? "s" : ""} visíveis
-                  </span>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Matrix table */}
-            <Card className="border-border overflow-hidden">
-              <div className="overflow-x-auto">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/40 hover:bg-muted/40">
-                      <TableHead className="sticky left-0 bg-muted/40 z-10 min-w-[110px] text-xs">Tipo</TableHead>
-                      <TableHead className="sticky left-[110px] bg-muted/40 z-10 min-w-[85px] text-xs">Cliente</TableHead>
-                      <TableHead className="sticky left-[195px] bg-muted/40 z-10 min-w-[140px] text-xs">Categoria</TableHead>
-                      {RULE_KEYS.map(key => (
-                        <TableHead key={key} className="text-center min-w-[52px] px-1 text-xs" title={RULE_META[key].description}>
-                          {RULE_META[key].label.split(" ").map((w, i) => (
-                            <span key={i} className="block text-[10px] leading-tight whitespace-nowrap">{w}</span>
-                          ))}
-                        </TableHead>
+        {/* Tabela */}
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-8">P.</TableHead>
+                  <TableHead>Nome</TableHead>
+                  <TableHead>Tipo de Transação</TableHead>
+                  <TableHead>Tipo de Cliente</TableHead>
+                  <TableHead>Categoria</TableHead>
+                  <TableHead className="text-center">Campos</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="w-24 text-right">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {isLoading ? (
+                  Array.from({ length: 4 }).map((_, i) => (
+                    <TableRow key={i}>
+                      {Array.from({ length: 8 }).map((__, j) => (
+                        <TableCell key={j}>
+                          <div className="h-4 rounded bg-muted animate-pulse w-full" />
+                        </TableCell>
                       ))}
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredRows.map((row, i) => (
-                      <TableRow key={i} className="hover:bg-muted/20">
-                        <TableCell className="sticky left-0 bg-background z-10 py-1.5">
-                          <TipoTransacaoBadge tipo={row.tipoTransacao} />
-                        </TableCell>
-                        <TableCell className="sticky left-[110px] bg-background z-10 py-1.5 text-xs text-muted-foreground capitalize">
-                          {row.tipoCliente || <span className="italic text-muted-foreground/40">—</span>}
-                        </TableCell>
-                        <TableCell className="sticky left-[195px] bg-background z-10 py-1.5 text-xs text-muted-foreground">
-                          {row.categoria || <span className="italic text-muted-foreground/40">—</span>}
-                        </TableCell>
-                        {RULE_KEYS.map(key => {
-                          const computed   = Boolean(row.computed[key]);
-                          const effective  = getEffective(row.tipoTransacao, row.tipoCliente, row.categoria, key, computed);
-                          const isOverriden = effective !== computed;
-                          return (
-                            <TableCell key={key} className="text-center py-1.5 px-1">
-                              <RuleCell
-                                isActive={effective}
-                                isOverriden={isOverriden}
-                                isEditMode={isEditMode}
-                                onToggle={() => toggleOverride(row.tipoTransacao, row.tipoCliente, row.categoria, key, computed)}
-                              />
-                            </TableCell>
-                          );
-                        })}
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </Card>
-
-            <div className="flex items-center gap-6 text-xs text-muted-foreground">
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> Campo activo (regra base)
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="h-3.5 w-3.5 text-amber-400" /> Campo activo (override)
-              </span>
-              <span className="flex items-center gap-1">
-                <XCircle className="h-3.5 w-3.5 text-amber-400/50" /> Campo oculto (override)
-              </span>
-              <span className="flex items-center gap-1">
-                <XCircle className="h-3.5 w-3.5 text-muted-foreground/25" /> Campo oculto (regra base)
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* ── CATÁLOGO DE REGRAS ── */}
-        {activeTab === "catalog" && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {RULE_KEYS.map(key => {
-              const meta        = RULE_META[key];
-              const activeCount = allRows.filter(r => {
-                const computed  = Boolean(r.computed[key]);
-                return getEffective(r.tipoTransacao, r.tipoCliente, r.categoria, key, computed);
-              }).length;
-              const overrideCountForKey = allRows.filter(r => {
-                const computed  = Boolean(r.computed[key]);
-                return getEffective(r.tipoTransacao, r.tipoCliente, r.categoria, key, computed) !== computed;
-              }).length;
-              const pct = Math.round((activeCount / allRows.length) * 100);
-              return (
-                <Card key={key} className="bg-muted/20 border-border">
-                  <CardHeader className="pb-2 pt-4 px-4">
-                    <div className="flex items-start justify-between gap-2">
-                      <div>
-                        <CardTitle className="text-sm font-semibold">{meta.label}</CardTitle>
-                        <CardDescription className="text-xs mt-0.5">{meta.description}</CardDescription>
-                      </div>
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {overrideCountForKey > 0 && (
-                          <Badge variant="outline" className="text-[10px] border-amber-500/40 text-amber-400">
-                            {overrideCountForKey} override{overrideCountForKey > 1 ? "s" : ""}
-                          </Badge>
-                        )}
-                        <Badge variant="outline" className="text-xs">
-                          {activeCount}/{allRows.length} ({pct}%)
+                  ))
+                ) : filtered.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-center py-12 text-muted-foreground">
+                      {search || filterTipo !== "all" || filterAtivo !== "all"
+                        ? "Nenhuma regra encontrada com os filtros aplicados."
+                        : "Nenhuma regra cadastrada. Clique em Nova Regra para começar."}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filtered.map((regra) => (
+                    <TableRow key={regra.id} data-testid={`row-regra-${regra.id}`}>
+                      <TableCell className="text-center font-mono text-xs text-muted-foreground">
+                        {regra.prioridade}
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-sm">{regra.nome}</p>
+                          {regra.descricao && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">{regra.descricao}</p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={TIPO_BADGE[regra.tipoTransacao] ?? TIPO_BADGE.all}
+                        >
+                          {labelFor(TIPOS_TRANSACAO, regra.tipoTransacao)}
                         </Badge>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="px-4 pb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary rounded-full transition-all"
-                          style={{ width: `${pct}%` }}
-                        />
-                      </div>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2 flex items-start gap-1">
-                      <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                      <span>
-                        Activo em <strong>{activeCount}</strong> das <strong>{allRows.length}</strong> combinações tipo × cliente × categoria.
-                      </span>
-                    </p>
-                    <p className="text-[10px] font-mono text-muted-foreground/60 mt-1.5 truncate">
-                      DISPLAY_RULES.{key}
-                    </p>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {labelFor(TIPOS_CLIENTE, regra.tipoCliente)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {labelFor(CATEGORIAS, regra.categoria)}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <span className="text-xs font-mono">
+                          <span className="text-foreground">{regra.camposVisiveis.length}</span>
+                          <span className="text-muted-foreground"> vis / </span>
+                          <span className="text-amber-400">{regra.camposObrigatorios.length}</span>
+                          <span className="text-muted-foreground"> obr</span>
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <Badge
+                          variant="outline"
+                          className={
+                            regra.ativo
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-muted text-muted-foreground border-border"
+                          }
+                        >
+                          {regra.ativo ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            data-testid={`button-edit-regra-${regra.id}`}
+                            onClick={() => openEdit(regra)}
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            data-testid={`button-delete-regra-${regra.id}`}
+                            className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                            onClick={() => setDeleteTarget(regra)}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        {/* Rodapé informativo */}
+        {!isLoading && regras.length > 0 && (
+          <p className="text-xs text-muted-foreground">
+            {filtered.length} de {regras.length} regra(s) exibida(s) — ordenadas por prioridade (menor = maior precedência)
+          </p>
         )}
       </div>
+
+      {/* Modal criar / editar */}
+      <RegraModal
+        open={modalOpen}
+        regra={editTarget}
+        isSubmitting={isCreating || isUpdating}
+        onClose={() => setModalOpen(false)}
+        onSubmit={handleSubmit}
+      />
+
+      {/* Confirmação de exclusão */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir regra?</AlertDialogTitle>
+            <AlertDialogDescription>
+              A regra <strong>"{deleteTarget?.nome}"</strong> será excluída permanentemente.
+              Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              data-testid="button-confirm-delete"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Excluindo…" : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </MainLayout>
   );
 }
