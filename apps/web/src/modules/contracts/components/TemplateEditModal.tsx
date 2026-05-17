@@ -1,194 +1,248 @@
-import { useState, useEffect } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/shared/ui/dialog";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { Dialog, DialogContent } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
-import { Textarea } from "@/shared/ui/textarea";
-import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Separator } from "@/shared/ui/separator";
 import {
-  Save,
-  Plus,
-  Trash2,
-  Sparkles,
-  FileText,
-  AlertCircle,
-  ToggleLeft,
-  ToggleRight,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/ui/sheet";
+import {
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
   TemplateContrato,
   TemplateContratoUpdate,
   SemanticVariable,
-  SemanticClauseType,
-  SemanticTemplateManifest,
 } from "@/modules/contracts/types/contracts.types";
+import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
+import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 
-const CLAUSE_TYPE_OPTIONS: SemanticClauseType[] = [
-  "financeira", "autoral", "royalties", "exclusividade",
-  "confidencialidade", "inadimplencia", "distribuicao_digital",
-  "licenciamento", "rescisao", "assinatura", "prazo", "objeto",
-];
+// ── Regex helpers ──────────────────────────────────────────────────────────
 
-const CLAUSE_TYPE_LABELS: Record<SemanticClauseType, string> = {
-  financeira: "Financeira",
-  autoral: "Autoral",
-  royalties: "Royalties",
-  exclusividade: "Exclusividade",
-  confidencialidade: "Confidencialidade",
-  inadimplencia: "Inadimplência",
-  distribuicao_digital: "Distribuição Digital",
-  licenciamento: "Licenciamento",
-  rescisao: "Rescisão",
-  assinatura: "Assinatura",
-  prazo: "Prazo",
-  objeto: "Objeto",
-};
+const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
+const CUSTOM_VAR_REGEX = /^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+$/i;
 
-const CLAUSE_TYPE_COLORS: Record<SemanticClauseType, string> = {
-  financeira: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-  autoral: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-  royalties: "bg-amber-500/10 text-amber-700 border-amber-500/20",
-  exclusividade: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  confidencialidade: "bg-slate-500/10 text-slate-700 border-slate-500/20",
-  inadimplencia: "bg-red-500/10 text-red-700 border-red-500/20",
-  distribuicao_digital: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
-  licenciamento: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20",
-  rescisao: "bg-orange-500/10 text-orange-700 border-orange-500/20",
-  assinatura: "bg-teal-500/10 text-teal-700 border-teal-500/20",
-  prazo: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  objeto: "bg-sky-500/10 text-sky-700 border-sky-500/20",
-};
+// ── Highlighted preview ───────────────────────────────────────────────────
 
-function generateId(): string {
-  return `sv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
-
-function validatePlaceholder(v: string): boolean {
-  return /^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(v);
-}
-
-function parseManifest(template: TemplateContrato): SemanticTemplateManifest {
-  const raw = template["variables_manifest"];
-  if (!raw) return { variables: [], clauseTypes: [], generatedAt: "" };
-  try {
-    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
-    return parsed as SemanticTemplateManifest;
-  } catch {
-    return { variables: [], clauseTypes: [], generatedAt: "" };
+function HighlightedPreview({ text }: { text: string }) {
+  if (!text.trim()) {
+    return (
+      <p className="text-muted-foreground/50 text-xs italic select-none">
+        O preview aparece aqui enquanto escreve…
+      </p>
+    );
   }
-}
-
-function renderPreviewWithPlaceholders(content: string) {
-  const parts = content.split(/(\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\})/g);
-  return parts.map((part, i) => {
-    if (/^\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\}$/.test(part)) {
-      return (
-        <mark
-          key={i}
-          className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded font-mono text-xs text-foreground"
-          title={part}
-        >
-          {part}
-        </mark>
-      );
-    }
-    return <span key={i}>{part}</span>;
-  });
-}
-
-interface VariableRowProps {
-  variable: SemanticVariable;
-  onChange: (updates: Partial<SemanticVariable>) => void;
-  onRemove: () => void;
-}
-
-function VariableRow({ variable, onChange, onRemove }: VariableRowProps) {
-  const isValid = validatePlaceholder(variable.placeholder);
-
+  const parts = text.split(/(\{\{[^}]+\}\})/g);
   return (
-    <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5">
-          {isValid ? (
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
-          ) : (
-            <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-          )}
-          <span className="text-xs font-mono text-primary truncate">{variable.placeholder}</span>
-        </div>
-        <button
-          type="button"
-          onClick={onRemove}
-          className="h-5 w-5 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors shrink-0"
-          title="Remover variável"
-          data-testid={`remove-var-${variable.id}`}
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
-      </div>
+    <p className="whitespace-pre-wrap text-sm leading-relaxed font-mono">
+      {parts.map((part, i) => {
+        if (/^\{\{[^}]+\}\}$/.test(part)) {
+          return (
+            <span
+              key={i}
+              className="text-primary bg-primary/10 rounded px-0.5 font-semibold"
+            >
+              {part}
+            </span>
+          );
+        }
+        return <span key={i}>{part}</span>;
+      })}
+    </p>
+  );
+}
 
-      <div className="grid grid-cols-2 gap-2">
-        <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-            Texto original
-          </label>
-          <Input
-            value={variable.originalText}
-            onChange={(e) => onChange({ originalText: e.target.value })}
-            className="h-7 text-xs"
-            placeholder={`"valor no contrato"`}
-            data-testid={`input-original-${variable.id}`}
-          />
+// ── Registry variable group accordion ─────────────────────────────────────
+
+interface RegistryVarGroupProps {
+  label: string;
+  vars: import("@/modules/contracts/hooks/useVariableRegistry").RegistryVariable[];
+  onInsert: (placeholder: string) => void;
+}
+
+function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
+  const [open, setOpen] = useState(true);
+  if (vars.length === 0) return null;
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        data-testid={`button-vargroup-edit-${label}`}
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {label}
+      </button>
+      {open && (
+        <div className="space-y-0.5 pl-1">
+          {vars.map((v) => (
+            <div
+              key={v.id}
+              className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
+            >
+              <div className="min-w-0">
+                <span className="font-mono text-[11px] text-foreground/80 truncate block">
+                  {v.placeholder}
+                </span>
+                {v.name && (
+                  <span className="text-[10px] text-muted-foreground truncate block leading-tight">
+                    {v.name}
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onInsert(v.placeholder)}
+                className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                title={`Inserir ${v.placeholder}`}
+                data-testid={`button-insert-registry-edit-${v.id}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
         </div>
-        <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-            Placeholder
-          </label>
-          <Input
-            value={variable.placeholder}
-            onChange={(e) => onChange({ placeholder: e.target.value })}
-            className={`h-7 text-xs font-mono ${!isValid ? "border-destructive" : ""}`}
-            placeholder="{{NAMESPACE.CAMPO}}"
-            data-testid={`input-placeholder-${variable.id}`}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-            Tipo de dado
-          </label>
-          <Input
-            value={variable.inferredEntity}
-            onChange={(e) => onChange({ inferredEntity: e.target.value })}
-            className="h-7 text-xs"
-            placeholder="Ex: Valor monetário"
-            data-testid={`input-entity-${variable.id}`}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold">
-            Contexto jurídico
-          </label>
-          <Input
-            value={variable.context}
-            onChange={(e) => onChange({ context: e.target.value })}
-            className="h-7 text-xs"
-            placeholder="Contexto da cláusula..."
-            data-testid={`input-context-${variable.id}`}
-          />
-        </div>
-      </div>
+      )}
     </div>
   );
 }
+
+// ── AI suggestion sheet ───────────────────────────────────────────────────
+
+interface AiSuggestion {
+  id: string;
+  originalText: string;
+  placeholder: string;
+  accepted: boolean | null;
+  occurrenceIndex: number;
+}
+
+function replaceNthOccurrence(str: string, search: string, replacement: string, n: number): string {
+  let count = 0;
+  let pos = 0;
+  while (pos < str.length) {
+    const found = str.indexOf(search, pos);
+    if (found === -1) return str;
+    if (count === n) {
+      return str.slice(0, found) + replacement + str.slice(found + search.length);
+    }
+    count++;
+    pos = found + search.length;
+  }
+  return str;
+}
+
+interface AiSuggestionsSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  suggestions: AiSuggestion[];
+  onAccept: (id: string) => void;
+  onIgnore: (id: string) => void;
+}
+
+function AiSuggestionsSheet({
+  open, onOpenChange, suggestions, onAccept, onIgnore,
+}: AiSuggestionsSheetProps) {
+  const pending = suggestions.filter((s) => s.accepted === null);
+  const accepted = suggestions.filter((s) => s.accepted === true);
+
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-96 flex flex-col">
+        <SheetHeader className="shrink-0">
+          <SheetTitle className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            Sugestões da IA
+          </SheetTitle>
+          <p className="text-xs text-muted-foreground">
+            Aceite individualmente as substituições que quiser aplicar ao texto.
+          </p>
+        </SheetHeader>
+
+        <ScrollArea className="flex-1 mt-4">
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhuma sugestão encontrada para o texto actual.
+            </p>
+          ) : (
+            <div className="space-y-3 pr-2">
+              {pending.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                    Pendentes ({pending.length})
+                  </p>
+                  {pending.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-lg border p-3 space-y-2 text-sm"
+                      data-testid={`suggestion-card-edit-${s.id}`}
+                    >
+                      <p className="text-muted-foreground text-xs line-clamp-2 italic">
+                        "{s.originalText}"
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground">→</span>
+                        <span className="font-mono text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
+                          {s.placeholder}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => onAccept(s.id)}
+                          data-testid={`button-accept-edit-${s.id}`}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Aceitar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => onIgnore(s.id)}
+                          data-testid={`button-ignore-edit-${s.id}`}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Ignorar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {accepted.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                    Aceites ({accepted.length})
+                  </p>
+                  {accepted.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-lg border border-border/40 bg-muted/20 p-2.5 flex items-center gap-2 opacity-60"
+                    >
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span className="font-mono text-xs text-primary">{s.placeholder}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ── Props ──────────────────────────────────────────────────────────────────
 
 interface TemplateEditModalProps {
   open: boolean;
@@ -197,385 +251,351 @@ interface TemplateEditModalProps {
   onSave: (id: string, data: TemplateContratoUpdate) => void;
 }
 
+// ── Main component ─────────────────────────────────────────────────────────
+
 export function TemplateEditModal({
   open,
   onOpenChange,
   template,
   onSave,
 }: TemplateEditModalProps) {
-  const [nome, setNome] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [conteudo, setConteudo] = useState("");
-  const [ativo, setAtivo] = useState(true);
-  const [variables, setVariables] = useState<SemanticVariable[]>([]);
-  const [clauseTypes, setClauseTypes] = useState<SemanticClauseType[]>([]);
-  const [activeTab, setActiveTab] = useState<"info" | "variaveis" | "conteudo">("info");
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
+  const [nome, setNome] = useState("");
+  const [text, setText] = useState("");
+  const [search, setSearch] = useState("");
+  const [customVar, setCustomVar] = useState("");
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
+
+  const { variables: registryVars, addVariable } = useVariableRegistry();
+
+  // Populate from template when it changes
   useEffect(() => {
     if (!template) return;
-    const manifest = parseManifest(template);
     setNome(template.nome ?? "");
-    setDescricao(template.descricao ?? "");
-    setConteudo(template.conteudo ?? "");
-    setAtivo(template.ativo ?? true);
-    setVariables(manifest.variables ?? []);
-    setClauseTypes(manifest.clauseTypes ?? []);
+    setText(template.conteudo ?? "");
+    setSearch("");
+    setCustomVar("");
+    setAiSuggestions([]);
+    setAiSheetOpen(false);
   }, [template]);
 
   if (!template) return null;
 
-  const isSemantic = template.tipo_servico === "semantico";
-  const invalidCount = variables.filter((v) => !validatePlaceholder(v.placeholder)).length;
+  // ── Insert at cursor ───────────────────────────────────────────────────
 
-  const handleUpdateVariable = (id: string, updates: Partial<SemanticVariable>) => {
-    setVariables((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
-  };
+  const insertAtCursor = useCallback((snippet: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setText((prev) => prev + snippet);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + snippet + text.slice(end);
+    setText(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }, [text]);
 
-  const handleRemoveVariable = (id: string) => {
-    setVariables((prev) => prev.filter((v) => v.id !== id));
-  };
+  // ── Create custom variable ─────────────────────────────────────────────
 
-  const handleAddVariable = () => {
-    const newVar: SemanticVariable = {
-      id: generateId(),
-      originalText: "",
-      context: "",
-      inferredEntity: "",
-      placeholder: "{{NAMESPACE.CAMPO}}",
-      accepted: true,
-    };
-    setVariables((prev) => [...prev, newVar]);
-  };
+  function handleCreateCustomVar() {
+    const raw = customVar.trim().toUpperCase();
+    if (!CUSTOM_VAR_REGEX.test(raw)) {
+      toast.error("Formato inválido. Use GRUPO.CAMPO (ex: SHOW.RIDER)");
+      return;
+    }
+    const [group, field] = raw.split(".");
+    const placeholder = `{{${raw}}}`;
+    addVariable(raw, group, field);
+    insertAtCursor(placeholder);
+    setCustomVar("");
+    toast.success(`${placeholder} criado e inserido`);
+  }
 
-  const toggleClauseType = (ct: SemanticClauseType) => {
-    setClauseTypes((prev) =>
-      prev.includes(ct) ? prev.filter((c) => c !== ct) : [...prev, ct],
+  // ── AI suggestions ────────────────────────────────────────────────────
+
+  async function handleAiSuggest() {
+    if (!text.trim()) {
+      toast.warning("Escreva ou cole texto no editor primeiro");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const result = await parseContractText(text);
+      const occurrenceCounters = new Map<string, number>();
+      const suggestions: AiSuggestion[] = result.variables.map((v: SemanticVariable) => {
+        const seen = occurrenceCounters.get(v.originalText) ?? 0;
+        occurrenceCounters.set(v.originalText, seen + 1);
+        return {
+          id: v.id,
+          originalText: v.originalText,
+          placeholder: v.placeholder,
+          accepted: null,
+          occurrenceIndex: seen,
+        };
+      });
+      setAiSuggestions(suggestions);
+      setAiSheetOpen(true);
+      if (suggestions.length === 0) {
+        toast.info("A IA não encontrou mais sugestões de variáveis");
+      }
+    } catch {
+      toast.error("Erro ao analisar o texto. Verifique a ligação à API.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handleAcceptSuggestion(id: string) {
+    const suggestion = aiSuggestions.find((s) => s.id === id);
+    if (!suggestion) return;
+    const next = replaceNthOccurrence(
+      text,
+      suggestion.originalText,
+      suggestion.placeholder,
+      suggestion.occurrenceIndex,
     );
-  };
+    if (next === text) {
+      toast.warning("Texto original não encontrado — pode já ter sido substituído");
+    } else {
+      setText(next);
+    }
+    setAiSuggestions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, accepted: true } : s)),
+    );
+  }
 
-  const handleSave = () => {
+  function handleIgnoreSuggestion(id: string) {
+    setAiSuggestions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, accepted: false } : s)),
+    );
+  }
+
+  // ── Save ──────────────────────────────────────────────────────────────
+
+  function handleSave() {
+    if (!template) return;
     if (!nome.trim()) {
-      toast.error("O nome do template é obrigatório.");
+      toast.error("Dê um nome ao template antes de guardar");
       return;
     }
-    if (invalidCount > 0) {
-      toast.error(`${invalidCount} variável(is) com placeholder inválido. Corrija antes de salvar.`);
-      setActiveTab("variaveis");
+    if (!text.trim()) {
+      toast.error("O editor está vazio. Adicione o conteúdo do template.");
       return;
     }
-
-    const manifest: SemanticTemplateManifest = {
-      variables,
-      clauseTypes,
-      generatedAt: template["variables_manifest"]
-        ? (parseManifest(template).generatedAt ?? new Date().toISOString())
-        : new Date().toISOString(),
-    };
-
-    const data: TemplateContratoUpdate = {
+    const placeholders = [
+      ...new Set(
+        Array.from(text.matchAll(PLACEHOLDER_REGEX)).map((m) => `{{${m[1].toUpperCase()}}}`),
+      ),
+    ];
+    const manifest = { variables: placeholders, generatedAt: new Date().toISOString() };
+    onSave(template.id, {
       nome: nome.trim(),
-      descricao: descricao.trim() || null,
-      conteudo: conteudo || null,
-      ativo,
+      conteudo: text,
+      ativo: template.ativo ?? true,
+      descricao: template.descricao ?? null,
       variables_manifest: JSON.stringify(manifest),
-    };
-
-    onSave(template.id, data);
+    });
     onOpenChange(false);
-  };
+  }
 
-  const tabs = [
-    { id: "info" as const, label: "Informações" },
-    { id: "variaveis" as const, label: `Variáveis (${variables.length})` },
-    { id: "conteudo" as const, label: "Conteúdo" },
-  ];
+  // ── Close ─────────────────────────────────────────────────────────────
+
+  function handleClose() {
+    setSearch("");
+    setCustomVar("");
+    setAiSuggestions([]);
+    setAiSheetOpen(false);
+    onOpenChange(false);
+  }
+
+  // ── Registry vars filtered + grouped ──────────────────────────────────
+
+  const filteredRegistryVars = registryVars.filter((v) =>
+    !search || v.placeholder.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  // ── Render ────────────────────────────────────────────────────────────
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl w-full h-[82vh] flex flex-col p-0 gap-0">
-        {/* Header */}
-        <DialogHeader className="px-6 pt-5 pb-0 shrink-0">
-          <div className="flex items-center gap-2.5">
-            <div
-              className={`h-7 w-7 rounded-lg flex items-center justify-center ${
-                isSemantic ? "bg-primary/10" : "bg-muted"
-              }`}
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+        <DialogContent
+          className="max-w-[95vw] w-[1200px] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden"
+          data-testid="dialog-template-edit"
+        >
+          {/* ── Header ── */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleClose}
+              data-testid="button-edit-back"
             >
-              {isSemantic ? (
-                <Sparkles className="h-3.5 w-3.5 text-primary" />
-              ) : (
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <DialogTitle className="text-base truncate">Editar Template</DialogTitle>
-              <p className="text-xs text-muted-foreground">{template.nome}</p>
-            </div>
-          </div>
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
 
-          {/* Tabs */}
-          <div className="flex gap-0 mt-4 border-b border-border">
-            {tabs.map((tab) => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 text-xs font-medium border-b-2 transition-colors ${
-                  activeTab === tab.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-                data-testid={`tab-${tab.id}`}
+            <div className="flex-1 min-w-0">
+              <Input
+                placeholder="Nome do template…"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="h-8 text-sm font-medium border-none shadow-none focus-visible:ring-0 px-0 bg-transparent"
+                data-testid="input-edit-template-name"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleAiSuggest}
+                disabled={aiLoading}
+                data-testid="button-edit-ai-suggest"
               >
-                {tab.label}
-                {tab.id === "variaveis" && invalidCount > 0 && (
-                  <span className="ml-1.5 h-4 w-4 inline-flex items-center justify-center rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold">
-                    !
-                  </span>
+                {aiLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                 )}
-              </button>
-            ))}
-          </div>
-        </DialogHeader>
+                IA
+              </Button>
 
-        {/* Body */}
-        <div className="flex-1 min-h-0 overflow-hidden">
-          <ScrollArea className="h-full">
-            <div className="px-6 py-5 space-y-5">
-
-              {/* ── TAB: info ── */}
-              {activeTab === "info" && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-nome">Nome do Template *</Label>
-                    <Input
-                      id="edit-nome"
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      placeholder="Ex: Contrato de Agenciamento Artístico"
-                      data-testid="input-edit-nome"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="edit-desc">Descrição</Label>
-                    <Textarea
-                      id="edit-desc"
-                      value={descricao}
-                      onChange={(e) => setDescricao(e.target.value)}
-                      placeholder="Descreva o uso e contexto deste template..."
-                      rows={3}
-                      data-testid="input-edit-desc"
-                    />
-                  </div>
-
-                  <Separator />
-
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Status do Template</p>
-                      <p className="text-xs text-muted-foreground">
-                        Templates ativos ficam disponíveis para uso
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAtivo((v) => !v)}
-                      className="flex items-center gap-2 transition-colors"
-                      data-testid="toggle-ativo"
-                    >
-                      {ativo ? (
-                        <>
-                          <ToggleRight className="h-6 w-6 text-primary" />
-                          <Badge variant="default" className="text-xs">Ativo</Badge>
-                        </>
-                      ) : (
-                        <>
-                          <ToggleLeft className="h-6 w-6 text-muted-foreground" />
-                          <Badge variant="secondary" className="text-xs">Inativo</Badge>
-                        </>
-                      )}
-                    </button>
-                  </div>
-
-                  {isSemantic && (
-                    <>
-                      <Separator />
-                      <div className="space-y-2">
-                        <p className="text-sm font-medium">Tipos de Cláusula</p>
-                        <p className="text-xs text-muted-foreground">
-                          Clique para adicionar ou remover tipos detectados neste template
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {CLAUSE_TYPE_OPTIONS.map((ct) => (
-                            <button
-                              key={ct}
-                              type="button"
-                              onClick={() => toggleClauseType(ct)}
-                              className={`text-[10px] px-2 py-1 rounded border font-medium transition-opacity ${
-                                clauseTypes.includes(ct)
-                                  ? CLAUSE_TYPE_COLORS[ct]
-                                  : "border-border text-muted-foreground opacity-50 hover:opacity-70"
-                              }`}
-                              data-testid={`clause-type-${ct}`}
-                            >
-                              {CLAUSE_TYPE_LABELS[ct]}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              )}
-
-              {/* ── TAB: variaveis ── */}
-              {activeTab === "variaveis" && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">Variáveis Mapeadas</p>
-                      <p className="text-xs text-muted-foreground">
-                        Edite ou adicione variáveis. O placeholder deve seguir o formato{" "}
-                        <span className="font-mono">{"{{NAMESPACE.CAMPO}}"}</span>
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={handleAddVariable}
-                      className="gap-1.5 shrink-0"
-                      data-testid="button-add-variable"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Adicionar
-                    </Button>
-                  </div>
-
-                  {invalidCount > 0 && (
-                    <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-                      <AlertCircle className="h-4 w-4 shrink-0" />
-                      <span>
-                        {invalidCount} variável(is) com placeholder inválido. Corrija antes de salvar.
-                      </span>
-                    </div>
-                  )}
-
-                  {variables.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-10 gap-2 text-center rounded-lg border border-dashed border-border">
-                      <AlertCircle className="h-6 w-6 text-muted-foreground" />
-                      <p className="text-sm text-muted-foreground">
-                        Nenhuma variável mapeada
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={handleAddVariable}
-                        className="gap-1.5 mt-1"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Adicionar primeira variável
-                      </Button>
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {variables.map((v) => (
-                        <VariableRow
-                          key={v.id}
-                          variable={v}
-                          onChange={(updates) => handleUpdateVariable(v.id, updates)}
-                          onRemove={() => handleRemoveVariable(v.id)}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* ── TAB: conteudo ── */}
-              {activeTab === "conteudo" && (
-                <div className="space-y-3">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-medium">Conteúdo do Template</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        Edite o texto à esquerda. Os placeholders{" "}
-                        <span className="font-mono text-primary">{"{{NAMESPACE.CAMPO}}"}</span>{" "}
-                        são destacados na pré-visualização à direita.
-                      </p>
-                    </div>
-                    <Badge variant="outline" className="shrink-0 text-[10px]">
-                      {conteudo.length.toLocaleString("pt-BR")} chars
-                    </Badge>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 min-h-[420px]">
-                    {/* Editor */}
-                    <div className="flex flex-col gap-1.5">
-                      <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                        Editor
-                      </p>
-                      <Textarea
-                        value={conteudo}
-                        onChange={(e) => setConteudo(e.target.value)}
-                        placeholder="Conteúdo do template com placeholders..."
-                        className="flex-1 font-mono text-xs resize-none h-[400px]"
-                        data-testid="textarea-conteudo"
-                      />
-                    </div>
-
-                    {/* Preview */}
-                    <div className="flex flex-col gap-1.5">
-                      <p className="text-[10px] uppercase tracking-wide font-semibold text-muted-foreground">
-                        Pré-visualização
-                      </p>
-                      <div className="rounded-md border border-border bg-muted/20 p-4 overflow-y-auto h-[400px]">
-                        {conteudo ? (
-                          <p className="text-sm leading-relaxed whitespace-pre-wrap font-serif">
-                            {renderPreviewWithPlaceholders(conteudo)}
-                          </p>
-                        ) : (
-                          <p className="text-xs text-muted-foreground italic">
-                            Digite o conteúdo no editor para visualizar aqui…
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <p className="text-[10px] text-muted-foreground">
-                    Dica: os placeholders marcados em{" "}
-                    <mark className="bg-yellow-200/60 dark:bg-yellow-900/40 px-0.5 rounded text-foreground not-italic">
-                      amarelo
-                    </mark>{" "}
-                    serão substituídos pelos valores reais ao gerar cada contrato.
-                  </p>
-                </div>
-              )}
+              <Button
+                size="sm"
+                onClick={handleSave}
+                data-testid="button-save-edit-template"
+              >
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Guardar
+              </Button>
             </div>
-          </ScrollArea>
-        </div>
+          </div>
 
-        {/* Footer */}
-        <DialogFooter className="px-6 py-4 border-t border-border shrink-0">
-          <Button
-            variant="outline"
-            onClick={() => onOpenChange(false)}
-            data-testid="button-cancel-edit"
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSave}
-            disabled={!nome.trim()}
-            className="gap-2"
-            data-testid="button-save-edit"
-          >
-            <Save className="h-4 w-4" />
-            Salvar Alterações
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          {/* ── Body ── */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* ── Left: editor + preview ── */}
+            <div className="flex flex-col flex-1 overflow-hidden border-r">
+              {/* Editor */}
+              <div className="flex-1 overflow-hidden flex flex-col p-4 gap-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider shrink-0">
+                  Editor
+                </Label>
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={
+                    "Edite aqui o texto do contrato.\n\n" +
+                    "Use {{GRUPO.CAMPO}} para inserir placeholders,\n" +
+                    "ou clique [+] no painel de variáveis à direita."
+                  }
+                  className="flex-1 w-full resize-none rounded-md border bg-background px-3 py-2.5 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                  data-testid="textarea-edit-contract-editor"
+                />
+              </div>
+
+              {/* Preview */}
+              <div className="shrink-0 border-t max-h-52 overflow-y-auto bg-muted/20 p-4">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                  Preview
+                </Label>
+                <HighlightedPreview text={text} />
+              </div>
+            </div>
+
+            {/* ── Right: variable panel ── */}
+            <div className="w-72 flex flex-col overflow-hidden bg-background">
+              {/* Search */}
+              <div className="px-3 pt-3 pb-2 shrink-0">
+                <Input
+                  placeholder="Pesquisar variáveis…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 text-xs"
+                  data-testid="input-edit-search-vars"
+                />
+              </div>
+
+              {/* Variable list — grouped by v.group */}
+              <ScrollArea className="flex-1 px-3">
+                {filteredRegistryVars.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
+                    {search
+                      ? "Nenhuma variável encontrada"
+                      : "Nenhuma variável criada. Aceda a Contratos → Variáveis para criar."}
+                  </p>
+                ) : (
+                  <div className="pt-1">
+                    {Array.from(
+                      filteredRegistryVars.reduce((map, v) => {
+                        const key = v.group || "Outros";
+                        if (!map.has(key)) map.set(key, []);
+                        map.get(key)!.push(v);
+                        return map;
+                      }, new Map<string, typeof filteredRegistryVars>()),
+                    ).map(([groupLabel, groupVars]) => (
+                      <RegistryVarGroup
+                        key={groupLabel}
+                        label={groupLabel}
+                        vars={groupVars}
+                        onInsert={insertAtCursor}
+                      />
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Custom variable creator */}
+              <div className="shrink-0 border-t px-3 py-3 space-y-2">
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                  Nova variável custom
+                </Label>
+                <div className="flex gap-1.5">
+                  <Input
+                    placeholder="GRUPO.CAMPO"
+                    value={customVar}
+                    onChange={(e) => setCustomVar(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleCreateCustomVar(); }}
+                    className="h-7 text-xs font-mono"
+                    data-testid="input-edit-custom-var"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs shrink-0"
+                    onClick={handleCreateCustomVar}
+                    data-testid="button-edit-create-custom-var"
+                  >
+                    Criar
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Ex: SHOW.RIDER · Formato: GRUPO.CAMPO
+                </p>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI suggestions side sheet */}
+      <AiSuggestionsSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        suggestions={aiSuggestions}
+        onAccept={handleAcceptSuggestion}
+        onIgnore={handleIgnoreSuggestion}
+      />
+    </>
   );
 }
