@@ -18,37 +18,7 @@ import {
 import { ContractImportWorkspace } from "@/modules/contracts/components/ContractImportWorkspace";
 import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
 import { TemplateEditModal } from "@/modules/contracts/components/TemplateEditModal";
-import type { SemanticClauseType, SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
-
-const CLAUSE_TYPE_LABELS: Record<SemanticClauseType, string> = {
-  financeira: "Financeira",
-  autoral: "Autoral",
-  royalties: "Royalties",
-  exclusividade: "Exclusividade",
-  confidencialidade: "Confidencialidade",
-  inadimplencia: "Inadimplência",
-  distribuicao_digital: "Distribuição Digital",
-  licenciamento: "Licenciamento",
-  rescisao: "Rescisão",
-  assinatura: "Assinatura",
-  prazo: "Prazo",
-  objeto: "Objeto",
-};
-
-const CLAUSE_TYPE_COLORS: Record<SemanticClauseType, string> = {
-  financeira: "bg-emerald-500/10 text-emerald-700 border-emerald-500/20",
-  autoral: "bg-purple-500/10 text-purple-700 border-purple-500/20",
-  royalties: "bg-amber-500/10 text-amber-700 border-amber-500/20",
-  exclusividade: "bg-blue-500/10 text-blue-700 border-blue-500/20",
-  confidencialidade: "bg-slate-500/10 text-slate-700 border-slate-500/20",
-  inadimplencia: "bg-red-500/10 text-red-700 border-red-500/20",
-  distribuicao_digital: "bg-cyan-500/10 text-cyan-700 border-cyan-500/20",
-  licenciamento: "bg-indigo-500/10 text-indigo-700 border-indigo-500/20",
-  rescisao: "bg-orange-500/10 text-orange-700 border-orange-500/20",
-  assinatura: "bg-teal-500/10 text-teal-700 border-teal-500/20",
-  prazo: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
-  objeto: "bg-sky-500/10 text-sky-700 border-sky-500/20",
-};
+import type { SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
 
 function parseManifest(template: TemplateContrato): SemanticTemplateManifest | null {
   const raw = template["variables_manifest"];
@@ -65,7 +35,7 @@ function countVariables(template: TemplateContrato): number {
   return parseManifest(template)?.variables?.length ?? 0;
 }
 
-function getClauseTypes(template: TemplateContrato): SemanticClauseType[] {
+function getClauseTypes(template: TemplateContrato): string[] {
   return parseManifest(template)?.clauseTypes ?? [];
 }
 
@@ -172,12 +142,9 @@ function TemplateCard({
             </Badge>
           )}
           {clauseTypes.slice(0, 3).map((ct) => (
-            <span
-              key={ct}
-              className={`text-[10px] px-1.5 py-0.5 rounded border font-medium ${CLAUSE_TYPE_COLORS[ct]}`}
-            >
-              {CLAUSE_TYPE_LABELS[ct]}
-            </span>
+            <Badge key={ct} variant="outline" className="text-[10px]">
+              {ct}
+            </Badge>
           ))}
           {clauseTypes.length > 3 && (
             <span className="text-[10px] px-1.5 py-0.5 rounded border text-muted-foreground border-border">

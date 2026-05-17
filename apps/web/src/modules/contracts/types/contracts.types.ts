@@ -174,19 +174,7 @@ export interface BrandingSettings {
 
 // ─── Semantic Contract Intelligence Engine Types ──────────────────────────────
 
-export type SemanticClauseType =
-  | "financeira"
-  | "autoral"
-  | "royalties"
-  | "exclusividade"
-  | "confidencialidade"
-  | "inadimplencia"
-  | "distribuicao_digital"
-  | "licenciamento"
-  | "rescisao"
-  | "assinatura"
-  | "prazo"
-  | "objeto";
+export type SemanticClauseType = string;
 
 export interface SemanticVariable {
   id: string;

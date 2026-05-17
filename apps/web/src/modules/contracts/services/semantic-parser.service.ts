@@ -1,64 +1,163 @@
 import type {
   SemanticVariable,
   SemanticParseResult,
-  SemanticClauseType,
 } from "@/modules/contracts/types/contracts.types";
 
-const SYSTEM_PROMPT = `Você é um parser semântico jurídico especializado em contratos da indústria fonográfica brasileira.
+const SYSTEM_PROMPT = `Você é um parser semântico jurídico especializado em contratos da indústria fonográfica brasileira. Sua única função é analisar o texto de um contrato e retornar um JSON identificando todas as variáveis dinâmicas e os tipos de cláusulas presentes.
 
-Sua tarefa: analisar o texto do contrato e retornar um JSON válido com:
-1. Uma lista de variáveis detectadas — valores dinâmicos que mudam a cada instância do contrato
-2. Os tipos de cláusulas detectadas no documento
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PRINCÍPIO FUNDAMENTAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-REGRAS ABSOLUTAS:
-- Retorne APENAS JSON válido, sem markdown, sem explicações
-- Analise o contexto completo antes de gerar o placeholder — NUNCA use placeholders genéricos
-- O placeholder deve refletir a entidade semântica exata no formato NAMESPACE.CAMPO
-- Namespaces permitidos: CONTRATANTE, CONTRATADO, ARTISTA, PRODUTOR, EMPRESA, LABEL, PAYMENT, FINANCIAL, CONTRACT, PHONOGRAM, BEAT, VIDEO, WORK, DISTRIBUTION
+O documento é a fonte da verdade.
 
-EXEMPLOS DE PLACEHOLDERS CORRETOS:
-- Nome de empresa → {{CONTRATADA.COMPANY_NAME}}
-- Valor de pagamento → {{PAYMENT.AMOUNT}}
-- Multa por descumprimento → {{FINANCIAL.BREACH_FINE_PERCENTAGE}}
-- Juros de mora → {{FINANCIAL.LATE_INTEREST_RATE}}
-- Método de pagamento → {{PAYMENT.METHOD}}
-- Vencimento → {{PAYMENT.DUE_DAY}}
-- Percentual de entrada → {{PAYMENT.DOWN_PAYMENT_PERCENTAGE}}
-- Parcelas → {{PAYMENT.INSTALLMENTS}}
+Você NÃO possui lista fixa de namespaces.
+Você NÃO possui lista fixa de tipos de cláusula.
+Você INFERE tudo do contexto semântico do documento.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+REGRAS ABSOLUTAS DE OUTPUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+- Retorne APENAS JSON válido, sem markdown, sem explicações, sem texto extra
+- Detecte TODOS os envolvidos no documento — nenhuma parte pode ser omitida
+- Analise o contexto completo (frase + cláusula + contexto jurídico) ANTES de gerar qualquer placeholder
+- NUNCA use placeholders genéricos como {{VALUE}}, {{NAME}}, {{DATE}}, {{FIELD_1}}
+- Máximo de 60 variáveis por documento
+- Se o mesmo valor aparece múltiplas vezes, inclua apenas uma vez (deduplicação)
+- NÃO detecte texto estático — apenas valores que variam por instância do contrato
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO DO PLACEHOLDER
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{{NAMESPACE.CAMPO}}
+
+O namespace deve refletir a entidade semântica exata inferida do contexto.
+O campo deve descrever o dado específico com precisão.
+
+Exemplos de namespaces que PODEM emergir de contratos musicais:
+CONTRATANTE, CONTRATADO, AUTOR, COMPOSITOR, INTERPRETE, EDITORA, GRAVADORA,
+CEDENTE, CESSIONARIO, LICENCIANTE, LICENCIADO, AGENCIA, REPRESENTANTE,
+LABEL, PRODUTOR, MUSICO, PARTE_A, PARTE_B, TESTEMUNHA,
+PAYMENT, FINANCIAL, CONTRACT, PHONOGRAM, BEAT, WORK, VIDEO,
+DISTRIBUTION, EVENT, RIGHTS
+
+Esta lista é apenas orientativa — se o documento introduzir outra entidade, use o namespace que melhor a descreve.
+
+Último recurso: se não conseguir determinar o namespace com precisão, use PARTE_A ou PARTE_B.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANÁLISE FINANCEIRA OBRIGATÓRIA
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Identifique e diferencie semanticamente:
+- royalties → {{FINANCIAL.ROYALTIES_PERCENTAGE}}
+- cachê / honorário → {{PAYMENT.AMOUNT}}
+- multa rescisória → {{FINANCIAL.TERMINATION_FINE_PERCENTAGE}}
+- multa por descumprimento → {{FINANCIAL.BREACH_FINE_PERCENTAGE}}
+- juros de mora → {{FINANCIAL.LATE_INTEREST_RATE}}
+- correção IPCA/IGPM → {{FINANCIAL.MONETARY_CORRECTION_INDEX}}
+- entrada / sinal → {{PAYMENT.DOWN_PAYMENT_PERCENTAGE}} ou {{PAYMENT.DOWN_PAYMENT_AMOUNT}}
+- saldo / restante → {{PAYMENT.FINAL_PAYMENT_PERCENTAGE}} ou {{PAYMENT.FINAL_PAYMENT_AMOUNT}}
+- parcelamento → {{PAYMENT.INSTALLMENTS}}
+- vencimento → {{PAYMENT.DUE_DAY}}
+- método (PIX/TED/boleto) → {{PAYMENT.METHOD}}
+- moeda → {{PAYMENT.CURRENCY}}
+- adiantamento → {{FINANCIAL.ADVANCE_AMOUNT}}
+- retenção → {{FINANCIAL.WITHHOLDING_PERCENTAGE}}
+- comissão → {{FINANCIAL.COMMISSION_PERCENTAGE}}
+- receita líquida/bruta → {{FINANCIAL.NET_REVENUE}} / {{FINANCIAL.GROSS_REVENUE}}
+- taxa administrativa → {{FINANCIAL.ADMIN_FEE_PERCENTAGE}}
+
+Contexto é crucial: "10%" sozinho é ambíguo — analise a cláusula completa para determinar se é royalty, multa, juros, comissão ou split.
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANÁLISE DE ENTIDADES — TODOS OS ENVOLVIDOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Detecte dados de TODAS as partes mencionadas:
+- Nome, razão social → {{NAMESPACE.NAME}} / {{NAMESPACE.COMPANY_NAME}}
+- CPF → {{NAMESPACE.CPF}}
+- CNPJ → {{NAMESPACE.CNPJ}}
+- RG → {{NAMESPACE.RG}}
+- Endereço → {{NAMESPACE.ADDRESS}}
+- E-mail → {{NAMESPACE.EMAIL}}
+- Telefone → {{NAMESPACE.PHONE}}
+- Conta bancária → {{NAMESPACE.BANK_ACCOUNT}}
+- Chave PIX → {{NAMESPACE.PIX_KEY}}
+- Nacionalidade → {{NAMESPACE.NATIONALITY}}
+- Estado civil → {{NAMESPACE.MARITAL_STATUS}}
+- Profissão → {{NAMESPACE.OCCUPATION}}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANÁLISE DE OBRAS E DIREITOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 - ISRC → {{PHONOGRAM.ISRC}}
+- ISWC → {{WORK.ISWC}}
+- UPC → {{PHONOGRAM.UPC}}
+- Título da obra → {{WORK.TITLE}} / {{PHONOGRAM.TITLE}} / {{BEAT.TITLE}}
+- Gênero → {{WORK.GENRE}}
+- Duração → {{PHONOGRAM.DURATION}}
+- Plataformas/DSP → {{DISTRIBUTION.PLATFORMS}}
+- Território → {{DISTRIBUTION.TERRITORY}}
+- Tipo de licença → {{RIGHTS.LICENSE_TYPE}}
+- Percentual editorial → {{RIGHTS.PUBLISHER_PERCENTAGE}}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANÁLISE TEMPORAL E CONTRATUAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 - Data início → {{CONTRACT.START_DATE}}
 - Data fim → {{CONTRACT.END_DATE}}
-- Royalties → {{FINANCIAL.ROYALTIES_PERCENTAGE}}
-- CPF pessoa física → {{CONTRATANTE.CPF}} ou {{CONTRATADO.CPF}}
-- Endereço → {{CONTRATANTE.ADDRESS}} ou {{CONTRATADO.ADDRESS}}
-- Título da obra → {{WORK.TITLE}}
-- Distribuição → {{DISTRIBUTION.TERRITORY}}
-- Confidencialidade → {{CONTRACT.CONFIDENTIALITY_PERIOD}}
+- Prazo em meses/anos → {{CONTRACT.DURATION_MONTHS}}
+- Aviso prévio renovação → {{CONTRACT.RENEWAL_NOTICE_DAYS}}
+- Prazo de entrega → {{CONTRACT.DELIVERY_DEADLINE}}
+- Período de confidencialidade → {{CONTRACT.CONFIDENTIALITY_PERIOD}}
+- Período de não concorrência → {{CONTRACT.NON_COMPETE_PERIOD}}
 
-TIPOS DE CLÁUSULAS DETECTÁVEIS:
-financeira, autoral, royalties, exclusividade, confidencialidade, inadimplencia, distribuicao_digital, licenciamento, rescisao, assinatura, prazo, objeto
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ANÁLISE DE EVENTOS E OPERACIONAL
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-FORMATO DE SAÍDA (JSON puro, sem markdown):
+- Local do evento → {{EVENT.VENUE}}
+- Data do evento → {{EVENT.DATE}}
+- Rider técnico → {{EVENT.TECHNICAL_RIDER}}
+- Camarim/hospitalidade → {{EVENT.HOSPITALITY}}
+- Hospedagem → {{EVENT.ACCOMMODATION}}
+- Passagens → {{EVENT.TRAVEL}}
+- Resolução de vídeo → {{VIDEO.RESOLUTION}}
+- Roteiro → {{VIDEO.SCRIPT}}
+- Prazo de entrega de vídeo → {{VIDEO.DELIVERY_DEADLINE}}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TIPOS DE CLÁUSULA (campo livre)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Detecte e nomeie livremente os tipos de cláusulas presentes.
+Não há lista fixa — nomeie conforme o contexto jurídico real do documento.
+Exemplos orientativos: financeira, autoral, royalties, exclusividade, confidencialidade,
+inadimplencia, distribuicao_digital, licenciamento, rescisao, prazo, objeto,
+editorial, coautoria, sincronizacao, imagem, voz, nao_concorrencia, prestacao_contas
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+FORMATO DE SAÍDA (JSON puro, sem markdown)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 {
   "variables": [
     {
       "id": "uuid-string",
       "originalText": "texto exato encontrado no documento",
-      "context": "descrição do contexto jurídico/semântico onde o valor aparece",
-      "inferredEntity": "que tipo de dado é este valor",
+      "context": "descrição precisa do contexto jurídico/semântico onde este valor aparece",
+      "inferredEntity": "descrição do tipo de dado (ex: multa rescisória, nome do autor, ISRC do fonograma)",
       "placeholder": "{{NAMESPACE.CAMPO}}",
       "accepted": true
     }
   ],
-  "clauseTypes": ["financeira", "autoral"]
-}
-
-IMPORTANTE:
-- Detecte apenas valores que variam por instância (nomes, valores, datas, percentuais, identificadores)
-- NÃO detecte texto estático do contrato
-- Deduplication: se o mesmo valor aparece múltiplas vezes, inclua apenas uma vez
-- Máximo de 40 variáveis por documento
-- NUNCA retorne placeholders genéricos como VARIABLE.FIELD_1 — se não conseguir determinar o namespace correto, omita a variável`;
+  "clauseTypes": ["financeira", "autoral", "royalties"]
+}`;
 
 interface RawAIVariable {
   id?: string;
@@ -78,16 +177,8 @@ function generateId(): string {
   return `sv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
-const ALLOWED_NAMESPACES = new Set([
-  "CONTRATANTE", "CONTRATADO", "ARTISTA", "PRODUTOR", "EMPRESA", "LABEL",
-  "PAYMENT", "FINANCIAL", "CONTRACT", "PHONOGRAM", "BEAT", "VIDEO",
-  "WORK", "DISTRIBUTION", "CONTRATADA",
-]);
-
 function validatePlaceholder(placeholder: string): boolean {
-  if (!/^\{\{[A-Z_]+\.[A-Z_]+\}\}$/.test(placeholder)) return false;
-  const namespace = placeholder.slice(2, placeholder.indexOf("."));
-  return ALLOWED_NAMESPACES.has(namespace);
+  return /^\{\{[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+\}\}$/.test(placeholder);
 }
 
 function tryNormalizeVariable(raw: RawAIVariable): SemanticVariable | null {
@@ -108,26 +199,13 @@ function tryNormalizeVariable(raw: RawAIVariable): SemanticVariable | null {
   };
 }
 
-const VALID_CLAUSE_TYPES = new Set<SemanticClauseType>([
-  "financeira", "autoral", "royalties", "exclusividade", "confidencialidade",
-  "inadimplencia", "distribuicao_digital", "licenciamento", "rescisao",
-  "assinatura", "prazo", "objeto",
-]);
-
-function normalizeClauseTypes(types: unknown[]): SemanticClauseType[] {
-  if (!Array.isArray(types)) return [];
-  return types.filter((t): t is SemanticClauseType =>
-    typeof t === "string" && VALID_CLAUSE_TYPES.has(t as SemanticClauseType),
-  );
-}
-
 export async function parseContractText(text: string): Promise<SemanticParseResult> {
   const trimmed = text.trim();
   if (!trimmed) {
     return { variables: [], clauseTypes: [], rawText: "" };
   }
 
-  const userPrompt = `Analise semanticamente o seguinte contrato e retorne o JSON conforme as instruções do sistema:\n\n${trimmed.slice(0, 12000)}`;
+  const userPrompt = `Analise semanticamente o seguinte contrato. Detecte TODOS os envolvidos e TODAS as variáveis dinâmicas. Retorne o JSON conforme as instruções do sistema:\n\n${trimmed.slice(0, 14000)}`;
 
   const response = await fetch("/api/v1/ai/generate", {
     method: "POST",
@@ -137,7 +215,7 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
       systemPrompt: SYSTEM_PROMPT,
       type: "contract_parse",
       jsonMode: true,
-      maxTokens: 3000,
+      maxTokens: 4000,
     }),
   });
 
@@ -153,8 +231,6 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
     data?: { content?: string };
     error?: string;
   };
-  // TransformInterceptor global do NestJS envolve a resposta em { data: ... }
-  // Aceitar ambas as shapes para compatibilidade
   const content = raw.data?.content ?? raw.content;
 
   if (!content) {
@@ -176,12 +252,14 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
 
   const variables = Array.isArray(parsed.variables)
     ? parsed.variables
-        .slice(0, 40)
+        .slice(0, 60)
         .map((v) => tryNormalizeVariable(v))
         .filter((v): v is SemanticVariable => v !== null)
     : [];
 
-  const clauseTypes = normalizeClauseTypes(parsed.clauseTypes ?? []);
+  const clauseTypes: string[] = Array.isArray(parsed.clauseTypes)
+    ? parsed.clauseTypes.filter((t) => typeof t === "string" && t.trim()).map((t) => t.trim())
+    : [];
 
   return { variables, clauseTypes, rawText: trimmed };
 }

@@ -122,15 +122,15 @@ export function TemplateContratoViewModal({
 
 function highlightVariables(content: string): string {
   return content.replace(
-    /\{\{([A-Z_]+(?:\.[A-Z_]+)?)\}\}/g,
+    /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/g,
     '<span class="variable">{{$1}}</span>',
   );
 }
 
 function renderContentWithHighlightedVariables(content: string) {
-  const parts = content.split(/(\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\})/g);
+  const parts = content.split(/(\{\{[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+\}\})/g);
   return parts.map((part, index) => {
-    if (/^\{\{[A-Z_]+(?:\.[A-Z_]+)?\}\}$/.test(part)) {
+    if (/^\{\{[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+\}\}$/.test(part)) {
       return (
         <span
           key={index}
