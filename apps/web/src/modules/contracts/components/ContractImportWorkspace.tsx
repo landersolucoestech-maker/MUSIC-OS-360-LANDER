@@ -5,20 +5,24 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import { Textarea } from "@/shared/ui/textarea";
 import {
-  Upload, FileText, Loader2, Sparkles, Save, X, Check,
-  Trash2, AlertCircle, RefreshCw, Plus, PencilLine,
-  ChevronRight, ArrowLeft,
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/shared/ui/sheet";
+import {
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X,
 } from "lucide-react";
 import { toast } from "sonner";
-import mammoth from "mammoth";
 import type {
   SemanticVariable,
-  SemanticParseResult,
   TemplateContratoInsert,
 } from "@/modules/contracts/types/contracts.types";
-import { parseContractText, applyVariablesToText } from "@/modules/contracts/services/semantic-parser.service";
+import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
+import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
+
+// ── Props ──────────────────────────────────────────────────────────────────
 
 interface ContractImportWorkspaceProps {
   open: boolean;
@@ -26,671 +30,605 @@ interface ContractImportWorkspaceProps {
   onSave: (data: TemplateContratoInsert) => void;
 }
 
-type WorkspacePhase = "upload" | "analyzing" | "review";
+// ── Default variable groups ────────────────────────────────────────────────
 
-function generateId(): string {
-  return `sv-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-}
+const DEFAULT_VARIABLE_GROUPS: { label: string; vars: string[] }[] = [
+  {
+    label: "Envolvidos",
+    vars: [
+      "PARTY.NAME", "PARTY.CPF", "PARTY.CNPJ", "PARTY.RG",
+      "PARTY.EMAIL", "PARTY.PHONE", "PARTY.ADDRESS",
+      "PARTY.NATIONALITY", "PARTY.MARITAL_STATUS",
+      "PARTY.PROFESSION", "PARTY.ARTISTIC_NAME",
+    ],
+  },
+  {
+    label: "Financeiro",
+    vars: [
+      "PAYMENT.AMOUNT", "PAYMENT.CURRENCY", "PAYMENT.METHOD",
+      "PAYMENT.DUE_DATE", "PAYMENT.DUE_DAY", "PAYMENT.INSTALLMENTS",
+      "PAYMENT.DOWN_PAYMENT", "PAYMENT.FINAL_PAYMENT",
+      "PAYMENT.RECURRENCE", "PAYMENT.LATE_INTEREST", "PAYMENT.FINE",
+      "PAYMENT.ROYALTIES_PERCENTAGE", "PAYMENT.COMMISSION_PERCENTAGE",
+    ],
+  },
+  {
+    label: "Contrato",
+    vars: [
+      "CONTRACT.START_DATE", "CONTRACT.END_DATE", "CONTRACT.DURATION",
+      "CONTRACT.RENEWAL", "CONTRACT.TERRITORY", "CONTRACT.JURISDICTION",
+      "CONTRACT.CONFIDENTIALITY_PERIOD",
+    ],
+  },
+  {
+    label: "Obra",
+    vars: [
+      "WORK.TITLE", "WORK.ISRC", "WORK.ISWC", "WORK.UPC", "WORK.RELEASE_DATE",
+    ],
+  },
+  {
+    label: "Evento",
+    vars: [
+      "EVENT.DATE", "EVENT.LOCATION", "EVENT.CACHE",
+      "EVENT.HOSPITALITY", "EVENT.RIDER",
+    ],
+  },
+  {
+    label: "Audiovisual",
+    vars: [
+      "VIDEO.RESOLUTION", "VIDEO.SCRIPT", "VIDEO.DELIVERY_DATE", "VIDEO.FORMAT",
+    ],
+  },
+];
 
-// ── Variable Card ────────────────────────────────────────────────────────────
+// ── Regex helpers ──────────────────────────────────────────────────────────
 
-interface VariableCardProps {
-  variable: SemanticVariable;
-  index: number;
-  onUpdate: (updates: Partial<SemanticVariable>) => void;
-  onRemove: () => void;
-}
+const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
+const CUSTOM_VAR_REGEX = /^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+$/i;
 
-function VariableCard({ variable, index, onUpdate, onRemove }: VariableCardProps) {
-  const [editingPlaceholder, setEditingPlaceholder] = useState(false);
-  const [draft, setDraft] = useState(variable.placeholder);
+// ── Highlighted preview ───────────────────────────────────────────────────
 
-  const commitPlaceholder = () => {
-    const trimmed = draft.trim();
-    if (trimmed && trimmed !== variable.placeholder) {
-      onUpdate({ placeholder: trimmed });
-    }
-    setEditingPlaceholder(false);
-  };
+function HighlightedPreview({ text }: { text: string }) {
+  if (!text.trim()) {
+    return (
+      <p className="text-muted-foreground/50 text-xs italic select-none">
+        O preview aparece aqui enquanto escreve…
+      </p>
+    );
+  }
 
-  const isManual = variable.source === "manual";
-
+  const parts = text.split(/(\{\{[^}]+\}\})/g);
   return (
-    <div
-      className={`rounded-lg border p-3 space-y-2 text-sm transition-colors ${
-        variable.accepted
-          ? "border-border bg-card"
-          : "border-border/40 bg-muted/30 opacity-60"
-      }`}
-      data-testid={`variable-card-${index}`}
-    >
-      {/* Header row */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex items-center gap-1.5 min-w-0">
-          {isManual ? (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-amber-600 bg-amber-50 border border-amber-200 rounded px-1.5 py-0.5 shrink-0">
-              <PencilLine className="h-2.5 w-2.5" />
-              Manual
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 text-[10px] font-medium text-primary/70 bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5 shrink-0">
-              <Sparkles className="h-2.5 w-2.5" />
-              IA
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button
-            type="button"
-            onClick={() => onUpdate({ accepted: !variable.accepted })}
-            className={`h-6 w-6 rounded flex items-center justify-center transition-colors ${
-              variable.accepted
-                ? "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
-                : "bg-muted text-muted-foreground hover:bg-muted/80 border border-border"
-            }`}
-            title={variable.accepted ? "Aceite — clique para rejeitar" : "Rejeitado — clique para aceitar"}
-            data-testid={`button-toggle-variable-${index}`}
-          >
-            <Check className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            onClick={onRemove}
-            className="h-6 w-6 rounded flex items-center justify-center text-muted-foreground hover:text-destructive hover:bg-destructive/10 border border-border transition-colors"
-            title="Remover variável"
-            data-testid={`button-remove-variable-${index}`}
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
-
-      {/* Original text */}
-      <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Valor original</p>
-        {isManual ? (
-          <Input
-            value={variable.originalText}
-            onChange={(e) => {
-              const v = e.target.value;
-              const updates: Partial<SemanticVariable> = { originalText: v };
-              if (!variable.placeholder && v.trim()) {
-                const slug = v
-                  .normalize("NFD")
-                  .replace(/[\u0300-\u036f]/g, "")
-                  .toUpperCase()
-                  .replace(/[^A-Z0-9]+/g, "_")
-                  .replace(/^_+|_+$/g, "");
-                updates.placeholder = slug ? `{{CONTRATO.${slug}}}` : "";
-              }
-              onUpdate(updates);
-            }}
-            placeholder='"valor encontrado no contrato"'
-            className="h-7 text-xs"
-            data-testid={`input-original-text-${index}`}
-          />
-        ) : (
-          <p className="font-mono text-xs bg-muted/50 rounded px-2 py-1 text-foreground/80 break-all">
-            {variable.originalText}
-          </p>
-        )}
-      </div>
-
-      {/* Context */}
-      <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Contexto detectado</p>
-        <p className="text-xs text-muted-foreground leading-snug">{variable.context || variable.inferredEntity}</p>
-      </div>
-
-      {/* Placeholder */}
-      <div className="space-y-1">
-        <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Placeholder</p>
-        {editingPlaceholder ? (
-          <div className="flex gap-1">
-            <Input
-              value={draft}
-              onChange={(e) => setDraft(e.target.value)}
-              onBlur={commitPlaceholder}
-              onKeyDown={(e) => { if (e.key === "Enter") commitPlaceholder(); if (e.key === "Escape") { setDraft(variable.placeholder); setEditingPlaceholder(false); } }}
-              className="h-7 text-xs font-mono"
-              autoFocus
-              data-testid={`input-placeholder-${index}`}
-            />
-            <button
-              type="button"
-              onClick={commitPlaceholder}
-              className="h-7 w-7 rounded flex items-center justify-center bg-primary text-primary-foreground shrink-0"
-            >
-              <Check className="h-3 w-3" />
-            </button>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => { setDraft(variable.placeholder); setEditingPlaceholder(true); }}
-            className="w-full text-left font-mono text-xs bg-primary/5 border border-primary/20 text-primary rounded px-2 py-1 hover:bg-primary/10 transition-colors break-all"
-            data-testid={`button-edit-placeholder-${index}`}
-          >
-            {variable.placeholder || <span className="text-muted-foreground italic">clique para definir</span>}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Upload Zone ──────────────────────────────────────────────────────────────
-
-interface UploadZoneProps {
-  onText: (text: string, filename: string) => void;
-  rawText: string;
-  onRawTextChange: (t: string) => void;
-}
-
-function UploadZone({ onText, rawText, onRawTextChange }: UploadZoneProps) {
-  const [dragging, setDragging] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
-
-  const processFile = useCallback(async (file: File) => {
-    const ext = file.name.split(".").pop()?.toLowerCase();
-    if (ext === "docx" || file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document") {
-      const buf = await file.arrayBuffer();
-      const result = await mammoth.extractRawText({ arrayBuffer: buf });
-      onText(result.value, file.name);
-    } else if (ext === "txt" || file.type === "text/plain") {
-      const text = await file.text();
-      onText(text, file.name);
-    } else if (ext === "pdf" || file.type === "application/pdf") {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const raw = (e.target?.result as string) ?? "";
-        const printable = raw.replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F]/g, "").trim();
-        const ratio = printable.length / Math.max(raw.length, 1);
-        if (ratio > 0.4 && printable.length > 100) {
-          onText(printable, file.name);
-        } else {
-          toast.info("PDF binário detectado", {
-            description: "Este PDF não tem texto extractível directamente. Cole o texto do contrato na área abaixo.",
-          });
-        }
-      };
-      reader.onerror = () => {
-        toast.error("Erro ao ler o PDF", { description: "Cole o texto do contrato na área abaixo." });
-      };
-      reader.readAsText(file, "utf-8");
-    } else {
-      toast.error("Formato não suportado", { description: "Use .docx, .txt, .pdf ou cole o texto directamente." });
-    }
-  }, [onText]);
-
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragging(false);
-    const file = e.dataTransfer.files[0];
-    if (file) processFile(file);
-  }, [processFile]);
-
-  const handleFileChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) processFile(file);
-    e.target.value = "";
-  }, [processFile]);
-
-  return (
-    <div className="flex flex-col gap-4 h-full">
-      {/* Drop zone */}
-      <div
-        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-        onDragLeave={() => setDragging(false)}
-        onDrop={handleDrop}
-        onClick={() => fileRef.current?.click()}
-        className={`rounded-xl border-2 border-dashed flex flex-col items-center justify-center gap-3 py-10 cursor-pointer transition-colors ${
-          dragging
-            ? "border-primary bg-primary/5"
-            : "border-border hover:border-primary/40 hover:bg-muted/30"
-        }`}
-        data-testid="drop-zone"
-      >
-        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
-          <Upload className="h-6 w-6 text-primary" />
-        </div>
-        <div className="text-center">
-          <p className="text-sm font-medium">Arraste o contrato ou clique para importar</p>
-          <p className="text-xs text-muted-foreground mt-0.5">.DOCX · .TXT · ou cole o texto abaixo</p>
-        </div>
-        <input
-          ref={fileRef}
-          type="file"
-          accept=".docx,.txt,.pdf"
-          className="hidden"
-          onChange={handleFileChange}
-        />
-      </div>
-
-      {/* Paste area */}
-      <div className="flex-1 flex flex-col gap-1.5">
-        <Label className="text-xs text-muted-foreground">Ou cole o texto do contrato directamente:</Label>
-        <Textarea
-          value={rawText}
-          onChange={(e) => onRawTextChange(e.target.value)}
-          placeholder="Cole aqui o texto completo do contrato..."
-          className="flex-1 resize-none font-mono text-xs min-h-[280px]"
-          data-testid="textarea-contract-text"
-        />
-      </div>
-    </div>
-  );
-}
-
-// ── Document Viewer ──────────────────────────────────────────────────────────
-
-interface DocumentViewerProps {
-  text: string;
-  variables: SemanticVariable[];
-}
-
-function DocumentViewer({ text, variables }: DocumentViewerProps) {
-  const preview = applyVariablesToText(text, variables);
-
-  const parts = preview.split(/(\{\{[^}]+\}\})/g);
-
-  return (
-    <div className="h-full font-mono text-xs leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">
+    <p className="whitespace-pre-wrap text-sm leading-relaxed font-mono">
       {parts.map((part, i) => {
         if (/^\{\{[^}]+\}\}$/.test(part)) {
           return (
-            <mark
+            <span
               key={i}
-              className="bg-primary/15 text-primary font-semibold rounded px-0.5 not-italic"
+              className="text-primary bg-primary/10 rounded px-0.5 font-semibold"
             >
               {part}
-            </mark>
+            </span>
           );
         }
         return <span key={i}>{part}</span>;
       })}
+    </p>
+  );
+}
+
+// ── Variable group accordion ───────────────────────────────────────────────
+
+interface VarGroupProps {
+  label: string;
+  vars: string[];
+  onInsert: (placeholder: string) => void;
+  searchQuery: string;
+}
+
+function VarGroup({ label, vars, onInsert, searchQuery }: VarGroupProps) {
+  const [open, setOpen] = useState(true);
+
+  const visible = searchQuery
+    ? vars.filter((v) => v.toLowerCase().includes(searchQuery.toLowerCase()))
+    : vars;
+
+  if (visible.length === 0) return null;
+
+  return (
+    <div className="mb-2">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        data-testid={`button-vargroup-${label}`}
+      >
+        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {label}
+      </button>
+      {open && (
+        <div className="space-y-0.5 pl-1">
+          {visible.map((v) => (
+            <div
+              key={v}
+              className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
+            >
+              <span className="font-mono text-[11px] text-foreground/80 truncate">{`{{${v}}}`}</span>
+              <button
+                type="button"
+                onClick={() => onInsert(`{{${v}}}`)}
+                className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                title={`Inserir {{${v}}}`}
+                data-testid={`button-insert-var-${v}`}
+              >
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
 
-// ── Main Workspace ───────────────────────────────────────────────────────────
+// ── AI suggestion sheet ───────────────────────────────────────────────────
 
-export function ContractImportWorkspace({ open, onOpenChange, onSave }: ContractImportWorkspaceProps) {
-  const [phase, setPhase] = useState<WorkspacePhase>("upload");
-  const [rawText, setRawText] = useState("");
-  const [fileName, setFileName] = useState("");
-  const [templateName, setTemplateName] = useState("");
-  const [parseResult, setParseResult] = useState<SemanticParseResult | null>(null);
-  const [variables, setVariables] = useState<SemanticVariable[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
+interface AiSuggestion {
+  id: string;
+  originalText: string;
+  placeholder: string;
+  accepted: boolean | null;
+}
 
-  const variablesEndRef = useRef<HTMLDivElement>(null);
+interface AiSuggestionsSheetProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  suggestions: AiSuggestion[];
+  onAccept: (id: string) => void;
+  onIgnore: (id: string) => void;
+}
 
-  const reset = () => {
-    setPhase("upload");
-    setRawText("");
-    setFileName("");
-    setTemplateName("");
-    setParseResult(null);
-    setVariables([]);
-    setIsSaving(false);
-  };
-
-  const handleClose = () => {
-    reset();
-    onOpenChange(false);
-  };
-
-  const handleFileText = (text: string, name: string) => {
-    setRawText(text);
-    setFileName(name);
-    if (!templateName) {
-      setTemplateName(name.replace(/\.[^.]+$/, ""));
-    }
-  };
-
-  const handleAnalyze = async () => {
-    const text = rawText.trim();
-    if (!text) {
-      toast.error("Nenhum texto para analisar", { description: "Importe um ficheiro ou cole o texto do contrato." });
-      return;
-    }
-
-    setPhase("analyzing");
-    try {
-      const result = await parseContractText(text);
-      setParseResult(result);
-      setVariables(result.variables);
-      setPhase("review");
-
-      if (result.variables.length === 0) {
-        toast.info("Análise concluída", { description: "Nenhuma variável detectada. Pode adicionar variáveis manualmente." });
-      } else {
-        toast.success(`${result.variables.length} variáveis detectadas`, {
-          description: result.clauseTypes.length > 0
-            ? `Cláusulas: ${result.clauseTypes.join(", ")}`
-            : undefined,
-        });
-      }
-    } catch (err) {
-      setPhase("upload");
-      toast.error("Erro na análise", {
-        description: err instanceof Error ? err.message : "Tente novamente.",
-      });
-    }
-  };
-
-  const handleReanalyze = async () => {
-    setPhase("analyzing");
-    setVariables([]);
-    setParseResult(null);
-    try {
-      const result = await parseContractText(rawText);
-      setParseResult(result);
-      setVariables(result.variables);
-      setPhase("review");
-      toast.success(`${result.variables.length} variáveis detectadas`);
-    } catch (err) {
-      setPhase("review");
-      toast.error("Erro na análise", {
-        description: err instanceof Error ? err.message : "Tente novamente.",
-      });
-    }
-  };
-
-  const handleUpdateVariable = (id: string, updates: Partial<SemanticVariable>) => {
-    setVariables((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
-  };
-
-  const handleRemoveVariable = (id: string) => {
-    setVariables((prev) => prev.filter((v) => v.id !== id));
-  };
-
-  const handleAddManualVariable = () => {
-    const newVar: SemanticVariable = {
-      id: generateId(),
-      originalText: "",
-      context: "Variável criada manualmente",
-      inferredEntity: "Dado dinâmico",
-      placeholder: "",
-      accepted: true,
-      source: "manual",
-    };
-    setVariables((prev) => [...prev, newVar]);
-    setTimeout(() => {
-      variablesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-    }, 50);
-  };
-
-  const handleSave = () => {
-    const name = templateName.trim();
-    if (!name) {
-      toast.error("Nome obrigatório", { description: "Dê um nome ao template antes de guardar." });
-      return;
-    }
-    if (!rawText.trim()) {
-      toast.error("Sem conteúdo", { description: "O template não tem texto." });
-      return;
-    }
-
-    setIsSaving(true);
-
-    const validVars = variables.filter((v) => v.accepted && v.placeholder.trim());
-    const finalText = applyVariablesToText(rawText, validVars);
-
-    const manifest = {
-      variables: validVars,
-      clauseTypes: parseResult?.clauseTypes ?? [],
-      generatedAt: new Date().toISOString(),
-    };
-
-    const data: TemplateContratoInsert = {
-      nome: name,
-      tipo_servico: "semantico",
-      conteudo: finalText,
-      descricao: parseResult?.clauseTypes.length
-        ? `Cláusulas: ${parseResult.clauseTypes.join(", ")}`
-        : null,
-      ativo: true,
-      variables_manifest: JSON.stringify(manifest),
-    };
-
-    onSave(data);
-    toast.success("Template guardado", { description: `"${name}" foi criado com ${acceptedVars.length} variáveis.` });
-    handleClose();
-    setIsSaving(false);
-  };
-
-  const acceptedCount = variables.filter((v) => v.accepted).length;
-  const clauseTypes = parseResult?.clauseTypes ?? [];
+function AiSuggestionsSheet({
+  open, onOpenChange, suggestions, onAccept, onIgnore,
+}: AiSuggestionsSheetProps) {
+  const pending = suggestions.filter((s) => s.accepted === null);
+  const accepted = suggestions.filter((s) => s.accepted === true);
 
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
-      <DialogContent className="max-w-none w-screen h-screen m-0 p-0 rounded-none flex flex-col gap-0">
-
-        {/* ── Header bar ────────────────────────────────────────────────── */}
-        <div className="flex items-center gap-3 px-5 py-3 border-b bg-background shrink-0">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="h-8 w-8 rounded flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-            data-testid="button-close-workspace"
-          >
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-
-          <div className="flex items-center gap-2">
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent side="right" className="w-96 flex flex-col">
+        <SheetHeader className="shrink-0">
+          <SheetTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-semibold">Contract Intelligence Engine</span>
-          </div>
+            Sugestões da IA
+          </SheetTitle>
+          <p className="text-xs text-muted-foreground">
+            Aceite individualmente as substituições que quiser aplicar ao texto.
+          </p>
+        </SheetHeader>
 
-          <div className="flex-1 max-w-sm ml-4">
-            <Input
-              value={templateName}
-              onChange={(e) => setTemplateName(e.target.value)}
-              placeholder="Nome do template..."
-              className="h-8 text-sm"
-              data-testid="input-template-name"
-            />
-          </div>
+        <ScrollArea className="flex-1 mt-4">
+          {suggestions.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-8">
+              Nenhuma sugestão encontrada para o texto actual.
+            </p>
+          ) : (
+            <div className="space-y-3 pr-2">
+              {pending.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                    Pendentes ({pending.length})
+                  </p>
+                  {pending.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-lg border p-3 space-y-2 text-sm"
+                      data-testid={`suggestion-card-${s.id}`}
+                    >
+                      <p className="text-muted-foreground text-xs line-clamp-2 italic">
+                        "{s.originalText}"
+                      </p>
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground">→</span>
+                        <span className="font-mono text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
+                          {s.placeholder}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => onAccept(s.id)}
+                          data-testid={`button-accept-suggestion-${s.id}`}
+                        >
+                          <Check className="h-3 w-3 mr-1" />
+                          Aceitar
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="flex-1 h-7 text-xs"
+                          onClick={() => onIgnore(s.id)}
+                          data-testid={`button-ignore-suggestion-${s.id}`}
+                        >
+                          <X className="h-3 w-3 mr-1" />
+                          Ignorar
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
-          <div className="ml-auto flex items-center gap-2">
-            {phase === "review" && (
+              {accepted.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                    Aceites ({accepted.length})
+                  </p>
+                  {accepted.map((s) => (
+                    <div
+                      key={s.id}
+                      className="rounded-lg border border-border/40 bg-muted/20 p-2.5 flex items-center gap-2 opacity-60"
+                    >
+                      <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
+                      <span className="font-mono text-xs text-primary">{s.placeholder}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </ScrollArea>
+      </SheetContent>
+    </Sheet>
+  );
+}
+
+// ── Main component ─────────────────────────────────────────────────────────
+
+export function ContractImportWorkspace({
+  open,
+  onOpenChange,
+  onSave,
+}: ContractImportWorkspaceProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const [nome, setNome] = useState("");
+  const [text, setText] = useState("");
+  const [search, setSearch] = useState("");
+  const [customVar, setCustomVar] = useState("");
+
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiSheetOpen, setAiSheetOpen] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
+
+  const { variables: registryVars, addVariable } = useVariableRegistry();
+
+  // ── Insert at cursor ────────────────────────────────────────────────────
+
+  const insertAtCursor = useCallback((snippet: string) => {
+    const el = textareaRef.current;
+    if (!el) {
+      setText((prev) => prev + snippet);
+      return;
+    }
+    const start = el.selectionStart ?? text.length;
+    const end = el.selectionEnd ?? text.length;
+    const next = text.slice(0, start) + snippet + text.slice(end);
+    setText(next);
+    // Restore cursor after React re-render
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = start + snippet.length;
+      el.setSelectionRange(pos, pos);
+    });
+  }, [text]);
+
+  // ── Create custom variable ──────────────────────────────────────────────
+
+  function handleCreateCustomVar() {
+    const raw = customVar.trim().toUpperCase();
+    if (!CUSTOM_VAR_REGEX.test(raw)) {
+      toast.error("Formato inválido. Use GRUPO.CAMPO (ex: SHOW.RIDER)");
+      return;
+    }
+    const [group, field] = raw.split(".");
+    const placeholder = `{{${raw}}}`;
+    addVariable(raw, group, field);
+    insertAtCursor(placeholder);
+    setCustomVar("");
+    toast.success(`${placeholder} criado e inserido`);
+  }
+
+  // ── AI suggestions ──────────────────────────────────────────────────────
+
+  async function handleAiSuggest() {
+    if (!text.trim()) {
+      toast.warning("Escreva ou cole texto no editor primeiro");
+      return;
+    }
+    setAiLoading(true);
+    try {
+      const result = await parseContractText(text);
+      const suggestions: AiSuggestion[] = result.variables.map((v: SemanticVariable) => ({
+        id: v.id,
+        originalText: v.originalText,
+        placeholder: v.placeholder,
+        accepted: null,
+      }));
+      setAiSuggestions(suggestions);
+      setAiSheetOpen(true);
+      if (suggestions.length === 0) {
+        toast.info("A IA não encontrou mais sugestões de variáveis");
+      }
+    } catch {
+      toast.error("Erro ao analisar o texto. Verifique a ligação à API.");
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handleAcceptSuggestion(id: string) {
+    const suggestion = aiSuggestions.find((s) => s.id === id);
+    if (!suggestion) return;
+    const next = text.replace(suggestion.originalText, suggestion.placeholder);
+    if (next === text) {
+      toast.warning("Texto original não encontrado — pode já ter sido substituído");
+    } else {
+      setText(next);
+    }
+    setAiSuggestions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, accepted: true } : s)),
+    );
+  }
+
+  function handleIgnoreSuggestion(id: string) {
+    setAiSuggestions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, accepted: false } : s)),
+    );
+  }
+
+  // ── Save ────────────────────────────────────────────────────────────────
+
+  function handleSave() {
+    if (!nome.trim()) {
+      toast.error("Dê um nome ao template antes de guardar");
+      return;
+    }
+    if (!text.trim()) {
+      toast.error("O editor está vazio. Adicione o conteúdo do template.");
+      return;
+    }
+    const placeholders = [
+      ...new Set(
+        Array.from(text.matchAll(PLACEHOLDER_REGEX)).map((m) => `{{${m[1].toUpperCase()}}}`),
+      ),
+    ];
+    const manifest = { variables: placeholders, generatedAt: new Date().toISOString() };
+    onSave({
+      nome: nome.trim(),
+      tipo_servico: "semantico",
+      conteudo: text,
+      ativo: true,
+      descricao: `${placeholders.length} variáveis`,
+      variables_manifest: JSON.stringify(manifest),
+    });
+    handleClose();
+  }
+
+  // ── Close / reset ───────────────────────────────────────────────────────
+
+  function handleClose() {
+    setNome("");
+    setText("");
+    setSearch("");
+    setCustomVar("");
+    setAiSuggestions([]);
+    setAiSheetOpen(false);
+    onOpenChange(false);
+  }
+
+  // ── Registry vars filtered ──────────────────────────────────────────────
+
+  const filteredRegistryVars = registryVars.filter((v) =>
+    !search || v.placeholder.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  // ── Render ──────────────────────────────────────────────────────────────
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
+        <DialogContent
+          className="max-w-[95vw] w-[1200px] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden"
+          data-testid="dialog-contract-workspace"
+        >
+          {/* ── Header ── */}
+          <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleClose}
+              data-testid="button-workspace-back"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+
+            <div className="flex-1 min-w-0">
+              <Input
+                placeholder="Nome do template…"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                className="h-8 text-sm font-medium border-none shadow-none focus-visible:ring-0 px-0 bg-transparent"
+                data-testid="input-template-name"
+              />
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={handleReanalyze}
-                disabled={phase === ("analyzing" as WorkspacePhase)}
-                className="gap-1.5 h-8 text-xs"
-                data-testid="button-reanalyze"
+                onClick={handleAiSuggest}
+                disabled={aiLoading}
+                data-testid="button-ai-suggest"
               >
-                <RefreshCw className="h-3.5 w-3.5" />
-                Reanalisar
+                {aiLoading ? (
+                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                ) : (
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                )}
+                IA
               </Button>
-            )}
-            {phase !== "upload" && (
+
               <Button
                 size="sm"
                 onClick={handleSave}
-                disabled={isSaving || phase === "analyzing"}
-                className="gap-1.5 h-8 text-xs"
                 data-testid="button-save-template"
               >
-                {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                Guardar Template
+                <Save className="h-3.5 w-3.5 mr-1.5" />
+                Guardar
               </Button>
-            )}
-          </div>
-        </div>
-
-        {/* ── Body (3-pane) ──────────────────────────────────────────────── */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* ── LEFT / CENTER — Document zone ──────────────────────────── */}
-          <div className="flex-1 flex flex-col overflow-hidden border-r">
-
-            {/* Sub-header */}
-            <div className="flex items-center justify-between gap-3 px-5 py-2.5 border-b bg-muted/30 shrink-0">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <FileText className="h-3.5 w-3.5" />
-                {fileName ? (
-                  <span className="font-medium text-foreground">{fileName}</span>
-                ) : (
-                  <span>Documento</span>
-                )}
-              </div>
-              {phase === "upload" && rawText.trim() && (
-                <Button
-                  size="sm"
-                  onClick={handleAnalyze}
-                  className="gap-1.5 h-7 text-xs"
-                  data-testid="button-analyze"
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Analisar com IA
-                </Button>
-              )}
-              {phase === "review" && (
-                <button
-                  type="button"
-                  onClick={() => { setPhase("upload"); setParseResult(null); setVariables([]); }}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  <X className="h-3 w-3" />
-                  Limpar análise
-                </button>
-              )}
             </div>
-
-            <ScrollArea className="flex-1">
-              <div className="p-5">
-                {phase === "upload" ? (
-                  <UploadZone
-                    onText={handleFileText}
-                    rawText={rawText}
-                    onRawTextChange={setRawText}
-                  />
-                ) : phase === "analyzing" ? (
-                  <div className="flex flex-col items-center justify-center gap-4 py-24">
-                    <div className="h-14 w-14 rounded-full bg-primary/10 flex items-center justify-center">
-                      <Sparkles className="h-7 w-7 text-primary animate-pulse" />
-                    </div>
-                    <div className="text-center space-y-1">
-                      <p className="text-sm font-medium">A analisar semanticamente o documento</p>
-                      <p className="text-xs text-muted-foreground">Identificando entidades, cláusulas e variáveis dinâmicas...</p>
-                    </div>
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <DocumentViewer text={rawText} variables={variables} />
-                )}
-              </div>
-            </ScrollArea>
-
-            {/* Bottom: Analyze CTA (only in upload phase when text exists) */}
-            {phase === "upload" && rawText.trim() && (
-              <div className="shrink-0 border-t px-5 py-3 bg-background">
-                <Button
-                  onClick={handleAnalyze}
-                  className="w-full gap-2"
-                  data-testid="button-analyze-bottom"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Analisar Contrato com IA
-                </Button>
-              </div>
-            )}
           </div>
 
-          {/* ── RIGHT — Variables panel ─────────────────────────────────── */}
-          <div className="w-[400px] shrink-0 flex flex-col overflow-hidden bg-background">
-
-            {/* Panel header */}
-            <div className="flex items-center justify-between gap-2 px-4 py-2.5 border-b shrink-0">
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-semibold">Variáveis</span>
-                {phase === "review" && variables.length > 0 && (
-                  <Badge variant="secondary" className="text-[10px] h-4 px-1.5">
-                    {acceptedCount}/{variables.length}
-                  </Badge>
-                )}
+          {/* ── Body ── */}
+          <div className="flex flex-1 overflow-hidden">
+            {/* ── Left: editor + preview ── */}
+            <div className="flex flex-col flex-1 overflow-hidden border-r">
+              {/* Editor */}
+              <div className="flex-1 overflow-hidden flex flex-col p-4 gap-2">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider shrink-0">
+                  Editor
+                </Label>
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder={
+                    "Escreva ou cole aqui o texto do contrato.\n\n" +
+                    "Use {{GRUPO.CAMPO}} para inserir placeholders,\n" +
+                    "ou clique [+] no painel de variáveis à direita."
+                  }
+                  className="flex-1 w-full resize-none rounded-md border bg-background px-3 py-2.5 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                  data-testid="textarea-contract-editor"
+                />
               </div>
-              {phase === "review" && (
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleAddManualVariable}
-                  className="h-6 text-[10px] px-2 gap-1"
-                  data-testid="button-add-manual-variable"
-                >
-                  <Plus className="h-3 w-3" />
-                  Adicionar
-                </Button>
-              )}
+
+              {/* Preview */}
+              <div className="shrink-0 border-t max-h-52 overflow-y-auto bg-muted/20 p-4">
+                <Label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                  Preview
+                </Label>
+                <HighlightedPreview text={text} />
+              </div>
             </div>
 
-            {/* Clause type chips */}
-            {phase === "review" && clauseTypes.length > 0 && (
-              <div className="px-4 py-2 border-b flex flex-wrap gap-1.5 shrink-0">
-                {clauseTypes.map((ct) => (
-                  <Badge key={ct} variant="outline" className="text-[10px] h-5">
-                    {ct}
-                  </Badge>
-                ))}
+            {/* ── Right: variable panel ── */}
+            <div className="w-72 flex flex-col overflow-hidden bg-background">
+              {/* Search */}
+              <div className="px-3 pt-3 pb-2 shrink-0">
+                <Input
+                  placeholder="Pesquisar variáveis…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="h-8 text-xs"
+                  data-testid="input-search-vars"
+                />
               </div>
-            )}
 
-            {/* Variables list */}
-            <ScrollArea className="flex-1">
-              <div className="p-4 space-y-2.5">
-                {phase === "upload" && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-                    <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center">
-                      <ChevronRight className="h-6 w-6 text-muted-foreground" />
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Importe um contrato e clique em<br />
-                      <strong className="text-foreground">Analisar com IA</strong> para detectar<br />
-                      as variáveis automaticamente
-                    </p>
-                  </div>
-                )}
-
-                {phase === "analyzing" && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-16">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    <p className="text-xs text-muted-foreground text-center">
-                      A IA está a identificar<br />todos os dados dinâmicos...
-                    </p>
-                  </div>
-                )}
-
-                {phase === "review" && variables.length === 0 && (
-                  <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
-                    <AlertCircle className="h-8 w-8 text-muted-foreground/50" />
-                    <p className="text-xs text-muted-foreground">
-                      Nenhuma variável detectada.<br />
-                      Adicione variáveis manualmente.
-                    </p>
-                  </div>
-                )}
-
-                {phase === "review" && variables.map((v, i) => (
-                  <VariableCard
-                    key={v.id}
-                    variable={v}
-                    index={i}
-                    onUpdate={(updates) => handleUpdateVariable(v.id, updates)}
-                    onRemove={() => handleRemoveVariable(v.id)}
+              {/* Variable list */}
+              <ScrollArea className="flex-1 px-3">
+                {DEFAULT_VARIABLE_GROUPS.map((group) => (
+                  <VarGroup
+                    key={group.label}
+                    label={group.label}
+                    vars={group.vars}
+                    onInsert={insertAtCursor}
+                    searchQuery={search}
                   />
                 ))}
 
-                <div ref={variablesEndRef} />
+                {/* Registry section */}
+                {filteredRegistryVars.length > 0 && (
+                  <div className="mt-2 mb-2">
+                    <div className="flex items-center gap-1 px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      <ChevronDown className="h-3 w-3" />
+                      Minhas Variáveis
+                    </div>
+                    <div className="space-y-0.5 pl-1">
+                      {filteredRegistryVars.map((v) => (
+                        <div
+                          key={v.id}
+                          className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
+                        >
+                          <div className="min-w-0">
+                            <span className="font-mono text-[11px] text-foreground/80 truncate block">
+                              {v.placeholder}
+                            </span>
+                            {v.name && (
+                              <span className="text-[10px] text-muted-foreground truncate block leading-tight">
+                                {v.name}
+                              </span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => insertAtCursor(v.placeholder)}
+                            className="shrink-0 ml-1 opacity-0 group-hover:opacity-100 transition-opacity text-primary hover:text-primary/80"
+                            title={`Inserir ${v.placeholder}`}
+                            data-testid={`button-insert-registry-${v.id}`}
+                          >
+                            <Plus className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </ScrollArea>
+
+              {/* Custom variable creator */}
+              <div className="shrink-0 border-t px-3 py-3 space-y-2">
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                  Nova variável custom
+                </Label>
+                <div className="flex gap-1.5">
+                  <Input
+                    placeholder="GRUPO.CAMPO"
+                    value={customVar}
+                    onChange={(e) => setCustomVar(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") handleCreateCustomVar(); }}
+                    className="h-7 text-xs font-mono"
+                    data-testid="input-custom-var"
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-7 px-2 text-xs shrink-0"
+                    onClick={handleCreateCustomVar}
+                    data-testid="button-create-custom-var"
+                  >
+                    Criar
+                  </Button>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Ex: SHOW.RIDER · Formato: GRUPO.CAMPO
+                </p>
               </div>
-            </ScrollArea>
+            </div>
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI suggestions side sheet */}
+      <AiSuggestionsSheet
+        open={aiSheetOpen}
+        onOpenChange={setAiSheetOpen}
+        suggestions={aiSuggestions}
+        onAccept={handleAcceptSuggestion}
+        onIgnore={handleIgnoreSuggestion}
+      />
+    </>
   );
 }
