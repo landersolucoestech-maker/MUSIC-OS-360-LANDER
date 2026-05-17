@@ -315,11 +315,13 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
 
   const buildConteudo = () => clausulas.map((c) => `${c.titulo}\n${c.conteudo.trim()}`).join("\n\n");
 
-  const validateExtraState = (): boolean => {
+  const validateExtraState = (): { valid: boolean; participantInvalid: boolean; clausulaErrors: Record<string, string> } => {
     let valid = true;
+    let participantInvalid = false;
 
     if (participants.length === 0) {
       setParticipantError("Adicione ao menos 1 participante ao contrato.");
+      participantInvalid = true;
       valid = false;
     } else {
       setParticipantError("");
@@ -337,7 +339,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     setClausulaErrors(clausErrors);
     if (Object.keys(clausErrors).length > 0) valid = false;
 
-    return valid;
+    return { valid, participantInvalid, clausulaErrors: clausErrors };
   };
 
   const handleSubmit = form.handleSubmit((values) => {
@@ -348,11 +350,11 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       return;
     }
 
-    const extraValid = validateExtraState();
+    const { valid: extraValid, participantInvalid, clausulaErrors: clausErrors } = validateExtraState();
 
     if (!extraValid) {
-      if (participantError || participants.length === 0) { setActiveTab("envolvidos"); return; }
-      if (Object.keys(clausulaErrors).length > 0) { setActiveTab("clausulas"); return; }
+      if (participantInvalid) { setActiveTab("envolvidos"); return; }
+      if (Object.keys(clausErrors).length > 0) { setActiveTab("clausulas"); return; }
       return;
     }
 
