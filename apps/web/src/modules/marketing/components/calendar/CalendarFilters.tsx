@@ -1,6 +1,12 @@
-import { Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
 import {
   InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, TwitterXIcon, LinkedInIcon,
@@ -17,10 +23,11 @@ const PLATAFORMAS = [
 
 const STATUS_OPTIONS = [
   { value: "all",       label: "Todos os status" },
-  { value: "agendado",  label: "Agendado" },
-  { value: "publicado", label: "Publicado" },
-  { value: "rascunho",  label: "Rascunho" },
-  { value: "pausado",   label: "Pausado" },
+  { value: "agendado",  label: "Agendado",   dot: "bg-blue-400" },
+  { value: "publicado", label: "Publicado",  dot: "bg-emerald-400" },
+  { value: "rascunho",  label: "Rascunho",   dot: "bg-slate-400" },
+  { value: "pausado",   label: "Pausado",    dot: "bg-amber-400" },
+  { value: "falha",     label: "Falha",      dot: "bg-rose-500" },
 ];
 
 const TIPO_OPTIONS = [
@@ -50,8 +57,12 @@ export function CalendarFilters({
   status, onStatusChange,
   tipo, onTipoChange,
 }: CalendarFiltersProps) {
+  const currentStatus = STATUS_OPTIONS.find((s) => s.value === status) ?? STATUS_OPTIONS[0];
+  const currentTipo   = TIPO_OPTIONS.find((t) => t.value === tipo)     ?? TIPO_OPTIONS[0];
+
   return (
     <div className="flex items-center gap-3 flex-wrap">
+      {/* ── Platform icon toggles ── */}
       <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40">
         {PLATAFORMAS.map((p) => {
           const active = plataformas.includes(p.value);
@@ -74,42 +85,70 @@ export function CalendarFilters({
         })}
       </div>
 
-      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40">
-        {STATUS_OPTIONS.map((s) => (
-          <button
-            key={s.value}
-            onClick={() => onStatusChange(s.value)}
-            data-testid={`filter-status-${s.value}`}
-            className={cn(
-              "px-3 h-7 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
-              status === s.value
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
-            )}
+      {/* ── Status dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-status"
           >
-            {s.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40">
-        {TIPO_OPTIONS.map((t) => (
-          <button
-            key={t.value}
-            onClick={() => onTipoChange(t.value)}
-            data-testid={`filter-tipo-${t.value}`}
-            className={cn(
-              "px-3 h-7 rounded-lg text-xs font-medium transition-all whitespace-nowrap",
-              tipo === t.value
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground",
+            {"dot" in currentStatus && currentStatus.dot && (
+              <span className={`h-2 w-2 rounded-full ${currentStatus.dot}`} />
             )}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
+            {currentStatus.label}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {STATUS_OPTIONS.map((s) => (
+            <DropdownMenuItem
+              key={s.value}
+              onClick={() => onStatusChange(s.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`filter-status-${s.value}`}
+            >
+              {"dot" in s && s.dot
+                ? <span className={`h-2 w-2 rounded-full ${s.dot}`} />
+                : <span className="h-2 w-2" />
+              }
+              <span className="flex-1">{s.label}</span>
+              {status === s.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
+      {/* ── Tipo dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-tipo"
+          >
+            {currentTipo.label}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {TIPO_OPTIONS.map((t) => (
+            <DropdownMenuItem
+              key={t.value}
+              onClick={() => onTipoChange(t.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`filter-tipo-${t.value}`}
+            >
+              <span className="flex-1">{t.label}</span>
+              {tipo === t.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ── Search ── */}
       <div className="relative flex-1 min-w-[180px]">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <Input
