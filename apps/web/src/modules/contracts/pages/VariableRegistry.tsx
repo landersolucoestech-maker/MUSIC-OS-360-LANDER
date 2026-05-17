@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/shared/ui/table";
 import { Checkbox } from "@/shared/ui/checkbox";
-import { Braces, Copy, Pencil, Trash2, Plus, Variable } from "lucide-react";
+import { Braces, Copy, Pencil, Trash2, Plus, Variable, X, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 import type { RegistryVariable } from "@/modules/contracts/hooks/useVariableRegistry";
@@ -350,7 +350,12 @@ function ImportConfirmDialog({
 
 // ── Main page ──────────────────────────────────────────────────────────────
 
-export default function VariableRegistry() {
+interface VariableRegistryProps {
+  asModal?: boolean;
+  onClose?: () => void;
+}
+
+export default function VariableRegistry({ asModal = false, onClose }: VariableRegistryProps = {}) {
   const { variables, addVariable, updateVariable, removeVariable, removeVariables, importVariables } =
     useVariableRegistry();
 
@@ -558,25 +563,51 @@ export default function VariableRegistry() {
         data-testid="input-file-import"
       />
 
-      <PageHeader
-        title="Variáveis de Template"
-        description="Crie, organize e reutilize placeholders em qualquer contrato"
-        actions={{
-          import: true,
-          export: true,
-          onImport: handleImportClick,
-          onExport: handleExport,
-          custom: (
-            <Button
-              onClick={() => setCreateOpen(true)}
-              data-testid="button-new-variable"
-            >
-              <Plus className="h-4 w-4 mr-2" />
+      {asModal ? (
+        <div className="flex items-center justify-between px-6 py-4 border-b shrink-0">
+          <div>
+            <p className="text-base font-semibold">Variáveis de Template</p>
+            <p className="text-xs text-muted-foreground">Crie, organize e reutilize placeholders em qualquer contrato</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="outline" onClick={handleImportClick} data-testid="button-modal-import">
+              <Upload className="h-3.5 w-3.5 mr-1.5" />
+              Importar
+            </Button>
+            <Button size="sm" variant="outline" onClick={handleExport} data-testid="button-modal-export">
+              <Download className="h-3.5 w-3.5 mr-1.5" />
+              Exportar
+            </Button>
+            <Button size="sm" onClick={() => setCreateOpen(true)} data-testid="button-new-variable-modal">
+              <Plus className="h-3.5 w-3.5 mr-1.5" />
               Nova Variável
             </Button>
-          ),
-        }}
-      />
+            <Button size="icon" variant="ghost" className="h-8 w-8" onClick={onClose} data-testid="button-close-var-registry-modal">
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <PageHeader
+          title="Variáveis de Template"
+          description="Crie, organize e reutilize placeholders em qualquer contrato"
+          actions={{
+            import: true,
+            export: true,
+            onImport: handleImportClick,
+            onExport: handleExport,
+            custom: (
+              <Button
+                onClick={() => setCreateOpen(true)}
+                data-testid="button-new-variable"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Nova Variável
+              </Button>
+            ),
+          }}
+        />
+      )}
 
       <div className="flex-1 overflow-auto p-6">
         {variables.length === 0 ? (

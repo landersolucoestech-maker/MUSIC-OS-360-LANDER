@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from "react";
-import { Dialog, DialogContent } from "@/shared/ui/dialog";
+import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import VariableRegistry from "@/modules/contracts/pages/VariableRegistry";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -269,7 +270,7 @@ export function ContractImportWorkspace({
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
 
-  const [showVarPanel, setShowVarPanel] = useState(true);
+  const [varRegistryOpen, setVarRegistryOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<string | null>(null);
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
@@ -455,10 +456,10 @@ export function ContractImportWorkspace({
 
             <div className="flex items-center gap-2 shrink-0">
               <Button
-                variant={showVarPanel ? "secondary" : "outline"}
+                variant="outline"
                 size="sm"
-                onClick={() => setShowVarPanel((v) => !v)}
-                data-testid="button-toggle-var-panel"
+                onClick={() => setVarRegistryOpen(true)}
+                data-testid="button-open-var-registry"
               >
                 <Variable className="h-3.5 w-3.5 mr-1.5" />
                 Variáveis
@@ -523,7 +524,6 @@ export function ContractImportWorkspace({
             </div>
 
             {/* ── Right: variable panel ── */}
-            {showVarPanel && (
             <div className="w-72 flex flex-col overflow-hidden bg-background border-l">
               {/* Search */}
               <div className="px-3 pt-3 pb-2 shrink-0">
@@ -648,7 +648,6 @@ export function ContractImportWorkspace({
                 })}
               </div>
             </div>
-            )}
           </div>
         </DialogContent>
       </Dialog>
@@ -661,6 +660,17 @@ export function ContractImportWorkspace({
         onAccept={handleAcceptSuggestion}
         onIgnore={handleIgnoreSuggestion}
       />
+
+      {/* Variable registry modal */}
+      <Dialog open={varRegistryOpen} onOpenChange={setVarRegistryOpen}>
+        <DialogContent
+          className="max-w-5xl w-[90vw] h-[88vh] p-0 gap-0 flex flex-col overflow-hidden"
+          data-testid="dialog-variable-registry"
+        >
+          <DialogTitle className="sr-only">Variáveis de Template</DialogTitle>
+          <VariableRegistry asModal onClose={() => setVarRegistryOpen(false)} />
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
