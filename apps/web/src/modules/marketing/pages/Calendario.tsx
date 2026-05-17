@@ -139,49 +139,53 @@ export default function MarketingCalendario() {
         actions={headerActions}
       >
         <div className="space-y-4">
-          <CalendarFilters
-            search={search}
-            onSearchChange={setSearch}
-            plataformas={filterPlats}
-            onPlataformaToggle={onPlataformaToggle}
-            status={filterStatus}
-            onStatusChange={setFilterStatus}
-            tipo={filterTipo}
-            onTipoChange={setFilterTipo}
-          />
+          <div className="flex items-center gap-3">
+            {viewMode === "semana" && (
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  onClick={() => setWeekStart((w) => subWeeks(w, 1))}
+                  data-testid="button-prev-week"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg"
+                  onClick={() => setWeekStart((w) => addWeeks(w, 1))}
+                  data-testid="button-next-week"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+                <span className="text-sm font-medium text-muted-foreground capitalize whitespace-nowrap">{weekLabel}</span>
+              </div>
+            )}
+            <CalendarFilters
+              search={search}
+              onSearchChange={setSearch}
+              plataformas={filterPlats}
+              onPlataformaToggle={onPlataformaToggle}
+              status={filterStatus}
+              onStatusChange={setFilterStatus}
+              tipo={filterTipo}
+              onTipoChange={setFilterTipo}
+            />
+            {viewMode === "semana" && (
+              <button
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors shrink-0"
+                onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
+                data-testid="button-today"
+              >
+                Hoje
+              </button>
+            )}
+          </div>
 
           {viewMode === "semana" && (
             <>
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg"
-                    onClick={() => setWeekStart((w) => subWeeks(w, 1))}
-                    data-testid="button-prev-week"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="h-8 w-8 rounded-lg"
-                    onClick={() => setWeekStart((w) => addWeeks(w, 1))}
-                    data-testid="button-next-week"
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <span className="text-sm font-medium text-muted-foreground capitalize">{weekLabel}</span>
-                </div>
-                <button
-                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setWeekStart(startOfWeek(new Date(), { weekStartsOn: 1 }))}
-                  data-testid="button-today"
-                >
-                  Hoje
-                </button>
-              </div>
 
               {isLoading ? (
                 <div className="flex items-center justify-center h-96 text-muted-foreground">
