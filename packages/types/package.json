@@ -3,7 +3,6 @@
   "version": "0.0.1",
   "description": "MUSIC OS 360 — Shared TypeScript types (API, entities, enums)",
   "private": true,
-  "type": "module",
   "main": "./src/index.ts",
   "types": "./src/index.ts",
   "exports": {
