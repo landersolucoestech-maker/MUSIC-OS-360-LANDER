@@ -40,7 +40,25 @@ export function slugify(text: string): string {
 }
 
 function rowToType(row: StorageRow): ContractServiceType {
-  return row as unknown as ContractServiceType;
+  return {
+    id: String(row.id ?? ""),
+    name: String(row.name ?? ""),
+    slug: String(row.slug ?? ""),
+    description: row.description != null ? String(row.description) : null,
+    client_types: Array.isArray(row.client_types) ? (row.client_types as ClientType[]) : [],
+    financial_model: (row.financial_model as FinancialModel) ?? "valor_fixo",
+    requires_royalties: Boolean(row.requires_royalties),
+    requires_fixed_value: Boolean(row.requires_fixed_value),
+    requires_advance: Boolean(row.requires_advance),
+    requires_financial_support: Boolean(row.requires_financial_support),
+    allow_installments: Boolean(row.allow_installments),
+    default_financial_category:
+      row.default_financial_category != null ? String(row.default_financial_category) : null,
+    active: Boolean(row.active),
+    sort_order: Number(row.sort_order ?? 0),
+    created_at: String(row.created_at ?? ""),
+    updated_at: String(row.updated_at ?? ""),
+  };
 }
 
 export function useContractServiceTypes(filterByClientType?: ClientType | null) {
@@ -109,13 +127,29 @@ export function useContractServiceTypes(filterByClientType?: ClientType | null) 
   });
 
   const archiveMutation = useMutation({
-    mutationFn: (id: string) => contractsService.archiveContractServiceType(id),
+    mutationFn: async (id: string) => {
+      const typeToArchive = allTypes.find((t) => t.id === id);
+      if (typeToArchive) {
+        const contratos = await contractsService.list();
+        const inUse = contratos.some(
+          (c: StorageRow) =>
+            c["service_type"] === typeToArchive.slug ||
+            c["tipo"] === typeToArchive.slug,
+        );
+        if (inUse) {
+          throw new Error(
+            `O tipo "${typeToArchive.name}" está em uso por contratos existentes e não pode ser arquivado.`,
+          );
+        }
+      }
+      return contractsService.archiveContractServiceType(id);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
       toast.success("Tipo de contrato arquivado.");
     },
-    onError: () => {
-      toast.error("Erro ao arquivar tipo de contrato");
+    onError: (err: Error) => {
+      toast.error(err.message || "Erro ao arquivar tipo de contrato");
     },
   });
 
