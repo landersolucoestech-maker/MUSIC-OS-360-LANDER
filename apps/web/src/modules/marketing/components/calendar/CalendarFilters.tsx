@@ -9,16 +9,14 @@ import {
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import {
-  InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, TwitterXIcon, LinkedInIcon,
+  InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon,
 } from "./platform-icons";
 
 const PLATAFORMAS = [
+  { value: "facebook",  label: "Facebook",  icon: <FacebookIcon  className="h-3.5 w-3.5" />, color: "text-blue-500" },
   { value: "instagram", label: "Instagram", icon: <InstagramIcon className="h-3.5 w-3.5" />, color: "text-pink-500" },
   { value: "tiktok",    label: "TikTok",    icon: <TikTokIcon    className="h-3.5 w-3.5" />, color: "text-foreground" },
   { value: "youtube",   label: "YouTube",   icon: <YouTubeIcon   className="h-3.5 w-3.5" />, color: "text-red-500" },
-  { value: "facebook",  label: "Facebook",  icon: <FacebookIcon  className="h-3.5 w-3.5" />, color: "text-blue-500" },
-  { value: "twitter",   label: "X (Twitter)", icon: <TwitterXIcon className="h-3.5 w-3.5" />, color: "text-sky-500" },
-  { value: "linkedin",  label: "LinkedIn",  icon: <LinkedInIcon  className="h-3.5 w-3.5" />, color: "text-blue-700" },
 ];
 
 const STATUS_OPTIONS = [
