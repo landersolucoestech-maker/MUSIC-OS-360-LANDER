@@ -322,17 +322,10 @@ export function ContentModal({
 
           {/* ══ RIGHT PANEL: Form ══ */}
           <form onSubmit={handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-border/40 shrink-0">
+            <div className="flex items-center px-5 pt-4 pb-3 border-b border-border/40 shrink-0">
               <h2 className="text-sm font-semibold">
                 {mode === "edit" ? "Editar Conteúdo" : "Novo Conteúdo"}
               </h2>
-              <button
-                type="button"
-                onClick={() => onOpenChange(false)}
-                className="h-7 w-7 rounded-full flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-              >
-                <X className="h-4 w-4" />
-              </button>
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-3 space-y-3">
