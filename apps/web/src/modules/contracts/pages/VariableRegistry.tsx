@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Braces, Copy, Pencil, Trash2, Plus, Variable } from "lucide-react";
 import { toast } from "sonner";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
@@ -350,13 +351,15 @@ function ImportConfirmDialog({
 // ── Main page ──────────────────────────────────────────────────────────────
 
 export default function VariableRegistry() {
-  const { variables, addVariable, updateVariable, removeVariable, importVariables } =
+  const { variables, addVariable, updateVariable, removeVariable, removeVariables, importVariables } =
     useVariableRegistry();
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<RegistryVariable | null>(null);
   const [search, setSearch] = useState("");
   const [importPreview, setImportPreview] = useState<ImportPreview | null>(null);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -498,7 +501,49 @@ export default function VariableRegistry() {
 
   function handleDelete(v: RegistryVariable) {
     removeVariable(v.id);
+    // Remove from selection if it was selected
+    setSelected((prev) => { const next = new Set(prev); next.delete(v.id); return next; });
     toast.success(`"${v.name}" removida`);
+  }
+
+  // ── Bulk selection ────────────────────────────────────────────────────────
+
+  const allFilteredIds = filtered.map((v) => v.id);
+  const allSelected =
+    allFilteredIds.length > 0 && allFilteredIds.every((id) => selected.has(id));
+  const someSelected = allFilteredIds.some((id) => selected.has(id));
+  const selectedCount = allFilteredIds.filter((id) => selected.has(id)).length;
+
+  function toggleSelectAll() {
+    if (allSelected) {
+      setSelected((prev) => {
+        const next = new Set(prev);
+        allFilteredIds.forEach((id) => next.delete(id));
+        return next;
+      });
+    } else {
+      setSelected((prev) => new Set([...prev, ...allFilteredIds]));
+    }
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  function handleBulkDelete() {
+    const ids = allFilteredIds.filter((id) => selected.has(id));
+    removeVariables(ids);
+    setSelected((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.delete(id));
+      return next;
+    });
+    setBulkDeleteOpen(false);
+    toast.success(`${ids.length} variável(eis) eliminada(s)`);
   }
 
   return (
@@ -538,18 +583,53 @@ export default function VariableRegistry() {
           <EmptyState onNew={() => setCreateOpen(true)} />
         ) : (
           <div className="space-y-4">
-            <Input
-              placeholder="Pesquisar variáveis..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="max-w-sm"
-              data-testid="input-search-variables"
-            />
+            <div className="flex items-center gap-3">
+              <Input
+                placeholder="Pesquisar variáveis..."
+                value={search}
+                onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
+                className="max-w-sm"
+                data-testid="input-search-variables"
+              />
+              {selectedCount > 0 && (
+                <div className="flex items-center gap-2 ml-auto">
+                  <span className="text-sm text-muted-foreground">
+                    {selectedCount} selecionada(s)
+                  </span>
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => setBulkDeleteOpen(true)}
+                    data-testid="button-bulk-delete"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                    Eliminar selecionadas
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelected(new Set())}
+                    data-testid="button-clear-selection"
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
+            </div>
 
             <div className="rounded-md border">
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={allSelected}
+                        data-state={someSelected && !allSelected ? "indeterminate" : undefined}
+                        onCheckedChange={toggleSelectAll}
+                        aria-label="Seleccionar todas"
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Alias</TableHead>
                     <TableHead>Nomenclatura Interna</TableHead>
@@ -562,7 +642,7 @@ export default function VariableRegistry() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={7}
                         className="text-center text-muted-foreground py-10"
                       >
                         Nenhuma variável encontrada para "{search}"
@@ -570,7 +650,20 @@ export default function VariableRegistry() {
                     </TableRow>
                   ) : (
                     filtered.map((v) => (
-                      <TableRow key={v.id} data-testid={`row-variable-${v.id}`}>
+                      <TableRow
+                        key={v.id}
+                        data-testid={`row-variable-${v.id}`}
+                        data-selected={selected.has(v.id)}
+                        className={selected.has(v.id) ? "bg-muted/40" : undefined}
+                      >
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selected.has(v.id)}
+                            onCheckedChange={() => toggleSelect(v.id)}
+                            aria-label={`Seleccionar ${v.name}`}
+                            data-testid={`checkbox-variable-${v.id}`}
+                          />
+                        </TableCell>
                         <TableCell className="font-medium">{v.name}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{v.group}</Badge>
@@ -659,6 +752,35 @@ export default function VariableRegistry() {
         onConfirm={handleConfirmImport}
         onCancel={() => setImportPreview(null)}
       />
+
+      {/* Bulk delete confirmation */}
+      <Dialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <DialogContent className="max-w-sm" data-testid="dialog-bulk-delete">
+          <DialogHeader>
+            <DialogTitle>Eliminar variáveis</DialogTitle>
+            <DialogDescription>
+              Esta acção é irreversível. Serão eliminadas{" "}
+              <strong>{selectedCount}</strong> variável(eis) seleccionada(s).
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBulkDeleteOpen(false)}
+              data-testid="button-bulk-delete-cancel"
+            >
+              Cancelar
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleBulkDelete}
+              data-testid="button-bulk-delete-confirm"
+            >
+              Eliminar {selectedCount}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -124,6 +124,11 @@ export function useVariableRegistry() {
     setVariables((prev) => prev.filter((v) => v.id !== id));
   }, []);
 
+  const removeVariables = useCallback((ids: string[]) => {
+    const set = new Set(ids);
+    setVariables((prev) => prev.filter((v) => !set.has(v.id)));
+  }, []);
+
   /**
    * Merge incoming variables into the registry.
    * Skips entries whose `placeholder` already exists (case-insensitive).
@@ -159,5 +164,5 @@ export function useVariableRegistry() {
     [],
   );
 
-  return { variables, addVariable, updateVariable, removeVariable, importVariables };
+  return { variables, addVariable, updateVariable, removeVariable, removeVariables, importVariables };
 }
