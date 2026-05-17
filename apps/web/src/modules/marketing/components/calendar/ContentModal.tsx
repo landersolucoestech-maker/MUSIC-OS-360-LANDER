@@ -14,7 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Calendar } from "@/shared/ui/calendar";
 import { cn } from "@/shared/lib/utils";
 import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
-import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
+import type { ConteudoWithRelations, ConteudoInsert } from "@/modules/marketing/hooks/useConteudos";
 import { toast } from "sonner";
 import {
   InstagramIcon, TikTokIcon, YouTubeIcon, FacebookIcon, TwitterXIcon, LinkedInIcon,
@@ -125,7 +125,7 @@ export function ContentModal({
       if (mode === "edit" && initialData?.id) {
         await updateConteudo.mutateAsync({ id: initialData.id, ...payload });
       } else {
-        await addConteudo.mutateAsync(payload as any);
+        await addConteudo.mutateAsync(payload as ConteudoInsert);
       }
       onOpenChange(false);
     } catch {
