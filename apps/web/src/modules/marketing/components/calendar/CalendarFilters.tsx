@@ -96,34 +96,6 @@ export function CalendarFilters({
         />
       </div>
 
-      {/* ── Tipo dropdown ── */}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
-            data-testid="dropdown-tipo"
-          >
-            {currentTipo.label}
-            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
-          {TIPO_OPTIONS.map((t) => (
-            <DropdownMenuItem
-              key={t.value}
-              onClick={() => onTipoChange(t.value)}
-              className="flex items-center gap-2 text-sm"
-              data-testid={`filter-tipo-${t.value}`}
-            >
-              <span className="flex-1">{t.label}</span>
-              {tipo === t.value && <Check className="h-3.5 w-3.5 text-primary" />}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
-
       {/* ── View mode dropdown ── */}
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -147,6 +119,34 @@ export function CalendarFilters({
             >
               <span className="flex-1">{v.label}</span>
               {viewMode === v.value && <Check className="h-3.5 w-3.5 text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {/* ── Tipo dropdown ── */}
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-9 gap-2 rounded-xl text-sm font-medium border-border/60 bg-muted/60 hover:bg-muted"
+            data-testid="dropdown-tipo"
+          >
+            {currentTipo.label}
+            <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {TIPO_OPTIONS.map((t) => (
+            <DropdownMenuItem
+              key={t.value}
+              onClick={() => onTipoChange(t.value)}
+              className="flex items-center gap-2 text-sm"
+              data-testid={`filter-tipo-${t.value}`}
+            >
+              <span className="flex-1">{t.label}</span>
+              {tipo === t.value && <Check className="h-3.5 w-3.5 text-primary" />}
             </DropdownMenuItem>
           ))}
         </DropdownMenuContent>
