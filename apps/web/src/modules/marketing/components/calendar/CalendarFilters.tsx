@@ -1,4 +1,4 @@
-import { Check, ChevronDown, Search, SlidersHorizontal } from "lucide-react";
+import { Check, ChevronDown, Search } from "lucide-react";
 import { Input } from "@/shared/ui/input";
 import { Button } from "@/shared/ui/button";
 import {
@@ -90,17 +90,11 @@ export function CalendarFilters({
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
         <Input
           placeholder="Buscar conteúdo..."
-          className="pl-9 pr-10 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
+          className="pl-9 h-9 text-sm bg-muted/60 border-border/40 rounded-xl"
           value={search}
           onChange={(e) => onSearchChange(e.target.value)}
           data-testid="input-search-calendar"
         />
-        <button
-          title="Configurações de filtro"
-          className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-        >
-          <SlidersHorizontal className="h-3.5 w-3.5" />
-        </button>
       </div>
 
       {/* ── Status dropdown ── */}
