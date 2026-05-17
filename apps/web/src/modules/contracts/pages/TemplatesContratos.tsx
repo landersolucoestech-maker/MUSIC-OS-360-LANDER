@@ -359,9 +359,9 @@ export default function TemplatesContratos() {
                               {t.requires_fixed_value && <Badge variant="outline" className="text-xs">Valor Fixo</Badge>}
                               {t.requires_advance && <Badge variant="outline" className="text-xs">Adiantamento</Badge>}
                               {t.requires_financial_support && <Badge variant="outline" className="text-xs">Suporte Fin.</Badge>}
-                              {t.allow_payment_type_select && <Badge variant="outline" className="text-xs">Sel. Pagamento</Badge>}
+                              {t.allow_installments && <Badge variant="outline" className="text-xs">Parcelamento</Badge>}
                               {!t.requires_royalties && !t.requires_fixed_value && !t.requires_advance &&
-                               !t.requires_financial_support && !t.allow_payment_type_select && (
+                               !t.requires_financial_support && !t.allow_installments && (
                                 <span className="text-xs text-muted-foreground">—</span>
                               )}
                             </div>

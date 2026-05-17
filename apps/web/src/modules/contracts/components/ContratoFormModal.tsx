@@ -66,8 +66,13 @@ const ContractForm = ({
 
   const clientTypeValue = form.watch("client_type") as ClientType | undefined;
   const serviceTypeValue = form.watch("service_type");
-  const { serviceTypes } = useContractServiceTypes(clientTypeValue ?? null);
-  const selectedType = serviceTypes.find((t) => t.slug === serviceTypeValue);
+  const { serviceTypes, allServiceTypes } = useContractServiceTypes(clientTypeValue ?? null);
+  const selectedType = allServiceTypes.find((t) => t.slug === serviceTypeValue);
+  const legacyServiceTypeLabel =
+    serviceTypeValue &&
+    !serviceTypes.some((t) => t.slug === serviceTypeValue)
+      ? allServiceTypes.find((t) => t.slug === serviceTypeValue)?.name ?? serviceTypeValue
+      : null;
 
   const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
   const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
@@ -115,7 +120,7 @@ const ContractForm = ({
                 value={form.watch("client_type")}
                 onValueChange={(value) => {
                   form.setValue("client_type", value as ContratoFormData["client_type"]);
-                  form.setValue("service_type", undefined as any);
+                  form.setValue("service_type", "");
                 }}
               >
                 <SelectTrigger data-testid="select-client-type">
@@ -143,6 +148,11 @@ const ContractForm = ({
                   <SelectValue placeholder="Selecione o tipo de serviço" />
                 </SelectTrigger>
                 <SelectContent>
+                  {legacyServiceTypeLabel && (
+                    <SelectItem value={serviceTypeValue!} disabled className="text-muted-foreground">
+                      {legacyServiceTypeLabel} (tipo anterior)
+                    </SelectItem>
+                  )}
                   {serviceTypes.map((t) => (
                     <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
                   ))}
@@ -312,7 +322,7 @@ const ContractForm = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {/* PJ / PF sem tipo selecionado: mostra valor fixo direto */}
             {(clientTypeValue === "pessoa_juridica" || clientTypeValue === "pessoa_fisica") &&
-              !selectedType?.allow_payment_type_select && (
+              !selectedType?.allow_installments && (
               <div className="space-y-2">
                 <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
                 <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
@@ -321,7 +331,7 @@ const ContractForm = ({
             )}
 
             {/* Artista: royalties direto (sem select de tipo de pagamento) */}
-            {clientTypeValue === "artista" && selectedType?.requires_royalties && !selectedType?.allow_payment_type_select && (
+            {clientTypeValue === "artista" && selectedType?.requires_royalties && !selectedType?.allow_installments && (
               <div className="space-y-2">
                 <Label htmlFor="royalties_percentage">Royalties (%)</Label>
                 <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
@@ -348,7 +358,7 @@ const ContractForm = ({
             )}
 
             {/* Artista: select de tipo de pagamento (valor fixo ou royalties) */}
-            {clientTypeValue === "artista" && selectedType?.allow_payment_type_select && (
+            {clientTypeValue === "artista" && selectedType?.allow_installments && (
               <>
                 <div className="space-y-2">
                   <Label>Tipo de Pagamento</Label>
@@ -381,7 +391,7 @@ const ContractForm = ({
             )}
 
             {/* Artista: valor fixo direto (sem select) */}
-            {clientTypeValue === "artista" && selectedType?.requires_fixed_value && !selectedType?.allow_payment_type_select && (
+            {clientTypeValue === "artista" && selectedType?.requires_fixed_value && !selectedType?.allow_installments && (
               <div className="space-y-2">
                 <Label htmlFor="fixed_value_artista">Valor Fixo do Serviço (R$)</Label>
                 <Input id="fixed_value_artista" type="number" step="0.01" placeholder="0,00"

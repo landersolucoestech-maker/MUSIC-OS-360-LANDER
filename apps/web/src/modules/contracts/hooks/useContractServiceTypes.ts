@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { contractsService } from "@/modules/contracts/services/contracts.service";
+import type { StorageRow } from "@/shared/lib/storage";
 
 export type ClientType = "artista" | "pessoa_fisica" | "pessoa_juridica";
 export type FinancialModel = "valor_fixo" | "royalties" | "misto" | "recorrente";
@@ -16,7 +17,7 @@ export interface ContractServiceType {
   requires_fixed_value: boolean;
   requires_advance: boolean;
   requires_financial_support: boolean;
-  allow_payment_type_select: boolean;
+  allow_installments: boolean;
   default_financial_category: string | null;
   active: boolean;
   sort_order: number;
@@ -29,7 +30,7 @@ export type ContractServiceTypeUpdate = Partial<ContractServiceTypeInsert> & { i
 
 const QUERY_KEY = ["contract_service_types"] as const;
 
-function slugify(text: string): string {
+export function slugify(text: string): string {
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -38,14 +39,18 @@ function slugify(text: string): string {
     .replace(/^_+|_+$/g, "");
 }
 
+function rowToType(row: StorageRow): ContractServiceType {
+  return row as unknown as ContractServiceType;
+}
+
 export function useContractServiceTypes(filterByClientType?: ClientType | null) {
   const queryClient = useQueryClient();
 
   const query = useQuery({
     queryKey: QUERY_KEY,
-    queryFn: async () => {
+    queryFn: async (): Promise<ContractServiceType[]> => {
       const rows = await contractsService.listContractServiceTypes();
-      return (rows as unknown as ContractServiceType[]).sort((a, b) => a.sort_order - b.sort_order);
+      return rows.map(rowToType).sort((a, b) => a.sort_order - b.sort_order);
     },
   });
 
@@ -59,9 +64,8 @@ export function useContractServiceTypes(filterByClientType?: ClientType | null) 
 
   const createMutation = useMutation({
     mutationFn: async (data: ContractServiceTypeInsert) => {
-      const all = allTypes;
-      const slug = slugify(data.name);
-      if (all.some((t) => t.slug === slug && t.id !== (data as ContractServiceType).id)) {
+      const slug = data.slug?.trim() ? data.slug.trim() : slugify(data.name);
+      if (allTypes.some((t) => t.slug === slug)) {
         throw new Error(`Já existe um tipo com o slug "${slug}"`);
       }
       return contractsService.createContractServiceType({
@@ -82,15 +86,18 @@ export function useContractServiceTypes(filterByClientType?: ClientType | null) 
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, ...data }: ContractServiceTypeUpdate) => {
-      const all = allTypes;
-      if (data.name) {
-        const slug = slugify(data.name);
-        if (all.some((t) => t.slug === slug && t.id !== id)) {
+      if (data.slug !== undefined) {
+        const slug = data.slug.trim();
+        if (!slug) throw new Error("Slug não pode ser vazio");
+        if (allTypes.some((t) => t.slug === slug && t.id !== id)) {
           throw new Error(`Já existe um tipo com o slug "${slug}"`);
         }
-        data.slug = slug as string;
+        data.slug = slug;
       }
-      return contractsService.updateContractServiceType(id, data);
+      return contractsService.updateContractServiceType(id, {
+        ...data,
+        updated_at: new Date().toISOString(),
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: QUERY_KEY });
