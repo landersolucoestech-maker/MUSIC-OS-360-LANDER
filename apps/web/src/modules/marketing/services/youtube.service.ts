@@ -1,5 +1,5 @@
 import { MOCK_MODE } from "@/shared/lib/env";
-import { IntegrationError } from "@/shared/lib/errors";
+import { NotImplementedError } from "@/shared/lib/errors";
 
 export interface YouTubeSchedulePayload {
   conteudoId:     string;
@@ -30,9 +30,9 @@ export const youtubeService = {
       await delay();
       return { id: `yt-sched-${Date.now()}`, scheduledAt: payload.scheduledAt };
     }
-    throw new IntegrationError(
-      "youtube",
-      "YouTube API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "youtube.schedulePost",
+      "Integração YouTube não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 
@@ -42,9 +42,9 @@ export const youtubeService = {
       const id = `yt-mock-${conteudoId}`;
       return { url: `https://www.youtube.com/watch?v=${id}` };
     }
-    throw new IntegrationError(
-      "youtube",
-      "YouTube API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "youtube.publishNow",
+      "Integração YouTube não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
+import { MoreHorizontal, Pencil, Trash2, SendHorizonal } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
@@ -78,12 +78,13 @@ function getHorario(c: ConteudoWithRelations): string | null {
 
 interface CalendarCardProps {
   conteudo: ConteudoWithRelations;
-  onEdit: (c: ConteudoWithRelations) => void;
-  onDelete: (c: ConteudoWithRelations) => void;
+  onEdit:    (c: ConteudoWithRelations) => void;
+  onDelete:  (c: ConteudoWithRelations) => void;
+  onPublish?: (c: ConteudoWithRelations) => void;
   compact?: boolean;
 }
 
-export function CalendarCard({ conteudo, onEdit, onDelete, compact = false }: CalendarCardProps) {
+export function CalendarCard({ conteudo, onEdit, onDelete, onPublish, compact = false }: CalendarCardProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const plat        = getFirstPlataforma(conteudo.plataforma);
   const tipo        = getFirstTipo(conteudo.tipo_conteudo);
@@ -178,7 +179,7 @@ export function CalendarCard({ conteudo, onEdit, onDelete, compact = false }: Ca
       </div>
 
       {/* Info area */}
-      <div className="p-2 space-y-1">
+      <div className="p-2 space-y-1.5">
         <p className="text-xs font-semibold text-foreground leading-snug line-clamp-2">
           {conteudo.titulo ?? "Sem título"}
         </p>
@@ -194,6 +195,17 @@ export function CalendarCard({ conteudo, onEdit, onDelete, compact = false }: Ca
             <span className="text-[10px] text-muted-foreground capitalize">{tipo}</span>
           )}
         </div>
+        {onPublish && status !== "publicado" && (
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-1.5 py-1 rounded-lg text-[10px] font-semibold bg-primary/10 hover:bg-primary/20 text-primary transition-colors"
+            onClick={(e) => { e.stopPropagation(); onPublish(conteudo); }}
+            data-testid={`button-publish-${conteudo.id}`}
+          >
+            <SendHorizonal className="h-2.5 w-2.5" />
+            Publicar agora
+          </button>
+        )}
       </div>
 
       {/* Context menu */}

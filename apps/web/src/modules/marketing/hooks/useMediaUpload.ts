@@ -15,6 +15,7 @@ export interface MediaUploadState {
 export interface UseMediaUploadReturn extends MediaUploadState {
   upload:            (file: File) => Promise<void>;
   reset:             () => void;
+  preload:           (url: string, type?: "image" | "video") => void;
   generateThumbnail: (videoFile: File) => Promise<string | null>;
 }
 
@@ -90,5 +91,16 @@ export function useMediaUpload(): UseMediaUploadReturn {
     timerRef.current = setTimeout(() => simulateProgress(0), 100);
   }, [generateThumbnail]);
 
-  return { ...state, upload, reset, generateThumbnail };
+  const preload = useCallback((url: string, type: "image" | "video" = "image") => {
+    setState({
+      file:        null,
+      previewUrl:  url,
+      progress:    100,
+      error:       null,
+      isUploading: false,
+      mediaType:   type,
+    });
+  }, []);
+
+  return { ...state, upload, reset, preload, generateThumbnail };
 }

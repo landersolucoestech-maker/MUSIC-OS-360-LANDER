@@ -14,6 +14,7 @@ import { FeatureGate } from "@/shared/components/FeatureGate";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
 import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
+import { useContentScheduler } from "@/modules/marketing/hooks/useContentScheduler";
 import { CalendarFilters } from "@/modules/marketing/components/calendar/CalendarFilters";
 import type { ViewMode } from "@/modules/marketing/components/calendar/CalendarFilters";
 import { WeeklyCalendar } from "@/modules/marketing/components/calendar/WeeklyCalendar";
@@ -25,6 +26,7 @@ import { ContentModal } from "@/modules/marketing/components/calendar/ContentMod
 
 export default function MarketingCalendario() {
   const { conteudos, isLoading, deleteConteudo } = useConteudos();
+  const { publishNow } = useContentScheduler();
 
   const [viewMode, setViewMode] = useState<ViewMode>("semana");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -56,6 +58,10 @@ export default function MarketingCalendario() {
     setModalMode("edit");
     setModalOpen(true);
   }, []);
+
+  const handlePublish = useCallback(async (c: ConteudoWithRelations) => {
+    await publishNow(c);
+  }, [publishNow]);
 
   const handleSlotClick = useCallback((date: Date, hour: string) => {
     setSelectedConteudo(null);
@@ -253,6 +259,7 @@ export default function MarketingCalendario() {
                   conteudos={filteredConteudos}
                   onEdit={handleEdit}
                   onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
+                  onPublish={handlePublish}
                 />
               )}
             </>

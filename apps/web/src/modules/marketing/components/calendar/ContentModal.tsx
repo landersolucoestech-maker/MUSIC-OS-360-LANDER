@@ -185,6 +185,13 @@ export function ContentModal({
       setYtTags((meta.ytTags as string[] | undefined) ?? []);
       setTkPrivacy((meta.tkPrivacy as string | undefined) ?? "public");
       setTkDuration(String((meta.tkDuration as number | undefined) ?? ""));
+
+      const existingThumb = (initialData as Record<string, unknown>).thumbnail_url as string | null | undefined;
+      if (existingThumb) media.preload(existingThumb, "image");
+      const ytThumb = meta.ytThumbnail as string | null | undefined;
+      if (ytThumb) ytThumbMedia.preload(ytThumb, "image");
+      const tkThumb = meta.tkThumbnail as string | null | undefined;
+      if (tkThumb) tkThumbMedia.preload(tkThumb, "image");
     } else {
       reset({ titulo: "", legenda: "", horario: prefilledHour ?? "", campanha_relacionada: "" });
       setSelectedPlataforma("instagram");
@@ -195,6 +202,7 @@ export function ContentModal({
       setYtPrivacy("public"); setYtTags([]);
       setTkPrivacy("public"); setTkDuration("");
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialData, prefilledDate, prefilledHour, reset]);
 
   const buildMetaPlataforma = () => {

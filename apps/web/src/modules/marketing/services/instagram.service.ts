@@ -1,5 +1,5 @@
 import { MOCK_MODE } from "@/shared/lib/env";
-import { IntegrationError } from "@/shared/lib/errors";
+import { NotImplementedError } from "@/shared/lib/errors";
 
 export interface InstagramSchedulePayload {
   conteudoId:   string;
@@ -30,9 +30,9 @@ export const instagramService = {
       await delay();
       return { id: `ig-sched-${Date.now()}`, scheduledAt: payload.scheduledAt };
     }
-    throw new IntegrationError(
-      "instagram",
-      "Instagram API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "instagram.schedulePost",
+      "Integração Instagram não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 
@@ -41,9 +41,9 @@ export const instagramService = {
       await delay();
       return { url: `https://www.instagram.com/p/mock-${conteudoId}/` };
     }
-    throw new IntegrationError(
-      "instagram",
-      "Instagram API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "instagram.publishNow",
+      "Integração Instagram não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 

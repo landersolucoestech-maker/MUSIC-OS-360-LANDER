@@ -1,5 +1,5 @@
 import { MOCK_MODE } from "@/shared/lib/env";
-import { IntegrationError } from "@/shared/lib/errors";
+import { NotImplementedError } from "@/shared/lib/errors";
 
 export interface TikTokSchedulePayload {
   conteudoId:    string;
@@ -29,9 +29,9 @@ export const tiktokService = {
       await delay();
       return { id: `tt-sched-${Date.now()}`, scheduledAt: payload.scheduledAt };
     }
-    throw new IntegrationError(
-      "tiktok",
-      "TikTok API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "tiktok.schedulePost",
+      "Integração TikTok não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 
@@ -40,9 +40,9 @@ export const tiktokService = {
       await delay();
       return { url: `https://www.tiktok.com/@user/video/mock-${conteudoId}` };
     }
-    throw new IntegrationError(
-      "tiktok",
-      "TikTok API não configurada. Ative a integração em Configurações → Integrações.",
+    throw new NotImplementedError(
+      "tiktok.publishNow",
+      "Integração TikTok não disponível em produção. Ative em Configurações → Integrações.",
     );
   },
 

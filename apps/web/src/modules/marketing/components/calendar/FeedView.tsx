@@ -21,9 +21,10 @@ function getDate(c: ConteudoWithRelations): string | null {
 }
 
 interface FeedViewProps {
-  conteudos: ConteudoWithRelations[];
-  onEdit:   (c: ConteudoWithRelations) => void;
-  onDelete: (c: ConteudoWithRelations) => void;
+  conteudos:  ConteudoWithRelations[];
+  onEdit:     (c: ConteudoWithRelations) => void;
+  onDelete:   (c: ConteudoWithRelations) => void;
+  onPublish?: (c: ConteudoWithRelations) => void;
 }
 
 interface GroupedByDate {
@@ -34,7 +35,7 @@ interface GroupedByDate {
 
 type SortMode = "data" | "plataforma" | "status";
 
-export function FeedView({ conteudos, onEdit, onDelete }: FeedViewProps) {
+export function FeedView({ conteudos, onEdit, onDelete, onPublish }: FeedViewProps) {
   const [sortMode, setSortMode] = useState<SortMode>("data");
 
   const grouped = useMemo<GroupedByDate[]>(() => {
@@ -128,7 +129,7 @@ export function FeedView({ conteudos, onEdit, onDelete }: FeedViewProps) {
           </div>
           <div className="grid grid-cols-3 gap-3 sm:grid-cols-3 lg:grid-cols-3">
             {group.items.map((c) => (
-              <CalendarCard key={c.id} conteudo={c} onEdit={onEdit} onDelete={onDelete} />
+              <CalendarCard key={c.id} conteudo={c} onEdit={onEdit} onDelete={onDelete} onPublish={onPublish} />
             ))}
           </div>
         </div>
@@ -152,7 +153,7 @@ export function FeedView({ conteudos, onEdit, onDelete }: FeedViewProps) {
                     {c.status ?? "rascunho"}
                   </span>
                 )}
-                <CalendarCard conteudo={c} onEdit={onEdit} onDelete={onDelete} />
+                <CalendarCard conteudo={c} onEdit={onEdit} onDelete={onDelete} onPublish={onPublish} />
               </div>
             );
           })}
