@@ -92,13 +92,14 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      // Accept any Replit preview/deployment domain automatically
-      if (origin.endsWith('.replit.dev') || origin.endsWith('.replit.app')) {
-        return callback(null, true);
-      }
-      // In dev, also accept any localhost port
-      if (isDevEnv && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
-        return callback(null, true);
+      // In dev, accept Replit preview domains and any localhost port
+      if (isDevEnv) {
+        if (origin.endsWith('.replit.dev') || origin.endsWith('.replit.app')) {
+          return callback(null, true);
+        }
+        if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+          return callback(null, true);
+        }
       }
       callback(new Error(`CORS: ${origin} não permitido`));
     },
