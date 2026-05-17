@@ -201,9 +201,25 @@ function UploadZone({ onText, rawText, onRawTextChange }: UploadZoneProps) {
       const text = await file.text();
       onText(text, file.name);
     } else if (ext === "pdf" || file.type === "application/pdf") {
-      toast.info("PDF detectado", { description: "Cole o texto do contrato na área abaixo — extração directa de PDF não está disponível neste ambiente." });
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const raw = (e.target?.result as string) ?? "";
+        const printable = raw.replace(/[^\x20-\x7E\n\r\t\u00C0-\u024F]/g, "").trim();
+        const ratio = printable.length / Math.max(raw.length, 1);
+        if (ratio > 0.4 && printable.length > 100) {
+          onText(printable, file.name);
+        } else {
+          toast.info("PDF binário detectado", {
+            description: "Este PDF não tem texto extractível directamente. Cole o texto do contrato na área abaixo.",
+          });
+        }
+      };
+      reader.onerror = () => {
+        toast.error("Erro ao ler o PDF", { description: "Cole o texto do contrato na área abaixo." });
+      };
+      reader.readAsText(file, "utf-8");
     } else {
-      toast.error("Formato não suportado", { description: "Use .docx, .txt ou cole o texto directamente." });
+      toast.error("Formato não suportado", { description: "Use .docx, .txt, .pdf ou cole o texto directamente." });
     }
   }, [onText]);
 
@@ -419,11 +435,11 @@ export function ContractImportWorkspace({ open, onOpenChange, onSave }: Contract
 
     setIsSaving(true);
 
-    const acceptedVars = variables.filter((v) => v.accepted && v.placeholder);
-    const finalText = applyVariablesToText(rawText, variables);
+    const validVars = variables.filter((v) => v.accepted && v.placeholder.trim());
+    const finalText = applyVariablesToText(rawText, validVars);
 
     const manifest = {
-      variables: acceptedVars,
+      variables: validVars,
       clauseTypes: parseResult?.clauseTypes ?? [],
       generatedAt: new Date().toISOString(),
     };
