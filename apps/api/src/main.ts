@@ -34,6 +34,30 @@ process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
 
+  // ── DEV AUTH BYPASS — startup safeguard ──────────────────────────────────────
+  // Recusa absolutamente iniciar em produção com bypass activo.
+  // Esta verificação é independente dos guards — é a primeira linha de defesa.
+  if (process.env['DEV_AUTH_BYPASS'] === 'true') {
+    if (process.env['NODE_ENV'] === 'production') {
+      logger.error(
+        '════════════════════════════════════════════════════════════════\n' +
+        '  ERRO FATAL: DEV_AUTH_BYPASS=true detectado em NODE_ENV=production.\n' +
+        '  Esta configuração desactiva autenticação/RBAC e NUNCA pode estar\n' +
+        '  activa em produção. Remova DEV_AUTH_BYPASS do ambiente de produção.\n' +
+        '════════════════════════════════════════════════════════════════',
+      );
+      process.exit(1);
+    }
+    logger.warn(
+      '════════════════════════════════════════════════════════════════\n' +
+      '  ⚠  DEV AUTH BYPASS ACTIVO — JWT, TenantGuard e RolesGuard\n' +
+      '     desactivados. req.auth e req.tenant injectados com mock.\n' +
+      '     NUNCA usar em produção. Apenas para desenvolvimento local.\n' +
+      '════════════════════════════════════════════════════════════════',
+    );
+  }
+  // ─────────────────────────────────────────────────────────────────────────────
+
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
     logger: ['error', 'warn', 'log', 'debug'],
