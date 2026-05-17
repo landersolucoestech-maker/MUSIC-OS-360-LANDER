@@ -195,6 +195,7 @@ export interface SemanticVariable {
   inferredEntity: string;
   placeholder: string;
   accepted: boolean;
+  source?: "ai" | "manual";
 }
 
 export interface SemanticParseResult {

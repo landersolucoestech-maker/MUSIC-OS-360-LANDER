@@ -9,7 +9,7 @@ import { Textarea } from "@/shared/ui/textarea";
 import { Separator } from "@/shared/ui/separator";
 import {
   Upload, FileText, Loader2, Sparkles, Save, X, Check,
-  Edit2, Trash2, AlertCircle, ChevronRight, FileSearch,
+  Edit2, Trash2, AlertCircle, ChevronRight, FileSearch, Plus, PencilLine,
 } from "lucide-react";
 import { toast } from "sonner";
 import mammoth from "mammoth";
@@ -229,9 +229,18 @@ function VariableCard({
               isActive ? "text-primary rotate-90" : "text-muted-foreground"
             }`}
           />
-          <span className="text-[10px] text-muted-foreground font-medium truncate">
-            Variável detectada
-          </span>
+          {variable.source === "manual" ? (
+            <div className="flex items-center gap-1 min-w-0">
+              <PencilLine className="h-2.5 w-2.5 text-amber-500 shrink-0" />
+              <span className="text-[10px] text-amber-600 font-medium truncate">
+                Variável manual
+              </span>
+            </div>
+          ) : (
+            <span className="text-[10px] text-muted-foreground font-medium truncate">
+              Variável detectada
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
           <button
@@ -266,7 +275,16 @@ function VariableCard({
         <EditableField
           label="Texto original"
           value={variable.originalText}
-          onChange={(v) => onUpdate({ originalText: v })}
+          onChange={(v) => {
+            const updates: Partial<SemanticVariable> = { originalText: v };
+            if (!variable.placeholder && v.trim()) {
+              updates.placeholder =
+                "{{CONTRATO." +
+                v.toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") +
+                "}}";
+            }
+            onUpdate(updates);
+          }}
           placeholder={`"valor encontrado no contrato"`}
         />
         <EditableField
@@ -396,6 +414,25 @@ export function ContractImportWorkspace({
 
   const handleUpdateVariable = useCallback((id: string, updates: Partial<SemanticVariable>) => {
     setVariables((prev) => prev.map((v) => (v.id === id ? { ...v, ...updates } : v)));
+  }, []);
+
+  const handleAddManualVariable = useCallback(() => {
+    const id = crypto.randomUUID();
+    const newVar: SemanticVariable = {
+      id,
+      originalText: "",
+      context: "",
+      inferredEntity: "",
+      placeholder: "",
+      accepted: true,
+      source: "manual",
+    };
+    setVariables((prev) => [...prev, newVar]);
+    setActiveVariableId(id);
+    setTimeout(() => {
+      const el = document.querySelector(`[data-testid="variable-card-${id}"]`);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 50);
   }, []);
 
   const handleGenerateTemplate = useCallback(() => {
@@ -695,7 +732,7 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
               {/* Right: variable panel */}
               <div className="w-80 xl:w-[420px] shrink-0 flex flex-col min-h-0">
                 <div className="px-4 py-2.5 border-b border-border shrink-0 flex items-center justify-between">
-                  <span className="text-xs font-medium">Variáveis Detectadas</span>
+                  <span className="text-xs font-medium">Variáveis</span>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-muted-foreground">
                       {acceptedCount}/{totalCount}
@@ -713,6 +750,16 @@ O CONTRATANTE pagará ao CONTRATADO o valor de R$ 5.000,00...`}
                         Aceitar todas
                       </Button>
                     )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-6 px-2 text-[10px] gap-1"
+                      onClick={handleAddManualVariable}
+                      data-testid="button-add-manual-variable"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Adicionar
+                    </Button>
                   </div>
                 </div>
 
