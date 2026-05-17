@@ -17,15 +17,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/shared/ui/tooltip";
 import {
-  Upload, FileText, X, Plus, ChevronDown, ChevronUp, Users, DollarSign,
+  Upload, FileText, X, Plus, ChevronDown, ChevronUp, DollarSign,
   Music, FileSignature, Palette, Eye, Settings2, AlignLeft, Search,
   AlertCircle,
 } from "lucide-react";
 import type { ContractServiceType, ContractServiceTypeInsert, ClientType, FinancialModel } from "@/modules/contracts/hooks/useContractServiceTypes";
-import type { Participant, ParticipantRole, EntityType, MusicWork, SignatureSettings, BrandingSettings } from "@/modules/contracts/types/contracts.types";
+import type { MusicWork, SignatureSettings, BrandingSettings } from "@/modules/contracts/types/contracts.types";
 import {
-  generateParticipantVariables, resolveAllVariables, SYSTEM_VARIABLES,
-  PARTICIPANT_ROLE_OPTIONS, ROLE_LABELS, CATEGORY_LABELS,
+  resolveAllVariables, SYSTEM_VARIABLES,
+  CATEGORY_LABELS,
 } from "@/modules/contracts/utils/contract-variables";
 
 const ACCEPT_DOCS = ".pdf,.doc,.docx,.png,.jpg,.jpeg";
@@ -214,12 +214,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
   const [activeTab, setActiveTab] = useState("geral");
   const [advancedOpen, setAdvancedOpen] = useState(false);
 
-  const [participants, setParticipants] = useState<Participant[]>([]);
-  const [newPartRole, setNewPartRole] = useState<ParticipantRole>("CONTRATANTE");
-  const [newPartEntity, setNewPartEntity] = useState<EntityType>("pessoa_fisica");
-  const [showAddParticipant, setShowAddParticipant] = useState(false);
-  const [participantError, setParticipantError] = useState("");
-
   const [clausulas, setClausulas] = useState<Clausula[]>([]);
   const [clausulaErrors, setClausulaErrors] = useState<Record<string, string>>({});
   const [activeClausulaId, setActiveClausulaId] = useState<string | null>(null);
@@ -241,7 +235,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
   const footerRef = useRef<HTMLInputElement>(null);
   const logoRef = useRef<HTMLInputElement>(null);
 
-  const allVariables = resolveAllVariables(participants);
+  const allVariables = resolveAllVariables([]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -257,7 +251,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
 
   useEffect(() => {
     if (!open) return;
-    setParticipantError("");
     setClausulaErrors({});
     if (serviceType) {
       form.reset({
@@ -274,7 +267,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
         active: serviceType.active, sort_order: serviceType.sort_order,
         start_date: "", end_date: "",
       });
-      setParticipants(serviceType.participants ?? []);
       setClausulas(parseClausulasFromContent(serviceType.conteudo ?? ""));
       setMusicWork(serviceType.music_work ?? DEFAULT_MUSIC_WORK);
       setSignatureSettings(serviceType.signature_settings ?? DEFAULT_SIGNATURE);
@@ -287,14 +279,13 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       setAdvancedOpen(true);
     } else {
       form.reset({ name: "", slug: "", description: "", category: "", client_types: ["artista"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "", active: true, sort_order: 1, start_date: "", end_date: "" });
-      setParticipants([]); setClausulas([]);
+      setClausulas([]);
       setMusicWork(DEFAULT_MUSIC_WORK); setSignatureSettings(DEFAULT_SIGNATURE); setBranding(DEFAULT_BRANDING);
       setFinancialCurrency("BRL"); setFinancialFrequency("unico");
       setFinancialPenalty(""); setFinancialInterest(""); setFinancialDueDays("");
       setAdvancedOpen(false);
     }
     setActiveTab("geral");
-    setShowAddParticipant(false);
   }, [open, serviceType, form]);
 
   const nameValue = form.watch("name");
@@ -315,17 +306,8 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
 
   const buildConteudo = () => clausulas.map((c) => `${c.titulo}\n${c.conteudo.trim()}`).join("\n\n");
 
-  const validateExtraState = (): { valid: boolean; participantInvalid: boolean; clausulaErrors: Record<string, string> } => {
+  const validateExtraState = (): { valid: boolean; clausulaErrors: Record<string, string> } => {
     let valid = true;
-    let participantInvalid = false;
-
-    if (participants.length === 0) {
-      setParticipantError("Adicione ao menos 1 participante ao contrato.");
-      participantInvalid = true;
-      valid = false;
-    } else {
-      setParticipantError("");
-    }
 
     const clausErrors: Record<string, string> = {};
     if (clausulas.length === 0) {
@@ -339,7 +321,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
     setClausulaErrors(clausErrors);
     if (Object.keys(clausErrors).length > 0) valid = false;
 
-    return { valid, participantInvalid, clausulaErrors: clausErrors };
+    return { valid, clausulaErrors: clausErrors };
   };
 
   const handleSubmit = form.handleSubmit((values) => {
@@ -350,10 +332,9 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       return;
     }
 
-    const { valid: extraValid, participantInvalid, clausulaErrors: clausErrors } = validateExtraState();
+    const { valid: extraValid, clausulaErrors: clausErrors } = validateExtraState();
 
     if (!extraValid) {
-      if (participantInvalid) { setActiveTab("envolvidos"); return; }
       if (Object.keys(clausErrors).length > 0) { setActiveTab("clausulas"); return; }
       return;
     }
@@ -366,7 +347,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       header_image_url: branding.headerImageUrl,
       footer_image_url: branding.footerImageUrl,
       conteudo: buildConteudo(),
-      participants,
+      participants: [],
       variables: allVariables,
       music_work: musicWork,
       signature_settings: signatureSettings,
@@ -378,25 +359,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
       financial_due_days: financialDueDays ? Number(financialDueDays) : null,
     });
   });
-
-  const addParticipant = () => {
-    const vars = generateParticipantVariables(newPartRole, newPartEntity);
-    setParticipants((prev) => [...prev, { id: crypto.randomUUID(), role: newPartRole, entityType: newPartEntity, variables: vars }]);
-    setParticipantError("");
-    setShowAddParticipant(false);
-    setNewPartRole("CONTRATANTE");
-    setNewPartEntity("pessoa_fisica");
-  };
-
-  const moveParticipant = (idx: number, dir: -1 | 1) => {
-    setParticipants((prev) => {
-      const copy = [...prev];
-      const target = idx + dir;
-      if (target < 0 || target >= copy.length) return prev;
-      [copy[idx], copy[target]] = [copy[target], copy[idx]];
-      return copy;
-    });
-  };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: string | null) => void) => {
     const file = e.target.files?.[0];
@@ -450,7 +412,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
   const formErrors = form.formState.errors;
   const tabHasError: Record<string, boolean> = {
     geral: !!(formErrors.name || formErrors.slug || formErrors.client_types || formErrors.start_date || formErrors.end_date),
-    envolvidos: participants.length === 0 || !!participantError,
     financeiro: false,
     obra: false,
     clausulas: Object.keys(clausulaErrors).length > 0,
@@ -463,7 +424,6 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
 
   const TAB_CONFIG = [
     { value: "geral", label: "Geral", icon: Settings2 },
-    { value: "envolvidos", label: "Envolvidos", icon: Users },
     { value: "financeiro", label: "Financeiro", icon: DollarSign },
     { value: "obra", label: "Obra Musical", icon: Music },
     { value: "clausulas", label: "Cláusulas", icon: FileText },
@@ -619,95 +579,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                     </Collapsible>
                   </TabsContent>
 
-                  {/* ── Tab 2: Envolvidos ── */}
-                  <TabsContent value="envolvidos" className="mt-0 space-y-4">
-                    <Card>
-                      <CardHeader className="pb-3">
-                        <div className="flex items-center justify-between">
-                          <CardTitle className={sectionLabel}>Participantes do Contrato</CardTitle>
-                          <Button type="button" variant="outline" size="sm" className="gap-2" onClick={() => setShowAddParticipant((v) => !v)}>
-                            <Plus className="h-4 w-4" />Adicionar Envolvido
-                          </Button>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        {participantError && (
-                          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                            <AlertCircle className="h-4 w-4 shrink-0" />
-                            {participantError}
-                          </div>
-                        )}
-
-                        {showAddParticipant && (
-                          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
-                            <p className="text-sm font-medium">Novo Participante</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">Função / Role</Label>
-                                <Select value={newPartRole} onValueChange={(v) => setNewPartRole(v as ParticipantRole)}>
-                                  <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
-                                  <SelectContent>
-                                    {PARTICIPANT_ROLE_OPTIONS.map((r) => <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>)}
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                              <div className="space-y-1.5">
-                                <Label className="text-xs">Tipo de Entidade</Label>
-                                <div className="flex gap-2">
-                                  {(["pessoa_fisica", "pessoa_juridica"] as EntityType[]).map((et) => (
-                                    <button
-                                      key={et}
-                                      type="button"
-                                      onClick={() => setNewPartEntity(et)}
-                                      className={`flex-1 h-9 rounded-md border text-xs transition-colors ${newPartEntity === et ? "border-primary bg-primary/10 text-primary font-medium" : "border-border text-muted-foreground hover:border-border/80"}`}
-                                    >
-                                      {et === "pessoa_fisica" ? "Pessoa Física" : "Pessoa Jurídica"}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-                            </div>
-                            <div className="flex justify-end gap-2">
-                              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAddParticipant(false)}>Cancelar</Button>
-                              <Button type="button" size="sm" onClick={addParticipant}>Confirmar</Button>
-                            </div>
-                          </div>
-                        )}
-
-                        {participants.length === 0 && !showAddParticipant ? (
-                          <div className="text-center py-10 text-muted-foreground text-sm border border-dashed border-border rounded-lg">
-                            Nenhum participante adicionado. Clique em "Adicionar Envolvido" para começar.
-                          </div>
-                        ) : (
-                          <div className="space-y-3">
-                            {participants.map((p, idx) => (
-                              <div key={p.id} className="rounded-lg border border-border p-3 space-y-2">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <span className="font-medium text-sm">{ROLE_LABELS[p.role]}</span>
-                                    <Badge variant="secondary" className="text-xs">{p.entityType === "pessoa_fisica" ? "PF" : "PJ"}</Badge>
-                                  </div>
-                                  <div className="flex items-center gap-1">
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => moveParticipant(idx, -1)} disabled={idx === 0}><ChevronUp className="h-3.5 w-3.5" /></Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground" onClick={() => moveParticipant(idx, 1)} disabled={idx === participants.length - 1}><ChevronDown className="h-3.5 w-3.5" /></Button>
-                                    <Button type="button" variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => setParticipants((prev) => prev.filter((x) => x.id !== p.id))}><X className="h-3.5 w-3.5" /></Button>
-                                  </div>
-                                </div>
-                                <div className="flex flex-wrap gap-1">
-                                  {p.variables.slice(0, 6).map((v) => (
-                                    <Badge key={v.key} variant="outline" className="font-mono text-[10px] font-normal">{`{{${v.key}}}`}</Badge>
-                                  ))}
-                                  {p.variables.length > 6 && <Badge variant="secondary" className="text-[10px]">+{p.variables.length - 6} mais</Badge>}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </TabsContent>
-
-                  {/* ── Tab 3: Financeiro ── */}
+                  {/* ── Tab 2: Financeiro ── */}
                   <TabsContent value="financeiro" className="mt-0 space-y-4">
                     <Card>
                       <CardHeader className="pb-3"><CardTitle className={sectionLabel}>Campos Financeiros</CardTitle></CardHeader>
@@ -851,7 +723,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
                       </CardHeader>
                       <CardContent>
                         <div className="flex flex-wrap gap-1.5">
-                          {(participants.length > 0 ? allVariables : SYSTEM_VARIABLES).slice(0, 20).map((v) => (
+                          {allVariables.slice(0, 20).map((v) => (
                             <Badge key={v.key} variant="outline" className="font-mono text-[10px] font-normal cursor-pointer hover:bg-primary/10" title={v.example}>{`{{${v.key}}}`}</Badge>
                           ))}
                           {allVariables.length > 20 && <Badge variant="secondary" className="text-[10px]">+{allVariables.length - 20} mais</Badge>}
@@ -994,22 +866,7 @@ export function ServiceTypeFormModal({ open, onOpenChange, serviceType, onSave, 
 
                             <div className="space-y-3">
                               <Label className="text-xs text-muted-foreground">Ordem de Assinatura</Label>
-                              {participants.length === 0 ? (
-                                <p className="text-xs text-muted-foreground italic">Adicione participantes na aba "Envolvidos" para configurar a ordem.</p>
-                              ) : (
-                                <div className="space-y-1.5">
-                                  {participants.map((p) => {
-                                    const checked = signatureSettings.signatureOrder.includes(p.id);
-                                    return (
-                                      <div key={p.id} className="flex items-center gap-2 rounded-md border border-border/50 px-3 py-2">
-                                        <Checkbox checked={checked} onCheckedChange={(v) => setSignatureSettings((s) => ({ ...s, signatureOrder: v ? [...s.signatureOrder, p.id] : s.signatureOrder.filter((x) => x !== p.id) }))} />
-                                        <span className="text-sm">{ROLE_LABELS[p.role]}</span>
-                                        <Badge variant="secondary" className="text-xs ml-auto">{p.entityType === "pessoa_fisica" ? "PF" : "PJ"}</Badge>
-                                      </div>
-                                    );
-                                  })}
-                                </div>
-                              )}
+                              <p className="text-xs text-muted-foreground italic">Os envolvidos são definidos ao criar um contrato a partir deste tipo. A ordem de assinatura será configurada no contrato.</p>
                             </div>
 
                             <div className="flex items-center gap-3">
