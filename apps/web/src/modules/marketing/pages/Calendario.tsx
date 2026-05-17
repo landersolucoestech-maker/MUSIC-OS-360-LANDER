@@ -23,13 +23,6 @@ import { ContentModal } from "@/modules/marketing/components/calendar/ContentMod
 
 type ViewMode = "dia" | "semana" | "mes" | "ano";
 
-const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
-  { value: "dia",    label: "Dia" },
-  { value: "semana", label: "Semana" },
-  { value: "mes",    label: "Mês" },
-  { value: "ano",    label: "Ano" },
-];
-
 export default function MarketingCalendario() {
   const { conteudos, isLoading, deleteConteudo } = useConteudos();
 
@@ -138,33 +131,15 @@ export default function MarketingCalendario() {
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const headerActions = (
-    <div className="flex items-center gap-3">
-      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40">
-        {VIEW_OPTIONS.map((v) => (
-          <button
-            key={v.value}
-            onClick={() => setViewMode(v.value)}
-            data-testid={`view-${v.value}`}
-            className={`px-3.5 h-7 rounded-lg text-xs font-medium transition-all ${
-              viewMode === v.value
-                ? "bg-background shadow-sm text-foreground"
-                : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {v.label}
-          </button>
-        ))}
-      </div>
-      <Button
-        size="sm"
-        className="h-9 gap-1.5 rounded-xl text-sm"
-        onClick={handleNovoConteudo}
-        data-testid="button-novo-conteudo"
-      >
-        <Plus className="h-3.5 w-3.5" />
-        Novo Conteúdo
-      </Button>
-    </div>
+    <Button
+      size="sm"
+      className="h-9 gap-1.5 rounded-xl text-sm"
+      onClick={handleNovoConteudo}
+      data-testid="button-novo-conteudo"
+    >
+      <Plus className="h-3.5 w-3.5" />
+      Novo Conteúdo
+    </Button>
   );
 
   return (
@@ -210,6 +185,8 @@ export default function MarketingCalendario() {
               onStatusChange={setFilterStatus}
               tipo={filterTipo}
               onTipoChange={setFilterTipo}
+              viewMode={viewMode}
+              onViewModeChange={setViewMode}
             />
 
             <button

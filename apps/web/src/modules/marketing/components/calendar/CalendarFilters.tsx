@@ -40,6 +40,15 @@ const TIPO_OPTIONS = [
   { value: "carrossel", label: "Carrossel" },
 ];
 
+type ViewMode = "dia" | "semana" | "mes" | "ano";
+
+const VIEW_OPTIONS: { value: ViewMode; label: string }[] = [
+  { value: "dia",    label: "Dia" },
+  { value: "semana", label: "Semana" },
+  { value: "mes",    label: "Mês" },
+  { value: "ano",    label: "Ano" },
+];
+
 interface CalendarFiltersProps {
   search: string;
   onSearchChange: (v: string) => void;
@@ -49,6 +58,8 @@ interface CalendarFiltersProps {
   onStatusChange: (v: string) => void;
   tipo: string;
   onTipoChange: (v: string) => void;
+  viewMode: ViewMode;
+  onViewModeChange: (v: ViewMode) => void;
 }
 
 export function CalendarFilters({
@@ -56,6 +67,7 @@ export function CalendarFilters({
   plataformas, onPlataformaToggle,
   status, onStatusChange,
   tipo, onTipoChange,
+  viewMode, onViewModeChange,
 }: CalendarFiltersProps) {
   const currentStatus = STATUS_OPTIONS.find((s) => s.value === status) ?? STATUS_OPTIONS[0];
   const currentTipo   = TIPO_OPTIONS.find((t) => t.value === tipo)     ?? TIPO_OPTIONS[0];
@@ -111,6 +123,24 @@ export function CalendarFilters({
           ))}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      {/* ── View mode switcher ── */}
+      <div className="flex items-center gap-1 p-1 bg-muted/60 rounded-xl border border-border/40 shrink-0">
+        {VIEW_OPTIONS.map((v) => (
+          <button
+            key={v.value}
+            onClick={() => onViewModeChange(v.value)}
+            data-testid={`view-${v.value}`}
+            className={`px-3 h-7 rounded-lg text-xs font-medium transition-all ${
+              viewMode === v.value
+                ? "bg-background shadow-sm text-foreground"
+                : "text-muted-foreground hover:text-foreground"
+            }`}
+          >
+            {v.label}
+          </button>
+        ))}
+      </div>
 
       {/* ── Status dropdown ── */}
       <DropdownMenu>
