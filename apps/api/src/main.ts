@@ -86,13 +86,21 @@ async function bootstrap() {
     process.env['CORS_ORIGINS'] ?? 'http://localhost:5000'
   ).split(',');
 
+  const isDevEnv = process.env['NODE_ENV'] !== 'production';
+
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error(`CORS: ${origin} não permitido`));
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      // Accept any Replit preview/deployment domain automatically
+      if (origin.endsWith('.replit.dev') || origin.endsWith('.replit.app')) {
+        return callback(null, true);
       }
+      // In dev, also accept any localhost port
+      if (isDevEnv && /^https?:\/\/localhost(:\d+)?$/.test(origin)) {
+        return callback(null, true);
+      }
+      callback(new Error(`CORS: ${origin} não permitido`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
