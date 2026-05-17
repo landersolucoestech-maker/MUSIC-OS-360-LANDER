@@ -11,7 +11,7 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import {
-  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X,
+  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X, ImageUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -269,6 +269,9 @@ export function ContractImportWorkspace({
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
 
+  const [headerImage, setHeaderImage] = useState<string | null>(null);
+  const [footerImage, setFooterImage] = useState<string | null>(null);
+
   const { variables: registryVars, addVariable } = useVariableRegistry();
 
   // ── Insert at cursor ────────────────────────────────────────────────────
@@ -392,6 +395,8 @@ export function ContractImportWorkspace({
       ativo: true,
       descricao: `${placeholders.length} variáveis`,
       variables_manifest: JSON.stringify(manifest),
+      header_image: headerImage ?? null,
+      footer_image: footerImage ?? null,
     });
     handleClose();
   }
@@ -405,6 +410,8 @@ export function ContractImportWorkspace({
     setCustomVar("");
     setAiSuggestions([]);
     setAiSheetOpen(false);
+    setHeaderImage(null);
+    setFooterImage(null);
     onOpenChange(false);
   }
 
@@ -573,6 +580,60 @@ export function ContractImportWorkspace({
                 <p className="text-[10px] text-muted-foreground">
                   Ex: SHOW.RIDER · Formato: GRUPO.CAMPO
                 </p>
+              </div>
+
+              {/* Header / Footer image upload */}
+              <div className="shrink-0 border-t px-3 py-3 space-y-3">
+                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                  Cabeçalho / Rodapé
+                </Label>
+                {(["header", "footer"] as const).map((kind) => {
+                  const img = kind === "header" ? headerImage : footerImage;
+                  const setImg = kind === "header" ? setHeaderImage : setFooterImage;
+                  const label = kind === "header" ? "Cabeçalho" : "Rodapé";
+                  const testId = kind === "header" ? "input-header-image" : "input-footer-image";
+                  return (
+                    <div key={kind} className="space-y-1.5">
+                      <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
+                      {img ? (
+                        <div className="relative rounded border border-border overflow-hidden">
+                          <img src={img} alt={label} className="w-full h-16 object-contain bg-muted/20" />
+                          <button
+                            type="button"
+                            onClick={() => setImg(null)}
+                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-background/90 border border-border flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-colors"
+                            title={`Remover ${label}`}
+                            data-testid={`button-remove-${kind}-image`}
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ) : (
+                        <label
+                          className="flex items-center gap-2 cursor-pointer rounded border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
+                          data-testid={`label-upload-${kind}-image`}
+                        >
+                          <ImageUp className="h-3.5 w-3.5 shrink-0" />
+                          <span>Carregar imagem…</span>
+                          <input
+                            type="file"
+                            accept="image/png,image/jpeg,image/webp"
+                            className="sr-only"
+                            data-testid={testId}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              const reader = new FileReader();
+                              reader.onload = () => setImg(reader.result as string);
+                              reader.readAsDataURL(file);
+                              e.target.value = "";
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
