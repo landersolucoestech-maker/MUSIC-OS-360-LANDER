@@ -10,11 +10,27 @@
  * VITE_USE_MOCK é a flag canónica.
  * VITE_MOCK_MODE é mantida por retrocompatibilidade.
  * Qualquer das duas definida como "false" desactiva o modo mock.
+ *
+ * DEV_AUTH_BYPASS: true → bypassa autenticação/RBAC para desenvolvimento.
+ * Nunca activo em build de produção (verificado em runtime).
  */
 
 export const MOCK_MODE: boolean =
   import.meta.env.VITE_USE_MOCK !== "false" &&
   import.meta.env.VITE_MOCK_MODE !== "false";
+
+/**
+ * DEV_AUTH_BYPASS — bypass controlado de autenticação/RBAC.
+ *
+ * Activo APENAS quando:
+ *   1. VITE_DEV_AUTH_BYPASS=true no .env
+ *   2. NÃO é build de produção (import.meta.env.PROD=false)
+ *
+ * Nunca activo em produção — dupla verificação por segurança.
+ */
+export const DEV_AUTH_BYPASS: boolean =
+  import.meta.env.VITE_DEV_AUTH_BYPASS === "true" &&
+  import.meta.env.PROD !== true;
 
 /**
  * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).

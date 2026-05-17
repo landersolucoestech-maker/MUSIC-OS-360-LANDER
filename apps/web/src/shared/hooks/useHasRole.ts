@@ -1,4 +1,5 @@
 import { useAuth } from "@/app/providers/AuthContext";
+import { DEV_AUTH_BYPASS } from "@/shared/lib/env";
 
 /**
  * All 12 MUSIC OS 360 roles — mirrors server/src/common/types/roles.ts.
@@ -51,6 +52,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
 /** Returns the current user's role from the JWT. */
 export function useCurrentRole(): AppRole | null {
   const { user } = useAuth();
+  if (DEV_AUTH_BYPASS) return "tenant_owner";
   if (!user) return null;
   const raw = (user.user_metadata?.role as string) ?? (user as Record<string, unknown>)["role"];
   return (raw as AppRole) ?? null;

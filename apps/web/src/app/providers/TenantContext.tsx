@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { MOCK_MODE, DEV_AUTH_BYPASS } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
 import { getAccessToken } from "@/shared/lib/api-client";
 
@@ -190,7 +190,7 @@ function readStoredTenant(): StoredTenantData | null {
 }
 
 function buildInitialTenant(): Tenant {
-  if (MOCK_MODE) return MOCK_TENANT;
+  if (MOCK_MODE || DEV_AUTH_BYPASS) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
   const stored = readStoredTenant();
   const industry = ((stored?.segment ?? stored?.industry) as TenantIndustry | undefined);
   const plan     = (stored?.plan as TenantPlan | undefined);
@@ -293,7 +293,7 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
 
   // Função interna de sincronização — partilhada pelos dois efeitos abaixo
   const syncFromJwt = React.useCallback(() => {
-    if (MOCK_MODE) return;
+    if (MOCK_MODE || DEV_AUTH_BYPASS) return;
 
     // ── 1. Metadados de org do localStorage ────────────────────────────────────
     const stored = readStoredTenant();

@@ -22,7 +22,7 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthContext";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { MOCK_MODE, DEV_AUTH_BYPASS } from "@/shared/lib/env";
 
 interface ProtectedRouteProps {
   /** Se omitido, renderiza as rotas filho via <Outlet> (padrão React Router v6). */
@@ -39,10 +39,10 @@ export function ProtectedRoute({
   const location = useLocation();
 
   /**
-   * Em MOCK_MODE (standalone) não existe sessão real — bypass do guard.
-   * O utilizador mock está sempre "autenticado".
+   * Em MOCK_MODE (standalone) ou DEV_AUTH_BYPASS não existe sessão real —
+   * bypass do guard. O utilizador mock/bypass está sempre "autenticado".
    */
-  if (MOCK_MODE) {
+  if (MOCK_MODE || DEV_AUTH_BYPASS) {
     return children ? <>{children}</> : <Outlet />;
   }
 

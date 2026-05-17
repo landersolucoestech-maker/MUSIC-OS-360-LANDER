@@ -38,6 +38,31 @@ export class TenantGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
+    // ── DEV AUTH BYPASS ────────────────────────────────────────────────────────
+    if (
+      process.env['DEV_AUTH_BYPASS'] === 'true' &&
+      process.env['NODE_ENV'] !== 'production'
+    ) {
+      const request = context.switchToHttp().getRequest<Request & { auth?: JwtAuth }>();
+      request.tenant = {
+        id:      'dev-org',
+        org_id:  'dev-org',
+        name:    'DEV Tenant (BYPASS)',
+        active:  true,
+        plan:    'enterprise',
+      };
+      request.currentMember = {
+        id:            'dev-member',
+        clerk_user_id: 'dev-user',
+        tenant_id:     'dev-org',
+        role:          'owner',
+        is_active:     true,
+      };
+      this.logger.warn('[DEV AUTH BYPASS] TenantGuard bypassed — req.tenant e req.currentMember injectados com dev-org/owner');
+      return true;
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const request = context.switchToHttp().getRequest<Request & { auth?: JwtAuth }>();
     const auth    = request.auth;
 

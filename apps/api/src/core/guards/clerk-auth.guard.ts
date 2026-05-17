@@ -105,6 +105,25 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     ]);
     if (isPublic) return true;
 
+    // ── DEV AUTH BYPASS ────────────────────────────────────────────────────────
+    // Nunca activo em produção (NODE_ENV=production).
+    if (
+      process.env['DEV_AUTH_BYPASS'] === 'true' &&
+      process.env['NODE_ENV'] !== 'production'
+    ) {
+      const request = context.switchToHttp().getRequest<Request>();
+      request.auth = {
+        userId:    'dev-user',
+        sessionId: 'dev-session',
+        orgId:     'dev-org',
+        orgRole:   'owner',
+        claims:    { sub: 'dev-user', email: 'dev@musicos360.local', app_metadata: { org_id: 'dev-org', role: 'owner' } },
+      };
+      this.logger.warn('[DEV AUTH BYPASS] JwtAuthGuard bypassed — req.auth injectado com dev-user/owner');
+      return true;
+    }
+    // ──────────────────────────────────────────────────────────────────────────
+
     const request = context.switchToHttp().getRequest<Request>();
     const token   = this.extractToken(request);
 
