@@ -129,7 +129,7 @@ export async function parseContractText(text: string): Promise<SemanticParseResu
 
   const userPrompt = `Analise semanticamente o seguinte contrato e retorne o JSON conforme as instruções do sistema:\n\n${trimmed.slice(0, 12000)}`;
 
-  const response = await fetch("/api/ai/generate", {
+  const response = await fetch("/api/v1/ai/generate", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
