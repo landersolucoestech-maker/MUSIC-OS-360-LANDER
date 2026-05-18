@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import VariableRegistry from "@/modules/contracts/pages/VariableRegistry";
@@ -37,6 +37,8 @@ import { toast } from "sonner";
 import type {
   SemanticVariable,
   TemplateContratoInsert,
+  TemplateContratoUpdate,
+  TemplateContrato,
 } from "@/modules/contracts/types/contracts.types";
 import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
@@ -48,6 +50,8 @@ interface ContractImportWorkspaceProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (data: TemplateContratoInsert) => void;
+  template?: TemplateContrato | null;
+  onEdit?: (id: string, data: TemplateContratoUpdate) => void;
 }
 
 // ── Constants ──────────────────────────────────────────────────────────────
@@ -459,7 +463,10 @@ export function ContractImportWorkspace({
   open,
   onOpenChange,
   onSave,
+  template = null,
+  onEdit,
 }: ContractImportWorkspaceProps) {
+  const isEditMode = !!template;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [nome, setNome] = useState("");
@@ -478,6 +485,20 @@ export function ContractImportWorkspace({
 
   const { variables: registryVars, addVariable } = useVariableRegistry();
   const { categories: dynamicCategories } = useCategoryRegistry();
+
+  // Populate form when template changes (edit mode)
+  useEffect(() => {
+    if (!template) return;
+    setNome(template.nome ?? "");
+    setCategoria(template.tipo_servico ?? "semantico");
+    setText(template.conteudo ?? "");
+    setSearch("");
+    setAiSuggestions([]);
+    setAiSheetOpen(false);
+    setHeaderImage(template.header_image ?? null);
+    setFooterImage(template.footer_image ?? null);
+    setActiveTab("template");
+  }, [template]);
 
   const [allCollapsed, setAllCollapsed] = useState(false);
   const [collapseKey, setCollapseKey] = useState(0);
@@ -593,18 +614,33 @@ export function ContractImportWorkspace({
         variables: placeholders,
         generatedAt: new Date().toISOString(),
       };
-      await Promise.resolve(
-        onSave({
-          nome: nome.trim(),
-          tipo_servico: categoria,
-          conteudo: text,
-          ativo: true,
-          descricao: `${placeholders.length} variáveis`,
-          variables_manifest: JSON.stringify(manifest),
-          header_image: headerImage ?? null,
-          footer_image: footerImage ?? null,
-        }),
-      );
+      if (isEditMode && template && onEdit) {
+        await Promise.resolve(
+          onEdit(template.id, {
+            nome: nome.trim(),
+            tipo_servico: categoria,
+            conteudo: text,
+            ativo: template.ativo ?? true,
+            descricao: template.descricao ?? `${placeholders.length} variáveis`,
+            variables_manifest: JSON.stringify(manifest),
+            header_image: headerImage ?? null,
+            footer_image: footerImage ?? null,
+          }),
+        );
+      } else {
+        await Promise.resolve(
+          onSave({
+            nome: nome.trim(),
+            tipo_servico: categoria,
+            conteudo: text,
+            ativo: true,
+            descricao: `${placeholders.length} variáveis`,
+            variables_manifest: JSON.stringify(manifest),
+            header_image: headerImage ?? null,
+            footer_image: footerImage ?? null,
+          }),
+        );
+      }
       handleClose();
     } finally {
       setIsSaving(false);
@@ -651,7 +687,9 @@ export function ContractImportWorkspace({
           className="max-w-[1100px] w-[95vw] h-[88vh] p-0 gap-0 flex flex-col overflow-hidden"
           data-testid="dialog-contract-workspace"
         >
-          <DialogTitle className="sr-only">Novo Template de Contrato</DialogTitle>
+          <DialogTitle className="sr-only">
+            {isEditMode ? "Editar Template de Contrato" : "Novo Template de Contrato"}
+          </DialogTitle>
 
           <Tabs
             value={activeTab}
@@ -662,11 +700,12 @@ export function ContractImportWorkspace({
             <div className="shrink-0 border-b bg-card">
               <div className="px-6 pt-5 pb-3 pr-14">
                 <h2 className="text-lg font-semibold tracking-tight">
-                  Novo Template de Contrato
+                  {isEditMode ? "Editar Template de Contrato" : "Novo Template de Contrato"}
                 </h2>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Crie templates reutilizáveis para geração automática de
-                  contratos.
+                  {isEditMode
+                    ? "Edite o conteúdo e as configurações do template."
+                    : "Crie templates reutilizáveis para geração automática de contratos."}
                 </p>
               </div>
               <div className="px-6 pb-3">

@@ -17,7 +17,6 @@ import {
 } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { ContractImportWorkspace } from "@/modules/contracts/components/ContractImportWorkspace";
 import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
-import { TemplateEditModal } from "@/modules/contracts/components/TemplateEditModal";
 import type { SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
 
 function parseManifest(template: TemplateContrato): SemanticTemplateManifest | null {
@@ -308,17 +307,18 @@ export default function TemplatesContratos() {
         onSave={handleSave}
       />
 
+      <ContractImportWorkspace
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSave={handleSave}
+        template={selectedTemplate}
+        onEdit={handleEditSave}
+      />
+
       <TemplateContratoViewModal
         open={isViewOpen}
         onOpenChange={setIsViewOpen}
         template={selectedTemplate}
-      />
-
-      <TemplateEditModal
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        template={selectedTemplate}
-        onSave={handleEditSave}
       />
 
       <DeleteConfirmModal
