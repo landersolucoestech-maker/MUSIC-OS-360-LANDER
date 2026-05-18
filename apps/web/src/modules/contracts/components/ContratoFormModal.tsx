@@ -71,7 +71,12 @@ const ContractForm = ({
   const { templates } = useTemplatesContratos();
 
   const templateSlugs = useMemo(
-    () => new Set(templates.map((t) => t.tipo_servico).filter(Boolean)),
+    () =>
+      new Set(
+        templates
+          .map((t) => (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string)
+          .filter(Boolean),
+      ),
     [templates],
   );
 

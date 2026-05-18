@@ -43,6 +43,7 @@ import type {
 import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
+import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -359,7 +360,7 @@ export function ContractImportWorkspace({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [nome, setNome] = useState("");
-  const [categoria, setCategoria] = useState("semantico");
+  const [categoria, setCategoria] = useState("");
   const [text, setText] = useState("");
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("template");
@@ -373,13 +374,18 @@ export function ContractImportWorkspace({
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
   const { variables: registryVars, addVariable } = useVariableRegistry();
-  const { categories: dynamicCategories } = useCategoryRegistry();
+  const { categories: _legacyCategories } = useCategoryRegistry();
+  const { allServiceTypes: rawServiceTypes } = useContractServiceTypes();
+  const dynamicCategories = rawServiceTypes
+    .filter((t) => t.active)
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((t) => ({ value: t.slug, label: t.name }));
 
   // Populate form when template changes (edit mode)
   useEffect(() => {
     if (!template) return;
     setNome(template.nome ?? "");
-    setCategoria(template.tipo_servico ?? "semantico");
+    setCategoria(template.tipo_servico || (template as Record<string, unknown>)["tipo"] as string || "");
     setText(template.conteudo ?? "");
     setSearch("");
     setAiSuggestions([]);

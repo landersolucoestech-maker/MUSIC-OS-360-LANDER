@@ -337,9 +337,9 @@ function buildSeedData(): Record<string, unknown[]> {
   ],
 
   templates_contratos: [
-    { id: "tmpl-001", user_id: UID, nome: "Template - Contrato de Exclusividade", tipo: "exclusividade", ativo: true, conteudo: "CONTRATO DE EXCLUSIVIDADE\n\nPor este instrumento particular, as partes...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
-    { id: "tmpl-002", user_id: UID, nome: "Template - Contrato de Distribuição Digital", tipo: "distribuicao", ativo: true, conteudo: "CONTRATO DE DISTRIBUIÇÃO DIGITAL\n\nPor este instrumento...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
-    { id: "tmpl-003", user_id: UID, nome: "Template - Licença de Uso Musical", tipo: "licenciamento", ativo: true, conteudo: "LICENÇA DE USO MUSICAL\n\nAutorizamos o uso da obra...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-001", user_id: UID, nome: "Template - Contrato de Exclusividade", tipo: "agenciamento", tipo_servico: "agenciamento", ativo: true, conteudo: "CONTRATO DE EXCLUSIVIDADE\n\nPor este instrumento particular, as partes...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-002", user_id: UID, nome: "Template - Contrato de Distribuição Digital", tipo: "distribuicao", tipo_servico: "distribuicao", ativo: true, conteudo: "CONTRATO DE DISTRIBUIÇÃO DIGITAL\n\nPor este instrumento...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-003", user_id: UID, nome: "Template - Licença de Uso Musical", tipo: "licenciamento", tipo_servico: "licenciamento", ativo: true, conteudo: "LICENÇA DE USO MUSICAL\n\nAutorizamos o uso da obra...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
   ],
 
   deteccoes: [
@@ -493,6 +493,23 @@ function patchMockData(data: Record<string, unknown[]>): void {
       { id: "cst-013", name: "Shows", slug: "shows", description: "Contratação para apresentações ao vivo e eventos.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "caches", active: true, sort_order: 13, created_at: NOW, updated_at: NOW },
       { id: "cst-014", name: "Outros", slug: "outros", description: "Contratos de serviços que não se enquadram nas categorias acima.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: null, active: true, sort_order: 14, created_at: NOW, updated_at: NOW },
     ] as unknown[];
+  }
+
+  // templates_contratos — patch: adiciona tipo_servico (CST slug) aos templates seed que
+  // foram armazenados sem esse campo (ou com o campo vazio / com slug de CategoryRegistry).
+  const templatesMigrationMap: Record<string, string> = {
+    "tmpl-001": "agenciamento",
+    "tmpl-002": "distribuicao",
+    "tmpl-003": "licenciamento",
+  };
+  const templatesCaContratos = data["templates_contratos"] as Array<Record<string, unknown>> | undefined;
+  if (templatesCaContratos) {
+    for (const t of templatesCaContratos) {
+      const mapped = templatesMigrationMap[t.id as string];
+      if (mapped && !t.tipo_servico) {
+        t.tipo_servico = mapped;
+      }
+    }
   }
 
   // regras_transacao — seed inicial (Task #27-rules): tabela nova, injeta se ausente
