@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -25,6 +25,7 @@ import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
 import type { ClientType } from "@/modules/contracts/hooks/useContractServiceTypes";
+import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { UserPlus, X } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -67,10 +68,22 @@ const ContractForm = ({
   const clientTypeValue = form.watch("client_type") as ClientType | undefined;
   const serviceTypeValue = form.watch("service_type");
   const { serviceTypes, allServiceTypes } = useContractServiceTypes(clientTypeValue ?? null);
+  const { templates } = useTemplatesContratos();
+
+  const templateSlugs = useMemo(
+    () => new Set(templates.map((t) => t.tipo_servico).filter(Boolean)),
+    [templates],
+  );
+
+  const typesWithTemplates = useMemo(
+    () => serviceTypes.filter((t) => templateSlugs.has(t.slug)),
+    [serviceTypes, templateSlugs],
+  );
+
   const selectedType = allServiceTypes.find((t) => t.slug === serviceTypeValue);
   const legacyServiceTypeLabel =
     serviceTypeValue &&
-    !serviceTypes.some((t) => t.slug === serviceTypeValue)
+    !typesWithTemplates.some((t) => t.slug === serviceTypeValue)
       ? allServiceTypes.find((t) => t.slug === serviceTypeValue)?.name ?? serviceTypeValue
       : null;
 
@@ -153,9 +166,17 @@ const ContractForm = ({
                       {legacyServiceTypeLabel} (tipo anterior)
                     </SelectItem>
                   )}
-                  {serviceTypes.map((t) => (
-                    <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
-                  ))}
+                  {typesWithTemplates.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                      {clientTypeValue
+                        ? "Nenhum template disponível para este tipo de cliente"
+                        : "Selecione primeiro o tipo de cliente"}
+                    </div>
+                  ) : (
+                    typesWithTemplates.map((t) => (
+                      <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {form.formState.errors.service_type && (
