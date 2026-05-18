@@ -51,6 +51,10 @@ interface PartyData {
   representante_legal?: string;
   cpf_representante?: string;
   rg_representante?: string;
+  nacionalidade_representante?: string;
+  estado_civil_representante?: string;
+  profissao_representante?: string;
+  endereco_representante?: string;
 }
 
 interface WizardSigner {
@@ -111,6 +115,11 @@ const ENTITY_FIELDS = new Set([
   "TELEFONE", "CELULAR", "NACIONALIDADE", "PROFISSAO", "ESTADO_CIVIL",
   "RAZAO_SOCIAL", "REPRESENTANTE_LEGAL", "CPF_REPRESENTANTE", "RG_REPRESENTANTE",
   "NOME_ARTISTICO", "NOME_CIVIL",
+  // English-style aliases used by templates created in the template editor
+  "LEGAL_REPRESENTATIVE", "REPRESENTATIVE_NAME",
+  "LEGAL_REPRESENTATIVE_CPF", "LEGAL_REPRESENTATIVE_RG",
+  "LEGAL_REPRESENTATIVE_NATIONALITY", "LEGAL_REPRESENTATIVE_MARITAL_STATUS",
+  "LEGAL_REPRESENTATIVE_OCCUPATION", "LEGAL_REPRESENTATIVE_ADDRESS",
 ]);
 
 const WIZARD_STEPS = [
@@ -250,9 +259,19 @@ function resolvePartyField(party: PartyData, field: string): string {
     PROFISSAO:           "profissao",
     ESTADO_CIVIL:        "estado_civil",
     RAZAO_SOCIAL:        "razao_social",
+    // Portuguese-style keys
     REPRESENTANTE_LEGAL: "representante_legal",
     CPF_REPRESENTANTE:   "cpf_representante",
     RG_REPRESENTANTE:    "rg_representante",
+    // English-style aliases (used by templates created in the template editor)
+    LEGAL_REPRESENTATIVE:             "representante_legal",
+    REPRESENTATIVE_NAME:              "representante_legal",
+    LEGAL_REPRESENTATIVE_CPF:         "cpf_representante",
+    LEGAL_REPRESENTATIVE_RG:          "rg_representante",
+    LEGAL_REPRESENTATIVE_NATIONALITY: "nacionalidade_representante",
+    LEGAL_REPRESENTATIVE_MARITAL_STATUS: "estado_civil_representante",
+    LEGAL_REPRESENTATIVE_OCCUPATION:  "profissao_representante",
+    LEGAL_REPRESENTATIVE_ADDRESS:     "endereco_representante",
     NOME_ARTISTICO:      "nome_artistico",
     NOME_CIVIL:          "nome_civil",
   };
@@ -531,12 +550,41 @@ function PartyCard({
               <Input className="h-8 text-xs" value={party.razao_social || ""} onChange={(e) => set({ razao_social: e.target.value })} placeholder="Razão social" />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Representante Legal</Label>
-              <Input className="h-8 text-xs" value={party.representante_legal || ""} onChange={(e) => set({ representante_legal: e.target.value })} placeholder="Nome do representante" />
-            </div>
-            <div className="space-y-1">
               <Label className="text-xs">CNPJ</Label>
               <Input className="h-8 text-xs font-mono" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+            </div>
+            <div className="space-y-1 col-span-2 border-t border-border pt-2 mt-1">
+              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Dados do Representante Legal</p>
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-xs">Nome do Representante Legal</Label>
+              <Input className="h-8 text-xs" value={party.representante_legal || ""} onChange={(e) => set({ representante_legal: e.target.value })} placeholder="Nome completo" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Nacionalidade (Repr.)</Label>
+              <Input className="h-8 text-xs" value={party.nacionalidade_representante || ""} onChange={(e) => set({ nacionalidade_representante: e.target.value })} placeholder="Ex: brasileiro(a)" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Profissão (Repr.)</Label>
+              <Input className="h-8 text-xs" value={party.profissao_representante || ""} onChange={(e) => set({ profissao_representante: e.target.value })} placeholder="Profissão" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">Estado Civil (Repr.)</Label>
+              <Select value={party.estado_civil_representante || "none"} onValueChange={(v) => set({ estado_civil_representante: v === "none" ? "" : v })}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="—" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">—</SelectItem>
+                  <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                  <SelectItem value="casado">Casado(a)</SelectItem>
+                  <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                  <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                  <SelectItem value="uniao_estavel">União Estável</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-xs">Endereço (Repr.)</Label>
+              <Input className="h-8 text-xs" value={party.endereco_representante || ""} onChange={(e) => set({ endereco_representante: e.target.value })} placeholder="Rua, número, cidade - UF" />
             </div>
           </>
         )}
