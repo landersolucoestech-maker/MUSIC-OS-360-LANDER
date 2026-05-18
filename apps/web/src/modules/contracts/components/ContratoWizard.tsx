@@ -20,7 +20,7 @@ import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegist
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import type { TemplateContrato, ContractVariable } from "@/modules/contracts/types/contracts.types";
+import type { TemplateContrato, ContractVariable, WizardSignerRecord } from "@/modules/contracts/types/contracts.types";
 import type { ContratoWithRelations, ContratoInsert } from "@/modules/contracts/hooks/useContratos";
 import type { SigningPlatform } from "@/modules/contracts/types/contracts.types";
 import { cn } from "@/shared/lib/utils";
@@ -216,6 +216,7 @@ function parseManifest(raw: string | null | undefined, content: string, partyRol
       type: v.type || "text",
       required: !!v.required,
       example: v.example || "",
+      options: Array.isArray(v.options) ? v.options : undefined,
     }));
   } catch {
     return extractFallbackVars(content, partyRoles);
@@ -1080,8 +1081,10 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         data_fim:         state.meta.data_fim    || null,
         observacoes:      wizardBlob,
         signing_platform: provider,
-        // Persist full signer data; `id` is wizard-local, strip it out
-        signers: state.signers.map(({ id: _id, ...s }) => s) as unknown as ContratoInsert["signers"],
+        // Deliberately map WizardSigner to the persisted WizardSignerRecord shape
+        signers: state.signers.map(({ nome, email, role, obrigatorio, ordem, provider }): WizardSignerRecord => ({
+          name: nome, nome, email, role, obrigatorio, ordem, provider,
+        })),
       };
 
       if (isEdit && contrato) {

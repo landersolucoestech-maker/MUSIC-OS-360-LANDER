@@ -23,6 +23,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
+import type { ContratoSigner } from "@/modules/contracts/lib/contrato-schema";
 import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
@@ -569,7 +570,9 @@ function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData>
     end_date:     c.data_fim    ? new Date(c.data_fim)    : undefined,
     fixed_value:  c.valor ?? undefined,
     observations: c.observacoes?.startsWith("{") ? undefined : (c.observacoes ?? undefined),
-    signers:      Array.isArray(c.signers) ? c.signers : [],
+    signers:      Array.isArray(c.signers)
+      ? c.signers.filter((s): s is ContratoSigner => !("obrigatorio" in s))
+      : [],
   };
 }
 

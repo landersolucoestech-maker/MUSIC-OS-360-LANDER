@@ -209,7 +209,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                             </p>
                           </div>
                           <Badge variant="outline" className="text-[10px] font-normal shrink-0">
-                            {SIGNER_ROLE_LABEL[signer.role]}
+                            {(SIGNER_ROLE_LABEL as Record<string, string | undefined>)[signer.role] ?? signer.role}
                           </Badge>
                         </div>
                       ))}

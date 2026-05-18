@@ -14,6 +14,22 @@ export interface ContratoVersao {
 
 export type SigningPlatform = "autentique" | "clicksign" | "docusign";
 
+/**
+ * Signer record persisted by ContratoWizard.
+ * Richer than the legacy ContratoSigner — keeps wizard-specific fields
+ * (nome, obrigatorio, ordem, provider) alongside the canonical email + role.
+ */
+export interface WizardSignerRecord {
+  /** Canonical display name — mirrors ContratoSigner.name for consumer compatibility */
+  name: string;
+  nome: string;
+  email: string;
+  role: string;
+  obrigatorio: boolean;
+  ordem: number;
+  provider: string;
+}
+
 export interface Contrato {
   id: string;
   user_id?: string;
@@ -34,7 +50,7 @@ export interface Contrato {
   autentique_doc_id?: string | null;
   signing_platform?: SigningPlatform | null;
   versoes?: ContratoVersao[];
-  signers?: ContratoSigner[];
+  signers?: Array<ContratoSigner | WizardSignerRecord>;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;
