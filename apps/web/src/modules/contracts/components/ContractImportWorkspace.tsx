@@ -483,6 +483,7 @@ export function ContractImportWorkspace({
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
 
   const [headerImage, setHeaderImage] = useState<string | null>(null);
   const [footerImage, setFooterImage] = useState<string | null>(null);
@@ -593,7 +594,7 @@ export function ContractImportWorkspace({
 
   // ── Save ────────────────────────────────────────────────────────────────
 
-  function handleSave() {
+  async function handleSave() {
     if (!nome.trim()) {
       toast.error("Dê um nome ao template antes de guardar");
       return;
@@ -602,28 +603,35 @@ export function ContractImportWorkspace({
       toast.error("O editor está vazio. Adicione o conteúdo do template.");
       return;
     }
-    const placeholders = [
-      ...new Set(
-        Array.from(text.matchAll(PLACEHOLDER_REGEX)).map(
-          (m) => `{{${m[1].toUpperCase()}}}`,
+    setIsSaving(true);
+    try {
+      const placeholders = [
+        ...new Set(
+          Array.from(text.matchAll(PLACEHOLDER_REGEX)).map(
+            (m) => `{{${m[1].toUpperCase()}}}`,
+          ),
         ),
-      ),
-    ];
-    const manifest = {
-      variables: placeholders,
-      generatedAt: new Date().toISOString(),
-    };
-    onSave({
-      nome: nome.trim(),
-      tipo_servico: categoria,
-      conteudo: text,
-      ativo: true,
-      descricao: `${placeholders.length} variáveis`,
-      variables_manifest: JSON.stringify(manifest),
-      header_image: headerImage ?? null,
-      footer_image: footerImage ?? null,
-    });
-    handleClose();
+      ];
+      const manifest = {
+        variables: placeholders,
+        generatedAt: new Date().toISOString(),
+      };
+      await Promise.resolve(
+        onSave({
+          nome: nome.trim(),
+          tipo_servico: categoria,
+          conteudo: text,
+          ativo: true,
+          descricao: `${placeholders.length} variáveis`,
+          variables_manifest: JSON.stringify(manifest),
+          header_image: headerImage ?? null,
+          footer_image: footerImage ?? null,
+        }),
+      );
+      handleClose();
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   // ── Close / reset ───────────────────────────────────────────────────────
@@ -685,8 +693,8 @@ export function ContractImportWorkspace({
                   contratos.
                 </p>
               </div>
-              <div className="px-6">
-                <TabsList className="h-auto bg-transparent p-0 gap-0 rounded-none">
+              <div className="px-6 pb-3">
+                <TabsList className="h-auto bg-muted/60 p-1 gap-1 rounded-full inline-flex">
                   {(
                     [
                       { value: "template", label: "Template" },
@@ -697,7 +705,7 @@ export function ContractImportWorkspace({
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="rounded-none px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                      className="rounded-full px-5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
                       data-testid={`tab-${tab.value}`}
                     >
                       {tab.label}
@@ -924,11 +932,15 @@ export function ContractImportWorkspace({
                 <Button
                   size="sm"
                   onClick={handleSave}
-                  disabled={aiLoading}
+                  disabled={aiLoading || isSaving}
                   data-testid="button-save-template"
                 >
-                  <Save className="h-3.5 w-3.5 mr-1.5" />
-                  Salvar Template
+                  {isSaving ? (
+                    <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                  ) : (
+                    <Save className="h-3.5 w-3.5 mr-1.5" />
+                  )}
+                  {isSaving ? "A guardar…" : "Salvar Template"}
                 </Button>
               </div>
             </div>
