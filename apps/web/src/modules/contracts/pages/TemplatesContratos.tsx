@@ -8,8 +8,11 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
 import {
-  Loader2, Plus, Trash2, FileText, Sparkles, Eye, Pencil, Search, X,
+  Loader2, Plus, Trash2, FileText, Sparkles, Eye, Pencil, Search, X, MoreHorizontal,
 } from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import {
@@ -143,22 +146,44 @@ function TemplateRow({
       <span className="text-xs text-muted-foreground">{formatDate(template.created_at)}</span>
 
       {/* Ações */}
-      <div className="flex items-center gap-1 justify-end">
-        <Button variant="ghost" size="icon" className="h-7 w-7"
-          onClick={(e) => { e.stopPropagation(); onView(); }} title="Visualizar"
-          data-testid={`button-view-template-${template.id}`}>
-          <Eye className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7"
-          onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar"
-          data-testid={`button-edit-template-${template.id}`}>
-          <Pencil className="h-3.5 w-3.5" />
-        </Button>
-        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
-          onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Excluir"
-          data-testid={`button-delete-template-${template.id}`}>
-          <Trash2 className="h-3.5 w-3.5" />
-        </Button>
+      <div className="flex items-center justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-actions-template-${template.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              data-testid={`menu-view-template-${template.id}`}
+            >
+              <Eye className="h-3.5 w-3.5 mr-2" />
+              Visualizar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              data-testid={`menu-edit-template-${template.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:text-destructive"
+              data-testid={`menu-delete-template-${template.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   );
