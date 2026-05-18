@@ -274,8 +274,7 @@ function A4Preview({
           <img
             src={headerImage}
             alt="Cabeçalho"
-            className="w-full object-cover shrink-0"
-            style={{ maxHeight: "120px" }}
+            className="w-full h-auto shrink-0 block"
           />
         ) : (
           <div className="px-[72px] pt-[48px]">
@@ -303,8 +302,7 @@ function A4Preview({
           <img
             src={footerImage}
             alt="Rodapé"
-            className="w-full object-cover shrink-0"
-            style={{ maxHeight: "96px" }}
+            className="w-full h-auto shrink-0 block"
           />
         ) : (
           <div className="px-[72px] pb-[48px]">
