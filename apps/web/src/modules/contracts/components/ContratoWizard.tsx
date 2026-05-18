@@ -83,6 +83,8 @@ interface ManifestVar {
 interface WizardState {
   templateId: string;
   templateNome: string;
+  /** Canonical category slug (tipo_servico), e.g. "gravacao" — used as contract tipo */
+  templateTipoServico: string;
   templateContent: string;
   partyRoles: string[];
   /** Union of roles from SIGNATURE.* INITIALS.* SIGN_DATE.* */
@@ -138,7 +140,7 @@ const EMPTY_META: WizardMeta = {
 };
 
 const EMPTY_WIZARD: WizardState = {
-  templateId: "", templateNome: "", templateContent: "",
+  templateId: "", templateNome: "", templateTipoServico: "", templateContent: "",
   partyRoles: [], signatureRoles: [], manifestVars: [],
   parties: {}, variables: {}, signers: [], meta: EMPTY_META,
 };
@@ -206,11 +208,15 @@ function extractFallbackVars(content: string, partyRoles: string[]): ManifestVar
 function parseManifest(raw: string | null | undefined, content: string, partyRoles: string[]): ManifestVar[] {
   if (!raw) return extractFallbackVars(content, partyRoles);
   try {
-    const parsed: ContractVariable[] = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) {
+    const json = JSON.parse(raw);
+    // Support both raw array format AND object format { variables: [...], generatedAt: ... }
+    const entries: ContractVariable[] = Array.isArray(json)
+      ? json
+      : (Array.isArray(json?.variables) ? json.variables : []);
+    if (entries.length === 0) {
       return extractFallbackVars(content, partyRoles);
     }
-    return parsed.map((v) => ({
+    return entries.map((v) => ({
       key: `{{${v.key}}}`,
       label: v.label || v.key,
       type: v.type || "text",
@@ -956,16 +962,17 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
             }));
 
         setState({
-          templateId:      tmpl.id,
-          templateNome:    tmpl.nome,
-          templateContent: tmpl.conteudo,
+          templateId:          tmpl.id,
+          templateNome:        tmpl.nome,
+          templateTipoServico: tmpl.tipo_servico || "",
+          templateContent:     tmpl.conteudo,
           partyRoles,
           signatureRoles,
           manifestVars,
-          parties:  initialParties,
+          parties:   initialParties,
           variables: savedBlob.variables ?? {},
-          signers:  savedSigners,
-          meta:     baseMeta,
+          signers:   savedSigners,
+          meta:      baseMeta,
         });
       } else {
         setState({ ...EMPTY_WIZARD, meta: baseMeta });
@@ -1001,15 +1008,16 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
     setState((prev) => ({
       ...prev,
-      templateId:      t.id,
-      templateNome:    t.nome,
-      templateContent: t.conteudo,
+      templateId:          t.id,
+      templateNome:        t.nome,
+      templateTipoServico: t.tipo_servico || "",
+      templateContent:     t.conteudo,
       partyRoles,
       signatureRoles,
       manifestVars,
-      parties:  initialParties,
+      parties:   initialParties,
       variables: {},
-      signers:  initialSigners,
+      signers:   initialSigners,
     }));
   }, []);
 
@@ -1075,7 +1083,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       const payload: ContratoInsert = {
         titulo:           state.meta.titulo.trim(),
         template_id:      state.templateId || null,
-        tipo:             state.templateNome || null,
+        tipo:             state.templateTipoServico || state.templateNome || null,
         status:           resolvedStatus,
         data_inicio:      state.meta.data_inicio || null,
         data_fim:         state.meta.data_fim    || null,
