@@ -1,0 +1,527 @@
+REFATORAR COMPLETAMENTE O MÓDULO “NOVO CONTRATO” PARA FICAR TOTALMENTE ALINHADO COM A ENGINE SEMÂNTICA DE TEMPLATES JÁ EXISTENTE NO SISTEMA.
+
+IMPORTANTE:
+NÃO recriar a engine de templates.
+NÃO recriar parser.
+NÃO recriar variables manifest.
+NÃO recriar semantic manifest.
+NÃO alterar o fluxo de templates já existente.
+
+O sistema JÁ possui:
+
+* templates inteligentes
+* semantic manifest
+* variáveis
+* detecção semântica
+* importação de contratos
+* tipos de contrato
+* origem das partes
+* estrutura dinâmica
+
+O problema está APENAS no modal “Novo Contrato”, que ainda utiliza arquitetura legada baseada em campos fixos.
+
+==================================================
+OBJETIVO DA REFATORAÇÃO
+=======================
+
+Transformar o modal “Novo Contrato” em um sistema totalmente:
+
+* template-driven
+* schema-driven
+* role-driven
+* dynamic-form driven
+
+O modal NÃO pode mais utilizar:
+
+* client_type
+* artist_id
+* company_id
+* contractor_contact
+* responsible_person
+
+Esses conceitos estão errados para a nova arquitetura.
+
+==================================================
+PROBLEMA ATUAL
+==============
+
+Hoje o ContratoFormModal ainda assume:
+
+contrato = cliente + artista + empresa
+
+Mas o sistema de templates já trabalha com:
+
+contrato = template + entidades + variáveis + roles
+
+O modal atual está arquiteturalmente incompatível com a engine semântica já existente.
+
+==================================================
+ARQUITETURA CORRETA
+===================
+
+O modal deve funcionar como um renderer dinâmico baseado no template selecionado.
+
+Fluxo correto:
+
+1. Usuário seleciona template
+2. Sistema lê semantic manifest
+3. Sistema detecta:
+
+   * entidades
+   * variáveis
+   * roles
+   * assinatura
+   * placeholders
+4. Sistema gera o formulário dinamicamente
+5. Usuário resolve entidades
+6. Usuário preenche variáveis
+7. Sistema gera preview do documento
+8. Sistema configura signatários
+9. Sistema envia para assinatura eletrônica
+
+==================================================
+NÃO UTILIZAR MAIS
+=================
+
+REMOVER COMPLETAMENTE do modal:
+
+* client_type
+* artist_id
+* company_id
+* contractor_contact
+* responsible_person
+
+REMOVER TODOS os IFs baseados em:
+
+if client_type === ...
+
+Isso está arquiteturalmente errado.
+
+==================================================
+REUTILIZAR A ENGINE EXISTENTE
+=============================
+
+O sistema JÁ possui:
+
+* useTemplatesContratos()
+* SemanticTemplateManifest
+* variables_manifest
+* ContractImportWorkspace
+* getContractPartyOrigin()
+* templates inteligentes
+
+UTILIZAR ISSO.
+
+NÃO DUPLICAR LÓGICA.
+
+==================================================
+ETAPA 1 — SELEÇÃO DO TEMPLATE
+=============================
+
+O modal deve iniciar obrigatoriamente pela seleção do template.
+
+Ao selecionar o template:
+
+* carregar semantic manifest
+* carregar variáveis
+* carregar clause types
+* carregar entidades
+* carregar placeholders
+* carregar signatários
+
+O template passa a controlar TODO o restante do fluxo.
+
+==================================================
+ETAPA 2 — PARTES CONTRATUAIS DINÂMICAS
+======================================
+
+O sistema deve detectar automaticamente as partes do contrato a partir do template.
+
+Exemplo:
+
+{{REPRESENTANTE.NAME}}
+{{REPRESENTADO.NAME}}
+{{TESTEMUNHA_1.NAME}}
+
+O sistema deve gerar automaticamente:
+
+* REPRESENTANTE
+* REPRESENTADO
+* TESTEMUNHA_1
+
+Cada parte deve possuir:
+
+* role
+* tipo esperado
+* origem
+* entidade vinculada
+* preenchimento manual opcional
+
+==================================================
+ORIGEM DAS ENTIDADES
+====================
+
+Utilizar a estrutura já existente de origem de partes.
+
+As partes podem vir de:
+
+* CRM
+* Artistas
+* Manual
+
+==================================================
+EXEMPLO
+=======
+
+REPRESENTANTE:
+
+* Pessoa Jurídica
+* CRM
+
+REPRESENTADO:
+
+* Artista/Pessoa Física
+* Artistas ou CRM
+
+==================================================
+CAMPOS DAS ENTIDADES
+====================
+
+Pessoa Física:
+
+* nome
+* cpf
+* rg
+* endereço
+* nacionalidade
+* profissão
+* estado civil
+
+Pessoa Jurídica:
+
+* razão social
+* cnpj
+* endereço
+* representante legal
+* cpf representante
+* rg representante
+
+Artista:
+
+* nome artístico
+* nome civil
+* cpf
+* rg
+
+==================================================
+ETAPA 3 — VARIÁVEIS DINÂMICAS
+=============================
+
+REMOVER TODOS os campos financeiros hardcoded.
+
+NÃO utilizar mais:
+
+* requires_royalties
+* requires_fixed_value
+* requires_advance
+* requires_financial_support
+
+Tudo deve vir do template.
+
+O sistema deve ler variáveis do manifest e renderizar automaticamente.
+
+==================================================
+EXEMPLO
+=======
+
+{{CONTRACT.DURATION_MONTHS}}
+{{FINANCIAL.REPRESENTANTE_PERCENTAGE}}
+
+devem gerar automaticamente inputs dinâmicos.
+
+==================================================
+TIPOS DE VARIÁVEIS
+==================
+
+Suportar:
+
+* text
+* textarea
+* number
+* percentage
+* currency
+* boolean
+* select
+* date
+
+==================================================
+ETAPA 4 — DOCUMENTO
+===================
+
+REMOVER conceito de:
+
+arquivo_url manual como fluxo principal.
+
+O documento deve ser:
+
+GERADO AUTOMATICAMENTE a partir do template.
+
+O sistema deve:
+
+* resolver placeholders
+* renderizar documento
+* gerar HTML
+* gerar preview
+* gerar PDF
+
+==================================================
+PREVIEW OBRIGATÓRIO
+===================
+
+Criar preview jurídico em tempo real.
+
+O preview deve:
+
+* atualizar automaticamente
+* destacar placeholders faltantes
+* destacar erros
+* mostrar variáveis não resolvidas
+
+==================================================
+EXEMPLO
+=======
+
+⚠ {{REPRESENTANTE.CNPJ}} não preenchido
+
+==================================================
+ETAPA 5 — SIGNATÁRIOS
+=====================
+
+Separar completamente:
+
+PARTES
+de
+SIGNATÁRIOS
+
+Nem toda parte assina.
+
+O sistema deve detectar automaticamente signatários a partir do template.
+
+==================================================
+ESTRUTURA DOS SIGNATÁRIOS
+=========================
+
+Cada signatário deve possuir:
+
+* role
+* nome
+* email
+* obrigatório
+* ordem assinatura
+* provider assinatura
+
+==================================================
+PROVIDERS SUPORTADOS
+====================
+
+APENAS:
+
+* DocuSign
+* Clicksign
+* Autentique
+
+NÃO adicionar outros providers.
+
+==================================================
+ETAPA 6 — CAMPOS DE ASSINATURA
+==============================
+
+Adicionar suporte obrigatório para:
+
+* assinatura
+* rubrica
+* data assinatura
+
+==================================================
+PLACEHOLDERS DE ASSINATURA
+==========================
+
+Suportar:
+
+{{SIGNATURE.REPRESENTANTE}}
+{{SIGNATURE.REPRESENTADO}}
+
+{{INITIALS.REPRESENTADO}}
+
+{{SIGN_DATE.REPRESENTANTE}}
+
+==================================================
+COMPORTAMENTO
+=============
+
+O sistema deve detectar automaticamente esses placeholders e gerar campos de assinatura vinculados ao signatário correto.
+
+==================================================
+POSICIONAMENTO
+==============
+
+Suportar:
+
+1. Anchors automáticos
+2. Posicionamento manual
+
+==================================================
+MODO AUTOMÁTICO
+===============
+
+Detectar placeholder no documento e criar automaticamente o campo.
+
+==================================================
+MODO MANUAL
+===========
+
+Usuário pode:
+
+* abrir preview PDF
+* clicar na página
+* adicionar assinatura
+* escolher signatário
+* mover campo
+* redimensionar campo
+
+==================================================
+ETAPA 7 — ASSINATURA ELETRÔNICA
+===============================
+
+Criar fluxo completo de envio para assinatura.
+
+Fluxo:
+
+Contrato
+→ Documento
+→ Envelope
+→ Provider
+→ Signatários
+→ Campos
+
+==================================================
+ENVELOPE
+========
+
+Cada envio deve possuir:
+
+* provider
+* external_id
+* status
+* documento
+* signatários
+* campos assinatura
+
+==================================================
+STATUS
+======
+
+Contrato:
+
+* draft
+* generated
+* awaiting_signature
+* partially_signed
+* signed
+* cancelled
+* expired
+
+Envelope:
+
+* processing
+* sent
+* viewed
+* partially_signed
+* completed
+* failed
+
+Signatário:
+
+* pending
+* viewed
+* signed
+* rejected
+
+==================================================
+WEBHOOKS
+========
+
+Preparar estrutura para sincronização via webhook com:
+
+* DocuSign
+* Clicksign
+* Autentique
+
+==================================================
+INTERFACE
+=========
+
+O modal NÃO deve mais ser um formulário vertical gigante.
+
+Transformar em:
+
+WIZARD PROFISSIONAL.
+
+==================================================
+ESTRUTURA VISUAL
+================
+
+Sidebar:
+
+1. Template
+2. Partes
+3. Variáveis
+4. Documento
+5. Assinaturas
+6. Revisão
+
+==================================================
+LAYOUT
+======
+
+ESQUERDA:
+
+* fluxo wizard
+* formulário dinâmico
+
+DIREITA:
+
+* preview jurídico em tempo real
+
+==================================================
+OBJETIVO FINAL
+==============
+
+O resultado final deve ser um sistema profissional semelhante a:
+
+* DocuSign
+* Clicksign
+* PandaDoc
+
+PORÉM especializado em contratos musicais e jurídicos dinâmicos.
+
+==================================================
+IMPORTANTE
+==========
+
+NÃO criar mais lógica hardcoded.
+
+NÃO criar mais IFs baseados em client_type.
+
+NÃO criar campos fixos de artista/empresa.
+
+TUDO deve ser derivado do template semântico já existente no sistema.
+
+A arquitetura obrigatoriamente deve ser:
+
+* dinâmica
+* escalável
+* desacoplada
+* orientada por templates
+* orientada por roles jurídicos
+* preparada para assinatura eletrônica profissional.
