@@ -1,10 +1,18 @@
 import { useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import VariableRegistry from "@/modules/contracts/pages/VariableRegistry";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { ScrollArea } from "@/shared/ui/scroll-area";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import {
   Sheet,
   SheetContent,
@@ -12,7 +20,16 @@ import {
   SheetTitle,
 } from "@/shared/ui/sheet";
 import {
-  Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X, ImageUp, Variable,
+  Loader2,
+  Sparkles,
+  Save,
+  Plus,
+  ChevronDown,
+  ChevronRight,
+  Check,
+  X,
+  ImageUp,
+  FileText,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -30,10 +47,24 @@ interface ContractImportWorkspaceProps {
   onSave: (data: TemplateContratoInsert) => void;
 }
 
-// ── Regex helpers ──────────────────────────────────────────────────────────
+// ── Constants ──────────────────────────────────────────────────────────────
 
 const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
 const CUSTOM_VAR_REGEX = /^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+$/i;
+
+const CONTRACT_CATEGORIES = [
+  { value: "gravacao", label: "Gravação" },
+  { value: "distribuicao", label: "Distribuição" },
+  { value: "licenciamento", label: "Licenciamento" },
+  { value: "cessao_direitos", label: "Cessão de Direitos" },
+  { value: "producao", label: "Produção" },
+  { value: "shows", label: "Shows e Eventos" },
+  { value: "gestao", label: "Gestão Artística" },
+  { value: "exclusividade", label: "Exclusividade" },
+  { value: "publicitario", label: "Publicitário" },
+  { value: "semantico", label: "Semântico (IA)" },
+  { value: "outros", label: "Outros" },
+] as const;
 
 // ── Highlighted preview ───────────────────────────────────────────────────
 
@@ -45,16 +76,15 @@ function HighlightedPreview({ text }: { text: string }) {
       </p>
     );
   }
-
   const parts = text.split(/(\{\{[^}]+\}\})/g);
   return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed font-mono">
+    <p className="whitespace-pre-wrap text-sm leading-relaxed">
       {parts.map((part, i) => {
         if (/^\{\{[^}]+\}\}$/.test(part)) {
           return (
             <span
               key={i}
-              className="text-primary bg-primary/10 rounded px-0.5 font-semibold"
+              className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-mono"
             >
               {part}
             </span>
@@ -85,7 +115,11 @@ function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
         className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
         data-testid={`button-vargroup-${label}`}
       >
-        {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
         {label}
       </button>
       {open && (
@@ -122,6 +156,174 @@ function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
   );
 }
 
+// ── Image upload zone ──────────────────────────────────────────────────────
+
+interface ImageUploadZoneProps {
+  label: string;
+  value: string | null;
+  onChange: (val: string | null) => void;
+  testIdPrefix: string;
+}
+
+function ImageUploadZone({
+  label,
+  value,
+  onChange,
+  testIdPrefix,
+}: ImageUploadZoneProps) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => onChange(reader.result as string);
+    reader.readAsDataURL(file);
+    e.target.value = "";
+  }
+
+  return (
+    <div className="flex-1 min-w-0 space-y-2">
+      <p className="text-xs font-medium text-foreground/70">{label}</p>
+      {value ? (
+        <div className="relative group rounded-lg border border-border overflow-hidden bg-muted/30">
+          <img
+            src={value}
+            alt={label}
+            className="w-full h-36 object-contain p-2"
+          />
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity">
+            <label
+              className="flex items-center gap-1.5 cursor-pointer rounded-md bg-background/90 border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
+              data-testid={`label-replace-${testIdPrefix}`}
+            >
+              <ImageUp className="h-3.5 w-3.5" />
+              Substituir
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                className="sr-only"
+                data-testid={`input-replace-${testIdPrefix}`}
+                onChange={handleFile}
+              />
+            </label>
+            <button
+              type="button"
+              onClick={() => onChange(null)}
+              className="flex items-center gap-1.5 rounded-md bg-destructive/90 px-2.5 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive transition-colors"
+              data-testid={`button-remove-${testIdPrefix}`}
+            >
+              <X className="h-3.5 w-3.5" />
+              Remover
+            </button>
+          </div>
+        </div>
+      ) : (
+        <label
+          className="flex flex-col items-center justify-center gap-2 cursor-pointer rounded-lg border-2 border-dashed border-border/60 bg-muted/20 h-36 hover:border-primary/40 hover:bg-primary/5 transition-all group"
+          data-testid={`label-upload-${testIdPrefix}`}
+        >
+          <div className="rounded-full bg-muted p-2.5 group-hover:bg-primary/10 transition-colors">
+            <ImageUp className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+          </div>
+          <span className="text-xs font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+            Carregar imagem
+          </span>
+          <span className="text-[10px] text-muted-foreground/60">
+            PNG, JPG ou WebP
+          </span>
+          <input
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="sr-only"
+            data-testid={`input-${testIdPrefix}`}
+            onChange={handleFile}
+          />
+        </label>
+      )}
+    </div>
+  );
+}
+
+// ── A4 Preview ────────────────────────────────────────────────────────────
+
+function A4Preview({
+  headerImage,
+  content,
+  footerImage,
+}: {
+  headerImage: string | null;
+  content: string;
+  footerImage: string | null;
+}) {
+  const isEmpty = !headerImage && !content.trim() && !footerImage;
+
+  if (isEmpty) {
+    return (
+      <div className="h-full flex flex-col items-center justify-center gap-3 text-center text-muted-foreground">
+        <FileText className="h-12 w-12 opacity-20" />
+        <div>
+          <p className="text-sm font-medium">Preview do documento</p>
+          <p className="text-xs mt-1 text-muted-foreground/70">
+            Preencha o conteúdo na aba Template para visualizar aqui.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="h-full overflow-y-auto bg-muted/30 py-8 px-4 flex justify-center">
+      <div
+        className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full"
+        style={{
+          maxWidth: "794px",
+          minHeight: "1123px",
+          padding: "60px 72px",
+        }}
+      >
+        {headerImage ? (
+          <img
+            src={headerImage}
+            alt="Cabeçalho"
+            className="w-full object-contain mb-8"
+            style={{ maxHeight: "72px" }}
+          />
+        ) : (
+          <div className="border-b border-gray-200 mb-8 pb-3 flex items-center justify-center">
+            <span className="text-gray-400 text-xs italic">
+              Sem imagem de cabeçalho
+            </span>
+          </div>
+        )}
+
+        <div className="flex-1">
+          {content.trim() ? (
+            <HighlightedPreview text={content} />
+          ) : (
+            <p className="text-gray-400 text-sm italic text-center pt-8">
+              Sem conteúdo ainda…
+            </p>
+          )}
+        </div>
+
+        {footerImage ? (
+          <img
+            src={footerImage}
+            alt="Rodapé"
+            className="w-full object-contain mt-8"
+            style={{ maxHeight: "52px" }}
+          />
+        ) : (
+          <div className="border-t border-gray-200 mt-8 pt-3 flex items-center justify-center">
+            <span className="text-gray-400 text-xs italic">
+              Sem imagem de rodapé
+            </span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── AI suggestion sheet ───────────────────────────────────────────────────
 
 interface AiSuggestion {
@@ -132,8 +334,12 @@ interface AiSuggestion {
   occurrenceIndex: number;
 }
 
-/** Replace the Nth (0-based) occurrence of `search` in `str` with `replacement`. */
-function replaceNthOccurrence(str: string, search: string, replacement: string, n: number): string {
+function replaceNthOccurrence(
+  str: string,
+  search: string,
+  replacement: string,
+  n: number,
+): string {
   let count = 0;
   let pos = 0;
   while (pos < str.length) {
@@ -157,7 +363,11 @@ interface AiSuggestionsSheetProps {
 }
 
 function AiSuggestionsSheet({
-  open, onOpenChange, suggestions, onAccept, onIgnore,
+  open,
+  onOpenChange,
+  suggestions,
+  onAccept,
+  onIgnore,
 }: AiSuggestionsSheetProps) {
   const pending = suggestions.filter((s) => s.accepted === null);
   const accepted = suggestions.filter((s) => s.accepted === true);
@@ -239,7 +449,9 @@ function AiSuggestionsSheet({
                       className="rounded-lg border border-border/40 bg-muted/20 p-2.5 flex items-center gap-2 opacity-60"
                     >
                       <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      <span className="font-mono text-xs text-primary">{s.placeholder}</span>
+                      <span className="font-mono text-xs text-primary">
+                        {s.placeholder}
+                      </span>
                     </div>
                   ))}
                 </div>
@@ -262,15 +474,16 @@ export function ContractImportWorkspace({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [nome, setNome] = useState("");
+  const [categoria, setCategoria] = useState("semantico");
   const [text, setText] = useState("");
   const [search, setSearch] = useState("");
   const [customVar, setCustomVar] = useState("");
+  const [activeTab, setActiveTab] = useState("template");
 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiSheetOpen, setAiSheetOpen] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<AiSuggestion[]>([]);
 
-  const [varRegistryOpen, setVarRegistryOpen] = useState(false);
   const [headerImage, setHeaderImage] = useState<string | null>(null);
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
@@ -278,23 +491,27 @@ export function ContractImportWorkspace({
 
   // ── Insert at cursor ────────────────────────────────────────────────────
 
-  const insertAtCursor = useCallback((snippet: string) => {
-    const el = textareaRef.current;
-    if (!el) {
-      setText((prev) => prev + snippet);
-      return;
-    }
-    const start = el.selectionStart ?? text.length;
-    const end = el.selectionEnd ?? text.length;
-    const next = text.slice(0, start) + snippet + text.slice(end);
-    setText(next);
-    // Restore cursor after React re-render
-    requestAnimationFrame(() => {
-      el.focus();
-      const pos = start + snippet.length;
-      el.setSelectionRange(pos, pos);
-    });
-  }, [text]);
+  const insertAtCursor = useCallback(
+    (snippet: string) => {
+      const el = textareaRef.current;
+      if (!el) {
+        setText((prev) => prev + snippet);
+        toast.success(`${snippet} inserido`);
+        return;
+      }
+      const start = el.selectionStart ?? text.length;
+      const end = el.selectionEnd ?? text.length;
+      const next = text.slice(0, start) + snippet + text.slice(end);
+      setText(next);
+      toast.success(`${snippet} inserido`);
+      requestAnimationFrame(() => {
+        el.focus();
+        const pos = start + snippet.length;
+        el.setSelectionRange(pos, pos);
+      });
+    },
+    [text],
+  );
 
   // ── Create custom variable ──────────────────────────────────────────────
 
@@ -309,7 +526,6 @@ export function ContractImportWorkspace({
     addVariable(raw, group, field);
     insertAtCursor(placeholder);
     setCustomVar("");
-    toast.success(`${placeholder} criado e inserido`);
   }
 
   // ── AI suggestions ──────────────────────────────────────────────────────
@@ -322,20 +538,20 @@ export function ContractImportWorkspace({
     setAiLoading(true);
     try {
       const result = await parseContractText(text);
-      // Track per-originalText occurrence counter so each suggestion targets
-      // its specific occurrence (not always the first substring match).
       const occurrenceCounters = new Map<string, number>();
-      const suggestions: AiSuggestion[] = result.variables.map((v: SemanticVariable) => {
-        const seen = occurrenceCounters.get(v.originalText) ?? 0;
-        occurrenceCounters.set(v.originalText, seen + 1);
-        return {
-          id: v.id,
-          originalText: v.originalText,
-          placeholder: v.placeholder,
-          accepted: null,
-          occurrenceIndex: seen,
-        };
-      });
+      const suggestions: AiSuggestion[] = result.variables.map(
+        (v: SemanticVariable) => {
+          const seen = occurrenceCounters.get(v.originalText) ?? 0;
+          occurrenceCounters.set(v.originalText, seen + 1);
+          return {
+            id: v.id,
+            originalText: v.originalText,
+            placeholder: v.placeholder,
+            accepted: null,
+            occurrenceIndex: seen,
+          };
+        },
+      );
       setAiSuggestions(suggestions);
       setAiSheetOpen(true);
       if (suggestions.length === 0) {
@@ -358,7 +574,9 @@ export function ContractImportWorkspace({
       suggestion.occurrenceIndex,
     );
     if (next === text) {
-      toast.warning("Texto original não encontrado — pode já ter sido substituído");
+      toast.warning(
+        "Texto original não encontrado — pode já ter sido substituído",
+      );
     } else {
       setText(next);
     }
@@ -386,13 +604,18 @@ export function ContractImportWorkspace({
     }
     const placeholders = [
       ...new Set(
-        Array.from(text.matchAll(PLACEHOLDER_REGEX)).map((m) => `{{${m[1].toUpperCase()}}}`),
+        Array.from(text.matchAll(PLACEHOLDER_REGEX)).map(
+          (m) => `{{${m[1].toUpperCase()}}}`,
+        ),
       ),
     ];
-    const manifest = { variables: placeholders, generatedAt: new Date().toISOString() };
+    const manifest = {
+      variables: placeholders,
+      generatedAt: new Date().toISOString(),
+    };
     onSave({
       nome: nome.trim(),
-      tipo_servico: "semantico",
+      tipo_servico: categoria,
       conteudo: text,
       ativo: true,
       descricao: `${placeholders.length} variáveis`,
@@ -407,6 +630,7 @@ export function ContractImportWorkspace({
 
   function handleClose() {
     setNome("");
+    setCategoria("semantico");
     setText("");
     setSearch("");
     setCustomVar("");
@@ -414,13 +638,24 @@ export function ContractImportWorkspace({
     setAiSheetOpen(false);
     setHeaderImage(null);
     setFooterImage(null);
+    setActiveTab("template");
     onOpenChange(false);
   }
 
-  // ── Registry vars filtered ──────────────────────────────────────────────
+  // ── Filtered + grouped registry vars ───────────────────────────────────
 
-  const filteredRegistryVars = registryVars.filter((v) =>
-    !search || v.placeholder.toLowerCase().includes(search.toLowerCase()),
+  const filteredRegistryVars = registryVars.filter(
+    (v) =>
+      !search || v.placeholder.toLowerCase().includes(search.toLowerCase()),
+  );
+
+  const groupedVars = Array.from(
+    filteredRegistryVars.reduce((map, v) => {
+      const key = v.group || "Outros";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(v);
+      return map;
+    }, new Map<string, typeof filteredRegistryVars>()),
   );
 
   // ── Render ──────────────────────────────────────────────────────────────
@@ -429,230 +664,279 @@ export function ContractImportWorkspace({
     <>
       <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); }}>
         <DialogContent
-          className="max-w-[95vw] w-[1200px] h-[90vh] p-0 gap-0 flex flex-col overflow-hidden"
+          className="max-w-[1100px] w-[95vw] h-[88vh] p-0 gap-0 flex flex-col overflow-hidden"
           data-testid="dialog-contract-workspace"
         >
-          {/* ── Header ── */}
-          <div className="flex items-center gap-3 px-4 py-3 border-b shrink-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={handleClose}
-              data-testid="button-workspace-back"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
+          <DialogTitle className="sr-only">Novo Template de Contrato</DialogTitle>
 
-            <div className="flex-1 min-w-0">
-              <Input
-                placeholder="Nome do template…"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                className="h-8 text-sm font-medium border-none shadow-none focus-visible:ring-0 px-0 bg-transparent"
-                data-testid="input-template-name"
-              />
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setVarRegistryOpen(true)}
-                data-testid="button-open-var-registry"
-              >
-                <Variable className="h-3.5 w-3.5 mr-1.5" />
-                Variáveis
-              </Button>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAiSuggest}
-                disabled={aiLoading}
-                data-testid="button-ai-suggest"
-              >
-                {aiLoading ? (
-                  <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
-                ) : (
-                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                )}
-                IA
-              </Button>
-
-              <Button
-                size="sm"
-                onClick={handleSave}
-                data-testid="button-save-template"
-              >
-                <Save className="h-3.5 w-3.5 mr-1.5" />
-                Guardar
-              </Button>
-            </div>
-          </div>
-
-          {/* ── Body ── */}
-          <div className="flex flex-1 overflow-hidden">
-            {/* ── Left: editor + preview ── */}
-            <div className="flex flex-col flex-1 overflow-hidden border-r">
-              {/* Editor */}
-              <div className="flex-1 overflow-hidden flex flex-col p-4 gap-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider shrink-0">
-                  Editor
-                </Label>
-                <textarea
-                  ref={textareaRef}
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                  placeholder={
-                    "Escreva ou cole aqui o texto do contrato.\n\n" +
-                    "Use {{GRUPO.CAMPO}} para inserir placeholders,\n" +
-                    "ou clique [+] no painel de variáveis à direita."
-                  }
-                  className="flex-1 w-full resize-none rounded-md border bg-background px-3 py-2.5 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
-                  data-testid="textarea-contract-editor"
-                />
-              </div>
-
-              {/* Preview */}
-              <div className="shrink-0 border-t max-h-52 overflow-y-auto bg-muted/20 p-4">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
-                  Preview
-                </Label>
-                <HighlightedPreview text={text} />
-              </div>
-            </div>
-
-            {/* ── Right: variable panel ── */}
-            <div className="w-72 flex flex-col overflow-hidden bg-background border-l">
-              {/* Search */}
-              <div className="px-3 pt-3 pb-2 shrink-0">
-                <Input
-                  placeholder="Pesquisar variáveis…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="h-8 text-xs"
-                  data-testid="input-search-vars"
-                />
-              </div>
-
-              {/* Variable list — grouped by v.group */}
-              <ScrollArea className="flex-1 px-3">
-                {filteredRegistryVars.length === 0 ? (
-                  <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
-                    {search
-                      ? "Nenhuma variável encontrada"
-                      : "Nenhuma variável criada. Aceda a Contratos → Variáveis para criar."}
-                  </p>
-                ) : (
-                  <div className="pt-1">
-                    {Array.from(
-                      filteredRegistryVars.reduce((map, v) => {
-                        const key = v.group || "Outros";
-                        if (!map.has(key)) map.set(key, []);
-                        map.get(key)!.push(v);
-                        return map;
-                      }, new Map<string, typeof filteredRegistryVars>()),
-                    ).map(([groupLabel, groupVars]) => (
-                      <RegistryVarGroup
-                        key={groupLabel}
-                        label={groupLabel}
-                        vars={groupVars}
-                        onInsert={insertAtCursor}
-                      />
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-
-              {/* Custom variable creator */}
-              <div className="shrink-0 border-t px-3 py-3 space-y-2">
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                  Nova variável custom
-                </Label>
-                <div className="flex gap-1.5">
-                  <Input
-                    placeholder="GRUPO.CAMPO"
-                    value={customVar}
-                    onChange={(e) => setCustomVar(e.target.value)}
-                    onKeyDown={(e) => { if (e.key === "Enter") handleCreateCustomVar(); }}
-                    className="h-7 text-xs font-mono"
-                    data-testid="input-custom-var"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-7 px-2 text-xs shrink-0"
-                    onClick={handleCreateCustomVar}
-                    data-testid="button-create-custom-var"
-                  >
-                    Criar
-                  </Button>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Ex: SHOW.RIDER · Formato: GRUPO.CAMPO
+          <Tabs
+            value={activeTab}
+            onValueChange={setActiveTab}
+            className="flex flex-col flex-1 overflow-hidden"
+          >
+            {/* ── Modal header (fixed) ── */}
+            <div className="shrink-0 border-b bg-card">
+              <div className="px-6 pt-5 pb-3 pr-14">
+                <h2 className="text-lg font-semibold tracking-tight">
+                  Novo Template de Contrato
+                </h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Crie templates reutilizáveis para geração automática de
+                  contratos.
                 </p>
               </div>
-
-              {/* Header / Footer image upload */}
-              <div className="shrink-0 border-t px-3 py-3 space-y-3">
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                  Cabeçalho / Rodapé
-                </Label>
-                {(["header", "footer"] as const).map((kind) => {
-                  const img = kind === "header" ? headerImage : footerImage;
-                  const setImg = kind === "header" ? setHeaderImage : setFooterImage;
-                  const label = kind === "header" ? "Cabeçalho" : "Rodapé";
-                  const testId = kind === "header" ? "input-header-image" : "input-footer-image";
-                  return (
-                    <div key={kind} className="space-y-1.5">
-                      <p className="text-[10px] text-muted-foreground font-medium">{label}</p>
-                      {img ? (
-                        <div className="relative rounded border border-border overflow-hidden">
-                          <img src={img} alt={label} className="w-full h-16 object-contain bg-muted/20" />
-                          <button
-                            type="button"
-                            onClick={() => setImg(null)}
-                            className="absolute top-1 right-1 h-5 w-5 rounded-full bg-background/90 border border-border flex items-center justify-center hover:bg-destructive/10 hover:text-destructive transition-colors"
-                            title={`Remover ${label}`}
-                            data-testid={`button-remove-${kind}-image`}
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ) : (
-                        <label
-                          className="flex items-center gap-2 cursor-pointer rounded border border-dashed border-border px-2 py-2 text-[11px] text-muted-foreground hover:border-primary/40 hover:text-foreground transition-colors"
-                          data-testid={`label-upload-${kind}-image`}
-                        >
-                          <ImageUp className="h-3.5 w-3.5 shrink-0" />
-                          <span>Carregar imagem…</span>
-                          <input
-                            type="file"
-                            accept="image/png,image/jpeg,image/webp"
-                            className="sr-only"
-                            data-testid={testId}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (!file) return;
-                              const reader = new FileReader();
-                              reader.onload = () => setImg(reader.result as string);
-                              reader.readAsDataURL(file);
-                              e.target.value = "";
-                            }}
-                          />
-                        </label>
-                      )}
-                    </div>
-                  );
-                })}
+              <div className="px-6">
+                <TabsList className="h-auto bg-transparent p-0 gap-0 rounded-none">
+                  {(
+                    [
+                      { value: "template", label: "Template" },
+                      { value: "variaveis", label: "Variáveis" },
+                      { value: "preview", label: "Preview" },
+                    ] as const
+                  ).map((tab) => (
+                    <TabsTrigger
+                      key={tab.value}
+                      value={tab.value}
+                      className="rounded-none px-5 py-2.5 text-sm font-medium border-b-2 border-transparent text-muted-foreground hover:text-foreground transition-colors data-[state=active]:text-primary data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                      data-testid={`tab-${tab.value}`}
+                    >
+                      {tab.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
               </div>
             </div>
-          </div>
+
+            {/* ── Tab: Template ── */}
+            <TabsContent
+              value="template"
+              className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
+            >
+              {/* Informações Básicas */}
+              <div className="shrink-0 border-b px-6 py-4">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Informações Básicas
+                </p>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ws-nome" className="text-xs">
+                      Nome do Template
+                    </Label>
+                    <Input
+                      id="ws-nome"
+                      placeholder="Ex: Contrato de Gravação — Exclusivo"
+                      value={nome}
+                      onChange={(e) => setNome(e.target.value)}
+                      className="h-9"
+                      data-testid="input-template-name"
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="ws-categoria" className="text-xs">
+                      Categoria do Template
+                    </Label>
+                    <Select value={categoria} onValueChange={setCategoria}>
+                      <SelectTrigger
+                        id="ws-categoria"
+                        className="h-9"
+                        data-testid="select-template-category"
+                      >
+                        <SelectValue placeholder="Selecionar categoria…" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONTRACT_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat.value} value={cat.value}>
+                            {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Identidade Visual */}
+              <div className="shrink-0 border-b px-6 py-4">
+                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                  Identidade Visual do Documento
+                </p>
+                <div className="flex gap-4">
+                  <ImageUploadZone
+                    label="Imagem de Cabeçalho"
+                    value={headerImage}
+                    onChange={setHeaderImage}
+                    testIdPrefix="header-image"
+                  />
+                  <ImageUploadZone
+                    label="Imagem de Rodapé"
+                    value={footerImage}
+                    onChange={setFooterImage}
+                    testIdPrefix="footer-image"
+                  />
+                </div>
+              </div>
+
+              {/* Editor + right panel */}
+              <div className="flex flex-1 overflow-hidden">
+                {/* Editor */}
+                <div className="flex-1 flex flex-col overflow-hidden p-4 gap-2.5">
+                  <div className="flex items-center gap-2 shrink-0">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
+                      Conteúdo do Contrato
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAiSuggest}
+                      disabled={aiLoading}
+                      className="h-7 text-xs"
+                      data-testid="button-ai-suggest"
+                    >
+                      {aiLoading ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                      )}
+                      Analisar com IA
+                    </Button>
+                  </div>
+                  <textarea
+                    ref={textareaRef}
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                    placeholder={
+                      "Escreva o conteúdo do contrato…\n\n" +
+                      "Use {{GRUPO.CAMPO}} para inserir variáveis dinâmicas,\n" +
+                      "ou clique no ícone [+] no painel de variáveis à direita."
+                    }
+                    className="flex-1 w-full resize-none rounded-md border bg-background/60 px-4 py-3.5 text-sm leading-relaxed focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                    data-testid="textarea-contract-editor"
+                  />
+                </div>
+
+                {/* Variable side panel */}
+                <div className="w-72 flex flex-col overflow-hidden border-l bg-background/40">
+                  <div className="px-3 pt-3 pb-2 shrink-0 border-b">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                      Variáveis do Registo
+                    </p>
+                    <Input
+                      placeholder="Pesquisar variáveis…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="h-7 text-xs"
+                      data-testid="input-search-vars"
+                    />
+                  </div>
+
+                  <ScrollArea className="flex-1 px-3 py-2">
+                    {filteredRegistryVars.length === 0 ? (
+                      <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
+                        {search
+                          ? "Nenhuma variável encontrada"
+                          : "Aceda à aba Variáveis para criar placeholders."}
+                      </p>
+                    ) : (
+                      <div className="pt-1">
+                        {groupedVars.map(([groupLabel, groupVarsList]) => (
+                          <RegistryVarGroup
+                            key={groupLabel}
+                            label={groupLabel}
+                            vars={groupVarsList}
+                            onInsert={(placeholder) => {
+                              insertAtCursor(placeholder);
+                              setActiveTab("template");
+                            }}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </ScrollArea>
+
+                  {/* Quick variable creator */}
+                  <div className="shrink-0 border-t px-3 py-3 space-y-2">
+                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                      Variável Rápida
+                    </Label>
+                    <div className="flex gap-1.5">
+                      <Input
+                        placeholder="GRUPO.CAMPO"
+                        value={customVar}
+                        onChange={(e) => setCustomVar(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleCreateCustomVar();
+                        }}
+                        className="h-7 text-xs font-mono"
+                        data-testid="input-custom-var"
+                      />
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 px-2 text-xs shrink-0"
+                        onClick={handleCreateCustomVar}
+                        data-testid="button-create-custom-var"
+                      >
+                        Criar
+                      </Button>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Ex: SHOW.RIDER — Formato: GRUPO.CAMPO
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </TabsContent>
+
+            {/* ── Tab: Variáveis ── */}
+            <TabsContent
+              value="variaveis"
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
+            >
+              <VariableRegistry asModal onClose={() => {}} />
+            </TabsContent>
+
+            {/* ── Tab: Preview ── */}
+            <TabsContent
+              value="preview"
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
+            >
+              <A4Preview
+                headerImage={headerImage}
+                content={text}
+                footerImage={footerImage}
+              />
+            </TabsContent>
+
+            {/* ── Footer (fixed) ── */}
+            <div className="shrink-0 border-t px-6 py-3 flex items-center justify-between bg-card">
+              <span className="text-xs text-muted-foreground">
+                Alterações salvas automaticamente
+              </span>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleClose}
+                  data-testid="button-workspace-cancel"
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={handleSave}
+                  disabled={aiLoading}
+                  data-testid="button-save-template"
+                >
+                  <Save className="h-3.5 w-3.5 mr-1.5" />
+                  Salvar Template
+                </Button>
+              </div>
+            </div>
+          </Tabs>
         </DialogContent>
       </Dialog>
 
-      {/* AI suggestions side sheet */}
+      {/* AI suggestions side sheet — outside Dialog to avoid stacking context */}
       <AiSuggestionsSheet
         open={aiSheetOpen}
         onOpenChange={setAiSheetOpen}
@@ -660,17 +944,6 @@ export function ContractImportWorkspace({
         onAccept={handleAcceptSuggestion}
         onIgnore={handleIgnoreSuggestion}
       />
-
-      {/* Variable registry modal */}
-      <Dialog open={varRegistryOpen} onOpenChange={setVarRegistryOpen}>
-        <DialogContent
-          className="max-w-5xl w-[90vw] h-[88vh] p-0 gap-0 flex flex-col overflow-hidden"
-          data-testid="dialog-variable-registry"
-        >
-          <DialogTitle className="sr-only">Variáveis de Template</DialogTitle>
-          <VariableRegistry asModal onClose={() => setVarRegistryOpen(false)} />
-        </DialogContent>
-      </Dialog>
     </>
   );
 }
