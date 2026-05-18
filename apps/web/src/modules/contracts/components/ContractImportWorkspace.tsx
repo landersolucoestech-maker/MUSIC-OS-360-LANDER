@@ -43,7 +43,6 @@ import type {
 import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
-import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -374,12 +373,8 @@ export function ContractImportWorkspace({
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
   const { variables: registryVars, addVariable } = useVariableRegistry();
-  const { categories: _legacyCategories } = useCategoryRegistry();
-  const { allServiceTypes: rawServiceTypes } = useContractServiceTypes();
-  const dynamicCategories = rawServiceTypes
-    .filter((t) => t.active)
-    .sort((a, b) => a.sort_order - b.sort_order)
-    .map((t) => ({ value: t.slug, label: t.name }));
+  const { categories: registryCategories } = useCategoryRegistry();
+  const dynamicCategories = registryCategories.map((c) => ({ value: c.value, label: c.label }));
 
   // Populate form when template changes (edit mode)
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -70,14 +70,44 @@ const ContractForm = ({
   const { serviceTypes, allServiceTypes } = useContractServiceTypes(clientTypeValue ?? null);
   const { templates } = useTemplatesContratos();
 
+  // Normaliza slugs da CategoryRegistry (e legados) para slugs CST equivalentes.
+  // O workspace guarda tipo_servico com slugs da CategoryRegistry (ex: "empresariamento_360").
+  // Esta função converte-os para o slug CST correspondente para que o filtro funcione.
+  const normalizeToCst = useCallback((slug: string | undefined | null): string | null => {
+    if (!slug) return null;
+    const CST_VALID = new Set([
+      "empresariamento","suporte_financeiro","gestao","agenciamento","edicao",
+      "distribuicao","marketing","producao_musical","producao_audiovisual",
+      "licenciamento","publicidade","parceria","shows","outros",
+    ]);
+    if (CST_VALID.has(slug)) return slug;
+    const MAP: Record<string, string> = {
+      exclusividade: "agenciamento",
+      gravacao: "producao_musical",
+      cessao_direitos: "licenciamento",
+      producao: "producao_musical",
+      publicitario: "publicidade",
+      semantico: "outros",
+    };
+    if (MAP[slug]) return MAP[slug];
+    // prefix match: "empresariamento_360" → "empresariamento"
+    for (const valid of CST_VALID) {
+      if (slug.startsWith(valid) || valid.startsWith(slug.replace(/_\d+$/, ""))) return valid;
+    }
+    return "outros";
+  }, []);
+
   const templateSlugs = useMemo(
     () =>
       new Set(
         templates
-          .map((t) => (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string)
-          .filter(Boolean),
+          .map((t) => {
+            const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+            return normalizeToCst(raw);
+          })
+          .filter((s): s is string => Boolean(s)),
       ),
-    [templates],
+    [templates, normalizeToCst],
   );
 
   const typesWithTemplates = useMemo(
