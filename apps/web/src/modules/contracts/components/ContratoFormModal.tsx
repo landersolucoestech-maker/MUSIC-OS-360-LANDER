@@ -26,6 +26,7 @@ import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/
 import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
 import type { ClientType } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
+import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { UserPlus, X } from "lucide-react";
 
 const STATUS_LABELS: Record<string, string> = {
@@ -114,6 +115,23 @@ const ContractForm = ({
     () => serviceTypes.filter((t) => templateSlugs.has(t.slug)),
     [serviceTypes, templateSlugs],
   );
+
+  // Mapa CST slug → label da CategoryRegistry do utilizador.
+  // Permite mostrar "Empresariamento 360" (CategoryRegistry) em vez de "Empresariamento" (CST).
+  const { categories: registryCategories } = useCategoryRegistry();
+  const cstToLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of templates) {
+      const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+      if (!raw) continue;
+      const cstSlug = normalizeToCst(raw);
+      if (!cstSlug) continue;
+      // tenta encontrar o label na CategoryRegistry pelo slug do template
+      const cat = registryCategories.find((c) => c.value === raw);
+      if (cat) map.set(cstSlug, cat.label);
+    }
+    return map;
+  }, [templates, registryCategories, normalizeToCst]);
 
   const selectedType = allServiceTypes.find((t) => t.slug === serviceTypeValue);
   const legacyServiceTypeLabel =
@@ -209,7 +227,9 @@ const ContractForm = ({
                     </div>
                   ) : (
                     typesWithTemplates.map((t) => (
-                      <SelectItem key={t.slug} value={t.slug}>{t.name}</SelectItem>
+                      <SelectItem key={t.slug} value={t.slug}>
+                        {cstToLabel.get(t.slug) ?? t.name}
+                      </SelectItem>
                     ))
                   )}
                 </SelectContent>
