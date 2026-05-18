@@ -495,19 +495,45 @@ function patchMockData(data: Record<string, unknown[]>): void {
     ] as unknown[];
   }
 
-  // templates_contratos — patch: adiciona tipo_servico (CST slug) aos templates seed que
-  // foram armazenados sem esse campo (ou com o campo vazio / com slug de CategoryRegistry).
-  const templatesMigrationMap: Record<string, string> = {
-    "tmpl-001": "agenciamento",
-    "tmpl-002": "distribuicao",
-    "tmpl-003": "licenciamento",
+  // templates_contratos — patch: normaliza tipo_servico de qualquer template para slug CST válido.
+  // Cobre slugs antigos do CategoryRegistry, slugs compostos (empresariamento_360, etc.)
+  // e qualquer template sem o campo tipo_servico.
+  const CST_VALID_SLUGS = new Set([
+    "empresariamento","suporte_financeiro","gestao","agenciamento","edicao",
+    "distribuicao","marketing","producao_musical","producao_audiovisual",
+    "licenciamento","publicidade","parceria","shows","outros",
+  ]);
+  // mapa de normalização: slug legado/inválido → slug CST
+  const CST_NORMALIZE: Record<string, string> = {
+    exclusividade: "agenciamento",
+    empresariamento_360: "empresariamento",
+    gravacao: "producao_musical",
+    cessao_direitos: "licenciamento",
+    producao: "producao_musical",
+    publicitario: "publicidade",
+    semantico: "outros",
+    // slugs que já são válidos mas foram salvos com acento ou variante
+    distribuição: "distribuicao",
+    licença: "licenciamento",
   };
+  function normalizeCstSlug(slug: string | undefined | null): string {
+    if (!slug) return "outros";
+    if (CST_VALID_SLUGS.has(slug)) return slug;
+    if (CST_NORMALIZE[slug]) return CST_NORMALIZE[slug];
+    // tenta prefix match: "empresariamento_360" → "empresariamento"
+    for (const valid of CST_VALID_SLUGS) {
+      if (slug.startsWith(valid) || valid.startsWith(slug)) return valid;
+    }
+    return "outros";
+  }
   const templatesCaContratos = data["templates_contratos"] as Array<Record<string, unknown>> | undefined;
   if (templatesCaContratos) {
     for (const t of templatesCaContratos) {
-      const mapped = templatesMigrationMap[t.id as string];
-      if (mapped && !t.tipo_servico) {
-        t.tipo_servico = mapped;
+      const current = t.tipo_servico as string | undefined;
+      if (!current || !CST_VALID_SLUGS.has(current)) {
+        // usa tipo_servico inválido ou tipo legado como fonte para normalizar
+        const source = current || (t.tipo as string | undefined);
+        t.tipo_servico = normalizeCstSlug(source);
       }
     }
   }
