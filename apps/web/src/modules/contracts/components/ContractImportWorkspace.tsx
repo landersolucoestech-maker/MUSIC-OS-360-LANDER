@@ -708,74 +708,74 @@ export function ContractImportWorkspace({
             {/* ── Tab: Template ── */}
             <TabsContent
               value="template"
-              className="flex-1 flex flex-col overflow-hidden mt-0 data-[state=inactive]:hidden"
+              className="flex-1 flex overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
-              {/* Informações Básicas */}
-              <div className="shrink-0 border-b px-6 py-4">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Informações Básicas
-                </p>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ws-nome" className="text-xs">
-                      Nome do Template
-                    </Label>
-                    <Input
-                      id="ws-nome"
-                      placeholder="Ex: Contrato de Gravação — Exclusivo"
-                      value={nome}
-                      onChange={(e) => setNome(e.target.value)}
-                      className="h-9"
-                      data-testid="input-template-name"
+              {/* ── Left column: form sections + editor ── */}
+              <div className="flex-1 flex flex-col overflow-hidden border-r">
+                {/* Informações Básicas */}
+                <div className="shrink-0 border-b px-6 py-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Informações Básicas
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ws-nome" className="text-xs">
+                        Nome do Template
+                      </Label>
+                      <Input
+                        id="ws-nome"
+                        placeholder="Ex: Contrato de Gravação — Exclusivo"
+                        value={nome}
+                        onChange={(e) => setNome(e.target.value)}
+                        className="h-9"
+                        data-testid="input-template-name"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="ws-categoria" className="text-xs">
+                        Categoria do Template
+                      </Label>
+                      <Select value={categoria} onValueChange={setCategoria}>
+                        <SelectTrigger
+                          id="ws-categoria"
+                          className="h-9"
+                          data-testid="select-template-category"
+                        >
+                          <SelectValue placeholder="Selecionar categoria…" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {dynamicCategories.map((cat) => (
+                            <SelectItem key={cat.value} value={cat.value}>
+                              {cat.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Identidade Visual */}
+                <div className="shrink-0 border-b px-6 py-4">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    Identidade Visual do Documento
+                  </p>
+                  <div className="flex gap-4">
+                    <ImageUploadZone
+                      label="Imagem de Cabeçalho"
+                      value={headerImage}
+                      onChange={setHeaderImage}
+                      testIdPrefix="header-image"
+                    />
+                    <ImageUploadZone
+                      label="Imagem de Rodapé"
+                      value={footerImage}
+                      onChange={setFooterImage}
+                      testIdPrefix="footer-image"
                     />
                   </div>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="ws-categoria" className="text-xs">
-                      Categoria do Template
-                    </Label>
-                    <Select value={categoria} onValueChange={setCategoria}>
-                      <SelectTrigger
-                        id="ws-categoria"
-                        className="h-9"
-                        data-testid="select-template-category"
-                      >
-                        <SelectValue placeholder="Selecionar categoria…" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {dynamicCategories.map((cat) => (
-                          <SelectItem key={cat.value} value={cat.value}>
-                            {cat.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
                 </div>
-              </div>
 
-              {/* Identidade Visual */}
-              <div className="shrink-0 border-b px-6 py-4">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                  Identidade Visual do Documento
-                </p>
-                <div className="flex gap-4">
-                  <ImageUploadZone
-                    label="Imagem de Cabeçalho"
-                    value={headerImage}
-                    onChange={setHeaderImage}
-                    testIdPrefix="header-image"
-                  />
-                  <ImageUploadZone
-                    label="Imagem de Rodapé"
-                    value={footerImage}
-                    onChange={setFooterImage}
-                    testIdPrefix="footer-image"
-                  />
-                </div>
-              </div>
-
-              {/* Editor + right panel */}
-              <div className="flex flex-1 overflow-hidden">
                 {/* Editor */}
                 <div className="flex-1 flex flex-col overflow-hidden p-4 gap-2.5">
                   <div className="flex items-center gap-2 shrink-0">
@@ -811,76 +811,76 @@ export function ContractImportWorkspace({
                     data-testid="textarea-contract-editor"
                   />
                 </div>
+              </div>
 
-                {/* Variable side panel */}
-                <div className="w-72 flex flex-col overflow-hidden border-l bg-background/40">
-                  <div className="px-3 pt-3 pb-2 shrink-0 border-b">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                      Variáveis do Registo
+              {/* ── Right column: Variable panel (full modal height) ── */}
+              <div className="w-72 shrink-0 flex flex-col overflow-hidden bg-background/40">
+                <div className="px-3 pt-3 pb-2 shrink-0 border-b">
+                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Variáveis do Registo
+                  </p>
+                  <Input
+                    placeholder="Pesquisar variáveis…"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="h-7 text-xs"
+                    data-testid="input-search-vars"
+                  />
+                </div>
+
+                <ScrollArea className="flex-1 px-3 py-2">
+                  {filteredRegistryVars.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
+                      {search
+                        ? "Nenhuma variável encontrada"
+                        : "Aceda à aba Variáveis para criar placeholders."}
                     </p>
-                    <Input
-                      placeholder="Pesquisar variáveis…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="h-7 text-xs"
-                      data-testid="input-search-vars"
-                    />
-                  </div>
-
-                  <ScrollArea className="flex-1 px-3 py-2">
-                    {filteredRegistryVars.length === 0 ? (
-                      <p className="text-[11px] text-muted-foreground/60 italic px-1 py-4 text-center">
-                        {search
-                          ? "Nenhuma variável encontrada"
-                          : "Aceda à aba Variáveis para criar placeholders."}
-                      </p>
-                    ) : (
-                      <div className="pt-1">
-                        {groupedVars.map(([groupLabel, groupVarsList]) => (
-                          <RegistryVarGroup
-                            key={groupLabel}
-                            label={groupLabel}
-                            vars={groupVarsList}
-                            onInsert={(placeholder) => {
-                              insertAtCursor(placeholder);
-                              setActiveTab("template");
-                            }}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-
-                  {/* Quick variable creator */}
-                  <div className="shrink-0 border-t px-3 py-3 space-y-2">
-                    <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                      Variável Rápida
-                    </Label>
-                    <div className="flex gap-1.5">
-                      <Input
-                        placeholder="GRUPO.CAMPO"
-                        value={customVar}
-                        onChange={(e) => setCustomVar(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleCreateCustomVar();
-                        }}
-                        className="h-7 text-xs font-mono"
-                        data-testid="input-custom-var"
-                      />
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2 text-xs shrink-0"
-                        onClick={handleCreateCustomVar}
-                        data-testid="button-create-custom-var"
-                      >
-                        Criar
-                      </Button>
+                  ) : (
+                    <div className="pt-1">
+                      {groupedVars.map(([groupLabel, groupVarsList]) => (
+                        <RegistryVarGroup
+                          key={groupLabel}
+                          label={groupLabel}
+                          vars={groupVarsList}
+                          onInsert={(placeholder) => {
+                            insertAtCursor(placeholder);
+                            setActiveTab("template");
+                          }}
+                        />
+                      ))}
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Ex: SHOW.RIDER — Formato: GRUPO.CAMPO
-                    </p>
+                  )}
+                </ScrollArea>
+
+                {/* Quick variable creator */}
+                <div className="shrink-0 border-t px-3 py-3 space-y-2">
+                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                    Variável Rápida
+                  </Label>
+                  <div className="flex gap-1.5">
+                    <Input
+                      placeholder="GRUPO.CAMPO"
+                      value={customVar}
+                      onChange={(e) => setCustomVar(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") handleCreateCustomVar();
+                      }}
+                      className="h-7 text-xs font-mono"
+                      data-testid="input-custom-var"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 text-xs shrink-0"
+                      onClick={handleCreateCustomVar}
+                      data-testid="button-create-custom-var"
+                    >
+                      Criar
+                    </Button>
                   </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Ex: SHOW.RIDER — Formato: GRUPO.CAMPO
+                  </p>
                 </div>
               </div>
             </TabsContent>
