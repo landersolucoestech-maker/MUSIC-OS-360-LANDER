@@ -98,31 +98,27 @@ function HighlightedPreview({ text }: { text: string }) {
     );
   }
 
-  // Detect title lines: non-empty, all letters are uppercase, has at least one letter
-  function isTitleLine(line: string): boolean {
-    const trimmed = line.trim();
-    if (!trimmed) return false;
-    if (!/[A-ZÁÉÍÓÚÀÂÊÔÃÕÜÇÑ]/i.test(trimmed)) return false;
-    return trimmed === trimmed.toUpperCase();
-  }
-
   const lines = text.split("\n");
 
   return (
     <div className="text-sm leading-relaxed">
-      {lines.map((line, idx) =>
-        isTitleLine(line) ? (
-          <p key={idx} className="font-bold text-center my-1">
+      {lines.map((line, idx) => {
+        // # Título → centrado + negrito
+        if (line.startsWith("# ")) {
+          const titleText = line.slice(2);
+          return (
+            <p key={idx} className="font-bold text-center my-1">
+              {renderLineParts(titleText, String(idx))}
+            </p>
+          );
+        }
+        if (line.trim() === "") return <br key={idx} />;
+        return (
+          <p key={idx} className="my-0.5 text-left">
             {renderLineParts(line, String(idx))}
           </p>
-        ) : line.trim() === "" ? (
-          <br key={idx} />
-        ) : (
-          <p key={idx} className="my-0.5">
-            {renderLineParts(line, String(idx))}
-          </p>
-        ),
-      )}
+        );
+      })}
     </div>
   );
 }
