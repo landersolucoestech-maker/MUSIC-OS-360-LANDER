@@ -27,6 +27,7 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
+  ChevronsUpDown,
   Check,
   X,
   ImageUp,
@@ -90,10 +91,11 @@ interface RegistryVarGroupProps {
   label: string;
   vars: import("@/modules/contracts/hooks/useVariableRegistry").RegistryVariable[];
   onInsert: (placeholder: string) => void;
+  initialOpen?: boolean;
 }
 
-function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
-  const [open, setOpen] = useState(true);
+function RegistryVarGroup({ label, vars, onInsert, initialOpen = true }: RegistryVarGroupProps) {
+  const [open, setOpen] = useState(initialOpen);
   if (vars.length === 0) return null;
   return (
     <div className="mb-2">
@@ -479,6 +481,9 @@ export function ContractImportWorkspace({
   const { variables: registryVars, addVariable } = useVariableRegistry();
   const { categories: dynamicCategories } = useCategoryRegistry();
 
+  const [allCollapsed, setAllCollapsed] = useState(false);
+  const [collapseKey, setCollapseKey] = useState(0);
+
   // ── Insert at cursor ────────────────────────────────────────────────────
 
   const insertAtCursor = useCallback(
@@ -822,9 +827,24 @@ export function ContractImportWorkspace({
               {/* ── Right column: Variable panel (full modal height) ── */}
               <div className="w-72 shrink-0 flex flex-col overflow-hidden border-l bg-background/40">
                 <div className="px-3 pt-3 pb-2 shrink-0 border-b">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Variáveis do Registo
-                  </p>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                      Variáveis do Registo
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const next = !allCollapsed;
+                        setAllCollapsed(next);
+                        setCollapseKey((k) => k + 1);
+                      }}
+                      className="flex items-center gap-1 text-[10px] text-muted-foreground hover:text-foreground transition-colors"
+                      data-testid="button-collapse-all-vars"
+                    >
+                      <ChevronsUpDown className="h-3 w-3" />
+                      {allCollapsed ? "Expandir" : "Colapsar"}
+                    </button>
+                  </div>
                   <Input
                     placeholder="Pesquisar variáveis…"
                     value={search}
@@ -845,9 +865,10 @@ export function ContractImportWorkspace({
                     <div className="pt-1">
                       {groupedVars.map(([groupLabel, groupVarsList]) => (
                         <RegistryVarGroup
-                          key={groupLabel}
+                          key={`${groupLabel}-${collapseKey}`}
                           label={groupLabel}
                           vars={groupVarsList}
+                          initialOpen={!allCollapsed}
                           onInsert={(placeholder) => {
                             insertAtCursor(placeholder);
                             setActiveTab("template");
