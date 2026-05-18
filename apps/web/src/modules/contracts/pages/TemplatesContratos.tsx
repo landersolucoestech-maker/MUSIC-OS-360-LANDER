@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader } from "@/shared/ui/card";
+import { Input } from "@/shared/ui/input";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/ui/select";
 import {
   Loader2, Plus, Trash2, FileText, Sparkles, Eye,
-  ChevronRight, Pencil,
+  ChevronRight, Pencil, Search, X,
 } from "lucide-react";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -183,6 +187,24 @@ export default function TemplatesContratos() {
   const [isEditOpen, setIsEditOpen]           = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateContrato | null>(null);
 
+  const [search, setSearch]           = useState("");
+  const [filterType, setFilterType]   = useState<"all" | "semantico" | "padrao">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "ativo" | "inativo">("all");
+
+  const filteredTemplates = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return templates.filter((t) => {
+      if (q && !t.nome.toLowerCase().includes(q) && !(t.descricao ?? "").toLowerCase().includes(q)) return false;
+      if (filterType === "semantico" && t.tipo_servico !== "semantico") return false;
+      if (filterType === "padrao"    && t.tipo_servico === "semantico") return false;
+      if (filterStatus === "ativo"   && !t.ativo)  return false;
+      if (filterStatus === "inativo" && t.ativo)   return false;
+      return true;
+    });
+  }, [templates, search, filterType, filterStatus]);
+
+  const hasActiveFilters = search.trim() !== "" || filterType !== "all" || filterStatus !== "all";
+
   const handleSave = (data: TemplateContratoInsert) => {
     addTemplate.mutate(data);
   };
@@ -268,6 +290,64 @@ export default function TemplatesContratos() {
           ))}
         </div>
 
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              className="pl-8 h-9 text-sm"
+              placeholder="Buscar por nome ou descrição…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="input-search-templates"
+            />
+            {search && (
+              <button
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearch("")}
+                aria-label="Limpar busca"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <Select value={filterType} onValueChange={(v) => setFilterType(v as typeof filterType)}>
+            <SelectTrigger className="h-9 w-[160px] text-sm" data-testid="select-filter-type">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="semantico">Semântico (IA)</SelectItem>
+              <SelectItem value="padrao">Padrão</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+            <SelectTrigger className="h-9 w-[140px] text-sm" data-testid="select-filter-status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 text-muted-foreground"
+              onClick={() => { setSearch(""); setFilterType("all"); setFilterStatus("all"); }}
+              data-testid="button-clear-filters"
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar
+            </Button>
+          )}
+        </div>
+
         {/* Toolbar */}
         <div className="space-y-0.5">
           <p className="text-sm font-medium">Contract Intelligence Engine</p>
@@ -289,9 +369,20 @@ export default function TemplatesContratos() {
               />
             </CardContent>
           </Card>
+        ) : filteredTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="p-8">
+              <EmptyState
+                icon={Search}
+                title="Nenhum template encontrado"
+                description="Tente ajustar os filtros ou limpar a busca para ver todos os templates."
+                action={{ label: "Limpar filtros", onClick: () => { setSearch(""); setFilterType("all"); setFilterStatus("all"); } }}
+              />
+            </CardContent>
+          </Card>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {templates.map((t) => (
+            {filteredTemplates.map((t) => (
               <TemplateCard
                 key={t.id}
                 template={t}
