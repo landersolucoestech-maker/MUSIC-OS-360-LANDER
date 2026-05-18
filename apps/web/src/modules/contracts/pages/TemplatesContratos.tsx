@@ -235,6 +235,16 @@ export default function TemplatesContratos() {
     <MainLayout
       title="Templates de Contrato"
       description="Transforme qualquer contrato em template reutilizável com inteligência semântica"
+      actions={
+        <Button
+          className="gap-2"
+          onClick={() => setIsWorkspaceOpen(true)}
+          data-testid="button-novo-template"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Template
+        </Button>
+      }
     >
       <div className="space-y-6">
         {/* Stats */}
@@ -259,22 +269,12 @@ export default function TemplatesContratos() {
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="space-y-0.5">
-            <p className="text-sm font-medium">Contract Intelligence Engine</p>
-            <p className="text-xs text-muted-foreground max-w-xl">
-              Importe qualquer contrato (PDF, DOCX ou texto) e o sistema detecta automaticamente
-              todas as variáveis dinâmicas com análise semântica e jurídica contextual.
-            </p>
-          </div>
-          <Button
-            className="gap-2 shrink-0"
-            onClick={() => setIsWorkspaceOpen(true)}
-            data-testid="button-novo-template"
-          >
-            <Plus className="h-4 w-4" />
-            Novo Template
-          </Button>
+        <div className="space-y-0.5">
+          <p className="text-sm font-medium">Contract Intelligence Engine</p>
+          <p className="text-xs text-muted-foreground max-w-xl">
+            Importe qualquer contrato (PDF, DOCX ou texto) e o sistema detecta automaticamente
+            todas as variáveis dinâmicas com análise semântica e jurídica contextual.
+          </p>
         </div>
 
         {/* Template grid */}
