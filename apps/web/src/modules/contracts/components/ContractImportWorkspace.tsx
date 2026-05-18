@@ -322,7 +322,7 @@ function A4Preview({
         )}
 
         {/* ── Content ── */}
-        <div className="flex-1 px-[72px] py-[48px]">
+        <div className="flex-1 px-[72px] py-[48px] pl-[40px] pr-[40px] pt-[10px] pb-[10px]">
           {content.trim() ? (
             <HighlightedPreview text={content} />
           ) : (
