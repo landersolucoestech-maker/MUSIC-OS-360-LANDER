@@ -69,7 +69,19 @@ function HighlightedPreview({ text }: { text: string }) {
     );
   }
 
-  // Helper: highlight {{PLACEHOLDERS}} within a line string
+  // Helper: highlight {{PLACEHOLDERS}} and **bold** within a segment
+  function renderSegment(segment: string, key: string) {
+    // Split by **bold** markers
+    const boldParts = segment.split(/(\*\*[^*]+\*\*)/g);
+    return boldParts.map((bp, bi) => {
+      if (/^\*\*[^*]+\*\*$/.test(bp)) {
+        return <strong key={`${key}-b${bi}`}>{bp.slice(2, -2)}</strong>;
+      }
+      return <span key={`${key}-b${bi}`}>{bp}</span>;
+    });
+  }
+
+  // Helper: highlight {{PLACEHOLDERS}} and **bold** within a line string
   function renderLineParts(line: string, baseKey: string) {
     const parts = line.split(/(\{\{[^}]+\}\})/g);
     return parts.map((part, i) =>
@@ -81,7 +93,7 @@ function HighlightedPreview({ text }: { text: string }) {
           {part}
         </span>
       ) : (
-        <span key={`${baseKey}-${i}`}>{part}</span>
+        <span key={`${baseKey}-${i}`}>{renderSegment(part, `${baseKey}-${i}`)}</span>
       ),
     );
   }
