@@ -348,15 +348,6 @@ export default function TemplatesContratos() {
           )}
         </div>
 
-        {/* Toolbar */}
-        <div className="space-y-0.5">
-          <p className="text-sm font-medium">Contract Intelligence Engine</p>
-          <p className="text-xs text-muted-foreground max-w-xl">
-            Importe qualquer contrato (PDF, DOCX ou texto) e o sistema detecta automaticamente
-            todas as variáveis dinâmicas com análise semântica e jurídica contextual.
-          </p>
-        </div>
-
         {/* Template grid */}
         {templates.length === 0 ? (
           <Card>
