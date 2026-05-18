@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import VariableRegistry from "@/modules/contracts/pages/VariableRegistry";
+import CategoryRegistry from "@/modules/contracts/pages/CategoryRegistry";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -38,6 +39,7 @@ import type {
 } from "@/modules/contracts/types/contracts.types";
 import { parseContractText } from "@/modules/contracts/services/semantic-parser.service";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
+import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 
 // ── Props ──────────────────────────────────────────────────────────────────
 
@@ -51,20 +53,6 @@ interface ContractImportWorkspaceProps {
 
 const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
 const CUSTOM_VAR_REGEX = /^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+$/i;
-
-const CONTRACT_CATEGORIES = [
-  { value: "gravacao", label: "Gravação" },
-  { value: "distribuicao", label: "Distribuição" },
-  { value: "licenciamento", label: "Licenciamento" },
-  { value: "cessao_direitos", label: "Cessão de Direitos" },
-  { value: "producao", label: "Produção" },
-  { value: "shows", label: "Shows e Eventos" },
-  { value: "gestao", label: "Gestão Artística" },
-  { value: "exclusividade", label: "Exclusividade" },
-  { value: "publicitario", label: "Publicitário" },
-  { value: "semantico", label: "Semântico (IA)" },
-  { value: "outros", label: "Outros" },
-] as const;
 
 // ── Highlighted preview ───────────────────────────────────────────────────
 
@@ -489,6 +477,7 @@ export function ContractImportWorkspace({
   const [footerImage, setFooterImage] = useState<string | null>(null);
 
   const { variables: registryVars, addVariable } = useVariableRegistry();
+  const { categories: dynamicCategories } = useCategoryRegistry();
 
   // ── Insert at cursor ────────────────────────────────────────────────────
 
@@ -699,6 +688,7 @@ export function ContractImportWorkspace({
                     [
                       { value: "template", label: "Template" },
                       { value: "variaveis", label: "Variáveis" },
+                      { value: "categorias", label: "Categorias" },
                       { value: "preview", label: "Preview" },
                     ] as const
                   ).map((tab) => (
@@ -752,7 +742,7 @@ export function ContractImportWorkspace({
                         <SelectValue placeholder="Selecionar categoria…" />
                       </SelectTrigger>
                       <SelectContent>
-                        {CONTRACT_CATEGORIES.map((cat) => (
+                        {dynamicCategories.map((cat) => (
                           <SelectItem key={cat.value} value={cat.value}>
                             {cat.label}
                           </SelectItem>
@@ -901,6 +891,14 @@ export function ContractImportWorkspace({
               className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
               <VariableRegistry asModal onClose={() => {}} />
+            </TabsContent>
+
+            {/* ── Tab: Categorias ── */}
+            <TabsContent
+              value="categorias"
+              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
+            >
+              <CategoryRegistry asModal onClose={() => {}} />
             </TabsContent>
 
             {/* ── Tab: Preview ── */}
