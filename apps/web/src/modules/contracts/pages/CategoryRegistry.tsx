@@ -1,4 +1,5 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
+import * as XLSX from "xlsx";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -13,7 +14,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/shared/ui/alert-dialog";
-import { Search, Plus, Pencil, Trash2, Check, X, Tag } from "lucide-react";
+import { Search, Plus, Pencil, Trash2, Check, X, Tag, Download, Upload } from "lucide-react";
 import {
   useCategoryRegistry,
   type ContractCategory,
@@ -39,6 +40,7 @@ export default function CategoryRegistry({
   const { categories, addCategory, updateCategory, removeCategory, toSlug } =
     useCategoryRegistry();
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [search, setSearch] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<ContractCategory | null>(
     null,
@@ -134,6 +136,71 @@ export default function CategoryRegistry({
     setDeleteTarget(null);
   }
 
+  // ── export xlsx ──────────────────────────────────────────────────────────
+  function handleExport() {
+    if (categories.length === 0) {
+      toast.warning("Sem categorias para exportar");
+      return;
+    }
+    const rows = categories.map((c) => ({
+      Nome: c.label,
+      Slug: c.value,
+      Descrição: c.description ?? "",
+    }));
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws["!cols"] = [{ wch: 32 }, { wch: 28 }, { wch: 48 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Categorias");
+    const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const blob = new Blob([buf], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "categorias_contratos.xlsx";
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success(`${categories.length} categoria(s) exportada(s)`);
+  }
+
+  // ── import xlsx ──────────────────────────────────────────────────────────
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = "";
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = new Uint8Array(ev.target?.result as ArrayBuffer);
+        const wb = XLSX.read(data, { type: "array" });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
+        let added = 0;
+        let skipped = 0;
+        for (const row of rows) {
+          const label = String(row["Nome"] ?? row["nome"] ?? "").trim();
+          if (!label) { skipped++; continue; }
+          const rawSlug = String(row["Slug"] ?? row["slug"] ?? "").trim();
+          const slug = rawSlug ? toSlug(rawSlug) : toSlug(label);
+          const description = String(row["Descrição"] ?? row["Descricao"] ?? row["descricao"] ?? "").trim() || undefined;
+          const dupe = categories.find((c) => c.value === slug);
+          if (dupe) { skipped++; continue; }
+          addCategory(label, slug, description);
+          added++;
+        }
+        if (added > 0) {
+          toast.success(`${added} categoria(s) importada(s)${skipped > 0 ? ` · ${skipped} ignorada(s)` : ""}`);
+        } else {
+          toast.warning(skipped > 0 ? `${skipped} linha(s) ignorada(s) (slugs duplicados ou Nome vazio)` : "Ficheiro sem linhas válidas");
+        }
+      } catch {
+        toast.error("Erro ao ler o ficheiro XLSX");
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
   // ── render ───────────────────────────────────────────────────────────────
   return (
     <div
@@ -143,6 +210,16 @@ export default function CategoryRegistry({
           : "flex flex-col gap-4 p-4 max-w-3xl"
       }
     >
+      {/* Hidden file input for xlsx import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".xlsx,.xls"
+        className="hidden"
+        onChange={handleImport}
+        data-testid="input-import-categories-file"
+      />
+
       {/* Header row */}
       <div className="flex items-center justify-between gap-3">
         <div className="relative flex-1 max-w-xs">
@@ -155,16 +232,38 @@ export default function CategoryRegistry({
             data-testid="input-category-search"
           />
         </div>
-        <Button
-          size="sm"
-          className="h-8 gap-1.5 text-xs"
-          onClick={() => setCreating(true)}
-          disabled={creating}
-          data-testid="button-new-category"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          Nova Categoria
-        </Button>
+        <div className="flex items-center gap-1.5">
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => fileInputRef.current?.click()}
+            data-testid="button-import-categories"
+          >
+            <Upload className="h-3.5 w-3.5" />
+            Importar
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs"
+            onClick={handleExport}
+            data-testid="button-export-categories"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Exportar
+          </Button>
+          <Button
+            size="sm"
+            className="h-8 gap-1.5 text-xs"
+            onClick={() => setCreating(true)}
+            disabled={creating}
+            data-testid="button-new-category"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            Nova Categoria
+          </Button>
+        </div>
       </div>
 
       {/* Inline create form */}
