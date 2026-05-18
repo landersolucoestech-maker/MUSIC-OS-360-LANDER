@@ -761,7 +761,7 @@ export function ContractImportWorkspace({
                   <div className="border-l self-stretch" />
 
                   {/* Identidade Visual */}
-                  <div className="shrink-0 px-6 py-4">
+                  <div className="flex-1 px-6 py-4">
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       Identidade Visual do Documento
                     </p>
