@@ -719,7 +719,7 @@ export function ContractImportWorkspace({
                     <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
                       Informações Básicas
                     </p>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-3">
                       <div className="space-y-1.5">
                         <Label htmlFor="ws-nome" className="text-xs">
                           Nome do Template
