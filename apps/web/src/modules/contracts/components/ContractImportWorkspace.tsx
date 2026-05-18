@@ -31,8 +31,8 @@ import {
   Check,
   X,
   ImageUp,
-  FileText,
 } from "lucide-react";
+import { HighlightedPreview, A4Preview } from "@/modules/contracts/components/ContractA4Preview";
 import { toast } from "sonner";
 import type {
   SemanticVariable,
@@ -57,71 +57,6 @@ interface ContractImportWorkspaceProps {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
-
-// ── Highlighted preview ───────────────────────────────────────────────────
-
-function HighlightedPreview({ text }: { text: string }) {
-  if (!text.trim()) {
-    return (
-      <p className="text-muted-foreground/50 text-xs italic select-none">
-        O preview aparece aqui enquanto escreve…
-      </p>
-    );
-  }
-
-  // Helper: highlight {{PLACEHOLDERS}} and **bold** within a segment
-  function renderSegment(segment: string, key: string) {
-    // Split by **bold** markers
-    const boldParts = segment.split(/(\*\*[^*]+\*\*)/g);
-    return boldParts.map((bp, bi) => {
-      if (/^\*\*[^*]+\*\*$/.test(bp)) {
-        return <strong key={`${key}-b${bi}`}>{bp.slice(2, -2)}</strong>;
-      }
-      return <span key={`${key}-b${bi}`}>{bp}</span>;
-    });
-  }
-
-  // Helper: highlight {{PLACEHOLDERS}} and **bold** within a line string
-  function renderLineParts(line: string, baseKey: string) {
-    const parts = line.split(/(\{\{[^}]+\}\})/g);
-    return parts.map((part, i) =>
-      /^\{\{[^}]+\}\}$/.test(part) ? (
-        <span
-          key={`${baseKey}-${i}`}
-          className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-mono"
-        >
-          {part}
-        </span>
-      ) : (
-        <span key={`${baseKey}-${i}`}>{renderSegment(part, `${baseKey}-${i}`)}</span>
-      ),
-    );
-  }
-
-  const lines = text.split("\n");
-
-  return (
-    <div className="text-sm leading-relaxed">
-      {lines.map((line, idx) => {
-        // # Título → centrado + negrito
-        if (line.startsWith("# ")) {
-          const titleText = line.slice(2);
-          return (
-            <p key={idx} className="font-bold text-center my-1">
-              {renderLineParts(titleText, String(idx))}
-            </p>
-          );
-        }
-        if (line.trim() === "") return <br key={idx} />;
-        return (
-          <p key={idx} className="my-0.5 text-left">
-            {renderLineParts(line, String(idx))}
-          </p>
-        );
-      })}
-    </div>
-  );
-}
 
 // ── Registry variable group accordion ─────────────────────────────────────
 
@@ -267,88 +202,6 @@ function ImageUploadZone({
           />
         </label>
       )}
-    </div>
-  );
-}
-
-// ── A4 Preview ────────────────────────────────────────────────────────────
-
-function A4Preview({
-  headerImage,
-  content,
-  footerImage,
-}: {
-  headerImage: string | null;
-  content: string;
-  footerImage: string | null;
-}) {
-  const isEmpty = !headerImage && !content.trim() && !footerImage;
-
-  if (isEmpty) {
-    return (
-      <div className="h-full flex flex-col items-center justify-center gap-3 text-center text-muted-foreground">
-        <FileText className="h-12 w-12 opacity-20" />
-        <div>
-          <p className="text-sm font-medium">Preview do documento</p>
-          <p className="text-xs mt-1 text-muted-foreground/70">
-            Preencha o conteúdo na aba Template para visualizar aqui.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="bg-muted/30 py-8 px-4 flex justify-center min-h-full">
-      <div
-        className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full overflow-hidden"
-        style={{ maxWidth: "794px", minHeight: "1123px" }}
-      >
-        {/* ── Header image — full page width ── */}
-        {headerImage ? (
-          <img
-            src={headerImage}
-            alt="Cabeçalho"
-            className="w-full h-auto shrink-0 block"
-          />
-        ) : (
-          <div className="px-[72px] pt-[48px]">
-            <div className="border-b border-gray-200 pb-3 flex items-center justify-center">
-              <span className="text-gray-400 text-xs italic">
-                Sem imagem de cabeçalho
-              </span>
-            </div>
-          </div>
-        )}
-
-        {/* ── Content ── */}
-        <div className="flex-1 px-[72px] py-[48px] pl-[40px] pr-[40px] pt-[10px] pb-[10px]">
-          {content.trim() ? (
-            <HighlightedPreview text={content} />
-          ) : (
-            <p className="text-gray-400 text-sm italic text-center pt-8">
-              Sem conteúdo ainda…
-            </p>
-          )}
-        </div>
-
-        {/* ── Footer image — full page width ── */}
-        {footerImage ? (
-          <img
-            src={footerImage}
-            alt="Rodapé"
-            className="w-full h-auto shrink-0 block"
-          />
-        ) : (
-          <div className="px-[72px] pb-[48px]">
-            <div className="border-t border-gray-200 pt-3 flex items-center justify-center">
-              <span className="text-gray-400 text-xs italic">
-                Sem imagem de rodapé
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
