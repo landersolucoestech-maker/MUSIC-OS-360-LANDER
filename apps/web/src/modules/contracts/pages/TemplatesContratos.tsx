@@ -38,6 +38,10 @@ function getClauseTypes(template: TemplateContrato): string[] {
   return parseManifest(template)?.clauseTypes ?? [];
 }
 
+function formatSlug(slug: string): string {
+  return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
 function formatDate(dateStr?: string): string {
   if (!dateStr) return "—";
   try {
@@ -152,7 +156,7 @@ function TemplateCard({
           )}
           {!isSemantic && (
             <Badge variant="outline" className="text-[10px]">
-              {template.tipo_servico || "Padrão"}
+              {template.tipo_servico ? formatSlug(template.tipo_servico) : "Padrão"}
             </Badge>
           )}
           <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">

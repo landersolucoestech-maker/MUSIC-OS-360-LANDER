@@ -67,6 +67,9 @@ export function TemplateContratoViewModal({
   const fmtDate = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
 
+  const fmtSlug = (slug: string) =>
+    slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col gap-0 p-0">
@@ -84,7 +87,7 @@ export function TemplateContratoViewModal({
                 </Badge>
                 {template.tipo_servico && (
                   <Badge variant="outline" className="no-underline">
-                    {template.tipo_servico}
+                    {fmtSlug(template.tipo_servico)}
                   </Badge>
                 )}
               </div>
