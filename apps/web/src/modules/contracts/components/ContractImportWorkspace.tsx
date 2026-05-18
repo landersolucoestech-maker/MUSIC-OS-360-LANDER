@@ -299,7 +299,7 @@ function A4Preview({
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-muted/30 py-8 px-4 flex justify-center">
+    <div className="bg-muted/30 py-8 px-4 flex justify-center min-h-full">
       <div
         className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full overflow-hidden"
         style={{ maxWidth: "794px", minHeight: "1123px" }}
@@ -958,7 +958,7 @@ export function ContractImportWorkspace({
             {/* ── Tab: Preview ── */}
             <TabsContent
               value="preview"
-              className="flex-1 overflow-hidden mt-0 data-[state=inactive]:hidden"
+              className="flex-1 overflow-y-auto mt-0 data-[state=inactive]:hidden"
             >
               <A4Preview
                 headerImage={headerImage}
