@@ -109,14 +109,7 @@ const NAV_ITEMS: NavItem[] = [
       { title: "Gestão de Shares", href: "/gestao-shares", icon: Share2 },
     ],
   },
-  {
-    title: "Contratos",
-    icon: FileText,
-    featureFlag: "moduleContracts",
-    children: [
-      { title: "Contratos",  href: "/contratos",           icon: FileText },
-    ],
-  },
+  { title: "Contratos", href: "/contratos", icon: FileText, featureFlag: "moduleContracts" },
   {
     title: "Financeiro",
     icon: DollarSign,
