@@ -58,6 +58,20 @@ function formatDate(dateStr?: string): string {
   }
 }
 
+const COL = "grid grid-cols-[1fr_180px_110px_130px_100px] items-center gap-4 px-4";
+
+function TemplateTableHeader() {
+  return (
+    <div className={`${COL} py-2 border-b border-border`}>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoria</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Data de Criação</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">Ações</span>
+    </div>
+  );
+}
+
 function TemplateRow({
   template,
   onDelete,
@@ -75,55 +89,61 @@ function TemplateRow({
 
   return (
     <div
-      className="group flex items-center gap-4 px-4 py-3 rounded-lg border border-border hover:border-primary/30 hover:bg-muted/30 transition-colors cursor-pointer"
+      className={`${COL} group py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/50 last:border-0`}
       onClick={onView}
       data-testid={`row-template-${template.id}`}
     >
-      {/* Icon */}
-      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
-        {isSemantic ? <Sparkles className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+      {/* Nome */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
+          {isSemantic
+            ? <Sparkles className="h-3.5 w-3.5 text-primary" />
+            : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate leading-tight">{template.nome}</p>
+          {template.descricao && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{template.descricao}</p>
+          )}
+        </div>
       </div>
 
-      {/* Name + description */}
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold truncate leading-tight">{template.nome}</p>
-        {template.descricao && (
-          <p className="text-xs text-muted-foreground truncate mt-0.5">{template.descricao}</p>
-        )}
-      </div>
-
-      {/* Badges */}
-      <div className="hidden md:flex items-center gap-1 shrink-0">
-        {isSemantic && varCount > 0 && (
+      {/* Categoria */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {isSemantic ? (
           <Badge variant="secondary" className="text-[10px] gap-1">
-            <Sparkles className="h-2.5 w-2.5" />{varCount} variáveis
+            <Sparkles className="h-2.5 w-2.5" />Semântico IA
           </Badge>
-        )}
-        {clauseTypes.slice(0, 2).map((ct) => (
-          <Badge key={ct} variant="outline" className="text-[10px]">{ct}</Badge>
-        ))}
-        {clauseTypes.length > 2 && (
-          <span className="text-[10px] px-1.5 py-0.5 rounded border text-muted-foreground border-border">
-            +{clauseTypes.length - 2}
-          </span>
-        )}
-        {!isSemantic && (
+        ) : (
           <Badge variant="outline" className="text-[10px]">
             {template.tipo_servico ? formatSlug(template.tipo_servico) : "Padrão"}
           </Badge>
         )}
+        {clauseTypes.slice(0, 1).map((ct) => (
+          <Badge key={ct} variant="outline" className="text-[10px]">{ct}</Badge>
+        ))}
+        {clauseTypes.length > 1 && (
+          <span className="text-[10px] px-1 py-0.5 rounded border text-muted-foreground border-border">
+            +{clauseTypes.length - 1}
+          </span>
+        )}
+        {isSemantic && varCount > 0 && (
+          <span className="text-[10px] text-muted-foreground">{varCount} vars</span>
+        )}
+      </div>
+
+      {/* Status */}
+      <div>
         <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">
           {template.ativo ? "Ativo" : "Inativo"}
         </Badge>
       </div>
 
-      {/* Date */}
-      <span className="hidden lg:block text-xs text-muted-foreground shrink-0 w-24 text-right">
-        {formatDate(template.created_at)}
-      </span>
+      {/* Data de Criação */}
+      <span className="text-xs text-muted-foreground">{formatDate(template.created_at)}</span>
 
-      {/* Actions */}
-      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+      {/* Ações */}
+      <div className="flex items-center gap-1 justify-end">
         <Button variant="ghost" size="icon" className="h-7 w-7"
           onClick={(e) => { e.stopPropagation(); onView(); }} title="Visualizar"
           data-testid={`button-view-template-${template.id}`}>
@@ -340,7 +360,8 @@ export default function TemplatesContratos() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex flex-col gap-1.5">
+          <div className="rounded-lg border border-border overflow-hidden">
+            <TemplateTableHeader />
             {filteredTemplates.map((t) => (
               <TemplateRow
                 key={t.id}
