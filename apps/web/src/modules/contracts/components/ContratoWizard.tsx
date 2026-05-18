@@ -13,17 +13,17 @@ import { toast } from "sonner";
 import {
   ChevronRight, ChevronLeft, Check, FileText, Users, Variable,
   Eye, PenLine, ClipboardList, UserPlus, Trash2,
-  AlertCircle, Building2, User, Music,
+  Building2, User, Music,
 } from "lucide-react";
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import type { TemplateContrato } from "@/modules/contracts/types/contracts.types";
-import type { ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
+import type { TemplateContrato, ContractVariable } from "@/modules/contracts/types/contracts.types";
+import type { ContratoWithRelations, ContratoInsert } from "@/modules/contracts/hooks/useContratos";
+import type { SigningPlatform } from "@/modules/contracts/types/contracts.types";
 import { cn } from "@/shared/lib/utils";
-import { format, parseISO } from "date-fns";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -59,7 +59,7 @@ interface WizardSigner {
   email: string;
   obrigatorio: boolean;
   ordem: number;
-  provider: "docusign" | "clicksign" | "autentique" | "";
+  provider: SigningPlatform | "";
 }
 
 interface WizardMeta {
@@ -70,13 +70,25 @@ interface WizardMeta {
   observations: string;
 }
 
+/** Parsed variables_manifest entry (subset of ContractVariable) */
+interface ManifestVar {
+  key: string;       // "CONTRACT.DURATION_MONTHS"
+  label: string;
+  type: ContractVariable["type"];
+  required: boolean;
+  example: string;
+  options?: string[];
+}
+
 interface WizardState {
   templateId: string;
   templateNome: string;
   templateContent: string;
   partyRoles: string[];
+  /** Union of roles from SIGNATURE.* INITIALS.* SIGN_DATE.* */
   signatureRoles: string[];
-  variablePlaceholders: string[];
+  /** Variables from manifest (type-aware); fallback: regex-detected non-party placeholders */
+  manifestVars: ManifestVar[];
   parties: Record<string, PartyData>;
   variables: Record<string, string>;
   signers: WizardSigner[];
@@ -127,7 +139,7 @@ const EMPTY_META: WizardMeta = {
 
 const EMPTY_WIZARD: WizardState = {
   templateId: "", templateNome: "", templateContent: "",
-  partyRoles: [], signatureRoles: [], variablePlaceholders: [],
+  partyRoles: [], signatureRoles: [], manifestVars: [],
   parties: {}, variables: {}, signers: [], meta: EMPTY_META,
 };
 
@@ -154,24 +166,60 @@ function extractPartyRoles(content: string): string[] {
     .map(([group]) => group);
 }
 
+/**
+ * FIX: extract from SIGNATURE, INITIALS, and SIGN_DATE — the field part is the role.
+ * e.g. {{SIGNATURE.REPRESENTANTE}} → role "REPRESENTANTE"
+ *      {{INITIALS.ARTISTA}} → role "ARTISTA"
+ *      {{SIGN_DATE.CONTRATANTE}} → role "CONTRATANTE"
+ */
 function extractSignatureRoles(content: string): string[] {
   const groups = extractGroups(content);
-  const sig = groups.get("SIGNATURE");
-  return sig ? [...sig] : [];
+  const roles = new Set<string>();
+  for (const group of SIGNATURE_GROUPS) {
+    const fields = groups.get(group);
+    if (fields) fields.forEach((f) => roles.add(f));
+  }
+  return [...roles];
 }
 
-function extractVariablePlaceholders(content: string, partyRoles: string[]): string[] {
+function extractFallbackVars(content: string, partyRoles: string[]): ManifestVar[] {
   const partySet = new Set(partyRoles);
   const groups = extractGroups(content);
-  const out: string[] = [];
+  const out: ManifestVar[] = [];
   for (const [group, fields] of groups.entries()) {
     if (SIGNATURE_GROUPS.has(group)) continue;
     if (partySet.has(group)) continue;
     for (const field of fields) {
-      out.push(`{{${group}.${field}}}`);
+      const key = `{{${group}.${field}}}`;
+      out.push({
+        key,
+        label: `${group} — ${field.replace(/_/g, " ")}`,
+        type: "text",
+        required: false,
+        example: "",
+      });
     }
   }
   return out;
+}
+
+function parseManifest(raw: string | null | undefined, content: string, partyRoles: string[]): ManifestVar[] {
+  if (!raw) return extractFallbackVars(content, partyRoles);
+  try {
+    const parsed: ContractVariable[] = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) {
+      return extractFallbackVars(content, partyRoles);
+    }
+    return parsed.map((v) => ({
+      key: `{{${v.key}}}`,
+      label: v.label || v.key,
+      type: v.type || "text",
+      required: !!v.required,
+      example: v.example || "",
+    }));
+  } catch {
+    return extractFallbackVars(content, partyRoles);
+  }
 }
 
 function resolvePartyField(party: PartyData, field: string): string {
@@ -225,25 +273,6 @@ function renderPreview(
   });
 }
 
-function makeInitialWizardFromContrato(contrato: ContratoWithRelations): Partial<WizardState> {
-  let saved: Partial<WizardState> = {};
-  try {
-    if (contrato.observacoes && contrato.observacoes.startsWith("{")) {
-      saved = JSON.parse(contrato.observacoes);
-    }
-  } catch { /* ignore */ }
-  return {
-    ...saved,
-    meta: {
-      titulo:        contrato.titulo || "",
-      status:        String(contrato.status || "rascunho"),
-      data_inicio:   contrato.data_inicio || "",
-      data_fim:      contrato.data_fim || "",
-      observations:  "",
-    },
-  };
-}
-
 // ── Step 1 — Template ──────────────────────────────────────────────────────
 
 function StepTemplate({
@@ -267,7 +296,7 @@ function StepTemplate({
   return (
     <div className="space-y-4">
       <p className="text-sm text-muted-foreground">
-        Selecione o template para este contrato. O formulário será gerado automaticamente.
+        Selecione o template. O formulário será gerado automaticamente a partir dos placeholders.
       </p>
       {active.length === 0 ? (
         <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
@@ -299,28 +328,11 @@ function StepTemplate({
                       <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{t.descricao}</p>
                     )}
                   </div>
-                  {selected && (
-                    <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />
-                  )}
+                  {selected && <Check className="h-4 w-4 text-primary shrink-0 mt-0.5" />}
                 </div>
               </button>
             );
           })}
-        </div>
-      )}
-
-      {state.templateId && (
-        <div className="space-y-4 pt-2 border-t border-border">
-          <div className="space-y-2">
-            <Label>Título do Contrato *</Label>
-            <Input
-              data-testid="input-wizard-titulo"
-              placeholder="Ex: Contrato de Empresariamento Artístico"
-              value={state.meta.titulo}
-              onChange={(e) => {}}
-            />
-            <p className="text-xs text-muted-foreground">Defina o título na etapa Revisão ou aqui</p>
-          </div>
         </div>
       )}
     </div>
@@ -356,10 +368,11 @@ function PartyCard({
       <div className="grid grid-cols-2 gap-2">
         <div className="space-y-1">
           <Label className="text-xs">Tipo</Label>
-          <Select value={party.tipo} onValueChange={(v) => set({ tipo: v as PartyTipo, nome: "", cpf: "", cnpj: "", email: "", sourceId: undefined })}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+          <Select
+            value={party.tipo}
+            onValueChange={(v) => set({ tipo: v as PartyTipo, nome: "", cpf: "", cnpj: "", email: "", sourceId: undefined })}
+          >
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="pf">Pessoa Física</SelectItem>
               <SelectItem value="pj">Pessoa Jurídica</SelectItem>
@@ -370,9 +383,7 @@ function PartyCard({
         <div className="space-y-1">
           <Label className="text-xs">Origem</Label>
           <Select value={party.origin} onValueChange={(v) => set({ origin: v as PartyOrigin, sourceId: undefined })}>
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="manual">Manual</SelectItem>
               <SelectItem value="crm">CRM</SelectItem>
@@ -508,6 +519,10 @@ function PartyCard({
               <Label className="text-xs">Representante Legal</Label>
               <Input className="h-8 text-xs" value={party.representante_legal || ""} onChange={(e) => set({ representante_legal: e.target.value })} placeholder="Nome do representante" />
             </div>
+            <div className="space-y-1">
+              <Label className="text-xs">CNPJ</Label>
+              <Input className="h-8 text-xs font-mono" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+            </div>
           </>
         )}
 
@@ -516,26 +531,10 @@ function PartyCard({
           <Input className="h-8 text-xs font-mono" value={party.cpf || ""} onChange={(e) => set({ cpf: e.target.value })} placeholder="000.000.000-00" />
         </div>
 
-        {party.tipo !== "pf" && (
-          <div className="space-y-1">
-            <Label className="text-xs">RG {party.tipo === "pj" ? "(Repr.)" : ""}</Label>
-            <Input className="h-8 text-xs font-mono" value={party.rg || ""} onChange={(e) => set({ rg: e.target.value })} placeholder="RG" />
-          </div>
-        )}
-
-        {party.tipo === "pj" && (
-          <div className="space-y-1">
-            <Label className="text-xs">CNPJ</Label>
-            <Input className="h-8 text-xs font-mono" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
-          </div>
-        )}
-
-        {party.tipo === "pf" && (
-          <div className="space-y-1">
-            <Label className="text-xs">RG</Label>
-            <Input className="h-8 text-xs font-mono" value={party.rg || ""} onChange={(e) => set({ rg: e.target.value })} placeholder="RG" />
-          </div>
-        )}
+        <div className="space-y-1">
+          <Label className="text-xs">RG {party.tipo === "pj" ? "(Repr.)" : ""}</Label>
+          <Input className="h-8 text-xs font-mono" value={party.rg || ""} onChange={(e) => set({ rg: e.target.value })} placeholder="RG" />
+        </div>
 
         <div className="space-y-1">
           <Label className="text-xs">E-mail</Label>
@@ -551,28 +550,91 @@ function PartyCard({
   );
 }
 
-// ── Step 3 — Variáveis ──────────────────────────────────────────────────────
+// ── Step 3 — Variáveis (manifest-driven) ──────────────────────────────────
 
 function VariableField({
-  placeholder, value, onChange,
+  manifest, value, onChange,
 }: {
-  placeholder: string;
+  manifest: ManifestVar;
   value: string;
   onChange: (v: string) => void;
 }) {
-  const match = placeholder.match(/\{\{([A-Z][A-Z0-9_]*)\.([A-Z0-9_]+)\}\}/);
-  const label = match ? `${match[1]} — ${match[2].replace(/_/g, " ")}` : placeholder;
+  const inputId = `var-${manifest.key.replace(/[{}. ]/g, "_")}`;
+
+  const renderInput = () => {
+    switch (manifest.type) {
+      case "date":
+        return (
+          <DatePickerField
+            value={value}
+            onChange={(v) => onChange(v || "")}
+            placeholder={manifest.example || "Selecione uma data"}
+            data-testid={inputId}
+          />
+        );
+      case "boolean":
+        return (
+          <label className="flex items-center gap-2 cursor-pointer">
+            <Checkbox
+              checked={value === "true"}
+              onCheckedChange={(v) => onChange(v ? "true" : "false")}
+              data-testid={inputId}
+            />
+            <span className="text-xs text-muted-foreground">{manifest.example || "Sim/Não"}</span>
+          </label>
+        );
+      case "number":
+      case "percentage":
+        return (
+          <div className="relative">
+            <Input
+              className="h-8 text-xs font-mono pr-8"
+              type="number"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={manifest.example || "0"}
+              data-testid={inputId}
+            />
+            {manifest.type === "percentage" && (
+              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">%</span>
+            )}
+          </div>
+        );
+      case "currency":
+        return (
+          <div className="relative">
+            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+            <Input
+              className="h-8 text-xs font-mono pl-8"
+              type="number"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder={manifest.example || "0,00"}
+              data-testid={inputId}
+            />
+          </div>
+        );
+      default:
+        return (
+          <Input
+            className="h-8 text-xs"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={manifest.example || manifest.key}
+            data-testid={inputId}
+          />
+        );
+    }
+  };
 
   return (
     <div className="space-y-1">
-      <Label className="text-xs text-muted-foreground font-mono">{label}</Label>
-      <Input
-        className="h-8 text-xs"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        data-testid={`input-var-${placeholder.replace(/[{}. ]/g, "_")}`}
-      />
+      <div className="flex items-center gap-1.5">
+        <Label className="text-xs">{manifest.label}</Label>
+        {manifest.required && <span className="text-destructive text-xs">*</span>}
+        <span className="text-[10px] text-muted-foreground/60 font-mono">{manifest.key}</span>
+      </div>
+      {renderInput()}
     </div>
   );
 }
@@ -679,10 +741,7 @@ function PreviewPanel({
             .unresolved { background: rgb(254 240 138); color: rgb(133 77 14); padding: 0 2px; border-radius: 2px; font-size: 0.65rem; }
             .sig-placeholder { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); padding: 0 4px; border-radius: 3px; font-style: italic; }
           `}</style>
-          <div
-            className="whitespace-pre-wrap"
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
+          <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: html }} />
           {footerImage && (
             <img src={footerImage} alt="Rodapé" className="w-full mt-4 object-contain max-h-24" />
           )}
@@ -696,11 +755,8 @@ function PreviewPanel({
 
 function ReviewStep({ state, onMeta }: { state: WizardState; onMeta: (m: WizardMeta) => void }) {
   const m = state.meta;
-
   const setMeta = (patch: Partial<WizardMeta>) => onMeta({ ...m, ...patch });
 
-  const resolvedVars = Object.entries(state.variables).filter(([, v]) => v.trim()).length;
-  const totalVars = state.variablePlaceholders.length;
   const filledParties = state.partyRoles.filter((r) => {
     const p = state.parties[r];
     if (!p) return false;
@@ -709,12 +765,18 @@ function ReviewStep({ state, onMeta }: { state: WizardState; onMeta: (m: WizardM
     return !!p.nome;
   }).length;
 
+  const resolvedVars = Object.values(state.variables).filter((v) => v.trim()).length;
+  const requiredVarsTotal = state.manifestVars.filter((v) => v.required).length;
+
   return (
     <div className="space-y-4">
       <div className="rounded-lg bg-muted/40 border border-border p-4 space-y-2 text-sm">
         <div className="flex justify-between"><span className="text-muted-foreground">Template</span><span className="font-medium">{state.templateNome || "—"}</span></div>
         <div className="flex justify-between"><span className="text-muted-foreground">Partes preenchidas</span><span className="font-medium">{filledParties}/{state.partyRoles.length}</span></div>
-        <div className="flex justify-between"><span className="text-muted-foreground">Variáveis preenchidas</span><span className="font-medium">{resolvedVars}/{totalVars}</span></div>
+        <div className="flex justify-between"><span className="text-muted-foreground">Variáveis preenchidas</span><span className="font-medium">{resolvedVars}/{state.manifestVars.length}</span></div>
+        {requiredVarsTotal > 0 && (
+          <div className="flex justify-between"><span className="text-muted-foreground">Variáveis obrigatórias</span><span className="font-medium">{requiredVarsTotal}</span></div>
+        )}
         <div className="flex justify-between"><span className="text-muted-foreground">Signatários</span><span className="font-medium">{state.signers.length}</span></div>
       </div>
 
@@ -797,101 +859,148 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
   const isEdit = !!contrato;
 
+  // ── Initialise state on open ─────────────────────────────────────────────
+
   useEffect(() => {
-    if (open) {
-      if (contrato) {
-        const base = makeInitialWizardFromContrato(contrato);
-        const tmpl = templates.find((t) => t.id === contrato.template_id);
-        if (tmpl) {
-          const partyRoles = extractPartyRoles(tmpl.conteudo);
-          const signatureRoles = extractSignatureRoles(tmpl.conteudo);
-          const variablePlaceholders = extractVariablePlaceholders(tmpl.conteudo, partyRoles);
-          setState((prev) => ({
-            ...EMPTY_WIZARD,
-            ...base,
-            templateId: tmpl.id,
-            templateNome: tmpl.nome,
-            templateContent: tmpl.conteudo,
-            partyRoles,
-            signatureRoles,
-            variablePlaceholders,
-            parties: prev.parties,
-            variables: prev.variables,
-            signers: Array.isArray(contrato.signers)
-              ? (contrato.signers as unknown as WizardSigner[]).map((s, i) => ({ ...s, id: String(i), provider: (s.provider as WizardSigner["provider"]) || "" }))
-              : [],
-          }));
-        } else {
-          setState({ ...EMPTY_WIZARD, ...base } as WizardState);
+    if (!open) return;
+
+    if (contrato) {
+      const tmpl = templates.find((t) => t.id === contrato.template_id);
+
+      // FIX: parse saved wizard blob from observacoes to hydrate parties/variables
+      let savedBlob: { parties?: Record<string, PartyData>; variables?: Record<string, string> } = {};
+      try {
+        if (contrato.observacoes && contrato.observacoes.startsWith("{")) {
+          savedBlob = JSON.parse(contrato.observacoes);
         }
+      } catch { /* ignore parse errors */ }
+
+      const baseMeta: WizardMeta = {
+        titulo:       contrato.titulo || "",
+        status:       String(contrato.status || "rascunho"),
+        data_inicio:  contrato.data_inicio || "",
+        data_fim:     contrato.data_fim || "",
+        observations: "",
+      };
+
+      if (tmpl) {
+        const partyRoles   = extractPartyRoles(tmpl.conteudo);
+        const signatureRoles = extractSignatureRoles(tmpl.conteudo);
+        const manifestVars = parseManifest(tmpl.variables_manifest, tmpl.conteudo, partyRoles);
+
+        // Seed party entries; prefer saved data over empty shells
+        const initialParties: Record<string, PartyData> = {};
+        for (const role of partyRoles) {
+          initialParties[role] = (savedBlob.parties?.[role] as PartyData | undefined) ?? { tipo: "pf", origin: "manual" };
+        }
+
+        const savedSigners: WizardSigner[] = Array.isArray(contrato.signers)
+          ? (contrato.signers as unknown[]).map((s, i) => {
+              const r = s as Record<string, unknown>;
+              return {
+                id:          String(i),
+                role:        String(r.role ?? "OUTRO"),
+                nome:        String(r.nome ?? r.name ?? ""),
+                email:       String(r.email ?? ""),
+                obrigatorio: Boolean(r.obrigatorio ?? true),
+                ordem:       Number(r.ordem ?? i + 1),
+                provider:    (r.provider as SigningPlatform) || "" as const,
+              };
+            })
+          : signatureRoles.map((role, i) => ({
+              id: `sig-${Date.now()}-${i}`,
+              role,
+              nome: "",
+              email: "",
+              obrigatorio: true,
+              ordem: i + 1,
+              provider: "",
+            }));
+
+        setState({
+          templateId:      tmpl.id,
+          templateNome:    tmpl.nome,
+          templateContent: tmpl.conteudo,
+          partyRoles,
+          signatureRoles,
+          manifestVars,
+          parties:  initialParties,
+          variables: savedBlob.variables ?? {},
+          signers:  savedSigners,
+          meta:     baseMeta,
+        });
       } else {
-        setState(EMPTY_WIZARD);
+        setState({ ...EMPTY_WIZARD, meta: baseMeta });
       }
-      setStep(1);
+    } else {
+      setState(EMPTY_WIZARD);
     }
+
+    setStep(1);
   }, [open, contrato, templates]);
 
-  const handleSelectTemplate = useCallback((t: TemplateContrato, categoryLabel: string) => {
-    const partyRoles = extractPartyRoles(t.conteudo);
-    const signatureRoles = extractSignatureRoles(t.conteudo);
-    const variablePlaceholders = extractVariablePlaceholders(t.conteudo, partyRoles);
+  // ── Template selection ───────────────────────────────────────────────────
 
-    const existingParties: Record<string, PartyData> = {};
+  const handleSelectTemplate = useCallback((t: TemplateContrato) => {
+    const partyRoles     = extractPartyRoles(t.conteudo);
+    const signatureRoles = extractSignatureRoles(t.conteudo);
+    const manifestVars   = parseManifest(t.variables_manifest, t.conteudo, partyRoles);
+
+    const initialParties: Record<string, PartyData> = {};
     for (const role of partyRoles) {
-      existingParties[role] = { tipo: "pf", origin: "manual" };
+      initialParties[role] = { tipo: "pf", origin: "manual" };
     }
 
-    const existingSigners: WizardSigner[] = signatureRoles.map((role, i) => ({
+    const initialSigners: WizardSigner[] = signatureRoles.map((role, i) => ({
       id: `sig-${Date.now()}-${i}`,
       role,
-      nome: "",
-      email: "",
+      nome:        "",
+      email:       "",
       obrigatorio: true,
-      ordem: i + 1,
-      provider: "",
+      ordem:       i + 1,
+      provider:    "",
     }));
 
     setState((prev) => ({
       ...prev,
-      templateId: t.id,
-      templateNome: t.nome,
+      templateId:      t.id,
+      templateNome:    t.nome,
       templateContent: t.conteudo,
       partyRoles,
       signatureRoles,
-      variablePlaceholders,
-      parties: existingParties,
+      manifestVars,
+      parties:  initialParties,
       variables: {},
-      signers: existingSigners,
+      signers:  initialSigners,
     }));
   }, []);
 
-  const updateParty = useCallback((role: string, party: PartyData) => {
-    setState((prev) => ({ ...prev, parties: { ...prev.parties, [role]: party } }));
-  }, []);
+  // ── Updaters ─────────────────────────────────────────────────────────────
 
-  const updateVariable = useCallback((placeholder: string, value: string) => {
-    setState((prev) => ({ ...prev, variables: { ...prev.variables, [placeholder]: value } }));
-  }, []);
+  const updateParty    = useCallback((role: string, party: PartyData) =>
+    setState((p) => ({ ...p, parties: { ...p.parties, [role]: party } })), []);
 
-  const updateSigner = useCallback((id: string, signer: WizardSigner) => {
-    setState((prev) => ({ ...prev, signers: prev.signers.map((s) => s.id === id ? signer : s) }));
-  }, []);
+  const updateVariable = useCallback((key: string, value: string) =>
+    setState((p) => ({ ...p, variables: { ...p.variables, [key]: value } })), []);
 
-  const removeSigner = useCallback((id: string) => {
-    setState((prev) => ({ ...prev, signers: prev.signers.filter((s) => s.id !== id) }));
-  }, []);
+  const updateSigner   = useCallback((id: string, signer: WizardSigner) =>
+    setState((p) => ({ ...p, signers: p.signers.map((s) => s.id === id ? signer : s) })), []);
 
-  const addSigner = useCallback(() => {
+  const removeSigner   = useCallback((id: string) =>
+    setState((p) => ({ ...p, signers: p.signers.filter((s) => s.id !== id) })), []);
+
+  const addSigner      = useCallback(() => {
     const id = `sig-${Date.now()}`;
-    setState((prev) => ({
-      ...prev,
-      signers: [...prev.signers, { id, role: "OUTRO", nome: "", email: "", obrigatorio: false, ordem: prev.signers.length + 1, provider: "" }],
+    setState((p) => ({
+      ...p,
+      signers: [...p.signers, { id, role: "OUTRO", nome: "", email: "", obrigatorio: false, ordem: p.signers.length + 1, provider: "" }],
     }));
   }, []);
 
-  const updateMeta = useCallback((meta: WizardMeta) => {
-    setState((prev) => ({ ...prev, meta }));
-  }, []);
+  const updateMeta     = useCallback((meta: WizardMeta) =>
+    setState((p) => ({ ...p, meta })), []);
+
+  // ── Advance guard ────────────────────────────────────────────────────────
 
   const canAdvance = useMemo(() => {
     if (step === 1) return !!state.templateId;
@@ -901,44 +1010,47 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
 
   const selectedTemplate = templates.find((t) => t.id === state.templateId);
 
-  async function handleSave(sendForSignature = false) {
-    if (!state.meta.titulo.trim()) {
-      toast.error("Preencha o título do contrato");
-      return;
-    }
-    if (!state.meta.data_inicio) {
-      toast.error("Preencha a data de início");
-      return;
-    }
+  // ── Save ─────────────────────────────────────────────────────────────────
+
+  async function handleSave(sendForSignature: boolean) {
+    if (!state.meta.titulo.trim()) { toast.error("Preencha o título do contrato"); return; }
+    if (!state.meta.data_inicio)  { toast.error("Preencha a data de início");      return; }
 
     setIsSaving(true);
     try {
       const wizardBlob = JSON.stringify({
-        parties: state.parties,
-        variables: state.variables,
-        partyRoles: state.partyRoles,
-        variablePlaceholders: state.variablePlaceholders,
-        signatureRoles: state.signatureRoles,
+        parties:              state.parties,
+        variables:            state.variables,
+        partyRoles:           state.partyRoles,
+        manifestVars:         state.manifestVars,
+        signatureRoles:       state.signatureRoles,
       });
 
-      const provider = state.signers.find((s) => s.provider)?.provider || null;
+      // FIX: "Guardar Rascunho" always forces status = "rascunho"
+      const resolvedStatus = sendForSignature
+        ? "aguardando_assinatura"
+        : "rascunho";
 
-      const payload = {
-        titulo: state.meta.titulo.trim(),
-        template_id: state.templateId || null,
-        tipo: state.templateNome || null,
-        status: sendForSignature ? "aguardando_assinatura" : state.meta.status,
-        data_inicio: state.meta.data_inicio || null,
-        data_fim: state.meta.data_fim || null,
-        observacoes: wizardBlob,
-        signers: state.signers.map(({ id: _id, ...s }) => s),
-        signing_platform: provider as "autentique" | "clicksign" | "docusign" | null,
+      const provider = (state.signers.find((s) => s.provider)?.provider || null) as SigningPlatform | null;
+
+      // FIX: build typed payload — no `as any`
+      const payload: ContratoInsert = {
+        titulo:           state.meta.titulo.trim(),
+        template_id:      state.templateId || null,
+        tipo:             state.templateNome || null,
+        status:           resolvedStatus,
+        data_inicio:      state.meta.data_inicio || null,
+        data_fim:         state.meta.data_fim    || null,
+        observacoes:      wizardBlob,
+        signing_platform: provider,
+        // signers stored in wizard blob; pass empty array to avoid schema conflicts
+        signers:          [],
       };
 
       if (isEdit && contrato) {
-        updateContrato.mutate({ id: contrato.id, ...payload } as any);
+        updateContrato.mutate({ id: contrato.id, ...payload });
       } else {
-        addContrato.mutate(payload as any);
+        addContrato.mutate(payload);
       }
 
       if (sendForSignature) {
@@ -949,6 +1061,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       setIsSaving(false);
     }
   }
+
+  // ── Step content ─────────────────────────────────────────────────────────
 
   const stepContent = useMemo(() => {
     switch (step) {
@@ -964,11 +1078,11 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Preencha os dados de cada parte contratual. As partes foram detectadas automaticamente do template.
+              Preencha os dados de cada parte. Detectadas automaticamente dos placeholders do template.
             </p>
             {state.partyRoles.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-                Nenhuma parte detectada no template. Verifique se o template contém placeholders como{" "}
+                Nenhuma parte detectada. Verifique se o template contém placeholders como{" "}
                 <code className="text-xs bg-muted px-1 rounded">{`{{REPRESENTANTE.NAME}}`}</code>.
               </div>
             ) : (
@@ -991,18 +1105,18 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
             <p className="text-sm text-muted-foreground">
               Preencha as variáveis detectadas no template.
             </p>
-            {state.variablePlaceholders.length === 0 ? (
+            {state.manifestVars.length === 0 ? (
               <div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
                 Nenhuma variável adicional detectada neste template.
               </div>
             ) : (
               <div className="grid gap-3">
-                {state.variablePlaceholders.map((ph) => (
+                {state.manifestVars.map((mv) => (
                   <VariableField
-                    key={ph}
-                    placeholder={ph}
-                    value={state.variables[ph] || ""}
-                    onChange={(v) => updateVariable(ph, v)}
+                    key={mv.key}
+                    manifest={mv}
+                    value={state.variables[mv.key] || ""}
+                    onChange={(v) => updateVariable(mv.key, v)}
                   />
                 ))}
               </div>
@@ -1013,7 +1127,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         return (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
-              Revise o documento gerado. Itens em <span className="bg-yellow-100 text-yellow-800 px-1 rounded text-xs">⚠ amarelo</span> ainda não foram preenchidos.
+              Revise o documento. Itens em <span className="bg-yellow-100 text-yellow-800 px-1 rounded text-xs">⚠ amarelo</span> ainda não preenchidos.
             </p>
             <div className="rounded-lg border border-border overflow-hidden" style={{ height: "420px" }}>
               <PreviewPanel
@@ -1028,7 +1142,10 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Configure os signatários. Os roles foram detectados automaticamente do template.
+              Configure os signatários. Roles detectados automaticamente dos placeholders{" "}
+              <code className="text-[10px] bg-muted px-1 rounded">SIGNATURE.*</code>,{" "}
+              <code className="text-[10px] bg-muted px-1 rounded">INITIALS.*</code>,{" "}
+              <code className="text-[10px] bg-muted px-1 rounded">SIGN_DATE.*</code>.
             </p>
             {state.signers.map((signer) => (
               <SignerRow
@@ -1051,13 +1168,13 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
           </div>
         );
       case 6:
-        return (
-          <ReviewStep state={state} onMeta={updateMeta} />
-        );
+        return <ReviewStep state={state} onMeta={updateMeta} />;
       default:
         return null;
     }
   }, [step, state, handleSelectTemplate, categories, clientes, artistas, updateParty, updateVariable, updateSigner, removeSigner, addSigner, updateMeta, selectedTemplate]);
+
+  // ── Render ────────────────────────────────────────────────────────────────
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -1070,7 +1187,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         </DialogTitle>
 
         <div className="flex h-full overflow-hidden">
-          {/* ── Sidebar ── */}
+
+          {/* ── Step sidebar ─────────────────────────────────────────────── */}
           <div className="hidden md:flex flex-col w-52 border-r border-border bg-muted/30 shrink-0">
             <div className="p-4 border-b border-border">
               <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
@@ -1082,10 +1200,10 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
             </div>
             <nav className="flex-1 p-3 space-y-1">
               {WIZARD_STEPS.map((s, i) => {
-                const n = i + 1;
+                const n    = i + 1;
                 const Icon = s.icon;
                 const active = step === n;
-                const done = step > n;
+                const done   = step > n;
                 return (
                   <button
                     key={n}
@@ -1107,31 +1225,28 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
                       {done ? <Check className="h-3 w-3" /> : n}
                     </span>
                     <span>{s.label}</span>
-                    {active && <ChevronRight className="h-3 w-3 ml-auto" />}
+                    {active && <Icon className="h-3 w-3 ml-auto opacity-60" />}
                   </button>
                 );
               })}
             </nav>
           </div>
 
-          {/* ── Left Panel (form) ── */}
+          {/* ── Form panel ───────────────────────────────────────────────── */}
           <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            <div className="flex items-center gap-3 px-5 py-3 border-b border-border shrink-0">
-              <div className="flex md:hidden items-center gap-1.5">
-                {WIZARD_STEPS.map((_, i) => (
-                  <div
-                    key={i}
-                    className={cn(
-                      "h-1.5 rounded-full transition-all",
-                      step > i + 1 ? "w-4 bg-primary" : step === i + 1 ? "w-4 bg-primary" : "w-1.5 bg-muted",
-                    )}
-                  />
-                ))}
-              </div>
-              <div className="flex items-center gap-1.5 md:hidden">
-                <span className="text-xs font-medium">{WIZARD_STEPS[step - 1]?.label}</span>
-                <span className="text-xs text-muted-foreground">({step}/6)</span>
-              </div>
+            {/* Mobile step indicator */}
+            <div className="flex md:hidden items-center gap-2 px-5 py-3 border-b border-border shrink-0">
+              {WIZARD_STEPS.map((_, i) => (
+                <div
+                  key={i}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all",
+                    step >= i + 1 ? "w-4 bg-primary" : "w-1.5 bg-muted",
+                  )}
+                />
+              ))}
+              <span className="ml-2 text-xs font-medium">{WIZARD_STEPS[step - 1]?.label}</span>
+              <span className="text-xs text-muted-foreground">({step}/6)</span>
             </div>
 
             <ScrollArea className="flex-1 px-5 py-4">
@@ -1140,6 +1255,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
               </div>
             </ScrollArea>
 
+            {/* Footer navigation */}
             <div className="flex items-center justify-between px-5 py-3 border-t border-border shrink-0 bg-background">
               <Button
                 variant="ghost"
@@ -1196,7 +1312,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
             </div>
           </div>
 
-          {/* ── Right Panel (live preview) ── */}
+          {/* ── Live preview panel ───────────────────────────────────────── */}
           <div className="hidden lg:flex flex-col w-[45%] border-l border-border bg-muted/10 overflow-hidden">
             <PreviewPanel
               state={state}
@@ -1204,6 +1320,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
               footerImage={selectedTemplate?.footer_image}
             />
           </div>
+
         </div>
       </DialogContent>
     </Dialog>

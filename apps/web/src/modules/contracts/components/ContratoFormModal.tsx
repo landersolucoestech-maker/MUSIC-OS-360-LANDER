@@ -24,7 +24,6 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
-import type { ClientType } from "@/modules/contracts/hooks/useContractServiceTypes";
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { UserPlus, X } from "lucide-react";
@@ -66,9 +65,8 @@ const ContractForm = ({
     defaultValues: { status: "rascunho", registry_office: false, signers: [], ...initialData },
   });
 
-  const clientTypeValue = form.watch("client_type") as ClientType | undefined;
   const serviceTypeValue = form.watch("service_type");
-  const { serviceTypes, allServiceTypes } = useContractServiceTypes(clientTypeValue ?? null);
+  const { serviceTypes, allServiceTypes } = useContractServiceTypes(null);
   const { templates } = useTemplatesContratos();
 
   // Normaliza slugs da CategoryRegistry (e legados) para slugs CST equivalentes.
@@ -179,30 +177,6 @@ const ContractForm = ({
               )}
             </div>
 
-            {/* Tipo de Cliente */}
-            <div className="space-y-2">
-              <Label>Tipo de Cliente *</Label>
-              <Select
-                value={form.watch("client_type")}
-                onValueChange={(value) => {
-                  form.setValue("client_type", value as ContratoFormData["client_type"]);
-                  form.setValue("service_type", "");
-                }}
-              >
-                <SelectTrigger data-testid="select-client-type">
-                  <SelectValue placeholder="Selecione o tipo de cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="artista">Artista</SelectItem>
-                  <SelectItem value="pessoa_fisica">Pessoa Física</SelectItem>
-                  <SelectItem value="pessoa_juridica">Pessoa Jurídica</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.formState.errors.client_type && (
-                <p className="text-sm text-destructive">{form.formState.errors.client_type.message}</p>
-              )}
-            </div>
-
             {/* Tipo de Serviço */}
             <div className="space-y-2">
               <Label>Tipo de Serviço *</Label>
@@ -221,9 +195,7 @@ const ContractForm = ({
                   )}
                   {typesWithTemplates.length === 0 ? (
                     <div className="px-2 py-3 text-sm text-muted-foreground text-center">
-                      {clientTypeValue
-                        ? "Nenhum template disponível para este tipo de cliente"
-                        : "Selecione primeiro o tipo de cliente"}
+                      Nenhum template disponível
                     </div>
                   ) : (
                     typesWithTemplates.map((t) => (
@@ -257,89 +229,6 @@ const ContractForm = ({
               </Select>
             </div>
 
-            {/* Contratante PF */}
-            {form.watch("client_type") === "pessoa_fisica" && (
-              <div className="space-y-2">
-                <Label>Contratante (Pessoa Física)</Label>
-                <Select
-                  value={form.watch("contractor_contact")}
-                  onValueChange={(value) => {
-                    form.setValue("contractor_contact", value);
-                    const contato = contatosPF.find((c) => c.id === value);
-                    if (contato) form.setValue("responsible_person", (contato.responsavel as string) || (contato.nome as string));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={contatosPF.length > 0 ? "Selecione um contato do CRM" : "Nenhum contato PF cadastrado"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contatosPF.length > 0
-                      ? contatosPF.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum contato PF cadastrado no CRM</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Contratante PJ */}
-            {form.watch("client_type") === "pessoa_juridica" && (
-              <div className="space-y-2">
-                <Label>Contratante (Pessoa Jurídica)</Label>
-                <Select
-                  value={form.watch("company_id")}
-                  onValueChange={(value) => {
-                    form.setValue("company_id", value);
-                    const empresa = contatosPJ.find((c) => c.id === value);
-                    if (empresa) {
-                      form.setValue("responsible_person", (empresa.responsavel as string) || "");
-                      form.setValue("contractor_contact", empresa.id);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={contatosPJ.length > 0 ? "Selecione uma empresa do CRM" : "Nenhuma empresa cadastrada"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contatosPJ.length > 0
-                      ? contatosPJ.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhuma empresa cadastrada no CRM</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Artista */}
-            {form.watch("client_type") === "artista" && (
-              <div className="space-y-2">
-                <Label>Cliente/Artista</Label>
-                <Select
-                  value={form.watch("artist_id")}
-                  onValueChange={(value) => form.setValue("artist_id", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={artists.length > 0 ? "Selecione um artista" : "Nenhum artista cadastrado"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {artists.length > 0
-                      ? artists.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Responsável */}
-            <div className="space-y-2">
-              <Label htmlFor="responsible_person">Responsável</Label>
-              <Input
-                id="responsible_person"
-                {...form.register("responsible_person")}
-                placeholder="Nome do responsável"
-              />
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -471,13 +360,11 @@ const ContractForm = ({
               </>
             ) : (
               /* Sem tipo selecionado: campo de valor genérico (fallback) */
-              clientTypeValue && (
-                <div className="space-y-2">
-                  <Label htmlFor="fixed_value_default">Valor do Contrato (R$)</Label>
-                  <Input id="fixed_value_default" type="number" step="0.01" placeholder="0,00"
-                    {...form.register("fixed_value", { valueAsNumber: true })} />
-                </div>
-              )
+              <div className="space-y-2">
+                <Label htmlFor="fixed_value_default">Valor do Contrato (R$)</Label>
+                <Input id="fixed_value_default" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("fixed_value", { valueAsNumber: true })} />
+              </div>
             )}
           </div>
         </CardContent>
@@ -672,20 +559,17 @@ const ContractForm = ({
 function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData> {
   const status = c.status as ContratoFormData["status"] | undefined;
   const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
-  const clientType: ContratoFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
   return {
-    title: c.titulo ?? "",
+    title:        c.titulo ?? "",
     service_type: serviceType,
-    client_type: clientType,
-    artist_id: c.artista_id ?? undefined,
-    status: status ?? "rascunho",
-    arquivo_url: c.arquivo_url ?? undefined,
+    status:       status ?? "rascunho",
+    arquivo_url:  c.arquivo_url ?? undefined,
     lancamento_id: c.lancamento_id ?? undefined,
-    start_date: c.data_inicio ? new Date(c.data_inicio) : undefined,
-    end_date: c.data_fim ? new Date(c.data_fim) : undefined,
-    fixed_value: c.valor ?? undefined,
-    observations: c.observacoes ?? undefined,
-    signers: Array.isArray(c.signers) ? c.signers : [],
+    start_date:   c.data_inicio ? new Date(c.data_inicio) : undefined,
+    end_date:     c.data_fim    ? new Date(c.data_fim)    : undefined,
+    fixed_value:  c.valor ?? undefined,
+    observations: c.observacoes?.startsWith("{") ? undefined : (c.observacoes ?? undefined),
+    signers:      Array.isArray(c.signers) ? c.signers : [],
   };
 }
 
@@ -709,7 +593,7 @@ export const ContratoFormModal = ({
 
   const handleSubmit = (data: ContratoFormData) => {
     const {
-      title, client_type, service_type, artist_id, status,
+      title, service_type, status,
       arquivo_url, notas_versao, lancamento_id,
       start_date, end_date, fixed_value,
       royalties_percentage, advance_payment, financial_support, observations,
@@ -723,7 +607,6 @@ export const ContratoFormModal = ({
       titulo: title,
       tipo: service_type,
       status: status || "rascunho",
-      artista_id: client_type === "artista" ? (artist_id || null) : null,
       arquivo_url: resolvedArquivoUrl,
       lancamento_id: resolvedLancamentoId,
       data_inicio: start_date ? (start_date as Date).toISOString().split("T")[0] : null,
