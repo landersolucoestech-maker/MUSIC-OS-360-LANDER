@@ -92,7 +92,7 @@ export type VariableCategory =
   | "sistema"
   | "personalizada";
 
-export type VariableType = "text" | "number" | "date" | "percentage" | "currency" | "boolean";
+export type VariableType = "text" | "textarea" | "number" | "date" | "percentage" | "currency" | "boolean" | "select";
 
 export interface ContractVariable {
   id: string;
@@ -104,6 +104,7 @@ export interface ContractVariable {
   category: VariableCategory;
   required: boolean;
   example: string;
+  options?: string[];
   participantReference?: string;
 }
 

@@ -252,24 +252,34 @@ function resolvePartyField(party: PartyData, field: string): string {
   return key ? String(party[key] || "") : "";
 }
 
+/** Escape user-provided values before injecting into HTML to prevent XSS */
+function escapeHtml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;");
+}
+
 function renderPreview(
   content: string,
   parties: Record<string, PartyData>,
   variables: Record<string, string>,
 ): string {
-  return content.replace(PLACEHOLDER_RE, (match, group, field) => {
+  return content.replace(PLACEHOLDER_RE, (_match, group, field) => {
     if (SIGNATURE_GROUPS.has(group)) {
-      return `<span class="sig-placeholder">[Assinatura: ${field}]</span>`;
+      return `<span class="sig-placeholder">[Assinatura: ${escapeHtml(field)}]</span>`;
     }
     const party = parties[group];
     if (party) {
       const val = resolvePartyField(party, field);
-      if (val) return `<span class="resolved">${val}</span>`;
+      if (val) return `<span class="resolved">${escapeHtml(val)}</span>`;
     }
     const varKey = `{{${group}.${field}}}`;
     const varVal = variables[varKey];
-    if (varVal) return `<span class="resolved">${varVal}</span>`;
-    return `<span class="unresolved" title="${match}">⚠ ${group}.${field}</span>`;
+    if (varVal) return `<span class="resolved">${escapeHtml(varVal)}</span>`;
+    return `<span class="unresolved">⚠ ${escapeHtml(group)}.${escapeHtml(field)}</span>`;
   });
 }
 
@@ -614,6 +624,30 @@ function VariableField({
             />
           </div>
         );
+      case "textarea":
+        return (
+          <Textarea
+            className="text-xs min-h-[60px]"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            placeholder={manifest.example || manifest.key}
+            data-testid={inputId}
+          />
+        );
+      case "select":
+        return (
+          <Select value={value || "none"} onValueChange={(v) => onChange(v === "none" ? "" : v)}>
+            <SelectTrigger className="h-8 text-xs" data-testid={inputId}>
+              <SelectValue placeholder="Selecionar…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">— Selecionar —</SelectItem>
+              {(manifest.options ?? []).map((opt) => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        );
       default:
         return (
           <Input
@@ -682,10 +716,13 @@ function SignerRow({
         </div>
         <div className="space-y-1">
           <Label className="text-xs">Plataforma</Label>
-          <Select value={signer.provider} onValueChange={(v) => set({ provider: v as WizardSigner["provider"] })}>
+          <Select
+            value={signer.provider || "none"}
+            onValueChange={(v) => set({ provider: (v === "none" ? "" : v) as WizardSigner["provider"] })}
+          >
             <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar…" /></SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Sem plataforma</SelectItem>
+              <SelectItem value="none">Sem plataforma</SelectItem>
               <SelectItem value="autentique">Autentique</SelectItem>
               <SelectItem value="clicksign">Clicksign</SelectItem>
               <SelectItem value="docusign">DocuSign</SelectItem>
@@ -1043,8 +1080,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
         data_fim:         state.meta.data_fim    || null,
         observacoes:      wizardBlob,
         signing_platform: provider,
-        // signers stored in wizard blob; pass empty array to avoid schema conflicts
-        signers:          [],
+        // Persist full signer data; `id` is wizard-local, strip it out
+        signers: state.signers.map(({ id: _id, ...s }) => s) as unknown as ContratoInsert["signers"],
       };
 
       if (isEdit && contrato) {
