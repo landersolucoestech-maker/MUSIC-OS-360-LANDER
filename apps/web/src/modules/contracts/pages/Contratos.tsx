@@ -16,7 +16,6 @@ import {
 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
 import { ContratoWizard } from "@/modules/contracts/components/ContratoWizard";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -434,11 +433,10 @@ export default function Contratos() {
         open={wizardOpen}
         onOpenChange={setWizardOpen}
       />
-      <ContratoFormModal
+      <ContratoWizard
         open={formModal.open && formModal.mode === "edit"}
         onOpenChange={(open) => setFormModal({ ...formModal, open })}
         contrato={formModal.contrato}
-        mode="edit"
       />
       <DeleteConfirmModal
         open={deleteModal.open}
