@@ -68,23 +68,50 @@ function HighlightedPreview({ text }: { text: string }) {
       </p>
     );
   }
-  const parts = text.split(/(\{\{[^}]+\}\})/g);
+
+  // Helper: highlight {{PLACEHOLDERS}} within a line string
+  function renderLineParts(line: string, baseKey: string) {
+    const parts = line.split(/(\{\{[^}]+\}\})/g);
+    return parts.map((part, i) =>
+      /^\{\{[^}]+\}\}$/.test(part) ? (
+        <span
+          key={`${baseKey}-${i}`}
+          className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-mono"
+        >
+          {part}
+        </span>
+      ) : (
+        <span key={`${baseKey}-${i}`}>{part}</span>
+      ),
+    );
+  }
+
+  // Detect title lines: non-empty, all letters are uppercase, has at least one letter
+  function isTitleLine(line: string): boolean {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+    if (!/[A-ZÁÉÍÓÚÀÂÊÔÃÕÜÇÑ]/i.test(trimmed)) return false;
+    return trimmed === trimmed.toUpperCase();
+  }
+
+  const lines = text.split("\n");
+
   return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed">
-      {parts.map((part, i) => {
-        if (/^\{\{[^}]+\}\}$/.test(part)) {
-          return (
-            <span
-              key={i}
-              className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-mono"
-            >
-              {part}
-            </span>
-          );
-        }
-        return <span key={i}>{part}</span>;
-      })}
-    </p>
+    <div className="text-sm leading-relaxed">
+      {lines.map((line, idx) =>
+        isTitleLine(line) ? (
+          <p key={idx} className="font-bold text-center my-1">
+            {renderLineParts(line, String(idx))}
+          </p>
+        ) : line.trim() === "" ? (
+          <br key={idx} />
+        ) : (
+          <p key={idx} className="my-0.5">
+            {renderLineParts(line, String(idx))}
+          </p>
+        ),
+      )}
+    </div>
   );
 }
 
