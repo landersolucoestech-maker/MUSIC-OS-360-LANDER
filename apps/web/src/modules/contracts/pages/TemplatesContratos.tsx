@@ -2,14 +2,13 @@ import { useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent, CardHeader } from "@/shared/ui/card";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
 import {
-  Loader2, Plus, Trash2, FileText, Sparkles, Eye,
-  ChevronRight, Pencil, Search, X, LayoutGrid, List,
+  Loader2, Plus, Trash2, FileText, Sparkles, Eye, Pencil, Search, X,
 } from "lucide-react";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -57,124 +56,6 @@ function formatDate(dateStr?: string): string {
   } catch {
     return "—";
   }
-}
-
-function TemplateCard({
-  template,
-  onDelete,
-  onView,
-  onEdit,
-}: {
-  template: TemplateContrato;
-  onDelete: () => void;
-  onView: () => void;
-  onEdit: () => void;
-}) {
-  const varCount = countVariables(template);
-  const clauseTypes = getClauseTypes(template);
-  const isSemantic = template.tipo_servico === "semantico";
-
-  return (
-    <Card
-      className="group hover:border-primary/30 transition-colors cursor-pointer"
-      onClick={onView}
-      data-testid={`card-template-${template.id}`}
-    >
-      <CardHeader className="pb-2 pt-4 px-4">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex items-start gap-2.5 min-w-0">
-            <div
-              className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 mt-0.5 ${
-                isSemantic ? "bg-primary/10" : "bg-muted"
-              }`}
-            >
-              {isSemantic ? (
-                <Sparkles className="h-4 w-4 text-primary" />
-              ) : (
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="font-semibold text-sm leading-tight truncate">{template.nome}</p>
-              {template.descricao && (
-                <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
-                  {template.descricao}
-                </p>
-              )}
-            </div>
-          </div>
-
-          {/* Action buttons — visible on hover */}
-          <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(e) => { e.stopPropagation(); onView(); }}
-              title="Visualizar"
-              data-testid={`button-view-template-${template.id}`}
-            >
-              <Eye className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7"
-              onClick={(e) => { e.stopPropagation(); onEdit(); }}
-              title="Editar"
-              data-testid={`button-edit-template-${template.id}`}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-7 w-7 text-muted-foreground hover:text-destructive"
-              onClick={(e) => { e.stopPropagation(); onDelete(); }}
-              title="Excluir"
-              data-testid={`button-delete-template-${template.id}`}
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      </CardHeader>
-
-      <CardContent className="px-4 pb-4 space-y-3">
-        <div className="flex flex-wrap gap-1">
-          {isSemantic && varCount > 0 && (
-            <Badge variant="secondary" className="text-[10px] gap-1">
-              <Sparkles className="h-2.5 w-2.5" />
-              {varCount} variáveis
-            </Badge>
-          )}
-          {clauseTypes.slice(0, 3).map((ct) => (
-            <Badge key={ct} variant="outline" className="text-[10px]">
-              {ct}
-            </Badge>
-          ))}
-          {clauseTypes.length > 3 && (
-            <span className="text-[10px] px-1.5 py-0.5 rounded border text-muted-foreground border-border">
-              +{clauseTypes.length - 3}
-            </span>
-          )}
-          {!isSemantic && (
-            <Badge variant="outline" className="text-[10px]">
-              {template.tipo_servico ? formatSlug(template.tipo_servico) : "Padrão"}
-            </Badge>
-          )}
-          <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">
-            {template.ativo ? "Ativo" : "Inativo"}
-          </Badge>
-        </div>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>{formatDate(template.created_at)}</span>
-          <ChevronRight className="h-3.5 w-3.5" />
-        </div>
-      </CardContent>
-    </Card>
-  );
 }
 
 function TemplateRow({
@@ -276,7 +157,6 @@ export default function TemplatesContratos() {
   const [search, setSearch]           = useState("");
   const [filterType, setFilterType]   = useState<"all" | "semantico" | "padrao">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "ativo" | "inativo">("all");
-  const [view, setView]               = useState<"grid" | "list">("list");
 
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -434,28 +314,6 @@ export default function TemplatesContratos() {
             </Button>
           )}
 
-          <div className="flex items-center gap-1 border border-border rounded-md p-0.5 ml-auto shrink-0">
-            <Button
-              variant={view === "list" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setView("list")}
-              title="Lista"
-              data-testid="button-view-list"
-            >
-              <List className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant={view === "grid" ? "secondary" : "ghost"}
-              size="icon"
-              className="h-7 w-7"
-              onClick={() => setView("grid")}
-              title="Grelha"
-              data-testid="button-view-grid"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" />
-            </Button>
-          </div>
         </div>
 
         {/* Template grid */}
@@ -481,22 +339,10 @@ export default function TemplatesContratos() {
               />
             </CardContent>
           </Card>
-        ) : view === "list" ? (
+        ) : (
           <div className="flex flex-col gap-1.5">
             {filteredTemplates.map((t) => (
               <TemplateRow
-                key={t.id}
-                template={t}
-                onView={() => handleViewClick(t)}
-                onEdit={() => handleEditClick(t)}
-                onDelete={() => handleDeleteClick(t)}
-              />
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredTemplates.map((t) => (
-              <TemplateCard
                 key={t.id}
                 template={t}
                 onView={() => handleViewClick(t)}
