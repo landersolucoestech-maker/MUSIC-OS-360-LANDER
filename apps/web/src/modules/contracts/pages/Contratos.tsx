@@ -17,6 +17,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ContratoFormModal } from "@/modules/contracts/components/ContratoFormModal";
+import { ContratoWizard } from "@/modules/contracts/components/ContratoWizard";
 import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
@@ -47,7 +48,8 @@ export default function Contratos() {
   const { contratos, isLoading, deleteContrato, addContrato } = useContratos();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; contrato?: any }>({ open: false, mode: "create" });
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; contrato?: any }>({ open: false, mode: "edit" });
   const [viewModal, setViewModal] = useState<{ open: boolean; contrato?: any }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; contrato?: any }>({ open: false });
 
@@ -182,7 +184,7 @@ export default function Contratos() {
             Templates
           </Button>
           <RequirePermission module="contracts" action="write">
-            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
+            <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setWizardOpen(true)} data-testid="button-novo-contrato">
               <Plus className="h-3.5 w-3.5" />
               Novo Contrato
             </Button>
@@ -415,7 +417,7 @@ export default function Contratos() {
                     : "Comece criando seu primeiro contrato."
                 }
                 actionLabel={hasActiveFilters ? undefined : "Novo Contrato"}
-                onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
+                onAction={hasActiveFilters ? undefined : () => setWizardOpen(true)}
               />
             )}
           </CardContent>
@@ -428,11 +430,15 @@ export default function Contratos() {
         contrato={viewModal.contrato}
         onEdit={() => setFormModal({ open: true, mode: "edit", contrato: viewModal.contrato })}
       />
+      <ContratoWizard
+        open={wizardOpen}
+        onOpenChange={setWizardOpen}
+      />
       <ContratoFormModal
-        open={formModal.open}
+        open={formModal.open && formModal.mode === "edit"}
         onOpenChange={(open) => setFormModal({ ...formModal, open })}
         contrato={formModal.contrato}
-        mode={formModal.mode}
+        mode="edit"
       />
       <DeleteConfirmModal
         open={deleteModal.open}
