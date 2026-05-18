@@ -188,7 +188,7 @@ export default function TemplatesContratos() {
   };
 
   const handleEditSave = (id: string, data: TemplateContratoUpdate) => {
-    updateTemplate.mutate({ id, data });
+    updateTemplate.mutate({ id, ...data });
   };
 
   const handleDeleteClick = (t: TemplateContrato) => {
