@@ -53,7 +53,6 @@ interface ContractImportWorkspaceProps {
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const PLACEHOLDER_REGEX = /\{\{([A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+)\}\}/gi;
-const CUSTOM_VAR_REGEX = /^[A-Z][A-Z0-9_]*\.[A-Z][A-Z0-9_]+$/i;
 
 // ── Highlighted preview ───────────────────────────────────────────────────
 
@@ -467,7 +466,6 @@ export function ContractImportWorkspace({
   const [categoria, setCategoria] = useState("semantico");
   const [text, setText] = useState("");
   const [search, setSearch] = useState("");
-  const [customVar, setCustomVar] = useState("");
   const [activeTab, setActiveTab] = useState("template");
 
   const [aiLoading, setAiLoading] = useState(false);
@@ -507,21 +505,6 @@ export function ContractImportWorkspace({
     },
     [text],
   );
-
-  // ── Create custom variable ──────────────────────────────────────────────
-
-  function handleCreateCustomVar() {
-    const raw = customVar.trim().toUpperCase();
-    if (!CUSTOM_VAR_REGEX.test(raw)) {
-      toast.error("Formato inválido. Use GRUPO.CAMPO (ex: SHOW.RIDER)");
-      return;
-    }
-    const [group, field] = raw.split(".");
-    const placeholder = `{{${raw}}}`;
-    addVariable(raw, group, field);
-    insertAtCursor(placeholder);
-    setCustomVar("");
-  }
 
   // ── AI suggestions ──────────────────────────────────────────────────────
 
@@ -635,7 +618,6 @@ export function ContractImportWorkspace({
     setCategoria("semantico");
     setText("");
     setSearch("");
-    setCustomVar("");
     setAiSuggestions([]);
     setAiSheetOpen(false);
     setHeaderImage(null);
@@ -879,36 +861,6 @@ export function ContractImportWorkspace({
                   )}
                 </ScrollArea>
 
-                {/* Quick variable creator */}
-                <div className="shrink-0 border-t px-3 py-3 space-y-2">
-                  <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
-                    Variável Rápida
-                  </Label>
-                  <div className="flex gap-1.5">
-                    <Input
-                      placeholder="GRUPO.CAMPO"
-                      value={customVar}
-                      onChange={(e) => setCustomVar(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") handleCreateCustomVar();
-                      }}
-                      className="h-7 text-xs font-mono"
-                      data-testid="input-custom-var"
-                    />
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 px-2 text-xs shrink-0"
-                      onClick={handleCreateCustomVar}
-                      data-testid="button-create-custom-var"
-                    >
-                      Criar
-                    </Button>
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">
-                    Ex: SHOW.RIDER — Formato: GRUPO.CAMPO
-                  </p>
-                </div>
               </div>
             </TabsContent>
 
