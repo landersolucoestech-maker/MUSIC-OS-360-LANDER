@@ -711,7 +711,7 @@ export function ContractImportWorkspace({
               className="flex-1 flex overflow-hidden mt-0 data-[state=inactive]:hidden"
             >
               {/* ── Left column: form sections + editor ── */}
-              <div className="flex-1 flex flex-col overflow-hidden border-r">
+              <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
                 {/* Informações Básicas */}
                 <div className="shrink-0 border-b px-6 py-4">
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
@@ -814,7 +814,7 @@ export function ContractImportWorkspace({
               </div>
 
               {/* ── Right column: Variable panel (full modal height) ── */}
-              <div className="w-72 shrink-0 flex flex-col overflow-hidden bg-background/40">
+              <div className="w-72 shrink-0 flex flex-col overflow-hidden border-l bg-background/40">
                 <div className="px-3 pt-3 pb-2 shrink-0 border-b">
                   <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">
                     Variáveis do Registo

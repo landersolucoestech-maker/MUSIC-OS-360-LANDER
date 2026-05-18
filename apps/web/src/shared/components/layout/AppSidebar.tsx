@@ -51,7 +51,6 @@ import {
   ServerCrash,
   Inbox,
   Mic2,
-  Braces,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -116,8 +115,6 @@ const NAV_ITEMS: NavItem[] = [
     featureFlag: "moduleContracts",
     children: [
       { title: "Contratos",  href: "/contratos",           icon: FileText },
-      { title: "Templates",  href: "/contratos/templates", icon: FileEdit },
-      { title: "Variáveis",  href: "/contratos/variaveis", icon: Braces },
     ],
   },
   {
