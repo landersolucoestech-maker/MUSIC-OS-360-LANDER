@@ -553,6 +553,10 @@ function PartyCard({
               <Label className="text-xs">CNPJ</Label>
               <Input className="h-8 text-xs font-mono" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
             </div>
+            <div className="space-y-1 col-span-2">
+              <Label className="text-xs">Endereço</Label>
+              <Input className="h-8 text-xs" value={party.endereco || ""} onChange={(e) => set({ endereco: e.target.value })} placeholder="Rua, número, cidade - UF" />
+            </div>
             <div className="space-y-1 col-span-2 border-t border-border pt-2 mt-1">
               <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Dados do Representante Legal</p>
             </div>
@@ -604,10 +608,12 @@ function PartyCard({
           <Input className="h-8 text-xs" type="email" value={party.email || ""} onChange={(e) => set({ email: e.target.value })} placeholder="email@exemplo.com" />
         </div>
 
-        <div className="space-y-1 col-span-2">
-          <Label className="text-xs">Endereço</Label>
-          <Input className="h-8 text-xs" value={party.endereco || ""} onChange={(e) => set({ endereco: e.target.value })} placeholder="Rua, número, cidade - UF" />
-        </div>
+        {party.tipo !== "pj" && (
+          <div className="space-y-1 col-span-2">
+            <Label className="text-xs">Endereço</Label>
+            <Input className="h-8 text-xs" value={party.endereco || ""} onChange={(e) => set({ endereco: e.target.value })} placeholder="Rua, número, cidade - UF" />
+          </div>
+        )}
       </div>
     </div>
   );
