@@ -266,29 +266,29 @@ function A4Preview({
   return (
     <div className="h-full overflow-y-auto bg-muted/30 py-8 px-4 flex justify-center">
       <div
-        className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full"
-        style={{
-          maxWidth: "794px",
-          minHeight: "1123px",
-          padding: "60px 72px",
-        }}
+        className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full overflow-hidden"
+        style={{ maxWidth: "794px", minHeight: "1123px" }}
       >
+        {/* ── Header image — full page width ── */}
         {headerImage ? (
           <img
             src={headerImage}
             alt="Cabeçalho"
-            className="w-full object-contain mb-8"
-            style={{ maxHeight: "72px" }}
+            className="w-full object-cover shrink-0"
+            style={{ maxHeight: "120px" }}
           />
         ) : (
-          <div className="border-b border-gray-200 mb-8 pb-3 flex items-center justify-center">
-            <span className="text-gray-400 text-xs italic">
-              Sem imagem de cabeçalho
-            </span>
+          <div className="px-[72px] pt-[48px]">
+            <div className="border-b border-gray-200 pb-3 flex items-center justify-center">
+              <span className="text-gray-400 text-xs italic">
+                Sem imagem de cabeçalho
+              </span>
+            </div>
           </div>
         )}
 
-        <div className="flex-1">
+        {/* ── Content ── */}
+        <div className="flex-1 px-[72px] py-[48px]">
           {content.trim() ? (
             <HighlightedPreview text={content} />
           ) : (
@@ -298,18 +298,21 @@ function A4Preview({
           )}
         </div>
 
+        {/* ── Footer image — full page width ── */}
         {footerImage ? (
           <img
             src={footerImage}
             alt="Rodapé"
-            className="w-full object-contain mt-8"
-            style={{ maxHeight: "52px" }}
+            className="w-full object-cover shrink-0"
+            style={{ maxHeight: "96px" }}
           />
         ) : (
-          <div className="border-t border-gray-200 mt-8 pt-3 flex items-center justify-center">
-            <span className="text-gray-400 text-xs italic">
-              Sem imagem de rodapé
-            </span>
+          <div className="px-[72px] pb-[48px]">
+            <div className="border-t border-gray-200 pt-3 flex items-center justify-center">
+              <span className="text-gray-400 text-xs italic">
+                Sem imagem de rodapé
+              </span>
+            </div>
           </div>
         )}
       </div>
