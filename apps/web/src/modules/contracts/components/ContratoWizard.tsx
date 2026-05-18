@@ -24,6 +24,7 @@ import type { TemplateContrato, ContractVariable, WizardSignerRecord } from "@/m
 import type { ContratoWithRelations, ContratoInsert } from "@/modules/contracts/hooks/useContratos";
 import type { SigningPlatform } from "@/modules/contracts/types/contracts.types";
 import { cn } from "@/shared/lib/utils";
+import { A4Preview } from "@/modules/contracts/components/ContractA4Preview";
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -259,34 +260,31 @@ function resolvePartyField(party: PartyData, field: string): string {
   return key ? String(party[key] || "") : "";
 }
 
-/** Escape user-provided values before injecting into HTML to prevent XSS */
-function escapeHtml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#x27;");
-}
-
-function renderPreview(
+/**
+ * Resolves party/variable placeholders in the template content.
+ * Resolved values replace the placeholder with plain text.
+ * Unresolved placeholders are left as {{GROUP.FIELD}} so that
+ * HighlightedPreview (used inside A4Preview) renders them highlighted.
+ * Signature placeholders are replaced with a human-readable label.
+ */
+function resolveContentForPreview(
   content: string,
   parties: Record<string, PartyData>,
   variables: Record<string, string>,
 ): string {
-  return content.replace(PLACEHOLDER_RE, (_match, group, field) => {
+  return content.replace(PLACEHOLDER_RE, (match, group, field) => {
     if (SIGNATURE_GROUPS.has(group)) {
-      return `<span class="sig-placeholder">[Assinatura: ${escapeHtml(field)}]</span>`;
+      return `[Assinatura: ${field}]`;
     }
     const party = parties[group];
     if (party) {
       const val = resolvePartyField(party, field);
-      if (val) return `<span class="resolved">${escapeHtml(val)}</span>`;
+      if (val) return val;
     }
     const varKey = `{{${group}.${field}}}`;
     const varVal = variables[varKey];
-    if (varVal) return `<span class="resolved">${escapeHtml(varVal)}</span>`;
-    return `<span class="unresolved">⚠ ${escapeHtml(group)}.${escapeHtml(field)}</span>`;
+    if (varVal) return varVal;
+    return match; // keep as {{...}} — HighlightedPreview will highlight it
   });
 }
 
@@ -750,9 +748,9 @@ function PreviewPanel({
   headerImage?: string | null;
   footerImage?: string | null;
 }) {
-  const html = useMemo(
+  const resolvedContent = useMemo(
     () => state.templateContent
-      ? renderPreview(state.templateContent, state.parties, state.variables)
+      ? resolveContentForPreview(state.templateContent, state.parties, state.variables)
       : "",
     [state.templateContent, state.parties, state.variables],
   );
@@ -770,26 +768,16 @@ function PreviewPanel({
     <div className="flex flex-col h-full">
       <div className="px-4 py-2 border-b border-border flex items-center justify-between shrink-0">
         <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pré-visualização</span>
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <span className="inline-block w-2 h-2 rounded-sm bg-yellow-400"></span> Não preenchido
-          <span className="inline-block w-2 h-2 rounded-sm bg-green-400 ml-2"></span> Preenchido
-        </div>
+        <span className="text-[10px] text-muted-foreground">
+          Campos <span className="text-primary font-medium">destacados</span> ainda não preenchidos
+        </span>
       </div>
       <ScrollArea className="flex-1">
-        <div className="p-6 font-mono text-xs leading-relaxed text-foreground">
-          {headerImage && (
-            <img src={headerImage} alt="Cabeçalho" className="w-full mb-4 object-contain max-h-24" />
-          )}
-          <style>{`
-            .resolved { color: hsl(var(--foreground)); }
-            .unresolved { background: rgb(254 240 138); color: rgb(133 77 14); padding: 0 2px; border-radius: 2px; font-size: 0.65rem; }
-            .sig-placeholder { background: hsl(var(--muted)); color: hsl(var(--muted-foreground)); padding: 0 4px; border-radius: 3px; font-style: italic; }
-          `}</style>
-          <div className="whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: html }} />
-          {footerImage && (
-            <img src={footerImage} alt="Rodapé" className="w-full mt-4 object-contain max-h-24" />
-          )}
-        </div>
+        <A4Preview
+          headerImage={headerImage ?? null}
+          content={resolvedContent}
+          footerImage={footerImage ?? null}
+        />
       </ScrollArea>
     </div>
   );
