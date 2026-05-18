@@ -712,67 +712,73 @@ export function ContractImportWorkspace({
             >
               {/* ── Left column: form sections + editor ── */}
               <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-                {/* Informações Básicas */}
-                <div className="shrink-0 border-b px-6 py-4">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Informações Básicas
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="ws-nome" className="text-xs">
-                        Nome do Template
-                      </Label>
-                      <Input
-                        id="ws-nome"
-                        placeholder="Ex: Contrato de Gravação — Exclusivo"
-                        value={nome}
-                        onChange={(e) => setNome(e.target.value)}
-                        className="h-9"
-                        data-testid="input-template-name"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="ws-categoria" className="text-xs">
-                        Categoria do Template
-                      </Label>
-                      <Select value={categoria} onValueChange={setCategoria}>
-                        <SelectTrigger
-                          id="ws-categoria"
+                {/* Informações Básicas + Identidade Visual — lado a lado */}
+                <div className="shrink-0 border-b flex">
+                  {/* Informações Básicas */}
+                  <div className="flex-1 px-6 py-4">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Informações Básicas
+                    </p>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ws-nome" className="text-xs">
+                          Nome do Template
+                        </Label>
+                        <Input
+                          id="ws-nome"
+                          placeholder="Ex: Contrato de Gravação — Exclusivo"
+                          value={nome}
+                          onChange={(e) => setNome(e.target.value)}
                           className="h-9"
-                          data-testid="select-template-category"
-                        >
-                          <SelectValue placeholder="Selecionar categoria…" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {dynamicCategories.map((cat) => (
-                            <SelectItem key={cat.value} value={cat.value}>
-                              {cat.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                          data-testid="input-template-name"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="ws-categoria" className="text-xs">
+                          Categoria do Template
+                        </Label>
+                        <Select value={categoria} onValueChange={setCategoria}>
+                          <SelectTrigger
+                            id="ws-categoria"
+                            className="h-9"
+                            data-testid="select-template-category"
+                          >
+                            <SelectValue placeholder="Selecionar categoria…" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {dynamicCategories.map((cat) => (
+                              <SelectItem key={cat.value} value={cat.value}>
+                                {cat.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Identidade Visual */}
-                <div className="shrink-0 border-b px-6 py-4">
-                  <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
-                    Identidade Visual do Documento
-                  </p>
-                  <div className="flex gap-4">
-                    <ImageUploadZone
-                      label="Imagem de Cabeçalho"
-                      value={headerImage}
-                      onChange={setHeaderImage}
-                      testIdPrefix="header-image"
-                    />
-                    <ImageUploadZone
-                      label="Imagem de Rodapé"
-                      value={footerImage}
-                      onChange={setFooterImage}
-                      testIdPrefix="footer-image"
-                    />
+                  {/* Divider vertical */}
+                  <div className="border-l self-stretch" />
+
+                  {/* Identidade Visual */}
+                  <div className="shrink-0 px-6 py-4">
+                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                      Identidade Visual do Documento
+                    </p>
+                    <div className="flex gap-4">
+                      <ImageUploadZone
+                        label="Imagem de Cabeçalho"
+                        value={headerImage}
+                        onChange={setHeaderImage}
+                        testIdPrefix="header-image"
+                      />
+                      <ImageUploadZone
+                        label="Imagem de Rodapé"
+                        value={footerImage}
+                        onChange={setFooterImage}
+                        testIdPrefix="footer-image"
+                      />
+                    </div>
                   </div>
                 </div>
 
