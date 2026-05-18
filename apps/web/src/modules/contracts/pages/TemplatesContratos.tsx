@@ -9,7 +9,7 @@ import {
 } from "@/shared/ui/select";
 import {
   Loader2, Plus, Trash2, FileText, Sparkles, Eye,
-  ChevronRight, Pencil, Search, X,
+  ChevronRight, Pencil, Search, X, LayoutGrid, List,
 } from "lucide-react";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -177,6 +177,92 @@ function TemplateCard({
   );
 }
 
+function TemplateRow({
+  template,
+  onDelete,
+  onView,
+  onEdit,
+}: {
+  template: TemplateContrato;
+  onDelete: () => void;
+  onView: () => void;
+  onEdit: () => void;
+}) {
+  const varCount = countVariables(template);
+  const clauseTypes = getClauseTypes(template);
+  const isSemantic = template.tipo_servico === "semantico";
+
+  return (
+    <div
+      className="group flex items-center gap-4 px-4 py-3 rounded-lg border border-border hover:border-primary/30 hover:bg-muted/30 transition-colors cursor-pointer"
+      onClick={onView}
+      data-testid={`row-template-${template.id}`}
+    >
+      {/* Icon */}
+      <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
+        {isSemantic ? <Sparkles className="h-4 w-4 text-primary" /> : <FileText className="h-4 w-4 text-muted-foreground" />}
+      </div>
+
+      {/* Name + description */}
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold truncate leading-tight">{template.nome}</p>
+        {template.descricao && (
+          <p className="text-xs text-muted-foreground truncate mt-0.5">{template.descricao}</p>
+        )}
+      </div>
+
+      {/* Badges */}
+      <div className="hidden md:flex items-center gap-1 shrink-0">
+        {isSemantic && varCount > 0 && (
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Sparkles className="h-2.5 w-2.5" />{varCount} variáveis
+          </Badge>
+        )}
+        {clauseTypes.slice(0, 2).map((ct) => (
+          <Badge key={ct} variant="outline" className="text-[10px]">{ct}</Badge>
+        ))}
+        {clauseTypes.length > 2 && (
+          <span className="text-[10px] px-1.5 py-0.5 rounded border text-muted-foreground border-border">
+            +{clauseTypes.length - 2}
+          </span>
+        )}
+        {!isSemantic && (
+          <Badge variant="outline" className="text-[10px]">
+            {template.tipo_servico ? formatSlug(template.tipo_servico) : "Padrão"}
+          </Badge>
+        )}
+        <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">
+          {template.ativo ? "Ativo" : "Inativo"}
+        </Badge>
+      </div>
+
+      {/* Date */}
+      <span className="hidden lg:block text-xs text-muted-foreground shrink-0 w-24 text-right">
+        {formatDate(template.created_at)}
+      </span>
+
+      {/* Actions */}
+      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-7 w-7"
+          onClick={(e) => { e.stopPropagation(); onView(); }} title="Visualizar"
+          data-testid={`button-view-template-${template.id}`}>
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7"
+          onClick={(e) => { e.stopPropagation(); onEdit(); }} title="Editar"
+          data-testid={`button-edit-template-${template.id}`}>
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive"
+          onClick={(e) => { e.stopPropagation(); onDelete(); }} title="Excluir"
+          data-testid={`button-delete-template-${template.id}`}>
+          <Trash2 className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 export default function TemplatesContratos() {
   const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } =
     useTemplatesContratos();
@@ -190,6 +276,7 @@ export default function TemplatesContratos() {
   const [search, setSearch]           = useState("");
   const [filterType, setFilterType]   = useState<"all" | "semantico" | "padrao">("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "ativo" | "inativo">("all");
+  const [view, setView]               = useState<"grid" | "list">("list");
 
   const filteredTemplates = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -346,6 +433,29 @@ export default function TemplatesContratos() {
               Limpar
             </Button>
           )}
+
+          <div className="flex items-center gap-1 border border-border rounded-md p-0.5 ml-auto shrink-0">
+            <Button
+              variant={view === "list" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setView("list")}
+              title="Lista"
+              data-testid="button-view-list"
+            >
+              <List className="h-3.5 w-3.5" />
+            </Button>
+            <Button
+              variant={view === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setView("grid")}
+              title="Grelha"
+              data-testid="button-view-grid"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Template grid */}
@@ -371,6 +481,18 @@ export default function TemplatesContratos() {
               />
             </CardContent>
           </Card>
+        ) : view === "list" ? (
+          <div className="flex flex-col gap-1.5">
+            {filteredTemplates.map((t) => (
+              <TemplateRow
+                key={t.id}
+                template={t}
+                onView={() => handleViewClick(t)}
+                onEdit={() => handleEditClick(t)}
+                onDelete={() => handleDeleteClick(t)}
+              />
+            ))}
+          </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {filteredTemplates.map((t) => (
