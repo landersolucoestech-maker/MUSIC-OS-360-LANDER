@@ -5,7 +5,10 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE }  from '../../../database/database.module';
 import { OAuthConnectionEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
+import { CircuitBreakerRegistry } from '../../../core/resilience/circuit-breaker.registry';
 import { QUEUE_NAMES }   from '../../../queues/queue.constants';
+
+const PROVIDER = 'spotify';
 
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
 const SPOTIFY_API      = 'https://api.spotify.com/v1';
@@ -18,10 +21,15 @@ export class SpotifyService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly encryption: EncryptionService,
+    private readonly cbRegistry: CircuitBreakerRegistry,
     @Optional()
     @InjectQueue(QUEUE_NAMES.STREAMING_SYNC) private readonly syncQueue: Queue | null,
   ) {
     if (ds) this.repo = ds.getRepository(OAuthConnectionEntity);
+  }
+
+  private fetch(url: string, init?: RequestInit): Promise<Response> {
+    return this.cbRegistry.fetch(PROVIDER, url, init);
   }
 
   isConfigured(): boolean {
@@ -45,7 +53,7 @@ export class SpotifyService {
     const clientSecret  = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
     const redirectUri   = process.env['SPOTIFY_REDIRECT_URI']  ?? '';
 
-    const tokenRes = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
+    const tokenRes = await this.fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
       headers: {
         'Content-Type':  'application/x-www-form-urlencoded',
@@ -65,7 +73,7 @@ export class SpotifyService {
     const token = await this.getValidToken(tenantId);
     if (!token) return null;
 
-    const res  = await fetch(`${SPOTIFY_API}/artists/${spotifyArtistId}`, {
+    const res  = await this.fetch(`${SPOTIFY_API}/artists/${spotifyArtistId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;

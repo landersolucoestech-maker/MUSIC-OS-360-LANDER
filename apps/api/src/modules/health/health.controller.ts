@@ -19,6 +19,7 @@ import {
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { Public } from '../../core/decorators/public.decorator';
 import { DatabaseHealthIndicator } from './indicators/database.indicator';
+import { CircuitBreakerRegistry } from '../../core/resilience/circuit-breaker.registry';
 
 @ApiTags('Health')
 @Controller('health')
@@ -28,6 +29,7 @@ export class HealthController {
     private readonly memory: MemoryHealthIndicator,
     private readonly disk: DiskHealthIndicator,
     private readonly db: DatabaseHealthIndicator,
+    private readonly cbRegistry: CircuitBreakerRegistry,
   ) {}
 
   /** Full health check — liveness + readiness + resources */
@@ -54,6 +56,17 @@ export class HealthController {
       uptime_seconds:  Math.round(process.uptime()),
       version:         process.env['npm_package_version'] ?? '1.0.0',
       environment:     process.env['NODE_ENV'] ?? 'development',
+    };
+  }
+
+  /** Circuit breaker states for all external integrations */
+  @Get('integrations')
+  @Public()
+  @ApiOperation({ summary: 'Circuit breaker states for external integrations' })
+  integrations() {
+    return {
+      ts:      new Date().toISOString(),
+      breakers: this.cbRegistry.getStates(),
     };
   }
 
