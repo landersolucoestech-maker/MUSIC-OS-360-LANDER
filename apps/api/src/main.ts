@@ -93,9 +93,21 @@ async function bootstrap() {
           styleSrc: ["'self'", "'unsafe-inline'"],
           imgSrc: ["'self'", 'data:', 'https:'],
           scriptSrc: ["'self'"],
+          frameAncestors: ["'none'"],
+          upgradeInsecureRequests: process.env['NODE_ENV'] === 'production' ? [] : null,
         },
       },
+      // HSTS: 1 year, include subdomains — only in production (HTTPS required)
+      hsts: process.env['NODE_ENV'] === 'production'
+        ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
+        : false,
       crossOriginEmbedderPolicy: false,
+      // Prevent MIME-type sniffing
+      noSniff: true,
+      // Block clickjacking
+      frameguard: { action: 'deny' },
+      // Disable XSS filter (modern browsers don't support it; CSP is better)
+      xssFilter: false,
     }),
   );
 
