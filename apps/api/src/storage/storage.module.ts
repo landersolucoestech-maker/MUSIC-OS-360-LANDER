@@ -13,6 +13,7 @@ import { Module, Global, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client } from '@aws-sdk/client-s3';
 import { StorageService } from './storage.service';
+import { R2_CLIENT, R2_BUCKET, R2_PUBLIC_URL } from './storage.tokens';
 
 // Re-export from tokens file — services should import from storage.tokens
 // to avoid circular deps (service → module → service).

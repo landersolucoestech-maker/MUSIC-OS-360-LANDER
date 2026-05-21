@@ -115,8 +115,8 @@ Nenhum repository retorna dados sem filtro `tenant_id`. Verificado em:
 
 ```ts
 // Primary: app_metadata.org_id → tenants.org_id (UUID direto)
-// Fallback: clerk_org_id (backward-compat para tenants antigos)
-WHERE (t.org_id::text = :orgId OR t.clerk_org_id = :orgId)
+// Fallback: external_auth_org_id (backward-compat para tenants antigos)
+WHERE (t.org_id::text = :orgId OR t.external_auth_org_id = :orgId)
   AND t.deleted_at IS NULL
 ```
 
@@ -218,8 +218,8 @@ has_min_role(required) → boolean
 |------|-----------|-----------|
 | Executar `supabase-rls.sql` | Alta | Aplicar RLS no projeto Supabase |
 | Popular `app_metadata.org_id` | Alta | Definir org_id no Supabase Dashboard → Authentication → Users ou via trigger |
-| Renomear `clerk_user_id` → `supabase_user_id` | Média | Migration de schema (aguarda DB em produção) |
-| Renomear `clerk_org_id` → `ext_org_id` | Média | Mesmo — migration de schema |
+| Renomear `auth_user_id` → `supabase_user_id` | Média | Migration de schema (aguarda DB em produção) |
+| Renomear `external_auth_org_id` → `ext_org_id` | Média | Mesmo — migration de schema |
 | Testes E2E de isolamento de tenant | Alta | Criar tenant A e B, verificar que dados não vazam |
 | Teste de RBAC denial | Alta | Verificar que `viewer` não consegue `POST /contracts` |
 | Expiração de JWT | Alta | Testar comportamento quando token expira mid-session |
@@ -253,7 +253,7 @@ ENCRYPTION_IV_SECRET=<random string>
 
 ```
 apps/api/src/core/guards/
-  clerk-auth.guard.ts   → JwtAuthGuard (JWKS + ES256)
+  auth.guard.ts   → JwtAuthGuard (JWKS + ES256)
   tenant.guard.ts       → TenantGuard (org_id isolation)
   roles.guard.ts        → RolesGuard (RBAC hierarchy)
 

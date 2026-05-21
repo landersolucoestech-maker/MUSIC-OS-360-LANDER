@@ -1,5 +1,8 @@
 import { useState, useCallback } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/app/providers/TenantContext";
+import { api } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
 import {
   MOCK_TICKETS, MOCK_MESSAGES, MOCK_CHAT_ROOMS,
   MOCK_CHAT_MESSAGES, MOCK_REQUESTS, MOCK_KNOWLEDGE_ARTICLES,
@@ -32,54 +35,88 @@ function save<T>(key: string, value: T): void {
 export function useTickets() {
   const { tenant } = useTenant();
   const tenantId   = tenant.id;
+  const queryClient = useQueryClient();
 
-  const [tickets, setTickets] = useState<SupportTicket[]>(() => {
-    const stored = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
-    if (stored.length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
-    const seeded = MOCK_TICKETS.map((t) => ({ ...t, tenant_id: tenantId }));
-    save(lsKey("support_tickets", tenantId), seeded);
-    return seeded;
+  const { data: tickets = [], isLoading } = useQuery<SupportTicket[]>({
+    queryKey: ["support_tickets", tenantId],
+    queryFn: async (): Promise<SupportTicket[]> => {
+      if (MOCK_MODE) {
+        const stored = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
+        if (stored.length > 0) return stored;
+        const seeded = MOCK_TICKETS.map((t) => ({ ...t, tenant_id: tenantId }));
+        save(lsKey("support_tickets", tenantId), seeded);
+        return seeded;
+      }
+      const res = await api.get<{ data: SupportTicket[] }>("/support-tickets?limit=200");
+      return (res as unknown as { data: SupportTicket[] }).data ?? [];
+    },
+    staleTime: 30_000,
   });
 
-  const addTicket = useCallback(
-    (data: Pick<SupportTicket, "subject" | "description" | "category" | "priority" | "created_by">) => {
-      const sla = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
-      const next: SupportTicket = {
-        id: `tkt-${Date.now()}`,
-        tenant_id: tenantId,
-        ticket_number: `TKT-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+  const addMutation = useMutation({
+    mutationFn: async (data: Pick<SupportTicket, "subject" | "description" | "category" | "priority" | "created_by">) => {
+      if (MOCK_MODE) {
+        const sla = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString();
+        const ticket: SupportTicket = {
+          id: `tkt-${Date.now()}`,
+          tenant_id: tenantId,
+          ticket_number: `TKT-${String(Math.floor(Math.random() * 9000) + 1000)}`,
+          subject: data.subject,
+          description: data.description,
+          category: data.category,
+          priority: data.priority,
+          status: "open",
+          created_by: data.created_by,
+          sla_deadline: sla,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        const current = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
+        save(lsKey("support_tickets", tenantId), [ticket, ...current]);
+        return ticket;
+      }
+      return api.post<SupportTicket>("/support-tickets", {
         subject: data.subject,
         description: data.description,
         category: data.category,
         priority: data.priority,
-        status: "open",
-        created_by: data.created_by,
-        sla_deadline: sla,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-      setTickets((prev) => {
-        const updated = [next, ...prev];
-        save(lsKey("support_tickets", tenantId), updated);
-        return updated;
       });
-      return next;
     },
-    [tenantId]
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["support_tickets", tenantId] }),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, changes }: { id: string; changes: Partial<SupportTicket> }) => {
+      if (MOCK_MODE) {
+        const current = load<SupportTicket[]>(lsKey("support_tickets", tenantId), []);
+        const updated = current.map((t) =>
+          t.id === id ? { ...t, ...changes, updated_at: new Date().toISOString() } : t,
+        );
+        save(lsKey("support_tickets", tenantId), updated);
+        return;
+      }
+      return api.patch<SupportTicket>(`/support-tickets/${id}`, changes);
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["support_tickets", tenantId] }),
+  });
+
+  const addTicket = useCallback(
+    (data: Pick<SupportTicket, "subject" | "description" | "category" | "priority" | "created_by">) => {
+      addMutation.mutate(data);
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tenantId],
   );
 
-  const updateTicket = useCallback((id: string, changes: Partial<SupportTicket>) => {
-    setTickets((prev) => {
-      const updated = prev.map((t) =>
-        t.id === id ? { ...t, ...changes, updated_at: new Date().toISOString() } : t
-      );
-      save(lsKey("support_tickets", tenantId), updated);
-      return updated;
-    });
-  }, [tenantId]);
+  const updateTicket = useCallback(
+    (id: string, changes: Partial<SupportTicket>) => {
+      updateMutation.mutate({ id, changes });
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [tenantId],
+  );
 
-  return { tickets, addTicket, updateTicket };
+  return { tickets, isLoading, addTicket, updateTicket };
 }
 
 /* ── Ticket messages ── */

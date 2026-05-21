@@ -4,6 +4,7 @@ import { BadRequestException } from '@nestjs/common';
 import { BillingService }      from './billing.service';
 import { DATA_SOURCE }         from '../../database/database.module';
 import { WsGateway }           from '../../core/websocket/ws.gateway';
+import { EventsService }       from '../../core/events/events.service';
 
 jest.mock('stripe', () => {
   const instance = {
@@ -99,6 +100,7 @@ describe('BillingService', () => {
         },
         { provide: DATA_SOURCE, useValue: mockDs },
         { provide: WsGateway,   useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
+        { provide: EventsService, useValue: { emitTyped: jest.fn(), emitAsync: jest.fn().mockResolvedValue([]) } },
       ],
     }).compile();
 

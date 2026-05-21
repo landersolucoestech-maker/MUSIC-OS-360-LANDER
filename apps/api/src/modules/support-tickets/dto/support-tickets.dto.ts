@@ -8,7 +8,7 @@ const STATUSES   = Object.values(SupportTicketStatus) as string[];
 const CATEGORIES = ['billing', 'technical', 'feature-request', 'access', 'other'] as const;
 
 export class CreateSupportTicketDto {
-  @ApiProperty() @IsString() @MaxLength(500) title!: string;
+  @ApiProperty() @IsString() @MaxLength(500) subject!: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10000) description?: string;
   @ApiProperty({ enum: SupportTicketPriority }) @IsIn(PRIORITIES) priority!: string;
   @ApiPropertyOptional({ enum: CATEGORIES }) @IsOptional() @IsIn(CATEGORIES) category?: string;

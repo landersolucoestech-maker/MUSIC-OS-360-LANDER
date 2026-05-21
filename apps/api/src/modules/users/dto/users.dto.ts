@@ -6,7 +6,7 @@ const ROLES    = ['owner', 'manager', 'editor', 'viewer', 'accountant', 'artist'
 const STATUSES = ['active', 'inactive', 'suspended', 'invited'] as const;
 
 export class CreateUserDto {
-  /** User identifier stored in clerk_user_id column. */
+  /** User identifier stored in auth_user_id column. */
   @ApiProperty({ description: 'Identificador único do utilizador (JWT sub)' })
   @IsString()
   userId!: string;

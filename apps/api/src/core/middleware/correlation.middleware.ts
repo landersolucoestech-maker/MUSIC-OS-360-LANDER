@@ -15,6 +15,15 @@ import { Request, Response, NextFunction } from 'express';
 import { randomUUID } from 'crypto';
 import { CorrelationContext } from '../events/correlation.context';
 
+declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace
+  namespace Express {
+    interface Request {
+      correlationId?: string;
+    }
+  }
+}
+
 @Injectable()
 export class CorrelationMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
@@ -22,6 +31,7 @@ export class CorrelationMiddleware implements NestMiddleware {
     const correlationId =
       (Array.isArray(existing) ? existing[0] : existing) ?? randomUUID();
 
+    req.correlationId = correlationId;
     res.setHeader('x-correlation-id', correlationId);
 
     CorrelationContext.run(correlationId, () => next());

@@ -53,13 +53,13 @@ BEGIN
   v_user_id   := event ->> 'user_id';
 
   -- ─── Busca a membria ativa mais recente do utilizador ───────────────────────
-  -- clerk_user_id armazena o sub UUID do Supabase.
+  -- auth_user_id armazena o sub UUID do Supabase.
   -- Se o utilizador for membro de várias orgs (futuro), retorna a última ativa
   -- por joined_at DESC para consistência.
   SELECT om.org_id, om.role
     INTO v_org_id, v_role
     FROM public.org_members om
-   WHERE om.clerk_user_id = v_user_id
+   WHERE om.auth_user_id = v_user_id
      AND om.is_active     = true
    ORDER BY om.joined_at DESC NULLS LAST
    LIMIT 1;

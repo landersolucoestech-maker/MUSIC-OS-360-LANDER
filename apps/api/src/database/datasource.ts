@@ -19,7 +19,10 @@ import { ALL_ENTITIES } from './entities';
 // ─── Carregar variáveis de ambiente se dotenv estiver disponível ───────────────
 try {
   // eslint-disable-next-line @typescript-eslint/no-var-requires
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  const dotenv = require('dotenv');
+  // Try apps/api/.env first (2 levels up from src/database/), then root .env
+  dotenv.config({ path: path.resolve(__dirname, '../../.env') });
+  dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 } catch { /* dotenv opcional */ }
 
 const DATABASE_URL = process.env['DATABASE_URL'];
@@ -40,7 +43,7 @@ export const AppDataSource = new DataSource({
   entities:     ALL_ENTITIES,
   synchronize:  false,  // NUNCA true — só migrations versionadas
   logging:      !isProduction,
-  ssl:          isProduction ? { rejectUnauthorized: false } : false,
+  ssl:          { rejectUnauthorized: false },  // Supabase requires SSL for all connections
 
   migrations: [
     path.join(__dirname, 'migrations', '*.{ts,js}'),

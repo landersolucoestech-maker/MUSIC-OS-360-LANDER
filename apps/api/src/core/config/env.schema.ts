@@ -1,4 +1,4 @@
-import { z } from 'zod';
+﻿import { z } from 'zod';
 
 const envSchema = z.object({
   NODE_ENV: z
@@ -6,51 +6,38 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3001),
 
-  // Database (PostgreSQL — node-postgres / TypeORM)
-  // Required in production — migrations, queries, RLS all depend on it.
+  // Database (PostgreSQL â€” node-postgres / TypeORM)
+  // Required in production â€” migrations, queries, RLS all depend on it.
   DATABASE_URL: z
     .string()
     .optional()
     .refine(
       (val) => process.env['NODE_ENV'] !== 'production' || !!val,
-      { message: 'DATABASE_URL é obrigatório em produção' },
+      { message: 'DATABASE_URL Ã© obrigatÃ³rio em produÃ§Ã£o' },
     ),
 
-  // Redis (BullMQ Queues via ioredis — obrigatório em produção para idempotency e filas)
+  // Redis (BullMQ Queues via ioredis â€” obrigatÃ³rio em produÃ§Ã£o para idempotency e filas)
   REDIS_QUEUE_URL: z
     .string()
     .optional()
     .refine(
       (val) => process.env['NODE_ENV'] !== 'production' || !!val,
-      { message: 'REDIS_QUEUE_URL é obrigatório em produção (BullMQ + IdempotencyStore)' },
+      { message: 'REDIS_QUEUE_URL Ã© obrigatÃ³rio em produÃ§Ã£o (BullMQ + IdempotencyStore)' },
     ),
 
-  // Auth (Supabase — JWKS via ES256)
-  // Required in production — without it JwtAuthGuard cannot validate any token.
+  // Auth (Supabase â€” JWKS via ES256)
+  // Required in production â€” without it JwtAuthGuard cannot validate any token.
   // JWKS endpoint is derived as: <SUPABASE_URL>/auth/v1/.well-known/jwks.json
   SUPABASE_URL: z
     .string()
     .optional()
     .refine(
       (val) => process.env['NODE_ENV'] !== 'production' || !!val,
-      { message: 'SUPABASE_URL é obrigatório em produção (JwtAuthGuard usa JWKS)' },
+      { message: 'SUPABASE_URL Ã© obrigatÃ³rio em produÃ§Ã£o (JwtAuthGuard usa JWKS)' },
     ),
 
-  // DEV_AUTH_BYPASS — only read locally, must never be true in production.
-  // The guard already checks NODE_ENV !== production before activating bypass,
-  // but we validate here to surface misconfig at startup, not at first request.
-  DEV_AUTH_BYPASS: z
-    .string()
-    .optional()
-    .refine(
-      (val) => {
-        if (process.env['NODE_ENV'] === 'production' && val === 'true') return false;
-        return true;
-      },
-      { message: 'DEV_AUTH_BYPASS=true é proibido em produção' },
-    ),
 
-  // Auth (JWT legado — mantido para compatibilidade)
+  // Auth (JWT legado â€” mantido para compatibilidade)
   JWT_SECRET: z.string().default('dev_jwt_secret_placeholder'),
   JWT_EXPIRES_IN: z.string().default('1h'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
@@ -69,7 +56,7 @@ const envSchema = z.object({
         const isAllZero = /^0+$/.test(val);
         return !(isProduction && isAllZero);
       },
-      { message: 'ENCRYPTION_KEY não pode ser all-zero em produção. Gere uma chave segura com: openssl rand -hex 32' },
+      { message: 'ENCRYPTION_KEY nÃ£o pode ser all-zero em produÃ§Ã£o. Gere uma chave segura com: openssl rand -hex 32' },
     ),
   ENCRYPTION_IV_SECRET: z.string().min(1).default('dev_iv_secret_placeholder'),
 
@@ -106,7 +93,7 @@ const envSchema = z.object({
   POSTHOG_HOST: z.string().default('https://app.posthog.com'),
 
   // Idempotency
-  IDEMPOTENCY_TTL_HOURS: z.coerce.number().min(1).max(168).default(24), // 1h–7d
+  IDEMPOTENCY_TTL_HOURS: z.coerce.number().min(1).max(168).default(24), // 1hâ€“7d
 
   // App URL (para templates de email, etc.)
   APP_URL: z.string().default('http://localhost:5000'),
@@ -149,7 +136,7 @@ export type EnvConfig = z.infer<typeof envSchema>;
 export function validateEnv(config: Record<string, unknown>): EnvConfig {
   const result = envSchema.safeParse(config);
   if (!result.success) {
-    console.error('❌ Variáveis de ambiente inválidas:');
+    console.error('âŒ VariÃ¡veis de ambiente invÃ¡lidas:');
     result.error.issues.forEach((issue) => {
       console.error(`  ${issue.path.join('.')}: ${issue.message}`);
     });

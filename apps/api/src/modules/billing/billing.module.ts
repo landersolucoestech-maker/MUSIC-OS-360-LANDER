@@ -5,13 +5,14 @@
  * WsGateway é @Global() — não precisa de importar WsModule explicitamente.
  */
 
-import { Module } from '@nestjs/common';
+import { Module }           from '@nestjs/common';
 import { BillingController } from './billing.controller';
 import { BillingService }    from './billing.service';
+import { DunningService }    from './dunning.service';
 
 @Module({
   controllers: [BillingController],
-  providers:   [BillingService],
-  exports:     [BillingService],
+  providers:   [BillingService, DunningService],
+  exports:     [BillingService, DunningService],
 })
 export class BillingModule {}

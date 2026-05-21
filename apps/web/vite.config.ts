@@ -134,27 +134,6 @@ export default defineConfig({
             id.includes("node_modules/cmdk")
           )
             return "vendor-utils";
-          if (id.includes("/modules/accounting/")) return "mod-accounting";
-          if (id.includes("/modules/artist/")) return "mod-artist";
-          if (id.includes("/modules/catalog/")) return "mod-catalog";
-          if (id.includes("/modules/contracts/")) return "mod-contracts";
-          if (id.includes("/modules/crm/")) return "mod-crm";
-          if (id.includes("/modules/marketing/")) return "mod-marketing";
-          if (id.includes("/modules/monitoring/")) return "mod-monitoring";
-          if (id.includes("/modules/releases/")) return "mod-releases";
-          if (
-            id.includes("/modules/events/") ||
-            id.includes("/modules/inventory/") ||
-            id.includes("/modules/rh/")
-          )
-            return "mod-operations";
-          if (id.includes("/modules/settings/")) return "mod-settings";
-          if (
-            id.includes("/modules/licensing/") ||
-            id.includes("/modules/projects/") ||
-            id.includes("/modules/leads/")
-          )
-            return "mod-misc";
         },
       },
     },

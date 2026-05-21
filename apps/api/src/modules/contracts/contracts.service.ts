@@ -9,6 +9,7 @@ import type { QueryContractDto }  from './dto/query-contract.dto';
 import { ContractStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { PlanLimitService } from '../../core/billing/plan-limit.service';
 
 
 @Injectable()
@@ -20,6 +21,7 @@ export class ContractsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
     private readonly events: EventsService,
+    private readonly planLimit: PlanLimitService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -68,7 +70,8 @@ export class ContractsService {
     return { ...result, allowed_transitions };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateContractDto): Promise<ContractEntity> {
+  async create(tenantId: string, userId: string, dto: CreateContractDto, orgId?: string): Promise<ContractEntity> {
+    await this.planLimit.enforce(tenantId, orgId ?? tenantId, 'contracts');
     const { status: _ignoredStatus, ...dtoRest } = dto as unknown as Record<string, unknown>;
     void _ignoredStatus;
     const entity = this.repo!.create({

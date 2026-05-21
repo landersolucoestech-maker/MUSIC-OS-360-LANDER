@@ -96,7 +96,7 @@ modules/<name>/
 - `decorators/` — @CurrentUser, @CurrentTenant, @Public, @Roles
 - `events/` — Domain event emitter (EventEmitter2, CQRS-lite)
 - `filters/` — Global exception filter
-- `guards/` — Clerk auth, rate-limit, roles, tenant guards
+- `guards/` — Supabase Auth auth, rate-limit, roles, tenant guards
 - `interceptors/` — Audit, logging, transform interceptors
 - `logger/` — Structured JSON logger (NestJS LoggerService impl)
 - `mail/` — Mail service

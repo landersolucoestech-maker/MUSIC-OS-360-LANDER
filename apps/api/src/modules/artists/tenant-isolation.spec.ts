@@ -1,17 +1,13 @@
-/**
- * tenant-isolation.spec.ts
- *
- * Verifica que ArtistsService aplica isolamento multi-tenant correctamente:
- * - list() devolve apenas artistas do tenant correcto
- * - findById() lança NotFoundException para artista de outro tenant
- * - update() lança NotFoundException para artista de outro tenant
- */
-
 import 'reflect-metadata';
 import { ArtistsService } from './artists.service';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService } from '../../core/events/events.service';
+import { PlanLimitService } from '../../core/billing/plan-limit.service';
 import { NotFoundException } from '@nestjs/common';
+
+function makePlanLimitMock() {
+  return { enforce: jest.fn().mockResolvedValue(undefined) } as unknown as PlanLimitService;
+}
 
 function makeEventsMock() {
   return {
@@ -22,28 +18,6 @@ function makeEventsMock() {
     off:       jest.fn(),
   } as unknown as EventsService;
 }
-
-const TENANT_A = 'tenant-alpha';
-const TENANT_B = 'tenant-beta';
-const USER_ID  = 'user-system';
-
-const artistOfA = {
-  id: 'artist-aaa-001',
-  tenant_id: TENANT_A,
-  nome_artistico: 'Artista do Tenant A',
-  deleted_at: null,
-  created_at: new Date(),
-  updated_at: new Date(),
-};
-
-const artistOfB = {
-  id: 'artist-bbb-001',
-  tenant_id: TENANT_B,
-  nome_artistico: 'Artista do Tenant B',
-  deleted_at: null,
-  created_at: new Date(),
-  updated_at: new Date(),
-};
 
 function makeEncryptionMock(): jest.Mocked<EncryptionService> {
   return {
@@ -56,83 +30,93 @@ function makeEncryptionMock(): jest.Mocked<EncryptionService> {
   } as unknown as jest.Mocked<EncryptionService>;
 }
 
-describe('Tenant Isolation — ArtistsService', () => {
-  describe('list()', () => {
-    it('devolve apenas artistas do tenant correcto', async () => {
-      const enc = makeEncryptionMock();
+const TENANT_A = 'tenant-alpha';
+const TENANT_B = 'tenant-beta';
+const USER_ID = 'user-system';
 
-      const db = {
-        select: jest.fn().mockImplementation((sel?: unknown) => {
-          if (sel && typeof sel === 'object' && 'value' in (sel as object)) {
-            const countChain: Record<string, jest.Mock> = {};
-            countChain.from  = jest.fn().mockReturnValue(countChain);
-            countChain.where = jest.fn().mockResolvedValue([{ value: 1 }]);
-            return countChain;
-          }
-          const chain: Record<string, jest.Mock> = {};
-          chain.from    = jest.fn().mockReturnValue(chain);
-          chain.where   = jest.fn().mockReturnValue(chain);
-          chain.orderBy = jest.fn().mockReturnValue(chain);
-          chain.offset  = jest.fn().mockReturnValue(chain);
-          chain.limit   = jest.fn().mockResolvedValue([artistOfA]);
-          return chain;
-        }),
-        insert: jest.fn(),
-        update: jest.fn(),
-      };
+const artistOfA = {
+  id: 'artist-aaa-001',
+  tenant_id: TENANT_A,
+  nome_artistico: 'Artista do Tenant A',
+  deleted_at: null,
+  created_at: new Date(),
+  updated_at: new Date(),
+};
 
-      const service = new ArtistsService(db as any, enc, makeEventsMock());
-      const result  = await service.list(TENANT_A, {});
+function makeQb(getOneValue: unknown = artistOfA) {
+  const qb: Record<string, jest.Mock> = {
+    where:           jest.fn(),
+    andWhere:        jest.fn(),
+    orderBy:         jest.fn(),
+    skip:            jest.fn(),
+    take:            jest.fn(),
+    getOne:          jest.fn().mockResolvedValue(getOneValue),
+    getManyAndCount: jest.fn().mockResolvedValue([[artistOfA], 1]),
+  };
 
-      expect(result.data).toHaveLength(1);
-      expect(result.data[0].tenant_id).toBe(TENANT_A);
-      expect(result.data[0].id).toBe(artistOfA.id);
-    });
+  qb.where.mockReturnValue(qb);
+  qb.andWhere.mockReturnValue(qb);
+  qb.orderBy.mockReturnValue(qb);
+  qb.skip.mockReturnValue(qb);
+  qb.take.mockReturnValue(qb);
+
+  return qb;
+}
+
+function makeDataSource(getOneValue: unknown = artistOfA) {
+  const qb = makeQb(getOneValue);
+  const repo = {
+    createQueryBuilder: jest.fn(() => qb),
+    create: jest.fn((value: unknown) => value),
+    save: jest.fn((value: Record<string, unknown>) =>
+      Promise.resolve({ id: 'artist-aaa-001', ...value }),
+    ),
+    update: jest.fn().mockResolvedValue({ affected: 1 }),
+    _qb: qb,
+  };
+
+  return {
+    getRepository: jest.fn(() => repo),
+    _repo: repo,
+  };
+}
+
+describe('Tenant Isolation - ArtistsService', () => {
+  it('list() devolve apenas artistas do tenant correcto', async () => {
+    const ds = makeDataSource();
+    const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock(), makePlanLimitMock());
+
+    const result = await service.list(TENANT_A, {});
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0].tenant_id).toBe(TENANT_A);
+    expect(ds._repo._qb.where).toHaveBeenCalledWith(
+      'a.tenant_id = :tenantId',
+      { tenantId: TENANT_A },
+    );
   });
 
-  describe('findById()', () => {
-    it('retorna artista quando tenant coincide', async () => {
-      const enc = makeEncryptionMock();
-      const chain: Record<string, jest.Mock> = {};
-      chain.from  = jest.fn().mockReturnValue(chain);
-      chain.where = jest.fn().mockReturnValue(chain);
-      chain.limit = jest.fn().mockResolvedValue([artistOfA]);
+  it('findById() retorna artista quando tenant coincide', async () => {
+    const ds = makeDataSource();
+    const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock(), makePlanLimitMock());
 
-      const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
-
-      const service = new ArtistsService(db as any, enc, makeEventsMock());
-      const result  = await service.findById(TENANT_A, artistOfA.id);
-      expect(result.id).toBe(artistOfA.id);
-    });
-
-    it('lança NotFoundException ao aceder a artista de outro tenant', async () => {
-      const enc = makeEncryptionMock();
-      const chain: Record<string, jest.Mock> = {};
-      chain.from  = jest.fn().mockReturnValue(chain);
-      chain.where = jest.fn().mockReturnValue(chain);
-      chain.limit = jest.fn().mockResolvedValue([]);
-
-      const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
-
-      const service = new ArtistsService(db as any, enc, makeEventsMock());
-      await expect(service.findById(TENANT_B, artistOfA.id)).rejects.toThrow(NotFoundException);
-    });
+    const result = await service.findById(TENANT_A, artistOfA.id);
+    expect(result.id).toBe(artistOfA.id);
   });
 
-  describe('update()', () => {
-    it('lança NotFoundException ao actualizar artista de outro tenant', async () => {
-      const enc = makeEncryptionMock();
-      const chain: Record<string, jest.Mock> = {};
-      chain.from  = jest.fn().mockReturnValue(chain);
-      chain.where = jest.fn().mockReturnValue(chain);
-      chain.limit = jest.fn().mockResolvedValue([]);
+  it('findById() lanca NotFoundException ao aceder a artista de outro tenant', async () => {
+    const ds = makeDataSource(null);
+    const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock(), makePlanLimitMock());
 
-      const db = { select: jest.fn().mockReturnValue(chain), insert: jest.fn(), update: jest.fn() };
+    await expect(service.findById(TENANT_B, artistOfA.id)).rejects.toThrow(NotFoundException);
+  });
 
-      const service = new ArtistsService(db as any, enc, makeEventsMock());
-      await expect(
-        service.update(TENANT_B, USER_ID, artistOfA.id, { nome_artistico: 'Hack' }),
-      ).rejects.toThrow(NotFoundException);
-    });
+  it('update() lanca NotFoundException ao actualizar artista de outro tenant', async () => {
+    const ds = makeDataSource(null);
+    const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock(), makePlanLimitMock());
+
+    await expect(
+      service.update(TENANT_B, USER_ID, artistOfA.id, { nome_artistico: 'Hack' }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

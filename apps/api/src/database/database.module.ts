@@ -1,14 +1,14 @@
-/**
+﻿/**
  * database/database.module.ts
  *
  * TypeORM DataSource provider for MUSIC OS 360 API.
  * Provides the DATA_SOURCE token injectable across all services.
  *
  * Graceful standalone mode: if DATABASE_URL is not set the provider returns
- * null — services and guards check for this and bypass DB calls safely.
+ * null â€” services and guards check for this and bypass DB calls safely.
  *
  * Inclui MigrationValidatorService que verifica, no boot, se existem
- * migrations pendentes (fatal em produção, warn em dev).
+ * migrations pendentes (fatal em produÃ§Ã£o, warn em dev).
  */
 
 import { Module, Global, Logger } from '@nestjs/common';
@@ -16,6 +16,7 @@ import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './entities';
 import { MigrationValidatorService } from './migration-validator.service';
+import { DATA_SOURCE } from './database.tokens';
 import { InitialSchema20240101000000 }                from './migrations/20240101000000_InitialSchema';
 import { WorkflowTransitions20240601000001 }          from './migrations/20240601000001_WorkflowTransitions';
 import { DomainEventLog20240602000001 }               from './migrations/20240602000001_DomainEventLog';
@@ -24,8 +25,10 @@ import { ActivityLogs20260520000002 }                 from './migrations/2026052
 import { SupabaseAuthColumnNames20260520000004 }      from './migrations/20260520000004_SupabaseAuthColumnNames';
 import { RLSPolicies20260520000020 }                  from './migrations/20260520000020_RLSPolicies';
 import { PerformanceIndexes20260521000030 }           from './migrations/20260521000030_PerformanceIndexes';
+import { ConversationsAndForms20260521000040 }        from './migrations/20260521000040_ConversationsAndForms';
+import { CrmPipelinesAnalytics20260521000050 }        from './migrations/20260521000050_CrmPipelinesAnalytics';
 
-// ── Source of truth: TypeORM migrations only ─────────────────────────────────
+// â”€â”€ Source of truth: TypeORM migrations only â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 // The apps/api/drizzle/ directory contains legacy SQL snapshots that are
 // ARCHIVED and must not be run. TypeORM is the sole migration executor.
 // Run migrations: pnpm --filter api db:migrate
@@ -38,10 +41,12 @@ const ALL_MIGRATIONS = [
   SupabaseAuthColumnNames20260520000004,
   RLSPolicies20260520000020,
   PerformanceIndexes20260521000030,
+  ConversationsAndForms20260521000040,
+  CrmPipelinesAnalytics20260521000050,
 ] as const;
 
-// Re-export from tokens file — services should import from database.tokens
-// to avoid circular deps (service → module → service).
+// Re-export from tokens file â€” services should import from database.tokens
+// to avoid circular deps (service â†’ module â†’ service).
 export { DATA_SOURCE } from './database.tokens';
 
 @Global()
@@ -52,26 +57,28 @@ export { DATA_SOURCE } from './database.tokens';
       inject: [ConfigService],
       useFactory: async (config: ConfigService): Promise<DataSource | null> => {
         const logger = new Logger('DatabaseModule');
+        const isProd = config.get('NODE_ENV') === 'production';
 
         const url = config.get<string>('DATABASE_URL');
 
         if (!url) {
+          if (isProd) {
+            throw new Error('DATABASE_URL is required in production');
+          }
           logger.warn(
-            'DATABASE_URL não configurado — DB desactivado (modo standalone)',
+            'DATABASE_URL nÃ£o configurado â€” DB desactivado (modo standalone)',
           );
           return null;
         }
-
-        const isProd = config.get('NODE_ENV') === 'production';
 
         const ds = new DataSource({
           type:           'postgres',
           url,
           entities:       ALL_ENTITIES,
           migrations:     [...ALL_MIGRATIONS],
-          synchronize:    false,  // NUNCA true — schema gerido via migrations
+          synchronize:    false,  // NUNCA true â€” schema gerido via migrations
           logging:        isProd ? ['error', 'warn'] : ['query', 'error', 'warn'],
-          ssl:            isProd ? { rejectUnauthorized: false } : false,
+          ssl:            { rejectUnauthorized: false },  // Supabase requires SSL for all connections
           migrationsTableName: 'musicos360_migrations',
           // Connection pool tuning
           extra: {
@@ -90,7 +97,11 @@ export { DATA_SOURCE } from './database.tokens';
           logger.log('PostgreSQL conectado via TypeORM');
           return ds;
         } catch (err) {
-          logger.error('Falha ao conectar PostgreSQL — DB desactivado', (err as Error).message);
+          if (isProd) {
+            logger.error('Fatal PostgreSQL connection failure in production', (err as Error).message);
+            throw err;
+          }
+          logger.error('Falha ao conectar PostgreSQL â€” DB desactivado', (err as Error).message);
           return null;
         }
       },

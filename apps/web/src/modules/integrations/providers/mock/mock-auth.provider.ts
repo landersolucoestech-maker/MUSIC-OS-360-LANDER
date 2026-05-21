@@ -4,7 +4,7 @@
  * Implementação mock de IAuthProvider.
  * Usada em modo standalone (MOCK_MODE=true).
  *
- * MIGRAÇÃO FUTURA: substituir por ClerkAuthProvider sem alterar contratos.
+ * MIGRAÇÃO FUTURA: substituir por JwtAuthProvider sem alterar contratos.
  */
 
 import type {

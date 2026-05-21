@@ -4,7 +4,6 @@ import { useAuth } from "@/app/providers/AuthContext";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Loader2, ShieldOff } from "lucide-react";
-import { DEV_AUTH_BYPASS } from "@/shared/lib/env";
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -13,8 +12,6 @@ interface AdminRouteProps {
 export function AdminRoute({ children }: AdminRouteProps) {
   const { user, loading: authLoading } = useAuth();
   const { isAdmin, isLoading: roleLoading } = useIsAdmin();
-
-  if (DEV_AUTH_BYPASS) return <>{children}</>;
 
   if (authLoading || roleLoading) {
     return (

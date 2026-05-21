@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -22,36 +22,73 @@ function getInitials(name: string): string {
 
 export default function Perfil() {
   const { user } = useAuth();
-  const { userSettings, saveUserSettings, saving } = useUserSettings();
+  const { userSettings, saveUserSettings, saving, loading } = useUserSettings();
 
   const [isEditing, setIsEditing] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const resolvedName = userSettings.full_name
+    || (user?.user_metadata?.full_name as string | undefined)
+    || user?.email?.split("@")[0]
+    || "";
+
+  const resolvedRole = (() => {
+    const r = user?.role as string | undefined;
+    if (!r || r === "viewer") return "Usuário";
+    if (r === "admin" || r === "owner" || r === "super_admin") return "Administrador";
+    if (r === "manager") return "Gestor";
+    if (r === "editor") return "Editor";
+    return r;
+  })();
+
   const [formData, setFormData] = useState({
-    nome: userSettings.full_name || (user?.name as string | undefined) || "Admin MusicOS 360",
-    email: (user?.email as string | undefined) || "admin@musicos360.com",
-    telefone: userSettings.phone || "(33)99917-9552",
-    setor: userSettings.cargo || "Administrativo",
-    nivelAcesso: (user?.role as string | undefined) === "admin" ? "Administrador" : "Usuário",
+    nome: resolvedName,
+    email: user?.email || "",
+    telefone: userSettings.phone || "",
+    setor: userSettings.setor || "",
+    cargo: userSettings.cargo || "",
+    nivelAcesso: resolvedRole,
   });
+
+  // Sincroniza o formulário quando userSettings carrega do localStorage ou user muda
+  useEffect(() => {
+    if (loading) return;
+    setFormData({
+      nome: userSettings.full_name
+        || (user?.user_metadata?.full_name as string | undefined)
+        || user?.email?.split("@")[0]
+        || "",
+      email: user?.email || "",
+      telefone: userSettings.phone || "",
+      setor: userSettings.setor || "",
+      cargo: userSettings.cargo || "",
+      nivelAcesso: resolvedRole,
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, userSettings.full_name, userSettings.phone, userSettings.cargo, userSettings.setor, user?.id]);
 
   const handleSave = async () => {
     await saveUserSettings({
       full_name: formData.nome,
       phone: formData.telefone,
-      cargo: formData.setor,
+      setor: formData.setor,
+      cargo: formData.cargo,
     });
     setIsEditing(false);
   };
 
   const handleCancel = () => {
     setFormData({
-      nome: userSettings.full_name || (user?.name as string | undefined) || "Admin MusicOS 360",
-      email: (user?.email as string | undefined) || "admin@musicos360.com",
-      telefone: userSettings.phone || "(33)99917-9552",
-      setor: userSettings.cargo || "Administrativo",
-      nivelAcesso: (user?.role as string | undefined) === "admin" ? "Administrador" : "Usuário",
+      nome: userSettings.full_name
+        || (user?.user_metadata?.full_name as string | undefined)
+        || user?.email?.split("@")[0]
+        || "",
+      email: user?.email || "",
+      telefone: userSettings.phone || "",
+      setor: userSettings.setor || "",
+      cargo: userSettings.cargo || "",
+      nivelAcesso: resolvedRole,
     });
     setIsEditing(false);
   };
@@ -223,13 +260,24 @@ export default function Perfil() {
                     {formData.nivelAcesso}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Setor:</span>
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <Shield className="h-3 w-3" />
-                    {formData.setor}
-                  </Badge>
-                </div>
+                {formData.cargo && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Cargo:</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {formData.cargo}
+                    </Badge>
+                  </div>
+                )}
+                {formData.setor && (
+                  <div className="flex items-center justify-between">
+                    <span className="text-muted-foreground">Setor:</span>
+                    <Badge variant="outline" className="flex items-center gap-1">
+                      <Shield className="h-3 w-3" />
+                      {formData.setor}
+                    </Badge>
+                  </div>
+                )}
                 <div className="flex items-center gap-2 text-muted-foreground">
                   <Phone className="h-4 w-4" />
                   <span className="text-sm">{formData.telefone}</span>
@@ -279,12 +327,22 @@ export default function Perfil() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Setor / Cargo</Label>
+                  <Label>Setor</Label>
                   <Input
                     value={formData.setor}
                     readOnly={!isEditing}
                     className={!isEditing ? "bg-muted" : ""}
                     onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
+                    data-testid="input-setor"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Cargo</Label>
+                  <Input
+                    value={formData.cargo}
+                    readOnly={!isEditing}
+                    className={!isEditing ? "bg-muted" : ""}
+                    onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
                     data-testid="input-cargo"
                   />
                 </div>

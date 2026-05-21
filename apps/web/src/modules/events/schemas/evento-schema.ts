@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseISO, isValid } from "date-fns";
 
 export const eventoSchema = z.object({
   titulo: z.string()
@@ -9,9 +10,21 @@ export const eventoSchema = z.object({
     .min(1, "Tipo de evento é obrigatório"),
   artista: z.string().optional().or(z.literal("")),
   status: z.string().optional().or(z.literal("")),
-  dataInicio: z.date({ required_error: "Data de início é obrigatória" }),
+  dataInicio: z.preprocess((val) => {
+    if (typeof val === "string" && val !== "") {
+      const d = parseISO(val as string);
+      return isValid(d) ? d : val;
+    }
+    return val;
+  }, z.date({ required_error: "Data de início é obrigatória" })),
   horarioInicio: z.string().optional().or(z.literal("")),
-  dataFim: z.date().optional().nullable(),
+  dataFim: z.preprocess((val) => {
+    if (typeof val === "string" && val !== "") {
+      const d = parseISO(val as string);
+      return isValid(d) ? d : val;
+    }
+    return val;
+  }, z.date().optional().nullable()),
   horarioFim: z.string().optional().or(z.literal("")),
   nomeLocal: z.string().max(200, "Nome do local deve ter no máximo 200 caracteres").optional().or(z.literal("")),
   endereco: z.string().max(300, "Endereço deve ter no máximo 300 caracteres").optional().or(z.literal("")),

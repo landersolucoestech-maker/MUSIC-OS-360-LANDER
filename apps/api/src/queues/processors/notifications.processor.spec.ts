@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotificationsProcessor } from './notifications.processor';
 import { DATA_SOURCE }             from '../../database/database.module';
 import { WsGateway }               from '../../core/websocket/ws.gateway';
+import { NOTIFICATION_JOB_NAMES }   from '../queue.constants';
 
 const mockNotif = { id: 'n1', title: 'T', type: 'info', created_at: new Date() };
 
@@ -35,7 +36,7 @@ describe('NotificationsProcessor', () => {
   });
 
   it('persiste no banco', async () => {
-    await processor.process({ data: {
+    await processor.process({ name: NOTIFICATION_JOB_NAMES.SEND, data: {
       tenantId: 't1', userId: 'u1', title: 'Teste', type: 'info', body: 'msg',
     }} as any);
     expect(mockDs._repo.save).toHaveBeenCalled();
@@ -45,7 +46,7 @@ describe('NotificationsProcessor', () => {
   });
 
   it('envia via WebSocket após persistir', async () => {
-    await processor.process({ data: {
+    await processor.process({ name: NOTIFICATION_JOB_NAMES.SEND, data: {
       tenantId: 't1', userId: 'u1', title: 'WS Test', type: 'info',
     }} as any);
     expect(mockWs.sendToUser).toHaveBeenCalledWith(
@@ -55,7 +56,7 @@ describe('NotificationsProcessor', () => {
   });
 
   it('inclui entity e entityId quando fornecidos', async () => {
-    await processor.process({ data: {
+    await processor.process({ name: NOTIFICATION_JOB_NAMES.SEND, data: {
       tenantId: 't1', userId: 'u1', title: 'X',
       type: 'entity', entity: 'artists', entityId: 'a1',
     }} as any);

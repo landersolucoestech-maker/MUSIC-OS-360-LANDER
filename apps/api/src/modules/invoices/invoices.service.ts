@@ -57,7 +57,7 @@ export class InvoicesService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateInvoiceDto) {
-    const { recipientDoc, ...rest } = dto as Record<string, unknown>;
+    const { recipientDoc, ...rest } = dto as unknown as Record<string, unknown>;
     const entity = this.repo!.create({
       tenant_id:             tenantId,
       ...(rest as Partial<InvoiceEntity>),

@@ -1,6 +1,6 @@
-// ── .env carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
+﻿// â”€â”€ .env carregado ANTES de qualquer mÃ³dulo (garante process.env para QueueModule.register) â”€â”€
 // Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
-// Replit Secrets já estão em process.env — valores existentes não são sobrepostos.
+// Replit Secrets jÃ¡ estÃ£o em process.env â€” valores existentes nÃ£o sÃ£o sobrepostos.
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -25,7 +25,7 @@ function loadLocalEnv(envPath: string): void {
 
 loadLocalEnv(path.resolve(process.cwd(), '.env'));
 
-// ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
+// â”€â”€ Sentry DEVE ser o segundo import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 import './instrument';
 
 import 'reflect-metadata';
@@ -39,44 +39,20 @@ import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
 
-// Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
-// (ex: redis.railway.internal não está disponível fora da Railway private network)
+// Silencia erros de conexÃ£o Redis inacessÃ­vel em ambiente de desenvolvimento
+// (ex: redis.railway.internal nÃ£o estÃ¡ disponÃ­vel fora da Railway private network)
 process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
   if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
-    // erros de rede não fatais — log limpo sem stack trace
-    console.warn(`[Redis] Conexão indisponível (${err.code}): ${err.message?.split('\n')[0]}`);
+    // erros de rede nÃ£o fatais â€” log limpo sem stack trace
+    console.warn(`[Redis] ConexÃ£o indisponÃ­vel (${err.code}): ${err.message?.split('\n')[0]}`);
     return;
   }
-  // outros erros não capturados → relança
+  // outros erros nÃ£o capturados â†’ relanÃ§a
   throw err;
 });
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
-
-  // ── DEV AUTH BYPASS — startup safeguard ──────────────────────────────────────
-  // Recusa absolutamente iniciar em produção com bypass activo.
-  // Esta verificação é independente dos guards — é a primeira linha de defesa.
-  if (process.env['DEV_AUTH_BYPASS'] === 'true') {
-    if (process.env['NODE_ENV'] === 'production') {
-      logger.error(
-        '════════════════════════════════════════════════════════════════\n' +
-        '  ERRO FATAL: DEV_AUTH_BYPASS=true detectado em NODE_ENV=production.\n' +
-        '  Esta configuração desactiva autenticação/RBAC e NUNCA pode estar\n' +
-        '  activa em produção. Remova DEV_AUTH_BYPASS do ambiente de produção.\n' +
-        '════════════════════════════════════════════════════════════════',
-      );
-      process.exit(1);
-    }
-    logger.warn(
-      '════════════════════════════════════════════════════════════════\n' +
-      '  ⚠  DEV AUTH BYPASS ACTIVO — JWT, TenantGuard e RolesGuard\n' +
-      '     desactivados. req.auth e req.tenant injectados com mock.\n' +
-      '     NUNCA usar em produção. Apenas para desenvolvimento local.\n' +
-      '════════════════════════════════════════════════════════════════',
-    );
-  }
-  // ─────────────────────────────────────────────────────────────────────────────
 
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -84,7 +60,7 @@ async function bootstrap() {
     rawBody:    true,
   });
 
-  // ── Segurança ────────────────────────────────────────────────────────────────
+  // â”€â”€ SeguranÃ§a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -97,7 +73,7 @@ async function bootstrap() {
           upgradeInsecureRequests: process.env['NODE_ENV'] === 'production' ? [] : null,
         },
       },
-      // HSTS: 1 year, include subdomains — only in production (HTTPS required)
+      // HSTS: 1 year, include subdomains â€” only in production (HTTPS required)
       hsts: process.env['NODE_ENV'] === 'production'
         ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
         : false,
@@ -113,7 +89,7 @@ async function bootstrap() {
 
   app.use(compression());
 
-  // ── CORS ─────────────────────────────────────────────────────────────────────
+  // â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   const allowedOrigins = (
     process.env['CORS_ORIGINS'] ?? 'http://localhost:5000'
   ).split(',');
@@ -133,7 +109,7 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      callback(new Error(`CORS: ${origin} não permitido`));
+      callback(new Error(`CORS: ${origin} nÃ£o permitido`));
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -142,15 +118,16 @@ async function bootstrap() {
       'Authorization',
       'X-Tenant-ID',
       'X-Request-ID',
+      'X-Correlation-ID',
       'X-Idempotency-Key',
     ],
-    exposedHeaders: ['X-Request-ID', 'X-Idempotency-Replayed'],
+    exposedHeaders: ['X-Request-ID', 'X-Correlation-ID', 'X-Idempotency-Replayed'],
   });
 
-  // ── Prefixo global ───────────────────────────────────────────────────────────
+  // â”€â”€ Prefixo global â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.setGlobalPrefix('api/v1');
 
-  // ── Pipes, Filters, Interceptors ─────────────────────────────────────────────
+  // â”€â”€ Pipes, Filters, Interceptors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -165,11 +142,11 @@ async function bootstrap() {
     new TransformInterceptor(),
   );
 
-  // ── Swagger (dev / staging apenas) ───────────────────────────────────────────
+  // â”€â”€ Swagger (dev / staging apenas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (process.env['NODE_ENV'] !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('MUSIC OS 360° API')
-      .setDescription('Enterprise Music Management SaaS — API REST')
+      .setTitle('MUSIC OS 360Â° API')
+      .setDescription('Enterprise Music Management SaaS â€” API REST')
       .setVersion('1.0')
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -184,11 +161,11 @@ async function bootstrap() {
     });
   }
 
-  // ── Graceful Shutdown ────────────────────────────────────────────────────────
+  // â”€â”€ Graceful Shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   app.enableShutdownHooks();
 
   process.on('SIGTERM', async () => {
-    logger.log('SIGTERM recebido — iniciando graceful shutdown...');
+    logger.log('SIGTERM recebido â€” iniciando graceful shutdown...');
     await app.close();
     process.exit(0);
   });
@@ -196,14 +173,14 @@ async function bootstrap() {
   const port = process.env['PORT'] ?? 3001;
   await app.listen(port);
 
-  logger.log(`🎵 MUSIC OS 360° API rodando em http://localhost:${port}/api/v1`);
+  logger.log(`ðŸŽµ MUSIC OS 360Â° API rodando em http://localhost:${port}/api/v1`);
 
   if (process.env['NODE_ENV'] !== 'production') {
-    logger.log(`📚 Swagger em http://localhost:${port}/docs`);
+    logger.log(`ðŸ“š Swagger em http://localhost:${port}/docs`);
   }
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error('Falha crítica no bootstrap:', err);
+  console.error('Falha crÃ­tica no bootstrap:', err);
   process.exit(1);
 });

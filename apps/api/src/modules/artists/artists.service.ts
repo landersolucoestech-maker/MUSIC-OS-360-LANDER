@@ -4,6 +4,7 @@ import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { PlanLimitService } from '../../core/billing/plan-limit.service';
 import type { CreateArtistDto } from './dto/create-artist.dto';
 import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
@@ -17,6 +18,7 @@ export class ArtistsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly encryption: EncryptionService,
     private readonly events: EventsService,
+    private readonly planLimit: PlanLimitService,
   ) {
     if (ds) this.repo = ds.getRepository(ArtistEntity);
   }
@@ -53,7 +55,8 @@ export class ArtistsService {
     return result;
   }
 
-  async create(tenantId: string, userId: string, dto: CreateArtistDto): Promise<ArtistEntity> {
+  async create(tenantId: string, userId: string, dto: CreateArtistDto, orgId?: string): Promise<ArtistEntity> {
+    await this.planLimit.enforce(tenantId, orgId ?? tenantId, 'artists');
     const entity = this.repo!.create({
       tenant_id:           tenantId,
       nome_artistico:      dto.nome_artistico,

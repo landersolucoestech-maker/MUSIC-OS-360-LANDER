@@ -22,7 +22,7 @@ export class InitialSchema20240101000000 implements MigrationInterface {
     await queryRunner.query(`
       CREATE TABLE IF NOT EXISTS "organizations" (
         "id"               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        "clerk_org_id"     VARCHAR(255) UNIQUE,
+        "external_auth_org_id"     VARCHAR(255) UNIQUE,
         "name"             VARCHAR(255) NOT NULL,
         "slug"             VARCHAR(100) NOT NULL UNIQUE,
         "plan"             VARCHAR(50)  NOT NULL DEFAULT 'starter',
@@ -38,7 +38,7 @@ export class InitialSchema20240101000000 implements MigrationInterface {
         "deleted_at"       TIMESTAMP
       )
     `);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_organizations_clerk_org_id" ON "organizations" ("clerk_org_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_organizations_external_auth_org_id" ON "organizations" ("external_auth_org_id")`);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_organizations_slug"         ON "organizations" ("slug")`);
 
     // ── tenants ──────────────────────────────────────────────────────────────
@@ -46,7 +46,7 @@ export class InitialSchema20240101000000 implements MigrationInterface {
       CREATE TABLE IF NOT EXISTS "tenants" (
         "id"            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         "org_id"        UUID         NOT NULL,
-        "clerk_org_id"  VARCHAR(255) UNIQUE,
+        "external_auth_org_id"  VARCHAR(255) UNIQUE,
         "name"          VARCHAR(255) NOT NULL,
         "slug"          VARCHAR(100) NOT NULL UNIQUE,
         "plan"          VARCHAR(50)  NOT NULL DEFAULT 'starter',
@@ -59,7 +59,7 @@ export class InitialSchema20240101000000 implements MigrationInterface {
       )
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_tenants_org_id"       ON "tenants" ("org_id")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_tenants_clerk_org_id" ON "tenants" ("clerk_org_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_tenants_external_auth_org_id" ON "tenants" ("external_auth_org_id")`);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_tenants_slug"         ON "tenants" ("slug")`);
 
     // ── org_members ──────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ export class InitialSchema20240101000000 implements MigrationInterface {
         "id"              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         "org_id"          UUID         NOT NULL,
         "tenant_id"       UUID         NOT NULL,
-        "clerk_user_id"   VARCHAR(255) NOT NULL,
+        "auth_user_id"   VARCHAR(255) NOT NULL,
         "email"           VARCHAR(255) NOT NULL,
         "full_name"       VARCHAR(255),
         "role"            VARCHAR(50)  NOT NULL DEFAULT 'viewer',
@@ -76,11 +76,11 @@ export class InitialSchema20240101000000 implements MigrationInterface {
         "joined_at"       TIMESTAMP,
         "created_at"      TIMESTAMP    NOT NULL DEFAULT NOW(),
         "updated_at"      TIMESTAMP    NOT NULL DEFAULT NOW(),
-        UNIQUE ("tenant_id", "clerk_user_id")
+        UNIQUE ("tenant_id", "auth_user_id")
       )
     `);
     await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_org_members_tenant_id"     ON "org_members" ("tenant_id")`);
-    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_org_members_clerk_user_id" ON "org_members" ("clerk_user_id")`);
+    await queryRunner.query(`CREATE INDEX IF NOT EXISTS "idx_org_members_auth_user_id" ON "org_members" ("auth_user_id")`);
 
     // ── billing_subscriptions ────────────────────────────────────────────────
     await queryRunner.query(`

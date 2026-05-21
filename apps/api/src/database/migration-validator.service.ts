@@ -30,6 +30,10 @@ export class MigrationValidatorService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ds) {
+      if (this.config.get<string>('NODE_ENV') === 'production') {
+        this.logger.error('DB unavailable in production - migration validation cannot run');
+        process.exit(1);
+      }
       this.logger.warn('DB desactivado — validação de migrations ignorada');
       return;
     }

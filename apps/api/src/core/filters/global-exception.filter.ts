@@ -20,6 +20,8 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const request   = ctx.getRequest<Request>();
     // requestId foi injectado pelo RequestIdMiddleware; fallback defensivo
     const requestId = request.requestId ?? (request.headers['x-request-id'] as string) ?? uuidv4();
+    const correlationId =
+      request.correlationId ?? (request.headers['x-correlation-id'] as string) ?? requestId;
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Erro interno do servidor';
@@ -54,11 +56,16 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       timestamp: new Date().toISOString(),
       path:      request.url,
       requestId,
+      correlationId,
     };
 
     this.logger.error(`${request.method} ${request.url} → ${statusCode} [${requestId}]`);
 
-    response.status(statusCode).header('X-Request-ID', requestId).json(errorBody);
+    response
+      .status(statusCode)
+      .header('X-Request-ID', requestId)
+      .header('X-Correlation-ID', correlationId)
+      .json(errorBody);
   }
 
   private reportToSentry(exception: Error, request: Request, requestId: string): void {
@@ -66,6 +73,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       if (!Sentry) return;
       Sentry.withScope(scope => {
         scope.setTag('requestId', requestId);
+        if (request.correlationId) scope.setTag('correlationId', request.correlationId);
         scope.setTag('method',    request.method);
         scope.setTag('path',      request.url);
 

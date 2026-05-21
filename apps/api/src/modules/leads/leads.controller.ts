@@ -4,7 +4,7 @@ import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
-import type { JwtAuth }  from '../../core/guards/clerk-auth.guard';
+import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { LeadsService } from './leads.service';
 import { CreateLeadDto, UpdateLeadDto, QueryLeadDto } from './dto/leads.dto';
 

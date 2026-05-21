@@ -20,7 +20,15 @@
     "db:seed": "ts-node-dev --transpile-only --no-notify src/database/seeds/index.ts",
     "db:reset": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts reset",
     "db:check": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts check",
-    "db:generate": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts generate"
+    "db:generate": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts generate",
+    "db:seed:operational": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts seed:operational",
+    "verify:supabase": "ts-node-dev --transpile-only --no-notify scripts/verify-supabase.ts",
+    "verify:rls": "ts-node-dev --transpile-only --no-notify scripts/verify-rls.ts",
+    "verify:migrations": "ts-node-dev --transpile-only --no-notify scripts/db-ops.ts check",
+    "verify:tenant-isolation": "ts-node-dev --transpile-only --no-notify scripts/verify-tenant-isolation.ts",
+    "smoke-test": "ts-node-dev --transpile-only --no-notify scripts/smoke-test.ts",
+    "provision": "npm run verify:supabase && npm run verify:rls && npm run verify:tenant-isolation",
+    "dump:sql": "ts-node-dev --transpile-only --no-notify scripts/dump-migrations-sql.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

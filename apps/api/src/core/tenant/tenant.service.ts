@@ -50,7 +50,7 @@ export class TenantService {
     const planFeatures: Record<string, string[]> = {
       starter: [],
       professional: ['analytics', 'monitoring', 'multiUser', 'advancedReports'],
-      enterprise: ['analytics', 'monitoring', 'acrcloud', 'multiUser', 'apiAccess', 'advancedReports', 'whiteLabel', 'sso'],
+      enterprise: ['analytics', 'monitoring', 'acrcloud', 'multiUser', 'apiAccess', 'advancedReports', 'sso'],
     };
     return planFeatures[tenant.plan]?.includes(feature) ?? false;
   }

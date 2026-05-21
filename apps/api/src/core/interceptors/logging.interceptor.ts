@@ -2,7 +2,7 @@
  * core/interceptors/logging.interceptor.ts
  *
  * HTTP logging interceptor estruturado.
- * Emite JSON por request com: requestId, method, url, statusCode,
+ * Emite JSON por request com: requestId, correlationId, method, url, statusCode,
  * latency_ms, tenantId, userId.
  * O requestId é propagado pelo RequestIdMiddleware (X-Request-ID).
  */
@@ -37,8 +37,9 @@ export class LoggingInterceptor implements NestInterceptor {
     const { method, url } = request;
     const req       = request as unknown as Record<string, unknown>;
     const requestId = req['requestId'] as string | undefined;
-    const tenantId  = req['tenantId']  as string | undefined;
-    const userId    = req['userId']    as string | undefined;
+    const correlationId = req['correlationId'] as string | undefined;
+    const tenantId      = req['tenantId']      as string | undefined;
+    const userId        = req['userId']        as string | undefined;
 
     return next.handle().pipe(
       tap({
@@ -51,7 +52,8 @@ export class LoggingInterceptor implements NestInterceptor {
             level:      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info',
             type:       'http',
             ...SERVICE_META,
-            requestId:  requestId ?? 'n/a',
+            requestId:     requestId ?? 'n/a',
+            correlationId: correlationId ?? requestId ?? 'n/a',
             method,
             url,
             statusCode,
@@ -81,7 +83,8 @@ export class LoggingInterceptor implements NestInterceptor {
             level:      statusCode >= 500 ? 'error' : 'warn',
             type:       'http',
             ...SERVICE_META,
-            requestId:  requestId ?? 'n/a',
+            requestId:     requestId ?? 'n/a',
+            correlationId: correlationId ?? requestId ?? 'n/a',
             method,
             url,
             statusCode,

@@ -19,7 +19,8 @@ export class PerformanceIndexes20260521000030 implements MigrationInterface {
     'artists', 'works', 'phonograms', 'contracts', 'contract_templates',
     'transactions', 'invoices', 'clients', 'leads', 'campaigns',
     'briefings', 'events', 'projects', 'releases', 'support_tickets',
-    'uploads', 'notifications',
+    'uploads',
+    // notifications excluded: no deleted_at column in schema
   ];
 
   async up(queryRunner: QueryRunner): Promise<void> {
@@ -42,8 +43,8 @@ export class PerformanceIndexes20260521000030 implements MigrationInterface {
       ON "contracts" (tenant_id, status) WHERE deleted_at IS NULL
     `);
     await queryRunner.query(`
-      CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_transactions_type"
-      ON "transactions" (tenant_id, type) WHERE deleted_at IS NULL
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_transactions_tipo"
+      ON "transactions" (tenant_id, tipo) WHERE deleted_at IS NULL
     `);
     await queryRunner.query(`
       CREATE INDEX CONCURRENTLY IF NOT EXISTS "idx_leads_status"
@@ -103,7 +104,7 @@ export class PerformanceIndexes20260521000030 implements MigrationInterface {
   async down(queryRunner: QueryRunner): Promise<void> {
     const indexes = [
       ...this.SOFT_DELETE_TABLES.map(t => `idx_${t}_tenant_active`),
-      'idx_artists_status', 'idx_contracts_status', 'idx_transactions_type',
+      'idx_artists_status', 'idx_contracts_status', 'idx_transactions_tipo',
       'idx_leads_status', 'idx_support_tickets_status',
       'idx_audit_logs_tenant_ts', 'idx_activity_logs_tenant_ts',
       'idx_domain_event_log_aggregate', 'idx_webhook_events_pending',

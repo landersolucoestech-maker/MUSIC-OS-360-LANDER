@@ -19,9 +19,9 @@ export async function seedAdminUser(
   const adminName      = process.env['SEED_ADMIN_NAME']  ?? 'Admin Dev (Seed)';
 
   await ds.query(`
-    INSERT INTO org_members (org_id, tenant_id, clerk_user_id, email, full_name, role, is_active)
+    INSERT INTO org_members (org_id, tenant_id, auth_user_id, email, full_name, role, is_active)
     VALUES ($1, $2, $3, $4, $5, 'owner', TRUE)
-    ON CONFLICT (tenant_id, clerk_user_id) DO UPDATE
+    ON CONFLICT (tenant_id, auth_user_id) DO UPDATE
       SET role      = EXCLUDED.role,
           is_active = TRUE
   `, [orgId, tenantId, adminSubjectId, adminEmail, adminName]);

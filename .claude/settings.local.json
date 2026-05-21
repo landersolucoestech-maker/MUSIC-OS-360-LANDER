@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(supabase projects *)",
+      "PowerShell(Start-Process notepad \"c:\\\\Users\\\\Usuario\\\\Downloads\\\\MUSIC-OS-360o\\\\apps\\\\api\\\\migrations-complete.sql\")"
+    ]
+  }
+}

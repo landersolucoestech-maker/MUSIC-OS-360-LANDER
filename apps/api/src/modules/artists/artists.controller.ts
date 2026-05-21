@@ -11,6 +11,7 @@ import { CurrentUser }      from '../../core/decorators/current-user.decorator';
 import { RequireRole }      from '../../core/decorators/roles.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { ArtistsService }   from './artists.service';
+import type { JwtAuth }     from '../../core/guards/auth.guard';
 import { CreateArtistDto }  from './dto/create-artist.dto';
 import { UpdateArtistDto }  from './dto/update-artist.dto';
 import { QueryArtistDto }   from './dto/query-artist.dto';
@@ -49,10 +50,10 @@ export class ArtistsController {
   @ApiResponse({ status: 201, description: 'Artista criado com sucesso' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   JwtAuth,
     @Body()          dto:    CreateArtistDto,
   ) {
-    return this.service.create(tenant.id, user.userId, dto);
+    return this.service.create(tenant.id, user.userId, dto, user.orgId ?? undefined);
   }
 
   @Patch(':id')

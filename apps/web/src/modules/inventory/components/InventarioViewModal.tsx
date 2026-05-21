@@ -6,6 +6,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Package, MapPin, User, DollarSign } from "lucide-react";
+import { formatCurrency } from "@/shared/lib/format-utils";
 
 interface InventarioViewModalProps {
   open: boolean;
@@ -15,6 +16,19 @@ interface InventarioViewModalProps {
 
 export function InventarioViewModal({ open, onOpenChange, item }: InventarioViewModalProps) {
   if (!item) return null;
+
+  const toNumber = (value: unknown): number | null => {
+    if (typeof value === "number") return Number.isFinite(value) ? value : null;
+    if (typeof value === "string" && value.trim() !== "") {
+      const parsed = Number(value.replace(/\./g, "").replace(",", "."));
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  };
+
+  const quantidade = toNumber(item.quantidade ?? item.qtd) ?? 1;
+  const valorUnitario = toNumber(item.valor_unitario ?? item.valorUnitario ?? item.valorUnit);
+  const valorTotal = valorUnitario == null ? null : valorUnitario * quantidade;
 
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
@@ -62,7 +76,7 @@ export function InventarioViewModal({ open, onOpenChange, item }: InventarioView
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Quantidade</p>
-              <p className="font-medium text-foreground">{item.qtd || item.quantidade || "1 un"}</p>
+              <p className="font-medium text-foreground">{quantidade}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Localização</p>
@@ -75,12 +89,12 @@ export function InventarioViewModal({ open, onOpenChange, item }: InventarioView
               <p className="text-sm text-muted-foreground">Valor Unitário</p>
               <div className="flex items-center gap-1.5">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{item.valorUnit || item.valorUnitario || "-"}</span>
+                <span className="font-medium text-foreground">{valorUnitario == null ? "-" : formatCurrency(valorUnitario)}</span>
               </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valor Total</p>
-              <p className="font-medium text-success">{item.valorTotal || "-"}</p>
+              <p className="font-medium text-success">{valorTotal == null ? "-" : formatCurrency(valorTotal)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Setor</p>

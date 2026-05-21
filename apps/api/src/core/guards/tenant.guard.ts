@@ -1,9 +1,10 @@
-import {
+﻿import {
   Injectable,
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
   ForbiddenException,
+  ServiceUnavailableException,
   Logger,
   Inject,
 } from '@nestjs/common';
@@ -11,9 +12,9 @@ import { Reflector }  from '@nestjs/core';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TenantEntity, OrgMemberEntity } from '../../database/entities';
-import { IS_PUBLIC_KEY } from './clerk-auth.guard';
+import { IS_PUBLIC_KEY } from './auth.guard';
 import type { Request } from 'express';
-import type { JwtAuth } from './clerk-auth.guard';
+import type { JwtAuth } from './auth.guard';
 
 @Injectable()
 export class TenantGuard implements CanActivate {
@@ -38,69 +39,47 @@ export class TenantGuard implements CanActivate {
     ]);
     if (isPublic) return true;
 
-    // ── DEV AUTH BYPASS ────────────────────────────────────────────────────────
-    if (
-      process.env['DEV_AUTH_BYPASS'] === 'true' &&
-      process.env['NODE_ENV'] !== 'production'
-    ) {
-      const request = context.switchToHttp().getRequest<Request & { auth?: JwtAuth }>();
-      request.tenant = {
-        id:      'dev-org',
-        org_id:  'dev-org',
-        name:    'DEV Tenant (BYPASS)',
-        active:  true,
-        plan:    'enterprise',
-      };
-      request.currentMember = {
-        id:            'dev-member',
-        clerk_user_id: 'dev-user',
-        tenant_id:     'dev-org',
-        role:          'owner',
-        is_active:     true,
-      };
-      this.logger.warn('[DEV AUTH BYPASS] TenantGuard bypassed — req.tenant e req.currentMember injectados com dev-org/owner');
-      return true;
-    }
-    // ──────────────────────────────────────────────────────────────────────────
-
     const request = context.switchToHttp().getRequest<Request & { auth?: JwtAuth }>();
     const auth    = request.auth;
 
     if (!auth?.orgId) {
-      throw new UnauthorizedException('Organização não identificada no token');
+      throw new UnauthorizedException('OrganizaÃ§Ã£o nÃ£o identificada no token');
     }
 
     if (!this.tenantRepo || !this.memberRepo) {
-      this.logger.warn('DB não configurado — TenantGuard em modo passthrough');
+      if (process.env['NODE_ENV'] === 'production') {
+        throw new ServiceUnavailableException('Tenant database unavailable');
+      }
+      this.logger.warn('DB nÃ£o configurado â€” TenantGuard em modo passthrough apenas fora de produÃ§Ã£o');
       return true;
     }
 
-    // Primary lookup: org_id UUID (Supabase app_metadata.org_id → organizations.id).
-    // Fallback:       clerk_org_id for tenants provisioned before the Supabase migration.
+    // Primary lookup: org_id UUID (Supabase app_metadata.org_id â†’ organizations.id).
+    // Fallback:       external_auth_org_id for tenants provisioned before the Supabase migration.
     const tenant = await this.tenantRepo
       .createQueryBuilder('t')
       .where(
-        '(t.org_id::text = :orgId OR t.clerk_org_id = :orgId) AND t.deleted_at IS NULL',
+        '(t.org_id::text = :orgId OR t.external_auth_org_id = :orgId) AND t.deleted_at IS NULL',
         { orgId: auth.orgId },
       )
       .getOne();
 
     if (!tenant || !tenant.active) {
-      throw new UnauthorizedException('Tenant não encontrado ou inativo');
+      throw new UnauthorizedException('Tenant nÃ£o encontrado ou inativo');
     }
 
-    // clerk_user_id stores the user identifier from the JWT `sub` claim.
-    // With Supabase, `sub` is a UUID — same column, different value format.
+    // auth_user_id stores the user identifier from the JWT `sub` claim.
+    // With Supabase, `sub` is a UUID â€” same column, different value format.
     const member = await this.memberRepo
       .createQueryBuilder('m')
       .where(
-        'm.tenant_id = :tenantId AND m.clerk_user_id = :userId AND m.is_active = :active',
+        'm.tenant_id = :tenantId AND m.auth_user_id = :userId AND m.is_active = :active',
         { tenantId: tenant.id, userId: auth.userId, active: true },
       )
       .getOne();
 
     if (!member) {
-      throw new ForbiddenException('Utilizador não é membro activo deste tenant');
+      throw new ForbiddenException('Utilizador nÃ£o Ã© membro activo deste tenant');
     }
 
     request.tenant        = tenant as unknown as Record<string, unknown>;

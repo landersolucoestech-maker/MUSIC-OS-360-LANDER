@@ -1185,7 +1185,7 @@ export default function RegistroMusicas() {
       <FonogramaViewModal 
         open={fonogramaViewModal.open} 
         onOpenChange={(open) => setFonogramaViewModal({ ...fonogramaViewModal, open })} 
-        fonograma={fonogramaViewModal.fonograma as import("@/modules/catalog/components/FonogramaViewModal").FonogramaViewData | null | undefined}
+        fonograma={fonogramaViewModal.fonograma as unknown as import("@/modules/catalog/components/FonogramaViewModal").FonogramaViewData | null | undefined}
       />
       <DeleteConfirmModal
         open={deleteModal.open}

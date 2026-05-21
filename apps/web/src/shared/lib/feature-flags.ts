@@ -61,7 +61,6 @@ export interface FeatureFlags {
   storageR2:          boolean;
   rbacAdvanced:       boolean;
   analyticsAdvanced:  boolean;
-  whitelabel:         boolean;
 }
 
 // ─── Default flags (standalone / enterprise plan) ─────────────────────────────
@@ -119,7 +118,6 @@ export const DEFAULT_FEATURE_FLAGS: FeatureFlags = {
   storageR2:          false,
   rbacAdvanced:       false,
   analyticsAdvanced:  false,
-  whitelabel:         false,
 };
 
 /** Plan-scoped flag presets */
@@ -134,7 +132,6 @@ export const PLAN_FLAGS: Record<"starter" | "professional" | "enterprise", Parti
   },
   professional: {
     analyticsAdvanced: false,
-    whitelabel:        false,
     multiTenantAdmin:  false,
   },
   enterprise: {

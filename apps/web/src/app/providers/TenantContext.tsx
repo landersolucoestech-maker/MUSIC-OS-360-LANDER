@@ -1,9 +1,11 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
-import { MOCK_MODE, DEV_AUTH_BYPASS } from "@/shared/lib/env";
+import { MOCK_MODE } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
-import { getAccessToken } from "@/shared/lib/api-client";
+import { api, getAccessToken } from "@/shared/lib/api-client";
+import { useAuth } from "./AuthContext";
+import type { SaasAuthContext } from "@/shared/types/saas-context";
 
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
@@ -38,12 +40,9 @@ export interface TenantConfig {
   primaryColor?:    string;
   logoUrl?:         string;
   faviconUrl?:      string;
-  customDomain?:    string;
   emailFromName?:   string;
   emailFromAddr?:   string;
   supportEmail?:    string;
-  whitelabel:       boolean;
-  hideProductName:  boolean;
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -131,10 +130,7 @@ const MOCK_TENANT: Tenant = {
   address:  "Av. Paulista, 1000 — São Paulo, SP",
   features:    DEFAULT_FEATURE_FLAGS,
   permissions: ROLE_PERMISSIONS.owner,
-  config: {
-    whitelabel:      false,
-    hideProductName: false,
-  },
+  config: {},
   billing: {
     status:            "active",
     seats:             25,
@@ -190,7 +186,7 @@ function readStoredTenant(): StoredTenantData | null {
 }
 
 function buildInitialTenant(): Tenant {
-  if (MOCK_MODE || DEV_AUTH_BYPASS) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
+  if (MOCK_MODE) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
   const stored = readStoredTenant();
   const industry = ((stored?.segment ?? stored?.industry) as TenantIndustry | undefined);
   const plan     = (stored?.plan as TenantPlan | undefined);
@@ -222,8 +218,55 @@ function appRoleToTenantRole(appRole: string): TenantRole {
   return "viewer";
 }
 
+function normalizePlan(plan: string | undefined): TenantPlan {
+  return plan === "professional" || plan === "enterprise" ? plan : "starter";
+}
+
+function normalizeFeatures(features: Record<string, unknown>): FeatureFlags {
+  const next = { ...DEFAULT_FEATURE_FLAGS };
+  for (const key of Object.keys(next) as Array<keyof FeatureFlags>) {
+    if (typeof features[key] === "boolean") next[key] = features[key];
+  }
+  return next;
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
   const [tenant, setTenant] = useState<Tenant>(buildInitialTenant);
+
+  useEffect(() => {
+    if (MOCK_MODE || !session?.access_token) return;
+
+    let active = true;
+    api.get<SaasAuthContext>("/auth/context")
+      .then((context) => {
+        if (!active) return;
+        const tenantRole = appRoleToTenantRole(context.membership.role);
+        setTenant(prev => ({
+          ...prev,
+          id:          context.workspace.id || prev.id,
+          name:        context.workspace.name || prev.name,
+          slug:        context.workspace.slug || prev.slug,
+          plan:        normalizePlan(context.workspace.plan),
+          features:    normalizeFeatures(context.workspace.features),
+          permissions: ROLE_PERMISSIONS[tenantRole],
+          billing: {
+            ...prev.billing,
+            planId: context.workspace.plan || prev.billing.planId,
+          },
+        }));
+        devTenantLog("Tenant sincronizado via /auth/context:", {
+          id: context.workspace.id,
+          role: context.membership.role,
+          permissions: context.membership.permissions.length,
+        });
+      })
+      .catch((error: unknown) => {
+        devTenantLog("Falha ao sincronizar /auth/context; usando JWT/localStorage", error);
+      });
+
+    return () => { active = false; };
+  }, [session?.access_token]);
 
   const isFeatureEnabled = (flag: keyof FeatureFlags): boolean =>
     tenant.features[flag] ?? false;
@@ -293,7 +336,7 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
 
   // Função interna de sincronização — partilhada pelos dois efeitos abaixo
   const syncFromJwt = React.useCallback(() => {
-    if (MOCK_MODE || DEV_AUTH_BYPASS) return;
+    if (MOCK_MODE) return;
 
     // ── 1. Metadados de org do localStorage ────────────────────────────────────
     const stored = readStoredTenant();

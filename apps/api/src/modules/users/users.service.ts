@@ -44,7 +44,7 @@ export class UsersService {
   async findByUserId(tenantId: string, userId: string): Promise<OrgMemberEntity | null> {
     return this.repo!
       .createQueryBuilder('m')
-      .where('m.tenant_id = :tenantId AND m.clerk_user_id = :userId', { tenantId, userId })
+      .where('m.tenant_id = :tenantId AND m.auth_user_id = :userId', { tenantId, userId })
       .getOne() ?? null;
   }
 
@@ -62,7 +62,7 @@ export class UsersService {
     const entity = this.repo!.create({
       org_id:        anyMember.org_id,
       tenant_id:     tenantId,
-      clerk_user_id: dto.userId,
+      auth_user_id: dto.userId,
       email:         dto.email,
       full_name:     dto.fullName ?? null,
       role:          dto.role,

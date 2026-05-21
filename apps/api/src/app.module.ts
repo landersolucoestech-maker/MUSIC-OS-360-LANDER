@@ -25,6 +25,7 @@ import { HealthModule }         from './modules/health/health.module';
 import { QueueModule }          from './queues/queue.module';
 import { AuthModule }           from './modules/auth/auth.module';
 import { CoreModule }           from './core/core.module';
+import { PlanLimitModule }      from './core/billing/plan-limit.module';
 import { ArtistsModule }        from './modules/artists/artists.module';
 import { WorksModule }          from './modules/works/works.module';
 import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
@@ -47,6 +48,7 @@ import { SharesModule }            from './modules/shares/shares.module';
 import { ReleasesModule }          from './modules/releases/releases.module';
 import { UsersModule }             from './modules/users/users.module';
 import { AuditLogModule }          from './modules/audit-log/audit-log.module';
+import { ActivityLogsModule }       from './modules/activity-logs/activity-logs.module';
 import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
 import { IntegrationsModule }      from './modules/integrations/integrations.module';
 import { AIModule }                from './modules/ai/ai.module';
@@ -57,7 +59,15 @@ import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.mod
 import { HrModule }                from './modules/hr/hr.module';
 import { DomainEventsModule }     from './core/events/events.module';
 import { WorkflowModule }         from './core/workflow/workflow.module';
-import { JwtAuthGuard }    from './core/guards/clerk-auth.guard';
+import { ConversationsModule }    from './modules/conversations/conversations.module';
+import { FormsModule }            from './modules/forms/forms.module';
+import { CrmModule }              from './modules/crm/crm.module';
+import { PipelinesModule }        from './modules/pipelines/pipelines.module';
+import { AnalyticsModule }        from './modules/analytics/analytics.module';
+import { InventoryModule }        from './modules/inventory/inventory.module';
+import { LicensingModule }        from './modules/licensing/licensing.module';
+import { FinancialRulesModule }   from './modules/financial-rules/financial-rules.module';
+import { JwtAuthGuard }    from './core/guards/auth.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
 import { RateLimitGuard }  from './core/guards/rate-limit.guard';
@@ -84,6 +94,9 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
     CoreModule,
+
+    // ── Plan Limit Enforcement (global — quota checks before create) ──────────
+    PlanLimitModule,
 
     // ── Auth (JWT) ────────────────────────────────────────────────────────────
     AuthModule,
@@ -119,6 +132,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ReleasesModule,
     UsersModule,
     AuditLogModule,
+    ActivityLogsModule,
     SupportTicketsModule,
 
     // ── Módulos FASE 7 — Integrações Reais ───────────────────────────────────
@@ -138,6 +152,26 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Workflow Engine (state machine global) ────────────────────────────────
     WorkflowModule,
+
+    // ── Phase 9 — Conversations/Inbox ─────────────────────────────────────────
+    ConversationsModule,
+
+    // ── Phase 12 — Forms & Submissions ────────────────────────────────────────
+    FormsModule,
+
+    // ── Phase 7 — CRM Canonical (contacts, companies, tags, tasks, timeline) ──
+    CrmModule,
+
+    // ── Phase 8 — Music Pipelines (kanban, stages, opportunities, SLA) ─────────
+    PipelinesModule,
+
+    // ── Phase 13 — Analytics & AI Governance ──────────────────────────────────
+    AnalyticsModule,
+
+    // ── Novos módulos — Inventory / Licensing / Financial Rules ──────────────
+    InventoryModule,
+    LicensingModule,
+    FinancialRulesModule,
   ],
   providers: [
     // Interceptor global — processa @Audit() em todas as rotas com DI completo

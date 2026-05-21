@@ -203,8 +203,7 @@ E    = export
  *
  * professional (mid-tier):
  *   - analyticsAdvanced desabilitado
- *   - whitelabel desabilitado
- *   - multiTenantAdmin desabilitado
+ * *   - multiTenantAdmin desabilitado
  *
  * enterprise (full):
  *   - todos os módulos e features habilitados
@@ -217,11 +216,11 @@ export const PLAN_ACCESS_RESTRICTIONS: Record<
     blockedModules:  ["monitoring", "licensing", "rh", "audit"],
     blockedFeatures: ["auditLog", "bulkActions", "analyticsAdvanced",
                       "aiFeatures", "multiTenantAdmin", "billingPortal",
-                      "storageR2", "rbacAdvanced", "whitelabel"],
+                      "storageR2", "rbacAdvanced"],
   },
   professional: {
     blockedModules:  [],
-    blockedFeatures: ["analyticsAdvanced", "whitelabel", "multiTenantAdmin"],
+    blockedFeatures: ["analyticsAdvanced", "multiTenantAdmin"],
   },
   enterprise: {
     blockedModules:  [],

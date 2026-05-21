@@ -50,11 +50,11 @@ import {
 
 // ─── Organizations ────────────────────────────────────────────────────────────
 @Entity('organizations')
-@Index(['clerk_org_id'])
+@Index(['external_auth_org_id'])
 @Index(['slug'])
 export class OrganizationEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) clerk_org_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) external_auth_org_id: string | null;
   @Column({ type: 'varchar', length: 255 }) name: string;
   @Column({ type: 'varchar', length: 100, unique: true }) slug: string;
   @Column({ type: 'varchar', length: 50, default: TenantPlan.STARTER }) plan: TenantPlan;
@@ -72,13 +72,13 @@ export class OrganizationEntity {
 
 // ─── Tenants ──────────────────────────────────────────────────────────────────
 @Entity('tenants')
-@Index(['clerk_org_id'])
+@Index(['external_auth_org_id'])
 @Index(['slug'])
 @Index(['org_id'])
 export class TenantEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) org_id: string;
-  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) clerk_org_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) external_auth_org_id: string | null;
   @Column({ type: 'varchar', length: 255 }) name: string;
   @Column({ type: 'varchar', length: 100, unique: true }) slug: string;
   @Column({ type: 'varchar', length: 50, default: TenantPlan.STARTER }) plan: TenantPlan;
@@ -92,14 +92,14 @@ export class TenantEntity {
 
 // ─── Org Members ──────────────────────────────────────────────────────────────
 @Entity('org_members')
-@Index(['tenant_id', 'clerk_user_id'], { unique: true })
+@Index(['tenant_id', 'auth_user_id'], { unique: true })
 @Index(['tenant_id'])
-@Index(['clerk_user_id'])
+@Index(['auth_user_id'])
 export class OrgMemberEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) org_id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) clerk_user_id: string;
+  @Column({ type: 'varchar', length: 255 }) auth_user_id: string;
   @Column({ type: 'varchar', length: 255 }) email: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) full_name: string | null;
   /** Role armazenado como string — alinhado com SystemRole values */
@@ -1018,6 +1018,518 @@ export class DomainEventLogEntity {
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
 }
 
+// ─── Activity Logs ───────────────────────────────────────────────────────────
+@Entity('activity_logs')
+@Index(['tenant_id'])
+@Index(['entity_type', 'entity_id'])
+export class ActivityLogEntity {
+  @PrimaryGeneratedColumn('uuid')
+  id: string;
+
+  @Column({ type: 'uuid' })
+  tenant_id: string;
+
+  @Column({ type: 'varchar', length: 50 })
+  entity_type: string;
+
+  @Column({ type: 'uuid' })
+  entity_id: string;
+
+  @Column({ type: 'varchar', length: 100 })
+  action: string;
+
+  @Column({ type: 'text' })
+  description: string;
+
+  @Column({ type: 'jsonb', default: {} })
+  metadata: Record<string, unknown>;
+
+  @Column({ type: 'varchar', length: 255 })
+  user_id: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  user_name: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  user_avatar_url: string | null;
+
+  @CreateDateColumn({ type: 'timestamp' })
+  created_at: Date;
+}
+
+// ─── Conversations ────────────────────────────────────────────────────────────
+@Entity('conversations')
+@Index(['tenant_id', 'status'])
+@Index(['assigned_to'])
+@Index(['contact_id'])
+export class ConversationEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid', nullable: true }) contact_id: string | null;
+  @Column({ type: 'text', default: '' }) subject: string;
+  @Column({ type: 'varchar', length: 50, default: 'open' }) status: string;
+  @Column({ type: 'varchar', length: 50, default: 'internal' }) channel: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) last_message_at: Date | null;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @OneToMany(() => ConversationMessageEntity, (m) => m.conversation)
+  messages: Relation<ConversationMessageEntity[]>;
+
+  @OneToMany(() => ConversationNoteEntity, (n) => n.conversation)
+  notes: Relation<ConversationNoteEntity[]>;
+}
+
+@Entity('conversation_messages')
+@Index(['conversation_id', 'created_at'])
+@Index(['tenant_id'])
+export class ConversationMessageEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) conversation_id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'text', default: '' }) body: string;
+  @Column({ type: 'varchar', length: 255 }) sender_id: string;
+  @Column({ type: 'varchar', length: 50, default: 'user' }) sender_type: string;
+  @Column({ type: 'jsonb', default: [] }) attachments: unknown[];
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => ConversationEntity, (c) => c.messages, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'conversation_id' })
+  conversation: Relation<ConversationEntity>;
+}
+
+@Entity('conversation_notes')
+@Index(['conversation_id', 'created_at'])
+export class ConversationNoteEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) conversation_id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'text', default: '' }) body: string;
+  @Column({ type: 'varchar', length: 255 }) author_id: string;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+
+  @ManyToOne(() => ConversationEntity, (c) => c.notes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'conversation_id' })
+  conversation: Relation<ConversationEntity>;
+}
+
+// ─── Forms & Submissions ──────────────────────────────────────────────────────
+@Entity('forms')
+@Index(['tenant_id', 'status'])
+export class FormEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 500 }) name: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'jsonb', default: [] }) fields: unknown[];
+  @Column({ type: 'jsonb', default: {} }) settings: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 50, default: 'draft' }) status: string;
+  @Column({ type: 'int', default: 0 }) submission_count: number;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @OneToMany(() => FormSubmissionEntity, (s) => s.form)
+  submissions: Relation<FormSubmissionEntity[]>;
+}
+
+@Entity('form_submissions')
+@Index(['form_id', 'created_at'])
+@Index(['tenant_id'])
+@Index(['lead_id'])
+export class FormSubmissionEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) form_id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid', nullable: true }) lead_id: string | null;
+  @Column({ type: 'jsonb', default: {} }) data: Record<string, unknown>;
+  @Column({ type: 'text', nullable: true }) origin: string | null;
+  @Column({ type: 'text', nullable: true }) ip: string | null;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => FormEntity, (f) => f.submissions, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'form_id' })
+  form: Relation<FormEntity>;
+}
+
+// ─── CRM Canonical (Phase 7) ──────────────────────────────────────────────────
+
+@Entity('crm_companies')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'deleted_at'])
+export class CrmCompanyEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) name: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) industry: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) website: string | null;
+  @Column({ type: 'text', nullable: true }) email_encrypted: string | null;
+  @Column({ type: 'text', nullable: true }) phone_encrypted: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) address: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) city: string | null;
+  @Column({ type: 'varchar', length: 2, nullable: true }) state: string | null;
+  @Column({ type: 'integer', default: 0 }) contact_count: number;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @OneToMany(() => CrmContactEntity, (c) => c.company)
+  contacts: Relation<CrmContactEntity[]>;
+}
+
+@Entity('crm_contacts')
+@Index(['tenant_id'])
+@Index(['tenant_id', 'deleted_at'])
+@Index(['tenant_id', 'company_id'])
+export class CrmContactEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) name: string;
+  @Column({ type: 'text', nullable: true }) email_encrypted: string | null;
+  @Column({ type: 'text', nullable: true }) phone_encrypted: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) job_title: string | null;
+  @Column({ type: 'uuid', nullable: true }) company_id: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) source: string | null;
+  @Column({ type: 'integer', default: 0 }) score: number;
+  @Column({ type: 'varchar', length: 50, default: 'active' }) status: string;
+  @Column({ type: 'uuid', nullable: true }) lead_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) last_contacted_at: Date | null;
+  @Column({ type: 'jsonb', default: {} }) social_links: Record<string, unknown>;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @ManyToOne(() => CrmCompanyEntity, (c) => c.contacts, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'company_id' })
+  company: Relation<CrmCompanyEntity> | null;
+
+  @OneToMany(() => CrmContactTagEntity, (t) => t.contact)
+  contactTags: Relation<CrmContactTagEntity[]>;
+
+  @OneToMany(() => CrmTaskEntity, (t) => t.contact)
+  tasks: Relation<CrmTaskEntity[]>;
+
+  @OneToMany(() => CrmTimelineEventEntity, (e) => e.contact)
+  timeline: Relation<CrmTimelineEventEntity[]>;
+}
+
+@Entity('crm_tags')
+@Index(['tenant_id', 'name'], { unique: true })
+export class CrmTagEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 100 }) name: string;
+  @Column({ type: 'varchar', length: 50, default: '#6366f1' }) color: string;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @OneToMany(() => CrmContactTagEntity, (ct) => ct.tag)
+  contactTags: Relation<CrmContactTagEntity[]>;
+}
+
+@Entity('crm_contact_tags')
+@Index(['contact_id', 'tag_id'], { unique: true })
+@Index(['tenant_id'])
+export class CrmContactTagEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) contact_id: string;
+  @Column({ type: 'uuid' }) tag_id: string;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => CrmContactEntity, (c) => c.contactTags, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Relation<CrmContactEntity>;
+
+  @ManyToOne(() => CrmTagEntity, (t) => t.contactTags, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'tag_id' })
+  tag: Relation<CrmTagEntity>;
+}
+
+@Entity('crm_tasks')
+@Index(['tenant_id', 'contact_id'])
+@Index(['tenant_id', 'due_date'])
+@Index(['assigned_to'])
+export class CrmTaskEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'pending' }) status: string;
+  @Column({ type: 'varchar', length: 50, default: 'medium' }) priority: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) type: string | null;
+  @Column({ type: 'uuid', nullable: true }) contact_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) company_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) due_date: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) completed_at: Date | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+
+  @ManyToOne(() => CrmContactEntity, (c) => c.tasks, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Relation<CrmContactEntity> | null;
+}
+
+@Entity('crm_timeline_events')
+@Index(['tenant_id', 'contact_id', 'occurred_at'])
+export class CrmTimelineEventEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) contact_id: string;
+  @Column({ type: 'varchar', length: 100 }) event_type: string;
+  @Column({ type: 'varchar', length: 500, nullable: true }) summary: string | null;
+  @Column({ type: 'jsonb', default: {} }) payload: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) actor_id: string | null;
+  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' }) occurred_at: Date;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+
+  @ManyToOne(() => CrmContactEntity, (c) => c.timeline, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'contact_id' })
+  contact: Relation<CrmContactEntity>;
+}
+
+// ─── Music Pipelines (Phase 8) ────────────────────────────────────────────────
+
+@Entity('pipelines')
+@Index(['tenant_id'])
+export class PipelineEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) name: string;
+  @Column({ type: 'varchar', length: 100, default: 'sales' }) type: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'boolean', default: true }) is_active: boolean;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @OneToMany(() => PipelineStageEntity, (s) => s.pipeline)
+  stages: Relation<PipelineStageEntity[]>;
+
+  @OneToMany(() => PipelineOpportunityEntity, (o) => o.pipeline)
+  opportunities: Relation<PipelineOpportunityEntity[]>;
+}
+
+@Entity('pipeline_stages')
+@Index(['pipeline_id', 'position'])
+@Index(['tenant_id'])
+export class PipelineStageEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) pipeline_id: string;
+  @Column({ type: 'varchar', length: 255 }) name: string;
+  @Column({ type: 'integer', default: 0 }) position: number;
+  @Column({ type: 'varchar', length: 50, default: '#6366f1' }) color: string;
+  @Column({ type: 'integer', nullable: true }) sla_days: number | null;
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true }) win_probability: string | null;
+  @Column({ type: 'boolean', default: false }) is_terminal: boolean;
+  @Column({ type: 'boolean', default: false }) is_won: boolean;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+
+  @ManyToOne(() => PipelineEntity, (p) => p.stages, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'pipeline_id' })
+  pipeline: Relation<PipelineEntity>;
+
+  @OneToMany(() => PipelineOpportunityEntity, (o) => o.stage)
+  opportunities: Relation<PipelineOpportunityEntity[]>;
+}
+
+@Entity('pipeline_opportunities')
+@Index(['tenant_id', 'pipeline_id'])
+@Index(['tenant_id', 'stage_id'])
+@Index(['tenant_id', 'contact_id'])
+@Index(['tenant_id', 'deleted_at'])
+export class PipelineOpportunityEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) pipeline_id: string;
+  @Column({ type: 'uuid', nullable: true }) stage_id: string | null;
+  @Column({ type: 'varchar', length: 500 }) title: string;
+  @Column({ type: 'uuid', nullable: true }) contact_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) company_id: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) value: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'open' }) status: string;
+  @Column({ type: 'decimal', precision: 5, scale: 2, nullable: true }) probability: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) expected_close_date: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) actual_close_date: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) sla_due_at: Date | null;
+  @Column({ type: 'boolean', default: false }) sla_breached: boolean;
+  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
+  @Column({ type: 'text', nullable: true }) notes: string | null;
+  @Column({ type: 'jsonb', default: [] }) stage_history: unknown[];
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @ManyToOne(() => PipelineEntity, (p) => p.opportunities, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'pipeline_id' })
+  pipeline: Relation<PipelineEntity>;
+
+  @ManyToOne(() => PipelineStageEntity, (s) => s.opportunities, { nullable: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'stage_id' })
+  stage: Relation<PipelineStageEntity> | null;
+}
+
+// ─── Campaign Operations (Phase 11) ───────────────────────────────────────────
+
+@Entity('campaign_tasks')
+@Index(['tenant_id', 'campaign_id'])
+@Index(['tenant_id', 'due_date'])
+@Index(['assigned_to'])
+export class CampaignTaskEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) campaign_id: string;
+  @Column({ type: 'varchar', length: 500 }) title: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'pending' }) status: string;
+  @Column({ type: 'varchar', length: 50, default: 'medium' }) priority: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
+  @Column({ type: 'timestamptz', nullable: true }) due_date: Date | null;
+  @Column({ type: 'timestamptz', nullable: true }) completed_at: Date | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+
+  @ManyToOne(() => CampaignEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'campaign_id' })
+  campaign: Relation<CampaignEntity>;
+}
+
+@Entity('campaign_assets')
+@Index(['tenant_id', 'campaign_id'])
+export class CampaignAssetEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) campaign_id: string;
+  @Column({ type: 'varchar', length: 500 }) name: string;
+  @Column({ type: 'varchar', length: 100 }) asset_type: string;
+  @Column({ type: 'text' }) file_url: string;
+  @Column({ type: 'bigint', nullable: true }) file_size: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) mime_type: string | null;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+
+  @ManyToOne(() => CampaignEntity, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'campaign_id' })
+  campaign: Relation<CampaignEntity>;
+}
+
+// ─── Analytics & AI Governance (Phase 13) ────────────────────────────────────
+
+@Entity('ai_usage_logs')
+@Index(['tenant_id', 'created_at'])
+@Index(['tenant_id', 'model'])
+@Index(['job_id'])
+export class AiUsageLogEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid', nullable: true }) job_id: string | null;
+  @Column({ type: 'varchar', length: 255 }) model: string;
+  @Column({ type: 'varchar', length: 100 }) feature: string;
+  @Column({ type: 'integer', default: 0 }) tokens_input: number;
+  @Column({ type: 'integer', default: 0 }) tokens_output: number;
+  @Column({ type: 'decimal', precision: 12, scale: 6, default: 0 }) cost_usd: string;
+  @Column({ type: 'integer', nullable: true }) latency_ms: number | null;
+  @Column({ type: 'varchar', length: 50, default: 'success' }) outcome: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) user_id: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+}
+
+// ─── Inventory ────────────────────────────────────────────────────────────────
+@Entity('inventory_items')
+@Index(['tenant_id', 'categoria'])
+@Index(['tenant_id', 'status'])
+export class InventoryItemEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) nome: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) categoria: string | null;
+  @Column({ type: 'integer', default: 0 }) quantidade: number;
+  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true }) valor_unitario: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) localizacao: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'disponivel' }) status: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) responsavel: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) setor: string | null;
+  @Column({ type: 'date', nullable: true }) data_entrada: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+}
+
+// ─── Licensing ────────────────────────────────────────────────────────────────
+@Entity('licenses')
+@Index(['tenant_id', 'status'])
+@Index(['tenant_id', 'obra_id'])
+export class LicenseEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 500 }) titulo: string;
+  @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) tipo: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) tipo_uso: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'pendente' }) status: string;
+  @Column({ type: 'date', nullable: true }) data_inicio: string | null;
+  @Column({ type: 'date', nullable: true }) data_fim: string | null;
+  @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true }) valor: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+}
+
+// ─── Financial Rules ──────────────────────────────────────────────────────────
+@Entity('financial_rules')
+@Index(['tenant_id', 'tipo'])
+@Index(['tenant_id', 'ativo'])
+export class FinancialRuleEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255 }) nome: string;
+  @Column({ type: 'varchar', length: 100 }) tipo: string;
+  @Column({ type: 'varchar', length: 100, nullable: true }) categoria: string | null;
+  @Column({ type: 'varchar', length: 50, default: 'percentual' }) calculo: string;
+  @Column({ type: 'decimal', precision: 10, scale: 4, default: 0 }) valor: string;
+  @Column({ type: 'text', nullable: true }) descricao: string | null;
+  @Column({ type: 'boolean', default: true }) ativo: boolean;
+  @Column({ type: 'jsonb', default: {} }) condicoes: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
+  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
+}
+
 // ─── All entities array (for DataSource registration) ─────────────────────────
 export const ALL_ENTITIES = [
   OrganizationEntity,
@@ -1057,4 +1569,30 @@ export const ALL_ENTITIES = [
   LeaveRequestEntity,
   WorkflowTransitionEntity,
   DomainEventLogEntity,
+  ActivityLogEntity,
+  ConversationEntity,
+  ConversationMessageEntity,
+  ConversationNoteEntity,
+  FormEntity,
+  FormSubmissionEntity,
+  // Phase 7: CRM Canonical
+  CrmCompanyEntity,
+  CrmContactEntity,
+  CrmTagEntity,
+  CrmContactTagEntity,
+  CrmTaskEntity,
+  CrmTimelineEventEntity,
+  // Phase 8: Music Pipelines
+  PipelineEntity,
+  PipelineStageEntity,
+  PipelineOpportunityEntity,
+  // Phase 11: Campaign Operations
+  CampaignTaskEntity,
+  CampaignAssetEntity,
+  // Phase 13: Analytics
+  AiUsageLogEntity,
+  // Phase 14: Inventory, Licensing, Financial Rules
+  InventoryItemEntity,
+  LicenseEntity,
+  FinancialRuleEntity,
 ];

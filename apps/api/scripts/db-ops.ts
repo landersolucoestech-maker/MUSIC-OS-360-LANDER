@@ -92,6 +92,25 @@ async function reset(): Promise<void> {
   console.log('\n[db:reset] Reset concluído (dev).\n');
 }
 
+async function seedOperational(): Promise<void> {
+  const env   = process.env['NODE_ENV'] ?? 'development';
+  const force = process.argv.includes('--force');
+
+  if (env === 'production' && !force) {
+    console.error('\n[seed:operational] Seeds em produção requerem --force.\n');
+    process.exit(1);
+  }
+
+  console.log(`\n[seed:operational] Iniciando seed operacional (env=${env})…`);
+
+  if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+
+  const { seedOperational: runSeed } = await import('../src/database/seeds/03_operational_seed');
+  await runSeed(AppDataSource);
+
+  console.log('[seed:operational] Concluído.\n');
+}
+
 async function generate(): Promise<void> {
   const name = ARG ?? 'AutoMigration';
   console.log(
@@ -105,14 +124,15 @@ async function generate(): Promise<void> {
 async function main(): Promise<void> {
   try {
     switch (COMMAND) {
-      case 'migrate':   await migrate();   break;
-      case 'rollback':  await rollback();  break;
-      case 'check':     await check();     break;
-      case 'reset':     await reset();     break;
-      case 'generate':  await generate();  break;
+      case 'migrate':            await migrate();              break;
+      case 'rollback':           await rollback();             break;
+      case 'check':              await check();                break;
+      case 'reset':              await reset();                break;
+      case 'generate':           await generate();             break;
+      case 'seed:operational':   await seedOperational();      break;
       default:
         console.error(`\n[db-ops] Comando desconhecido: '${COMMAND ?? ''}'`);
-        console.error('Comandos válidos: migrate | rollback | check | reset | generate\n');
+        console.error('Comandos válidos: migrate | rollback | check | reset | generate | seed:operational\n');
         process.exit(1);
     }
   } catch (err) {

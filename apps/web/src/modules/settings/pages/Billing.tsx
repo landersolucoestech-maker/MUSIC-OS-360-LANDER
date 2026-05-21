@@ -64,7 +64,6 @@ const PLANS = [
       "Multi-tenant admin",
       "Licenciamento musical",
       "Analytics avançado",
-      "White-label",
       "SLA dedicado",
     ],
     color: "border-gold-200 dark:border-yellow-800",

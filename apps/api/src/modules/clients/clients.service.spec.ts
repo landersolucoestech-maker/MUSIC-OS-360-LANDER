@@ -31,7 +31,7 @@ function makeRepo(rows: Record<string, unknown>[] = []) {
 
   return {
     createQueryBuilder: jest.fn(() => qb),
-    create: jest.fn((data: unknown) => ({ ...data })),
+    create: jest.fn((data: unknown) => ({ ...(data as object) })),
     save:   jest.fn(async (entity: unknown) => ({ id: 'uuid-new', ...entity as object })),
     update: jest.fn(async () => ({ affected: 1 })),
     _qb:    qb,

@@ -589,7 +589,7 @@ export function LancamentoFormModal({
     .filter(
       (p) =>
         !projetoSearch ||
-        normStr(p.titulo ?? p.nome ?? "").includes(normStr(projetoSearch)),
+        normStr(String(p.titulo ?? p.nome ?? "")).includes(normStr(projetoSearch)),
     );
   const artistasFiltrados = artistas.filter(
     (a) =>
@@ -1162,7 +1162,7 @@ export function LancamentoFormModal({
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
-                              {p.titulo ?? p.nome ?? "—"}
+                              {String(p.titulo ?? p.nome ?? "—")}
                             </p>
                             {p.artista_id && (
                               <p className="text-xs text-muted-foreground truncate">

@@ -14,7 +14,7 @@ import {
   ConflictError,
   IntegrationError,
 } from "./errors";
-import { API_BASE_URL } from "./env";
+import { API_BASE_URL, IS_PROD } from "./env";
 
 // ─── Token management ─────────────────────────────────────────────────────────
 // access_token: in-memory only.
@@ -51,34 +51,29 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   clientes:            "/clients",
   contatos:            "/clients",          // alias → /clients
   campanhas:           "/campaigns",
-  conteudos:           "/contents",
+  conteudos:           "/content-detections",
   briefings:           "/briefings",
-  tarefas_marketing:   "/marketing-tasks",
-  monitoramentos:      "/monitors",
   takedowns:           "/takedowns",
-  regras_financeiras:  "/rules",
   projetos:            "/projects",
   eventos:             "/events",
-  inventario:          "/inventory",
-  licencas:            "/licenses",
-  funcionarios:        "/employees",
-  folha_pagamento:     "/payroll",
-  afastamentos:        "/leave",
-  ferias_ausencias:    "/leave",
-  regras:              "/rules",
+  funcionarios:        "/hr/employees",
+  folha_pagamento:     "/hr/payroll",
+  afastamentos:        "/hr/leave-requests",
+  ferias_ausencias:    "/hr/leave-requests",
   usuarios:            "/users",
-  roles:               "/roles",
   org_members:         "/users",
   lancamentos:         "/releases",
   notas_fiscais:       "/invoices",
   lead_interactions:   "/lead-interactions",
-  permissions:         "/permissions",
   metas_artistas:      "/artist-goals",
   relatorios_ecad:     "/ecad-reports",
   deteccoes:           "/content-detections",
   documentos_funcionario: "/hr/employees",
   support_tickets:        "/support-tickets",
   audit_logs:             "/audit-logs",
+  inventario:             "/inventory",
+  licencas:               "/licenses",
+  regras_financeiras:     "/financial-rules",
 };
 
 /**
@@ -86,7 +81,13 @@ export const TABLE_ENDPOINT: Record<string, string> = {
  * In HTTP mode these fall back to in-memory mock with an explicit console.warn
  * so the gap is visible in the browser console.
  */
-export const PENDING_TABLES: Record<string, string> = {};
+export const PENDING_TABLES: Record<string, string> = {
+  regras:             "Rules UI storage table has no backend controller",
+  tarefas_marketing:  "Marketing tasks have no backend controller",
+  monitoramentos:     "Monitoring table has no backend controller",
+  roles:              "RBAC is currently exposed through /users and auth context, not a /roles CRUD",
+  permissions:        "Permissions are computed server-side, not exposed as a /permissions CRUD",
+};
 
 // ─── Error mapping ───────────────────────────────────────────────────────────
 

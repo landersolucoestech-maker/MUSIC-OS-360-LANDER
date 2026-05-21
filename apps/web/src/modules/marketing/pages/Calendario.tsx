@@ -15,11 +15,11 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { useConteudos } from "@/modules/marketing/hooks/useConteudos";
 import type { ConteudoWithRelations } from "@/modules/marketing/hooks/useConteudos";
 import { useContentScheduler } from "@/modules/marketing/hooks/useContentScheduler";
-import { CalendarFilters } from "@/modules/marketing/components/calendar/CalendarFilters";
-import type { ViewMode } from "@/modules/marketing/components/calendar/CalendarFilters";
-import { WeeklyCalendar } from "@/modules/marketing/components/calendar/WeeklyCalendar";
+import { SchedulerToolbar } from "@/modules/events/components/SchedulerToolbar";
+import { SchedulerWeekView } from "@/modules/events/components/SchedulerWeekView";
+import { SchedulerMonthView } from "@/modules/events/components/SchedulerMonthView";
 import { DayCalendar } from "@/modules/marketing/components/calendar/DayCalendar";
-import { MonthCalendar } from "@/modules/marketing/components/calendar/MonthCalendar";
+import type { SchedulerViewMode } from "@/modules/events/components/types";
 import { YearCalendar } from "@/modules/marketing/components/calendar/YearCalendar";
 import { FeedView } from "@/modules/marketing/components/calendar/FeedView";
 import { ContentModal } from "@/modules/marketing/components/calendar/ContentModal";
@@ -28,7 +28,7 @@ export default function MarketingCalendario() {
   const { conteudos, isLoading, deleteConteudo } = useConteudos();
   const { publishNow } = useContentScheduler();
 
-  const [viewMode, setViewMode] = useState<ViewMode>("semana");
+  const [viewMode, setViewMode] = useState<SchedulerViewMode>("semana");
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
 
   const [search, setSearch]             = useState("");
@@ -42,6 +42,33 @@ export default function MarketingCalendario() {
   const [prefilledDate, setPrefilledDate] = useState<Date | null>(null);
   const [prefilledHour, setPrefilledHour] = useState<string | null>(null);
   const [deleteModal, setDeleteModal]   = useState<{ open: boolean; conteudo?: ConteudoWithRelations }>({ open: false });
+
+  const VIEW_OPTIONS: { value: SchedulerViewMode; label: string }[] = [
+    { value: "dia", label: "Dia" },
+    { value: "semana", label: "Semana" },
+    { value: "mes", label: "Mês" },
+    { value: "ano", label: "Ano" },
+    { value: "feed", label: "Feed" },
+  ];
+
+  const STATUS_OPTIONS = [
+    { value: "all", label: "Todos os status" },
+    { value: "agendado", label: "Agendado", dot: "bg-blue-400" },
+    { value: "publicado", label: "Publicado", dot: "bg-emerald-400" },
+    { value: "rascunho", label: "Rascunho", dot: "bg-slate-400" },
+    { value: "pausado", label: "Pausado", dot: "bg-amber-400" },
+    { value: "falha", label: "Falha", dot: "bg-rose-500" },
+  ];
+
+  const TIPO_OPTIONS = [
+    { value: "all", label: "Todos os tipos" },
+    { value: "post", label: "Post" },
+    { value: "stories", label: "Stories" },
+    { value: "video", label: "Vídeo" },
+    { value: "reels", label: "Reels" },
+    { value: "anuncio", label: "Anúncio" },
+    { value: "carrossel", label: "Carrossel" },
+  ];
 
   const handleNovoConteudo = () => {
     setSelectedConteudo(null);
@@ -134,6 +161,30 @@ export default function MarketingCalendario() {
     });
   }, [conteudos, search, filterPlats, filterStatus, filterTipo]);
 
+  const schedulerEvents = useMemo(() => filteredConteudos.map((conteudo) => {
+    const contentDate = conteudo.data_publicacao ? new Date(conteudo.data_publicacao) : null;
+    const hora = conteudo.horario_publicacao ? conteudo.horario_publicacao.slice(0, 5) : null;
+    const startDate = contentDate
+      ? hora
+        ? new Date(`${format(contentDate, "yyyy-MM-dd")}T${hora}:00`)
+        : contentDate
+      : new Date();
+    const plataforma = Array.isArray(conteudo.plataforma) ? conteudo.plataforma.join(", ") : conteudo.plataforma ?? "";
+
+    return {
+      id: conteudo.id,
+      title: conteudo.titulo ?? "Conteúdo",
+      artist: plataforma,
+      startDate,
+      location: plataforma,
+      status: conteudo.status ?? "rascunho",
+      cache: undefined,
+      type: Array.isArray(conteudo.tipo_conteudo) ? conteudo.tipo_conteudo[0] : conteudo.tipo_conteudo ?? "",
+      allDay: !hora,
+      raw: conteudo,
+    };
+  }), [filteredConteudos]);
+
   const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
 
   const headerActions = (
@@ -156,54 +207,24 @@ export default function MarketingCalendario() {
         actions={headerActions}
       >
         <div className="space-y-4">
-          {/* ── Toolbar: nav + filters ── */}
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                className="text-xs font-medium text-muted-foreground hover:text-foreground border border-border/60 rounded-lg px-2.5 h-8 bg-muted/60 hover:bg-muted transition-colors"
-                onClick={goToToday}
-                data-testid="button-today"
-              >
-                Hoje
-              </button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={goPrev}
-                data-testid="button-prev"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="icon"
-                className="h-8 w-8 rounded-lg"
-                onClick={goNext}
-                data-testid="button-next"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-              <span className="text-sm font-medium text-muted-foreground capitalize whitespace-nowrap">
-                {periodLabel}
-              </span>
-            </div>
+          <SchedulerToolbar
+            periodLabel={periodLabel}
+            currentView={viewMode}
+            viewOptions={VIEW_OPTIONS}
+            onViewModeChange={setViewMode}
+            onToday={goToToday}
+            onPrev={goPrev}
+            onNext={goNext}
+            search={search}
+            onSearchChange={setSearch}
+            type={filterTipo}
+            onTypeChange={setFilterTipo}
+            typeOptions={TIPO_OPTIONS}
+            status={filterStatus}
+            onStatusChange={setFilterStatus}
+            statusOptions={STATUS_OPTIONS}
+          />
 
-            <CalendarFilters
-              search={search}
-              onSearchChange={setSearch}
-              plataformas={filterPlats}
-              onPlataformaToggle={onPlataformaToggle}
-              status={filterStatus}
-              onStatusChange={setFilterStatus}
-              tipo={filterTipo}
-              onTipoChange={setFilterTipo}
-              viewMode={viewMode}
-              onViewModeChange={setViewMode}
-            />
-          </div>
-
-          {/* ── Views ── */}
           {isLoading ? (
             <div className="flex items-center justify-center h-96 text-muted-foreground">
               <div className="flex flex-col items-center gap-3">
@@ -224,21 +245,21 @@ export default function MarketingCalendario() {
               )}
 
               {viewMode === "semana" && (
-                <WeeklyCalendar
+                <SchedulerWeekView
                   weekStart={weekStart}
-                  conteudos={filteredConteudos}
-                  onEdit={handleEdit}
-                  onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
+                  events={schedulerEvents}
+                  onEdit={(event) => handleEdit(event.raw as ConteudoWithRelations)}
+                  onDelete={(event) => setDeleteModal({ open: true, conteudo: event.raw as ConteudoWithRelations })}
                   onSlotClick={handleSlotClick}
                 />
               )}
 
               {viewMode === "mes" && (
-                <MonthCalendar
+                <SchedulerMonthView
                   month={startOfMonth(currentDate)}
-                  conteudos={filteredConteudos}
-                  onEdit={handleEdit}
-                  onDelete={(c) => setDeleteModal({ open: true, conteudo: c })}
+                  events={schedulerEvents}
+                  onEdit={(event) => handleEdit(event.raw as ConteudoWithRelations)}
+                  onDelete={(event) => setDeleteModal({ open: true, conteudo: event.raw as ConteudoWithRelations })}
                   onSlotClick={handleSlotClick}
                 />
               )}

@@ -342,7 +342,7 @@ export class BillingService {
     await this.subRepo!
       .createQueryBuilder()
       .update(BillingSubscriptionEntity)
-      .set({ status: 'cancelled', updated_at: new Date() } as any)
+      .set({ status: 'canceled', updated_at: new Date() } as any)
       .where('stripe_sub_id = :subId', { subId: sub.id })
       .execute();
 
@@ -356,7 +356,7 @@ export class BillingService {
     await this.orgRepo!
       .createQueryBuilder()
       .update(OrganizationEntity)
-      .set({ plan: 'starter', billing_status: 'cancelled', updated_at: new Date() } as any)
+      .set({ plan: 'starter', billing_status: 'canceled', updated_at: new Date() } as any)
       .where('id = :orgId', { orgId })
       .execute();
 
@@ -457,7 +457,7 @@ export class BillingService {
 
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const churned30d = subs.filter(
-      s => s.status === 'cancelled' && new Date(s.updated_at) >= thirtyDaysAgo,
+      s => s.status === 'canceled' && new Date(s.updated_at) >= thirtyDaysAgo,
     ).length;
 
     const churnRate  = activeOrgs > 0 ? churned30d / activeOrgs : 0;

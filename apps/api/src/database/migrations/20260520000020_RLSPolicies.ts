@@ -64,10 +64,10 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
   ];
 
   // ── Org-level tables (no tenant_id, use org_id directly) ────────────────────
-  private readonly ORG_TABLES = [
-    'organizations',
-    'tenants',
-    'billing_subscriptions',
+  private readonly ORG_TABLES: Array<{ table: string; orgColumn: string }> = [
+    { table: 'organizations', orgColumn: 'id' },
+    { table: 'tenants', orgColumn: 'org_id' },
+    { table: 'billing_subscriptions', orgColumn: 'org_id' },
   ];
 
   async up(queryRunner: QueryRunner): Promise<void> {
@@ -139,7 +139,7 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
     }
 
     // ── 3. Org-scoped tables ───────────────────────────────────────────────────
-    for (const table of this.ORG_TABLES) {
+    for (const { table, orgColumn } of this.ORG_TABLES) {
       await queryRunner.query(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
 
       await queryRunner.query(`
@@ -167,13 +167,13 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
           FOR ALL
           TO authenticated
           USING (
-            org_id::text = COALESCE(
+            "${orgColumn}"::text = COALESCE(
               auth.jwt()->'app_metadata'->>'org_id',
               ''
             )
           )
           WITH CHECK (
-            org_id::text = COALESCE(
+            "${orgColumn}"::text = COALESCE(
               auth.jwt()->'app_metadata'->>'org_id',
               ''
             )
@@ -183,7 +183,10 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
   }
 
   async down(queryRunner: QueryRunner): Promise<void> {
-    for (const table of [...this.TENANT_TABLES, ...this.ORG_TABLES]) {
+    for (const table of [
+      ...this.TENANT_TABLES,
+      ...this.ORG_TABLES.map((entry) => entry.table),
+    ]) {
       await queryRunner.query(`
         DROP POLICY IF EXISTS "tenant_isolation"       ON "${table}"
       `);

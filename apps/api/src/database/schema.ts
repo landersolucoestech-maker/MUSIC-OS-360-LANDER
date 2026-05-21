@@ -543,7 +543,7 @@ export type CreateNotificationInput = z.infer<typeof createNotificationSchema>;
 export const inviteOrgMemberSchema = z.object({
   org_id:        uuid,
   tenant_id:     uuid,
-  clerk_user_id: z.string().min(1).max(255),
+  auth_user_id: z.string().min(1).max(255),
   email:         z.string().email().max(255),
   full_name:     z.string().max(255).nullable().optional(),
   role:          z.nativeEnum(SystemRole).default(SystemRole.VIEWER),

@@ -10,10 +10,10 @@ function makeFakeStore(): IdempotencyStore {
   const mem = new Map<string, IdempotencyEntry>();
 
   return {
-    get:        async (k)          => mem.get(k) ?? null,
-    set:        async (k, v)       => { mem.set(k, v); },
-    setInflight: async (k)         => { mem.set(k, { body: null, statusCode: 0, expiresAt: -1 }); },
-    delete:     async (k)          => { mem.delete(k); },
+    get:        async (k: string)          => mem.get(k) ?? null,
+    set:        async (k: string, v: IdempotencyEntry) => { mem.set(k, v); },
+    setInflight: async (k: string)         => { mem.set(k, { body: null, statusCode: 0, expiresAt: -1 }); },
+    delete:     async (k: string)          => { mem.delete(k); },
     onModuleDestroy: () => {},
   } as unknown as IdempotencyStore;
 }

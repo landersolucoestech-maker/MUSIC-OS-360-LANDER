@@ -14,7 +14,7 @@ import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { getCurrentOrgId } from "./tenant";
 import { TenantError, NotFoundError, TransactionError, ConflictError, IntegrationError } from "./errors";
 import { api, TABLE_ENDPOINT, PENDING_TABLES } from "./api-client";
-import { MOCK_MODE, DEV_AUTH_BYPASS } from "./env";
+import { MOCK_MODE, IS_PROD } from "./env";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -268,6 +268,9 @@ function resolveTable(table: string): { ep: string } | { pending: true } {
   if (ep) return { ep };
   const reason = PENDING_TABLES[table];
   if (reason) {
+    if (IS_PROD) {
+      throw new IntegrationError("storage", `Pending backend route for table "${table}" is not allowed in production: ${reason}`);
+    }
     // eslint-disable-next-line no-console
     console.warn(`[storage:http] ${table}: ${reason}. Using in-memory mock until backend route ships.`);
     return { pending: true };
@@ -296,7 +299,12 @@ const httpStorage = {
     if (options?.limit  !== undefined) params.set("limit",  String(options.limit));
     if (options?.offset !== undefined) params.set("offset", String(options.offset));
     const qs = params.toString();
-    return api.get<T[]>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    const raw = await api.get<T[] | { data: T[]; meta: unknown }>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    // Backends return { data: T[], meta: {...} } — unwrap if present
+    if (raw && !Array.isArray(raw) && typeof raw === "object" && "data" in raw && Array.isArray((raw as { data: unknown }).data)) {
+      return (raw as { data: T[] }).data;
+    }
+    return raw as T[];
   },
 
   async findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined> {
@@ -375,4 +383,4 @@ const httpStorage = {
  * Em modo HTTP: chamadas REST ao backend NestJS (fallback in-memory para tabelas sem endpoint).
  * Ambas as implementações partilham a mesma interface async — sem cast inseguro.
  */
-export const storage: typeof mockStorage = (MOCK_MODE || DEV_AUTH_BYPASS) ? mockStorage : httpStorage;
+export const storage: typeof mockStorage = MOCK_MODE ? mockStorage : httpStorage;

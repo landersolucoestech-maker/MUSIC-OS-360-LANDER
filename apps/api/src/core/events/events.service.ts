@@ -19,6 +19,8 @@ import type {
   WorkflowTransitionedPayload,
   TenantCreatedPayload,
   UserInvitedPayload,
+  LeadCreatedPayload,
+  LeadUpdatedPayload,
 } from './domain-events.types';
 
 // ─── Core DomainEvent envelope ────────────────────────────────────────────────
@@ -54,6 +56,8 @@ export interface EventPayloadMap {
   'takedown.requested':    TakedownRequestedPayload;
   'campaign.started':      CampaignStartedPayload;
   'campaign.ended':        CampaignEndedPayload;
+  'lead.created':          LeadCreatedPayload;
+  'lead.updated':          LeadUpdatedPayload;
   'lead.converted':        LeadConvertedPayload;
   'asset.uploaded':        AssetUploadedPayload;
   'ticket.resolved':       TicketResolvedPayload;
@@ -88,6 +92,8 @@ export const DOMAIN_EVENTS = {
   // Marketing / CRM
   CAMPAIGN_STARTED:      'campaign.started',
   CAMPAIGN_ENDED:        'campaign.ended',
+  LEAD_CREATED:          'lead.created',
+  LEAD_UPDATED:          'lead.updated',
   LEAD_CONVERTED:        'lead.converted',
 
   // Assets

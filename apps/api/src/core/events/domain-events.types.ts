@@ -177,6 +177,20 @@ export interface UserInvitedPayload {
   invitedBy: string;
 }
 
+export interface LeadCreatedPayload {
+  tenantId: string;
+  leadId:   string;
+  nome:     string;
+  origem:   string;
+}
+
+export interface LeadUpdatedPayload {
+  tenantId:      string;
+  aggregateType: string;
+  aggregateId:   string;
+  action:        string;
+}
+
 // ─── Discriminated union over all event payloads ──────────────────────────────
 
 export type AnyDomainEventPayload =
@@ -191,6 +205,8 @@ export type AnyDomainEventPayload =
   | TakedownRequestedPayload
   | CampaignStartedPayload
   | CampaignEndedPayload
+  | LeadCreatedPayload
+  | LeadUpdatedPayload
   | LeadConvertedPayload
   | AssetUploadedPayload
   | TicketResolvedPayload

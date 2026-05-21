@@ -23,7 +23,7 @@ import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
 import { setAccessToken } from "@/shared/lib/api-client";
-import { MOCK_MODE, IS_DEV, DEV_AUTH_BYPASS } from "@/shared/lib/env";
+import { MOCK_MODE, IS_DEV } from "@/shared/lib/env";
 import { getSupabaseClient } from "@/lib/supabase";
 
 // ─── DEV logging ──────────────────────────────────────────────────────────────
@@ -74,62 +74,30 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // ─── Mappers Supabase → tipos internos ────────────────────────────────────────
 
-function mapSupabaseUser(u: SupabaseUser): User {
+function mapSupabaseUser(u: SupabaseUser, jwtAppMeta?: Record<string, unknown>): User {
   const meta = u.user_metadata as Record<string, unknown> | undefined;
   const app  = u.app_metadata  as Record<string, unknown> | undefined;
+  // JWT hook injects into the token — prefer those over stored app_metadata
+  const effectiveApp = { ...app, ...jwtAppMeta };
   return {
     id:            u.id,
     email:         u.email,
-    role:          (app?.["role"] ?? meta?.["role"]) as string | undefined,
-    org_id:        (app?.["org_id"] ?? meta?.["org_id"]) as string | undefined,
-    user_metadata: { ...meta, ...app },
+    role:          (effectiveApp?.["role"] ?? meta?.["role"]) as string | undefined,
+    org_id:        (effectiveApp?.["org_id"] ?? meta?.["org_id"]) as string | undefined,
+    user_metadata: { ...meta, ...effectiveApp },
   };
 }
 
 function mapSupabaseSession(s: SupabaseSession): Session {
+  // Decode the JWT to read hook-injected claims (org_id, role)
+  const jwtClaims  = decodeJwtClaims(s.access_token);
+  const jwtAppMeta = jwtClaims["app_metadata"] as Record<string, unknown> | undefined;
   return {
     access_token:  s.access_token,
     refresh_token: s.refresh_token,
     expires_at:    s.expires_at ? s.expires_at * 1000 : undefined,
-    user:          mapSupabaseUser(s.user),
+    user:          mapSupabaseUser(s.user, jwtAppMeta),
   };
-}
-
-// ─── DEV Auth Bypass user ─────────────────────────────────────────────────────
-
-const DEV_BYPASS_USER: User = {
-  id:            "dev-user",
-  email:         "dev@musicos360.local",
-  role:          "owner",
-  org_id:        "dev-org",
-  user_metadata: { role: "owner", org_id: "dev-org", full_name: "Dev User (BYPASS)" },
-};
-
-const DEV_BYPASS_SESSION: Session = {
-  access_token:  "dev-bypass-token",
-  refresh_token: "dev-bypass-refresh",
-  expires_at:    Date.now() + 24 * 60 * 60 * 1000,
-  user:          DEV_BYPASS_USER,
-};
-
-function DevBypassAuthProvider({ children }: { children: React.ReactNode }) {
-  if (IS_DEV) {
-    console.warn(
-      "%c[MUSIC OS 360] ⚠️  DEV AUTH BYPASS ACTIVO — auth mocked, tenant mocked. Nunca usar em produção.",
-      "background: #b45309; color: #fef3c7; font-weight: bold; padding: 4px 8px; border-radius: 4px;",
-    );
-  }
-  const value: AuthContextType = {
-    user:            DEV_BYPASS_USER,
-    session:         DEV_BYPASS_SESSION,
-    loading:         false,
-    signIn:          async () => ({ error: null }),
-    signUp:          async () => ({ error: null }),
-    signOut:         async () => { console.log("[DEV AUTH BYPASS] signOut ignorado em modo bypass"); },
-    resetPassword:   async () => ({ error: null }),
-    updatePassword:  async () => ({ error: null }),
-  };
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // ─── Provider — Mock Mode ─────────────────────────────────────────────────────
@@ -269,7 +237,6 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 // ─── AuthProvider principal ───────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (DEV_AUTH_BYPASS) return <DevBypassAuthProvider>{children}</DevBypassAuthProvider>;
   if (MOCK_MODE)       return <MockAuthProvider>{children}</MockAuthProvider>;
   return                      <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
