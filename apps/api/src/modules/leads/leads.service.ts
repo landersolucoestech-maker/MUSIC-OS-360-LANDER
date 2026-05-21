@@ -3,6 +3,7 @@ import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
 import { LeadEntity } from '../../database/entities';
+import { EncryptionService } from '../../core/security/encryption.service';
 import type { CreateLeadDto, UpdateLeadDto, QueryLeadDto } from './dto/leads.dto';
 import { LeadStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
@@ -17,11 +18,22 @@ export class LeadsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
     private readonly events: EventsService,
+    private readonly enc: EncryptionService,
   ) {
     if (ds) {
       this.ds   = ds;
       this.repo = ds.getRepository(LeadEntity);
     }
+  }
+
+  private mapLead<T extends LeadEntity>(l: T): T & { email: string | null; phone: string | null } {
+    return {
+      ...l,
+      email:              this.enc.decryptNullable(l.email_encrypted),
+      phone:              this.enc.decryptNullable(l.telefone_encrypted),
+      email_encrypted:    undefined as unknown as string,
+      telefone_encrypted: undefined as unknown as string,
+    };
   }
 
   async list(tenantId: string, query: QueryLeadDto) {
@@ -39,9 +51,9 @@ export class LeadsService {
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
       .take(typeof q['limit']  === 'number' ? q['limit']  : 50);
 
-    const [data, total] = await qb.getManyAndCount();
+    const [rows, total] = await qb.getManyAndCount();
     return {
-      data,
+      data: rows.map((l) => this.mapLead(l)),
       meta: {
         total,
         offset: typeof q['offset'] === 'number' ? q['offset'] : 0,
@@ -61,20 +73,23 @@ export class LeadsService {
       .getOne();
     if (!result) throw new NotFoundException('Lead não encontrado');
     const allowed_transitions = this.workflowService.getAllowedTransitions('lead', result.status, actorRole);
-    return { ...result, allowed_transitions };
+    return { ...this.mapLead(result), allowed_transitions };
   }
 
-  async create(tenantId: string, userId: string, dto: CreateLeadDto): Promise<LeadEntity> {
-    const { status: _clientStatus, ...rest } = dto as unknown as Record<string, unknown>;
+  async create(tenantId: string, userId: string, dto: CreateLeadDto): Promise<ReturnType<typeof this.mapLead>> {
+    const { status: _clientStatus, email, phone, ...rest } = dto as unknown as Record<string, unknown>;
     void _clientStatus;
     const entity = this.repo!.create({
-      tenant_id:  tenantId,
+      tenant_id:          tenantId,
       ...(rest as Record<string, unknown>),
-      status:     LeadStatus.NOVO,
-      created_by: userId,
-      updated_by: userId,
+      email_encrypted:    this.enc.encryptNullable(email as string | undefined),
+      telefone_encrypted: this.enc.encryptNullable(phone as string | undefined),
+      status:             LeadStatus.NOVO,
+      created_by:         userId,
+      updated_by:         userId,
     } as Partial<LeadEntity>);
-    return this.repo!.save(entity as LeadEntity);
+    const saved = await this.repo!.save(entity as LeadEntity);
+    return this.mapLead(saved);
   }
 
   async update(
@@ -89,7 +104,7 @@ export class LeadsService {
     const statusChanging = dtoMap['status'] != null && dtoMap['status'] !== current.status;
     const toStatus = dtoMap['status'] as string | undefined;
 
-    const { status: _s, ...restFields } = dtoMap;
+    const { status: _s, email, phone, ...restFields } = dtoMap;
     void _s;
 
     const nonStatusUpdates: Record<string, unknown> = {
@@ -97,6 +112,8 @@ export class LeadsService {
       updated_by: userId,
       ...restFields,
     };
+    if (email !== undefined) nonStatusUpdates['email_encrypted']    = this.enc.encryptNullable(email as string | null);
+    if (phone !== undefined) nonStatusUpdates['telefone_encrypted']  = this.enc.encryptNullable(phone as string | null);
 
     if (statusChanging) {
       const req = {
