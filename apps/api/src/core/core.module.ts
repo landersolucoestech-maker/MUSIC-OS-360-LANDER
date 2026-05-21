@@ -19,6 +19,8 @@ import { SecurityStartupService }   from './security/security-startup.service';
 import { AuditService }             from './audit/audit.service';
 import { AuditInterceptor }         from './interceptors/audit.interceptor';
 import { ETagInterceptor }          from './interceptors/etag.interceptor';
+import { IdempotencyStore }         from './interceptors/idempotency.store';
+import { IdempotencyInterceptor }   from './interceptors/idempotency.interceptor';
 import { RateLimitService }         from './security/rate-limit.service';
 import { RateLimitGuard }           from './guards/rate-limit.guard';
 import { MailService }              from './mail/mail.service';
@@ -32,6 +34,8 @@ import { PostHogService }           from './analytics/posthog.service';
     AuditService,
     AuditInterceptor,
     ETagInterceptor,
+    IdempotencyStore,
+    IdempotencyInterceptor,
     RateLimitService,
     RateLimitGuard,
     MailService,
@@ -43,6 +47,8 @@ import { PostHogService }           from './analytics/posthog.service';
     AuditService,
     AuditInterceptor,
     ETagInterceptor,
+    IdempotencyStore,
+    IdempotencyInterceptor,
     RateLimitService,
     RateLimitGuard,
     MailService,

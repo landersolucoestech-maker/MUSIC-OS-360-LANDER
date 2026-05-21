@@ -16,8 +16,14 @@ const envSchema = z.object({
       { message: 'DATABASE_URL é obrigatório em produção' },
     ),
 
-  // Redis (BullMQ Queues via ioredis — deve ser URL acessível)
-  REDIS_QUEUE_URL: z.string().optional(),
+  // Redis (BullMQ Queues via ioredis — obrigatório em produção para idempotency e filas)
+  REDIS_QUEUE_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'REDIS_QUEUE_URL é obrigatório em produção (BullMQ + IdempotencyStore)' },
+    ),
 
   // Auth (Supabase — JWKS via ES256)
   // Required in production — without it JwtAuthGuard cannot validate any token.

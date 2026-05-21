@@ -2,12 +2,24 @@ import 'reflect-metadata';
 import { of, throwError } from 'rxjs';
 import { ConflictException } from '@nestjs/common';
 import { IdempotencyInterceptor } from './idempotency.interceptor';
+import { IdempotencyStore, IdempotencyEntry } from './idempotency.store';
 
-// Reset the in-memory store between tests by re-importing the module
-// (jest.resetModules() is too expensive here — instead we run tests with unique keys).
+// ── Fake store (synchronous in-memory, no Redis) ──────────────────────────────
 
-function makeInterceptor() {
-  return new IdempotencyInterceptor();
+function makeFakeStore(): IdempotencyStore {
+  const mem = new Map<string, IdempotencyEntry>();
+
+  return {
+    get:        async (k)          => mem.get(k) ?? null,
+    set:        async (k, v)       => { mem.set(k, v); },
+    setInflight: async (k)         => { mem.set(k, { body: null, statusCode: 0, expiresAt: -1 }); },
+    delete:     async (k)          => { mem.delete(k); },
+    onModuleDestroy: () => {},
+  } as unknown as IdempotencyStore;
+}
+
+function makeInterceptor(store?: IdempotencyStore) {
+  return new IdempotencyInterceptor(store ?? makeFakeStore());
 }
 
 function makeContext(opts: {
@@ -93,21 +105,19 @@ describe('IdempotencyInterceptor', () => {
   });
 
   it('segunda chamada com mesma key retorna resposta cacheada sem executar handler', (done) => {
-    const interceptor = makeInterceptor();
+    const store       = makeFakeStore();
+    const interceptor = makeInterceptor(store);
     const key         = `test-replay-${Date.now()}`;
     const body        = { id: 'txn-002' };
     const ctx1        = makeContext({ key, userId: 'user-xyz', statusCode: 201 });
     const ctx2        = makeContext({ key, userId: 'user-xyz', statusCode: 201 });
     const next        = { handle: jest.fn().mockReturnValue(of(body)) };
 
-    // First request
     interceptor.intercept(ctx1, next).subscribe({
       complete: () => {
-        // Second request — same key, same user
         interceptor.intercept(ctx2, next).subscribe({
           next: (v) => {
             expect(v).toEqual(body);
-            // Handler should have been called only once (for the first request)
             expect(next.handle).toHaveBeenCalledTimes(1);
             expect(ctx2.setHeaderSpy).toHaveBeenCalledWith('X-Idempotency-Replayed', 'true');
             done();
@@ -118,10 +128,11 @@ describe('IdempotencyInterceptor', () => {
   });
 
   it('keys diferentes para o mesmo utilizador executam handlers independentes', (done) => {
-    const interceptor = makeInterceptor();
-    const ts          = Date.now();
-    const ctx1 = makeContext({ key: `key-a-${ts}`, userId: 'user-multi' });
-    const ctx2 = makeContext({ key: `key-b-${ts}`, userId: 'user-multi' });
+    const store = makeFakeStore();
+    const interceptor = makeInterceptor(store);
+    const ts    = Date.now();
+    const ctx1  = makeContext({ key: `key-a-${ts}`, userId: 'user-multi' });
+    const ctx2  = makeContext({ key: `key-b-${ts}`, userId: 'user-multi' });
     const next1 = { handle: jest.fn().mockReturnValue(of({ id: 'a' })) };
     const next2 = { handle: jest.fn().mockReturnValue(of({ id: 'b' })) };
 
@@ -140,10 +151,11 @@ describe('IdempotencyInterceptor', () => {
   });
 
   it('mesma key de utilizadores diferentes executa handlers independentes', (done) => {
-    const interceptor = makeInterceptor();
-    const key         = `shared-key-${Date.now()}`;
-    const ctx1 = makeContext({ key, userId: 'user-1' });
-    const ctx2 = makeContext({ key, userId: 'user-2' });
+    const store = makeFakeStore();
+    const interceptor = makeInterceptor(store);
+    const key   = `shared-key-${Date.now()}`;
+    const ctx1  = makeContext({ key, userId: 'user-1' });
+    const ctx2  = makeContext({ key, userId: 'user-2' });
     const next1 = { handle: jest.fn().mockReturnValue(of({ result: 'user1' })) };
     const next2 = { handle: jest.fn().mockReturnValue(of({ result: 'user2' })) };
 
@@ -162,14 +174,14 @@ describe('IdempotencyInterceptor', () => {
   });
 
   it('quando handler lança erro, o placeholder é removido (retry permitido)', (done) => {
-    const interceptor = makeInterceptor();
+    const store       = makeFakeStore();
+    const interceptor = makeInterceptor(store);
     const key         = `error-retry-${Date.now()}`;
     const ctx         = makeContext({ key, userId: 'user-err' });
     const next        = { handle: jest.fn().mockReturnValue(throwError(() => new Error('falha DB'))) };
 
     interceptor.intercept(ctx, next).subscribe({
       error: () => {
-        // After error, a retry with the same key should call the handler again
         const ctx2  = makeContext({ key, userId: 'user-err', statusCode: 201 });
         const next2 = { handle: jest.fn().mockReturnValue(of({ id: 'retry-ok' })) };
         interceptor.intercept(ctx2, next2).subscribe({
@@ -179,6 +191,25 @@ describe('IdempotencyInterceptor', () => {
             done();
           },
         });
+      },
+    });
+  });
+
+  it('in-flight placeholder lança ConflictException para requisição concorrente', (done) => {
+    const store = makeFakeStore();
+    // Pre-seed an in-flight placeholder
+    const cacheKey = 'user-concurrent:test-concurrent-key';
+    void store.setInflight(cacheKey);
+
+    const interceptor = makeInterceptor(store);
+    const ctx         = makeContext({ key: 'test-concurrent-key', userId: 'user-concurrent' });
+    const next        = { handle: jest.fn().mockReturnValue(of({})) };
+
+    interceptor.intercept(ctx, next).subscribe({
+      error: (err) => {
+        expect(err).toBeInstanceOf(ConflictException);
+        expect(next.handle).not.toHaveBeenCalled();
+        done();
       },
     });
   });
