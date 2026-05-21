@@ -20,12 +20,22 @@ import { InitialSchema20240101000000 }                from './migrations/2024010
 import { WorkflowTransitions20240601000001 }          from './migrations/20240601000001_WorkflowTransitions';
 import { DomainEventLog20240602000001 }               from './migrations/20240602000001_DomainEventLog';
 import { AuditLogEnterpriseColumns20260516000001 }    from './migrations/20260516000001_AuditLogEnterpriseColumns';
+import { ActivityLogs20260520000002 }                 from './migrations/20260520000002_ActivityLogs';
+import { SupabaseAuthColumnNames20260520000004 }      from './migrations/20260520000004_SupabaseAuthColumnNames';
+import { RLSPolicies20260520000020 }                  from './migrations/20260520000020_RLSPolicies';
 
+// ── Source of truth: TypeORM migrations only ─────────────────────────────────
+// The apps/api/drizzle/ directory contains legacy SQL snapshots that are
+// ARCHIVED and must not be run. TypeORM is the sole migration executor.
+// Run migrations: pnpm --filter api db:migrate
 const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
   WorkflowTransitions20240601000001,
   DomainEventLog20240602000001,
   AuditLogEnterpriseColumns20260516000001,
+  ActivityLogs20260520000002,
+  SupabaseAuthColumnNames20260520000004,
+  RLSPolicies20260520000020,
 ] as const;
 
 export const DATA_SOURCE = Symbol('DATA_SOURCE');
