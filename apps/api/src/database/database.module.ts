@@ -23,6 +23,7 @@ import { AuditLogEnterpriseColumns20260516000001 }    from './migrations/2026051
 import { ActivityLogs20260520000002 }                 from './migrations/20260520000002_ActivityLogs';
 import { SupabaseAuthColumnNames20260520000004 }      from './migrations/20260520000004_SupabaseAuthColumnNames';
 import { RLSPolicies20260520000020 }                  from './migrations/20260520000020_RLSPolicies';
+import { PerformanceIndexes20260521000030 }           from './migrations/20260521000030_PerformanceIndexes';
 
 // ── Source of truth: TypeORM migrations only ─────────────────────────────────
 // The apps/api/drizzle/ directory contains legacy SQL snapshots that are
@@ -36,6 +37,7 @@ const ALL_MIGRATIONS = [
   ActivityLogs20260520000002,
   SupabaseAuthColumnNames20260520000004,
   RLSPolicies20260520000020,
+  PerformanceIndexes20260521000030,
 ] as const;
 
 export const DATA_SOURCE = Symbol('DATA_SOURCE');
@@ -58,17 +60,27 @@ export const DATA_SOURCE = Symbol('DATA_SOURCE');
           return null;
         }
 
+        const isProd = config.get('NODE_ENV') === 'production';
+
         const ds = new DataSource({
           type:           'postgres',
           url,
           entities:       ALL_ENTITIES,
           migrations:     [...ALL_MIGRATIONS],
           synchronize:    false,  // NUNCA true — schema gerido via migrations
-          logging:        config.get('NODE_ENV') !== 'production',
-          ssl:            config.get('NODE_ENV') === 'production'
-                            ? { rejectUnauthorized: false }
-                            : false,
+          logging:        isProd ? ['error', 'warn'] : ['query', 'error', 'warn'],
+          ssl:            isProd ? { rejectUnauthorized: false } : false,
           migrationsTableName: 'musicos360_migrations',
+          // Connection pool tuning
+          extra: {
+            // Production: keep more connections alive; dev: minimal pool
+            max:              isProd ? 20 : 5,
+            min:              isProd ? 2  : 1,
+            idleTimeoutMillis: 30_000,
+            connectionTimeoutMillis: 5_000,
+            // Statement timeout prevents runaway queries (30s prod, 60s dev)
+            statement_timeout: isProd ? 30_000 : 60_000,
+          },
         });
 
         try {
