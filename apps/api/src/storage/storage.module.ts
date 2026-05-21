@@ -14,9 +14,9 @@ import { ConfigService } from '@nestjs/config';
 import { S3Client } from '@aws-sdk/client-s3';
 import { StorageService } from './storage.service';
 
-export const R2_CLIENT     = Symbol('R2_CLIENT');
-export const R2_BUCKET     = Symbol('R2_BUCKET');
-export const R2_PUBLIC_URL = Symbol('R2_PUBLIC_URL');
+// Re-export from tokens file — services should import from storage.tokens
+// to avoid circular deps (service → module → service).
+export { R2_CLIENT, R2_BUCKET, R2_PUBLIC_URL } from './storage.tokens';
 
 @Global()
 @Module({

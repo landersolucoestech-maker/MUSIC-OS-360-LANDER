@@ -40,7 +40,9 @@ const ALL_MIGRATIONS = [
   PerformanceIndexes20260521000030,
 ] as const;
 
-export const DATA_SOURCE = Symbol('DATA_SOURCE');
+// Re-export from tokens file — services should import from database.tokens
+// to avoid circular deps (service → module → service).
+export { DATA_SOURCE } from './database.tokens';
 
 @Global()
 @Module({

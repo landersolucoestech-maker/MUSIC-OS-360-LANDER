@@ -17,7 +17,7 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import { DATA_SOURCE } from './database.module';
+import { DATA_SOURCE } from './database.tokens';
 
 @Injectable()
 export class MigrationValidatorService implements OnApplicationBootstrap {
