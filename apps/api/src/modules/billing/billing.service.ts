@@ -63,7 +63,7 @@ interface StripeWebhookEvent {
   data: { object: unknown };
 }
 
-const PLAN_FEATURES = {
+export const PLAN_FEATURES = {
   starter: {
     moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
     moduleMarketing: false, moduleAccounting: false, moduleMonitoring: false, aiFeatures: false, moduleRh: false,
@@ -77,9 +77,16 @@ const PLAN_FEATURES = {
     moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
     moduleMarketing: true, moduleAccounting: true, moduleMonitoring: true, aiFeatures: true,
     moduleRh: true, moduleEvents: true, moduleInventory: true, moduleLicensing: true,
-    multiTenantAdmin: true, analyticsAdvanced: true, whitelabel: true,
+    multiTenantAdmin: true, analyticsAdvanced: true,
   },
 } as const;
+
+/** Hard resource limits per plan. null = unlimited. */
+export const PLAN_LIMITS: Record<string, { artists: number | null; contracts: number | null; storageGb: number | null; users: number | null }> = {
+  starter:      { artists: 5,    contracts: 20,   storageGb: 5,    users: 3   },
+  professional: { artists: 50,   contracts: 200,  storageGb: 50,   users: 15  },
+  enterprise:   { artists: null, contracts: null,  storageGb: null, users: null },
+};
 
 type Plan = keyof typeof PLAN_FEATURES;
 
@@ -352,6 +359,48 @@ export class BillingService {
 
   private async onPaymentFailed(invoice: StripeInvoice) {
     this.logger.warn(`Pagamento falhou: customer ${invoice.customer}`);
+
+    if (!invoice.customer) return;
+
+    const sub = await this.subRepo!
+      .createQueryBuilder('s')
+      .where('s.stripe_customer_id = :customerId', { customerId: invoice.customer })
+      .getOne();
+
+    if (!sub) return;
+
+    await this.subRepo!
+      .createQueryBuilder()
+      .update(BillingSubscriptionEntity)
+      .set({ status: 'past_due', updated_at: new Date() } as any)
+      .where('id = :id', { id: sub.id })
+      .execute();
+
+    const orgRow = await this.orgRepo!
+      .createQueryBuilder('o')
+      .where('o.id = :orgId', { orgId: sub.org_id })
+      .getOne();
+
+    if (orgRow) {
+      await this.orgRepo!
+        .createQueryBuilder()
+        .update(OrganizationEntity)
+        .set({ billing_status: 'past_due', updated_at: new Date() } as any)
+        .where('id = :id', { id: orgRow.id })
+        .execute();
+
+      const tenantRow = await this.tenantRepo!
+        .createQueryBuilder('t')
+        .where('t.org_id = :orgId', { orgId: sub.org_id })
+        .getOne();
+
+      if (tenantRow) {
+        this.ws.sendToTenant(tenantRow.id, 'billing:payment_failed', {
+          org_id: sub.org_id,
+          message: 'Pagamento recusado — actualize o método de pagamento para manter o acesso',
+        });
+      }
+    }
   }
 
   // ── Query ──────────────────────────────────────────────────────────────────
@@ -362,5 +411,37 @@ export class BillingService {
       .where('s.org_id = :orgId', { orgId })
       .getOne();
     return sub ?? null;
+  }
+
+  async getUsage(tenantId: string, orgId: string) {
+    const sub   = await this.getSubscription(orgId);
+    const plan  = (sub?.plan as string | undefined) ?? 'starter';
+    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS['starter']!;
+
+    const ds = this.subRepo!.manager.connection;
+
+    const [artistCount, contractCount, userCount] = await Promise.all([
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM contracts WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM org_members WHERE org_id = $1', [orgId]),
+    ]);
+
+    const usage = {
+      artists:   parseInt(artistCount[0]?.count ?? '0', 10),
+      contracts: parseInt(contractCount[0]?.count ?? '0', 10),
+      users:     parseInt(userCount[0]?.count ?? '0', 10),
+    };
+
+    return {
+      plan,
+      status: sub?.status ?? 'inactive',
+      usage,
+      limits,
+      percentages: {
+        artists:   limits.artists   ? Math.round((usage.artists   / limits.artists)   * 100) : null,
+        contracts: limits.contracts ? Math.round((usage.contracts / limits.contracts) * 100) : null,
+        users:     limits.users     ? Math.round((usage.users     / limits.users)     * 100) : null,
+      },
+    };
   }
 }

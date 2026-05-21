@@ -67,6 +67,13 @@ export class BillingController {
     return this.billing.getSubscription(tenant.org_id);
   }
 
+  @Get('usage')
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Uso actual vs limites do plano (admin+)' })
+  getUsage(@CurrentTenant() tenant: any) {
+    return this.billing.getUsage(tenant.id, tenant.org_id);
+  }
+
   @Post('webhooks/stripe')
   @Public()
   @Audit('billing.subscription_event')
