@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { localStore } from "@/shared/lib/local-store";
 
-const STORAGE_KEY = "musicos360_variable_registry";
+const STORAGE_KEY = "variable_registry";
 
 export interface RegistryVariable {
   id: string;
@@ -46,23 +47,14 @@ function buildSeeds(): RegistryVariable[] {
 }
 
 function load(): RegistryVariable[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    // Seeds only on first use — when the key has never been written.
-    // An empty array is valid user state (user deleted everything) and must not be replaced.
-    if (raw === null) return buildSeeds();
-    return JSON.parse(raw) as RegistryVariable[];
-  } catch {
-    return [];
-  }
+  // Seeds only on first use — null key = never written.
+  // An empty array is valid user state and must not be replaced with seeds.
+  const stored = localStore.get<RegistryVariable[]>(STORAGE_KEY);
+  return stored !== null ? stored : buildSeeds();
 }
 
 function save(vars: RegistryVariable[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(vars));
-  } catch {
-    // storage full or unavailable — fail silently
-  }
+  localStore.set(STORAGE_KEY, vars);
 }
 
 export function useVariableRegistry() {

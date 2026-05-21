@@ -18,6 +18,7 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase/supabase-js";
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
@@ -150,6 +151,7 @@ function MockAuthProvider({ children }: { children: React.ReactNode }) {
 // ─── Provider — Supabase Auth ─────────────────────────────────────────────────
 
 function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user,    setUser]    = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -214,13 +216,6 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
       return { error: { message: error.message, status: error.status } };
     }
 
-    if (data.session) {
-      localStorage.setItem(
-        "musicos360_debug_session",
-        JSON.stringify(data.session),
-      );
-    }
-
     return { error: null };
   };
 
@@ -248,6 +243,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     setAccessToken(null);
     setUser(null);
     setSession(null);
+    queryClient.clear();
   };
 
   const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {

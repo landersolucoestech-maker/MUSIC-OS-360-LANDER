@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { localStore } from "@/shared/lib/local-store";
 
-const STORAGE_KEY = "musicos360_contract_categories";
+const STORAGE_KEY = "contract_categories";
 
 export interface ContractCategory {
   id: string;
@@ -48,21 +49,11 @@ function buildSeeds(): ContractCategory[] {
 }
 
 function load(): ContractCategory[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw === null) return buildSeeds();
-    return JSON.parse(raw) as ContractCategory[];
-  } catch {
-    return buildSeeds();
-  }
+  return localStore.get<ContractCategory[]>(STORAGE_KEY) ?? buildSeeds();
 }
 
 function save(cats: ContractCategory[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(cats));
-  } catch {
-    // storage full — fail silently
-  }
+  localStore.set(STORAGE_KEY, cats);
 }
 
 export function useCategoryRegistry() {
