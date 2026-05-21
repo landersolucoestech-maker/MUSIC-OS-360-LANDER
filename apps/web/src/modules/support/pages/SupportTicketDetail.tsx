@@ -104,7 +104,7 @@ export default function SupportTicketDetail() {
                 {TICKET_PRIORITY_LABELS[ticket.priority]}
               </Badge>
               <span className="text-[11px] text-muted-foreground">
-                {TICKET_CATEGORY_LABELS[ticket.category]}
+                {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
               </span>
             </div>
           </div>
@@ -241,7 +241,7 @@ export default function SupportTicketDetail() {
             {[
               { icon: User, label: "Solicitante", value: ticket.created_by },
               { icon: Shield, label: "Responsável", value: ticket.assigned_to ?? "Não atribuído" },
-              { icon: Tag, label: "Categoria", value: TICKET_CATEGORY_LABELS[ticket.category] },
+              { icon: Tag, label: "Categoria", value: TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory] },
               { icon: Calendar, label: "Criado em", value: formatDate(ticket.created_at) },
               { icon: Clock, label: "Atualizado", value: formatDate(ticket.updated_at) },
             ].map(({ icon: Icon, label, value }) => (

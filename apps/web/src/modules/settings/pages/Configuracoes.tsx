@@ -14,6 +14,7 @@ import { Separator } from "@/shared/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { toast } from "sonner";
 import { useAuth } from "@/app/providers/AuthContext";
+import { useTenant } from "@/app/providers/TenantContext";
 import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
 import { useUsuarios, Usuario } from "@/modules/settings/hooks/useUsuarios";
 import { useRoles, Role } from "@/modules/settings/hooks/useRoles";
@@ -33,7 +34,6 @@ import {
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
 import { Progress } from "@/shared/ui/progress";
-import { useTenant } from "@/app/providers";
 import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { MarketingOAuthDialog } from "@/modules/integrations/components/MarketingOAuthDialog";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
@@ -114,7 +114,7 @@ const DIST_MOCK_EMAILS: Record<string, string> = {
 };
 
 export default function Configuracoes() {
-  const { tenant } = useTenant();
+  const { tenant, setTenant } = useTenant();
   const { user, updatePassword } = useAuth();
   const { 
     userSettings, 
@@ -130,6 +130,8 @@ export default function Configuracoes() {
     saveOrgSlug,
   } = useUserSettings();
   const [slugError, setSlugError] = useState<string>("");
+  const [isEditingCompany, setIsEditingCompany] = useState(false);
+  const [companySnapshot, setCompanySnapshot] = useState<typeof companySettings | null>(null);
   const { usuarios, isLoading: usuariosLoading } = useUsuarios();
   const currentUserRole = useMemo(
     () => usuarios.find((u) => u.id === user?.id)?.role,
@@ -364,7 +366,7 @@ export default function Configuracoes() {
     try {
       await createRole.mutateAsync({ 
         name: newRoleName, 
-        description: newRoleDescription || undefined,
+        description: newRoleDescription || null,
         is_system: false,
         priority: 50,
       });
@@ -568,6 +570,17 @@ export default function Configuracoes() {
     });
   };
 
+  const handleEditCompany = () => {
+    setCompanySnapshot({ ...companySettings });
+    setIsEditingCompany(true);
+  };
+
+  const handleCancelCompany = () => {
+    if (companySnapshot) setCompanySettings(companySnapshot);
+    setSlugError("");
+    setIsEditingCompany(false);
+  };
+
   const handleSaveCompany = async () => {
     if (orgSlug) {
       const normalized = orgSlug.trim().toLowerCase();
@@ -581,7 +594,19 @@ export default function Configuracoes() {
       const slugSaved = await saveOrgSlug(normalized);
       if (!slugSaved) return;
     }
-    saveCompanySettings(companySettings);
+    await saveCompanySettings(companySettings);
+
+    // Sincroniza o nome da organização na sidebar e no TenantContext
+    const displayName = companySettings.fantasy_name?.trim() || companySettings.company_name?.trim();
+    if (displayName) {
+      setTenant(prev => ({ ...prev, name: displayName }));
+      try {
+        const stored = JSON.parse(localStorage.getItem("musicos360_current_tenant") ?? "{}");
+        localStorage.setItem("musicos360_current_tenant", JSON.stringify({ ...stored, name: displayName }));
+      } catch { /* ignora */ }
+    }
+
+    setIsEditingCompany(false);
   };
 
   const handleSaveAutomacoes = () => {
@@ -693,66 +718,80 @@ export default function Configuracoes() {
           {/* Empresa */}
           <TabsContent value="empresa" className="mt-6 space-y-6">
             <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Building2 className="h-5 w-5" />
-                  Dados da Empresa
-                </CardTitle>
-                <CardDescription>Informações da empresa para contratos e documentos</CardDescription>
+              <CardHeader className="flex flex-row items-start justify-between gap-4">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Building2 className="h-5 w-5" />
+                    Dados da Empresa
+                  </CardTitle>
+                  <CardDescription>Informações da empresa para contratos e documentos</CardDescription>
+                </div>
+                {!isEditingCompany && (
+                  <Button variant="outline" size="sm" onClick={handleEditCompany} className="shrink-0">
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar Dados
+                  </Button>
+                )}
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Razão Social</Label>
-                    <Input 
-                      placeholder="MusicOS 360 Produções Artísticas LTDA" 
+                    <Input
+                      placeholder="MusicOS 360 Produções Artísticas LTDA"
                       value={companySettings.company_name}
                       onChange={(e) => setCompanySettings({ ...companySettings, company_name: e.target.value })}
+                      disabled={!isEditingCompany}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Nome Fantasia</Label>
-                    <Input 
-                      placeholder="MusicOS 360" 
+                    <Input
+                      placeholder="MusicOS 360"
                       value={companySettings.fantasy_name}
                       onChange={(e) => setCompanySettings({ ...companySettings, fantasy_name: e.target.value })}
+                      disabled={!isEditingCompany}
                     />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>CNPJ</Label>
-                  <Input 
-                    placeholder="50.056.858/0001-46" 
+                  <Input
+                    placeholder="50.056.858/0001-46"
                     value={companySettings.cnpj}
                     onChange={(e) => setCompanySettings({ ...companySettings, cnpj: e.target.value })}
+                    disabled={!isEditingCompany}
                   />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Endereço Completo</Label>
-                  <Input 
-                    placeholder="Rua A, nº 58, Bairro Vila Império, Governador Valadares/MG, CEP 35050-560" 
+                  <Input
+                    placeholder="Rua A, nº 58, Bairro Vila Império, Governador Valadares/MG, CEP 35050-560"
                     value={companySettings.logradouro}
                     onChange={(e) => setCompanySettings({ ...companySettings, logradouro: e.target.value })}
+                    disabled={!isEditingCompany}
                   />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Telefone/WhatsApp</Label>
-                    <Input 
-                      placeholder="(00) 00000-0000" 
+                    <Input
+                      placeholder="(00) 00000-0000"
                       value={companySettings.telefone}
                       onChange={(e) => setCompanySettings({ ...companySettings, telefone: e.target.value })}
+                      disabled={!isEditingCompany}
                     />
                   </div>
                   <div className="space-y-2">
                     <Label>Responsável</Label>
-                    <Input 
-                      placeholder="Admin MusicOS 360" 
+                    <Input
+                      placeholder="Admin MusicOS 360"
                       value={companySettings.responsavel}
                       onChange={(e) => setCompanySettings({ ...companySettings, responsavel: e.target.value })}
+                      disabled={!isEditingCompany}
                     />
                   </div>
                 </div>
@@ -768,6 +807,7 @@ export default function Configuracoes() {
                       setOrgSlug(e.target.value);
                       setSlugError("");
                     }}
+                    disabled={!isEditingCompany}
                   />
                   {slugError && (
                     <p className="text-sm text-destructive" data-testid="text-slug-error">{slugError}</p>
@@ -783,15 +823,26 @@ export default function Configuracoes() {
                   </p>
                 </div>
 
-                <Button 
-                  className="bg-primary hover:bg-primary/90" 
-                  onClick={handleSaveCompany}
-                  disabled={saving}
-                  data-testid="button-save-company"
-                >
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar Dados
-                </Button>
+                {isEditingCompany && (
+                  <div className="flex gap-2">
+                    <Button
+                      className="bg-primary hover:bg-primary/90"
+                      onClick={handleSaveCompany}
+                      disabled={saving}
+                      data-testid="button-save-company"
+                    >
+                      {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Salvar Dados
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelCompany}
+                      disabled={saving}
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -1750,8 +1801,8 @@ export default function Configuracoes() {
                 open={Boolean(oauthDialogPlatform)}
                 onOpenChange={(val) => { if (!val) setOauthDialogPlatform(null); }}
                 platform={oauthDialogPlatform}
-                onConnect={async (platform, scopes) => {
-                  await connectMarketing(platform, scopes);
+                onConnect={async (platform, scopes, access_token) => {
+                  await connectMarketing(platform, scopes, access_token);
                   toast.success(`${platform} conectado com sucesso.`);
                   setOauthDialogPlatform(null);
                 }}

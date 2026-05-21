@@ -7,6 +7,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { getAccessToken } from "@/shared/lib/api-client";
+import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
 import {
   Dialog,
   DialogContent,
@@ -179,6 +181,69 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
     authProvider: "SoundCloud",
     scopes: ["Aceder ao SoundCloud Ads", "Gerir campanhas de áudio"],
   },
+  corp_instagram: {
+    name: "Instagram Corporativo",
+    icon: "📸",
+    buttonLabel: "Entrar com o Facebook",
+    buttonColor: "#E1306C",
+    buttonTextColor: "#ffffff",
+    authProvider: "Facebook / Meta",
+    scopes: ["Aceder ao Instagram Insights da conta corporativa", "Visualizar métricas de Reels e Stories"],
+  },
+  corp_tiktok: {
+    name: "TikTok Corporativo",
+    icon: "🎵",
+    buttonLabel: "Entrar no TikTok",
+    buttonColor: "#010101",
+    buttonTextColor: "#ffffff",
+    authProvider: "TikTok",
+    scopes: ["Aceder ao TikTok Analytics da conta corporativa", "Visualizar métricas de vídeos e audiência"],
+  },
+  corp_youtube: {
+    name: "YouTube Corporativo",
+    icon: "▶️",
+    buttonLabel: "Entrar com o Google",
+    buttonColor: "#FF0000",
+    buttonTextColor: "#ffffff",
+    authProvider: "Google",
+    scopes: ["Aceder ao YouTube Analytics do canal corporativo", "Visualizar métricas de vídeos e inscritos"],
+  },
+  meta_ads: {
+    name: "Meta Ads",
+    icon: "📘",
+    buttonLabel: "Entrar com o Facebook",
+    buttonColor: "#1877F2",
+    buttonTextColor: "#ffffff",
+    authProvider: "Facebook / Meta",
+    scopes: ["Gerir campanhas do Meta Ads Manager", "Visualizar performance de anúncios Facebook e Instagram"],
+  },
+  google_ads: {
+    name: "Google Ads",
+    icon: "🔍",
+    buttonLabel: "Entrar com o Google",
+    buttonColor: "#4285F4",
+    buttonTextColor: "#ffffff",
+    authProvider: "Google",
+    scopes: ["Aceder ao Google Ads Manager", "Gerir campanhas de Search, Display e YouTube Ads"],
+  },
+  tiktok_ads: {
+    name: "TikTok Ads",
+    icon: "🎵",
+    buttonLabel: "Entrar no TikTok",
+    buttonColor: "#010101",
+    buttonTextColor: "#ffffff",
+    authProvider: "TikTok",
+    scopes: ["Aceder ao TikTok Ads Manager", "Gerir campanhas e visualizar relatórios de anúncios"],
+  },
+  youtube_ads: {
+    name: "YouTube Ads",
+    icon: "▶️",
+    buttonLabel: "Entrar com o Google",
+    buttonColor: "#FF0000",
+    buttonTextColor: "#ffffff",
+    authProvider: "Google",
+    scopes: ["Aceder ao Google Ads para campanhas de YouTube", "Gerir YouTube Ads e métricas de campanhas"],
+  },
 };
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
@@ -188,13 +253,15 @@ type DialogStep = "permissions" | "waiting" | "success";
 interface OAuthMessage {
   type: "musicos360_oauth_success";
   platform: string;
+  /** OAuth access token returned by the platform OAuth callback page. */
+  access_token?: string;
 }
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   platform: MarketingPlatformId;
-  onConnect: (platform: MarketingPlatformId, scopes: string[]) => Promise<void>;
+  onConnect: (platform: MarketingPlatformId, scopes: string[], access_token?: string) => Promise<void>;
 }
 
 // ─── Componente ───────────────────────────────────────────────────────────────
@@ -205,9 +272,12 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
 
   const meta = PLATFORM_META[platform];
 
+  const pendingTokenRef = useRef<string | undefined>(undefined);
+
   const handleSuccess = useCallback(async () => {
     setStep("success");
-    await onConnect(platform, meta?.scopes ?? []);
+    await onConnect(platform, meta?.scopes ?? [], pendingTokenRef.current);
+    pendingTokenRef.current = undefined;
     setTimeout(() => {
       onOpenChange(false);
       setTimeout(() => setStep("permissions"), 300);
@@ -219,11 +289,13 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
     if (!open) return;
 
     const handler = (event: MessageEvent<OAuthMessage>) => {
+      if (event.origin !== window.location.origin) return;
       if (
         event.data?.type === "musicos360_oauth_success" &&
         event.data?.platform === platform
       ) {
         popupRef.current = null;
+        pendingTokenRef.current = event.data.access_token;
         handleSuccess();
       }
     };
@@ -244,8 +316,45 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
     return () => clearInterval(interval);
   }, [step]);
 
-  const openPopup = () => {
-    const url = `/oauth/${platform}`;
+  const openPopup = async () => {
+    // In MOCK_MODE skip the backend init call and generate a local UUID.
+    // In production, request a server-issued single-use exchange_token.
+    // That token binds the code exchange to this authenticated user session,
+    // preventing the exchange endpoint from being used as an open broker.
+    let exchangeToken: string;
+
+    if (MOCK_MODE) {
+      exchangeToken = crypto.randomUUID();
+    } else {
+      try {
+        const authToken = getAccessToken();
+        const res = await fetch(`${API_BASE_URL}/api/v1/integrations/oauth/init`, {
+          method:  "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+          },
+          body: JSON.stringify({ platform }),
+        });
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+          const msg = (body["message"] as string | undefined) ?? `HTTP ${res.status}`;
+          console.error("[OAuth] /oauth/init failed:", msg);
+          return;
+        }
+        const data = (await res.json()) as { exchange_token: string };
+        exchangeToken = data.exchange_token;
+      } catch (err) {
+        console.error("[OAuth] /oauth/init error:", err);
+        return;
+      }
+    }
+
+    // Store as nonce — OAuthCallbackPage reads from opener sessionStorage
+    // to validate CSRF before sending to the backend exchange endpoint.
+    sessionStorage.setItem(`musicos360_oauth_nonce_${platform}`, exchangeToken);
+
+    const url = `/oauth/${platform}?nonce=${encodeURIComponent(exchangeToken)}`;
     const w = 480;
     const h = 600;
     const left = Math.round(window.screenX + (window.outerWidth - w) / 2);

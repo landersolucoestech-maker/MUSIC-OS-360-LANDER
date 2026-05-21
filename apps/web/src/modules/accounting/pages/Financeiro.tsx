@@ -41,7 +41,7 @@ export default function Financeiro() {
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; transacao?: Transacao }>({ open: false, mode: "create" });
-  const [viewModal, setViewModal] = useState<{ open: boolean; transacao?: Transacao }>({ open: false });
+  const [viewModal, setViewModal] = useState<{ open: boolean; transactionId?: string }>({ open: false });
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; transacao?: Transacao }>({ open: false });
 
   useEditQueryParam(
@@ -412,7 +412,7 @@ export default function Financeiro() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setViewModal({ open: true, transacao })}>
+                            <DropdownMenuItem onClick={() => setViewModal({ open: true, transactionId: transacao.id })}>
                               <Eye className="h-3.5 w-3.5 mr-2" /> Ver
                             </DropdownMenuItem>
                             <RequirePermission module="accounting" action="write">
@@ -439,8 +439,8 @@ export default function Financeiro() {
 
       <TransacaoViewModal
         open={viewModal.open}
-        onOpenChange={(open) => setViewModal({ ...viewModal, open })}
-        transacao={viewModal.transacao as any}
+        onOpenChange={(open) => setViewModal(open ? viewModal : { open: false })}
+        transactionId={viewModal.transactionId}
       />
       <TransacaoFormModal
         open={formModal.open}

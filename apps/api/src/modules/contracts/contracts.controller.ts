@@ -1,16 +1,16 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { ClerkAuthGuard }  from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }     from '../../core/guards/tenant.guard';
-import { RolesGuard }      from '../../core/guards/roles.guard';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
+import type { JwtAuth }    from '../../core/guards/auth.guard';
 import { ContractsService }        from './contracts.service';
 import { CreateContractDto }       from './dto/create-contract.dto';
 import { UpdateContractDto }       from './dto/update-contract.dto';
@@ -18,8 +18,6 @@ import { QueryContractDto }        from './dto/query-contract.dto';
 
 @ApiTags('Contracts')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard, TenantGuard, RolesGuard)
-@UseInterceptors(AuditInterceptor)
 @Controller('contracts')
 export class ContractsController {
   constructor(private readonly service: ContractsService) {}
@@ -36,18 +34,21 @@ export class ContractsController {
   @ApiOperation({ summary: 'Obter contrato por ID' })
   findById(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.findById(tenant.id, id);
+    return this.service.findById(tenant.id, id, user?.orgRole ?? undefined);
   }
 
   @Post()
   @RequireRole('editor')
   @Audit('contract.created')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar contrato' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne criação de contratos duplicados', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   JwtAuth,
     @Body()          dto:    CreateContractDto,
   ) {
     return this.service.create(tenant.id, user.userId, dto);
@@ -59,11 +60,11 @@ export class ContractsController {
   @ApiOperation({ summary: 'Actualizar contrato' })
   update(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
     @Body()          dto:    UpdateContractDto,
   ) {
-    return this.service.update(tenant.id, user.userId, id, dto);
+    return this.service.update(tenant.id, user.userId, id, dto, user?.orgRole ?? undefined);
   }
 
   @Delete(':id')

@@ -1,9 +1,16 @@
 import { createRoot } from "react-dom/client";
 import * as Sentry from "@sentry/react";
 import posthog from "posthog-js";
-import App from "./App.tsx";
+import App from "./App";
 import "./index.css";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { MOCK_MODE, validateFrontendEnv } from "@/shared/lib/env";
+
+// Validate required env vars before mounting anything.
+// Returns false and renders an error page in production if vars are missing.
+if (!validateFrontendEnv()) {
+  // Halt — error page already injected into #root.
+  throw new Error("Missing required environment variables — see console for details.");
+}
 
 // ── Sentry (error monitoring) ─────────────────────────────────────────────
 if (!MOCK_MODE && import.meta.env.VITE_SENTRY_DSN) {

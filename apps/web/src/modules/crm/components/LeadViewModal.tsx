@@ -17,6 +17,10 @@ import { Progress } from "@/shared/ui/progress";
 import { formatCurrency, formatDate, formatDateTime } from "@/shared/lib/format-utils";
 import { useLeadInteractions, TIPO_INTERACAO_OPTIONS, TIPO_INTERACAO_LABELS } from "../hooks/useLeadInteractions";
 import { STATUS_LABELS, ORIGEM_LABELS, useLeads } from "../hooks/useLeads";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 import {
   Mail,
   Phone,
@@ -78,12 +82,23 @@ function InfoRow({ icon: Icon, label, value }: { icon: any; label: string; value
 export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModalProps) {
   const { updateLead } = useLeads();
   const { interactions, isLoading: interactionsLoading, addInteraction } = useLeadInteractions(lead?.id);
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'leads',
+    id:       lead?.id ?? '',
+    queryKey: ['leads'],
+  });
+  const { data: detail } = useEntityDetail<typeof lead & { allowed_transitions?: WorkflowTransition[] }>(
+    'leads', lead?.id, open,
+  );
   const [showInteractionForm, setShowInteractionForm] = useState(false);
   const [tipoInteracao, setTipoInteracao] = useState("ligacao");
   const [descricaoInteracao, setDescricaoInteracao] = useState("");
   const [submittingInteraction, setSubmittingInteraction] = useState(false);
 
   if (!lead) return null;
+
+  const currentStatus = detail?.status_lead ?? detail?.status ?? lead.status_lead ?? lead.status;
+  const allowedTransitions = resolveAllowedTransitions('lead', currentStatus, detail?.allowed_transitions);
 
   const handleAddInteraction = () => {
     if (!descricaoInteracao.trim()) return;
@@ -140,6 +155,15 @@ export function LeadViewModal({ open, onOpenChange, lead, onEdit }: LeadViewModa
           <DialogDescription>
             Lead criado em {formatDate(lead.created_at)}
           </DialogDescription>
+          {allowedTransitions.length > 0 && (
+            <WorkflowTransitionPanel
+              currentStatus={lead.status_lead ?? lead.status ?? ""}
+              allowedTransitions={allowedTransitions}
+              onTransition={workflowTransition}
+              isLoading={isTransitionPending}
+              className="mt-1"
+            />
+          )}
         </DialogHeader>
 
         <div className="space-y-5 py-4">

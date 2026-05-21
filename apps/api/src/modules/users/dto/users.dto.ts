@@ -6,7 +6,7 @@ const ROLES    = ['owner', 'manager', 'editor', 'viewer', 'accountant', 'artist'
 const STATUSES = ['active', 'inactive', 'suspended', 'invited'] as const;
 
 export class CreateUserDto {
-  /** User identifier stored in clerk_user_id column. */
+  /** User identifier stored in auth_user_id column. */
   @ApiProperty({ description: 'Identificador único do utilizador (JWT sub)' })
   @IsString()
   userId!: string;
@@ -23,6 +23,12 @@ export class CreateUserDto {
 
 export class UpdateUserDto extends PartialType(CreateUserDto) {
   @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+}
+
+export class AssignRoleDto {
+  @ApiProperty({ enum: ROLES, description: 'Novo role a atribuir ao utilizador' })
+  @IsIn(ROLES)
+  role!: string;
 }
 
 export class QueryUserDto extends PaginationDto {

@@ -10,8 +10,11 @@
  *   - JWT (autenticação)
  */
 
-import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
+import { AuditInterceptor } from './core/interceptors/audit.interceptor';
+import { RequestIdMiddleware }  from './core/middleware/request-id.middleware';
+import { CorrelationMiddleware } from './core/middleware/correlation.middleware';
 import { ConfigModule } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import { validateEnv } from './core/config/env.schema';
@@ -22,6 +25,7 @@ import { HealthModule }         from './modules/health/health.module';
 import { QueueModule }          from './queues/queue.module';
 import { AuthModule }           from './modules/auth/auth.module';
 import { CoreModule }           from './core/core.module';
+import { PlanLimitModule }      from './core/billing/plan-limit.module';
 import { ArtistsModule }        from './modules/artists/artists.module';
 import { WorksModule }          from './modules/works/works.module';
 import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
@@ -44,6 +48,7 @@ import { SharesModule }            from './modules/shares/shares.module';
 import { ReleasesModule }          from './modules/releases/releases.module';
 import { UsersModule }             from './modules/users/users.module';
 import { AuditLogModule }          from './modules/audit-log/audit-log.module';
+import { ActivityLogsModule }       from './modules/activity-logs/activity-logs.module';
 import { SupportTicketsModule }    from './modules/support-tickets/support-tickets.module';
 import { IntegrationsModule }      from './modules/integrations/integrations.module';
 import { AIModule }                from './modules/ai/ai.module';
@@ -52,7 +57,17 @@ import { ArtistGoalsModule }       from './modules/artist-goals/artist-goals.mod
 import { ContentDetectionsModule } from './modules/content-detections/content-detections.module';
 import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
 import { HrModule }                from './modules/hr/hr.module';
-import { JwtAuthGuard }    from './core/guards/clerk-auth.guard';
+import { DomainEventsModule }     from './core/events/events.module';
+import { WorkflowModule }         from './core/workflow/workflow.module';
+import { ConversationsModule }    from './modules/conversations/conversations.module';
+import { FormsModule }            from './modules/forms/forms.module';
+import { CrmModule }              from './modules/crm/crm.module';
+import { PipelinesModule }        from './modules/pipelines/pipelines.module';
+import { AnalyticsModule }        from './modules/analytics/analytics.module';
+import { InventoryModule }        from './modules/inventory/inventory.module';
+import { LicensingModule }        from './modules/licensing/licensing.module';
+import { FinancialRulesModule }   from './modules/financial-rules/financial-rules.module';
+import { JwtAuthGuard }    from './core/guards/auth.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
 import { RateLimitGuard }  from './core/guards/rate-limit.guard';
@@ -74,8 +89,14 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     // ── Cloudflare R2 (file storage) ──────────────────────────────────────────
     StorageModule,
 
+    // ── Domain Events (pub/sub, event-log, correlation) ──────────────────────
+    DomainEventsModule,
+
     // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
     CoreModule,
+
+    // ── Plan Limit Enforcement (global — quota checks before create) ──────────
+    PlanLimitModule,
 
     // ── Auth (JWT) ────────────────────────────────────────────────────────────
     AuthModule,
@@ -111,6 +132,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ReleasesModule,
     UsersModule,
     AuditLogModule,
+    ActivityLogsModule,
     SupportTicketsModule,
 
     // ── Módulos FASE 7 — Integrações Reais ───────────────────────────────────
@@ -127,8 +149,36 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ContentDetectionsModule,
     EcadReportsModule,
     HrModule,
+
+    // ── Workflow Engine (state machine global) ────────────────────────────────
+    WorkflowModule,
+
+    // ── Phase 9 — Conversations/Inbox ─────────────────────────────────────────
+    ConversationsModule,
+
+    // ── Phase 12 — Forms & Submissions ────────────────────────────────────────
+    FormsModule,
+
+    // ── Phase 7 — CRM Canonical (contacts, companies, tags, tasks, timeline) ──
+    CrmModule,
+
+    // ── Phase 8 — Music Pipelines (kanban, stages, opportunities, SLA) ─────────
+    PipelinesModule,
+
+    // ── Phase 13 — Analytics & AI Governance ──────────────────────────────────
+    AnalyticsModule,
+
+    // ── Novos módulos — Inventory / Licensing / Financial Rules ──────────────
+    InventoryModule,
+    LicensingModule,
+    FinancialRulesModule,
   ],
   providers: [
+    // Interceptor global — processa @Audit() em todas as rotas com DI completo
+    {
+      provide:  APP_INTERCEPTOR,
+      useClass: AuditInterceptor,
+    },
     // Guards globais aplicados a TODAS as rotas
     // Ordem: RateLimitGuard → JwtAuthGuard → TenantGuard → RolesGuard
     Reflector,
@@ -150,4 +200,8 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer): void {
+    consumer.apply(RequestIdMiddleware, CorrelationMiddleware).forRoutes('*');
+  }
+}

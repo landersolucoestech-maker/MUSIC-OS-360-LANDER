@@ -1,0 +1,469 @@
+REFATORAR COMPLETAMENTE O MODULO "TIPOS DE CONTRATOS" que consta na aba do modulo “TEMPLATES DE CONTRATOS” DO MUSIC OS 360 COM FOCO EM ESCALABILIDADE, ESTRUTURA JURÍDICA PROFISSIONAL, AUTOMAÇÃO E SISTEMA DINÂMICO DE VARIÁVEIS.
+
+OBJETIVO:
+Transformar o módulo atual em um sistema profissional de criação de templates contratuais para mercado musical, permitindo contratos reutilizáveis, tipados, automatizados, preparados para geração de PDF, assinatura digital futura e preenchimento dinâmico por entidades envolvidas.
+
+======================================================================
+REGRAS ABSOLUTAS
+======================================================================
+
+- NÃO simplificar a arquitetura.
+- NÃO criar solução mockada.
+- NÃO usar hardcodes.
+- NÃO misturar dados financeiros, participantes e cláusulas no mesmo objeto.
+- NÃO permitir variáveis soltas sem tipagem.
+- TODO o sistema deve ser escalável.
+- TODO o sistema deve ser preparado para multi-template.
+- TODO o sistema deve ser preparado para futura assinatura digital.
+- TODO o sistema deve ser preparado para automação IA.
+- TODO o sistema deve funcionar em dark mode atual do sistema.
+- TODO o design deve seguir o visual atual do MUSIC OS 360.
+- NÃO alterar identidade visual principal.
+- NÃO remover funcionalidades existentes.
+- APENAS refatorar corretamente.
+
+======================================================================
+OBJETIVO FUNCIONAL
+======================================================================
+
+O módulo deve permitir:
+
+1. Criar templates profissionais de contratos.
+2. Definir participantes envolvidos.
+3. Definir variáveis dinâmicas automáticas.
+4. Criar cláusulas reutilizáveis.
+5. Gerar contratos preenchíveis.
+6. Preparar exportação futura para PDF.
+7. Preparar integração futura com assinatura digital.
+8. Permitir IA gerar cláusulas usando variáveis existentes.
+9. Permitir múltiplos tipos de contratos musicais.
+
+======================================================================
+ARQUITETURA OBRIGATÓRIA
+======================================================================
+
+REFATORAR A ESTRUTURA ATUAL PARA:
+
+ContractTemplate
+├── id
+├── name
+├── category
+├── contractType
+├── description
+├── participants[]
+├── financialSettings
+├── clauses[]
+├── variables[]
+├── signatureSettings
+├── brandingSettings
+├── metadata
+├── createdAt
+├── updatedAt
+
+======================================================================
+ESTRUTURA DE PARTICIPANTES
+======================================================================
+
+CRIAR SISTEMA COMPLETO DE PARTICIPANTES.
+
+Participant
+├── id
+├── role
+├── entityType
+├── requiredFields[]
+├── optionalFields[]
+├── variables[]
+├── metadata
+
+======================================================================
+ROLES SUPORTADAS
+======================================================================
+
+- CONTRATANTE
+- CONTRATADO
+- ARTISTA
+- PRODUTOR
+- EMPRESA
+- LABEL
+- EMPRESÁRIO
+- COMPOSITOR
+- TESTEMUNHA
+- REPRESENTANTE LEGAL
+
+======================================================================
+TIPOS DE ENTIDADE
+======================================================================
+
+- Pessoa Física
+- Pessoa Jurídica
+
+======================================================================
+CAMPOS AUTOMÁTICOS POR TIPO
+======================================================================
+
+SE Pessoa Física:
+
+Gerar automaticamente:
+
+- Nome Completo
+- Nome Artístico
+- CPF
+- RG
+- Data de Nascimento
+- Nacionalidade
+- Estado Civil
+- Profissão
+- Email
+- Telefone
+- Endereço
+- Cidade
+- Estado
+- CEP
+- País
+- PIX
+- Banco
+
+SE Pessoa Jurídica:
+
+Gerar automaticamente:
+
+- Razão Social
+- Nome Fantasia
+- CNPJ
+- Inscrição Estadual
+- Representante Legal
+- CPF do Representante
+- Email
+- Telefone
+- Endereço
+- Cidade
+- Estado
+- CEP
+- País
+
+======================================================================
+SISTEMA DE VARIÁVEIS DINÂMICAS
+======================================================================
+
+CRIAR SISTEMA REAL DE VARIÁVEIS.
+
+NÃO usar texto estático.
+
+Toda variável deve possuir:
+
+Variable
+├── id
+├── key
+├── label
+├── type
+├── source
+├── category
+├── required
+├── example
+├── participantReference
+
+======================================================================
+PADRÃO DAS VARIÁVEIS
+======================================================================
+
+Usar padrão:
+
+{{VARIABLE_NAME}}
+
+======================================================================
+EXEMPLOS OBRIGATÓRIOS
+======================================================================
+
+{{CONTRACTOR_NAME}}
+{{CONTRACTOR_CPF}}
+{{CONTRACTOR_ADDRESS}}
+
+{{ARTIST_NAME}}
+{{ARTIST_STAGE_NAME}}
+
+{{LABEL_COMPANY_NAME}}
+{{LABEL_CNPJ}}
+
+{{PRODUCER_NAME}}
+
+{{ROYALTIES_PERCENTAGE}}
+{{ADVANCE_AMOUNT}}
+{{FIXED_VALUE}}
+
+{{START_DATE}}
+{{END_DATE}}
+
+{{WORK_TITLE}}
+{{WORK_ISRC}}
+
+======================================================================
+SEPARAÇÃO DAS VARIÁVEIS POR CATEGORIA
+======================================================================
+
+O modal deve exibir:
+
+1. Participantes
+2. Financeiro
+3. Obra Musical
+4. Vigência
+5. Assinatura
+6. Sistema
+7. Personalizadas
+
+======================================================================
+SEÇÃO “ENVOLVIDOS”
+======================================================================
+
+CRIAR NOVA ABA COMPLETA:
+
+“Envolvidos”
+
+Funções:
+
+- adicionar participante
+- remover participante
+- definir role
+- definir tipo PF/PJ
+- configurar campos obrigatórios
+- visualizar variáveis geradas automaticamente
+
+======================================================================
+SISTEMA DE CLÁUSULAS
+======================================================================
+
+REFATORAR TOTALMENTE.
+
+Clause
+├── id
+├── title
+├── content
+├── variablesUsed[]
+├── category
+├── order
+├── required
+├── editable
+├── aiGenerated
+
+======================================================================
+EDITOR DE CLÁUSULAS
+======================================================================
+
+O editor deve:
+
+- suportar variáveis dinâmicas
+- permitir autocomplete de variáveis
+- permitir inserção rápida
+- destacar variáveis visualmente
+- validar variáveis inexistentes
+- impedir variáveis quebradas
+
+======================================================================
+AUTO COMPLETE OBRIGATÓRIO
+======================================================================
+
+Quando usuário digitar:
+
+{{
+
+Abrir seletor inteligente com:
+- busca
+- categorias
+- descrição
+- exemplo
+- preview
+
+======================================================================
+CONFIGURAÇÃO FINANCEIRA
+======================================================================
+
+MANTER A SEÇÃO EXISTENTE MAS REFATORAR.
+
+FinancialSettings
+├── royaltiesEnabled
+├── fixedValueEnabled
+├── advanceEnabled
+├── supportEnabled
+├── paymentMethods[]
+├── paymentFrequency
+├── defaultCurrency
+├── allowInstallments
+
+======================================================================
+CAMPOS FINANCEIROS
+======================================================================
+
+Adicionar suporte a:
+
+- royalties
+- adiantamento
+- valor fixo
+- suporte mensal
+- parcelamento
+- recorrência
+- moeda
+- multa
+- juros
+- vencimento
+
+======================================================================
+SEÇÃO OBRA MUSICAL
+======================================================================
+
+CRIAR NOVA CATEGORIA.
+
+MusicWork
+├── title
+├── ISRC
+├── UPC
+├── genre
+├── language
+├── releaseDate
+├── platforms[]
+├── distributionType
+
+======================================================================
+PERSONALIZAÇÃO DO DOCUMENTO
+======================================================================
+
+MANTER E MELHORAR.
+
+Adicionar:
+
+- watermark
+- alinhamento
+- margem
+- fontes
+- numeração de páginas
+- logo
+- cabeçalho
+- rodapé
+
+======================================================================
+SISTEMA DE ASSINATURA
+======================================================================
+
+PREPARAR ESTRUTURA FUTURA.
+
+SignatureSettings
+├── enabled
+├── signatureOrder[]
+├── requireWitnesses
+├── digitalSignatureProvider
+├── auditTrail
+
+======================================================================
+VALIDAÇÕES OBRIGATÓRIAS
+======================================================================
+
+VALIDAR:
+
+- variáveis inexistentes
+- duplicadas
+- cláusulas vazias
+- participantes sem dados mínimos
+- datas inconsistentes
+- contratos sem envolvidos
+- contratos sem cláusulas
+
+======================================================================
+GERAÇÃO DE PREVIEW
+======================================================================
+
+CRIAR PREVIEW DINÂMICO DO CONTRATO.
+
+O preview deve:
+
+- substituir variáveis por mock realista
+- mostrar formatação final
+- atualizar em tempo real
+- funcionar em desktop e mobile
+
+======================================================================
+UX/UI
+======================================================================
+
+MELHORAR TOTALMENTE A EXPERIÊNCIA.
+
+REQUISITOS:
+
+- interface premium
+- dark mode consistente
+- organização em tabs
+- layout profissional
+- sem poluição visual
+- sem aparência genérica de IA
+- foco jurídico/musical profissional
+
+======================================================================
+ESTRUTURA DAS ABAS
+======================================================================
+
+1. Informações Gerais
+2. Envolvidos
+3. Financeiro
+4. Obra Musical
+5. Cláusulas
+6. Assinaturas
+7. Branding
+8. Preview
+
+======================================================================
+BANCO DE DADOS
+======================================================================
+
+PREPARAR SCHEMA ESCALÁVEL.
+
+Necessário:
+- tabelas normalizadas
+- relacionamento de variáveis
+- relacionamento de participantes
+- relacionamento de cláusulas
+- versionamento futuro
+
+======================================================================
+PERFORMANCE
+======================================================================
+
+- evitar rerenders desnecessários
+- lazy loading em cláusulas
+- memoização
+- virtualização se necessário
+- evitar loops pesados
+
+======================================================================
+IA FUTURA
+======================================================================
+
+PREPARAR O SISTEMA PARA:
+
+- geração automática de cláusulas
+- sugestão jurídica
+- preenchimento inteligente
+- análise de inconsistências
+- contratos automáticos
+
+======================================================================
+RESULTADO FINAL ESPERADO
+======================================================================
+
+O módulo deve parecer um sistema profissional de gestão contratual musical utilizado por:
+- labels
+- escritórios
+- distribuidoras
+- empresários
+- produtoras
+- agências musicais
+
+E NÃO um simples formulário CRUD.
+
+O sistema final deve ser:
+- escalável
+- juridicamente coerente
+- modular
+- reutilizável
+- preparado para automações
+- preparado para IA
+- preparado para assinatura digital
+- profissional visualmente
+- consistente arquiteturalmente
+- pronto para evolução enterprise.

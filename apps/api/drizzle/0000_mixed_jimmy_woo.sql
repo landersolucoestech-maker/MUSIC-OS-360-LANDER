@@ -304,7 +304,7 @@ CREATE TABLE "org_members" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
 	"tenant_id" uuid NOT NULL,
-	"clerk_user_id" varchar(255) NOT NULL,
+	"auth_user_id" varchar(255) NOT NULL,
 	"email" varchar(255) NOT NULL,
 	"full_name" varchar(255),
 	"role" varchar(50) DEFAULT 'viewer' NOT NULL,
@@ -316,7 +316,7 @@ CREATE TABLE "org_members" (
 --> statement-breakpoint
 CREATE TABLE "organizations" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"clerk_org_id" varchar(255),
+	"external_auth_org_id" varchar(255),
 	"name" varchar(255) NOT NULL,
 	"slug" varchar(100) NOT NULL,
 	"plan" varchar(50) DEFAULT 'starter' NOT NULL,
@@ -330,7 +330,7 @@ CREATE TABLE "organizations" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
-	CONSTRAINT "organizations_clerk_org_id_unique" UNIQUE("clerk_org_id"),
+	CONSTRAINT "organizations_external_auth_org_id_unique" UNIQUE("external_auth_org_id"),
 	CONSTRAINT "organizations_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
@@ -458,7 +458,7 @@ CREATE TABLE "takedowns" (
 CREATE TABLE "tenants" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"org_id" uuid NOT NULL,
-	"clerk_org_id" varchar(255),
+	"external_auth_org_id" varchar(255),
 	"name" varchar(255) NOT NULL,
 	"slug" varchar(100) NOT NULL,
 	"plan" varchar(50) DEFAULT 'starter' NOT NULL,
@@ -468,7 +468,7 @@ CREATE TABLE "tenants" (
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"deleted_at" timestamp,
-	CONSTRAINT "tenants_clerk_org_id_unique" UNIQUE("clerk_org_id"),
+	CONSTRAINT "tenants_external_auth_org_id_unique" UNIQUE("external_auth_org_id"),
 	CONSTRAINT "tenants_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
@@ -634,10 +634,10 @@ CREATE INDEX "notif_tenant_user_idx" ON "notifications" USING btree ("tenant_id"
 CREATE INDEX "notif_tenant_user_read_idx" ON "notifications" USING btree ("tenant_id","user_id","read_at");--> statement-breakpoint
 CREATE UNIQUE INDEX "oauth_tenant_user_provider_idx" ON "oauth_connections" USING btree ("tenant_id","user_id","provider");--> statement-breakpoint
 CREATE INDEX "oauth_tenant_idx" ON "oauth_connections" USING btree ("tenant_id");--> statement-breakpoint
-CREATE UNIQUE INDEX "member_tenant_user_idx" ON "org_members" USING btree ("tenant_id","clerk_user_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "member_tenant_user_idx" ON "org_members" USING btree ("tenant_id","auth_user_id");--> statement-breakpoint
 CREATE INDEX "member_tenant_idx" ON "org_members" USING btree ("tenant_id");--> statement-breakpoint
-CREATE INDEX "member_clerk_idx" ON "org_members" USING btree ("clerk_user_id");--> statement-breakpoint
-CREATE INDEX "org_clerk_idx" ON "organizations" USING btree ("clerk_org_id");--> statement-breakpoint
+CREATE INDEX "member_auth_user_idx" ON "org_members" USING btree ("auth_user_id");--> statement-breakpoint
+CREATE INDEX "org_external_auth_idx" ON "organizations" USING btree ("external_auth_org_id");--> statement-breakpoint
 CREATE INDEX "org_slug_idx" ON "organizations" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "phonograms_tenant_idx" ON "phonograms" USING btree ("tenant_id");--> statement-breakpoint
 CREATE INDEX "phonograms_obra_idx" ON "phonograms" USING btree ("obra_id");--> statement-breakpoint
@@ -652,7 +652,7 @@ CREATE INDEX "tickets_tenant_idx" ON "support_tickets" USING btree ("tenant_id")
 CREATE INDEX "tickets_status_idx" ON "support_tickets" USING btree ("status");--> statement-breakpoint
 CREATE INDEX "takedowns_tenant_idx" ON "takedowns" USING btree ("tenant_id");--> statement-breakpoint
 CREATE INDEX "takedowns_tenant_status_idx" ON "takedowns" USING btree ("tenant_id","status");--> statement-breakpoint
-CREATE INDEX "tenant_clerk_idx" ON "tenants" USING btree ("clerk_org_id");--> statement-breakpoint
+CREATE INDEX "tenant_external_auth_idx" ON "tenants" USING btree ("external_auth_org_id");--> statement-breakpoint
 CREATE INDEX "tenant_slug_idx" ON "tenants" USING btree ("slug");--> statement-breakpoint
 CREATE INDEX "tenant_org_idx" ON "tenants" USING btree ("org_id");--> statement-breakpoint
 CREATE INDEX "transactions_tenant_idx" ON "transactions" USING btree ("tenant_id");--> statement-breakpoint

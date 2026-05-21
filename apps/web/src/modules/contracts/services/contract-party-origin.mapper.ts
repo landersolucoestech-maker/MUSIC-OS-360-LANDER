@@ -16,7 +16,7 @@ export const getContractPartyOrigin = (
     return "ARTIST";
   }
 
-  const allCRMTypes = Object.values(CONTRACT_TYPES)
+  const allCRMTypes: string[] = Object.values(CONTRACT_TYPES)
     .flat()
     .filter((type) => !ARTIST_TYPES.includes(type));
 

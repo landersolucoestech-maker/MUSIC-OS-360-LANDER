@@ -12,27 +12,29 @@ export class LeadInteractionsService {
     if (ds) this.repo = ds.getRepository(LeadInteractionEntity);
   }
 
-  async list(tenantId: string, leadId: string, query: QueryLeadInteractionDto) {
+  async list(tenantId: string, query: QueryLeadInteractionDto) {
+    const q = query as any;
     const qb = this.repo!
       .createQueryBuilder('i')
-      .where('i.tenant_id = :tenantId AND i.lead_id = :leadId', { tenantId, leadId });
+      .where('i.tenant_id = :tenantId', { tenantId });
 
-    qb.orderBy('i.created_at', (query as any).ascending ? 'ASC' : 'DESC')
-      .skip((query as any).offset ?? 0)
-      .take((query as any).limit ?? 50);
+    if (q.lead_id) qb.andWhere('i.lead_id = :leadId', { leadId: q.lead_id });
+
+    qb.orderBy('i.created_at', q.ascending ? 'ASC' : 'DESC')
+      .skip(q.offset ?? 0)
+      .take(q.limit ?? 50);
 
     const [data, total] = await qb.getManyAndCount();
-    return { data, meta: { total, offset: (query as any).offset ?? 0, limit: (query as any).limit ?? 50 } };
+    return { data, meta: { total, offset: q.offset ?? 0, limit: q.limit ?? 50 } };
   }
 
-  async create(tenantId: string, leadId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteractionEntity> {
+  async create(tenantId: string, userId: string, dto: CreateLeadInteractionDto): Promise<LeadInteractionEntity> {
     const entity = this.repo!.create({
       tenant_id:  tenantId,
-      lead_id:    leadId,
       ...(dto as any),
       created_by: userId,
     });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async remove(tenantId: string, id: string): Promise<{ deleted: boolean }> {

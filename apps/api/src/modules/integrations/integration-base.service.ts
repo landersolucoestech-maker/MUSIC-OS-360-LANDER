@@ -4,12 +4,19 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { IntegrationEntity, OAuthConnectionEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import { CircuitBreaker } from '../../core/resilience/circuit-breaker';
+import { resilientFetch, DEFAULT_TIMEOUT_MS } from '../../core/resilience/resilient-fetch';
+import { IntegrationStatus } from '@music-os-360/types';
 
 @Injectable()
 export class IntegrationBaseService {
   protected readonly logger = new Logger(IntegrationBaseService.name);
-  private readonly integRepo:   Repository<IntegrationEntity>   | null = null;
-  private readonly oauthRepo:   Repository<OAuthConnectionEntity> | null = null;
+  private readonly integRepo: Repository<IntegrationEntity>    | null = null;
+  private readonly oauthRepo: Repository<OAuthConnectionEntity> | null = null;
+
+  // Each concrete service gets its own circuit breaker instance.
+  // Call this.cb.execute(() => ...) or this.fetch() for guarded HTTP calls.
+  protected readonly cb: CircuitBreaker;
 
   constructor(
     @Inject(DATA_SOURCE) protected readonly ds: DataSource | null,
@@ -19,6 +26,15 @@ export class IntegrationBaseService {
       this.integRepo = ds.getRepository(IntegrationEntity);
       this.oauthRepo = ds.getRepository(OAuthConnectionEntity);
     }
+    this.cb = new CircuitBreaker({ name: this.constructor.name });
+  }
+
+  /**
+   * Guarded fetch — applies circuit breaker + 10s timeout to any external HTTP call.
+   * Use this instead of raw `fetch()` in all integration subclasses.
+   */
+  protected fetch(url: string, init?: RequestInit, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<Response> {
+    return resilientFetch(this.cb, url, init, timeoutMs);
   }
 
   // ── Credentials ─────────────────────────────────────────────────────────────
@@ -31,9 +47,9 @@ export class IntegrationBaseService {
       .getOne();
 
     if (existing) {
-      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: 'connected', failure_count: 0, updated_at: new Date() } as any);
+      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: IntegrationStatus.CONNECTED, failure_count: 0, updated_at: new Date() } as any);
     } else {
-      const entity = this.integRepo!.create({ tenant_id: tenantId, provider, status: 'connected', credentials_encrypted });
+      const entity = this.integRepo!.create({ tenant_id: tenantId, provider, status: IntegrationStatus.CONNECTED, credentials_encrypted });
       await this.integRepo!.save(entity);
     }
   }

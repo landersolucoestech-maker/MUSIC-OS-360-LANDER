@@ -1,18 +1,20 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe,
 } from '@nestjs/common';
-import { ClerkAuthGuard }        from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }           from '../../core/guards/tenant.guard';
-import { CurrentTenant }         from '../../core/decorators/current-tenant.decorator';
-import { CurrentUser }           from '../../core/decorators/current-user.decorator';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
+import { CurrentUser }   from '../../core/decorators/current-user.decorator';
+import { RequireRole }   from '../../core/decorators/roles.decorator';
+import { Audit }                from '../../core/interceptors/audit.interceptor';
 import { HrService }             from './hr.service';
 import { CreateEmployeeDto }     from './dto/create-employee.dto';
 import { UpdateEmployeeDto }     from './dto/update-employee.dto';
 import { CreatePayrollEntryDto } from './dto/create-payroll-entry.dto';
 import { CreateLeaveRequestDto } from './dto/create-leave-request.dto';
 
-@UseGuards(ClerkAuthGuard, TenantGuard)
+@ApiTags('HR')
+@ApiBearerAuth()
 @Controller('hr')
 export class HrController {
   constructor(private readonly svc: HrService) {}
@@ -20,6 +22,8 @@ export class HrController {
   // ── Employees ──────────────────────────────────────────────────────────────
 
   @Get('employees')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Listar funcionários do tenant' })
   listEmployees(
     @CurrentTenant() tenant: { id: string },
     @Query('status') status?: string,
@@ -34,6 +38,8 @@ export class HrController {
   }
 
   @Get('employees/:id')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Obter funcionário por ID' })
   findEmployee(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -42,25 +48,34 @@ export class HrController {
   }
 
   @Post('employees')
+  @RequireRole('manager')
+  @Audit('employee.created')
+  @ApiOperation({ summary: 'Criar funcionário' })
   createEmployee(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Body() dto: CreateEmployeeDto,
   ) {
-    return this.svc.createEmployee(tenant.id, user.sub, dto);
+    return this.svc.createEmployee(tenant.id, user.userId, dto);
   }
 
   @Patch('employees/:id')
+  @RequireRole('manager')
+  @Audit('employee.updated')
+  @ApiOperation({ summary: 'Actualizar funcionário' })
   updateEmployee(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateEmployeeDto,
   ) {
-    return this.svc.updateEmployee(tenant.id, user.sub, id, dto);
+    return this.svc.updateEmployee(tenant.id, user.userId, id, dto);
   }
 
   @Delete('employees/:id')
+  @RequireRole('admin')
+  @Audit('employee.deleted')
+  @ApiOperation({ summary: 'Desactivar funcionário (soft delete)' })
   removeEmployee(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -71,6 +86,8 @@ export class HrController {
   // ── Payroll ────────────────────────────────────────────────────────────────
 
   @Get('payroll')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Listar folha de pagamento (restrito a manager+)' })
   listPayroll(
     @CurrentTenant() tenant: { id: string },
     @Query('employee_id') employee_id?: string,
@@ -87,6 +104,9 @@ export class HrController {
   }
 
   @Post('payroll')
+  @RequireRole('manager')
+  @Audit('payroll.created')
+  @ApiOperation({ summary: 'Lançar entrada na folha de pagamento' })
   createPayroll(
     @CurrentTenant() tenant: { id: string },
     @Body() dto: CreatePayrollEntryDto,
@@ -97,6 +117,8 @@ export class HrController {
   // ── Leave Requests ─────────────────────────────────────────────────────────
 
   @Get('leave-requests')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Listar pedidos de ausência' })
   listLeaveRequests(
     @CurrentTenant() tenant: { id: string },
     @Query('employee_id') employee_id?: string,
@@ -113,20 +135,26 @@ export class HrController {
   }
 
   @Post('leave-requests')
+  @RequireRole('editor')
+  @Audit('leave_request.created')
+  @ApiOperation({ summary: 'Criar pedido de ausência' })
   createLeaveRequest(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Body() dto: CreateLeaveRequestDto,
   ) {
-    return this.svc.createLeaveRequest(tenant.id, user.sub, dto);
+    return this.svc.createLeaveRequest(tenant.id, user.userId, dto);
   }
 
   @Patch('leave-requests/:id/approve')
+  @RequireRole('manager')
+  @Audit('leave_request.approved')
+  @ApiOperation({ summary: 'Aprovar pedido de ausência (manager+)' })
   approveLeaveRequest(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.approveLeaveRequest(tenant.id, id, user.sub);
+    return this.svc.approveLeaveRequest(tenant.id, id, user.userId);
   }
 }

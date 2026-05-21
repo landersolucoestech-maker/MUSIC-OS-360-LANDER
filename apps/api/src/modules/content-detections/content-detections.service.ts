@@ -42,14 +42,18 @@ export class ContentDetectionsService {
 
   async create(tenantId: string, dto: CreateContentDetectionDto): Promise<ContentDetectionEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any) });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
+  }
+
+  async update(tenantId: string, id: string, dto: any): Promise<ContentDetectionEntity> {
+    await this.findById(tenantId, id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date() } as any);
+    return this.findById(tenantId, id);
   }
 
   async updateStatus(tenantId: string, id: string, status: string): Promise<ContentDetectionEntity> {
-    await this.findById(tenantId, id);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { status, updated_at: new Date() } as any);
-    return this.findById(tenantId, id);
+    return this.update(tenantId, id, { status });
   }
 
   async remove(tenantId: string, id: string) {

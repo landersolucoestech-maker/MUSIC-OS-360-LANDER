@@ -5,23 +5,26 @@
  * Backend nunca recebe o arquivo — apenas gera URLs e regista metadados.
  *
  * POST /uploads/presign        → URL pré-assinada (PUT) + registo no banco
- * POST /uploads/:fileId/confirm → marca status='confirmed'
+ * POST /uploads/:fileId/confirm → marca status='confirmed' + emite ASSET_UPLOADED
  * GET  /uploads/:fileId/download → URL temporária de download (GET signed)
  */
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, Logger, Inject,
+  NotFoundException, ServiceUnavailableException, Logger, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { DataSource, Repository } from 'typeorm';
 
 import { DATA_SOURCE }     from '../../database/database.module';
 import { UploadEntity }    from '../../database/entities';
 import { StorageService }  from '../../storage/storage.service';
+import { UploadStatus }    from '@music-os-360/types';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @ApiTags('Uploads')
 @ApiBearerAuth()
@@ -33,19 +36,32 @@ export class UploadsController {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly storage: StorageService,
+    private readonly events: EventsService,
   ) {
     if (ds) this.repo = ds.getRepository(UploadEntity);
+  }
+
+  /** Lança 503 se a base de dados não estiver disponível */
+  private requireRepo(): Repository<UploadEntity> {
+    if (!this.repo) {
+      throw new ServiceUnavailableException(
+        'Base de dados não configurada — uploads de metadados indisponíveis.',
+      );
+    }
+    return this.repo;
   }
 
   // ── POST /uploads/presign ────────────────────────────────────────────────────
 
   @Post('presign')
+  @Audit('upload.presigned')
   @ApiOperation({ summary: 'Obter URL pré-assinada para upload directo ao R2' })
   async presign(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   { userId: string },
     @Body()          dto:    PresignUploadDto,
   ) {
+    const repo = this.requireRepo();
     const { presignedUrl, key, fileId } = await this.storage.createPresignedUpload({
       tenantId:  tenant.id,
       userId:    user.userId,
@@ -57,7 +73,7 @@ export class UploadsController {
       entityId:  dto.entityId,
     });
 
-    const entity = this.repo!.create({
+    const entity = repo.create({
       tenant_id:     tenant.id,
       user_id:       user.userId,
       file_id:       fileId,
@@ -68,9 +84,9 @@ export class UploadsController {
       category:      dto.category,
       entity:        dto.entity   ?? null,
       entity_id:     dto.entityId ?? null,
-      status:        'pending',
+      status:        UploadStatus.PENDING,
     });
-    await this.repo!.save(entity);
+    await repo.save(entity);
 
     this.logger.log(`Presign registado: ${fileId} / tenant ${tenant.id}`);
     return { presignedUrl, key, fileId };
@@ -79,12 +95,15 @@ export class UploadsController {
   // ── POST /uploads/:fileId/confirm ────────────────────────────────────────────
 
   @Post(':fileId/confirm')
+  @Audit('upload.confirmed')
   @ApiOperation({ summary: 'Confirmar que upload foi concluído' })
   async confirm(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { userId: string },
     @Param('fileId') fileId:  string,
   ) {
-    const row = await this.repo!
+    const repo = this.requireRepo();
+    const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
       .getOne();
@@ -92,10 +111,28 @@ export class UploadsController {
     if (!row) throw new NotFoundException('Upload não encontrado');
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
+    await repo.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
     this.logger.log(`Upload confirmado: ${fileId}`);
 
-    return this.repo!.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
+    // Emit ASSET_UPLOADED domain event — triggers media processing via UploadEventsHandler
+    this.events.emitTyped(DOMAIN_EVENTS.ASSET_UPLOADED, {
+      tenantId:      tenant.id,
+      userId:        user.userId,
+      aggregateType: 'upload',
+      aggregateId:   row.id,
+      payload: {
+        uploadId:   row.id,
+        tenantId:   tenant.id,
+        entityType: row.entity    ?? 'unknown',
+        entityId:   row.entity_id ?? 'unknown',
+        fileName:   row.original_name,
+        mimeType:   row.mime_type,
+        uploadedBy: user.userId,
+        uploadedAt: new Date().toISOString(),
+      },
+    });
+
+    return repo.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
   }
 
   // ── GET /uploads/:fileId/download ────────────────────────────────────────────
@@ -106,7 +143,8 @@ export class UploadsController {
     @CurrentTenant() tenant: { id: string },
     @Param('fileId') fileId:  string,
   ) {
-    const row = await this.repo!
+    const repo = this.requireRepo();
+    const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
       .getOne();

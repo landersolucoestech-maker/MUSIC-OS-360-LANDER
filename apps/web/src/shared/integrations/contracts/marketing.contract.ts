@@ -28,8 +28,16 @@ export type MarketingPlatformId =
   | "corp_deezer"         // Deezer for Artists — presença da label no Deezer
   | "corp_soundcloud"     // SoundCloud Pro — perfil oficial da label
   | "corp_apple_music"    // Apple Music for Artists — presença da label no Apple Music
+  // ── Métricas Corporativas — aliases curtos ────────────────────────────────
+  | "corp_instagram"       // Instagram corporativo (parte de meta_business)
+  | "corp_tiktok"          // TikTok corporativo (parte de tiktok_business)
+  | "corp_youtube"         // YouTube corporativo (parte de youtube_business)
   // ── Tráfego Pago ─────────────────────────────────────────────────────────
   // Contas de anúncios pagos da empresa. Login obrigatório.
+  | "meta_ads"
+  | "google_ads"
+  | "tiktok_ads"
+  | "youtube_ads"
   | "spotify_ads"
   | "deezer_ads"
   | "apple_music_ads"
@@ -174,4 +182,6 @@ export interface IMarketingOAuthConnection {
   expiresAt?: string;
   scopes?: string[];
   category: MarketingCategory;
+  /** OAuth access token obtained from the platform OAuth flow. Present only after a real OAuth handshake. */
+  access_token?: string;
 }

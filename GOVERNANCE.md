@@ -439,7 +439,7 @@ Obras+Fonogramas (catálogo) → Lançamento (análise)
 
 | ID | Nome | Categoria | Estado | Hook |
 |----|------|-----------|--------|------|
-| `clerk` | Clerk | auth | stub | `useClerk` |
+| `Supabase Auth` | Supabase Auth | auth | stub | `useSupabaseAuth` |
 | `r2` | Cloudflare R2 | storage | stub | `useR2` |
 | `resend` | Resend | email | stub | `useResend` |
 | `stripe` | Stripe | payments | stub | `useStripe` |
@@ -485,7 +485,7 @@ Para activar uma integração stub:
 
 | Contrato | Ficheiro | Providers cobertos |
 |----------|----------|-------------------|
-| Auth | `auth.contract.ts` | Clerk |
+| Auth | `auth.contract.ts` | Supabase Auth |
 | Storage | `storage.contract.ts` | Cloudflare R2 |
 | Email | `email.contract.ts` | Resend |
 | Payments | `payments.contract.ts` | Stripe |

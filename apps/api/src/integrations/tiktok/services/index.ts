@@ -1,1 +1,1 @@
-export { TiktokService } from '../../../modules/integrations/tiktok/tiktok.service';
+export { TikTokService } from '../../../modules/integrations/tiktok/tiktok.service';

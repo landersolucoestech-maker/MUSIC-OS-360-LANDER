@@ -20,6 +20,7 @@ export interface NotificationPayload {
   userId?:   string;
   title:     string;
   body?:     string;
+  /** Notification type — generic (info/warning) or domain event identifier (contract:expiring) */
   type:      string;
   entity?:   string;
   entityId?: string;
@@ -66,7 +67,7 @@ export class NotificationsProcessor extends WorkerHost {
       entity_id: d.entityId ?? null,
       metadata:  d.metadata ?? {},
     });
-    const saved = await this.repo.save(entity);
+    const saved = (await this.repo.save(entity)) as NotificationEntity;
 
     this.logger.log(`[notifications/send] persistida id=${saved.id}`);
 

@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsString, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import { ProjectStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 const TYPES    = ['album', 'ep', 'single', 'video', 'tour', 'podcast', 'other'] as const;
-const STATUSES = ['planning', 'active', 'on-hold', 'completed', 'cancelled'] as const;
+const STATUSES = Object.values(ProjectStatus) as string[];
 
 export class CreateProjectDto {
   @ApiProperty() @IsString() @MaxLength(500) title!: string;
@@ -19,7 +20,7 @@ export class CreateProjectDto {
 }
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {
-  @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+  @ApiPropertyOptional({ enum: ProjectStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
 }
 
 export class QueryProjectDto extends PaginationDto {

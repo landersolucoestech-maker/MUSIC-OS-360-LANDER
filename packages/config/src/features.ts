@@ -8,7 +8,6 @@ export type FeatureFlag =
   | "multiUser"
   | "apiAccess"
   | "advancedReports"
-  | "whiteLabel"
   | "sso";
 
 export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
@@ -18,7 +17,6 @@ export const DEFAULT_FLAGS: Record<FeatureFlag, boolean> = {
   multiUser: false,
   apiAccess: false,
   advancedReports: false,
-  whiteLabel: false,
   sso: false,
 };
 
@@ -37,7 +35,6 @@ export const PLAN_FLAGS: Record<string, Partial<Record<FeatureFlag, boolean>>> =
     multiUser: true,
     apiAccess: true,
     advancedReports: true,
-    whiteLabel: true,
     sso: true,
   },
 };

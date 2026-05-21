@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { localStore } from "@/shared/lib/local-store";
 import type { VinculadoDocument } from "@/modules/contracts/types/document-types";
 
 const MOCK_DOCUMENTS: VinculadoDocument[] = [
@@ -47,21 +48,14 @@ const MOCK_DOCUMENTS: VinculadoDocument[] = [
   },
 ];
 
-const STORAGE_KEY = "musicos360_contracts_docs";
+const STORAGE_KEY = "contracts_docs";
 
 function loadDocuments(): VinculadoDocument[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as VinculadoDocument[]) : MOCK_DOCUMENTS;
-  } catch {
-    return MOCK_DOCUMENTS;
-  }
+  return localStore.get<VinculadoDocument[]>(STORAGE_KEY) ?? MOCK_DOCUMENTS;
 }
 
 function saveDocuments(docs: VinculadoDocument[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(docs));
-  } catch { /* ignore */ }
+  localStore.set(STORAGE_KEY, docs);
 }
 
 export const CONTRACTS_DOC_KEYS = {

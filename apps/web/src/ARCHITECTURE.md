@@ -53,7 +53,7 @@
 
 | Serviço | Arquivo |
 |---------|---------|
-| clerk, stripe, resend | Auth, pagamentos, email |
+| Supabase Auth, stripe, resend | Auth, pagamentos, email |
 | autentique | Assinatura digital (webhook) |
 | posthog, sentry | Analytics, error monitoring |
 | cloudflare-r2 | Object storage |
@@ -147,7 +147,7 @@ Módulos processados:
 - Criar `shared/constants/` com todas as constantes utilizadas
 
 ### Prioridade BAIXA:
-- Implementar `infrastructure/` com clients reais (Clerk, Stripe, Redis)
+- Implementar `infrastructure/` com clients reais (Supabase Auth, Stripe, Redis)
 - Implementar `workers/` com BullMQ real (pós-Redis)
 - Criar `shared/observability/` com OpenTelemetry real
 - Criar `infrastructure/telemetry/` com traces reais

@@ -4,13 +4,11 @@
  * AuthContext — bridge multi-modo:
  *
  * MOCK_MODE=true  (standalone / desenvolvimento):
- *   Usuário mock sempre autenticado. Sem chamadas HTTP.
+ *   Usuário mock sempre autenticado. Sem chamadas de rede.
  *
  * MOCK_MODE=false:
- *   Autenticação real via NestJS JWT.
- *   POST /auth/login  → access_token (JWT)
- *   POST /auth/refresh → access_token
- *   POST /auth/logout  → 204
+ *   Autenticação real via Supabase Auth.
+ *   O SDK gerencia tokens, refresh automático e persistência de sessão.
  */
 
 import React, {
@@ -20,10 +18,44 @@ import React, {
   useEffect,
   useRef,
 } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase/supabase-js";
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
 import { setAccessToken } from "@/shared/lib/api-client";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { MOCK_MODE, IS_DEV } from "@/shared/lib/env";
+import { getSupabaseClient } from "@/lib/supabase";
+
+// ─── DEV logging ──────────────────────────────────────────────────────────────
+
+function devLog(label: string, data?: unknown): void {
+  if (!IS_DEV) return;
+  if (data !== undefined) {
+    console.log(`[MUSIC OS 360 Auth] ${label}`, data);
+  } else {
+    console.log(`[MUSIC OS 360 Auth] ${label}`);
+  }
+}
+
+function decodeJwtClaims(token: string): Record<string, unknown> {
+  try {
+    const b64 = token.split(".")[1];
+    return JSON.parse(atob(b64.replace(/-/g, "+").replace(/_/g, "/"))) as Record<string, unknown>;
+  } catch { return {}; }
+}
+
+function logJwtClaims(token: string, event: string): void {
+  if (!IS_DEV) return;
+  const claims  = decodeJwtClaims(token);
+  const appMeta = claims["app_metadata"] as Record<string, unknown> | undefined;
+  devLog(`${event} — JWT claims:`, {
+    sub:      claims["sub"],
+    email:    claims["email"],
+    org_id:   appMeta?.["org_id"] ?? claims["org_id"] ?? "(não encontrado — hook ativo?)",
+    role:     appMeta?.["role"]   ?? claims["role"]   ?? "(não encontrado)",
+    exp:      claims["exp"] ? new Date((claims["exp"] as number) * 1000).toISOString() : undefined,
+  });
+}
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
@@ -40,49 +72,32 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
+// ─── Mappers Supabase → tipos internos ────────────────────────────────────────
 
-const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined) ?? "";
-
-// ─── Helpers JWT ──────────────────────────────────────────────────────────────
-
-function decodeJwtPayload(token: string): Record<string, unknown> {
-  try {
-    const b64 = token.split(".")[1];
-    return JSON.parse(atob(b64!.replace(/-/g, "+").replace(/_/g, "/")));
-  } catch { return {}; }
-}
-
-function tokenToUser(token: string): User {
-  const p = decodeJwtPayload(token);
+function mapSupabaseUser(u: SupabaseUser, jwtAppMeta?: Record<string, unknown>): User {
+  const meta = u.user_metadata as Record<string, unknown> | undefined;
+  const app  = u.app_metadata  as Record<string, unknown> | undefined;
+  // JWT hook injects into the token — prefer those over stored app_metadata
+  const effectiveApp = { ...app, ...jwtAppMeta };
   return {
-    id:    String(p["sub"] ?? ""),
-    email: String(p["email"] ?? ""),
-    user_metadata: { role: p["role"], org_id: p["org_id"] },
-    ...p,
+    id:            u.id,
+    email:         u.email,
+    role:          (effectiveApp?.["role"] ?? meta?.["role"]) as string | undefined,
+    org_id:        (effectiveApp?.["org_id"] ?? meta?.["org_id"]) as string | undefined,
+    user_metadata: { ...meta, ...effectiveApp },
   };
 }
 
-function tokenToSession(access: string): Session {
-  const p = decodeJwtPayload(access);
+function mapSupabaseSession(s: SupabaseSession): Session {
+  // Decode the JWT to read hook-injected claims (org_id, role)
+  const jwtClaims  = decodeJwtClaims(s.access_token);
+  const jwtAppMeta = jwtClaims["app_metadata"] as Record<string, unknown> | undefined;
   return {
-    access_token: access,
-    expires_at:   typeof p["exp"] === "number" ? (p["exp"] as number) * 1000 : undefined,
-    user:         tokenToUser(access),
+    access_token:  s.access_token,
+    refresh_token: s.refresh_token,
+    expires_at:    s.expires_at ? s.expires_at * 1000 : undefined,
+    user:          mapSupabaseUser(s.user, jwtAppMeta),
   };
-}
-
-async function httpPost<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE_URL}${path}`, {
-    method:      "POST",
-    credentials: "include",
-    headers:     { "Content-Type": "application/json" },
-    ...(body !== null ? { body: JSON.stringify(body) } : {}),
-  });
-  if (res.status === 204) return undefined as T;
-  const data = await res.json() as T & { message?: string };
-  if (!res.ok) throw new Error((data as { message?: string }).message ?? res.statusText);
-  return data;
 }
 
 // ─── Provider — Mock Mode ─────────────────────────────────────────────────────
@@ -101,9 +116,10 @@ function MockAuthProvider({ children }: { children: React.ReactNode }) {
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
-// ─── Provider — NestJS JWT ────────────────────────────────────────────────────
+// ─── Provider — Supabase Auth ─────────────────────────────────────────────────
 
-function NestAuthProvider({ children }: { children: React.ReactNode }) {
+function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
+  const queryClient = useQueryClient();
   const [user,    setUser]    = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -112,51 +128,103 @@ function NestAuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (initDone.current) return;
     initDone.current = true;
-    httpPost<{ access_token: string }>("/auth/refresh", null)
-      .then(({ access_token }) => {
-        setAccessToken(access_token);
-        const s = tokenToSession(access_token);
+
+    const sb = getSupabaseClient();
+
+    // Hidrata sessão existente (localStorage via Supabase SDK)
+    sb.auth.getSession().then(({ data }) => {
+      if (data.session) {
+        const s = mapSupabaseSession(data.session);
         setSession(s);
         setUser(s.user);
-      })
-      .catch(() => { /* sem cookie válido — fica deslogado */ })
-      .finally(() => setLoading(false));
+        setAccessToken(data.session.access_token);
+      }
+      setLoading(false);
+    });
+
+    // Reactivo: escuta mudanças de sessão (login, logout, refresh automático)
+    const { data: { subscription } } = sb.auth.onAuthStateChange((event, sbSession) => {
+      if (sbSession) {
+        const s = mapSupabaseSession(sbSession);
+        setSession(s);
+        setUser(s.user);
+        setAccessToken(sbSession.access_token);
+
+        // DEV: logar claims do JWT a cada evento de sessão
+        logJwtClaims(sbSession.access_token, event);
+        devLog(`Tenant resolvido: ${s.user.org_id ?? "(sem org — hook ativo?)"}`);
+        devLog(`Role resolvida: ${s.user.role ?? "(sem role)"}`);
+
+        // Notificar outros hooks (ex: useSyncTenantFromJWT) que o token foi renovado.
+        // Disparado em TOKEN_REFRESHED para forçar re-sync de claims sem reload.
+        if (event === "TOKEN_REFRESHED") {
+          window.dispatchEvent(new CustomEvent("musicos360:auth:tokenRefreshed", {
+            detail: { access_token: sbSession.access_token },
+          }));
+          devLog("TOKEN_REFRESHED — evento musicos360:auth:tokenRefreshed despachado");
+        }
+      } else {
+        setSession(null);
+        setUser(null);
+        setAccessToken(null);
+        devLog(`Sessão encerrada (${event})`);
+      }
+      setLoading(false);
+    });
+
+    return () => { subscription.unsubscribe(); };
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
-    try {
-      const { access_token } = await httpPost<{ access_token: string }>("/auth/login", { email, password });
-      setAccessToken(access_token);
-      const s = tokenToSession(access_token);
-      setSession(s); setUser(s.user);
-      return { error: null };
-    } catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao fazer login" } }; }
+    const sb = getSupabaseClient();
+
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+
+    if (error) {
+      return { error: { message: error.message, status: error.status } };
+    }
+
+    return { error: null };
   };
 
-  const signUp = async (email: string, password: string, fullName?: string): Promise<{ error: AuthError | null }> => {
-    try {
-      const orgNome = fullName?.trim() || email.split("@")[0].replace(/[^a-zA-Z0-9\s]/g, "").trim() || "Organization";
-      const { access_token } = await httpPost<{ access_token: string }>("/auth/register", { email, password, full_name: fullName, org_nome: orgNome });
-      setAccessToken(access_token);
-      const s = tokenToSession(access_token);
-      setSession(s); setUser(s.user);
-      return { error: null };
-    } catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao criar conta" } }; }
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName?: string,
+  ): Promise<{ error: AuthError | null }> => {
+    const { error } = await getSupabaseClient().auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: fullName ?? "",
+          org_name:  fullName?.trim() || email.split("@")[0],
+        },
+      },
+    });
+    if (error) return { error: { message: error.message, status: error.status } };
+    return { error: null };
   };
 
   const signOut = async (): Promise<void> => {
-    try { await httpPost("/auth/logout", null); } catch { /* ignore */ }
-    setAccessToken(null); setUser(null); setSession(null);
+    await getSupabaseClient().auth.signOut();
+    setAccessToken(null);
+    setUser(null);
+    setSession(null);
+    queryClient.clear();
   };
 
-  const resetPassword  = async (email: string):    Promise<{ error: AuthError | null }> => {
-    try { await httpPost("/auth/forgot-password", { email }); return { error: null }; }
-    catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao solicitar redefinição" } }; }
+  const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
+    const redirectTo = `${window.location.origin}/auth?mode=reset`;
+    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { error: { message: error.message, status: error.status } };
+    return { error: null };
   };
 
   const updatePassword = async (password: string): Promise<{ error: AuthError | null }> => {
-    try { await httpPost("/auth/reset-password", { password }); return { error: null }; }
-    catch (err) { return { error: { message: err instanceof Error ? err.message : "Erro ao atualizar senha" } }; }
+    const { error } = await getSupabaseClient().auth.updateUser({ password });
+    if (error) return { error: { message: error.message, status: error.status } };
+    return { error: null };
   };
 
   return (
@@ -169,8 +237,8 @@ function NestAuthProvider({ children }: { children: React.ReactNode }) {
 // ─── AuthProvider principal ───────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (MOCK_MODE) return <MockAuthProvider>{children}</MockAuthProvider>;
-  return           <NestAuthProvider>{children}</NestAuthProvider>;
+  if (MOCK_MODE)       return <MockAuthProvider>{children}</MockAuthProvider>;
+  return                      <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
 
 // ─── Hook público ─────────────────────────────────────────────────────────────

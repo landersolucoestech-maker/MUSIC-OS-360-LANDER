@@ -1,21 +1,24 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe,
 } from '@nestjs/common';
-import { ClerkAuthGuard }       from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }          from '../../core/guards/tenant.guard';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }        from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }          from '../../core/decorators/current-user.decorator';
+import { RequireRole }          from '../../core/decorators/roles.decorator';
 import { EcadReportsService }   from './ecad-reports.service';
 import { CreateEcadReportDto }  from './dto/create-ecad-report.dto';
 import { UpdateEcadReportDto }  from './dto/update-ecad-report.dto';
 
-@UseGuards(ClerkAuthGuard, TenantGuard)
+@ApiTags('EcadReports')
+@ApiBearerAuth()
 @Controller('ecad-reports')
 export class EcadReportsController {
   constructor(private readonly svc: EcadReportsService) {}
 
   @Get()
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Listar relatórios ECAD (manager+)' })
   list(
     @CurrentTenant() tenant: { id: string },
     @Query('periodo') periodo?: string,
@@ -32,6 +35,8 @@ export class EcadReportsController {
   }
 
   @Get(':id')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Obter relatório ECAD por ID' })
   findOne(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -40,15 +45,19 @@ export class EcadReportsController {
   }
 
   @Post()
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Criar relatório ECAD' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser() user: { sub: string },
+    @CurrentUser() user: { userId: string },
     @Body() dto: CreateEcadReportDto,
   ) {
-    return this.svc.create(tenant.id, user.sub, dto);
+    return this.svc.create(tenant.id, user.userId, dto);
   }
 
   @Patch(':id')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Actualizar relatório ECAD' })
   update(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -58,10 +67,12 @@ export class EcadReportsController {
   }
 
   @Delete(':id')
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Remover relatório ECAD (admin+)' })
   remove(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.softDelete(tenant.id, id);
+    return this.svc.remove(tenant.id, id);
   }
 }

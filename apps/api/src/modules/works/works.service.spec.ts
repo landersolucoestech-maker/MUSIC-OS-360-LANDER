@@ -72,9 +72,8 @@ describe('WorksService', () => {
 
   it('softDelete define deleted_at (não executa DELETE SQL)', async () => {
     await service.softDelete(TENANT, WORK_ID);
-    const qb = mockDs._repo._qb;
-    expect(qb.update).toHaveBeenCalled();
-    expect(qb.set).toHaveBeenCalledWith(
+    expect(mockDs._repo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: WORK_ID, tenant_id: TENANT }),
       expect.objectContaining({ deleted_at: expect.any(Date) }),
     );
   });

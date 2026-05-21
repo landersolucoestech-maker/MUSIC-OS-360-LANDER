@@ -1,0 +1,182 @@
+Quero desativar TEMPORARIAMENTE o enforcement de autenticação/RBAC do MUSIC OS 360 para permitir desenvolvimento e validação visual dos módulos restantes.
+
+IMPORTANTE:
+NÃO remover a arquitetura auth.
+NÃO remover Supabase.
+NÃO remover JWT.
+NÃO remover RLS.
+NÃO apagar guards.
+NÃO destruir tenancy.
+
+Objetivo:
+Criar um DEVELOPMENT BYPASS CONTROLADO.
+
+====================================================================
+OBJETIVO
+========
+
+Permitir acesso temporário aos módulos sem bloquear navegação por:
+
+* login
+* RBAC
+* TenantGuard
+* RolesGuard
+* AuthGuard
+
+Mas preservando TODA a arquitetura para reativação posterior.
+
+====================================================================
+IMPLEMENTAÇÃO
+=============
+
+Criar um modo:
+
+```env
+VITE_DEV_AUTH_BYPASS=true
+```
+
+e backend:
+
+```env
+DEV_AUTH_BYPASS=true
+```
+
+====================================================================
+FRONTEND
+========
+
+1. AuthGuard:
+   Quando VITE_DEV_AUTH_BYPASS=true:
+
+* permitir acesso automaticamente
+* sem redirect para /auth
+
+2. useAuth():
+   Retornar usuário mock consistente:
+
+```ts
+{
+  id: "dev-user",
+  email: "dev@musicos360.local",
+  role: "owner",
+  org_id: "dev-org"
+}
+```
+
+3. TenantContext:
+   Injetar tenant mock:
+
+```ts
+{
+  org_id: "dev-org",
+  role: "owner"
+}
+```
+
+4. Sidebar/menu:
+   Liberar todos os módulos.
+
+5. NÃO remover:
+
+* providers
+* contexts
+* hooks
+* guards
+* estrutura auth
+
+====================================================================
+BACKEND
+=======
+
+1. JwtAuthGuard:
+   Quando DEV_AUTH_BYPASS=true:
+
+* inject mock request.auth
+
+```ts
+req.auth = {
+  userId: "dev-user",
+  orgId: "dev-org",
+  role: "owner",
+  permissions: ["*"]
+}
+```
+
+2. TenantGuard:
+   Bypass automático em DEV_AUTH_BYPASS=true
+
+3. RolesGuard:
+   Liberar tudo em bypass.
+
+4. NÃO remover:
+
+* JWT validation code
+* Supabase hooks
+* RLS
+* auth services
+* middleware
+
+====================================================================
+DATABASE
+========
+
+NÃO desativar:
+
+* RLS
+* org_id
+* tenancy
+
+Apenas bypassar enforcement da aplicação.
+
+====================================================================
+IMPORTANTE
+==========
+
+O objetivo NÃO é destruir auth.
+
+O objetivo é:
+
+* permitir desenvolvimento rápido dos módulos
+* validar UI/UX
+* acelerar consolidação operacional
+
+Tudo deve continuar:
+
+* compatível com auth real
+* multi-tenant ready
+* RBAC ready
+
+====================================================================
+OBRIGATÓRIO
+===========
+
+1. Mostrar warning visual:
+   "DEV AUTH BYPASS ACTIVE"
+
+2. Logs claros:
+
+* bypass enabled
+* auth mocked
+* tenant mocked
+
+3. Garantir:
+   produção nunca usa bypass.
+
+4. Criar:
+
+* env validation
+* safety checks
+* startup warnings
+
+====================================================================
+ENTREGÁVEIS
+===========
+
+Quero:
+
+* código completo
+* env vars
+* arquivos alterados
+* mecanismo reversível
+* relatório final
+* instruções para reativar auth real

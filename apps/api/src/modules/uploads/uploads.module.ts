@@ -7,9 +7,11 @@
  */
 
 import { Module } from '@nestjs/common';
-import { UploadsController } from './uploads.controller';
+import { UploadsController }   from './uploads.controller';
+import { UploadEventsHandler } from './handlers/upload-events.handler';
 
 @Module({
   controllers: [UploadsController],
+  providers:   [UploadEventsHandler],
 })
 export class UploadsModule {}

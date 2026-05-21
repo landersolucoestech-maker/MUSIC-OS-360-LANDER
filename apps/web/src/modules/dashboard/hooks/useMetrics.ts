@@ -161,17 +161,19 @@ export function useMetrics(): UseMetricsReturn {
 
     const contratosAtivos = contratos.filter(c => {
       if (c.status !== "ativo") return false;
+      if (!c.data_inicio || !c.data_fim) return false;
       try {
-        const inicio = parseISO(c.data_inicio);
-        const fim = parseISO(c.data_fim);
+        const inicio = parseISO(c.data_inicio as string);
+        const fim = parseISO(c.data_fim as string);
         return hoje >= inicio && hoje <= fim;
       } catch { return false; }
     }).length;
 
     const contratosVencendo = contratos.filter(c => {
       if (c.status !== "ativo") return false;
+      if (!c.data_fim) return false;
       try {
-        const dataFim = parseISO(c.data_fim);
+        const dataFim = parseISO(c.data_fim as string);
         const diasRestantes = differenceInDays(dataFim, hoje);
         return diasRestantes >= 0 && diasRestantes <= 30;
       } catch { return false; }
@@ -181,20 +183,23 @@ export function useMetrics(): UseMetricsReturn {
     const receitaMensal = transacoes
       .filter(t => {
         if (t.tipo !== "receita" || t.status !== "pago") return false;
+        if (!t.data) return false;
         try {
-          const dataTransacao = parseISO(t.data);
+          const dataTransacao = parseISO(t.data as string);
           return dataTransacao >= trintaDiasAtras && dataTransacao <= hoje;
         } catch { return false; }
       })
       .reduce((acc, t) => acc + t.valor, 0);
 
     const eventosHoje = eventos.filter(e => {
-      try { return isToday(parseISO(e.data_inicio)); } catch { return false; }
+      if (!e.data_inicio) return false;
+      try { return isToday(parseISO(e.data_inicio as string)); } catch { return false; }
     }).length;
 
     const eventosMes = eventos.filter(e => {
+      if (!e.data_inicio) return false;
       try {
-        const d = parseISO(e.data_inicio);
+        const d = parseISO(e.data_inicio as string);
         return d >= inicioMes && d <= fimMes;
       } catch { return false; }
     }).length;
@@ -215,7 +220,7 @@ export function useMetrics(): UseMetricsReturn {
       return {
         id: artista.id,
         nome_artistico: artista.nome_artistico,
-        genero_musical: artista.genero_musical,
+        genero_musical: artista.genero_musical ?? null,
         shows,
         receita,
       };

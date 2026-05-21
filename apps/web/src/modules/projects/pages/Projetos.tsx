@@ -529,7 +529,7 @@ export default function Projetos() {
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-interpretes-${project.id}`}>{info.interpretes || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-produtores-${project.id}`}>{info.produtores || "—"}</TableCell>
                         <TableCell className="capitalize text-sm" data-testid={`text-genero-${project.id}`}>{info.genero || "—"}</TableCell>
-                        <TableCell>{getStatusBadge(project.status)}</TableCell>
+                        <TableCell>{getStatusBadge(project.status ?? "")}</TableCell>
                         <TableCell className="text-right">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>

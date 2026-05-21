@@ -22,6 +22,7 @@ import { accountingRoutes } from "@/app/routes/accounting.routes";
 import { releasesRoutes } from "@/app/routes/releases.routes";
 import { crmRoutes } from "@/app/routes/crm.routes";
 import { marketingRoutes } from "@/app/routes/marketing.routes";
+import { workspaceRoutes } from "@/app/routes/workspace.routes";
 import { settingsRoutes } from "@/app/routes/settings.routes";
 import { operationsRoutes } from "@/app/routes/operations.routes";
 import { adminRoutes } from "@/app/routes/admin.routes";
@@ -91,6 +92,7 @@ const App = () => {
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
                 {artistRoutes(ProtectedRoute)}
+                {workspaceRoutes(ProtectedRoute)}
                 {catalogRoutes(ProtectedRoute)}
                 {accountingRoutes(ProtectedRoute)}
                 {releasesRoutes(ProtectedRoute)}

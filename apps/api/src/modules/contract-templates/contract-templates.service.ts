@@ -42,7 +42,7 @@ export class ContractTemplatesService {
 
   async create(tenantId: string, userId: string, dto: CreateContractTemplateDto): Promise<ContractTemplateEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateContractTemplateDto): Promise<ContractTemplateEntity> {

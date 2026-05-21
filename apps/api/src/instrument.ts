@@ -1,17 +1,17 @@
 /**
- * instrument.ts
+ * instrument.ts — Sentry SDK initialization
  *
- * Sentry SDK initialization — deve ser importado ANTES de qualquer outro módulo
- * da aplicação (incluindo NestJS / Express).
- * Segue as instruções oficiais do Sentry para Node.js.
+ * MUST be the very first import in main.ts (before NestJS, Express, anything).
+ * Uses synchronous init so the SDK instruments Express before the framework
+ * installs its own request handlers.
  *
- * Se SENTRY_DSN não estiver configurado, o SDK é desativado silenciosamente.
+ * When SENTRY_DSN is absent the SDK is disabled; the app boots normally.
  */
 
-// ── Silencia ruído ioredis em desenvolvimento ──────────────────────────────
-// BullMQ duplica conexões ioredis por fila; as duplicatas emitem 'error' events
-// sem listeners → ioredis loga "[ioredis] Unhandled error event" via console.error.
-// Em produção (Railway) o Redis está acessível, então este filtro não interfere.
+// ── Silences ioredis noise in development ─────────────────────────────────────
+// BullMQ duplicates ioredis connections per queue; duplicates emit 'error' events
+// with no listeners → ioredis logs "[ioredis] Unhandled error event" to console.
+// In production (Railway) Redis is reachable — this filter doesn't interfere.
 if (process.env['NODE_ENV'] !== 'production') {
   const _origError = console.error.bind(console);
   console.error = (...args: unknown[]) => {
@@ -22,64 +22,59 @@ if (process.env['NODE_ENV'] !== 'production') {
       first.includes('redis.railway.internal') ||
       first.includes('Connection is closed')
     ) {
-      return; // engole ruído de conexão Redis inacessível em dev
+      return;
     }
     _origError(...args);
   };
 }
 
+import * as Sentry from '@sentry/node';
+
 const SENTRY_DSN = process.env['SENTRY_DSN'];
 
 if (SENTRY_DSN) {
-  // Import dinâmico para não crashar se @sentry/node não estiver instalado
-  import('@sentry/node')
-    .then(Sentry => {
-      Sentry.init({
-        dsn: SENTRY_DSN,
+  Sentry.init({
+    dsn: SENTRY_DSN,
 
-        environment: process.env['NODE_ENV'] ?? 'development',
+    environment: process.env['NODE_ENV'] ?? 'development',
 
-        // Release tracking (ex: Git SHA injectado no CI/CD)
-        release: process.env['SENTRY_RELEASE'] ?? undefined,
+    // Release tracking — inject via CI/CD as the git SHA.
+    release: process.env['SENTRY_RELEASE'] ?? undefined,
 
-        // Distributed tracing — 10% sampling em produção
-        tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.1 : 1.0,
+    // Distributed tracing: 10% in production, 100% in dev/staging.
+    tracesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.1 : 1.0,
 
-        // Profiles — apenas em produção
-        profilesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.05 : 0,
+    // Profiling: 5% in production only.
+    profilesSampleRate: process.env['NODE_ENV'] === 'production' ? 0.05 : 0,
 
-        // Dados sensíveis: nunca enviar request bodies com PII
-        sendDefaultPii: false,
+    // Never send request bodies — they may contain PII or encrypted data.
+    sendDefaultPii: false,
 
-        // Integrations padrão do Sentry Node.js (HTTP, Express, etc.)
-        integrations: [
-          Sentry.httpIntegration(),
-          Sentry.expressIntegration(),
-        ],
+    integrations: [
+      Sentry.httpIntegration(),
+      Sentry.expressIntegration(),
+    ],
 
-        // Ignorar erros de cliente (4xx) — só queremos erros de sistema
-        ignoreErrors: [
-          /^NotFoundException/,
-          /^UnauthorizedException/,
-          /^ForbiddenException/,
-          /^BadRequestException/,
-          /^ConflictException/,
-        ],
+    // Suppress client errors (4xx) — only capture system errors.
+    ignoreErrors: [
+      /^NotFoundException/,
+      /^UnauthorizedException/,
+      /^ForbiddenException/,
+      /^BadRequestException/,
+      /^ConflictException/,
+    ],
 
-        // Breadcrumbs: desativar console (muito verboso) em produção
-        beforeBreadcrumb(breadcrumb) {
-          if (breadcrumb.category === 'console' && process.env['NODE_ENV'] === 'production') {
-            return null;
-          }
-          return breadcrumb;
-        },
-      });
+    beforeBreadcrumb(breadcrumb) {
+      if (breadcrumb.category === 'console' && process.env['NODE_ENV'] === 'production') {
+        return null;
+      }
+      return breadcrumb;
+    },
+  });
 
-      console.info(`[Sentry] Inicializado — env: ${process.env['NODE_ENV'] ?? 'development'}`);
-    })
-    .catch(err => {
-      console.warn(`[Sentry] Falha na inicialização (continuando sem monitoramento): ${String(err)}`);
-    });
+  console.info(`[Sentry] Initialized — env: ${process.env['NODE_ENV'] ?? 'development'}`);
 } else {
-  console.info('[Sentry] SENTRY_DSN não configurado — monitoramento desativado');
+  console.info('[Sentry] SENTRY_DSN not set — monitoring disabled');
 }
+
+export { Sentry };

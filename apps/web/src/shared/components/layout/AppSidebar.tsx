@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@/app/providers/AuthContext";
 import { useTenant } from "@/app/providers/TenantContext";
@@ -109,7 +109,7 @@ const NAV_ITEMS: NavItem[] = [
       { title: "Gestão de Shares", href: "/gestao-shares", icon: Share2 },
     ],
   },
-  { title: "Contratos",        href: "/contratos",  icon: FileText,      featureFlag: "moduleContracts" },
+  { title: "Contratos", href: "/contratos", icon: FileText, featureFlag: "moduleContracts" },
   {
     title: "Financeiro",
     icon: DollarSign,
@@ -185,6 +185,19 @@ export function AppSidebar() {
       .join("")
       .toUpperCase()
       .slice(0, 2) || "U";
+
+  // Auto-expand group when a child route is active
+  useEffect(() => {
+    const activeGroup = NAV_ITEMS.find(
+      (item) =>
+        item.children?.some((c) => location.pathname.startsWith(c.href ?? "")),
+    );
+    if (activeGroup) {
+      setOpenMenus((prev) =>
+        prev.includes(activeGroup.title) ? prev : [...prev, activeGroup.title],
+      );
+    }
+  }, [location.pathname]);
 
   const toggleMenu = (title: string) =>
     setOpenMenus((prev) => (prev.includes(title) ? [] : [title]));

@@ -1,0 +1,90 @@
+version: '3.9'
+
+# ─── MUSIC OS 360 — Local Development Stack ──────────────────────────────────
+# Serviços: PostgreSQL + Redis + API NestJS
+# Frontend (Vite) corre localmente via `npm run dev:web` — não containerizado.
+#
+# Uso:
+#   docker compose up -d          # subir todos os serviços em background
+#   docker compose logs -f api    # acompanhar logs da API
+#   docker compose down -v        # parar e remover volumes
+#
+# Variáveis de ambiente: copiar .env.example → .env e preencher.
+
+services:
+  # ─── PostgreSQL ──────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: musicos360_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: musicos360
+      POSTGRES_PASSWORD: musicos360_dev
+      POSTGRES_DB: musicos360
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U musicos360']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: musicos360_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─── NestJS API ──────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+      target: production
+    container_name: musicos360_api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+      DATABASE_URL: postgresql://musicos360:musicos360_dev@postgres:5432/musicos360
+      REDIS_QUEUE_URL: redis://redis:6379
+      # Preencher com valores reais (ou usar .env):
+      SUPABASE_JWT_SECRET: ${SUPABASE_JWT_SECRET:-dev_secret_change_me}
+      VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
+      CORS_ORIGINS: http://localhost:5000
+    ports:
+      - '3001:3001'
+    volumes:
+      - api_logs:/app/apps/api/logs
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:3001/api/v1/health || exit 1']
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  postgres_data:
+    name: musicos360_postgres_data
+  redis_data:
+    name: musicos360_redis_data
+  api_logs:
+    name: musicos360_api_logs

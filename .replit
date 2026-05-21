@@ -37,7 +37,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd apps/web && npx vite --host 0.0.0.0 --port 5000"
+args = "cd apps/web && node_modules/.bin/vite --host 0.0.0.0 --port 5000"
 waitForPort = 5000
 
 [[workflows.workflow]]
@@ -49,7 +49,7 @@ outputType = "console"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd apps/api && npm run dev"
+args = "cd apps/api && npx ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts"
 waitForPort = 3001
 
 [[ports]]
@@ -80,8 +80,8 @@ externalPort = 3002
 
 [userenv.shared]
 VITE_API_URL = "http://localhost:3001/api/v1"
-VITE_USE_MOCK = "true"
-VITE_MOCK_MODE = "true"
+VITE_USE_MOCK = "false"
+VITE_MOCK_MODE = "false"
 VITE_SENTRY_DSN = ""
 VITE_POSTHOG_KEY = ""
 VITE_APP_NAME = "MUSIC OS 360"

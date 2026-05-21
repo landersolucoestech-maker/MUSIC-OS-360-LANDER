@@ -98,15 +98,26 @@ export class QueueModule {
   }
 
   static async register(): Promise<DynamicModule> {
-    const url = process.env['REDIS_QUEUE_URL'];
+    const url       = process.env['REDIS_QUEUE_URL'];
+    const isProd    = process.env['NODE_ENV'] === 'production';
 
     if (!isIoRedisUrl(url)) {
+      if (isProd) {
+        moduleLogger.error('REDIS_QUEUE_URL não configurado em produção — abortando startup');
+        process.exit(1);
+      }
       moduleLogger.warn('REDIS_QUEUE_URL não configurado — BullMQ desativado (modo no-op)');
       return QueueModule.noOpModule();
     }
 
     const ok = await probeRedis(url!);
-    if (!ok) return QueueModule.noOpModule();
+    if (!ok) {
+      if (isProd) {
+        moduleLogger.error('Redis inacessível em produção — abortando startup');
+        process.exit(1);
+      }
+      return QueueModule.noOpModule();
+    }
 
     moduleLogger.log(`BullMQ activado — Redis: ${url!.substring(0, 40)}...`);
 

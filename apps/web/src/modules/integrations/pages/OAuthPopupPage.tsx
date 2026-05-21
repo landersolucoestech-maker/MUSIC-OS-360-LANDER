@@ -6,8 +6,9 @@
  * Fluxo: simulação de login → postMessage(musicos360_oauth_success) → parent conecta integração.
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
+import { MOCK_MODE } from "@/shared/lib/env";
 import { Eye, EyeOff, ChevronRight, UserCircle2, Mail, Lock, Upload, QrCode } from "lucide-react";
 
 // ─── SVG Logos ────────────────────────────────────────────────────────────────
@@ -484,10 +485,121 @@ const FALLBACK: PlatformConfig = {
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
 
+// ─── Production OAuth authorization URLs ─────────────────────────────────────
+//
+// In production mode (MOCK_MODE=false) the popup does NOT simulate a login —
+// it immediately redirects to the real platform's OAuth authorization endpoint.
+// The platform then redirects back to /oauth/callback?code=...&state=<platform>
+// where the callback page (task #24) exchanges the code for a real access_token
+// and postMessages it to the opener, completing the flow.
+//
+// Each URL is built from VITE_* env vars.  If a client_id env var is missing
+// the redirect is skipped and an informational message is shown instead.
+
+const CALLBACK_URI = `${window.location.origin}/oauth/callback`;
+
+type PlatformOAuthConfig = {
+  authUrl: string;
+  clientId: string;
+  scopes: string;
+  /** Some platforms (TikTok) use `client_key` instead of `client_id` in the authorize URL. */
+  clientIdParam?: string;
+};
+
+/**
+ * Builds the real platform OAuth authorization URL.
+ * The `state` parameter carries both the platform id and the CSRF nonce in the
+ * form `${platform}:${nonce}` so that OAuthCallbackPage can extract and validate
+ * both values before exchanging the authorization code.
+ *
+ * The param name for the client identifier varies by platform:
+ *   Meta/Google → `client_id`
+ *   TikTok      → `client_key`
+ */
+function buildOAuthUrl(platform: string, nonce: string): string | null {
+  const cfg = PRODUCTION_OAUTH_CONFIGS[platform];
+  if (!cfg?.clientId) return null;
+  const clientIdParam = cfg.clientIdParam ?? "client_id";
+  const params = new URLSearchParams({
+    [clientIdParam]: cfg.clientId,
+    redirect_uri:    CALLBACK_URI,
+    response_type:   "code",
+    scope:           cfg.scopes,
+    state:           `${platform}:${nonce}`,
+  });
+  return `${cfg.authUrl}?${params.toString()}`;
+}
+
+const PRODUCTION_OAUTH_CONFIGS: Record<string, PlatformOAuthConfig> = {
+  corp_instagram: {
+    authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
+    clientId: (import.meta.env.VITE_META_APP_ID as string | undefined) ?? "",
+    scopes:   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
+  },
+  meta_business: {
+    authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
+    clientId: (import.meta.env.VITE_META_APP_ID as string | undefined) ?? "",
+    scopes:   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
+  },
+  corp_tiktok: {
+    authUrl:      "https://www.tiktok.com/v2/auth/authorize",
+    clientId:     (import.meta.env.VITE_TIKTOK_CLIENT_KEY as string | undefined) ?? "",
+    // TikTok authorize endpoint uses `client_key`, not `client_id`
+    clientIdParam: "client_key",
+    scopes:       "video.publish,user.info.basic",
+  },
+  tiktok_business: {
+    authUrl:      "https://www.tiktok.com/v2/auth/authorize",
+    clientId:     (import.meta.env.VITE_TIKTOK_CLIENT_KEY as string | undefined) ?? "",
+    clientIdParam: "client_key",
+    scopes:       "video.publish,user.info.basic",
+  },
+  corp_youtube: {
+    authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
+    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+  },
+  youtube_business: {
+    authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
+    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+  },
+  google_business: {
+    authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
+    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+  },
+};
+
+// ─── Helper ───────────────────────────────────────────────────────────────────
+
+/**
+ * Sends the OAuth success message to the opener window.
+ *
+ * MOCK_MODE=true (demo/testing): emits a synthetic `demo_token_*` so the full
+ * activation UI flow completes end-to-end without a real backend.
+ *
+ * MOCK_MODE=false (production): this function is called by the real OAuth
+ * callback page (/oauth/callback, task #24) ONLY — the popup itself redirects
+ * to the platform's authorization URL and never calls this directly.
+ * Synthetic tokens are NEVER emitted in production paths.
+ *
+ * Target origin is always `window.location.origin` (never "*") to prevent
+ * cross-origin token injection by malicious iframes or foreign tabs.
+ */
 function sendSuccessAndClose(platform: string) {
-  if (window.opener) {
-    window.opener.postMessage({ type: "musicos360_oauth_success", platform }, "*");
+  if (!window.opener) { window.close(); return; }
+
+  if (MOCK_MODE) {
+    // Demo mode only: synthetic token for UI testing.
+    const demoToken = `demo_token_${platform}_${Date.now()}`;
+    window.opener.postMessage(
+      { type: "musicos360_oauth_success", platform, access_token: demoToken },
+      window.location.origin,
+    );
   }
+  // In production mode the caller is the real callback page — it will post the
+  // real token itself; nothing to emit here.
   window.close();
 }
 
@@ -496,6 +608,10 @@ function sendSuccessAndClose(platform: string) {
 export default function OAuthPopupPage() {
   const { platform = "google_business" } = useParams<{ platform: string }>();
   const cfg = PLATFORMS[platform] ?? FALLBACK;
+  // nonce is passed from MarketingOAuthDialog as a URL query param.
+  // In production mode it is embedded in the OAuth state param so
+  // OAuthCallbackPage can validate CSRF on return.
+  const nonce = new URLSearchParams(window.location.search).get("nonce") ?? "";
 
   const isDark = cfg.variant === "dark-saas" || cfg.variant === "spotify";
   const isGov  = cfg.variant === "gov";
@@ -525,6 +641,20 @@ export default function OAuthPopupPage() {
   const [certFile, setCertFile]   = useState("");
   const [certPin, setCertPin]     = useState("");
   const [certPinShow, setCertPinShow] = useState(false);
+
+  // Production mode: immediately redirect to the real platform OAuth entry URL.
+  // The state param carries `${platform}:${nonce}` for CSRF validation in callback.
+  // Synthetic demo tokens are never emitted in production paths.
+  // The real access_token arrives via /oauth/callback.
+  useEffect(() => {
+    if (MOCK_MODE) return;
+    const url = buildOAuthUrl(platform, nonce);
+    if (url) {
+      window.location.replace(url);
+    }
+    // If no client_id is configured, stay on this page and render the
+    // "credentials not configured" UI (handled in the JSX render below).
+  }, [platform, nonce]);
 
   // Handlers
   const onAccountClick = () => {
@@ -561,7 +691,7 @@ export default function OAuthPopupPage() {
       case "tiktok": return (
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <div style={{ width: 36, height: 36, borderRadius: 8, backgroundColor: "#010101", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <SvgTikTok size={22} color="white" />
+            <SvgTikTok size={22} />
           </div>
         </div>
       );
@@ -744,7 +874,7 @@ export default function OAuthPopupPage() {
                 <div style={{ fontSize: 13, color: textSub }}>{cfg.tagline}</div>
               </div>
             )}
-            <div style={{ width: "100%", height: 1, backgroundColor: divColor, margin: "0 -40px 16px", width: "calc(100% + 80px)" }} />
+            <div style={{ height: 1, backgroundColor: divColor, margin: "0 -40px 16px", width: "calc(100% + 80px)" }} />
 
             {/* CHOOSE */}
             {step === "choose" && (

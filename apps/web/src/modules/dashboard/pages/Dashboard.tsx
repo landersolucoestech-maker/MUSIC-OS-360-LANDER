@@ -180,9 +180,10 @@ export default function Dashboard() {
   useWsEvent("finance.calculated", () =>
     push({ icon: <DollarSign className="h-3.5 w-3.5" />, label: "Apuração concluída", description: "Accounting recalculado", badge: "Accounting", badgeVariant: "default" }),
   );
-  useWsEvent("audit.entry.created", (d) =>
-    push({ icon: <Shield className="h-3.5 w-3.5" />, label: `Auditoria: ${d.action}`, description: d.entity, badge: "Sistema", badgeVariant: "outline" }),
-  );
+  useWsEvent("audit.entry.created", (d) => {
+    const ev = d as { action?: string; entity?: string };
+    push({ icon: <Shield className="h-3.5 w-3.5" />, label: `Auditoria: ${ev.action ?? ""}`, description: ev.entity ?? "", badge: "Sistema", badgeVariant: "outline" });
+  });
 
   // Mock mode: window CustomEvents
   const pushRef = useRef(push);

@@ -14,6 +14,8 @@ import { MOCK_MODE } from "@/shared/lib/env";
 export interface SoundCloudStatus {
   connected: boolean;
   last_sync_at?: string | null;
+  permalink?: string | null;
+  username?: string | null;
 }
 
 export interface SoundCloudCredentials {

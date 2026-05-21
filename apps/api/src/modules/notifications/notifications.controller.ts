@@ -1,12 +1,9 @@
 import {
   Controller, Get, Post, Patch,
-  Body, Param, Query, UseGuards,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { ClerkAuthGuard }  from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }     from '../../core/guards/tenant.guard';
-import { RolesGuard }      from '../../core/guards/roles.guard';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
@@ -16,7 +13,6 @@ import { PaginationDto }         from '../../common/dto/pagination.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard, TenantGuard, RolesGuard)
 @Controller('notifications')
 export class NotificationsController {
   constructor(private readonly service: NotificationsService) {}

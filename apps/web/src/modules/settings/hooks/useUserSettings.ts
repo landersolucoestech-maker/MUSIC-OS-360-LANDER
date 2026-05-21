@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/app/providers/AuthContext";
+import { getSupabaseClient } from "@/lib/supabase";
 import { toast } from "sonner";
 
 /**
@@ -16,6 +17,7 @@ export interface UserSettings {
   full_name: string;
   phone: string;
   cargo: string;
+  setor: string;
   avatar_url: string;
   notify_email: boolean;
   notify_push: boolean;
@@ -64,6 +66,7 @@ const defaultUserSettings: UserSettings = {
   full_name: "",
   phone: "",
   cargo: "",
+  setor: "",
   avatar_url: "",
   notify_email: true,
   notify_push: false,
@@ -168,6 +171,17 @@ export function useUserSettings() {
       const updated = { ...userSettings, ...settings, user_id: user.id };
       writeJSON(userKey(user.id), updated);
       setUserSettings(updated);
+
+      // Sincroniza full_name e avatar_url com Supabase user_metadata
+      // para refletir na sidebar e em todos os componentes que lêem user.user_metadata
+      const metaUpdate: Record<string, unknown> = {};
+      if (settings.full_name !== undefined) metaUpdate.full_name = settings.full_name;
+      if (settings.avatar_url !== undefined) metaUpdate.avatar_url = settings.avatar_url;
+      if (settings.phone !== undefined)      metaUpdate.phone = settings.phone;
+      if (Object.keys(metaUpdate).length > 0) {
+        await getSupabaseClient().auth.updateUser({ data: metaUpdate });
+      }
+
       toast.success("Configurações salvas com sucesso!");
     } finally {
       setSaving(false);

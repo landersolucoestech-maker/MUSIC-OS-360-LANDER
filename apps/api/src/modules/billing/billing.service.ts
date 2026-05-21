@@ -18,7 +18,9 @@ import {
   OrganizationEntity,
   WebhookEventEntity,
 } from '../../database/entities';
+import { WebhookEventStatus } from '@music-os-360/types';
 import { WsGateway } from '../../core/websocket/ws.gateway';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 // ── Stripe CJS/ESM interop ────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -61,7 +63,7 @@ interface StripeWebhookEvent {
   data: { object: unknown };
 }
 
-const PLAN_FEATURES = {
+export const PLAN_FEATURES = {
   starter: {
     moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
     moduleMarketing: false, moduleAccounting: false, moduleMonitoring: false, aiFeatures: false, moduleRh: false,
@@ -75,9 +77,22 @@ const PLAN_FEATURES = {
     moduleArtists: true, moduleCatalog: true, moduleContracts: true, moduleCrm: true,
     moduleMarketing: true, moduleAccounting: true, moduleMonitoring: true, aiFeatures: true,
     moduleRh: true, moduleEvents: true, moduleInventory: true, moduleLicensing: true,
-    multiTenantAdmin: true, analyticsAdvanced: true, whitelabel: true,
+    multiTenantAdmin: true, analyticsAdvanced: true,
   },
 } as const;
+
+/** Hard resource limits per plan. null = unlimited. */
+export const PLAN_LIMITS: Record<string, {
+  artists:          number | null;
+  contracts:        number | null;
+  storageGb:        number | null;
+  users:            number | null;
+  monthlyAiUsd:     number | null; // Monthly AI API spend cap in USD
+}> = {
+  starter:      { artists: 5,    contracts: 20,   storageGb: 5,    users: 3,    monthlyAiUsd: 2    },
+  professional: { artists: 50,   contracts: 200,  storageGb: 50,   users: 15,   monthlyAiUsd: 20   },
+  enterprise:   { artists: null, contracts: null,  storageGb: null, users: null, monthlyAiUsd: null },
+};
 
 type Plan = keyof typeof PLAN_FEATURES;
 
@@ -94,6 +109,7 @@ export class BillingService {
     private readonly config: ConfigService,
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly ws: WsGateway,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.subRepo     = ds.getRepository(BillingSubscriptionEntity);
@@ -187,7 +203,7 @@ export class BillingService {
       .where('w.external_id = :externalId', { externalId: event.id })
       .getOne();
 
-    if (existing?.status === 'processed') {
+    if (existing?.status === WebhookEventStatus.PROCESSED) {
       this.logger.log(`Webhook já processado: ${event.id}`);
       return { received: true };
     }
@@ -199,7 +215,7 @@ export class BillingService {
         event_type:  event.type,
         external_id: event.id,
         payload:     event as unknown as Record<string, unknown>,
-        status:      'pending',
+        status:      WebhookEventStatus.PENDING,
       });
       await this.webhookRepo!.save(entity).catch(() => { /* idempotência */ });
     }
@@ -281,6 +297,29 @@ export class BillingService {
 
     this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan });
     this.logger.log(`Plano atualizado: org ${org_id} → ${plan}`);
+
+    // Emit TENANT_CREATED to bootstrap categories/templates/roles for the newly activated tenant
+    const tenantRecord = await this.tenantRepo!
+      .createQueryBuilder('t')
+      .select(['t.id', 't.name', 't.slug', 't.plan'])
+      .where('t.id = :tenantId', { tenantId: tenant_id })
+      .getOne();
+
+    if (tenantRecord) {
+      this.events.emitTyped(DOMAIN_EVENTS.TENANT_CREATED, {
+        tenantId:      tenant_id,
+        userId:        'billing:checkout',
+        aggregateType: 'tenant',
+        aggregateId:   tenant_id,
+        payload: {
+          tenantId: tenant_id,
+          name:     tenantRecord.name,
+          slug:     tenantRecord.slug,
+          plan:     plan as string,
+        },
+      });
+      this.logger.log(`BillingService: TENANT_CREATED emitted for tenant=${tenant_id} plan=${plan}`);
+    }
   }
 
   private async onSubUpdated(sub: StripeSubscription) {
@@ -303,7 +342,7 @@ export class BillingService {
     await this.subRepo!
       .createQueryBuilder()
       .update(BillingSubscriptionEntity)
-      .set({ status: 'cancelled', updated_at: new Date() } as any)
+      .set({ status: 'canceled', updated_at: new Date() } as any)
       .where('stripe_sub_id = :subId', { subId: sub.id })
       .execute();
 
@@ -317,7 +356,7 @@ export class BillingService {
     await this.orgRepo!
       .createQueryBuilder()
       .update(OrganizationEntity)
-      .set({ plan: 'starter', billing_status: 'cancelled', updated_at: new Date() } as any)
+      .set({ plan: 'starter', billing_status: 'canceled', updated_at: new Date() } as any)
       .where('id = :orgId', { orgId })
       .execute();
 
@@ -326,6 +365,48 @@ export class BillingService {
 
   private async onPaymentFailed(invoice: StripeInvoice) {
     this.logger.warn(`Pagamento falhou: customer ${invoice.customer}`);
+
+    if (!invoice.customer) return;
+
+    const sub = await this.subRepo!
+      .createQueryBuilder('s')
+      .where('s.stripe_customer_id = :customerId', { customerId: invoice.customer })
+      .getOne();
+
+    if (!sub) return;
+
+    await this.subRepo!
+      .createQueryBuilder()
+      .update(BillingSubscriptionEntity)
+      .set({ status: 'past_due', updated_at: new Date() } as any)
+      .where('id = :id', { id: sub.id })
+      .execute();
+
+    const orgRow = await this.orgRepo!
+      .createQueryBuilder('o')
+      .where('o.id = :orgId', { orgId: sub.org_id })
+      .getOne();
+
+    if (orgRow) {
+      await this.orgRepo!
+        .createQueryBuilder()
+        .update(OrganizationEntity)
+        .set({ billing_status: 'past_due', updated_at: new Date() } as any)
+        .where('id = :id', { id: orgRow.id })
+        .execute();
+
+      const tenantRow = await this.tenantRepo!
+        .createQueryBuilder('t')
+        .where('t.org_id = :orgId', { orgId: sub.org_id })
+        .getOne();
+
+      if (tenantRow) {
+        this.ws.sendToTenant(tenantRow.id, 'billing:payment_failed', {
+          org_id: sub.org_id,
+          message: 'Pagamento recusado — actualize o método de pagamento para manter o acesso',
+        });
+      }
+    }
   }
 
   // ── Query ──────────────────────────────────────────────────────────────────
@@ -336,5 +417,94 @@ export class BillingService {
       .where('s.org_id = :orgId', { orgId })
       .getOne();
     return sub ?? null;
+  }
+
+  /**
+   * SaaS metrics for super-admins/internal dashboards.
+   * Computes MRR, ARR, churn, and LTV across all tenants.
+   */
+  async getSaasMetrics(): Promise<{
+    mrr:       number;
+    arr:       number;
+    activeOrgs: number;
+    churned30d: number;
+    churnRate:  number;
+    ltv:        number;
+    byPlan:    Record<string, number>;
+  }> {
+    const PLAN_MRR: Record<string, number> = {
+      starter:      29,
+      professional: 99,
+      enterprise:   299,
+    };
+
+    const subs = await this.subRepo!
+      .createQueryBuilder('s')
+      .select(['s.plan', 's.status', 's.updated_at'])
+      .getMany();
+
+    const activeOrgs = subs.filter(s => s.status === 'active').length;
+    const byPlan: Record<string, number> = {};
+    let mrr = 0;
+
+    for (const sub of subs) {
+      if (sub.status === 'active') {
+        const plan = (sub.plan as string | undefined) ?? 'starter';
+        byPlan[plan] = (byPlan[plan] ?? 0) + 1;
+        mrr += PLAN_MRR[plan] ?? 0;
+      }
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const churned30d = subs.filter(
+      s => s.status === 'canceled' && new Date(s.updated_at) >= thirtyDaysAgo,
+    ).length;
+
+    const churnRate  = activeOrgs > 0 ? churned30d / activeOrgs : 0;
+    const avgMrr     = activeOrgs > 0 ? mrr / activeOrgs : 0;
+    const avgLifetime = churnRate > 0 ? 1 / churnRate : 24; // months; default 24 if no churn
+    const ltv        = avgMrr * avgLifetime;
+
+    return {
+      mrr,
+      arr:        mrr * 12,
+      activeOrgs,
+      churned30d,
+      churnRate:  Math.round(churnRate * 10_000) / 10_000,
+      ltv:        Math.round(ltv * 100) / 100,
+      byPlan,
+    };
+  }
+
+  async getUsage(tenantId: string, orgId: string) {
+    const sub   = await this.getSubscription(orgId);
+    const plan  = (sub?.plan as string | undefined) ?? 'starter';
+    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS['starter']!;
+
+    const ds = this.subRepo!.manager.connection;
+
+    const [artistCount, contractCount, userCount] = await Promise.all([
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM contracts WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
+      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM org_members WHERE org_id = $1', [orgId]),
+    ]);
+
+    const usage = {
+      artists:   parseInt(artistCount[0]?.count ?? '0', 10),
+      contracts: parseInt(contractCount[0]?.count ?? '0', 10),
+      users:     parseInt(userCount[0]?.count ?? '0', 10),
+    };
+
+    return {
+      plan,
+      status: sub?.status ?? 'inactive',
+      usage,
+      limits,
+      percentages: {
+        artists:   limits.artists   ? Math.round((usage.artists   / limits.artists)   * 100) : null,
+        contracts: limits.contracts ? Math.round((usage.contracts / limits.contracts) * 100) : null,
+        users:     limits.users     ? Math.round((usage.users     / limits.users)     * 100) : null,
+      },
+    };
   }
 }

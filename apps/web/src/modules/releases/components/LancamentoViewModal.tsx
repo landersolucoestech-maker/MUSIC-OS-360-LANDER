@@ -6,6 +6,10 @@ import { Music, Mic2, Clock } from "lucide-react";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { StatusBadge } from "@/shared/components/StatusBadge";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 interface LancamentoViewModalProps {
   open: boolean;
@@ -54,9 +58,23 @@ function aggregateField(faixas: any[], key: string): string {
 export function LancamentoViewModal({ open, onOpenChange, lancamento }: LancamentoViewModalProps) {
   const { artistas }   = useArtistas();
   const { fonogramas } = useFonogramas();
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'lancamentos',
+    id:       lancamento?.id ?? '',
+    queryKey: ['lancamentos'],
+  });
+
+  const { data: detail } = useEntityDetail<typeof lancamento & { allowed_transitions?: WorkflowTransition[] }>(
+    'lancamentos', lancamento?.id, open,
+  );
 
   if (!lancamento) return null;
 
+  const allowedTransitions = resolveAllowedTransitions(
+    'release',
+    detail?.status ?? lancamento.status,
+    detail?.allowed_transitions,
+  );
   const tipo     = (lancamento.tipo ?? "single").toLowerCase();
   const tipoInfo = TIPO_MAP[tipo] ?? { label: tipo.toUpperCase(), color: "bg-muted text-muted-foreground" };
 
@@ -97,6 +115,15 @@ export function LancamentoViewModal({ open, onOpenChange, lancamento }: Lancamen
                 <span className="text-xs text-muted-foreground">{dataFormatada}</span>
               )}
             </div>
+            {allowedTransitions.length > 0 && (
+              <WorkflowTransitionPanel
+                currentStatus={lancamento.status ?? ""}
+                allowedTransitions={allowedTransitions}
+                onTransition={workflowTransition}
+                isLoading={isTransitionPending}
+                className="mt-2"
+              />
+            )}
           </div>
         </div>
 

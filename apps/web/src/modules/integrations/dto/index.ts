@@ -11,7 +11,7 @@
  *   import type { SendEmailParams } from "@/modules/integrations/dto";
  */
 
-// ── Auth (Clerk) ──────────────────────────────────────────────────────────────
+// ── Auth (Supabase Auth) ──────────────────────────────────────────────────────────────
 export type {
   AuthUser,
   AuthSession,
@@ -23,7 +23,7 @@ export type {
 } from "@/shared/integrations/contracts/auth.contract";
 
 export {
-  CLERK_CAPABILITIES,
+  SUPABASE_AUTH_CAPABILITIES,
   MOCK_AUTH_CAPABILITIES,
 } from "@/shared/integrations/contracts/auth.contract";
 

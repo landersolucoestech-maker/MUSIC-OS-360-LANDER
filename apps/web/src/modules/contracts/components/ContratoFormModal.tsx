@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
@@ -23,34 +23,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/di
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
+import type { ContratoSigner } from "@/modules/contracts/lib/contrato-schema";
+import { useContractServiceTypes } from "@/modules/contracts/hooks/useContractServiceTypes";
+import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
+import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { UserPlus, X } from "lucide-react";
-
-// ── Labels ───────────────────────────────────────────────────────────────────
-const ARTISTA_SERVICE_LABELS: Record<string, string> = {
-  empresariamento: "Empresariamento",
-  empresariamento_suporte: "Empresariamento com suporte",
-  gestao: "Gestão",
-  agenciamento: "Agenciamento",
-  edicao: "Edição",
-  distribuicao: "Distribuição",
-  marketing: "Marketing",
-  producao_musical: "Produção Musical",
-  producao_audiovisual: "Produção Audiovisual",
-  licenciamento: "Licenciamento",
-};
-
-const EMPRESA_SERVICE_LABELS: Record<string, string> = {
-  producao_musical: "Produção Musical",
-  marketing: "Marketing",
-  producao_audiovisual: "Produção Audiovisual",
-  publicidade: "Publicidade",
-  parceria: "Parceria",
-  shows: "Shows",
-  licenciamento: "Licenciamento",
-  outros: "Outros",
-};
-
-const EMPRESA_SERVICE_KEYS = Object.keys(EMPRESA_SERVICE_LABELS);
 
 const STATUS_LABELS: Record<string, string> = {
   rascunho: "Rascunho",
@@ -84,13 +61,86 @@ const ContractForm = ({
   const { clientes } = useClientes();
   const { lancamentos } = useLancamentos();
 
-  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
-  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
-
   const form = useForm<ContratoFormData>({
     resolver: zodResolver(contratoSchema),
     defaultValues: { status: "rascunho", registry_office: false, signers: [], ...initialData },
   });
+
+  const serviceTypeValue = form.watch("service_type");
+  const { serviceTypes, allServiceTypes } = useContractServiceTypes(null);
+  const { templates } = useTemplatesContratos();
+
+  // Normaliza slugs da CategoryRegistry (e legados) para slugs CST equivalentes.
+  // O workspace guarda tipo_servico com slugs da CategoryRegistry (ex: "empresariamento_360").
+  // Esta função converte-os para o slug CST correspondente para que o filtro funcione.
+  const normalizeToCst = useCallback((slug: string | undefined | null): string | null => {
+    if (!slug) return null;
+    const CST_VALID = new Set([
+      "empresariamento","suporte_financeiro","gestao","agenciamento","edicao",
+      "distribuicao","marketing","producao_musical","producao_audiovisual",
+      "licenciamento","publicidade","parceria","shows","outros",
+    ]);
+    if (CST_VALID.has(slug)) return slug;
+    const MAP: Record<string, string> = {
+      exclusividade: "agenciamento",
+      gravacao: "producao_musical",
+      cessao_direitos: "licenciamento",
+      producao: "producao_musical",
+      publicitario: "publicidade",
+      semantico: "outros",
+    };
+    if (MAP[slug]) return MAP[slug];
+    // prefix match: "empresariamento_360" → "empresariamento"
+    for (const valid of CST_VALID) {
+      if (slug.startsWith(valid) || valid.startsWith(slug.replace(/_\d+$/, ""))) return valid;
+    }
+    return "outros";
+  }, []);
+
+  const templateSlugs = useMemo(
+    () =>
+      new Set(
+        templates
+          .map((t) => {
+            const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+            return normalizeToCst(raw);
+          })
+          .filter((s): s is string => Boolean(s)),
+      ),
+    [templates, normalizeToCst],
+  );
+
+  const typesWithTemplates = useMemo(
+    () => serviceTypes.filter((t) => templateSlugs.has(t.slug)),
+    [serviceTypes, templateSlugs],
+  );
+
+  // Mapa CST slug → label da CategoryRegistry do utilizador.
+  // Permite mostrar "Empresariamento 360" (CategoryRegistry) em vez de "Empresariamento" (CST).
+  const { categories: registryCategories } = useCategoryRegistry();
+  const cstToLabel = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const t of templates) {
+      const raw = (t.tipo_servico || (t as Record<string, unknown>)["tipo"]) as string | undefined;
+      if (!raw) continue;
+      const cstSlug = normalizeToCst(raw);
+      if (!cstSlug) continue;
+      // tenta encontrar o label na CategoryRegistry pelo slug do template
+      const cat = registryCategories.find((c) => c.value === raw);
+      if (cat) map.set(cstSlug, cat.label);
+    }
+    return map;
+  }, [templates, registryCategories, normalizeToCst]);
+
+  const selectedType = allServiceTypes.find((t) => t.slug === serviceTypeValue);
+  const legacyServiceTypeLabel =
+    serviceTypeValue &&
+    !typesWithTemplates.some((t) => t.slug === serviceTypeValue)
+      ? allServiceTypes.find((t) => t.slug === serviceTypeValue)?.name ?? serviceTypeValue
+      : null;
+
+  const contatosPF = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_fisica");
+  const contatosPJ = clientes.filter((c) => c["tipo_pessoa"] === "pessoa_juridica");
 
   const { fields: signerFields, append: appendSigner, remove: removeSigner } = useFieldArray({
     control: form.control,
@@ -104,12 +154,6 @@ const ContractForm = ({
   }, [initialData, form]);
 
   const handleManualSubmit = () => form.handleSubmit(onSubmit)();
-
-  const getFilteredServiceTypes = () => {
-    const clientType = form.watch("client_type");
-    if (clientType === "pessoa_juridica") return Object.entries(EMPRESA_SERVICE_LABELS);
-    return Object.entries(ARTISTA_SERVICE_LABELS);
-  };
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -134,33 +178,6 @@ const ContractForm = ({
               )}
             </div>
 
-            {/* Tipo de Cliente */}
-            <div className="space-y-2">
-              <Label>Tipo de Cliente *</Label>
-              <Select
-                value={form.watch("client_type")}
-                onValueChange={(value) => {
-                  form.setValue("client_type", value as ContratoFormData["client_type"]);
-                  const current = form.watch("service_type");
-                  if (value === "pessoa_juridica" && current && !EMPRESA_SERVICE_KEYS.includes(current)) {
-                    form.setValue("service_type", undefined as any);
-                  }
-                }}
-              >
-                <SelectTrigger data-testid="select-client-type">
-                  <SelectValue placeholder="Selecione o tipo de cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="artista">Artista</SelectItem>
-                  <SelectItem value="pessoa_fisica">Pessoa Física</SelectItem>
-                  <SelectItem value="pessoa_juridica">Pessoa Jurídica</SelectItem>
-                </SelectContent>
-              </Select>
-              {form.formState.errors.client_type && (
-                <p className="text-sm text-destructive">{form.formState.errors.client_type.message}</p>
-              )}
-            </div>
-
             {/* Tipo de Serviço */}
             <div className="space-y-2">
               <Label>Tipo de Serviço *</Label>
@@ -172,9 +189,22 @@ const ContractForm = ({
                   <SelectValue placeholder="Selecione o tipo de serviço" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getFilteredServiceTypes().map(([value, label]) => (
-                    <SelectItem key={value} value={value}>{label}</SelectItem>
-                  ))}
+                  {legacyServiceTypeLabel && (
+                    <SelectItem value={serviceTypeValue!} disabled className="text-muted-foreground">
+                      {legacyServiceTypeLabel} (tipo anterior)
+                    </SelectItem>
+                  )}
+                  {typesWithTemplates.length === 0 ? (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">
+                      Nenhum template disponível
+                    </div>
+                  ) : (
+                    typesWithTemplates.map((t) => (
+                      <SelectItem key={t.slug} value={t.slug}>
+                        {cstToLabel.get(t.slug) ?? t.name}
+                      </SelectItem>
+                    ))
+                  )}
                 </SelectContent>
               </Select>
               {form.formState.errors.service_type && (
@@ -200,89 +230,6 @@ const ContractForm = ({
               </Select>
             </div>
 
-            {/* Contratante PF */}
-            {form.watch("client_type") === "pessoa_fisica" && (
-              <div className="space-y-2">
-                <Label>Contratante (Pessoa Física)</Label>
-                <Select
-                  value={form.watch("contractor_contact")}
-                  onValueChange={(value) => {
-                    form.setValue("contractor_contact", value);
-                    const contato = contatosPF.find((c) => c.id === value);
-                    if (contato) form.setValue("responsible_person", (contato.responsavel as string) || (contato.nome as string));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={contatosPF.length > 0 ? "Selecione um contato do CRM" : "Nenhum contato PF cadastrado"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contatosPF.length > 0
-                      ? contatosPF.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum contato PF cadastrado no CRM</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Contratante PJ */}
-            {form.watch("client_type") === "pessoa_juridica" && (
-              <div className="space-y-2">
-                <Label>Contratante (Pessoa Jurídica)</Label>
-                <Select
-                  value={form.watch("company_id")}
-                  onValueChange={(value) => {
-                    form.setValue("company_id", value);
-                    const empresa = contatosPJ.find((c) => c.id === value);
-                    if (empresa) {
-                      form.setValue("responsible_person", (empresa.responsavel as string) || "");
-                      form.setValue("contractor_contact", empresa.id);
-                    }
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={contatosPJ.length > 0 ? "Selecione uma empresa do CRM" : "Nenhuma empresa cadastrada"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {contatosPJ.length > 0
-                      ? contatosPJ.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhuma empresa cadastrada no CRM</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Artista */}
-            {form.watch("client_type") === "artista" && (
-              <div className="space-y-2">
-                <Label>Cliente/Artista</Label>
-                <Select
-                  value={form.watch("artist_id")}
-                  onValueChange={(value) => form.setValue("artist_id", value)}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder={artists.length > 0 ? "Selecione um artista" : "Nenhum artista cadastrado"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {artists.length > 0
-                      ? artists.map((a) => <SelectItem key={a.id} value={a.id}>{a.name}</SelectItem>)
-                      : <div className="px-2 py-1 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                    }
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-
-            {/* Responsável */}
-            <div className="space-y-2">
-              <Label htmlFor="responsible_person">Responsável</Label>
-              <Input
-                id="responsible_person"
-                {...form.register("responsible_person")}
-                placeholder="Nome do responsável"
-              />
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -339,78 +286,87 @@ const ContractForm = ({
         <CardHeader><CardTitle>Valores</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {(form.watch("client_type") === "pessoa_juridica" || form.watch("client_type") === "pessoa_fisica") && (
-              <div className="space-y-2">
-                <Label htmlFor="fixed_value">Valor do Contrato (R$)</Label>
-                <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
-                  {...form.register("fixed_value", { valueAsNumber: true })} />
-              </div>
-            )}
+            {selectedType ? (
+              <>
+                {/* Selecionar tipo de pagamento (valor fixo ou royalties) — para qualquer tipo de cliente */}
+                {selectedType.allow_installments && (
+                  <>
+                    <div className="space-y-2">
+                      <Label>Tipo de Pagamento</Label>
+                      <Select
+                        value={form.watch("payment_type")}
+                        onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
+                      >
+                        <SelectTrigger data-testid="select-payment-type">
+                          <SelectValue placeholder="Selecione o tipo de pagamento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
+                          <SelectItem value="royalties">Royalties</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    {form.watch("payment_type") === "valor_fixo" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="fixed_value_sel">Valor do Serviço (R$)</Label>
+                        <Input id="fixed_value_sel" type="number" step="0.01" placeholder="0,00"
+                          {...form.register("fixed_value", { valueAsNumber: true })} />
+                      </div>
+                    )}
+                    {form.watch("payment_type") === "royalties" && (
+                      <div className="space-y-2">
+                        <Label htmlFor="royalties_pct_sel">Royalties (%)</Label>
+                        <Input id="royalties_pct_sel" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                          {...form.register("royalties_percentage", { valueAsNumber: true })} />
+                      </div>
+                    )}
+                  </>
+                )}
 
-            {form.watch("client_type") === "artista" &&
-              ["agenciamento", "gestao", "empresariamento", "empresariamento_suporte"].includes(form.watch("service_type") || "") && (
-                <>
+                {/* Royalties direto (tipo não usa seletor de pagamento) */}
+                {selectedType.requires_royalties && !selectedType.allow_installments && (
                   <div className="space-y-2">
                     <Label htmlFor="royalties_percentage">Royalties (%)</Label>
                     <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
                       {...form.register("royalties_percentage", { valueAsNumber: true })} />
                   </div>
+                )}
+
+                {/* Valor fixo direto (tipo não usa seletor de pagamento) */}
+                {selectedType.requires_fixed_value && !selectedType.allow_installments && (
+                  <div className="space-y-2">
+                    <Label htmlFor="fixed_value">Valor Fixo do Serviço (R$)</Label>
+                    <Input id="fixed_value" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("fixed_value", { valueAsNumber: true })} />
+                  </div>
+                )}
+
+                {/* Adiantamento */}
+                {selectedType.requires_advance && (
                   <div className="space-y-2">
                     <Label htmlFor="advance_payment">Adiantamento (R$)</Label>
                     <Input id="advance_payment" type="number" step="0.01" placeholder="0,00"
                       {...form.register("advance_payment", { valueAsNumber: true })} />
                   </div>
-                  {form.watch("service_type") === "empresariamento_suporte" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
-                      <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
-                        {...form.register("financial_support", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                </>
-              )}
+                )}
 
-            {form.watch("client_type") === "artista" &&
-              ["producao_musical", "edicao", "distribuicao"].includes(form.watch("service_type") || "") && (
-                <>
+                {/* Suporte financeiro mensal */}
+                {selectedType.requires_financial_support && (
                   <div className="space-y-2">
-                    <Label>Tipo de Pagamento</Label>
-                    <Select
-                      value={form.watch("payment_type")}
-                      onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
-                    >
-                      <SelectTrigger><SelectValue placeholder="Selecione o tipo de pagamento" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
-                        <SelectItem value="royalties">Royalties</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Label htmlFor="financial_support">Suporte Financeiro Mensal (R$)</Label>
+                    <Input id="financial_support" type="number" step="0.01" placeholder="0,00"
+                      {...form.register("financial_support", { valueAsNumber: true })} />
                   </div>
-                  {form.watch("payment_type") === "valor_fixo" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="fixed_value_prod">Valor do Serviço (R$)</Label>
-                      <Input id="fixed_value_prod" type="number" step="0.01" placeholder="0,00"
-                        {...form.register("fixed_value", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                  {form.watch("payment_type") === "royalties" && (
-                    <div className="space-y-2">
-                      <Label htmlFor="royalties_pct_prod">Royalties (%)</Label>
-                      <Input id="royalties_pct_prod" type="number" step="0.01" min="0" max="100" placeholder="0,00"
-                        {...form.register("royalties_percentage", { valueAsNumber: true })} />
-                    </div>
-                  )}
-                </>
-              )}
-
-            {form.watch("client_type") === "artista" &&
-              ["producao_audiovisual", "marketing"].includes(form.watch("service_type") || "") && (
-                <div className="space-y-2">
-                  <Label htmlFor="fixed_value_av">Valor Fixo do Serviço (R$)</Label>
-                  <Input id="fixed_value_av" type="number" step="0.01" placeholder="0,00"
-                    {...form.register("fixed_value", { valueAsNumber: true })} />
-                </div>
-              )}
+                )}
+              </>
+            ) : (
+              /* Sem tipo selecionado: campo de valor genérico (fallback) */
+              <div className="space-y-2">
+                <Label htmlFor="fixed_value_default">Valor do Contrato (R$)</Label>
+                <Input id="fixed_value_default" type="number" step="0.01" placeholder="0,00"
+                  {...form.register("fixed_value", { valueAsNumber: true })} />
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -604,20 +560,19 @@ const ContractForm = ({
 function contratoToFormData(c: ContratoWithRelations): Partial<ContratoFormData> {
   const status = c.status as ContratoFormData["status"] | undefined;
   const serviceType = c.tipo as ContratoFormData["service_type"] | undefined;
-  const clientType: ContratoFormData["client_type"] = c.artista_id ? "artista" : "pessoa_fisica";
   return {
-    title: c.titulo ?? "",
+    title:        c.titulo ?? "",
     service_type: serviceType,
-    client_type: clientType,
-    artist_id: c.artista_id ?? undefined,
-    status: status ?? "rascunho",
-    arquivo_url: c.arquivo_url ?? undefined,
+    status:       status ?? "rascunho",
+    arquivo_url:  c.arquivo_url ?? undefined,
     lancamento_id: c.lancamento_id ?? undefined,
-    start_date: c.data_inicio ? new Date(c.data_inicio) : undefined,
-    end_date: c.data_fim ? new Date(c.data_fim) : undefined,
-    fixed_value: c.valor ?? undefined,
-    observations: c.observacoes ?? undefined,
-    signers: Array.isArray(c.signers) ? c.signers : [],
+    start_date:   c.data_inicio ? new Date(c.data_inicio) : undefined,
+    end_date:     c.data_fim    ? new Date(c.data_fim)    : undefined,
+    fixed_value:  c.valor ?? undefined,
+    observations: c.observacoes?.startsWith("{") ? undefined : (c.observacoes ?? undefined),
+    signers:      Array.isArray(c.signers)
+      ? c.signers.filter((s): s is ContratoSigner => !("obrigatorio" in s))
+      : [],
   };
 }
 
@@ -641,7 +596,7 @@ export const ContratoFormModal = ({
 
   const handleSubmit = (data: ContratoFormData) => {
     const {
-      title, client_type, service_type, artist_id, status,
+      title, service_type, status,
       arquivo_url, notas_versao, lancamento_id,
       start_date, end_date, fixed_value,
       royalties_percentage, advance_payment, financial_support, observations,
@@ -655,7 +610,6 @@ export const ContratoFormModal = ({
       titulo: title,
       tipo: service_type,
       status: status || "rascunho",
-      artista_id: client_type === "artista" ? (artist_id || null) : null,
       arquivo_url: resolvedArquivoUrl,
       lancamento_id: resolvedLancamentoId,
       data_inicio: start_date ? (start_date as Date).toISOString().split("T")[0] : null,

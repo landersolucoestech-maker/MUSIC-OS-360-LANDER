@@ -1,5 +1,27 @@
-import { IsString, IsOptional, IsNotEmpty, IsBase64 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional }            from '@nestjs/swagger';
+import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional }                  from '@nestjs/swagger';
+
+export class OAuthInitDto {
+  @ApiProperty({ description: 'Plataforma que iniciará o fluxo OAuth' })
+  @IsString() @IsNotEmpty()
+  @IsIn(['corp_instagram', 'meta_business', 'corp_tiktok', 'tiktok_business', 'corp_youtube', 'youtube_business', 'google_business'])
+  platform!: string;
+}
+
+export class OAuthExchangeDto {
+  @ApiProperty({ description: 'Código de autorização retornado pela plataforma' })
+  @IsString() @IsNotEmpty()
+  code!: string;
+
+  @ApiProperty({ description: 'Identificador da plataforma (ex: corp_instagram, corp_tiktok, corp_youtube)' })
+  @IsString() @IsNotEmpty()
+  @IsIn(['corp_instagram', 'meta_business', 'corp_tiktok', 'tiktok_business', 'corp_youtube', 'youtube_business', 'google_business'])
+  platform!: string;
+
+  @ApiProperty({ description: 'Token de troca de uso único emitido por POST /oauth/init (substitui redirect_uri)' })
+  @IsString() @IsNotEmpty()
+  exchange_token!: string;
+}
 
 export class ConfigureAutentiqueDto {
   @ApiProperty({ description: 'Token de API da Autentique' })

@@ -1,5 +1,17 @@
 import { storage } from "@/shared/lib/storage";
 
+const JSON_FIELDS = ["participants", "variables", "music_work", "signature_settings", "branding_settings"] as const;
+
+function serializeJsonFields(data: Record<string, unknown>): Record<string, unknown> {
+  const out = { ...data };
+  for (const field of JSON_FIELDS) {
+    if (out[field] != null && typeof out[field] !== "string") {
+      out[field] = JSON.stringify(out[field]);
+    }
+  }
+  return out;
+}
+
 export const contractsService = {
   async list() {
     return storage.list("contratos");
@@ -40,5 +52,25 @@ export const contractsService = {
 
   async getTemplate(id: string) {
     return storage.findById("contract_templates", id);
+  },
+
+  async listContractServiceTypes() {
+    return storage.list("contract_service_types");
+  },
+
+  async createContractServiceType(data: Record<string, unknown>) {
+    return storage.create("contract_service_types", serializeJsonFields(data) as never);
+  },
+
+  async updateContractServiceType(id: string, patch: Record<string, unknown>) {
+    return storage.update(
+      "contract_service_types",
+      id,
+      { ...serializeJsonFields(patch), updated_at: new Date().toISOString() },
+    );
+  },
+
+  async archiveContractServiceType(id: string) {
+    return storage.update("contract_service_types", id, { active: false, updated_at: new Date().toISOString() });
   },
 };

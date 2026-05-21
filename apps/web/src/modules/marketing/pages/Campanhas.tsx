@@ -8,13 +8,14 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import {
   Target, DollarSign, MousePointer, BarChart3,
-  Search, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X,
+  Search, Loader2, MoreHorizontal, Pencil, Trash2, Plus, X, Eye,
 } from "lucide-react";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CampanhaFormModal } from "@/modules/marketing/components/CampanhaFormModal";
+import { CampanhaViewModal } from "@/modules/marketing/components/CampanhaViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { EmptyState } from "@/shared/components/EmptyState";
@@ -31,6 +32,7 @@ export default function MarketingCampanhas() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [selectedCampanha, setSelectedCampanha] = useState<any>(null);
   const [deleteModal, setDeleteModal] = useState<{ open: boolean; campanha?: any }>({ open: false });
+  const [viewModal, setViewModal] = useState<{ open: boolean; campanha?: any }>({ open: false });
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all-plat");
@@ -242,6 +244,9 @@ export default function MarketingCampanhas() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setViewModal({ open: true, campanha })} data-testid={`button-ver-campanha-${campanha.id}`}>
+                              <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleEdit(campanha)}>
                               <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
                             </DropdownMenuItem>
@@ -276,6 +281,11 @@ export default function MarketingCampanhas() {
       </div>
 
       <CampanhaFormModal open={modalOpen} onOpenChange={setModalOpen} initialData={selectedCampanha} mode={modalMode} />
+      <CampanhaViewModal
+        open={viewModal.open}
+        onOpenChange={(open) => setViewModal({ ...viewModal, open })}
+        campanha={viewModal.campanha}
+      />
       <DeleteConfirmModal
         open={deleteModal.open}
         onOpenChange={(open) => setDeleteModal({ ...deleteModal, open })}

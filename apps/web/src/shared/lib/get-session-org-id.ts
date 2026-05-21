@@ -15,13 +15,21 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
   } catch { return {}; }
 }
 
-/** Lê org_id do token JWT em memória (modo real) ou retorna null (mock). */
+/** Lê org_id do token JWT em memória (modo real) ou retorna null (mock).
+ *
+ * Prioridade de leitura:
+ *   1. app_metadata.org_id — injetado pelo Custom Access Token Hook do Supabase
+ *   2. top-level org_id    — fallback para JWTs legados ou custom templates
+ */
 export function getSessionOrgId(): string | null {
   if (MOCK_MODE) return null;
   const token = getAccessToken();
   if (!token)   return null;
   try {
-    const p = decodeJwtPayload(token);
-    return typeof p["org_id"] === "string" ? p["org_id"] : null;
+    const p       = decodeJwtPayload(token);
+    const appMeta = p["app_metadata"] as Record<string, unknown> | undefined;
+    if (typeof appMeta?.["org_id"] === "string") return appMeta["org_id"];
+    if (typeof p["org_id"] === "string")         return p["org_id"];
+    return null;
   } catch { return null; }
 }

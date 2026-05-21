@@ -35,7 +35,7 @@ const PERMISSION_MATRIX: Record<AppRole, ModuleActions> = {
   super_admin:  { catalog: ALL, contracts: ALL, accounting: ALL, artists: ALL, crm: ALL, marketing: ALL, rh: ALL, settings: ALL, admin: ALL },
   tenant_owner: { catalog: ALL, contracts: ALL, accounting: ALL, artists: ALL, crm: ALL, marketing: ALL, rh: ALL, settings: ALL, admin: [] },
   admin:        { catalog: CRUD_EXPORT, contracts: CRUD_EXPORT, accounting: CRUD_EXPORT, artists: CRUD_EXPORT, crm: CRUD_EXPORT, marketing: CRUD_EXPORT, rh: CRUD_EXPORT, settings: CRUD, admin: [] },
-  financeiro:   { catalog: READ_EXPORT, contracts: READ_EXPORT, accounting: CRUD_EXPORT, artists: READ_ONLY, crm: READ_ONLY, marketing: READ_ONLY, rh: READ_EXPORT, settings: [], admin: [] },
+  accounting:   { catalog: READ_EXPORT, contracts: READ_EXPORT, accounting: CRUD_EXPORT, artists: READ_ONLY, crm: READ_ONLY, marketing: READ_ONLY, rh: READ_EXPORT, settings: [], admin: [] },
   juridico:     { catalog: READ_ONLY, contracts: CRUD_EXPORT, accounting: READ_EXPORT, artists: READ_ONLY, crm: READ_ONLY, marketing: READ_ONLY, rh: [], settings: [], admin: [] },
   artista:      { catalog: READ_ONLY, contracts: READ_ONLY, accounting: [], artists: READ_ONLY, crm: [], marketing: READ_ONLY, rh: [], settings: [], admin: [] },
   produtor:     { catalog: CRUD, contracts: READ_ONLY, accounting: READ_ONLY, artists: READ_ONLY, crm: READ_ONLY, marketing: READ_ONLY, rh: [], settings: [], admin: [] },

@@ -23,12 +23,21 @@ import {
   TICKET_STATUS_LABELS, TICKET_PRIORITY_LABELS, TICKET_CATEGORY_LABELS,
 } from "../hooks/useSupport";
 import type { SupportTicket, TicketStatus, TicketPriority, TicketCategory } from "../types";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
+
 import {
   Plus, Search, Ticket,
   Clock, AlertCircle, CheckCircle2,
   Send, User, Shield, Tag, Calendar, ExternalLink,
   ChevronDown, UserCheck, CalendarClock, Filter,
 } from "lucide-react";
+
+interface TicketWithWorkflow extends SupportTicket {
+  allowed_transitions?: { to: string; label?: string }[];
+}
 
 /* ── colours ── */
 const STATUS_COLOR: Record<TicketStatus, string> = {
@@ -64,15 +73,26 @@ function toDatetimeLocal(iso: string) {
 
 /* ── Drawer panel — receives updateTicket from parent so both share the same state ── */
 interface DrawerProps {
-  ticket: SupportTicket;
+  ticket: TicketWithWorkflow;
   onClose: () => void;
   onUpdate: (id: string, changes: Partial<SupportTicket>) => void;
 }
 
 function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
   const { messages, addMessage } = useTicketMessages(ticket.id);
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'support_tickets',
+    id:       ticket.id,
+    queryKey: ['support_tickets'],
+  });
+  const { data: detail } = useEntityDetail<TicketWithWorkflow>('support_tickets', ticket.id);
+  const allowedTransitions = resolveAllowedTransitions(
+    'ticket',
+    detail?.status ?? ticket.status,
+    detail?.allowed_transitions,
+  );
   const [reply, setReply]        = useState("");
-  const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline));
+  const [editSLA, setEditSLA]    = useState(toDatetimeLocal(ticket.sla_deadline ?? ""));
   const [editAssignee, setEditAssignee] = useState(ticket.assigned_to ?? "");
   const bottomRef                = useRef<HTMLDivElement>(null);
 
@@ -108,25 +128,15 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               {TICKET_STATUS_LABELS[ticket.status]}
             </Badge>
             <Badge variant="outline" className="text-[9.5px] h-4 px-1.5 border border-border/60 text-muted-foreground ml-1">
-              {TICKET_CATEGORY_LABELS[ticket.category]}
+              {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
             </Badge>
           </div>
           <SheetTitle className="text-[15px] font-semibold text-left leading-snug">
             {ticket.subject}
           </SheetTitle>
 
-          {/* Controls — status, priority, resolve, open full */}
+          {/* Controls — priority and open full (status controlled by WorkflowTransitionPanel below) */}
           <div className="flex items-center gap-2 pt-2 flex-wrap">
-            <Select value={ticket.status} onValueChange={(v) => onUpdate(ticket.id, { status: v as TicketStatus })}>
-              <SelectTrigger className="h-7 text-xs w-38" data-testid="select-drawer-status">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {(Object.entries(TICKET_STATUS_LABELS) as [TicketStatus, string][]).map(([k, v]) => (
-                  <SelectItem key={k} value={k} className="text-xs">{v}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
             <Select value={ticket.priority} onValueChange={(v) => onUpdate(ticket.id, { priority: v as TicketPriority })}>
               <SelectTrigger className="h-7 text-xs w-32" data-testid="select-drawer-priority">
                 <SelectValue />
@@ -137,23 +147,21 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
                 ))}
               </SelectContent>
             </Select>
-            {ticket.status !== "resolved" && ticket.status !== "closed" && (
-              <Button
-                size="sm"
-                variant="outline"
-                className="h-7 text-xs gap-1 text-green-400 border-green-500/30 hover:bg-green-500/10"
-                onClick={() => onUpdate(ticket.id, { status: "resolved" })}
-                data-testid="button-drawer-resolve"
-              >
-                <CheckCircle2 className="h-3 w-3" /> Resolver
-              </Button>
-            )}
             <Link to={`/support/tickets/${ticket.id}`} className="ml-auto">
               <Button size="sm" variant="ghost" className="h-7 text-xs gap-1 text-muted-foreground">
                 <ExternalLink className="h-3 w-3" /> Abrir completo
               </Button>
             </Link>
           </div>
+          {allowedTransitions.length > 0 && (
+            <WorkflowTransitionPanel
+              currentStatus={ticket.status}
+              allowedTransitions={allowedTransitions}
+              onTransition={workflowTransition}
+              isLoading={isTransitionPending}
+              className="mt-1"
+            />
+          )}
         </SheetHeader>
 
         <div className="flex flex-1 overflow-hidden">
@@ -164,7 +172,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               <p className="text-[12.5px] text-muted-foreground leading-relaxed">{ticket.description}</p>
               <div className="flex flex-wrap gap-3 mt-2 text-[10.5px] text-muted-foreground">
                 <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.created_by}</span>
-                <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category]}</span>
+                <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}</span>
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatShort(ticket.created_at)}</span>
               </div>
             </div>
@@ -485,7 +493,7 @@ export default function SupportTickets() {
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-[10px] h-4 px-1.5 border border-border/60 text-muted-foreground">
-                          {TICKET_CATEGORY_LABELS[ticket.category]}
+                          {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
                         </Badge>
                       </TableCell>
                       <TableCell>

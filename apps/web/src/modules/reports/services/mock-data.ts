@@ -206,8 +206,8 @@ export const MOCK_AUDIT_LOG: AuditLogEntry[] = [
 export const REPORT_OVERVIEW_KPIS = {
   totalImports: MOCK_IMPORT_JOBS.length,
   totalExports: MOCK_EXPORT_JOBS.length,
-  importErrors: MOCK_IMPORT_JOBS.reduce((a, j) => a + j.errorCount, 0),
+  importErrors: MOCK_IMPORT_JOBS.reduce((a, j) => a + (j.errorCount ?? 0), 0),
   successRate: 87,
-  totalRecordsImported: MOCK_IMPORT_JOBS.reduce((a, j) => a + j.processedRows, 0),
-  totalRecordsExported: MOCK_EXPORT_JOBS.filter(j => j.status === "done").reduce((a, j) => a + j.totalRows, 0),
+  totalRecordsImported: MOCK_IMPORT_JOBS.reduce((a, j) => a + (j.processedRows ?? 0), 0),
+  totalRecordsExported: MOCK_EXPORT_JOBS.filter(j => j.status === "done").reduce((a, j) => a + (j.totalRows ?? 0), 0),
 };

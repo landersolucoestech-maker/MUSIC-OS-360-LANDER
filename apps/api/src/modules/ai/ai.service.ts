@@ -5,11 +5,13 @@
  * Regista cada request na tabela ai_jobs (custo, latência, tokens).
  */
 
-import { Injectable, Logger, Inject } from '@nestjs/common';
+import { Injectable, Logger, Inject, ForbiddenException } from '@nestjs/common';
 import { ConfigService }              from '@nestjs/config';
 import { DataSource, Repository }     from 'typeorm';
 import { DATA_SOURCE }                from '../../database/database.module';
 import { AIJobEntity }                from '../../database/entities';
+import { AIJobStatus }                from '@music-os-360/types';
+import { PLAN_LIMITS }                from '../billing/billing.service';
 
 const MODEL_COSTS: Record<string, { input: number; output: number }> = {
   'gpt-4o':                   { input: 5.00,  output: 15.00  },
@@ -54,6 +56,8 @@ export class AIService {
   }
 
   async complete(opts: AICompletionOptions): Promise<AICompletionResult> {
+    await this.enforceMonthlyLimit(opts.tenantId);
+
     const providers: Array<() => Promise<AICompletionResult>> = [];
 
     if (this.config.get('OPENAI_API_KEY'))     providers.push(() => this.openai(opts));
@@ -68,7 +72,7 @@ export class AIService {
     for (const attempt of providers) {
       try {
         const result = await attempt();
-        await this.recordJob({ ...opts, ...result, status: 'completed' });
+        await this.recordJob({ ...opts, ...result, status: AIJobStatus.COMPLETED });
         return result;
       } catch (err) {
         lastError = err;
@@ -76,6 +80,44 @@ export class AIService {
       }
     }
     throw new Error(`Todos os providers AI falharam. Último erro: ${String(lastError)}`);
+  }
+
+  private async enforceMonthlyLimit(tenantId: string): Promise<void> {
+    if (!this.repo) return;
+
+    const { monthlySpend, plan } = await this.getMonthlySpend(tenantId);
+    const limit = PLAN_LIMITS[plan]?.monthlyAiUsd ?? null;
+
+    if (limit !== null && monthlySpend >= limit) {
+      this.logger.warn(`AI monthly limit exceeded: tenant=${tenantId} spend=$${monthlySpend.toFixed(4)} limit=$${limit}`);
+      throw new ForbiddenException(
+        `Limite mensal de AI atingido (USD ${monthlySpend.toFixed(2)} / USD ${limit}). ` +
+        'Faça upgrade de plano ou aguarde o próximo ciclo.',
+      );
+    }
+  }
+
+  private async getMonthlySpend(tenantId: string): Promise<{ monthlySpend: number; plan: string }> {
+    const now   = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const rows = await this.repo!
+      .createQueryBuilder('j')
+      .select('SUM(j.cost_usd::numeric)', 'total')
+      .addSelect(
+        `(SELECT t.plan FROM tenants t WHERE t.id = :tenantId LIMIT 1)`,
+        'plan',
+      )
+      .where('j.tenant_id = :tenantId AND j.created_at >= :start AND j.status = :status', {
+        tenantId, start, status: AIJobStatus.COMPLETED,
+      })
+      .setParameter('tenantId', tenantId)
+      .getRawOne<{ total: string; plan: string }>();
+
+    return {
+      monthlySpend: parseFloat(rows?.total ?? '0') || 0,
+      plan:         rows?.plan ?? 'starter',
+    };
   }
 
   private async openai(opts: AICompletionOptions): Promise<AICompletionResult> {
@@ -135,7 +177,7 @@ export class AIService {
     return (inputTokens * costs.input + outputTokens * costs.output) / 1_000_000;
   }
 
-  private async recordJob(data: AICompletionOptions & AICompletionResult & { status: string }): Promise<void> {
+  private async recordJob(data: AICompletionOptions & AICompletionResult & { status: AIJobStatus }): Promise<void> {
     if (!this.repo) return;
     try {
       const entity = this.repo.create({
@@ -173,12 +215,29 @@ export class AIService {
     return result.content;
   }
 
-  async getCostSummary(tenantId: string): Promise<{ totalCostUsd: number; totalJobs: number }> {
-    const jobs = await this.repo!
+  async getCostSummary(tenantId: string): Promise<{
+    totalCostUsd:   number;
+    monthCostUsd:   number;
+    monthLimit:     number | null;
+    totalJobs:      number;
+    plan:           string;
+  }> {
+    const { monthlySpend, plan } = await this.getMonthlySpend(tenantId);
+    const limit = PLAN_LIMITS[plan]?.monthlyAiUsd ?? null;
+
+    const allTime = await this.repo!
       .createQueryBuilder('j')
+      .select('COUNT(*)', 'count')
+      .addSelect('SUM(j.cost_usd::numeric)', 'total')
       .where('j.tenant_id = :tenantId', { tenantId })
-      .getMany();
-    const totalCostUsd = jobs.reduce((acc, j) => acc + parseFloat(String(j.cost_usd)), 0);
-    return { totalCostUsd, totalJobs: jobs.length };
+      .getRawOne<{ count: string; total: string }>();
+
+    return {
+      totalCostUsd: parseFloat(allTime?.total ?? '0') || 0,
+      monthCostUsd: monthlySpend,
+      monthLimit:   limit,
+      totalJobs:    parseInt(allTime?.count ?? '0', 10),
+      plan,
+    };
   }
 }

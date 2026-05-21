@@ -20,22 +20,7 @@ export type ContratoSigner = z.infer<typeof contratoSignerSchema>;
 
 export const contratoSchema = z.object({
   title: z.string().min(1, "Título é obrigatório"),
-  client_type: z.enum(["artista", "pessoa_fisica", "pessoa_juridica"], {
-    required_error: "Tipo de cliente é obrigatório",
-  }),
-  service_type: z.enum(
-    [
-      "empresariamento", "empresariamento_suporte", "gestao", "agenciamento",
-      "edicao", "distribuicao", "marketing", "producao_musical",
-      "producao_audiovisual", "licenciamento", "publicidade", "parceria",
-      "shows", "outros",
-    ],
-    { required_error: "Tipo de serviço é obrigatório" },
-  ),
-  artist_id: z.string().optional(),
-  company_id: z.string().optional(),
-  contractor_contact: z.string().optional(),
-  responsible_person: z.string().optional(),
+  service_type: z.string().min(1, "Tipo de serviço é obrigatório"),
   status: z.enum([
     "pendente", "assinado", "aguardando_assinatura", "ativo", "vigente",
     "expirado", "rescindido", "cancelado", "rascunho",

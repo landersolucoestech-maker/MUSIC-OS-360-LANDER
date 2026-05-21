@@ -39,8 +39,8 @@ export function ProtectedRoute({
   const location = useLocation();
 
   /**
-   * Em MOCK_MODE (standalone) não existe sessão real — bypass do guard.
-   * O utilizador mock está sempre "autenticado".
+   * Em MOCK_MODE (standalone) não existe sessão real.
+   * O utilizador mock está sempre "autenticado" apenas em desenvolvimento.
    */
   if (MOCK_MODE) {
     return children ? <>{children}</> : <Outlet />;

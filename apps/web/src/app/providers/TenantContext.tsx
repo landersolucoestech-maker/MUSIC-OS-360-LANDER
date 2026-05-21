@@ -3,7 +3,9 @@ import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
 import { MOCK_MODE } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
-import { getAccessToken } from "@/shared/lib/api-client";
+import { api, getAccessToken } from "@/shared/lib/api-client";
+import { useAuth } from "./AuthContext";
+import type { SaasAuthContext } from "@/shared/types/saas-context";
 
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
@@ -38,12 +40,9 @@ export interface TenantConfig {
   primaryColor?:    string;
   logoUrl?:         string;
   faviconUrl?:      string;
-  customDomain?:    string;
   emailFromName?:   string;
   emailFromAddr?:   string;
   supportEmail?:    string;
-  whitelabel:       boolean;
-  hideProductName:  boolean;
 }
 
 // ─── Onboarding ───────────────────────────────────────────────────────────────
@@ -131,10 +130,7 @@ const MOCK_TENANT: Tenant = {
   address:  "Av. Paulista, 1000 — São Paulo, SP",
   features:    DEFAULT_FEATURE_FLAGS,
   permissions: ROLE_PERMISSIONS.owner,
-  config: {
-    whitelabel:      false,
-    hideProductName: false,
-  },
+  config: {},
   billing: {
     status:            "active",
     seats:             25,
@@ -190,7 +186,7 @@ function readStoredTenant(): StoredTenantData | null {
 }
 
 function buildInitialTenant(): Tenant {
-  if (MOCK_MODE) return MOCK_TENANT;
+  if (MOCK_MODE) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
   const stored = readStoredTenant();
   const industry = ((stored?.segment ?? stored?.industry) as TenantIndustry | undefined);
   const plan     = (stored?.plan as TenantPlan | undefined);
@@ -222,8 +218,55 @@ function appRoleToTenantRole(appRole: string): TenantRole {
   return "viewer";
 }
 
+function normalizePlan(plan: string | undefined): TenantPlan {
+  return plan === "professional" || plan === "enterprise" ? plan : "starter";
+}
+
+function normalizeFeatures(features: Record<string, unknown>): FeatureFlags {
+  const next = { ...DEFAULT_FEATURE_FLAGS };
+  for (const key of Object.keys(next) as Array<keyof FeatureFlags>) {
+    if (typeof features[key] === "boolean") next[key] = features[key];
+  }
+  return next;
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
+  const { session } = useAuth();
   const [tenant, setTenant] = useState<Tenant>(buildInitialTenant);
+
+  useEffect(() => {
+    if (MOCK_MODE || !session?.access_token) return;
+
+    let active = true;
+    api.get<SaasAuthContext>("/auth/context")
+      .then((context) => {
+        if (!active) return;
+        const tenantRole = appRoleToTenantRole(context.membership.role);
+        setTenant(prev => ({
+          ...prev,
+          id:          context.workspace.id || prev.id,
+          name:        context.workspace.name || prev.name,
+          slug:        context.workspace.slug || prev.slug,
+          plan:        normalizePlan(context.workspace.plan),
+          features:    normalizeFeatures(context.workspace.features),
+          permissions: ROLE_PERMISSIONS[tenantRole],
+          billing: {
+            ...prev.billing,
+            planId: context.workspace.plan || prev.billing.planId,
+          },
+        }));
+        devTenantLog("Tenant sincronizado via /auth/context:", {
+          id: context.workspace.id,
+          role: context.membership.role,
+          permissions: context.membership.permissions.length,
+        });
+      })
+      .catch((error: unknown) => {
+        devTenantLog("Falha ao sincronizar /auth/context; usando JWT/localStorage", error);
+      });
+
+    return () => { active = false; };
+  }, [session?.access_token]);
 
   const isFeatureEnabled = (flag: keyof FeatureFlags): boolean =>
     tenant.features[flag] ?? false;
@@ -249,29 +292,58 @@ export function useTenant(): TenantContextType {
   return ctx;
 }
 
+// ─── DEV logging ──────────────────────────────────────────────────────────────
+
+function devTenantLog(label: string, data?: unknown): void {
+  if (import.meta.env.DEV !== true) return;
+  if (data !== undefined) {
+    console.log(`[MUSIC OS 360 Tenant] ${label}`, data);
+  } else {
+    console.log(`[MUSIC OS 360 Tenant] ${label}`);
+  }
+}
+
+// ─── JWT claim parser ─────────────────────────────────────────────────────────
+
+interface JwtAppClaims {
+  role?:         string;
+  org_id?:       string;
+  app_metadata?: { role?: string; org_id?: string };
+}
+
+function parseJwtClaims(token: string): JwtAppClaims | null {
+  try {
+    const parts = token.split(".");
+    if (parts.length < 2) return null;
+    return JSON.parse(atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))) as JwtAppClaims;
+  } catch { return null; }
+}
+
 /**
  * useSyncTenantFromJWT — sincroniza permissões + metadados do tenant.
  *
- * Recebe o email do usuário autenticado (do AuthContext) para verificar se é o
- * fundador da org antes de elevar as permissões. Re-executa sempre que o email mudar
- * (e.g., após login Clerk carregar o usuário).
+ * Fontes de dados (por prioridade decrescente):
+ *   1. JWT app_metadata.role + app_metadata.org_id (injetado pelo Supabase Hook)
+ *   2. JWT top-level role / org_id (fallback para tokens legados)
+ *   3. localStorage adminEmail === userEmail → promove a owner
  *
- * Fluxo de prioridade:
- *   1. JWT com role claim (Clerk JWT Template configurado) → mais alta prioridade
- *   2. localStorage adminEmail === userEmail → promove a owner
- *   3. Sem correspondência → mantém viewer (padrão seguro)
+ * Re-executa em:
+ *   • mudança de userEmail (login inicial)
+ *   • evento window "musicos360:auth:tokenRefreshed" (refresh de token)
  */
 export function useSyncTenantFromJWT(userEmail?: string): void {
   const { setTenant } = useTenant();
-  useEffect(() => {
+
+  // Função interna de sincronização — partilhada pelos dois efeitos abaixo
+  const syncFromJwt = React.useCallback(() => {
     if (MOCK_MODE) return;
 
-    // 1. Hidratar org metadata do localStorage + determinar permissões por identidade
+    // ── 1. Metadados de org do localStorage ────────────────────────────────────
     const stored = readStoredTenant();
     if (stored) {
-      const industry    = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
-      const plan        = (stored.plan as TenantPlan | undefined);
-      const isFounder   = !!(userEmail && stored.adminEmail &&
+      const industry  = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
+      const plan      = (stored.plan as TenantPlan | undefined);
+      const isFounder = !!(userEmail && stored.adminEmail &&
         userEmail.trim().toLowerCase() === stored.adminEmail.trim().toLowerCase());
       const permissions = isFounder ? ROLE_PERMISSIONS.owner : ROLE_PERMISSIONS.viewer;
 
@@ -287,29 +359,57 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
         plan:        plan           ?? prev.plan,
         permissions,
       }));
+      devTenantLog("Tenant carregado do localStorage:", { id: stored.id, name: stored.name, isFounder });
     }
 
-    // 2. Se o JWT tiver role + org_id (Clerk JWT Template configurado), sobrescreve
+    // ── 2. JWT claims (app_metadata.role + app_metadata.org_id via Hook) ───────
     const token = getAccessToken();
-    if (!token) return;
-    try {
-      const parts = token.split(".");
-      if (parts.length < 2) return;
-      const decoded = JSON.parse(
-        atob(parts[1].replace(/-/g, "+").replace(/_/g, "/"))
-      ) as { role?: string; org_id?: string };
-      if (!decoded.role) return;
-      const tenantRole = appRoleToTenantRole(decoded.role);
-      if (!(tenantRole in ROLE_PERMISSIONS)) return;
-      setTenant(prev => ({
-        ...prev,
-        id:          decoded.org_id ?? prev.id,
-        permissions: ROLE_PERMISSIONS[tenantRole],
-      }));
-    } catch { /* JWT inválido */ }
-  // userEmail é dependência: re-executa quando Clerk carrega o usuário após login
+    if (!token) {
+      devTenantLog("Nenhum token em memória — aguardando login");
+      return;
+    }
+
+    const decoded = parseJwtClaims(token);
+    if (!decoded) return;
+
+    // Prioridade: app_metadata (Hook) → top-level (fallback)
+    const claimRole  = decoded.app_metadata?.role   ?? decoded.role;
+    const claimOrgId = decoded.app_metadata?.org_id ?? decoded.org_id;
+
+    devTenantLog("JWT claims lidas:", {
+      org_id:  claimOrgId ?? "(ausente — ativar Custom Access Token Hook no Supabase)",
+      role:    claimRole  ?? "(ausente)",
+      source:  decoded.app_metadata?.org_id ? "app_metadata (hook)" : "top-level (fallback)",
+    });
+
+    if (!claimRole) return;
+    const tenantRole = appRoleToTenantRole(claimRole);
+    if (!(tenantRole in ROLE_PERMISSIONS)) return;
+
+    setTenant(prev => ({
+      ...prev,
+      id:          claimOrgId ?? prev.id,
+      permissions: ROLE_PERMISSIONS[tenantRole],
+    }));
+    devTenantLog(`Permissões elevadas para role "${tenantRole}" (org: ${claimOrgId ?? "mantida"})`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userEmail]);
+
+  // Efeito 1: dispara no login / quando o email do utilizador muda
+  useEffect(() => {
+    syncFromJwt();
+  }, [syncFromJwt]);
+
+  // Efeito 2: dispara quando o AuthContext renova o token (TOKEN_REFRESHED)
+  // sem necessidade de reload — os novos claims do hook ficam imediatamente ativos
+  useEffect(() => {
+    const handler = () => {
+      devTenantLog("TOKEN_REFRESHED recebido — re-sincronizando claims do JWT");
+      syncFromJwt();
+    };
+    window.addEventListener("musicos360:auth:tokenRefreshed", handler);
+    return () => { window.removeEventListener("musicos360:auth:tokenRefreshed", handler); };
+  }, [syncFromJwt]);
 }
 
 // Label constants (PLAN_LABEL, INDUSTRY_LABEL, BILLING_STATUS_LABEL, ROLE_LABEL)

@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { stripeClient } from '@/modules/integrations/clients/stripe.client';
-import { MOCK_MODE }    from '@/shared/lib/env';
+import { MOCK_MODE } from '@/shared/lib/env';
 
 export interface PlanFeatures {
   moduleArtists:     boolean;
@@ -18,7 +18,6 @@ export interface PlanFeatures {
   aiFeatures:        boolean;
   multiTenantAdmin:  boolean;
   analyticsAdvanced: boolean;
-  whitelabel:        boolean;
 }
 
 const STARTER_FEATURES: PlanFeatures = {
@@ -36,12 +35,11 @@ const STARTER_FEATURES: PlanFeatures = {
   aiFeatures:        false,
   multiTenantAdmin:  false,
   analyticsAdvanced: false,
-  whitelabel:        false,
 };
 
 const ALL_ENABLED = Object.fromEntries(
   Object.keys(STARTER_FEATURES).map((k) => [k, true]),
-) as PlanFeatures;
+) as unknown as PlanFeatures;
 
 export function usePlanFeatures() {
   const queryClient = useQueryClient();

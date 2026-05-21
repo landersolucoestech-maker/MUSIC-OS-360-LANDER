@@ -2747,8 +2747,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "clerk_user_id": {
-          "name": "clerk_user_id",
+        "auth_user_id": {
+          "name": "auth_user_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -2811,7 +2811,7 @@
               "nulls": "last"
             },
             {
-              "expression": "clerk_user_id",
+              "expression": "auth_user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2837,11 +2837,11 @@
           "method": "btree",
           "with": {}
         },
-        "member_clerk_idx": {
-          "name": "member_clerk_idx",
+        "member_auth_user_idx": {
+          "name": "member_auth_user_idx",
           "columns": [
             {
-              "expression": "clerk_user_id",
+              "expression": "auth_user_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2898,8 +2898,8 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "clerk_org_id": {
-          "name": "clerk_org_id",
+        "external_auth_org_id": {
+          "name": "external_auth_org_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -2992,11 +2992,11 @@
         }
       },
       "indexes": {
-        "org_clerk_idx": {
-          "name": "org_clerk_idx",
+        "org_external_auth_idx": {
+          "name": "org_external_auth_idx",
           "columns": [
             {
-              "expression": "clerk_org_id",
+              "expression": "external_auth_org_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -3026,11 +3026,11 @@
       "foreignKeys": {},
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "organizations_clerk_org_id_unique": {
-          "name": "organizations_clerk_org_id_unique",
+        "organizations_external_auth_org_id_unique": {
+          "name": "organizations_external_auth_org_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "clerk_org_id"
+            "external_auth_org_id"
           ]
         },
         "organizations_slug_unique": {
@@ -4190,8 +4190,8 @@
           "primaryKey": false,
           "notNull": true
         },
-        "clerk_org_id": {
-          "name": "clerk_org_id",
+        "external_auth_org_id": {
+          "name": "external_auth_org_id",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": false
@@ -4258,11 +4258,11 @@
         }
       },
       "indexes": {
-        "tenant_clerk_idx": {
-          "name": "tenant_clerk_idx",
+        "tenant_external_auth_idx": {
+          "name": "tenant_external_auth_idx",
           "columns": [
             {
-              "expression": "clerk_org_id",
+              "expression": "external_auth_org_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -4321,11 +4321,11 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "tenants_clerk_org_id_unique": {
-          "name": "tenants_clerk_org_id_unique",
+        "tenants_external_auth_org_id_unique": {
+          "name": "tenants_external_auth_org_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "clerk_org_id"
+            "external_auth_org_id"
           ]
         },
         "tenants_slug_unique": {

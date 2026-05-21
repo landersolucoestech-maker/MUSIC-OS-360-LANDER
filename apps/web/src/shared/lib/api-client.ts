@@ -3,7 +3,8 @@
  *
  * - Injeta Authorization: Bearer <token> automaticamente
  * - Converte erros HTTP para subclasses de DomainError (instanceof funciona)
- * - Auto-refresh: quando recebe 401, tenta renovar via /auth/refresh e reenvia
+ * - Token lifecycle gerenciado pelo Supabase SDK via AuthContext.tsx
+ *   (auto-refresh, persistência e rotação são responsabilidade do SDK)
  * - Tabelas sem endpoint backend → fallback para dados em memória (mock)
  */
 import {
@@ -13,11 +14,12 @@ import {
   ConflictError,
   IntegrationError,
 } from "./errors";
-import { API_BASE_URL } from "./env";
+import { API_BASE_URL, IS_PROD } from "./env";
 
 // ─── Token management ─────────────────────────────────────────────────────────
-// access_token: in-memory only (cleared on page refresh — intentional)
-// refresh_token: httpOnly cookie set/rotated by the backend (not accessible to JS)
+// access_token: in-memory only.
+// Atualizado automaticamente pelo SupabaseAuthProvider via onAuthStateChange.
+// O refresh é responsabilidade do Supabase SDK — não fazemos /auth/refresh aqui.
 
 let _accessToken: string | null = null;
 
@@ -49,44 +51,43 @@ export const TABLE_ENDPOINT: Record<string, string> = {
   clientes:            "/clients",
   contatos:            "/clients",          // alias → /clients
   campanhas:           "/campaigns",
-  conteudos:           "/contents",
+  conteudos:           "/content-detections",
   briefings:           "/briefings",
-  tarefas_marketing:   "/marketing-tasks",
-  monitoramentos:      "/monitors",
   takedowns:           "/takedowns",
-  regras_financeiras:  "/rules",
   projetos:            "/projects",
   eventos:             "/events",
-  inventario:          "/inventory",
-  licencas:            "/licenses",
-  funcionarios:        "/employees",
-  folha_pagamento:     "/payroll",
-  afastamentos:        "/leave",
-  ferias_ausencias:    "/leave",
-  regras:              "/rules",
+  funcionarios:        "/hr/employees",
+  folha_pagamento:     "/hr/payroll",
+  afastamentos:        "/hr/leave-requests",
+  ferias_ausencias:    "/hr/leave-requests",
   usuarios:            "/users",
-  roles:               "/roles",
   org_members:         "/users",
   lancamentos:         "/releases",
   notas_fiscais:       "/invoices",
   lead_interactions:   "/lead-interactions",
-  permissions:         "/permissions",
   metas_artistas:      "/artist-goals",
   relatorios_ecad:     "/ecad-reports",
   deteccoes:           "/content-detections",
   documentos_funcionario: "/hr/employees",
+  support_tickets:        "/support-tickets",
+  audit_logs:             "/audit-logs",
+  inventario:             "/inventory",
+  licencas:               "/licenses",
+  regras_financeiras:     "/financial-rules",
 };
 
 /**
  * Tables that are consumed by frontend services but have no backend route yet.
  * In HTTP mode these fall back to in-memory mock with an explicit console.warn
- * so the gap is visible in the browser console. Each entry carries the reason
- * and the task that will implement the backend route.
- *
- * To graduate a table: implement the backend route, add it to TABLE_ENDPOINT
- * above, and remove it from this map.
+ * so the gap is visible in the browser console.
  */
-export const PENDING_TABLES: Record<string, string> = {};
+export const PENDING_TABLES: Record<string, string> = {
+  regras:             "Rules UI storage table has no backend controller",
+  tarefas_marketing:  "Marketing tasks have no backend controller",
+  monitoramentos:     "Monitoring table has no backend controller",
+  roles:              "RBAC is currently exposed through /users and auth context, not a /roles CRUD",
+  permissions:        "Permissions are computed server-side, not exposed as a /permissions CRUD",
+};
 
 // ─── Error mapping ───────────────────────────────────────────────────────────
 
@@ -107,46 +108,26 @@ async function mapError(res: Response): Promise<never> {
   }
 }
 
-// ─── Refresh helper ───────────────────────────────────────────────────────────
-// Sends POST /auth/refresh with credentials:"include" so the httpOnly cookie is
-// automatically attached. No body needed — the cookie carries the refresh token.
-
-async function tryRefresh(): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/auth/refresh`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-    });
-    if (!res.ok) return false;
-    const data = (await res.json()) as { access_token: string };
-    setAccessToken(data.access_token);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 // ─── Core request ────────────────────────────────────────────────────────────
 
-async function request<T>(path: string, init: RequestInit = {}, _retry = true): Promise<T> {
+async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     ...(init.headers as Record<string, string> | undefined ?? {}),
   };
   if (_accessToken) headers["Authorization"] = `Bearer ${_accessToken}`;
 
-  const res = await fetch(`${API_BASE_URL}${path}`, {
+  const res = await fetch(`${API_BASE_URL}/api/v1${path}`, {
     ...init,
     headers,
-    credentials: "include",   // sends httpOnly refresh cookie on every request
+    credentials: "include",
   });
 
-  if (res.status === 401 && _retry) {
-    const refreshed = await tryRefresh();
-    if (refreshed) return request<T>(path, init, false);
+  if (res.status === 401) {
+    // Token expirado ou inválido — Supabase SDK refreshará automaticamente
+    // via onAuthStateChange, que chamará setAccessToken com o novo token.
+    // Aqui apenas limpamos o token em memória para evitar reenvios.
     setAccessToken(null);
-    // cookie revocation is handled server-side; no localStorage to clear
   }
 
   if (!res.ok) return mapError(res);

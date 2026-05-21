@@ -171,14 +171,13 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
 }
 
 export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluido }: ProjetoFormModalProps) {
-  const { artistas, isLoading: artistasLoading } = useArtistas();
+  const { artistas } = useArtistas();
   const { addProjeto, updateProjeto } = useProjetos();
   const uploadFile = async (_file: File): Promise<{ url: string } | null> => null;
 
   // Initialize state from projeto when the component mounts fresh (key-based remount ensures fresh mount per project).
   const [tipoLancamento, setTipoLancamento] = useState(() => normTipo(projeto?.tipo));
   const [nomeEP, setNomeEP] = useState(() => (mode !== "create" && projeto?.tipo !== "single") ? (projeto?.titulo || "") : "");
-  const [artistaResponsavel, setArtistaResponsavel] = useState(() => projeto?.artista_id || "");
   const [musicas, setMusicas] = useState<MusicaData[]>(() => {
     if (mode === "create" || !projeto) return [createEmptyMusica()];
     if (projeto?.descricao) {
@@ -217,7 +216,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     const validation = projetoSchema.safeParse({
       tipoLancamento,
       nomeEP: nomeEP || "",
-      artistaResponsavel,
       status: status || "",
       observacoes: observacoes || "",
     });
@@ -243,11 +241,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         : `Digite o nome do ${tipoLancamento === "ep" ? "EP" : tipoLancamento === "turne" ? "Turnê" : "Álbum"}!`);
       return;
     }
-    if (!artistaResponsavel) {
-      toast.error("Selecione o artista responsável!");
-      return;
-    }
-
     // Serializa dados das músicas — remove campos apenas locais (File metadata, flag de upload)
     const musicasParaSalvar = musicas.map(({ arquivoAudio: _a, _uploading: _u, ...m }) => m);
     const descricao = JSON.stringify(musicasParaSalvar);
@@ -258,7 +251,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     const basePayload: ProjetoUpdate = {
       titulo,
       tipo: tipoLancamento,
-      artista_id: artistaResponsavel,
       status,
       observacoes: observacoes || null,
       descricao,
@@ -272,7 +264,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         const insertPayload: ProjetoInsert = {
           titulo,
           tipo: tipoLancamento,
-          artista_id: artistaResponsavel,
           status,
           observacoes: observacoes || null,
           descricao,
@@ -716,25 +707,6 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
               />
             </div>
           )}
-
-          {/* Artista Responsável */}
-          <div className="space-y-2">
-            <Label>Artista Responsável</Label>
-            <Select value={artistaResponsavel} onValueChange={setArtistaResponsavel} disabled={isViewMode}>
-              <SelectTrigger><SelectValue placeholder={artistasLoading ? "Carregando..." : "Selecione o artista"} /></SelectTrigger>
-              <SelectContent>
-                {artistasLoading && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">Carregando artistas...</div>
-                )}
-                {!artistasLoading && artistas.length === 0 && (
-                  <div className="px-3 py-2 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                )}
-                {!artistasLoading && artistas.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>{a.nome_artistico}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* Seção de Músicas */}
           <div className="space-y-4">

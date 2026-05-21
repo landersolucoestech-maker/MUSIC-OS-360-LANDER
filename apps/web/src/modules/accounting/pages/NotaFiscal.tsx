@@ -24,6 +24,7 @@ import {
   ArrowUpRight,
   ArrowDownLeft,
   Scale,
+  MoreHorizontal,
 } from "lucide-react";
 import { NotaFiscalFormModal } from "@/modules/accounting/components/NotaFiscalFormModal";
 import { NotaFiscalViewModal } from "@/modules/accounting/components/NotaFiscalViewModal";
@@ -366,17 +367,27 @@ export default function NotaFiscal() {
                           )}
                         </TableCell>
                         <TableCell className="py-3 text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button variant="ghost" size="sm" onClick={() => handleView(nota)} data-testid={`button-view-nota-${nota.id}`}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleEdit(nota)} data-testid={`button-edit-nota-${nota.id}`}>
-                              <Pencil className="h-4 w-4" />
-                            </Button>
-                            <Button variant="ghost" size="sm" onClick={() => handleDelete(nota)} data-testid={`button-delete-nota-${nota.id}`}>
-                              <Trash2 className="h-4 w-4 text-destructive" />
-                            </Button>
-                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" aria-label="Ações da nota fiscal" data-testid={`button-actions-nota-${nota.id}`}>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem onClick={() => handleView(nota)} data-testid={`menu-view-nota-${nota.id}`}>
+                                <Eye className="h-4 w-4 mr-2" />
+                                Visualizar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEdit(nota)} data-testid={`menu-edit-nota-${nota.id}`}>
+                                <Pencil className="h-4 w-4 mr-2" />
+                                Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleDelete(nota)} data-testid={`menu-delete-nota-${nota.id}`}>
+                                <Trash2 className="h-4 w-4 mr-2 text-destructive" />
+                                Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </TableCell>
                       </TableRow>
                     ))}

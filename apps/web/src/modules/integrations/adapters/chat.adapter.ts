@@ -22,7 +22,7 @@ function resolveChatProvider(): IChatProvider {
   // PRODUÇÃO: RealtimeChatProvider via WebSocket / SSE:
   //   WS  /ws/chat?tenant_id=...&token=...
   //   REST /api/chat/channels, /api/chat/messages
-  //   O token de auth é gerido pelo AuthProvider (Clerk) — nunca exposto aqui.
+  //   O token de auth é gerido pelo AuthProvider (Supabase Auth) — nunca exposto aqui.
   // import { BackendChatProvider } from "@/modules/integrations/providers/backend/backend-chat.provider";
   // return new BackendChatProvider();
   return mockChatProvider;

@@ -1,0 +1,370 @@
+Você é um arquiteto de software sênior especializado em React, TypeScript, sistemas financeiros complexos e organização de código frontend escalável.
+
+Sua missão é analisar, reorganizar e corrigir COMPLETAMENTE o módulo de transações financeiras anexado, preservando integralmente todas as regras de negócio existentes, sem remover funcionalidades, sem simplificar lógica financeira e sem alterar comportamento funcional esperado pelo usuário final.
+
+O objetivo NÃO é recriar o sistema do zero.
+O objetivo é ORGANIZAR, ESTRUTURAR, ISOLAR RESPONSABILIDADES e ELIMINAR O CAOS ARQUITETURAL atual.
+
+O sistema é um SaaS de gestão financeira musical e o formulário atual possui alta complexidade operacional envolvendo:
+
+* receitas
+* despesas
+* investimentos
+* impostos
+* transferências
+* artistas
+* projetos
+* eventos
+* campanhas
+* categorias financeiras
+* subcategorias
+* regras condicionais
+* validações dinâmicas
+* vínculos financeiros
+
+Você deve tratar esse módulo como um sistema financeiro crítico.
+
+====================================================================
+OBJETIVO PRINCIPAL
+==================
+
+Transformar o componente atual em uma arquitetura:
+
+* organizada
+* escalável
+* legível
+* modular
+* segura
+* previsível
+* configurável
+
+SEM alterar as regras de negócio já implementadas.
+
+====================================================================
+REGRAS OBRIGATÓRIAS
+===================
+
+1. NÃO remover funcionalidades existentes.
+
+2. NÃO alterar comportamento funcional do formulário.
+
+3. NÃO simplificar regras financeiras.
+
+4. NÃO remover condicionais financeiras.
+
+5. NÃO trocar stack principal do projeto.
+
+6. NÃO reescrever o sistema inteiro.
+
+7. NÃO inventar funcionalidades novas fora do escopo solicitado.
+
+8. NÃO implementar:
+
+* microservices
+* event sourcing
+* CQRS
+* DDD exagerado
+* redux desnecessário
+* arquitetura enterprise inflada
+
+9. NÃO gerar pseudocódigo.
+   Tudo deve ser código real.
+
+10. NÃO deixar TODOs genéricos.
+
+11. NÃO deixar comentários vagos.
+
+12. NÃO quebrar compatibilidade visual atual.
+
+13. NÃO alterar componentes compartilhados do projeto sem necessidade.
+
+====================================================================
+PROBLEMAS QUE DEVEM SER CORRIGIDOS
+==================================
+
+O código atual possui:
+
+* componente gigante monolítico
+* excesso de responsabilidades
+* dezenas de booleans derivados
+* lógica financeira enterrada no componente React
+* muitos useEffects de reset
+* resets encadeados perigosos
+* renderizações desnecessárias
+* lógica procedural frágil
+* validação gigante acoplada
+* duplicação massiva de JSX
+* regras hardcoded
+* baixa escalabilidade
+* difícil manutenção
+* difícil rastreabilidade
+* alta chance de bugs futuros
+
+====================================================================
+OBJETIVOS TÉCNICOS DA REFATORAÇÃO
+=================================
+
+Você deve:
+
+1. ELIMINAR useEffects de reset desnecessários.
+
+2. CENTRALIZAR resets de dependência.
+
+3. CRIAR engine de resets controlada.
+
+4. EXTRAIR regras financeiras do componente principal.
+
+5. TRANSFORMAR booleans soltos em estrutura organizada.
+
+6. EXTRAIR validação para módulo separado.
+
+7. SEPARAR renderização por seções.
+
+8. REDUZIR drasticamente tamanho do componente principal.
+
+9. REMOVER duplicação de JSX.
+
+10. MELHORAR previsibilidade do formulário.
+
+11. REDUZIR risco de estados inconsistentes.
+
+12. ORGANIZAR arquitetura de arquivos.
+
+13. PREPARAR sistema para regras dinâmicas futuras.
+
+====================================================================
+ESTRUTURA OBRIGATÓRIA
+=====================
+
+A arquitetura final deve ficar próxima disso:
+
+/modules/accounting/components/transacao-form/
+
+TransacaoFormModal.tsx
+
+hooks/
+
+* useTransacaoForm.ts
+* useFinancialRules.ts
+* useFinancialValidation.ts
+
+rules/
+
+* financial-form-rules.ts
+* financial-reset-rules.ts
+
+validation/
+
+* financial-form-validation.ts
+
+sections/
+
+* TransactionTypeSection.tsx
+* CategorySection.tsx
+* FinancialLinksSection.tsx
+* PaymentSection.tsx
+* DetailsSection.tsx
+
+components/
+
+* FormSelectField.tsx
+* FormInputField.tsx
+* FormDateField.tsx
+
+====================================================================
+OBRIGATÓRIO: ENGINE DE REGRAS
+=============================
+
+Toda lógica de:
+
+* exibir artista
+* exibir projeto
+* obrigatoriedade
+* exibir evento
+* motivo viagem
+* publicidade
+* parcelamento
+* fornecedor
+* órgão arrecadador
+
+deve sair do componente principal.
+
+Criar estrutura baseada em regras organizadas.
+
+Exemplo esperado:
+
+const rules = {
+artista: {
+exibir: true,
+obrigatorio: true
+},
+
+projeto: {
+exibir: true,
+obrigatorio: false
+}
+}
+
+O componente React NÃO deve conter dezenas de booleans espalhados.
+
+====================================================================
+OBRIGATÓRIO: RESET ENGINE
+=========================
+
+Eliminar cadeia de useEffects de reset.
+
+Criar sistema centralizado baseado em mapa de dependências.
+
+Exemplo esperado:
+
+const RESET_MAP = {
+tipoTransacao: [
+"categoria",
+"subcategoria",
+"artistaVinculado"
+],
+
+categoria: [
+"subcategoria",
+"projetoVinculado"
+]
+}
+
+Toda atualização deve passar por:
+
+* updateField
+* applyResets
+* dependency cleanup
+
+Sem cascata de useEffect.
+
+====================================================================
+OBRIGATÓRIO: VALIDAÇÃO
+======================
+
+Toda validação deve sair do componente principal.
+
+Criar:
+
+* validation engine
+* regras desacopladas
+* retorno padronizado de erros
+
+A validação deve respeitar:
+
+* regras dinâmicas
+* obrigatoriedades
+* vínculos
+* parcelamento
+* condicionais
+
+====================================================================
+OBRIGATÓRIO: REGRAS FINANCEIRAS CONFIGURÁVEIS
+=============================================
+
+Preparar arquitetura para futura página:
+“Regras Financeiras”.
+
+O sistema precisa ficar preparado para:
+
+* categorias dinâmicas
+* subcategorias dinâmicas
+* regras dinâmicas
+
+Hoje algumas regras estão hardcoded no código.
+Isso deve ser isolado.
+
+As regras devem ser estruturadas de forma configurável.
+
+====================================================================
+OBRIGATÓRIO: COMPONENTIZAÇÃO
+============================
+
+Separar:
+
+* sections
+* fields reutilizáveis
+* lógica
+* validação
+* regras
+
+Mas SEM exagerar em abstração desnecessária.
+
+====================================================================
+OBRIGATÓRIO: PERFORMANCE
+========================
+
+Reduzir:
+
+* renders desnecessários
+* dependências gigantes
+* cálculos repetidos
+* lógica recalculada em cascata
+
+Usar:
+
+* useMemo
+* useCallback
+* derived state organizado
+
+somente onde fizer sentido real.
+
+====================================================================
+OBRIGATÓRIO: TYPESCRIPT
+=======================
+
+Eliminar:
+
+* any
+* tipagem fraca
+* inferências perigosas
+
+Criar tipagem forte para:
+
+* regras
+* validação
+* formulário
+* estados derivados
+
+====================================================================
+OBRIGATÓRIO: RESULTADO FINAL
+============================
+
+Ao final da implementação:
+
+1. O componente principal deve ficar MUITO menor.
+
+2. Toda lógica financeira deve estar organizada.
+
+3. O formulário deve continuar funcionando exatamente igual.
+
+4. As regras devem estar centralizadas.
+
+5. O sistema deve estar preparado para crescimento futuro.
+
+6. O código deve ficar:
+
+* legível
+* modular
+* rastreável
+* previsível
+* profissional
+
+====================================================================
+IMPORTANTE
+==========
+
+NÃO simplifique o sistema.
+NÃO destrua regras existentes.
+NÃO remova complexidade de negócio.
+A complexidade de negócio é válida.
+
+O problema atual é exclusivamente:
+
+* organização
+* acoplamento
+* estrutura
+* manutenção
+* escalabilidade do código.
+
+A implementação final deve resolver isso de ponta a ponta.

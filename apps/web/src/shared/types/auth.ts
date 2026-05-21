@@ -4,22 +4,19 @@
  * Mantemos apenas o contrato esperado pelo código existente:
  * id/email no usuário, access_token na sessão e `message` no erro.
  * A autenticação é gerida exclusivamente pelo backend NestJS via JWT.
+ *
+ * ARQUITECTURA: AppRole é derivado de AnyRole (SystemRole | FunctionalRole)
+ * de @music-os-360/types — fonte única de verdade para todos os roles.
  */
 
-/** All 12 granular roles — mirrors server/src/common/types/roles.ts */
-export type AppRole =
-  | "super_admin"
-  | "tenant_owner"
-  | "admin"
-  | "accounting"
-  | "juridico"
-  | "artista"
-  | "produtor"
-  | "marketing_manager"
-  | "comercial"
-  | "colaborador"
-  | "rh_manager"
-  | "viewer";
+import type { SystemRole, FunctionalRole } from '@music-os-360/types';
+
+/**
+ * AppRole — union de todos os roles reconhecidos pelo sistema MUSIC OS 360.
+ * Derivado de SystemRole | FunctionalRole via template literal types.
+ * Retrocompatível: os valores string são idênticos aos anteriores.
+ */
+export type AppRole = `${SystemRole}` | `${FunctionalRole}`;
 
 export interface User {
   id: string;

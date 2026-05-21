@@ -1,10 +1,10 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Separator } from "@/shared/ui/separator";
 import { Printer, Download, Copy } from "lucide-react";
 import type { TemplateContrato } from "@/modules/contracts/hooks/useTemplatesContratos";
+import { A4Preview } from "@/modules/contracts/components/ContractA4Preview";
 import { toast } from "sonner";
 
 interface TemplateContratoViewModalProps {
@@ -37,7 +37,7 @@ export function TemplateContratoViewModal({
         </head>
         <body>
           <h1>${template.nome}</h1>
-          <pre>${highlightVariables(template.conteudo ?? "")}</pre>
+          <pre>${template.conteudo ?? ""}</pre>
         </body>
         </html>
       `);
@@ -67,73 +67,73 @@ export function TemplateContratoViewModal({
   const fmtDate = (iso?: string | null) =>
     iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
 
+  const fmtSlug = (slug: string) =>
+    slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh]">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle className="text-xl">{template.nome}</DialogTitle>
-            <div className="flex items-center gap-2">
-              <Badge variant={template.ativo ? "default" : "secondary"}>
-                {template.ativo ? "Ativo" : "Inativo"}
-              </Badge>
-              {template.tipo_servico && (
-                <Badge variant="outline">{template.tipo_servico}</Badge>
-              )}
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col gap-0 p-0">
+        {/* ── Header ── */}
+        <div className="px-6 pt-6 pb-4 shrink-0">
+          <DialogHeader>
+            <div className="flex items-start justify-between gap-3">
+              <DialogTitle className="text-xl leading-snug">{template.nome}</DialogTitle>
+              <div className="flex items-center gap-2 shrink-0">
+                <Badge
+                  variant={template.ativo ? "default" : "secondary"}
+                  className="no-underline"
+                >
+                  {template.ativo ? "Ativo" : "Inativo"}
+                </Badge>
+                {template.tipo_servico && (
+                  <Badge variant="outline" className="no-underline">
+                    {fmtSlug(template.tipo_servico)}
+                  </Badge>
+                )}
+              </div>
             </div>
-          </div>
-          {template.descricao && (
-            <p className="text-sm text-muted-foreground mt-1">{template.descricao}</p>
-          )}
-        </DialogHeader>
-
-        <Separator />
-
-        <ScrollArea className="h-[400px] rounded-md border bg-muted/30 p-6">
-          <div className="font-serif text-sm leading-relaxed whitespace-pre-wrap">
-            {renderContentWithHighlightedVariables(template.conteudo ?? "")}
-          </div>
-        </ScrollArea>
-
-        <div className="flex items-center justify-between text-xs text-muted-foreground">
-          <span>Criado em: {fmtDate(template.created_at)}</span>
-          <span>Última atualização: {fmtDate(template.updated_at)}</span>
+            {template.descricao && (
+              <p className="text-sm text-muted-foreground mt-1">{template.descricao}</p>
+            )}
+          </DialogHeader>
         </div>
 
-        <div className="flex justify-end gap-3 pt-2">
-          <Button variant="outline" onClick={handleCopy}>
-            <Copy className="mr-2 h-4 w-4" />
-            Copiar
-          </Button>
-          <Button variant="outline" onClick={handleDownload}>
-            <Download className="mr-2 h-4 w-4" />
-            Baixar
-          </Button>
-          <Button variant="outline" onClick={handlePrint}>
-            <Printer className="mr-2 h-4 w-4" />
-            Imprimir
-          </Button>
-          <Button onClick={() => onOpenChange(false)}>Fechar</Button>
+        <Separator className="shrink-0" />
+
+        {/* ── A4 Document Preview ── */}
+        <div className="overflow-y-auto flex-1 min-h-0">
+          <A4Preview
+            headerImage={template.header_image ?? null}
+            content={template.conteudo ?? ""}
+            footerImage={template.footer_image ?? null}
+          />
+        </div>
+
+        <Separator className="shrink-0" />
+
+        {/* ── Footer ── */}
+        <div className="px-6 py-4 shrink-0 flex items-center justify-between">
+          <div className="flex items-center gap-4 text-xs text-muted-foreground">
+            <span>Criado em: {fmtDate(template.created_at)}</span>
+            <span>Atualizado: {fmtDate(template.updated_at)}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={handleCopy}>
+              <Copy className="mr-2 h-4 w-4" />
+              Copiar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="mr-2 h-4 w-4" />
+              Baixar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handlePrint}>
+              <Printer className="mr-2 h-4 w-4" />
+              Imprimir
+            </Button>
+            <Button size="sm" onClick={() => onOpenChange(false)}>Fechar</Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
   );
-}
-
-function highlightVariables(content: string): string {
-  return content.replace(/\{\{([A-Z_]+)\}\}/g, '<span class="variable">{{$1}}</span>');
-}
-
-function renderContentWithHighlightedVariables(content: string) {
-  const parts = content.split(/(\{\{[A-Z_]+\}\})/g);
-  return parts.map((part, index) => {
-    if (part.match(/^\{\{[A-Z_]+\}\}$/)) {
-      return (
-        <span key={index} className="bg-yellow-200/50 dark:bg-yellow-900/30 px-1 rounded font-mono text-xs">
-          {part}
-        </span>
-      );
-    }
-    return part;
-  });
 }

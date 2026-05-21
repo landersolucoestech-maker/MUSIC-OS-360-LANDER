@@ -1,16 +1,13 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Body, Param, Query, UseGuards, UseInterceptors,
+  Body, Param, Query,
   ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { ClerkAuthGuard }  from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }     from '../../core/guards/tenant.guard';
-import { RolesGuard }      from '../../core/guards/roles.guard';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { AuditInterceptor, Audit } from '../../core/interceptors/audit.interceptor';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { PhonogramsService }       from './phonograms.service';
 import { CreatePhonogramDto }      from './dto/create-phonogram.dto';
 import { UpdatePhonogramDto }      from './dto/update-phonogram.dto';
@@ -18,8 +15,6 @@ import { QueryPhonogramDto }       from './dto/query-phonogram.dto';
 
 @ApiTags('Phonograms')
 @ApiBearerAuth()
-@UseGuards(ClerkAuthGuard, TenantGuard, RolesGuard)
-@UseInterceptors(AuditInterceptor)
 @Controller('phonograms')
 export class PhonogramsController {
   constructor(private readonly service: PhonogramsService) {}

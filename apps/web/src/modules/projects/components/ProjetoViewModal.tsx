@@ -7,6 +7,10 @@ import { Separator } from "@/shared/ui/separator";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import { Play, User, Music2, Clock, Globe, Mic, ExternalLink, FileText } from "lucide-react";
 import { parseMusicasFromProjeto, getMusicaInfo } from "@/modules/projects/lib/musica-helpers";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
 
 interface ProjetoViewModalProps {
   open: boolean;
@@ -25,8 +29,23 @@ function capitalize(s: string) {
 
 export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps>(
   function ProjetoViewModal({ open, onOpenChange, projeto }, ref) {
+    const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+      table:    'projetos',
+      id:       projeto?.id ?? '',
+      queryKey: ['projetos'],
+    });
+
+    const { data: detail } = useEntityDetail<typeof projeto & { allowed_transitions?: WorkflowTransition[] }>(
+      'projetos', projeto?.id, open,
+    );
+
     if (!projeto) return null;
 
+    const allowedTransitions = resolveAllowedTransitions(
+      'project',
+      detail?.status ?? projeto.status,
+      detail?.allowed_transitions,
+    );
     const musicas = parseMusicasFromProjeto(projeto);
 
     const getStatusBadge = (status: string) => {
@@ -66,6 +85,15 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     {getStatusBadge(projeto.status)}
                     <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
                   </div>
+                  {allowedTransitions.length > 0 && (
+                    <WorkflowTransitionPanel
+                      currentStatus={projeto.status ?? ""}
+                      allowedTransitions={allowedTransitions}
+                      onTransition={workflowTransition}
+                      isLoading={isTransitionPending}
+                      className="mt-1.5"
+                    />
+                  )}
                   <p className="text-xs text-muted-foreground mt-1">
                     📅 Cadastrado em: {projeto.created_at ? new Date(projeto.created_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
                   </p>

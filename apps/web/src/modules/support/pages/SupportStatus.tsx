@@ -38,6 +38,18 @@ const STATUS_CONFIG: Record<SystemStatusLevel, {
     icon: XCircle,
     dot: "bg-red-500",
   },
+  partial_outage: {
+    label: "Interrupção Parcial",
+    color: "text-orange-400 border-orange-500/30 bg-orange-500/10",
+    icon: AlertTriangle,
+    dot: "bg-orange-400",
+  },
+  major_outage: {
+    label: "Interrupção Total",
+    color: "text-red-400 border-red-500/30 bg-red-500/10",
+    icon: XCircle,
+    dot: "bg-red-500",
+  },
 };
 
 const INCIDENT_STATUS_COLOR: Record<string, string> = {

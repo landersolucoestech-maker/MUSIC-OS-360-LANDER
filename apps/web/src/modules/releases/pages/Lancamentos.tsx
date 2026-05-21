@@ -121,7 +121,7 @@ export default function Lancamentos() {
 
   const filteredReleases = useMemo(() => {
     return lancamentos.filter((release) => {
-      const artista = getArtistaById(release.artista_id);
+      const artista = getArtistaById(release.artista_id ?? null);
       const matchesSearch = release.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         artista?.nome_artistico?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === "all-type" || release.tipo?.toLowerCase() === typeFilter.toLowerCase();

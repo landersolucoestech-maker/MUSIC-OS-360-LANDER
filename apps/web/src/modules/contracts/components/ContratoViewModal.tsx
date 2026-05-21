@@ -20,11 +20,19 @@ import { DocumentTimeline } from "@/modules/contracts/components/DocumentTimelin
 import { SIGNER_ROLE_LABEL } from "@/modules/contracts/lib/contrato-schema";
 import { SigningPlatformBadge } from "@/modules/contracts/components/SigningPlatformBadge";
 import { SendForSigningDialog } from "@/modules/contracts/components/SendForSigningDialog";
+import { WorkflowTransitionPanel } from "@/shared/components/WorkflowTransitionPanel";
+import { useWorkflowTransition } from "@/shared/hooks/useWorkflowTransition";
+import { useEntityDetail } from "@/shared/hooks/useEntityDetail";
+import { resolveAllowedTransitions, WorkflowTransition } from "@/shared/lib/workflow-transitions";
+
+interface ContratoWithWorkflow extends ContratoWithRelations {
+  allowed_transitions?: { to: string; label?: string }[];
+}
 
 interface ContratoViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  contrato?: ContratoWithRelations;
+  contrato?: ContratoWithWorkflow;
   onEdit?: () => void;
 }
 
@@ -33,9 +41,21 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
   const navigate = useNavigate();
   const { data: allDocuments = [] } = useDocuments();
   const [sendDialogOpen, setSendDialogOpen] = useState(false);
+  const { transition: workflowTransition, isPending: isTransitionPending } = useWorkflowTransition({
+    table:    'contratos',
+    id:       contrato?.id ?? '',
+    queryKey: ['contratos'],
+  });
+
+  const { data: detail } = useEntityDetail<ContratoWithWorkflow>('contratos', contrato?.id, open);
 
   if (!contrato) return null;
 
+  const allowedTransitions = resolveAllowedTransitions(
+    'contract',
+    detail?.status ?? contrato.status,
+    detail?.allowed_transitions,
+  );
   const vinculadoDoc = allDocuments.find((d) => d.contract_id === contrato.id);
   const contratoSigners = Array.isArray(contrato.signers) ? contrato.signers : [];
 
@@ -74,7 +94,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   {contrato.titulo}
                 </DialogTitle>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
-                  <StatusBadge status={contrato.status} />
+                  <StatusBadge status={contrato.status ?? ""} />
                   <SigningPlatformBadge platform={contrato.signing_platform} />
                   {expirando && (
                     <Badge className="bg-warning/10 text-warning border-warning/20 text-[11px] border gap-1">
@@ -89,6 +109,15 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                     <DocumentStatusBadge status={vinculadoDoc.status} />
                   )}
                 </div>
+                {allowedTransitions.length > 0 && (
+                  <WorkflowTransitionPanel
+                    currentStatus={contrato.status ?? ""}
+                    allowedTransitions={allowedTransitions}
+                    onTransition={workflowTransition}
+                    isLoading={isTransitionPending}
+                    className="mt-2"
+                  />
+                )}
               </div>
             </div>
           </DialogHeader>
@@ -180,7 +209,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                             </p>
                           </div>
                           <Badge variant="outline" className="text-[10px] font-normal shrink-0">
-                            {SIGNER_ROLE_LABEL[signer.role]}
+                            {(SIGNER_ROLE_LABEL as Record<string, string | undefined>)[signer.role] ?? signer.role}
                           </Badge>
                         </div>
                       ))}
@@ -421,7 +450,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                           <Badge variant="outline" className="text-[10px] capitalize">
                             {lancamentoVinculado.tipo || "—"}
                           </Badge>
-                          <StatusBadge status={lancamentoVinculado.status} />
+                          <StatusBadge status={lancamentoVinculado.status ?? ""} />
                         </div>
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3">
                           <div>

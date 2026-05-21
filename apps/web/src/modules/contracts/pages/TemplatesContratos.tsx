@@ -1,91 +1,262 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
+import { Badge } from "@/shared/ui/badge";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
-import { Badge } from "@/shared/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import { Search, FileText, Loader2, Plus } from "lucide-react";
+  Loader2, Plus, Trash2, FileText, Sparkles, Eye, Pencil, Search, X, MoreHorizontal,
+} from "lucide-react";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
-import { TemplateContratoFormModal } from "@/modules/contracts/components/TemplateContratoFormModal";
-import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import {
   useTemplatesContratos,
   type TemplateContrato,
   type TemplateContratoInsert,
+  type TemplateContratoUpdate,
 } from "@/modules/contracts/hooks/useTemplatesContratos";
-import { CONTRACT_TYPES } from "@/modules/contracts/constants/contract-types";
+import { ContractImportWorkspace } from "@/modules/contracts/components/ContractImportWorkspace";
+import { TemplateContratoViewModal } from "@/modules/contracts/components/TemplateContratoViewModal";
+import type { SemanticTemplateManifest } from "@/modules/contracts/types/contracts.types";
 
-const TIPOS_SERVICO = [
-  ...[
-    ...CONTRACT_TYPES.SERVICOS,
-    ...CONTRACT_TYPES.COLABORADORES,
-    ...CONTRACT_TYPES.ARTISTICOS,
-    ...CONTRACT_TYPES.FONOGRAFICOS,
-    ...CONTRACT_TYPES.EDITORIAIS,
-    ...CONTRACT_TYPES.LICENCIAMENTO,
-    ...CONTRACT_TYPES.SHOWS,
-    ...CONTRACT_TYPES.DISTRIBUICAO,
-    ...CONTRACT_TYPES.PARCERIAS,
-    ...CONTRACT_TYPES.MARCAS_PUBLICIDADE,
-    ...CONTRACT_TYPES.JURIDICOS,
-    ...CONTRACT_TYPES.RESCISAO,
-  ].sort((a, b) => a.localeCompare(b, "pt-BR")),
-  "Outros",
-];
+function parseManifest(template: TemplateContrato): SemanticTemplateManifest | null {
+  const raw = template["variables_manifest"];
+  if (!raw) return null;
+  try {
+    const parsed = typeof raw === "string" ? JSON.parse(raw) : raw;
+    return parsed as SemanticTemplateManifest;
+  } catch {
+    return null;
+  }
+}
+
+function countVariables(template: TemplateContrato): number {
+  return parseManifest(template)?.variables?.length ?? 0;
+}
+
+function getClauseTypes(template: TemplateContrato): string[] {
+  return parseManifest(template)?.clauseTypes ?? [];
+}
+
+function formatSlug(slug: string): string {
+  return slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function formatDate(dateStr?: string): string {
+  if (!dateStr) return "—";
+  try {
+    return new Date(dateStr).toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "—";
+  }
+}
+
+const COL = "grid grid-cols-[1fr_180px_110px_130px_100px] items-center gap-4 px-4";
+
+function TemplateTableHeader() {
+  return (
+    <div className={`${COL} py-2 border-b border-border`}>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Nome</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Categoria</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Status</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Data de Criação</span>
+      <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide text-right">Ações</span>
+    </div>
+  );
+}
+
+function TemplateRow({
+  template,
+  onDelete,
+  onView,
+  onEdit,
+}: {
+  template: TemplateContrato;
+  onDelete: () => void;
+  onView: () => void;
+  onEdit: () => void;
+}) {
+  const varCount = countVariables(template);
+  const clauseTypes = getClauseTypes(template);
+  const isSemantic = template.tipo_servico === "semantico";
+
+  return (
+    <div
+      className={`${COL} group py-3 hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/50 last:border-0`}
+      onClick={onView}
+      data-testid={`row-template-${template.id}`}
+    >
+      {/* Nome */}
+      <div className="flex items-center gap-2.5 min-w-0">
+        <div className={`h-7 w-7 rounded-md flex items-center justify-center shrink-0 ${isSemantic ? "bg-primary/10" : "bg-muted"}`}>
+          {isSemantic
+            ? <Sparkles className="h-3.5 w-3.5 text-primary" />
+            : <FileText className="h-3.5 w-3.5 text-muted-foreground" />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate leading-tight">{template.nome}</p>
+          {template.descricao && (
+            <p className="text-xs text-muted-foreground truncate mt-0.5">{template.descricao}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Categoria */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {isSemantic ? (
+          <Badge variant="secondary" className="text-[10px] gap-1">
+            <Sparkles className="h-2.5 w-2.5" />Semântico IA
+          </Badge>
+        ) : (
+          <Badge variant="outline" className="text-[10px]">
+            {template.tipo_servico ? formatSlug(template.tipo_servico) : "Padrão"}
+          </Badge>
+        )}
+        {clauseTypes.slice(0, 1).map((ct) => (
+          <Badge key={ct} variant="outline" className="text-[10px]">{ct}</Badge>
+        ))}
+        {clauseTypes.length > 1 && (
+          <span className="text-[10px] px-1 py-0.5 rounded border text-muted-foreground border-border">
+            +{clauseTypes.length - 1}
+          </span>
+        )}
+        {isSemantic && varCount > 0 && (
+          <span className="text-[10px] text-muted-foreground">{varCount} vars</span>
+        )}
+      </div>
+
+      {/* Status */}
+      <div>
+        <Badge variant={template.ativo ? "default" : "secondary"} className="text-[10px]">
+          {template.ativo ? "Ativo" : "Inativo"}
+        </Badge>
+      </div>
+
+      {/* Data de Criação */}
+      <span className="text-xs text-muted-foreground">{formatDate(template.created_at)}</span>
+
+      {/* Ações */}
+      <div className="flex items-center justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={(e) => e.stopPropagation()}
+              data-testid={`button-actions-template-${template.id}`}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onView(); }}
+              data-testid={`menu-view-template-${template.id}`}
+            >
+              <Eye className="h-3.5 w-3.5 mr-2" />
+              Visualizar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onEdit(); }}
+              data-testid={`menu-edit-template-${template.id}`}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-2" />
+              Editar
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+              className="text-destructive focus:text-destructive"
+              data-testid={`menu-delete-template-${template.id}`}
+            >
+              <Trash2 className="h-3.5 w-3.5 mr-2" />
+              Excluir
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+    </div>
+  );
+}
 
 export default function TemplatesContratos() {
-  const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } = useTemplatesContratos();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [filterTipo, setFilterTipo] = useState<string>("todos");
+  const { templates, isLoading, addTemplate, updateTemplate, deleteTemplate } =
+    useTemplatesContratos();
 
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [isViewOpen, setIsViewOpen] = useState(false);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isWorkspaceOpen, setIsWorkspaceOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen]       = useState(false);
+  const [isViewOpen, setIsViewOpen]           = useState(false);
+  const [isEditOpen, setIsEditOpen]           = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState<TemplateContrato | null>(null);
 
-  const filteredTemplates = templates.filter((tpl) => {
-    const matchesSearch =
-      tpl.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      tpl.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTipo = filterTipo === "todos" || tpl.tipo_servico === filterTipo;
-    return matchesSearch && matchesTipo;
-  });
+  const [search, setSearch]           = useState("");
+  const [filterType, setFilterType]   = useState<"all" | "semantico" | "padrao">("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "ativo" | "inativo">("all");
 
-  const handleAdd = () => { setSelectedTemplate(null); setIsFormOpen(true); };
-  const handleEdit = (template: TemplateContrato) => { setSelectedTemplate(template); setIsFormOpen(true); };
-  const handleView = (template: TemplateContrato) => { setSelectedTemplate(template); setIsViewOpen(true); };
-  const handleDeleteClick = (template: TemplateContrato) => { setSelectedTemplate(template); setIsDeleteOpen(true); };
-  const handleDeleteConfirm = () => {
-    if (selectedTemplate) { deleteTemplate.mutate(selectedTemplate.id); setIsDeleteOpen(false); setSelectedTemplate(null); }
-  };
+  const filteredTemplates = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return templates.filter((t) => {
+      if (q && !t.nome.toLowerCase().includes(q) && !(t.descricao ?? "").toLowerCase().includes(q)) return false;
+      if (filterType === "semantico" && t.tipo_servico !== "semantico") return false;
+      if (filterType === "padrao"    && t.tipo_servico === "semantico") return false;
+      if (filterStatus === "ativo"   && !t.ativo)  return false;
+      if (filterStatus === "inativo" && t.ativo)   return false;
+      return true;
+    });
+  }, [templates, search, filterType, filterStatus]);
+
+  const hasActiveFilters = search.trim() !== "" || filterType !== "all" || filterStatus !== "all";
+
   const handleSave = (data: TemplateContratoInsert) => {
-    if (selectedTemplate) { updateTemplate.mutate({ id: selectedTemplate.id, ...data }); }
-    else { addTemplate.mutate(data); }
-    setIsFormOpen(false);
-    setSelectedTemplate(null);
+    addTemplate.mutate(data);
   };
+
+  const handleEditSave = (id: string, data: TemplateContratoUpdate) => {
+    updateTemplate.mutate({ id, ...data });
+  };
+
+  const handleDeleteClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsDeleteOpen(true);
+  };
+
+  const handleDeleteConfirm = () => {
+    if (selectedTemplate) {
+      deleteTemplate.mutate(selectedTemplate.id);
+      setIsDeleteOpen(false);
+      setSelectedTemplate(null);
+    }
+  };
+
+  const handleViewClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsViewOpen(true);
+  };
+
+  const handleEditClick = (t: TemplateContrato) => {
+    setSelectedTemplate(t);
+    setIsEditOpen(true);
+  };
+
+  const semanticCount = templates.filter((t) => t.tipo_servico === "semantico").length;
+  const activeCount   = templates.filter((t) => t.ativo).length;
+  const totalVars     = templates.reduce((acc, t) => acc + countVariables(t), 0);
 
   if (isLoading) {
     return (
       <MainLayout
-        title="Templates de Contratos"
-        description="Gerencie modelos de contratos personalizáveis"
+        title="Templates de Contrato"
+        description="Motor semântico de templates contratuais"
       >
         <div className="flex items-center justify-center h-40">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -94,155 +265,169 @@ export default function TemplatesContratos() {
     );
   }
 
-  const ativos   = templates.filter((t) => t.ativo).length;
-  const inativos = templates.filter((t) => !t.ativo).length;
-  const tiposUnicos = new Set(templates.map((t) => t.tipo_servico)).size;
-
   return (
     <MainLayout
-      title="Templates de Contratos"
-      description="Gerencie modelos de contratos personalizáveis"
+      title="Templates de Contrato"
+      description="Transforme qualquer contrato em template reutilizável com inteligência semântica"
+      actions={
+        <Button
+          className="gap-2"
+          onClick={() => setIsWorkspaceOpen(true)}
+          data-testid="button-novo-template"
+        >
+          <Plus className="h-4 w-4" />
+          Novo Template
+        </Button>
+      }
     >
       <div className="space-y-6">
         {/* Stats */}
         <div className="grid gap-4 md:grid-cols-4">
           {[
-            { title: "Total de Templates", value: templates.length, color: "text-foreground" },
-            { title: "Ativos",             value: ativos,           color: "text-success"     },
-            { title: "Inativos",           value: inativos,         color: "text-muted-foreground" },
-            { title: "Tipos de Serviço",   value: tiposUnicos,      color: "text-foreground"  },
-          ].map(({ title, value, color }) => (
+            { title: "Total de Templates", value: templates.length,  sub: "todos os tipos",         icon: FileText  },
+            { title: "Semânticos (IA)",     value: semanticCount,    sub: "gerados por IA",          icon: Sparkles  },
+            { title: "Ativos",              value: activeCount,      sub: "disponíveis",             icon: FileText  },
+            { title: "Variáveis Mapeadas",  value: totalVars,        sub: "em todos os templates",   icon: Sparkles  },
+          ].map(({ title, value, sub, icon: Icon }) => (
             <Card key={title}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{title}</CardTitle>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className={`text-2xl font-bold ${color}`}>{value}</div>
-              </CardContent>
+              <div className="flex flex-row items-center justify-between space-y-0 p-5 pb-2">
+                <p className="text-sm font-medium">{title}</p>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="px-5 pb-5">
+                <div className="text-2xl font-bold">{value}</div>
+                <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+              </div>
             </Card>
           ))}
         </div>
 
-        {/* Actions + Filters */}
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
-              placeholder="Buscar templates por nome ou descrição..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 bg-card border-border"
+              className="pl-8 h-9 text-sm"
+              placeholder="Buscar por nome ou descrição…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="input-search-templates"
             />
+            {search && (
+              <button
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                onClick={() => setSearch("")}
+                aria-label="Limpar busca"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
-          <Select value={filterTipo} onValueChange={setFilterTipo}>
-            <SelectTrigger className="w-[200px] bg-card border-border">
-              <SelectValue placeholder="Todos os tipos" />
+
+          <Select value={filterType} onValueChange={(v) => setFilterType(v as typeof filterType)}>
+            <SelectTrigger className="h-9 w-[160px] text-sm" data-testid="select-filter-type">
+              <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="todos">Todos os tipos</SelectItem>
-              {TIPOS_SERVICO.map((tipo) => (
-                <SelectItem key={tipo} value={tipo}>{tipo}</SelectItem>
-              ))}
+              <SelectItem value="all">Todos os tipos</SelectItem>
+              <SelectItem value="semantico">Semântico (IA)</SelectItem>
+              <SelectItem value="padrao">Padrão</SelectItem>
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || filterTipo !== "todos") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setFilterTipo("todos"); }}>
+
+          <Select value={filterStatus} onValueChange={(v) => setFilterStatus(v as typeof filterStatus)}>
+            <SelectTrigger className="h-9 w-[140px] text-sm" data-testid="select-filter-status">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="ativo">Ativo</SelectItem>
+              <SelectItem value="inativo">Inativo</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {hasActiveFilters && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-9 gap-1.5 text-muted-foreground"
+              onClick={() => { setSearch(""); setFilterType("all"); setFilterStatus("all"); }}
+              data-testid="button-clear-filters"
+            >
+              <X className="h-3.5 w-3.5" />
               Limpar
             </Button>
           )}
-          <Button size="sm" className="gap-2 ml-auto" onClick={handleAdd} data-testid="button-novo-template">
-            <Plus className="h-4 w-4" />
-            Novo Template
-          </Button>
+
         </div>
 
-        {/* Table */}
-        <Card>
-          <CardContent className="p-0">
-            {filteredTemplates.length === 0 ? (
-              <div className="p-6">
-                <EmptyState
-                  icon={FileText}
-                  title="Nenhum template encontrado"
-                  description="Crie templates de contratos para agilizar a geração de documentos."
-                  action={{ label: "Novo Template", onClick: handleAdd }}
-                />
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome</TableHead>
-                    <TableHead>Tipo de Serviço</TableHead>
-                    <TableHead>Variáveis</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Atualização</TableHead>
-                    <TableHead className="w-[120px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredTemplates.map((template) => (
-                    <TableRow key={template.id} data-testid={`row-template-${template.id}`}>
-                      <TableCell>
-                        <div>
-                          <p className="font-medium">{template.nome}</p>
-                          {template.descricao && (
-                            <p className="text-xs text-muted-foreground line-clamp-1">{template.descricao}</p>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{template.tipo_servico ?? "—"}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {(template.variaveis as string[] | null)?.length ?? 0} variáveis
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={template.ativo ? "default" : "secondary"}>
-                          {template.ativo ? "Ativo" : "Inativo"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {template.updated_at ? new Date(template.updated_at).toLocaleDateString("pt-BR") : "—"}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleView(template)}>Ver</Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => handleEdit(template)}>Editar</Button>
-                          <Button variant="ghost" size="sm" className="h-7 text-xs text-destructive hover:text-destructive" onClick={() => handleDeleteClick(template)}>Excluir</Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-
-        <TemplateContratoFormModal
-          open={isFormOpen}
-          onOpenChange={setIsFormOpen}
-          template={selectedTemplate}
-          onSave={handleSave}
-          tiposServico={TIPOS_SERVICO}
-        />
-        <TemplateContratoViewModal
-          open={isViewOpen}
-          onOpenChange={setIsViewOpen}
-          template={selectedTemplate}
-        />
-        <DeleteConfirmModal
-          open={isDeleteOpen}
-          onOpenChange={setIsDeleteOpen}
-          onConfirm={handleDeleteConfirm}
-          title="Excluir Template"
-          description={`Tem certeza que deseja excluir o template "${selectedTemplate?.nome}"? Esta ação não pode ser desfeita.`}
-        />
+        {/* Template grid */}
+        {templates.length === 0 ? (
+          <Card>
+            <CardContent className="p-8">
+              <EmptyState
+                icon={Sparkles}
+                title="Nenhum template criado ainda"
+                description="Clique em 'Novo Template' para importar um contrato e gerar um template inteligente com detecção automática de variáveis."
+                action={{ label: "Novo Template", onClick: () => setIsWorkspaceOpen(true) }}
+              />
+            </CardContent>
+          </Card>
+        ) : filteredTemplates.length === 0 ? (
+          <Card>
+            <CardContent className="p-8">
+              <EmptyState
+                icon={Search}
+                title="Nenhum template encontrado"
+                description="Tente ajustar os filtros ou limpar a busca para ver todos os templates."
+                action={{ label: "Limpar filtros", onClick: () => { setSearch(""); setFilterType("all"); setFilterStatus("all"); } }}
+              />
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="rounded-lg border border-border overflow-hidden">
+            <TemplateTableHeader />
+            {filteredTemplates.map((t) => (
+              <TemplateRow
+                key={t.id}
+                template={t}
+                onView={() => handleViewClick(t)}
+                onEdit={() => handleEditClick(t)}
+                onDelete={() => handleDeleteClick(t)}
+              />
+            ))}
+          </div>
+        )}
       </div>
+
+      {/* Modals */}
+      <ContractImportWorkspace
+        open={isWorkspaceOpen}
+        onOpenChange={setIsWorkspaceOpen}
+        onSave={handleSave}
+      />
+
+      <ContractImportWorkspace
+        open={isEditOpen}
+        onOpenChange={setIsEditOpen}
+        onSave={handleSave}
+        template={selectedTemplate}
+        onEdit={handleEditSave}
+      />
+
+      <TemplateContratoViewModal
+        open={isViewOpen}
+        onOpenChange={setIsViewOpen}
+        template={selectedTemplate}
+      />
+
+      <DeleteConfirmModal
+        open={isDeleteOpen}
+        onOpenChange={setIsDeleteOpen}
+        onConfirm={handleDeleteConfirm}
+        title="Excluir Template"
+        description={`Tem certeza que deseja excluir o template "${selectedTemplate?.nome}"? Esta ação não pode ser desfeita.`}
+      />
     </MainLayout>
   );
 }

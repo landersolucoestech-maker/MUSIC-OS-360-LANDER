@@ -41,7 +41,7 @@ export class BriefingsService {
 
   async create(tenantId: string, userId: string, dto: CreateBriefingDto): Promise<BriefingEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId });
-    return this.repo!.save(entity);
+    return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateBriefingDto): Promise<BriefingEntity> {

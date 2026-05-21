@@ -146,7 +146,7 @@ function PlatformCard({
   platform: PlatformDef;
   isConnected: boolean;
   connection: ReturnType<ReturnType<typeof useMarketingOAuth>["getConnection"]>;
-  onConnect:  (id: MarketingPlatformId, scopes: string[]) => Promise<void>;
+  onConnect:  (id: MarketingPlatformId, scopes: string[], access_token?: string) => Promise<void>;
   onDisconnect: (id: MarketingPlatformId) => void;
 }) {
   const [loading, setLoading]   = useState(false);

@@ -1,0 +1,165 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feat/**", "fix/**", "chore/**"]
+  pull_request:
+    branches: [main, develop]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: "20"
+  PNPM_VERSION: "10.11.0"
+
+jobs:
+  # ─── Lint + TypeCheck ─────────────────────────────────────────────────────────
+  quality:
+    name: Lint & TypeCheck
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: TypeCheck (all workspaces)
+        run: pnpm turbo typecheck
+
+      - name: Lint
+        run: pnpm turbo lint
+
+  # ─── Tests ────────────────────────────────────────────────────────────────────
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    env:
+      NODE_ENV: test
+      # Minimal env for test runner — no real DB needed
+      DATABASE_URL: "postgresql://test:test@localhost:5432/test_db"
+      ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000001"
+      ENCRYPTION_IV_SECRET: "test_iv_secret"
+      JWT_SECRET: "test_jwt_secret"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run API tests with coverage
+        run: pnpm --filter @music-os-360/api test:ci
+        env:
+          CI: true
+
+      - name: Run Web tests
+        run: pnpm --filter @music-os-360/web test:run
+        env:
+          CI: true
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: apps/api/coverage/
+          retention-days: 7
+
+  # ─── Build ────────────────────────────────────────────────────────────────────
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    needs: [quality, test]
+    env:
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}
+      VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001/api/v1' }}
+      # Mock mode OFF in CI builds — validates that production paths compile
+      VITE_USE_MOCK: "false"
+      VITE_MOCK_MODE: "false"
+      NODE_ENV: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (frontend + API)
+        run: pnpm turbo build
+
+      - name: Upload frontend dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-dist
+          path: apps/web/dist/
+          retention-days: 7
+
+  # ─── Security Audit ───────────────────────────────────────────────────────────
+  security:
+    name: Security Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: pnpm audit (high+)
+        run: pnpm audit --audit-level=high --prod
+        continue-on-error: true
+
+  # ─── Release — inject SENTRY_RELEASE on merge to main ─────────────────────────
+  release-tag:
+    name: Tag Release
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set SENTRY_RELEASE
+        run: echo "SENTRY_RELEASE=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
+
+      - name: Annotate deployment
+        run: |
+          echo "Release ${{ env.SENTRY_RELEASE }} ready for deployment"
+          echo "SENTRY_RELEASE=${{ env.SENTRY_RELEASE }}" >> $GITHUB_OUTPUT
+        id: release

@@ -14,7 +14,7 @@ export type {
   IAuthProvider,
   AuthProviderCapabilities,
 } from "./auth.contract";
-export { CLERK_CAPABILITIES, MOCK_AUTH_CAPABILITIES } from "./auth.contract";
+export { SUPABASE_AUTH_CAPABILITIES, MOCK_AUTH_CAPABILITIES } from "./auth.contract";
 
 export type {
   StorageBucket,

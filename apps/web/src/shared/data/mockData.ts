@@ -337,9 +337,9 @@ function buildSeedData(): Record<string, unknown[]> {
   ],
 
   templates_contratos: [
-    { id: "tmpl-001", user_id: UID, nome: "Template - Contrato de Exclusividade", tipo: "exclusividade", ativo: true, conteudo: "CONTRATO DE EXCLUSIVIDADE\n\nPor este instrumento particular, as partes...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
-    { id: "tmpl-002", user_id: UID, nome: "Template - Contrato de Distribuição Digital", tipo: "distribuicao", ativo: true, conteudo: "CONTRATO DE DISTRIBUIÇÃO DIGITAL\n\nPor este instrumento...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
-    { id: "tmpl-003", user_id: UID, nome: "Template - Licença de Uso Musical", tipo: "licenciamento", ativo: true, conteudo: "LICENÇA DE USO MUSICAL\n\nAutorizamos o uso da obra...", header_image_url: null, footer_image_url: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-001", user_id: UID, nome: "Template - Contrato de Exclusividade", tipo: "agenciamento", tipo_servico: "agenciamento", ativo: true, conteudo: "CONTRATO DE EXCLUSIVIDADE\n\nPor este instrumento particular, as partes...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-002", user_id: UID, nome: "Template - Contrato de Distribuição Digital", tipo: "distribuicao", tipo_servico: "distribuicao", ativo: true, conteudo: "CONTRATO DE DISTRIBUIÇÃO DIGITAL\n\nPor este instrumento...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
+    { id: "tmpl-003", user_id: UID, nome: "Template - Licença de Uso Musical", tipo: "licenciamento", tipo_servico: "licenciamento", ativo: true, conteudo: "LICENÇA DE USO MUSICAL\n\nAutorizamos o uso da obra...", header_image: null, footer_image: null, created_at: NOW, updated_at: NOW },
   ],
 
   deteccoes: [
@@ -419,6 +419,31 @@ function buildSeedData(): Record<string, unknown[]> {
   ],
   team_members: [],
   team_invites: [],
+
+  regras_transacao: [
+    { id: "rt-001", user_id: UID, nome: "Receita Musical com Projeto", descricao: "Transações de receita musical devem vincular artista e projeto obrigatoriamente.", tipoTransacao: "receita", tipoCliente: "empresa", categoria: "receitas-musicais", camposVisiveis: ["categoria","subcategoria","artista","projeto","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","projeto","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-002", user_id: UID, nome: "Despesa de Show / Cachê Artista", descricao: "Pagamentos de cachê para artistas devem ter evento vinculado.", tipoTransacao: "despesa", tipoCliente: "artista", categoria: "caches", camposVisiveis: ["categoria","subcategoria","artista","evento","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","evento","valor","data"], prioridade: 2, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-003", user_id: UID, nome: "Imposto Federal — Órgão Arrecadador", descricao: "Todo recolhimento de imposto deve identificar o órgão arrecadador.", tipoTransacao: "imposto", tipoCliente: "all", categoria: "all", camposVisiveis: ["categoria","orgaoArrecadador","formaPagamento","valor","data"], camposObrigatorios: ["orgaoArrecadador","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-004", user_id: UID, nome: "Despesa de Produção Audiovisual", descricao: "Serviços de produção audiovisual exigem artista e projeto associados.", tipoTransacao: "despesa", tipoCliente: "empresa", categoria: "servicos", camposVisiveis: ["categoria","subcategoria","artista","projeto","fornecedor","formaPagamento","valor","data"], camposObrigatorios: ["subcategoria","artista","projeto","valor","data"], prioridade: 3, ativo: true, created_at: NOW, updated_at: NOW },
+    { id: "rt-005", user_id: UID, nome: "Investimento em Equipamentos", descricao: "Compra de equipamentos deve categorizar o item de investimento.", tipoTransacao: "investimento", tipoCliente: "all", categoria: "equipamentos", camposVisiveis: ["categoria","itemInvestimento","formaPagamento","valor","data"], camposObrigatorios: ["itemInvestimento","valor","data"], prioridade: 2, ativo: false, created_at: NOW, updated_at: NOW },
+  ],
+
+  contract_service_types: [
+    { id: "cst-001", name: "Empresariamento", slug: "empresariamento", description: "Gestão e representação exclusiva do artista em todas as frentes de carreira.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 1, created_at: NOW, updated_at: NOW },
+    { id: "cst-002", name: "Suporte Financeiro", slug: "suporte_financeiro", description: "Suporte financeiro mensal ao artista, sem comissão sobre receitas.", client_types: ["artista", "pessoa_fisica"], financial_model: "recorrente", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: true, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 2, created_at: NOW, updated_at: NOW },
+    { id: "cst-003", name: "Gestão", slug: "gestao", description: "Gestão de carreira artística com foco estratégico e operacional.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 3, created_at: NOW, updated_at: NOW },
+    { id: "cst-004", name: "Agenciamento", slug: "agenciamento", description: "Representação para shows, eventos e negociações comerciais.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "caches", active: true, sort_order: 4, created_at: NOW, updated_at: NOW },
+    { id: "cst-005", name: "Edição", slug: "edicao", description: "Edição e administração de obras musicais e direitos autorais.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "receitas-musicais", active: true, sort_order: 5, created_at: NOW, updated_at: NOW },
+    { id: "cst-006", name: "Distribuição", slug: "distribuicao", description: "Distribuição digital e/ou física do catálogo fonográfico.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "receitas-musicais", active: true, sort_order: 6, created_at: NOW, updated_at: NOW },
+    { id: "cst-007", name: "Marketing", slug: "marketing", description: "Serviços de marketing digital, social media e promoção artística.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "servicos", active: true, sort_order: 7, created_at: NOW, updated_at: NOW },
+    { id: "cst-008", name: "Produção Musical", slug: "producao_musical", description: "Produção e arranjo de obras musicais, gravação e mixagem.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "servicos", active: true, sort_order: 8, created_at: NOW, updated_at: NOW },
+    { id: "cst-009", name: "Produção Audiovisual", slug: "producao_audiovisual", description: "Produção de videoclipes, conteúdo audiovisual e documentários.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "servicos", active: true, sort_order: 9, created_at: NOW, updated_at: NOW },
+    { id: "cst-010", name: "Licenciamento", slug: "licenciamento", description: "Licenciamento de obras e fonogramas para uso em mídias diversas.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 10, created_at: NOW, updated_at: NOW },
+    { id: "cst-011", name: "Publicidade", slug: "publicidade", description: "Contratos de publicidade e campanhas com marcas.", client_types: ["pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "patrocinio", active: true, sort_order: 11, created_at: NOW, updated_at: NOW },
+    { id: "cst-012", name: "Parceria", slug: "parceria", description: "Acordos de parceria comercial ou artística entre partes.", client_types: ["pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 12, created_at: NOW, updated_at: NOW },
+    { id: "cst-013", name: "Shows", slug: "shows", description: "Contratação para apresentações ao vivo e eventos.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "caches", active: true, sort_order: 13, created_at: NOW, updated_at: NOW },
+    { id: "cst-014", name: "Outros", slug: "outros", description: "Contratos de serviços que não se enquadram nas categorias acima.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: null, active: true, sort_order: 14, created_at: NOW, updated_at: NOW },
+  ],
   };
 }
 
@@ -448,6 +473,80 @@ function patchMockData(data: Record<string, unknown[]>): void {
       if (!art001.video_apresentacao_url) art001.video_apresentacao_url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
       if (!art001.documentos) art001.documentos = [{ nome: "Press Kit 2025", url: "https://exemplo.com/presskit-vitoria-2025.pdf" }, { nome: "Rider Técnico", url: "https://exemplo.com/rider-vitoria.pdf" }];
     }
+  }
+
+  // contract_service_types — seed inicial (Task #41): tabela nova, injeta se ausente
+  if (!data["contract_service_types"] || (data["contract_service_types"] as unknown[]).length === 0) {
+    data["contract_service_types"] = [
+      { id: "cst-001", name: "Empresariamento", slug: "empresariamento", description: "Gestão e representação exclusiva do artista em todas as frentes de carreira.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 1, created_at: NOW, updated_at: NOW },
+      { id: "cst-002", name: "Suporte Financeiro", slug: "suporte_financeiro", description: "Suporte financeiro mensal ao artista, sem comissão sobre receitas.", client_types: ["artista", "pessoa_fisica"], financial_model: "recorrente", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: true, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 2, created_at: NOW, updated_at: NOW },
+      { id: "cst-003", name: "Gestão", slug: "gestao", description: "Gestão de carreira artística com foco estratégico e operacional.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 3, created_at: NOW, updated_at: NOW },
+      { id: "cst-004", name: "Agenciamento", slug: "agenciamento", description: "Representação para shows, eventos e negociações comerciais.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: true, requires_fixed_value: false, requires_advance: true, requires_financial_support: false, allow_installments: false, default_financial_category: "caches", active: true, sort_order: 4, created_at: NOW, updated_at: NOW },
+      { id: "cst-005", name: "Edição", slug: "edicao", description: "Edição e administração de obras musicais e direitos autorais.", client_types: ["artista", "pessoa_fisica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "receitas-musicais", active: true, sort_order: 5, created_at: NOW, updated_at: NOW },
+      { id: "cst-006", name: "Distribuição", slug: "distribuicao", description: "Distribuição digital e/ou física do catálogo fonográfico.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "receitas-musicais", active: true, sort_order: 6, created_at: NOW, updated_at: NOW },
+      { id: "cst-007", name: "Marketing", slug: "marketing", description: "Serviços de marketing digital, social media e promoção artística.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "servicos", active: true, sort_order: 7, created_at: NOW, updated_at: NOW },
+      { id: "cst-008", name: "Produção Musical", slug: "producao_musical", description: "Produção e arranjo de obras musicais, gravação e mixagem.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "misto", requires_royalties: false, requires_fixed_value: false, requires_advance: false, requires_financial_support: false, allow_installments: true, default_financial_category: "servicos", active: true, sort_order: 8, created_at: NOW, updated_at: NOW },
+      { id: "cst-009", name: "Produção Audiovisual", slug: "producao_audiovisual", description: "Produção de videoclipes, conteúdo audiovisual e documentários.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "servicos", active: true, sort_order: 9, created_at: NOW, updated_at: NOW },
+      { id: "cst-010", name: "Licenciamento", slug: "licenciamento", description: "Licenciamento de obras e fonogramas para uso em mídias diversas.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 10, created_at: NOW, updated_at: NOW },
+      { id: "cst-011", name: "Publicidade", slug: "publicidade", description: "Contratos de publicidade e campanhas com marcas.", client_types: ["pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "patrocinio", active: true, sort_order: 11, created_at: NOW, updated_at: NOW },
+      { id: "cst-012", name: "Parceria", slug: "parceria", description: "Acordos de parceria comercial ou artística entre partes.", client_types: ["pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "receitas-musicais", active: true, sort_order: 12, created_at: NOW, updated_at: NOW },
+      { id: "cst-013", name: "Shows", slug: "shows", description: "Contratação para apresentações ao vivo e eventos.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: "caches", active: true, sort_order: 13, created_at: NOW, updated_at: NOW },
+      { id: "cst-014", name: "Outros", slug: "outros", description: "Contratos de serviços que não se enquadram nas categorias acima.", client_types: ["artista", "pessoa_fisica", "pessoa_juridica"], financial_model: "valor_fixo", requires_royalties: false, requires_fixed_value: true, requires_advance: false, requires_financial_support: false, allow_installments: false, default_financial_category: null, active: true, sort_order: 14, created_at: NOW, updated_at: NOW },
+    ] as unknown[];
+  }
+
+  // templates_contratos — patch: normaliza tipo_servico de qualquer template para slug CST válido.
+  // Cobre slugs antigos do CategoryRegistry, slugs compostos (empresariamento_360, etc.)
+  // e qualquer template sem o campo tipo_servico.
+  const CST_VALID_SLUGS = new Set([
+    "empresariamento","suporte_financeiro","gestao","agenciamento","edicao",
+    "distribuicao","marketing","producao_musical","producao_audiovisual",
+    "licenciamento","publicidade","parceria","shows","outros",
+  ]);
+  // mapa de normalização: slug legado/inválido → slug CST
+  const CST_NORMALIZE: Record<string, string> = {
+    exclusividade: "agenciamento",
+    empresariamento_360: "empresariamento",
+    gravacao: "producao_musical",
+    cessao_direitos: "licenciamento",
+    producao: "producao_musical",
+    publicitario: "publicidade",
+    semantico: "outros",
+    // slugs que já são válidos mas foram salvos com acento ou variante
+    distribuição: "distribuicao",
+    licença: "licenciamento",
+  };
+  function normalizeCstSlug(slug: string | undefined | null): string {
+    if (!slug) return "outros";
+    if (CST_VALID_SLUGS.has(slug)) return slug;
+    if (CST_NORMALIZE[slug]) return CST_NORMALIZE[slug];
+    // tenta prefix match: "empresariamento_360" → "empresariamento"
+    for (const valid of CST_VALID_SLUGS) {
+      if (slug.startsWith(valid) || valid.startsWith(slug)) return valid;
+    }
+    return "outros";
+  }
+  const templatesCaContratos = data["templates_contratos"] as Array<Record<string, unknown>> | undefined;
+  if (templatesCaContratos) {
+    for (const t of templatesCaContratos) {
+      const current = t.tipo_servico as string | undefined;
+      if (!current || !CST_VALID_SLUGS.has(current)) {
+        // usa tipo_servico inválido ou tipo legado como fonte para normalizar
+        const source = current || (t.tipo as string | undefined);
+        t.tipo_servico = normalizeCstSlug(source);
+      }
+    }
+  }
+
+  // regras_transacao — seed inicial (Task #27-rules): tabela nova, injeta se ausente
+  if (!data["regras_transacao"] || (data["regras_transacao"] as unknown[]).length === 0) {
+    data["regras_transacao"] = [
+      { id: "rt-001", user_id: UID, nome: "Receita Musical com Projeto", descricao: "Transações de receita musical devem vincular artista e projeto obrigatoriamente.", tipoTransacao: "receita", tipoCliente: "empresa", categoria: "receitas-musicais", camposVisiveis: ["categoria","subcategoria","artista","projeto","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","projeto","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-002", user_id: UID, nome: "Despesa de Show / Cachê Artista", descricao: "Pagamentos de cachê para artistas devem ter evento vinculado.", tipoTransacao: "despesa", tipoCliente: "artista", categoria: "caches", camposVisiveis: ["categoria","subcategoria","artista","evento","formaPagamento","valor","data"], camposObrigatorios: ["categoria","subcategoria","artista","evento","valor","data"], prioridade: 2, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-003", user_id: UID, nome: "Imposto Federal — Órgão Arrecadador", descricao: "Todo recolhimento de imposto deve identificar o órgão arrecadador.", tipoTransacao: "imposto", tipoCliente: "all", categoria: "all", camposVisiveis: ["categoria","orgaoArrecadador","formaPagamento","valor","data"], camposObrigatorios: ["orgaoArrecadador","valor","data"], prioridade: 1, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-004", user_id: UID, nome: "Despesa de Produção Audiovisual", descricao: "Serviços de produção audiovisual exigem artista e projeto associados.", tipoTransacao: "despesa", tipoCliente: "empresa", categoria: "servicos", camposVisiveis: ["categoria","subcategoria","artista","projeto","fornecedor","formaPagamento","valor","data"], camposObrigatorios: ["subcategoria","artista","projeto","valor","data"], prioridade: 3, ativo: true, created_at: NOW, updated_at: NOW },
+      { id: "rt-005", user_id: UID, nome: "Investimento em Equipamentos", descricao: "Compra de equipamentos deve categorizar o item de investimento.", tipoTransacao: "investimento", tipoCliente: "all", categoria: "equipamentos", camposVisiveis: ["categoria","itemInvestimento","formaPagamento","valor","data"], camposObrigatorios: ["itemInvestimento","valor","data"], prioridade: 2, ativo: false, created_at: NOW, updated_at: NOW },
+    ] as unknown[];
   }
 
   // projetos — patch 2026-05: adiciona campo `tipo` e JSON `descricao` nos projetos seed

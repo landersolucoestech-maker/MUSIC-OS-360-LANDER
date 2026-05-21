@@ -1,10 +1,11 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import { IsString, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
+import { CampaignStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 const TYPES    = ['social', 'ads', 'email', 'influencer', 'pr', 'launch', 'other'] as const;
-const STATUSES = ['draft', 'active', 'paused', 'completed', 'cancelled'] as const;
+const STATUSES = Object.values(CampaignStatus) as string[];
 
 export class CreateCampaignDto {
   @ApiProperty() @IsString() @MaxLength(500) title!: string;
@@ -19,7 +20,7 @@ export class CreateCampaignDto {
 }
 
 export class UpdateCampaignDto extends PartialType(CreateCampaignDto) {
-  @ApiPropertyOptional({ enum: STATUSES }) @IsOptional() @IsIn(STATUSES) status?: string;
+  @ApiPropertyOptional({ enum: CampaignStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
 }
 
 export class QueryCampaignDto extends PaginationDto {

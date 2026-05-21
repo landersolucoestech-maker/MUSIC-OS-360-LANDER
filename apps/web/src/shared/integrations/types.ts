@@ -43,7 +43,8 @@ export type IntegrationId =
   // Monitoramento musical (fingerprint)
   | "acrcloud"
   // Comunicação interna
-  | "chat";
+  | "chat"
+  | "musicroomchat";
 
 // ─── Categorias ───────────────────────────────────────────────────────────────
 

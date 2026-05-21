@@ -13,8 +13,8 @@ import { QUERY_KEYS } from '@/shared/lib/query-config';
 export function useRealtimeSync(): void {
   const qc = useQueryClient();
 
-  const inv = (...keys: readonly string[][]): void => {
-    keys.forEach((k) => qc.invalidateQueries({ queryKey: k }));
+  const inv = (...keys: readonly (readonly string[])[]): void => {
+    keys.forEach((k) => qc.invalidateQueries({ queryKey: [...k] }));
   };
 
   // ── Artists ─────────────────────────────────────────────────────────────────

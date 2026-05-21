@@ -1,5 +1,5 @@
 export { YouTubeApiClient }       from './client/youtube.client';
-export { YoutubeService }         from './services';
+export { YouTubeService }         from './services';
 export type {
   YouTubeChannel,
   YouTubeVideoStats,

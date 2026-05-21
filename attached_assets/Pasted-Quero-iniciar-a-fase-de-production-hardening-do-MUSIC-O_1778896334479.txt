@@ -1,0 +1,396 @@
+Quero iniciar a fase de production hardening do MUSIC OS 360.
+
+ETAPA 1: Database Governance + Migration Safety.
+
+Analise todo o projeto e implemente uma arquitetura profissional de migrations e bootstrap.
+
+Objetivos:
+
+* schema reproduzível
+* migrations versionadas
+* rollback seguro
+* seed inicial
+* compatibilidade Supabase + Drizzle
+* ambientes dev/staging/prod consistentes
+
+Implemente:
+
+1. Estrutura de migrations:
+
+* drizzle migrations organizadas
+* naming consistente
+* timestamps
+* rollback support quando possível
+
+2. Bootstrap:
+
+* script para setup inicial completo
+* criação automática de tenant default em dev
+* seed admin user
+* seed roles
+* seed organization_members
+
+3. Versionamento:
+
+* tabela de controle de migrations
+* verificação de drift de schema
+* validação automática no startup
+
+4. Scripts:
+
+* npm run db:migrate
+* npm run db:rollback
+* npm run db:seed
+* npm run db:reset
+* npm run db:check
+
+5. Segurança:
+
+* impedir destructive migrations acidentais em prod
+* confirmação explícita para reset
+* logs claros
+
+6. Produza:
+
+* código completo
+* arquivos criados
+* scripts package.json
+* README operacional
+* checklist de deploy
+* fluxo recomendado dev/staging/prod
+
+Quero arquitetura production-grade.
+
+
+ETAPA 2: Observability + Audit Infrastructure.
+
+Implemente observabilidade enterprise-grade no MUSIC OS 360.
+
+Objetivos:
+
+* debugging rápido
+* rastreamento completo
+* auditoria multi-tenant
+* correlation IDs
+* monitoramento de erros
+* tracing distribuído
+
+Implemente:
+
+1. Sentry:
+
+* frontend
+* backend
+* source maps
+* environment separation
+* release tracking
+
+2. Structured logging:
+
+* request id
+* tenant id
+* user id
+* role
+* route
+* execution time
+* error stack
+
+3. Audit logs:
+
+* login
+* logout
+* permission denied
+* billing actions
+* destructive actions
+* role changes
+* tenant changes
+* file uploads
+* admin actions
+
+4. Correlation IDs:
+
+* propagar entre frontend/backend
+* incluir em logs e errors
+
+5. Monitoring:
+
+* health endpoints
+* DB connectivity
+* queue health
+* websocket health
+* Supabase connectivity
+
+6. Performance tracing:
+
+* slow queries
+* slow API routes
+* React render bottlenecks
+* N+1 detection
+
+7. Produza:
+
+* código completo
+* middleware
+* interceptors
+* dashboards sugeridos
+* env vars necessárias
+* documentação operacional
+
+Quero arquitetura pronta para produção SaaS real.
+
+
+ETAPA 3: Security Hardening.
+
+Quero endurecer completamente a segurança do MUSIC OS 360.
+
+Analise frontend, backend, Supabase e infraestrutura.
+
+Implemente:
+
+1. HTTP Security:
+
+* Helmet strict mode
+* CSP profissional
+* HSTS
+* XSS protection
+* clickjacking protection
+* MIME sniffing protection
+* secure cookies
+
+2. Rate limiting:
+
+* auth endpoints
+* billing endpoints
+* uploads
+* websocket abuse
+* brute force protection
+* tenant-aware throttling
+
+3. JWT Security:
+
+* expiration strategy
+* refresh token validation
+* replay protection
+* stale claims handling
+
+4. Upload security:
+
+* MIME validation
+* extension whitelist
+* file size limits
+* antivirus scanning pipeline
+* image sanitization
+* tenant-scoped uploads
+
+5. Supabase Storage:
+
+* bucket policies
+* signed URLs
+* tenant isolation
+* private/public separation
+
+6. API hardening:
+
+* schema validation
+* zod validation
+* DTO sanitization
+* SQL injection review
+* SSRF protection
+
+7. Secrets:
+
+* env validation
+* secret rotation strategy
+* startup validation
+* production warnings
+
+8. Billing protection:
+
+* webhook signature validation
+* Stripe customer isolation
+* anti-tampering validation
+
+9. Produza:
+
+* código completo
+* middleware
+* policies
+* headers
+* security checklist
+* OWASP review
+* risco residual documentado
+
+Quero padrão enterprise/SOC2-ready.
+
+
+ETAPA 4: File Storage + Media Pipeline.
+
+Quero uma arquitetura robusta para uploads e media assets no MUSIC OS 360.
+
+Implemente:
+
+1. Upload pipeline:
+
+* signed uploads
+* resumable uploads
+* progress tracking
+* retry support
+
+2. Segurança:
+
+* antivirus scanning
+* MIME validation
+* image sanitization
+* tenant isolation
+* filename randomization
+
+3. Organização:
+
+* bucket strategy
+* tenant-scoped paths
+* private/public assets
+* retention policies
+
+4. Media optimization:
+
+* image resizing
+* thumbnails
+* compression
+* lazy loading
+* CDN strategy
+
+5. Audio pipeline:
+
+* metadata extraction
+* waveform generation
+* duration extraction
+* transcoding architecture
+
+6. Contracts/documents:
+
+* PDF preview
+* secure access
+* signed links
+* watermark strategy
+
+7. Produza:
+
+* arquitetura completa
+* storage policies
+* services
+* queues necessárias
+* documentação operacional
+
+Quero estrutura pronta para escalar.
+
+
+ETAPA 5: Performance + Scalability.
+
+Quero preparar o MUSIC OS 360 para escala real SaaS multi-tenant.
+
+Implemente:
+
+1. Backend:
+
+* Redis cache
+* query caching
+* websocket scaling
+* queue workers
+* retry queues
+* dead letter queues
+
+2. Database:
+
+* index analysis
+* slow query optimization
+* pagination strategy
+* N+1 elimination
+* connection pooling
+
+3. Frontend:
+
+* route-based code splitting
+* React Query optimization
+* cache invalidation audit
+* virtualization
+* render optimization
+
+4. Infrastructure:
+
+* CDN strategy
+* edge caching
+* static asset optimization
+* compression
+
+5. Resilience:
+
+* graceful shutdown
+* retry policies
+* circuit breakers
+* fallback strategies
+
+6. Produza:
+
+* benchmarks
+* profiling
+* before/after metrics
+* architecture diagrams
+* scaling bottlenecks
+* operational recommendations
+
+Quero arquitetura pronta para milhares de tenants.
+
+
+ETAPA 6: DevOps + CI/CD + Production Readiness.
+
+Quero pipeline profissional completa para o MUSIC OS 360.
+
+Implemente:
+
+1. Ambientes:
+
+* dev
+* staging
+* production
+* env separation
+* Supabase separation
+
+2. CI/CD:
+
+* lint
+* tests
+* build validation
+* migration checks
+* deployment pipeline
+
+3. Deploy safety:
+
+* rollback strategy
+* smoke tests
+* health checks
+* migration validation
+* feature flags
+
+4. Monitoring:
+
+* uptime checks
+* alerting
+* backup verification
+* error alerting
+
+5. Disaster recovery:
+
+* backup strategy
+* restore testing
+* RPO/RTO documentation
+
+6. Produza:
+
+* workflows
+* GitHub Actions
+* deployment checklist
+* operational runbooks
+* production checklist
+* incident response guide
+
+Quero pipeline production-grade completa.

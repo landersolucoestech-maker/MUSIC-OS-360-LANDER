@@ -90,7 +90,7 @@ export interface AuthProviderCapabilities {
   supportsAuditLog: boolean;
 }
 
-export const CLERK_CAPABILITIES: AuthProviderCapabilities = {
+export const SUPABASE_AUTH_CAPABILITIES: AuthProviderCapabilities = {
   supportsSSO: false,
   supportsMFA: false,
   supportsPasswordReset: true,

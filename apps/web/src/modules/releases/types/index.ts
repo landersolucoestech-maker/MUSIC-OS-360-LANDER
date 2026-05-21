@@ -82,3 +82,16 @@ export interface ShareWithRelations extends Share {
   obras?: ObraRef | null;
   artistas?: ArtistaRef | null;
 }
+
+export interface ShareHistoricoEntry {
+  data: string;
+  acao: string;
+  usuario?: string | null;
+  observacao?: string | null;
+  valor_anterior?: number | null;
+  valor_novo?: number | null;
+  versao?: string | null;
+  percentual?: number | null;
+  descricao?: string | null;
+  autor?: string | null;
+}

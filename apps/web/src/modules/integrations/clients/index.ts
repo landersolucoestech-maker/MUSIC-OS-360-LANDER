@@ -10,5 +10,5 @@
  * O frontend usa sempre os adapters em integrations/adapters/.
  */
 
-export { STRIPE_CLIENT_STUB }  from "./stripe.client";
-export { RESEND_CLIENT_STUB }  from "./resend.client";
+export { stripeClient }  from "./stripe.client";
+export type { BillingSubscription } from "./stripe.client";

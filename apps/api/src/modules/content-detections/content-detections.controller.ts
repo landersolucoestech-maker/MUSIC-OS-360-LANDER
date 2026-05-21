@@ -1,20 +1,23 @@
 import {
   Controller, Get, Post, Patch, Delete,
-  Param, Body, Query, UseGuards, ParseUUIDPipe,
+  Param, Body, Query, ParseUUIDPipe,
 } from '@nestjs/common';
-import { ClerkAuthGuard }              from '../../core/guards/clerk-auth.guard';
-import { TenantGuard }                 from '../../core/guards/tenant.guard';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }               from '../../core/decorators/current-tenant.decorator';
+import { RequireRole }                 from '../../core/decorators/roles.decorator';
 import { ContentDetectionsService }    from './content-detections.service';
 import { CreateContentDetectionDto }   from './dto/create-content-detection.dto';
 import { UpdateContentDetectionDto }   from './dto/update-content-detection.dto';
 
-@UseGuards(ClerkAuthGuard, TenantGuard)
+@ApiTags('ContentDetections')
+@ApiBearerAuth()
 @Controller('content-detections')
 export class ContentDetectionsController {
   constructor(private readonly svc: ContentDetectionsService) {}
 
   @Get()
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Listar detecções de conteúdo do tenant' })
   list(
     @CurrentTenant() tenant: { id: string },
     @Query('status') status?: string,
@@ -31,6 +34,8 @@ export class ContentDetectionsController {
   }
 
   @Get(':id')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Obter detecção por ID' })
   findOne(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -39,6 +44,8 @@ export class ContentDetectionsController {
   }
 
   @Post()
+  @RequireRole('editor')
+  @ApiOperation({ summary: 'Registar detecção de conteúdo' })
   create(
     @CurrentTenant() tenant: { id: string },
     @Body() dto: CreateContentDetectionDto,
@@ -47,6 +54,8 @@ export class ContentDetectionsController {
   }
 
   @Patch(':id')
+  @RequireRole('editor')
+  @ApiOperation({ summary: 'Actualizar detecção' })
   update(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -56,10 +65,12 @@ export class ContentDetectionsController {
   }
 
   @Delete(':id')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Remover detecção (soft delete)' })
   remove(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.svc.softDelete(tenant.id, id);
+    return this.svc.remove(tenant.id, id);
   }
 }

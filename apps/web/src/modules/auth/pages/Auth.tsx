@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { Navigate, Link } from "react-router-dom";
+import { Navigate, Link, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +39,11 @@ type ForgotData = z.infer<typeof forgotSchema>;
 type Mode = "login" | "forgot";
 
 export default function Auth() {
+  const { user, loading } = useAuth();
+  // Mock mode — sempre autenticado
   if (MOCK_MODE) return <Navigate to="/" replace />;
+  // Sessão já existe (ex: reload com token válido) → vai direto para o app
+  if (!loading && user) return <Navigate to="/" replace />;
   return <AuthPage />;
 }
 
@@ -551,6 +555,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const { signIn } = useAuth();
+  const navigate = useNavigate();
 
   const {
     register,
@@ -579,6 +584,8 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       } else {
         authRateLimiter.reset(data.email);
         toast.success("Bem-vindo ao MUSIC OS 360!");
+        // Navegação imperativa — não depende do ciclo reativo do onAuthStateChange
+        navigate("/", { replace: true });
       }
     } catch (err: unknown) {
       toast.error(

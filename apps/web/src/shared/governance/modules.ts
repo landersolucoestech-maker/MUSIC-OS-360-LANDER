@@ -310,7 +310,7 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
     description:
       "Configurações do tenant: perfil da empresa, utilizadores, " +
       "papéis e permissões RBAC, integrações (ABRAMUS funcional; " +
-      "restantes em stub) e personalização de marca (whitelabel).",
+      "restantes em stub) e personalizacao operacional de tenant.",
   },
 };
 

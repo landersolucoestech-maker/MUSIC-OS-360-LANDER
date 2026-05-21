@@ -286,15 +286,11 @@ function PerformanceAnalitica({
   const stroke = CHART_COLOR[platform];
   const gradId = `grad-${platform}`;
 
-  const chartLabel: Record<PlatformId, string> = {
+  const chartLabel: Record<string, string> = {
     overview:     "Views + Alcance consolidado — últimos 6 meses",
     youtube:      "Views mensais — últimos 6 meses",
-    youtubeads:   "Impressões YouTube Ads — últimos 6 meses",
     tiktok:       "Views mensais — últimos 6 meses",
-    tiktokads:    "Impressões TikTok Ads — últimos 6 meses",
     instagram:    "Crescimento de seguidores — últimos 6 meses",
-    instagramads: "Impressões Instagram Ads — últimos 6 meses",
-    facebookads:  "Impressões Facebook Ads — últimos 6 meses",
     google:       "Impressões Google Ads — últimos 6 meses",
     spotify:      "Impressões Spotify Ads — últimos 6 meses",
   };

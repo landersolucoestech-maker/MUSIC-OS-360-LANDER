@@ -9,11 +9,14 @@
  */
 
 import { Module } from '@nestjs/common';
+import { RbacModule } from '../../core/rbac/rbac.module';
+import { AuthController } from './auth.controller';
+import { AuthContextService } from './auth-context.service';
 
 @Module({
-  imports:     [],
-  controllers: [],
-  providers:   [],
-  exports:     [],
+  imports:     [RbacModule],
+  controllers: [AuthController],
+  providers:   [AuthContextService],
+  exports:     [AuthContextService],
 })
 export class AuthModule {}
