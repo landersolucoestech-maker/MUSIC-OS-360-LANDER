@@ -18,6 +18,12 @@ import { Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { Request, Response } from 'express';
 
+const SERVICE_META = {
+  service: 'music-os-api',
+  env:     process.env['NODE_ENV'] ?? 'development',
+  version: process.env['npm_package_version'] ?? '1.0.0',
+};
+
 @Injectable()
 export class LoggingInterceptor implements NestInterceptor {
   private readonly logger = new Logger('HTTP');
@@ -44,6 +50,7 @@ export class LoggingInterceptor implements NestInterceptor {
             ts:         new Date().toISOString(),
             level:      statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info',
             type:       'http',
+            ...SERVICE_META,
             requestId:  requestId ?? 'n/a',
             method,
             url,
@@ -73,6 +80,7 @@ export class LoggingInterceptor implements NestInterceptor {
             ts:         new Date().toISOString(),
             level:      statusCode >= 500 ? 'error' : 'warn',
             type:       'http',
+            ...SERVICE_META,
             requestId:  requestId ?? 'n/a',
             method,
             url,
@@ -81,6 +89,7 @@ export class LoggingInterceptor implements NestInterceptor {
             ...(tenantId && { tenantId }),
             ...(userId   && { userId }),
             error:      err instanceof Error ? err.message : String(err),
+            ...(err instanceof Error && err.stack && { stack: err.stack.split('\n').slice(0, 4).join('\n') }),
           });
 
           if (statusCode >= 500) {

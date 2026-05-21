@@ -8,6 +8,7 @@ import {
 } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { v4 as uuidv4 }     from 'uuid';
+import { Sentry }            from '../../instrument';
 
 @Catch()
 export class GlobalExceptionFilter implements ExceptionFilter {
@@ -62,26 +63,21 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
   private reportToSentry(exception: Error, request: Request, requestId: string): void {
     try {
-      // Sentry é inicializado em instrument.ts antes do bootstrap.
-      // Aqui usamos import dinâmico para evitar crash se @sentry/node não estiver instalado.
-      import('@sentry/node').then(Sentry => {
-        Sentry.withScope(scope => {
-          scope.setTag('requestId', requestId);
-          scope.setTag('method',    request.method);
-          scope.setTag('path',      request.url);
+      if (!Sentry) return;
+      Sentry.withScope(scope => {
+        scope.setTag('requestId', requestId);
+        scope.setTag('method',    request.method);
+        scope.setTag('path',      request.url);
 
-          const tenantId = (request as any).tenantId as string | undefined;
-          const userId   = (request as any).userId   as string | undefined;
-          if (tenantId) scope.setTag('tenantId', tenantId);
-          if (userId)   scope.setUser({ id: userId });
+        const tenantId = (request as any).tenantId as string | undefined;
+        const userId   = (request as any).userId   as string | undefined;
+        if (tenantId) scope.setTag('tenantId', tenantId);
+        if (userId)   scope.setUser({ id: userId });
 
-          Sentry.captureException(exception);
-        });
-      }).catch(() => {
-        // @sentry/node não instalado — silenciar
+        Sentry.captureException(exception);
       });
     } catch {
-      // Garantir que falha do Sentry nunca quebra a resposta HTTP
+      // Never let Sentry failures break the HTTP response
     }
   }
 }

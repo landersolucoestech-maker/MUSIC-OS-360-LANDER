@@ -95,8 +95,12 @@ const envSchema = z.object({
 
   // Monitoramento
   SENTRY_DSN: z.string().optional(),
+  SENTRY_RELEASE: z.string().optional(), // Git SHA injected by CI/CD for release tracking
   POSTHOG_API_KEY: z.string().optional(),
   POSTHOG_HOST: z.string().default('https://app.posthog.com'),
+
+  // Idempotency
+  IDEMPOTENCY_TTL_HOURS: z.coerce.number().min(1).max(168).default(24), // 1h–7d
 
   // App URL (para templates de email, etc.)
   APP_URL: z.string().default('http://localhost:5000'),
