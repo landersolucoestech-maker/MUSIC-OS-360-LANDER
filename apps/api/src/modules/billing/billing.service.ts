@@ -82,10 +82,16 @@ export const PLAN_FEATURES = {
 } as const;
 
 /** Hard resource limits per plan. null = unlimited. */
-export const PLAN_LIMITS: Record<string, { artists: number | null; contracts: number | null; storageGb: number | null; users: number | null }> = {
-  starter:      { artists: 5,    contracts: 20,   storageGb: 5,    users: 3   },
-  professional: { artists: 50,   contracts: 200,  storageGb: 50,   users: 15  },
-  enterprise:   { artists: null, contracts: null,  storageGb: null, users: null },
+export const PLAN_LIMITS: Record<string, {
+  artists:          number | null;
+  contracts:        number | null;
+  storageGb:        number | null;
+  users:            number | null;
+  monthlyAiUsd:     number | null; // Monthly AI API spend cap in USD
+}> = {
+  starter:      { artists: 5,    contracts: 20,   storageGb: 5,    users: 3,    monthlyAiUsd: 2    },
+  professional: { artists: 50,   contracts: 200,  storageGb: 50,   users: 15,   monthlyAiUsd: 20   },
+  enterprise:   { artists: null, contracts: null,  storageGb: null, users: null, monthlyAiUsd: null },
 };
 
 type Plan = keyof typeof PLAN_FEATURES;
