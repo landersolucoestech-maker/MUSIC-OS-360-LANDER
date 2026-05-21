@@ -419,6 +419,63 @@ export class BillingService {
     return sub ?? null;
   }
 
+  /**
+   * SaaS metrics for super-admins/internal dashboards.
+   * Computes MRR, ARR, churn, and LTV across all tenants.
+   */
+  async getSaasMetrics(): Promise<{
+    mrr:       number;
+    arr:       number;
+    activeOrgs: number;
+    churned30d: number;
+    churnRate:  number;
+    ltv:        number;
+    byPlan:    Record<string, number>;
+  }> {
+    const PLAN_MRR: Record<string, number> = {
+      starter:      29,
+      professional: 99,
+      enterprise:   299,
+    };
+
+    const subs = await this.subRepo!
+      .createQueryBuilder('s')
+      .select(['s.plan', 's.status', 's.updated_at'])
+      .getMany();
+
+    const activeOrgs = subs.filter(s => s.status === 'active').length;
+    const byPlan: Record<string, number> = {};
+    let mrr = 0;
+
+    for (const sub of subs) {
+      if (sub.status === 'active') {
+        const plan = (sub.plan as string | undefined) ?? 'starter';
+        byPlan[plan] = (byPlan[plan] ?? 0) + 1;
+        mrr += PLAN_MRR[plan] ?? 0;
+      }
+    }
+
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const churned30d = subs.filter(
+      s => s.status === 'cancelled' && new Date(s.updated_at) >= thirtyDaysAgo,
+    ).length;
+
+    const churnRate  = activeOrgs > 0 ? churned30d / activeOrgs : 0;
+    const avgMrr     = activeOrgs > 0 ? mrr / activeOrgs : 0;
+    const avgLifetime = churnRate > 0 ? 1 / churnRate : 24; // months; default 24 if no churn
+    const ltv        = avgMrr * avgLifetime;
+
+    return {
+      mrr,
+      arr:        mrr * 12,
+      activeOrgs,
+      churned30d,
+      churnRate:  Math.round(churnRate * 10_000) / 10_000,
+      ltv:        Math.round(ltv * 100) / 100,
+      byPlan,
+    };
+  }
+
   async getUsage(tenantId: string, orgId: string) {
     const sub   = await this.getSubscription(orgId);
     const plan  = (sub?.plan as string | undefined) ?? 'starter';

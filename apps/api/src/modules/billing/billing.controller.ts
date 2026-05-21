@@ -74,6 +74,13 @@ export class BillingController {
     return this.billing.getUsage(tenant.id, tenant.org_id);
   }
 
+  @Get('metrics/saas')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'SaaS metrics — MRR, ARR, churn, LTV (super_admin only)' })
+  getSaasMetrics() {
+    return this.billing.getSaasMetrics();
+  }
+
   @Post('webhooks/stripe')
   @Public()
   @Audit('billing.subscription_event')
