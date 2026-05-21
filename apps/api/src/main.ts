@@ -1,9 +1,29 @@
-// ── dotenv carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
+// ── .env carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
 // Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
-// Replit Secrets já estão em process.env — dotenv não sobrepõe valores existentes.
-import * as dotenv from 'dotenv';
+// Replit Secrets já estão em process.env — valores existentes não são sobrepostos.
+import * as fs from 'fs';
 import * as path from 'path';
-dotenv.config({ path: path.resolve(process.cwd(), '.env') });
+
+function loadLocalEnv(envPath: string): void {
+  if (!fs.existsSync(envPath)) return;
+
+  const content = fs.readFileSync(envPath, 'utf8');
+  for (const line of content.split(/\r?\n/)) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#')) continue;
+
+    const separator = trimmed.indexOf('=');
+    if (separator === -1) continue;
+
+    const key = trimmed.slice(0, separator).trim();
+    const raw = trimmed.slice(separator + 1).trim();
+    if (!key || process.env[key] != null) continue;
+
+    process.env[key] = raw.replace(/^["']|["']$/g, '');
+  }
+}
+
+loadLocalEnv(path.resolve(process.cwd(), '.env'));
 
 // ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
 import './instrument';
@@ -110,8 +130,9 @@ async function bootstrap() {
       'Authorization',
       'X-Tenant-ID',
       'X-Request-ID',
+      'X-Idempotency-Key',
     ],
-    exposedHeaders: ['X-Request-ID'],
+    exposedHeaders: ['X-Request-ID', 'X-Idempotency-Replayed'],
   });
 
   // ── Prefixo global ───────────────────────────────────────────────────────────

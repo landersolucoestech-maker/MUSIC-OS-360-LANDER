@@ -2,13 +2,15 @@ import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query,
   ParseUUIDPipe,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
-import type { JwtAuth }    from '../../core/guards/clerk-auth.guard';
+import type { JwtAuth }    from '../../core/guards/auth.guard';
 import { ContractsService }        from './contracts.service';
 import { CreateContractDto }       from './dto/create-contract.dto';
 import { UpdateContractDto }       from './dto/update-contract.dto';
@@ -41,7 +43,9 @@ export class ContractsController {
   @Post()
   @RequireRole('editor')
   @Audit('contract.created')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar contrato' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne criação de contratos duplicados', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   JwtAuth,

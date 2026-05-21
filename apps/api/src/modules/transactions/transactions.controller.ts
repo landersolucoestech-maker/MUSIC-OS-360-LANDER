@@ -2,12 +2,14 @@ import {
   Controller, Get, Post, Put, Patch, Delete,
   Body, Param, Query,
   ParseUUIDPipe,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { Audit }           from '../../core/interceptors/audit.interceptor';
+import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { ZodValidationPipe } from '../../core/pipes/zod-validation.pipe';
 import { TransactionsService }     from './transactions.service';
 import { QueryTransactionDto }     from './dto/query-transaction.dto';
@@ -44,7 +46,9 @@ export class TransactionsController {
   @Post()
   @RequireRole('editor')
   @Audit('transaction.created')
+  @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar transacção' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne duplicação de transacções', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser()   user:   { userId: string },
