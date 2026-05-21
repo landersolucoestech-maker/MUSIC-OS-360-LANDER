@@ -6,17 +6,43 @@ const envSchema = z.object({
     .default('development'),
   PORT: z.coerce.number().default(3001),
 
-  // Database (PostgreSQL — node-postgres / Drizzle ORM)
-  DATABASE_URL: z.string().optional(),
+  // Database (PostgreSQL — node-postgres / TypeORM)
+  // Required in production — migrations, queries, RLS all depend on it.
+  DATABASE_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'DATABASE_URL é obrigatório em produção' },
+    ),
 
   // Redis (BullMQ Queues via ioredis — deve ser URL acessível)
   REDIS_QUEUE_URL: z.string().optional(),
 
   // Auth (Supabase — JWKS via ES256)
-  // SUPABASE_URL: URL base do projeto (ex: https://xxxx.supabase.co)
-  // O guard derivará o JWKS endpoint: <SUPABASE_URL>/auth/v1/.well-known/jwks.json
-  // Fallback automático para VITE_SUPABASE_URL se não definido separadamente.
-  SUPABASE_URL: z.string().optional(),
+  // Required in production — without it JwtAuthGuard cannot validate any token.
+  // JWKS endpoint is derived as: <SUPABASE_URL>/auth/v1/.well-known/jwks.json
+  SUPABASE_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'SUPABASE_URL é obrigatório em produção (JwtAuthGuard usa JWKS)' },
+    ),
+
+  // DEV_AUTH_BYPASS — only read locally, must never be true in production.
+  // The guard already checks NODE_ENV !== production before activating bypass,
+  // but we validate here to surface misconfig at startup, not at first request.
+  DEV_AUTH_BYPASS: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (process.env['NODE_ENV'] === 'production' && val === 'true') return false;
+        return true;
+      },
+      { message: 'DEV_AUTH_BYPASS=true é proibido em produção' },
+    ),
 
   // Auth (JWT legado — mantido para compatibilidade)
   JWT_SECRET: z.string().default('dev_jwt_secret_placeholder'),
