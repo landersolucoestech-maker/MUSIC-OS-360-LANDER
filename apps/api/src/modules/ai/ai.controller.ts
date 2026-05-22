@@ -4,7 +4,8 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { RequireRole, ROLE_HIERARCHY } from '../../core/decorators/roles.decorator';
+import { RequireRole } from '../../core/decorators/roles.decorator';
+import { ROLE_HIERARCHY } from '../../core/guards/roles.guard';
 import { AIService } from './ai.service';
 import {
   AICompletionDto,
