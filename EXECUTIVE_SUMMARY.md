@@ -41,7 +41,7 @@ Tudo aqui:
   • Overview (KPIs, resumo)
   • Releases (todos os lançamentos)
   • Campaigns (campanhas ativas)
-  • Financial (receitas, royalties)
+  • Financial (receitas, recebimentos externos de direitos)
   • Team (equipe colaboradores)
   • Tasks (tarefas do artista)
   • Activity Timeline (histórico de operações)

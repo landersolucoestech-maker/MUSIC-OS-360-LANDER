@@ -61,9 +61,9 @@ export const MOCK_ECAD_IMPORTS: EcadImport[] = [
 ];
 
 export const MOCK_ECAD_PERIODOS: EcadPeriodo[] = [
-  { id: "ecad-001", periodo: "2026-Q1", valor_total: 15670.90, status: "recebido", data_referencia: "2026-03-31", observacoes: "Royalties de execução pública Q1/2026" },
-  { id: "ecad-002", periodo: "2025-Q4", valor_total: 12450.00, status: "recebido", data_referencia: "2025-12-31", observacoes: "Royalties de execução pública Q4/2025" },
-  { id: "ecad-003", periodo: "2025-Q3", valor_total: 9870.50, status: "recebido", data_referencia: "2025-09-30", observacoes: "Royalties de execução pública Q3/2025" },
+  { id: "ecad-001", periodo: "2026-Q1", valor_total: 15670.90, status: "recebido", data_referencia: "2026-03-31", observacoes: "Recebimentos externos de direitos de execução pública Q1/2026" },
+  { id: "ecad-002", periodo: "2025-Q4", valor_total: 12450.00, status: "recebido", data_referencia: "2025-12-31", observacoes: "Recebimentos externos de direitos de execução pública Q4/2025" },
+  { id: "ecad-003", periodo: "2025-Q3", valor_total: 9870.50, status: "recebido", data_referencia: "2025-09-30", observacoes: "Recebimentos externos de direitos de execução pública Q3/2025" },
   { id: "ecad-004", periodo: "2026-Q2", valor_total: 0, status: "pendente", data_referencia: "2026-06-30", observacoes: "Aguardando apuração" },
 ];
 

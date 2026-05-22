@@ -86,16 +86,56 @@ export class AnalyticsService {
   async getDashboard(tenantId: string) {
     if (!this.ds) return null;
 
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
     const [
       artistCount,
+      artistsByStatus,
       contractCount,
+      contractsByStatus,
+      activeContractsCount,
+      contractsExpiringSoonCount,
       leadCount,
       openTickets,
       campaignCount,
       pipelineOppCount,
+      // Financial
+      financialCurrentMonth,
+      pendingReceivables,
+      overdueInvoicesCount,
+      paidTxCount,
+      cancelledTxCount,
+      invoicesByStatus,
+      txByStatus,
+      txByTipo,
+      // Operational
+      pendingTasksCount,
+      overdueTasksCount,
+      onboardingInProgressCount,
+      overduePipelineCount,
+      stalledPipelineCount,
+      pendingDistributionSetups,
     ] = await Promise.all([
       this.countTable('artists', tenantId),
+      this.ds.query<Array<{ status: string; cnt: string }>>(
+        `SELECT status, COUNT(*)::int AS cnt FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`,
+        [tenantId],
+      ),
       this.countTable('contracts', tenantId),
+      this.ds.query<Array<{ status: string; cnt: string }>>(
+        `SELECT status, COUNT(*)::int AS cnt FROM contracts WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`,
+        [tenantId],
+      ),
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM contracts WHERE tenant_id = $1 AND status IN ('vigente','ativo','assinado') AND deleted_at IS NULL`,
+        [tenantId],
+      ),
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM contracts WHERE tenant_id = $1 AND data_fim BETWEEN NOW() AND NOW() + INTERVAL '30 days' AND deleted_at IS NULL`,
+        [tenantId],
+      ),
       this.countTable('leads', tenantId),
       this.ds.query<[{ cnt: string }]>(
         `SELECT COUNT(*)::int AS cnt FROM support_tickets WHERE tenant_id = $1 AND status NOT IN ('resolved','closed') AND deleted_at IS NULL`,
@@ -106,16 +146,122 @@ export class AnalyticsService {
         `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND status = 'open' AND deleted_at IS NULL`,
         [tenantId],
       ),
+      // Revenue and expenses this calendar month
+      this.ds.query<[{ receitas: string; despesas: string }]>(`
+        SELECT
+          COALESCE(SUM(CASE WHEN tipo = 'receita' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS receitas,
+          COALESCE(SUM(CASE WHEN tipo = 'despesa' AND status NOT IN ('cancelado','cancelled') THEN valor::numeric ELSE 0 END), 0)::numeric AS despesas
+        FROM transactions
+        WHERE tenant_id = $1 AND deleted_at IS NULL AND data >= $2
+      `, [tenantId, monthStart]),
+      // Pending receivables (receita pendente/agendada, não cancelada)
+      this.ds.query<[{ total: string }]>(`
+        SELECT COALESCE(SUM(valor::numeric), 0)::numeric AS total
+        FROM transactions
+        WHERE tenant_id = $1 AND tipo = 'receita' AND status IN ('pendente','agendado') AND deleted_at IS NULL
+      `, [tenantId]),
+      // Overdue invoices count
+      this.ds.query<[{ cnt: string }]>(`
+        SELECT COUNT(*)::int AS cnt FROM invoices
+        WHERE tenant_id = $1 AND status IN ('vencida','overdue') AND deleted_at IS NULL
+      `, [tenantId]),
+      // Paid transactions count (all time)
+      this.ds.query<[{ cnt: string }]>(`
+        SELECT COUNT(*)::int AS cnt FROM transactions
+        WHERE tenant_id = $1 AND status IN ('pago','confirmado','concluido') AND deleted_at IS NULL
+      `, [tenantId]),
+      // Cancelled transactions count (all time)
+      this.ds.query<[{ cnt: string }]>(`
+        SELECT COUNT(*)::int AS cnt FROM transactions
+        WHERE tenant_id = $1 AND status IN ('cancelado','cancelled') AND deleted_at IS NULL
+      `, [tenantId]),
+      // Invoices by status
+      this.ds.query<Array<{ status: string; cnt: string }>>(
+        `SELECT status, COUNT(*)::int AS cnt FROM invoices WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`,
+        [tenantId],
+      ),
+      // Transactions by status
+      this.ds.query<Array<{ status: string; cnt: string }>>(
+        `SELECT status, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`,
+        [tenantId],
+      ),
+      // Transactions by tipo
+      this.ds.query<Array<{ tipo: string; cnt: string }>>(
+        `SELECT tipo, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY tipo`,
+        [tenantId],
+      ),
+      // Pending CRM tasks
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM crm_tasks WHERE tenant_id = $1 AND status = 'pending'`,
+        [tenantId],
+      ),
+      // Overdue CRM tasks (past due_date, not done)
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM crm_tasks WHERE tenant_id = $1 AND status != 'done' AND due_date < NOW()`,
+        [tenantId],
+      ),
+      // Artists currently in onboarding (status = contratado)
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM artists WHERE tenant_id = $1 AND status = 'contratado' AND deleted_at IS NULL`,
+        [tenantId],
+      ),
+      // Pipeline opportunities with SLA breached
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND sla_breached = true AND status = 'open' AND deleted_at IS NULL`,
+        [tenantId],
+      ),
+      // Stalled pipeline opportunities (sla_due_at past, still open)
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND sla_due_at < NOW() AND status = 'open' AND deleted_at IS NULL`,
+        [tenantId],
+      ),
+      // Artists with distribution setup requested but not completed
+      this.ds.query<[{ cnt: string }]>(
+        `SELECT COUNT(*)::int AS cnt FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL AND (metadata->>'distribution_setup_requested_at') IS NOT NULL AND (metadata->>'distribution_setup_completed_at') IS NULL`,
+        [tenantId],
+      ),
     ]);
 
+    const artistStatusMap   = Object.fromEntries(artistsByStatus.map((r)   => [r.status, parseInt(r.cnt)]));
+    const contractStatusMap = Object.fromEntries(contractsByStatus.map((r) => [r.status, parseInt(r.cnt)]));
+    const invoiceStatusMap  = Object.fromEntries(invoicesByStatus.map((r)  => [r.status, parseInt(r.cnt)]));
+    const txStatusMap       = Object.fromEntries(txByStatus.map((r)        => [r.status, parseInt(r.cnt)]));
+    const txTipoMap         = Object.fromEntries(txByTipo.map((r)          => [r.tipo,   parseInt(r.cnt)]));
+
+    const receitas = parseFloat(financialCurrentMonth[0]?.receitas ?? '0');
+    const despesas = parseFloat(financialCurrentMonth[0]?.despesas ?? '0');
+
     return {
-      artists:             artistCount,
-      contracts:           contractCount,
-      leads:               leadCount,
-      open_tickets:        parseInt(openTickets[0]?.cnt ?? '0'),
-      campaigns:           campaignCount,
-      open_opportunities:  parseInt(pipelineOppCount[0]?.cnt ?? '0'),
-      generated_at:        new Date().toISOString(),
+      artists:                       artistCount,
+      artists_by_status:             artistStatusMap,
+      contracts:                     contractCount,
+      contracts_by_status:           contractStatusMap,
+      active_contracts_count:        parseInt(activeContractsCount[0]?.cnt ?? '0'),
+      contracts_expiring_soon_count: parseInt(contractsExpiringSoonCount[0]?.cnt ?? '0'),
+      leads:                         leadCount,
+      open_tickets:                  parseInt(openTickets[0]?.cnt ?? '0'),
+      campaigns:                     campaignCount,
+      open_opportunities:            parseInt(pipelineOppCount[0]?.cnt ?? '0'),
+      // Financial
+      revenue_current_month:         receitas,
+      expenses_current_month:        despesas,
+      net_result_current_month:      receitas - despesas,
+      pending_receivables:           parseFloat(pendingReceivables[0]?.total ?? '0'),
+      overdue_invoices_count:        parseInt(overdueInvoicesCount[0]?.cnt ?? '0'),
+      paid_transactions_count:       parseInt(paidTxCount[0]?.cnt ?? '0'),
+      cancelled_transactions_count:  parseInt(cancelledTxCount[0]?.cnt ?? '0'),
+      invoices_by_status:            invoiceStatusMap,
+      transactions_by_status:        txStatusMap,
+      transactions_by_tipo:          txTipoMap,
+      // Operational
+      pending_tasks_count:           parseInt(pendingTasksCount[0]?.cnt ?? '0'),
+      overdue_tasks_count:           parseInt(overdueTasksCount[0]?.cnt ?? '0'),
+      onboarding_in_progress_count:  parseInt(onboardingInProgressCount[0]?.cnt ?? '0'),
+      overdue_followups_count:       parseInt(overduePipelineCount[0]?.cnt ?? '0'),
+      stalled_pipelines_count:       parseInt(stalledPipelineCount[0]?.cnt ?? '0'),
+      pending_distribution_setups:   parseInt(pendingDistributionSetups[0]?.cnt ?? '0'),
+      pending_external_syncs:        0,
+      generated_at:                  new Date().toISOString(),
     };
   }
 

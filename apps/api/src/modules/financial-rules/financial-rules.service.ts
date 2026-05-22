@@ -1,14 +1,25 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Optional, NotFoundException, Logger } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { FinancialRuleEntity } from '../../database/entities';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import type { CreateFinancialRuleDto, UpdateFinancialRuleDto, QueryFinancialRuleDto } from './dto/financial-rules.dto';
+
+export type FinancialRuleTrigger =
+  | 'transaction.created'
+  | 'transaction.paid'
+  | 'invoice.overdue'
+  | 'contract.signed';
 
 @Injectable()
 export class FinancialRulesService {
+  private readonly logger = new Logger(FinancialRulesService.name);
   private readonly repo: Repository<FinancialRuleEntity>;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource,
+    @Optional() private readonly events: EventsService,
+  ) {
     this.repo = ds.getRepository(FinancialRuleEntity);
   }
 
@@ -51,5 +62,79 @@ export class FinancialRulesService {
     await this.findById(tenantId, id);
     await this.repo.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
+  }
+
+  /**
+   * Evaluate all active financial rules for the given trigger and context.
+   * Emits FINANCIAL_RULE_TRIGGERED for each matching rule.
+   * Called from TransactionsService, InvoicesService, ContractsService on relevant events.
+   */
+  async evaluateRules(
+    tenantId: string,
+    trigger: FinancialRuleTrigger,
+    context: {
+      entityId:   string | null;
+      entityType: string | null;
+      valor?:     number;
+      categoria?: string;
+      tipo?:      string;
+    },
+  ): Promise<void> {
+    if (!this.events) return;
+
+    let rules: FinancialRuleEntity[];
+    try {
+      rules = await this.repo
+        .createQueryBuilder('r')
+        .where('r.tenant_id = :tenantId AND r.ativo = true AND r.deleted_at IS NULL', { tenantId })
+        .getMany();
+    } catch (err) {
+      this.logger.warn(`evaluateRules: failed to fetch rules — ${String(err)}`);
+      return;
+    }
+
+    for (const rule of rules) {
+      const conds = (rule.condicoes ?? {}) as Record<string, unknown>;
+
+      // Trigger filter: if rule specifies triggers, check match
+      if (Array.isArray(conds['triggers']) && !(conds['triggers'] as string[]).includes(trigger)) continue;
+
+      // Categoria filter
+      if (rule.categoria && context.categoria && rule.categoria !== context.categoria) continue;
+
+      // Tipo filter
+      if (conds['tipo'] && context.tipo && conds['tipo'] !== context.tipo) continue;
+
+      // Compute result
+      const valor  = context.valor ?? 0;
+      const ruleVal = parseFloat(String(rule.valor));
+      let computed = 0;
+      if (rule.calculo === 'percentual') computed = (valor * ruleVal) / 100;
+      else if (rule.calculo === 'fixo')  computed = ruleVal;
+
+      const result = { trigger, computed, ruleCalculo: rule.calculo, ruleValor: ruleVal, contextValor: valor };
+
+      try {
+        this.events.emitTyped(DOMAIN_EVENTS.FINANCIAL_RULE_TRIGGERED, {
+          tenantId,
+          userId:        'system',
+          aggregateType: 'financial_rule',
+          aggregateId:   rule.id,
+          payload: {
+            ruleId:     rule.id,
+            tenantId,
+            ruleName:   rule.nome,
+            ruleType:   rule.tipo,
+            trigger,
+            entityId:   context.entityId,
+            entityType: context.entityType,
+            result,
+          },
+        });
+        this.logger.log(`FinancialRule "${rule.nome}" (${rule.id}) triggered by ${trigger}`);
+      } catch (err) {
+        this.logger.warn(`evaluateRules: emit failed for rule "${rule.id}" — ${String(err)}`);
+      }
+    }
   }
 }

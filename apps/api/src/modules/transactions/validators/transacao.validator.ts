@@ -20,7 +20,7 @@ const servicosDespesaComArtistaEProjeto = new Set([
 const produtosDespesaComEvento = new Set(['cenografia-pirotecnia']);
 
 const receitasMusicaisComArtistaEProjeto = new Set([
-  'direitos-autorais', 'direitos-conexos', 'royalties-streaming',
+  'direitos-autorais', 'direitos-conexos', 'recebimentos-externos-streaming',
   'licenciamento-obra', 'licenciamento-fonograma', 'sincronizacao', 'venda-beats',
 ]);
 

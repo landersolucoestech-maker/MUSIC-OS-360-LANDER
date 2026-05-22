@@ -494,8 +494,8 @@ export const FLOW_CONCILIACAO_ECAD: OperationalFlow = {
       module: "monitoring", entitiesAffected: [], integrations: [] },
     { step: 5, actor: "Gestor de Direitos", action: "Lançar receita ECAD como Transação",
       module: "accounting", entitiesAffected: ["Transacao"], integrations: [],
-      uiElement: "TransacaoFormModal (categoria: 'royalties')",
-      notes: "'Royalties' é APENAS uma categoria de transação, não um domínio." },
+      uiElement: "TransacaoFormModal (categoria: 'recebimentos externos de direitos')",
+      notes: "'Recebimentos externos de direitos' é APENAS uma categoria de transação, não um domínio." },
   ],
   successCriteria: [
     "Todos os itens do relatório conciliados",

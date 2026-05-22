@@ -81,7 +81,24 @@ export class ContractsService {
       created_by: userId,
       updated_by: userId,
     } as Partial<ContractEntity>);
-    return this.repo!.save(entity as ContractEntity);
+    const saved = await this.repo!.save(entity as ContractEntity);
+
+    this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_CREATED, {
+      tenantId,
+      userId,
+      aggregateType: 'contract',
+      aggregateId:   saved.id,
+      payload: {
+        contractId: saved.id,
+        tenantId,
+        titulo:     saved.titulo ?? (dtoRest['titulo'] as string) ?? '',
+        tipo:       saved.tipo   ?? (dtoRest['tipo']   as string) ?? '',
+        artistId:   saved.artista_id ?? null,
+        createdBy:  userId,
+      },
+    });
+
+    return saved;
   }
 
   async update(
@@ -178,6 +195,40 @@ export class ContractsService {
           },
         });
       }
+
+      // CONTRACT_CANCELLED when transitioning to cancelado
+      if (dtoMap['status'] === ContractStatus.CANCELADO) {
+        this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_CANCELLED, {
+          tenantId,
+          userId,
+          aggregateType: 'contract',
+          aggregateId:   id,
+          payload: {
+            contractId:  id,
+            tenantId,
+            titulo:      current.titulo,
+            artistId:    current.artista_id,
+            cancelledBy: userId,
+            cancelledAt: nowIso,
+          },
+        });
+      }
+
+      // Generic CONTRACT_STATUS_CHANGED for all transitions (activity log, analytics)
+      this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_STATUS_CHANGED, {
+        tenantId,
+        userId,
+        aggregateType: 'contract',
+        aggregateId:   id,
+        payload: {
+          contractId:     id,
+          tenantId,
+          titulo:         current.titulo,
+          previousStatus: current.status,
+          newStatus:      dtoMap['status'] as string,
+          changedBy:      userId,
+        },
+      });
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,
@@ -188,12 +239,28 @@ export class ContractsService {
     return this.findById(tenantId, id, actorRole);
   }
 
-  async softDelete(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+  async softDelete(tenantId: string, userId: string, id: string) {
+    const existing = await this.findById(tenantId, id);
     await this.repo!.update(
       { id, tenant_id: tenantId } as FindOptionsWhere<ContractEntity>,
-      { deleted_at: new Date() } as QueryDeepPartialEntity<ContractEntity>,
+      { deleted_at: new Date(), updated_by: userId } as QueryDeepPartialEntity<ContractEntity>,
     );
+
+    this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_CANCELLED, {
+      tenantId,
+      userId,
+      aggregateType: 'contract',
+      aggregateId:   id,
+      payload: {
+        contractId:  id,
+        tenantId,
+        titulo:      existing.titulo,
+        artistId:    existing.artista_id,
+        cancelledBy: userId,
+        cancelledAt: new Date().toISOString(),
+      },
+    });
+
     return { deleted: true };
   }
 }

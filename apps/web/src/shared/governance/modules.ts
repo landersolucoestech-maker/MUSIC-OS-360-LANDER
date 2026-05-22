@@ -133,7 +133,7 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
       "artista e projecto, fluxo de caixa, conciliação bancária OFX, " +
       "recoupment tracking e emissão de notas fiscais. " +
       "ÂMBITO: receita − despesa = lucro líquido. " +
-      "NÃO inclui: royalties, splits, distribuição de pagamentos.",
+      "NÃO inclui: recebimentos externos de direitos, splits, distribuição de pagamentos.",
   },
 
   // ── CRM ─────────────────────────────────────────────────────────────────────

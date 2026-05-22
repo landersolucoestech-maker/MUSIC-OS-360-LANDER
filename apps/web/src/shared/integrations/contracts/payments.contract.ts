@@ -6,8 +6,8 @@
  * ESTADO ACTUAL: standalone — sem billing real.
  * MIGRAÇÃO FUTURA: IPaymentsProvider implementado via Stripe SDK no backend.
  *
- * Âmbito: subscriptions SaaS por tenant (não royalties de artistas).
- * Royalties são um domínio separado (accounting + rights).
+ * Âmbito: subscriptions SaaS por tenant (não recebimentos externos de direitos de artistas).
+ * Recebimentos externos de direitos são um domínio separado (accounting + rights).
  */
 
 // ─── DTOs ─────────────────────────────────────────────────────────────────────

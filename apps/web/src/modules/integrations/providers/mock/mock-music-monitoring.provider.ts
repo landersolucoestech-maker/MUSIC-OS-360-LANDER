@@ -119,7 +119,7 @@ const INITIAL_ALERTS: MonitoringAlert[] = [
   },
   {
     id:             "alert-005",
-    type:           "royalty_discrepancy",
+    type:           "external_data_discrepancy",
     severity:       "warning",
     titulo:         "Noite de Luz",
     artista:        "Vitória Lunar",
@@ -261,7 +261,7 @@ export class MockMusicMonitoringProvider implements IMusicMonitoringProvider {
       const track = MOCK_CATALOG[i % MOCK_CATALOG.length];
       const sourceType = query.source_type ?? SOURCES[ri(0, SOURCES.length - 1)];
       const duration = ri(10, track.duracao_segundos ?? 240);
-      const royalty = Math.floor(duration * ri(1, 5));
+      const externalReportedAmount = Math.floor(duration * ri(1, 5));
 
       reports.push({
         id:                    `play-${uid()}-${i}`,
@@ -275,7 +275,7 @@ export class MockMusicMonitoringProvider implements IMusicMonitoringProvider {
         played_at:             daysAgo(ri(0, 30)),
         duration_seconds:      duration,
         estimated_audience:    ri(500, 5_000_000),
-        estimated_royalty_cents: royalty,
+        external_reported_amount_cents: externalReportedAmount,
         local_fonograma_id:    null,
         local_obra_id:         null,
         status:                statuses[ri(0, statuses.length - 1)],
@@ -290,7 +290,7 @@ export class MockMusicMonitoringProvider implements IMusicMonitoringProvider {
   async getPlayReportSummary(query: PlayReportQuery): Promise<PlayReportSummary> {
     const reports = await this.getPlayReports({ ...query, limit: 200 });
     const totalDuration = reports.reduce((s, r) => s + r.duration_seconds, 0);
-    const totalRoyalty = reports.reduce((s, r) => s + (r.estimated_royalty_cents ?? 0), 0);
+    const totalExternalReportedAmount = reports.reduce((s, r) => s + (r.external_reported_amount_cents ?? 0), 0);
 
     const bySource: Record<MonitoringSourceType, number> = {
       radio: 0, tv: 0, streaming: 0, video: 0, podcast: 0, venue: 0, public: 0, unknown: 0,
@@ -305,7 +305,7 @@ export class MockMusicMonitoringProvider implements IMusicMonitoringProvider {
     return {
       total_plays:              reports.length,
       total_duration_seconds:   totalDuration,
-      estimated_royalty_cents:  totalRoyalty,
+      external_reported_amount_cents:  totalExternalReportedAmount,
       by_source:                bySource,
       by_country:               byCountry,
       period_from:              query.date_from ?? daysAgo(30),

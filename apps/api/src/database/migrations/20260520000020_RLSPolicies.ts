@@ -102,6 +102,7 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
     // ── 2. Tenant-scoped tables ────────────────────────────────────────────────
     for (const table of this.TENANT_TABLES) {
       await queryRunner.query(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+      await queryRunner.query(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
 
       // Drop existing policies to make this idempotent.
       await queryRunner.query(`
@@ -141,6 +142,7 @@ export class RLSPolicies20260520000020 implements MigrationInterface {
     // ── 3. Org-scoped tables ───────────────────────────────────────────────────
     for (const { table, orgColumn } of this.ORG_TABLES) {
       await queryRunner.query(`ALTER TABLE "${table}" ENABLE ROW LEVEL SECURITY`);
+      await queryRunner.query(`ALTER TABLE "${table}" FORCE ROW LEVEL SECURITY`);
 
       await queryRunner.query(`
         DROP POLICY IF EXISTS "org_isolation" ON "${table}"

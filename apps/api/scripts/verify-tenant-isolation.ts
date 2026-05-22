@@ -26,8 +26,9 @@ import * as path from 'path';
 import { randomUUID } from 'crypto';
 
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });    // apps/api/.env (URL-encoded passwords)
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') }); // apps/.env (fallback)
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // root .env (fallback)
 } catch { /* opcional */ }
 
 function ok(msg: string)   { console.log(`  ✓  ${msg}`); }
@@ -35,6 +36,8 @@ function fail(msg: string) { console.log(`  ✗  ${msg}`); }
 function info(msg: string) { console.log(`  →  ${msg}`); }
 
 async function setTenant(client: import('pg').Client, tenantId: string) {
+  // Switch to authenticated role so RLS policies apply (postgres superuser bypasses RLS)
+  await client.query(`SET LOCAL ROLE TO authenticated`);
   await client.query(`SET LOCAL app.current_tenant_id = '${tenantId}'`);
 }
 
@@ -181,7 +184,10 @@ async function main(): Promise<void> {
     // ── Teste 7: Sem SET tenant → deve bloquear tudo ─────────────────────────
     try {
       await client.query('BEGIN');
-      // Sem SET app.current_tenant_id
+      // Simula um usuário autenticado sem app.current_tenant_id. A conexão
+      // DATABASE_URL pode ser privilegiada; sem SET ROLE, PostgreSQL pode
+      // bypassar RLS por design e invalidar o teste.
+      await client.query(`SET LOCAL ROLE TO authenticated`);
       const noCtx = await client.query(
         `SELECT id FROM artists WHERE tenant_id = $1 LIMIT 1`, [tenantA],
       );
@@ -190,8 +196,8 @@ async function main(): Promise<void> {
         ok('TEST 7: Sem contexto tenant → SELECT retorna 0 linhas (RLS bloqueia tudo)');
         passed++;
       } else {
-        warn('TEST 7: Sem contexto tenant retornou dados — verifique se RLS está activo');
-        // não é fail crítico se o contexto foi definido por outra sessão
+        fail('TEST 7: FALHA CRÍTICA — sem contexto tenant retornou dados');
+        failed++;
       }
     } catch {
       await client.query('ROLLBACK');

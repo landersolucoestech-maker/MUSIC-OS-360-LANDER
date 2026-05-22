@@ -302,7 +302,7 @@ status, artista_id → artistas, cliente_id → clientes
 venda_id → vendas, origem, observacoes
 conciliado, anexo_url, forma_pagamento
 ```
-Categorias (receita): royalties, cachê, licenciamento, distribuicao, patrocinio
+Categorias (receita): recebimentos externos de direitos, cachê, licenciamento, distribuicao, patrocinio
 Categorias (despesa): adiantamento_artista, producao_musical, marketing_digital, marketing_offline, juridico, administrativo, folha_pagamento, producao_audiovisual, infraestrutura, software, seguros, distribuicao_digital
 
 ### Obra (Catálogo)
@@ -638,7 +638,7 @@ Formulário multi-passo (8 passos) acessível em `/cadastro/:orgSlug`
 
 **Inclui**: Transações (`/accounting`), Contabilidade P&L (`/accounting/contabilidade`), Nota Fiscal (`/accounting/nota-fiscal`)
 
-**Não inclui**: royalties (apenas categoria de transação), payout/split engine
+**Não inclui**: recebimentos externos de direitos (apenas categoria de transação), payout/split engine
 
 ### Contabilidade.tsx — Estrutura de abas
 | Aba | Conteúdo |

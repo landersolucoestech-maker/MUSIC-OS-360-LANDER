@@ -1,0 +1,86 @@
+/**
+ * queues/services/workflow-queue.service.ts
+ *
+ * Producer for workflow and integration jobs (integrations-sync / streaming-sync queues).
+ * No provider-specific logic here — payloads are normalized; adapters resolve provider mapping.
+ */
+
+import { Injectable, Logger, Optional } from '@nestjs/common';
+import { InjectQueue }        from '@nestjs/bullmq';
+import { Queue, JobsOptions } from 'bullmq';
+import { QUEUE_NAMES, WORKFLOW_JOB_NAMES } from '../queue.constants';
+
+@Injectable()
+export class WorkflowQueueService {
+  private readonly logger = new Logger(WorkflowQueueService.name);
+
+  constructor(
+    @Optional()
+    @InjectQueue(QUEUE_NAMES.INTEGRATIONS_SYNC)
+    private readonly integrationsQueue: Queue | null,
+
+    @Optional()
+    @InjectQueue(QUEUE_NAMES.STREAMING_SYNC)
+    private readonly streamingQueue: Queue | null,
+  ) {}
+
+  private get integrationsAvailable(): boolean { return this.integrationsQueue != null; }
+  private get streamingAvailable(): boolean     { return this.streamingQueue != null; }
+
+  async enqueueDistributionSync(payload: {
+    tenantId:    string;
+    artistId:    string;
+    contractId:  string | null;
+    providerHint: string | null;
+    correlationId?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.DISTRIBUTION_SYNC, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.DISTRIBUTION_SYNC} jobId=${job.id} artistId=${payload.artistId}`);
+  }
+
+  async enqueueExternalDataSync(payload: {
+    tenantId:    string;
+    artistId:    string;
+    workIds:     string[];
+    societyHint: string | null;
+    correlationId?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.EXTERNAL_DATA_SYNC, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.EXTERNAL_DATA_SYNC} jobId=${job.id} artistId=${payload.artistId}`);
+  }
+
+  async enqueueOnboardingCheck(payload: {
+    tenantId:  string;
+    artistId:  string;
+    tasks:     string[];
+    correlationId?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.integrationsAvailable) return;
+    const job = await this.integrationsQueue!.add(WORKFLOW_JOB_NAMES.ONBOARDING_CHECK, payload, { attempts: 2, ...opts });
+    this.logger.log(`[integrations-sync] enqueued ${WORKFLOW_JOB_NAMES.ONBOARDING_CHECK} jobId=${job.id} artistId=${payload.artistId}`);
+  }
+
+  async enqueueWorkflowFollowup(payload: {
+    tenantId:    string;
+    entityType:  string;
+    entityId:    string;
+    trigger:     string;
+    correlationId?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.integrationsAvailable) return;
+    const job = await this.integrationsQueue!.add(WORKFLOW_JOB_NAMES.WORKFLOW_FOLLOWUP, payload, { attempts: 2, ...opts });
+    this.logger.log(`[integrations-sync] enqueued ${WORKFLOW_JOB_NAMES.WORKFLOW_FOLLOWUP} jobId=${job.id} ${payload.entityType}=${payload.entityId}`);
+  }
+
+  async enqueuePipelineMonitor(payload: {
+    tenantId:    string;
+    pipelineId?: string;
+    correlationId?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.integrationsAvailable) return;
+    const job = await this.integrationsQueue!.add(WORKFLOW_JOB_NAMES.PIPELINE_MONITOR, payload, { attempts: 1, ...opts });
+    this.logger.log(`[integrations-sync] enqueued ${WORKFLOW_JOB_NAMES.PIPELINE_MONITOR} jobId=${job.id} tenantId=${payload.tenantId}`);
+  }
+}

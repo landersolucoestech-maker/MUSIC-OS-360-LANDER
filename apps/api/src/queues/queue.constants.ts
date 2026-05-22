@@ -42,3 +42,19 @@ export const NOTIFICATION_JOB_NAMES = {
 } as const;
 
 export type NotificationJobName = (typeof NOTIFICATION_JOB_NAMES)[keyof typeof NOTIFICATION_JOB_NAMES];
+
+// ─── Job names das filas de workflow/integrações ──────────────────────────────
+
+export const WORKFLOW_JOB_NAMES = {
+  DISTRIBUTION_SYNC:    'distribution-sync',
+  EXTERNAL_DATA_SYNC:   'external-data.sync',
+  SOCIETY_SUBMIT:       'society.submit',
+  SOCIETY_STATUS_CHECK: 'society.status-check',
+  DISTRIBUTOR_SUBMIT:   'distributor.submit',
+  DISTRIBUTOR_STATUS_CHECK: 'distributor.status-check',
+  ONBOARDING_CHECK:     'onboarding-check',
+  WORKFLOW_FOLLOWUP:    'workflow-followup',
+  PIPELINE_MONITOR:     'pipeline-monitor',
+} as const;
+
+export type WorkflowJobName = (typeof WORKFLOW_JOB_NAMES)[keyof typeof WORKFLOW_JOB_NAMES];

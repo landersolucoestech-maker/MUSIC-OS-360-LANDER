@@ -4,7 +4,7 @@
  * Hook stub para integração Stripe (billing de subscriptions SaaS).
  *
  * ÂMBITO: billing da plataforma MUSIC OS 360 por tenant.
- * NÃO abrange royalties ou pagamentos para artistas (domínio Accounting).
+ * NÃO abrange recebimentos externos de direitos ou pagamentos para artistas (domínio Accounting).
  *
  * ESTADO ACTUAL: standalone — sem billing real; plano simulado em TenantContext.
  * MIGRAÇÃO FUTURA:

@@ -27,7 +27,7 @@ type Envelope<P> = {
 
 /** Default transaction categories seeded per tenant */
 const DEFAULT_CATEGORIES = [
-  { key: 'royalties',      label: 'Royalties',         tipo: 'receita' },
+  { key: 'external-rights-receipts', label: 'Recebimentos externos de direitos', tipo: 'receita' },
   { key: 'sync',           label: 'Sync Licensing',     tipo: 'receita' },
   { key: 'shows',          label: 'Shows / Eventos',    tipo: 'receita' },
   { key: 'streaming',      label: 'Streaming',          tipo: 'receita' },

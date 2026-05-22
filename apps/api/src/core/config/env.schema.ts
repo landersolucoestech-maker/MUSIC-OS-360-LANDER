@@ -50,8 +50,35 @@ const envSchema = z.object({
     ),
   ENCRYPTION_IV_SECRET: z.string().min(1).default('dev_iv_secret_placeholder'),
 
+  // Supabase auth keys — service role only ever used in backend (never VITE_*)
+  SUPABASE_ANON_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'SUPABASE_ANON_KEY is required in production' },
+    ),
+  SUPABASE_SERVICE_ROLE_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'SUPABASE_SERVICE_ROLE_KEY is required in production' },
+    ),
+
   STRIPE_SECRET_KEY: z.string().optional(),
-  STRIPE_WEBHOOK_SECRET: z.string().optional(),
+  STRIPE_WEBHOOK_SECRET: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        // Required in production when Stripe is active (STRIPE_SECRET_KEY is set)
+        if (process.env['NODE_ENV'] !== 'production') return true;
+        const stripeActive = !!process.env['STRIPE_SECRET_KEY'];
+        return !stripeActive || !!val;
+      },
+      { message: 'STRIPE_WEBHOOK_SECRET is required in production when STRIPE_SECRET_KEY is set' },
+    ),
   STRIPE_PRICE_STARTER: z.string().optional(),
   STRIPE_PRICE_PROFESSIONAL: z.string().optional(),
   STRIPE_PRICE_ENTERPRISE: z.string().optional(),
@@ -69,19 +96,42 @@ const envSchema = z.object({
   R2_ACCESS_KEY: z.string().optional(),
   R2_SECRET_KEY: z.string().optional(),
   R2_BUCKET_NAME: z.string().default('music-os-360'),
-  R2_PUBLIC_URL: z.string().optional(),
+  R2_PUBLIC_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (process.env['NODE_ENV'] !== 'production') return true;
+        // Block placeholder values in production
+        return !val || (!val.includes('pub-xxx') && !val.includes('placeholder'));
+      },
+      { message: 'R2_PUBLIC_URL must be set to a real Cloudflare R2 public URL in production' },
+    ),
 
   OPENAI_API_KEY: z.string().optional(),
   ANTHROPIC_API_KEY: z.string().optional(),
   GOOGLE_AI_API_KEY: z.string().optional(),
 
-  RESEND_API_KEY: z.string().optional(),
+  RESEND_API_KEY: z
+    .string()
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'RESEND_API_KEY is required in production for transactional email' },
+    ),
   RESEND_FROM_EMAIL: z
     .string()
     .email()
     .default('noreply@musicos360.com.br'),
 
-  SENTRY_DSN: z.string().optional(),
+  SENTRY_DSN: z
+    .string()
+    .url({ message: 'SENTRY_DSN must be a valid URL' })
+    .optional()
+    .refine(
+      (val) => process.env['NODE_ENV'] !== 'production' || !!val,
+      { message: 'SENTRY_DSN is required in production for error monitoring' },
+    ),
   SENTRY_RELEASE: z.string().optional(),
   POSTHOG_API_KEY: z.string().optional(),
   POSTHOG_HOST: z.string().default('https://app.posthog.com'),

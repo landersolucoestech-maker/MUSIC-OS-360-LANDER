@@ -70,11 +70,12 @@ export class ContractsController {
   @Delete(':id')
   @RequireRole('manager')
   @Audit('contract.cancelled')
-  @ApiOperation({ summary: 'Cancelar contrato (soft delete)' })
+  @ApiOperation({ summary: 'Cancelar contrato (soft delete auditável)' })
   remove(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   JwtAuth,
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.softDelete(tenant.id, id);
+    return this.service.softDelete(tenant.id, user.userId, id);
   }
 }

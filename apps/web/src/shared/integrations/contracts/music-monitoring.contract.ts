@@ -88,8 +88,8 @@ export interface PlayReport {
   duration_seconds: number;
   /** Estimativa de audiência da execução */
   estimated_audience?: number | null;
-  /** Royalty estimado em centavos (BRL) */
-  estimated_royalty_cents?: number | null;
+  /** Valor informado por plataforma externa em centavos (BRL); sem cálculo interno */
+  external_reported_amount_cents?: number | null;
   /** ID local do fonograma se cruzamento for bem-sucedido */
   local_fonograma_id?: string | null;
   local_obra_id?: string | null;
@@ -113,7 +113,7 @@ export interface PlayReportQuery {
 export interface PlayReportSummary {
   total_plays: number;
   total_duration_seconds: number;
-  estimated_royalty_cents: number;
+  external_reported_amount_cents: number;
   by_source: Record<MonitoringSourceType, number>;
   by_country: Record<string, number>;
   period_from: string;
@@ -129,7 +129,7 @@ export type AlertType =
   | "high_play_count"        // Pico de execuções inesperado
   | "new_territory"          // Detecção em novo país/região
   | "unregistered_track"     // Fingerprint sem registro de ISRC/ISWC
-  | "royalty_discrepancy"    // Arrecadação abaixo do esperado
+  | "external_data_discrepancy"    // Arrecadação abaixo do esperado
   | "source_new"             // Nova fonte de execução detectada
   | "sync_required";         // Sincronização necessária
 
@@ -262,7 +262,7 @@ export const ALERT_TYPE_LABELS: Record<AlertType, string> = {
   high_play_count:     "Alto Volume de Execuções",
   new_territory:       "Novo Território",
   unregistered_track:  "Faixa Sem Registro",
-  royalty_discrepancy: "Discrepância de Royalties",
+  external_data_discrepancy: "Discrepância de Recebimentos externos de direitos",
   source_new:          "Nova Fonte Detectada",
   sync_required:       "Sincronização Necessária",
 };

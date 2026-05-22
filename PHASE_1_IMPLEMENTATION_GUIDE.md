@@ -48,7 +48,7 @@ export type WorkspaceTab =
   | 'settings'
   | 'distribution' 
   | 'content' 
-  | 'royalties' 
+  | 'recebimentos externos de direitos' 
   | 'goals' 
   | 'budget' 
   | 'creators' 

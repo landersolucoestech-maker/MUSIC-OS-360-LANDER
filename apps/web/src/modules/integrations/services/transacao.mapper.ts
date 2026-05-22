@@ -8,7 +8,7 @@
  * Transação ↔ DTOs externos. Nenhum componente ou hook faz transformação inline.
  *
  * Âmbito: Accounting module (revenue - expenses = net profit).
- * NÃO cobre royalties de artistas (apenas categoria de transacção).
+ * NÃO cobre recebimentos externos de direitos de artistas (apenas categoria de transacção).
  *
  * Uso:
  *   import { transacaoMapper } from "@/modules/integrations/mappers";
@@ -92,7 +92,7 @@ export const transacaoMapper = {
 
   /**
    * Calcula o saldo líquido de uma lista de transacções.
-   * revenue - expenses = net profit (âmbito Accounting; sem cálculo de royalties).
+   * revenue - expenses = net profit (âmbito Accounting; sem cálculo de recebimentos externos de direitos).
    */
   calcNetProfit(transacoes: TransacaoEntity[]): number {
     return transacoes.reduce((acc, t) => {

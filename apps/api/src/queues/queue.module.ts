@@ -22,6 +22,7 @@ import { AIJobsProcessor }          from './processors/ai-jobs.processor';
 import { EmailQueueService }         from './services/email-queue.service';
 import { NotificationsQueueService } from './services/notifications-queue.service';
 import { AIJobsQueueService }        from './services/ai-jobs-queue.service';
+import { WorkflowQueueService }      from './services/workflow-queue.service';
 
 import { CoreModule }  from '../core/core.module';
 import { AIModule }    from '../modules/ai/ai.module';
@@ -92,8 +93,8 @@ export class QueueModule {
       global:    true,
       module:    QueueModule,
       imports:   [],
-      providers: [EmailQueueService, NotificationsQueueService, AIJobsQueueService],
-      exports:   [EmailQueueService, NotificationsQueueService, AIJobsQueueService],
+      providers: [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService],
+      exports:   [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService],
     };
   }
 
@@ -157,6 +158,7 @@ export class QueueModule {
         EmailQueueService,
         NotificationsQueueService,
         AIJobsQueueService,
+        WorkflowQueueService,
         EmailProcessor,
         NotificationsProcessor,
         AIJobsProcessor,
@@ -166,6 +168,7 @@ export class QueueModule {
         EmailQueueService,
         NotificationsQueueService,
         AIJobsQueueService,
+        WorkflowQueueService,
       ],
     };
   }

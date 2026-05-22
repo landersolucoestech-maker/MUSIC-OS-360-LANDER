@@ -544,7 +544,7 @@ export function LancamentoFormModal({
       id: "musicpro",
       name: "MusicPro",
       description:
-        "Distribuição profissional com suporte dedicado e royalties mensais",
+        "Distribuição profissional com suporte dedicado e recebimentos externos de direitos mensais",
     },
     {
       id: "somvibe",

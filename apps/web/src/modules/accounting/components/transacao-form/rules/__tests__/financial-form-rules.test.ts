@@ -258,10 +258,10 @@ describe("exibirArtista", () => {
     expect(rules.exibirArtista).toBe(true);
   });
 
-  it("is true for receita empresa receitas-musicais + royalties-streaming", () => {
+  it("is true for receita empresa receitas-musicais + external-rights-streaming", () => {
     const rules = computeFinancialRules(form({
       tipoTransacao: "receita", tipoCliente: "empresa",
-      categoria: "receitas-musicais", subcategoria: "royalties-streaming",
+      categoria: "receitas-musicais", subcategoria: "external-rights-streaming",
     }));
     expect(rules.exibirArtista).toBe(true);
   });
@@ -384,10 +384,10 @@ describe("projetoObrigatorio", () => {
     expect(rules.projetoObrigatorio).toBe(false);
   });
 
-  it("is true for receita empresa receitas-musicais + royalties-streaming", () => {
+  it("is true for receita empresa receitas-musicais + external-rights-streaming", () => {
     const rules = computeFinancialRules(form({
       tipoTransacao: "receita", tipoCliente: "empresa",
-      categoria: "receitas-musicais", subcategoria: "royalties-streaming",
+      categoria: "receitas-musicais", subcategoria: "external-rights-streaming",
     }));
     expect(rules.projetoObrigatorio).toBe(true);
   });

@@ -102,8 +102,8 @@ export const SYSTEM_VARIABLES: ContractVariable[] = [
     required: false, example: "R$ 5.000,00",
   },
   {
-    id: "ROYALTIES_PERCENTAGE", key: "ROYALTIES_PERCENTAGE", label: "Royalties (%)",
-    description: "Percentual de royalties acordado entre as partes",
+    id: "EXTERNAL_RIGHTS_PERCENTAGE", key: "EXTERNAL_RIGHTS_PERCENTAGE", label: "Termos externos de direitos (%)",
+    description: "Percentual de recebimentos externos de direitos acordado entre as partes",
     type: "percentage", source: "financial", category: "financeiro",
     required: false, example: "15%",
   },

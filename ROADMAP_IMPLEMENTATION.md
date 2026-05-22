@@ -129,7 +129,7 @@ MANUTENÇÃO: Remover legado (Após validação)
 
 #### Qui-Sex: Artist Financial & Settings
 - [ ] Implementar aba `Financial`
-  - [ ] Resumo financeiro (receitas, royalties)
+  - [ ] Resumo financeiro (receitas, recebimentos externos de direitos)
   - [ ] Gráficos de renda
 - [ ] Implementar aba `Settings`
   - [ ] Configurações do artista
@@ -191,7 +191,7 @@ MANUTENÇÃO: Remover legado (Após validação)
 #### Seg-Qua: Release Analytics & Financial
 - [ ] Aba `Analytics`: gráficos de streams, listeners
 - [ ] Aba `Financial`: custos, receitas
-- [ ] Aba `Royalties`: splits de compositor
+- [ ] Aba `Recebimentos externos de direitos`: splits de compositor
 - [ ] Integrar com dados de accounting
 
 #### Qui-Sex: Release Marketing & Tasks

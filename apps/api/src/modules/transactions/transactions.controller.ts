@@ -89,8 +89,9 @@ export class TransactionsController {
   @ApiOperation({ summary: 'Cancelar transacção (manager+)' })
   remove(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.softDelete(tenant.id, id);
+    return this.service.softDelete(tenant.id, user.userId, id);
   }
 }

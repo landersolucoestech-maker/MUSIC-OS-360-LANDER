@@ -20,7 +20,7 @@ function sum(arr: any[], field: string) {
 }
 
 const CATEGORIA_LABELS: Record<string, string> = {
-  royalties: "Royalties",
+  "recebimentos externos de direitos": "Recebimentos externos de direitos",
   "cachê": "Cachê de Shows",
   licenciamento: "Licenciamento",
   distribuicao: "Distribuição",

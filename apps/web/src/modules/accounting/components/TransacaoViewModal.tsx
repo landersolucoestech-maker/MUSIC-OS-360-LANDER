@@ -68,8 +68,8 @@ const transactionTypeMeta: Record<string, TypeMeta> = {
     amountClass: "text-amber-600 dark:text-amber-400",
     sign: "-",
   },
-  royalties: {
-    label: "Royalties",
+  "recebimentos externos de direitos": {
+    label: "Recebimentos externos de direitos",
     icon: ReceiptText,
     badgeClass: "border-violet-200 bg-violet-50 text-violet-700",
     amountClass: "text-violet-600 dark:text-violet-400",

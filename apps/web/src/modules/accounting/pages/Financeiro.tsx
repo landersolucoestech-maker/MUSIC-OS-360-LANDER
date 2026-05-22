@@ -291,7 +291,7 @@ export default function Financeiro() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all-category">Todas</SelectItem>
-              <SelectItem value="royalties">Royalties</SelectItem>
+              <SelectItem value="recebimentos externos de direitos">Recebimentos externos de direitos</SelectItem>
               <SelectItem value="producao">Produção</SelectItem>
               <SelectItem value="shows">Shows</SelectItem>
               <SelectItem value="licenciamento">Licenciamento</SelectItem>

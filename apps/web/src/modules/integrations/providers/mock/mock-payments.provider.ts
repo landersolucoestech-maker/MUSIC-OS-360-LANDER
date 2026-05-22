@@ -2,7 +2,7 @@
  * integrations/providers/mock/mock-payments.provider.ts
  *
  * Implementação mock de IPaymentsProvider.
- * Âmbito: billing SaaS por tenant. NÃO cobre royalties de artistas.
+ * Âmbito: billing SaaS por tenant. NÃO cobre recebimentos externos de direitos de artistas.
  *
  * MIGRAÇÃO FUTURA: substituir por StripePaymentsProvider (backend proxy).
  */

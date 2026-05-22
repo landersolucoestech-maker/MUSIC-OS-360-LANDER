@@ -21,8 +21,9 @@ import 'reflect-metadata';
 import * as path from 'path';
 
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
-  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });    // apps/api/.env (URL-encoded passwords)
+  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') }); // apps/.env (fallback)
+  require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // root .env (fallback)
 } catch { /* opcional */ }
 
 const FIX_MODE = process.argv.includes('--fix');

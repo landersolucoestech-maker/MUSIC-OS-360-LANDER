@@ -9,7 +9,7 @@
  * Casos de uso no MUSIC OS 360:
  *   - Convite de novos utilizadores ao tenant
  *   - Alertas de expiração de contrato
- *   - Relatórios periódicos de royalties/contabilidade
+ *   - Relatórios periódicos de recebimentos externos de direitos/contabilidade
  *   - Notificações de aprovação/rejeição de lançamento
  *   - Confirmação de assinatura digital (Autentique)
  */
@@ -19,7 +19,7 @@
 export type EmailTemplateId =
   | "user-invite"
   | "contract-expiry-alert"
-  | "royalty-report"
+  | "external-data-report"
   | "release-approved"
   | "release-rejected"
   | "signing-completed"
@@ -86,7 +86,7 @@ export interface IEmailProvider {
 export const EMAIL_TEMPLATE_VARS: Record<EmailTemplateId, string[]> = {
   "user-invite":          ["invitee_name", "inviter_name", "tenant_name", "invite_url"],
   "contract-expiry-alert":["artist_name", "contract_title", "expiry_date", "days_remaining"],
-  "royalty-report":       ["period", "total_revenue", "report_url", "tenant_name"],
+  "external-data-report":       ["period", "total_revenue", "report_url", "tenant_name"],
   "release-approved":     ["release_title", "artist_name", "release_date"],
   "release-rejected":     ["release_title", "artist_name", "rejection_reason"],
   "signing-completed":    ["document_title", "signer_name", "signed_at", "download_url"],

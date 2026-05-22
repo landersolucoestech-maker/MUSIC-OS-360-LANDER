@@ -276,7 +276,7 @@ export const tiposReceitaMusical = [
   { value: "venda-show-fechado", label: "Venda de Show Fechado" },
   { value: "direitos-autorais", label: "Direitos Autorais" },
   { value: "direitos-conexos", label: "Direitos Conexos" },
-  { value: "royalties-streaming", label: "Royalties de Streaming" },
+  { value: "external-rights-streaming", label: "Recebimentos externos de streaming" },
   { value: "licenciamento-obra", label: "Licenciamento de Obra" },
   { value: "licenciamento-fonograma", label: "Licenciamento de Fonograma" },
   { value: "sincronizacao", label: "Sincronização" },
@@ -287,7 +287,7 @@ export const tiposReceitaMusical = [
 export const receitasMusicaisComArtistaEProjeto = [
   "direitos-autorais",
   "direitos-conexos",
-  "royalties-streaming",
+  "external-rights-streaming",
   "licenciamento-obra",
   "licenciamento-fonograma",
   "sincronizacao",
@@ -372,7 +372,7 @@ export const tiposReceitaContratual = [
 
 export const categoriasArtistaReceita = [
   { value: "cache-show", label: "Cachê de show" },
-  { value: "royalties", label: "Royalties" },
+  { value: "recebimentos externos de direitos", label: "Recebimentos externos de direitos" },
   { value: "direitos-autorais", label: "Direitos autorais" },
   { value: "licenciamento", label: "Licenciamento" },
   { value: "adiantamento", label: "Adiantamento" },

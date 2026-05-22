@@ -352,7 +352,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
     description:
       "Transação financeira: receita ou despesa. " +
       "Base do P&L, fluxo de caixa e conciliação OFX. " +
-      "Categorias incluem 'royalties' apenas como label — " +
+      "Categorias incluem 'recebimentos externos de direitos' apenas como label — " +
       "NÃO é um domínio de produto separado.",
   },
 

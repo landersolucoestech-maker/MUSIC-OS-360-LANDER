@@ -4,11 +4,12 @@
  *
  * Smoke test HTTP ponta a ponta.
  *
- * Uso:
- *   API_URL=http://localhost:3001 SMOKE_TOKEN=<jwt> SMOKE_TENANT=<uuid> pnpm smoke-test
+ * Usage:
+ *   API_URL=http://localhost:3001 SMOKE_TOKEN=<jwt> SMOKE_TENANT=<org_id> pnpm smoke-test
  *
- * Sem SMOKE_TOKEN/SMOKE_TENANT, o script valida apenas disponibilidade pública
- * e ignora os testes autenticados.
+ * Without SMOKE_TOKEN/SMOKE_TENANT, the script tries GET /dev-auth/token in
+ * local/staging environments. If credentials are unavailable, authenticated
+ * tests are skipped and public liveness is still validated.
  */
 
 import 'reflect-metadata';
@@ -17,11 +18,11 @@ import * as path from 'path';
 try {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
   require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
-} catch { /* opcional */ }
+} catch { /* optional */ }
 
 const API_URL = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
-const SMOKE_TOKEN = process.env['SMOKE_TOKEN'] ?? '';
-const SMOKE_TENANT = process.env['SMOKE_TENANT'] ?? '';
+let SMOKE_TOKEN = process.env['SMOKE_TOKEN'] ?? '';
+let SMOKE_TENANT = process.env['SMOKE_TENANT'] ?? '';
 
 let passed = 0;
 let failed = 0;
@@ -47,9 +48,20 @@ async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
     return await fetch(url, init);
   } catch (err) {
     throw new Error(
-      `API indisponivel em ${API_URL}. Inicie a API antes do smoke-test: pnpm --filter @music-os-360/api start:dev. Detalhe: ${(err as Error).message}`,
+      `API unavailable at ${API_URL}. Start the API before smoke-test: pnpm --filter @music-os-360/api start:dev. Detail: ${(err as Error).message}`,
     );
   }
+}
+
+async function bootstrapAuth(): Promise<void> {
+  if (SMOKE_TOKEN && SMOKE_TENANT) return;
+
+  const res = await safeFetch(apiPath('/dev-auth/token'));
+  const json = await res.json() as any;
+  const payload = (json.data ?? json) as { token?: string; tenantId?: string; orgId?: string };
+
+  SMOKE_TOKEN = SMOKE_TOKEN || payload.token || '';
+  SMOKE_TENANT = SMOKE_TENANT || payload.orgId || payload.tenantId || '';
 }
 
 async function request(
@@ -78,7 +90,7 @@ async function request(
 
 async function test(name: string, fn: () => Promise<void>, skip = false): Promise<void> {
   if (skip) {
-    console.log(`  ⊘  ${name}`);
+    console.log(`  SKIP  ${name}`);
     results.push({ name, status: 'SKIP', reason: 'credentials not provided' });
     skipped++;
     return;
@@ -86,11 +98,11 @@ async function test(name: string, fn: () => Promise<void>, skip = false): Promis
 
   try {
     await fn();
-    console.log(`  ✓  ${name}`);
+    console.log(`  PASS  ${name}`);
     results.push({ name, status: 'PASS' });
     passed++;
   } catch (err) {
-    console.log(`  ✗  ${name} — ${(err as Error).message}`);
+    console.log(`  FAIL  ${name} - ${(err as Error).message}`);
     results.push({ name, status: 'FAIL', reason: (err as Error).message });
     failed++;
   }
@@ -108,55 +120,58 @@ function expect(val: unknown, label: string) {
 }
 
 async function healthCheck(): Promise<void> {
-  const candidates = [`${API_URL}/api/v1/health/live`];
-  const errors: string[] = [];
-
-  for (const url of candidates) {
-    try {
-      const res = await safeFetch(url);
-      if (res.status === 200) return;
-      errors.push(`${url} => ${res.status}`);
-    } catch (err) {
-      errors.push(`${url} => ${(err as Error).message}`);
-    }
-  }
-
-  throw new Error(`health check publico falhou: ${errors.join(' | ')}`);
+  const url = `${API_URL}/api/v1/health/live`;
+  const res = await safeFetch(url);
+  if (res.status !== 200) throw new Error(`${url} => ${res.status}`);
 }
 
 async function main(): Promise<void> {
-  console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║   MUSIC OS 360 — Smoke Test Ponta a Ponta                ║');
-  console.log('╚══════════════════════════════════════════════════════════╝\n');
-  console.log(`  API_URL:      ${API_URL}`);
-  console.log(`  SMOKE_TOKEN:  ${SMOKE_TOKEN ? SMOKE_TOKEN.substring(0, 20) + '…' : '(não definido)'}`);
-  console.log(`  SMOKE_TENANT: ${SMOKE_TENANT || '(não definido)'}`);
+  console.log('\nMUSIC OS 360 - Smoke Test Ponta a Ponta\n');
+  console.log(`  API_URL: ${API_URL}`);
+
+  try {
+    await bootstrapAuth();
+    console.log(`  Token:    ${SMOKE_TOKEN ? SMOKE_TOKEN.substring(0, 20) + '...' : '(unavailable)'}`);
+    console.log(`  TenantId: ${SMOKE_TENANT || '(unavailable)'}`);
+  } catch (err) {
+    console.warn(`  [WARN] bootstrapAuth failed: ${(err as Error).message} - authenticated tests will be skipped`);
+  }
   console.log('');
 
   const hasAuth = !!SMOKE_TOKEN;
   const hasTenant = !!SMOKE_TENANT && !!SMOKE_TOKEN;
 
-  await test('Health liveness público responde 200', healthCheck);
+  await test('Health liveness publico responde 200', healthCheck);
 
-  await test('Endpoint protegido sem token → 401/403', async () => {
+  await test('Endpoint protegido sem token -> 401/403', async () => {
     const r = await request('GET', '/artists', undefined, false);
     expect(r.status, 'status').toBeOneOf([401, 403]);
   });
+
+  await test('Endpoint protegido com token sem X-Tenant-ID -> 403', async () => {
+    const res = await safeFetch(apiPath('/artists'), {
+      headers: {
+        Authorization: `Bearer ${SMOKE_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+    });
+    expect(res.status, 'status').toBe(403);
+  }, !hasAuth);
 
   await test('GET /analytics/dashboard com auth', async () => {
     const r = await request('GET', '/analytics/dashboard');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('GET /artists → 200 com dados', async () => {
+  await test('GET /artists -> 200 com dados', async () => {
     const r = await request('GET', '/artists');
     expect(r.status, 'status').toBe(200);
     const d = r.data as { data?: unknown[] };
-    if (!Array.isArray(d?.data)) throw new Error('data.data não é array');
+    if (!Array.isArray(d?.data)) throw new Error('data.data is not an array');
   }, !hasTenant);
 
   let createdArtistId: string | null = null;
-  await test('POST /artists → 201', async () => {
+  await test('POST /artists -> 201', async () => {
     const r = await request('POST', '/artists', {
       nome_artistico: `Smoke Artist ${Date.now()}`,
       tipo: 'solo',
@@ -164,38 +179,53 @@ async function main(): Promise<void> {
     expect(r.status, 'status').toBeOneOf([200, 201]);
     const d = r.data as { id?: string; data?: { id?: string } };
     createdArtistId = d.id ?? d.data?.id ?? null;
-    if (!createdArtistId) throw new Error('Artista criado sem ID');
+    if (!createdArtistId) throw new Error('created artist has no id');
   }, !hasTenant);
 
-  await test('GET /pipelines → 200', async () => {
+  await test('GET /pipelines -> 200', async () => {
     const r = await request('GET', '/pipelines');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('GET /crm/contacts → 200', async () => {
+  await test('GET /crm/contacts -> 200', async () => {
     const r = await request('GET', '/crm/contacts');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('GET /campaigns → 200', async () => {
+  await test('GET /campaigns -> 200', async () => {
     const r = await request('GET', '/campaigns');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('GET /analytics/revenue → 200', async () => {
+  await test('GET /analytics/revenue -> 200', async () => {
     const r = await request('GET', '/analytics/revenue?months=3');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('POST /forms/:id/submit público sem auth → 200/201/404', async () => {
+  await test('POST /forms/:id/submit publico sem auth com X-Tenant-ID -> 200/201/404', async () => {
     const demoFormId = '10000000-0000-0000-0000-000000000050';
-    const r = await request('POST', `/forms/${demoFormId}/submit`, {
-      data: { name: 'Smoke Test User', email: 'smoke@test.example.com' },
-    }, false);
-    expect(r.status, 'status').toBeOneOf([200, 201, 404]);
+    const res = await safeFetch(apiPath(`/forms/${demoFormId}/submit`), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Tenant-ID': SMOKE_TENANT,
+      },
+      body: JSON.stringify({ data: { name: 'Smoke Test User', email: 'smoke@test.example.com' } }),
+    });
+    expect(res.status, 'status').toBeOneOf([200, 201, 404]);
+  }, !SMOKE_TENANT);
+
+  await test('POST /forms/:id/submit publico sem X-Tenant-ID -> 400', async () => {
+    const demoFormId = '10000000-0000-0000-0000-000000000050';
+    const res = await safeFetch(apiPath(`/forms/${demoFormId}/submit`), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data: { name: 'Smoke Test User', email: 'smoke@test.example.com' } }),
+    });
+    expect(res.status, 'status').toBe(400);
   });
 
-  await test('X-Tenant-ID inválido → 401/403/404', async () => {
+  await test('X-Tenant-ID invalido -> 401/403/404', async () => {
     const res = await safeFetch(apiPath('/artists'), {
       headers: {
         Authorization: `Bearer ${SMOKE_TOKEN}`,
@@ -206,12 +236,12 @@ async function main(): Promise<void> {
     expect(res.status, 'status cross-tenant').toBeOneOf([401, 403, 404]);
   }, !hasAuth);
 
-  await test('GET /activity-logs → 200', async () => {
+  await test('GET /activity-logs -> 200', async () => {
     const r = await request('GET', '/activity-logs?limit=5');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  await test('GET /conversations → 200', async () => {
+  await test('GET /conversations -> 200', async () => {
     const r = await request('GET', '/conversations');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
@@ -223,22 +253,20 @@ async function main(): Promise<void> {
     }, !hasTenant);
   }
 
-  console.log('\n── Resultado ───────────────────────────────────────────────\n');
-  console.log(`  ✓ Passados  : ${passed}`);
-  console.log(`  ✗ Falhados  : ${failed}`);
-  console.log(`  ⊘ Ignorados : ${skipped} (sem credenciais)`);
+  console.log('\nResultado\n');
+  console.log(`  Passados  : ${passed}`);
+  console.log(`  Falhados  : ${failed}`);
+  console.log(`  Ignorados : ${skipped} (sem credenciais)`);
 
   if (skipped > 0) {
-    console.log('\n  Para executar testes autenticados, defina:');
-    console.log('    API_URL=http://localhost:3001');
-    console.log('    SMOKE_TOKEN=<jwt-supabase>');
-    console.log('    SMOKE_TENANT=<uuid-tenant>');
+    console.log('\n  Testes ignorados porque credenciais nao foram encontradas.');
+    console.log('  Verifique se a API esta rodando e as seeds foram executadas.');
   }
 
   if (failed === 0) {
-    console.log('\n  ✓ SMOKE TEST PASSOU — plataforma operacional.\n');
+    console.log('\n  SMOKE TEST PASSOU - plataforma operacional.\n');
   } else {
-    console.log('\n  ✗ SMOKE TEST FALHOU — verifique as falhas acima.\n');
+    console.log('\n  SMOKE TEST FALHOU - verifique as falhas acima.\n');
     process.exit(1);
   }
 }

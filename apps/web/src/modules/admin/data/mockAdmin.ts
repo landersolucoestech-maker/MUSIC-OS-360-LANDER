@@ -182,7 +182,7 @@ export const MOCK_SUPPORT_TICKETS: AdminSupportTicket[] = [
 /* ─── Integrations ─── */
 export const MOCK_INTEGRATIONS: AdminIntegration[] = [
   { id: "int-001", name: "Stripe", provider: "stripe", category: "payment", status: "active", tenants_using: 38, last_sync_at: NOW, description: "Processamento de pagamentos e assinaturas recorrentes", icon: "stripe" },
-  { id: "int-002", name: "ABRAMUS", provider: "abramus", category: "music", status: "active", tenants_using: 28, last_sync_at: d(-1), description: "Conciliação de direitos autorais e royalties ECAD", icon: "abramus" },
+  { id: "int-002", name: "ABRAMUS", provider: "abramus", category: "music", status: "active", tenants_using: 28, last_sync_at: d(-1), description: "Conciliação de direitos autorais e recebimentos externos de direitos ECAD", icon: "abramus" },
   { id: "int-003", name: "Twilio", provider: "twilio", category: "communication", status: "active", tenants_using: 15, last_sync_at: d(-2), description: "SMS, WhatsApp e notificações por canal", icon: "twilio" },
   { id: "int-004", name: "Google Analytics", provider: "google", category: "analytics", status: "active", tenants_using: 41, last_sync_at: NOW, description: "Análise de tráfego e comportamento de usuários", icon: "google" },
   { id: "int-005", name: "AWS S3", provider: "aws", category: "storage", status: "active", tenants_using: 48, last_sync_at: NOW, description: "Armazenamento de áudio, documentos e assets", icon: "aws" },

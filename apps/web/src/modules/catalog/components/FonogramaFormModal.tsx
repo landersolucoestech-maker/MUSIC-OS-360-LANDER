@@ -946,7 +946,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                   className="text-xs text-muted-foreground mt-1"
                   data-testid="hint-obra-vinculada-empty"
                 >
-                  Nenhuma obra vinculada — recomendado para rastreabilidade de royalties
+                  Nenhuma obra vinculada — recomendado para rastreabilidade de recebimentos externos de direitos
                 </p>
               )}
               </>

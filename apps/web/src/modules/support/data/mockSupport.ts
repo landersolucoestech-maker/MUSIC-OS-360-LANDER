@@ -8,7 +8,7 @@ const TENANT_ID = "tenant-001";
 export const MOCK_TICKETS: SupportTicket[] = [
   {
     id: "tkt-001", tenant_id: TENANT_ID, ticket_number: "TKT-0042",
-    subject: "Erro ao importar planilha de royalties via OFX",
+    subject: "Erro ao importar planilha de recebimentos externos de direitos via OFX",
     description: "Ao tentar importar o arquivo OFX gerado pelo banco, o sistema retorna erro 422. O arquivo tem 2.3MB e contém 847 transações.",
     status: "open", priority: "high", category: "financeiro",
     created_by: "Ana Beatriz Santos", assigned_to: "Suporte Técnico",
@@ -49,13 +49,13 @@ export const MOCK_TICKETS: SupportTicket[] = [
   },
   {
     id: "tkt-005", tenant_id: TENANT_ID, ticket_number: "TKT-0038",
-    subject: "Solicitar integração com DistroKid para royalties automáticos",
-    description: "Preciso que o sistema consiga importar automaticamente os relatórios mensais de royalties do DistroKid sem importação manual.",
+    subject: "Solicitar integração com DistroKid para recebimentos externos de direitos automáticos",
+    description: "Preciso que o sistema consiga importar automaticamente os relatórios mensais de recebimentos externos de direitos do DistroKid sem importação manual.",
     status: "open", priority: "low", category: "integracoes",
     created_by: "Trio Bossa Nova",
     sla_deadline: "2026-05-15T18:00:00Z",
     created_at: "2026-05-08T07:30:00Z", updated_at: "2026-05-08T07:30:00Z",
-    tags: ["distrokid", "royalties", "integração"],
+    tags: ["distrokid", "recebimentos externos de direitos", "integração"],
   },
   {
     id: "tkt-006", tenant_id: TENANT_ID, ticket_number: "TKT-0037",
@@ -121,7 +121,7 @@ export const MOCK_CHAT_ROOMS: ChatRoom[] = [
   {
     id: "room-001", tenant_id: TENANT_ID,
     participant_name: "Carlos Eduardo", participant_email: "carlos@seuartista.com",
-    last_message: "Preciso de ajuda com a importação de royalties",
+    last_message: "Preciso de ajuda com a importação de recebimentos externos de direitos",
     last_message_at: "2026-05-08T10:45:00Z", unread_count: 2,
     status: "active", online: true,
   },
@@ -153,7 +153,7 @@ export const MOCK_CHAT_MESSAGES: Record<string, ChatMessage[]> = {
     {
       id: "cm-001", tenant_id: TENANT_ID, room_id: "room-001", sender: "user",
       sender_name: "Carlos Eduardo",
-      message: "Olá, boa tarde! Preciso de ajuda com a importação de royalties do DistroKid.",
+      message: "Olá, boa tarde! Preciso de ajuda com a importação de recebimentos externos de direitos do DistroKid.",
       created_at: "2026-05-08T10:30:00Z", type: "text",
     },
     {
@@ -171,7 +171,7 @@ export const MOCK_CHAT_MESSAGES: Record<string, ChatMessage[]> = {
     {
       id: "cm-004", tenant_id: TENANT_ID, room_id: "room-001", sender: "user",
       sender_name: "Carlos Eduardo",
-      message: "Preciso de ajuda com a importação de royalties",
+      message: "Preciso de ajuda com a importação de recebimentos externos de direitos",
       created_at: "2026-05-08T10:45:00Z", type: "text",
     },
   ],
@@ -304,7 +304,7 @@ Use {{variavel}} para inserir dados dinâmicos:
 - {{nome_artista}} — nome artístico
 - {{data_inicio}} — início da vigência
 - {{data_fim}} — fim da vigência
-- {{percentual_royalties}} — percentual acordado
+- {{percentual_recebimentos externos de direitos}} — percentual acordado
 - {{nome_empresa}} — razão social da gravadora
 
 ### Criando um novo template
@@ -416,7 +416,7 @@ export const MOCK_INCIDENTS: Incident[] = [
 export const MOCK_REQUESTS: SupportRequest[] = [
   {
     id: "req-001", tenant_id: TENANT_ID, type: "feature",
-    title: "Integração nativa com DistroKid para importação automática de royalties",
+    title: "Integração nativa com DistroKid para importação automática de recebimentos externos de direitos",
     description: "Seria muito útil ter a importação automática dos relatórios mensais do DistroKid sem precisar baixar e importar manualmente o CSV.",
     status: "in_review", priority: "high",
     created_at: "2026-05-08T07:30:00Z", updated_at: "2026-05-08T09:00:00Z", votes: 23,
@@ -437,8 +437,8 @@ export const MOCK_REQUESTS: SupportRequest[] = [
   },
   {
     id: "req-004", tenant_id: TENANT_ID, type: "feature",
-    title: "Relatório de royalties por artista em PDF",
-    description: "Exportar relatório mensal de royalties por artista em formato PDF com gráficos.",
+    title: "Relatório de recebimentos externos de direitos por artista em PDF",
+    description: "Exportar relatório mensal de recebimentos externos de direitos por artista em formato PDF com gráficos.",
     status: "pending", priority: "low",
     created_at: "2026-05-05T08:00:00Z", updated_at: "2026-05-05T08:00:00Z", votes: 8,
   },

@@ -74,6 +74,8 @@ export const CONTRACTS_WORKFLOW: WorkflowDefinition<string> = {
         ContractStatus.RASCUNHO,
         ContractStatus.EM_ANALISE,
         ContractStatus.AGUARDANDO_ASSINATURA,
+        ContractStatus.ASSINADO,
+        ContractStatus.VIGENTE,
       ],
       to:    ContractStatus.CANCELADO,
       label: 'Cancelar',

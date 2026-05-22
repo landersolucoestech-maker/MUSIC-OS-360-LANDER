@@ -144,16 +144,16 @@ describe('ArtistsService', () => {
     expect(result.email_encrypted).toBe(`enc:${dto.email}`);
   });
 
-  it('softDelete() define deleted_at sem apagar fisicamente', async () => {
+  it('softDelete() define deleted_at e updated_by sem apagar fisicamente', async () => {
     const ds = makeDataSource();
     const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock() as any, makePlanLimitMock() as any);
 
-    const result = await service.softDelete(TENANT_A, 'artist-001');
+    const result = await service.softDelete(TENANT_A, 'user-actor', 'artist-001');
 
     expect(result).toEqual({ deleted: true });
     expect(ds._repo.update).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'artist-001', tenant_id: TENANT_A }),
-      expect.objectContaining({ deleted_at: expect.any(Date) }),
+      expect.objectContaining({ deleted_at: expect.any(Date), updated_by: 'user-actor' }),
     );
   });
 });

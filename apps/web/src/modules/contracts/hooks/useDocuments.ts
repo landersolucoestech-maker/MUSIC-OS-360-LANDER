@@ -11,7 +11,7 @@ const MOCK_DOCUMENTS: VinculadoDocument[] = [
     status: "signed",
     content_html: "<p>Contrato assinado.</p>",
     signing_provider: "autentique",
-    variables: { NOME_ARTISTA: "MC Levi", ROYALTY: "15" },
+    variables: { NOME_ARTISTA: "MC Levi", EXTERNAL_RIGHTS: "15" },
     signers: [
       { id: "sgn-001", document_id: "doc-001", role: "artista", name: "MC Levi",           email: "mc.levi@email.com",       status: "signed", signed_at: "2026-03-15T14:22:00.000Z" },
       { id: "sgn-002", document_id: "doc-001", role: "label",   name: "Gravadora Exemplo", email: "contratos@gravadora.com", status: "signed", signed_at: "2026-03-15T15:00:00.000Z" },

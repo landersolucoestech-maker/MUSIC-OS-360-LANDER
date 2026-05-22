@@ -522,7 +522,7 @@ export default function Configuracoes() {
     { id: "distrokid", name: "DistroKid", initials: "DK", color: "bg-blue-500", description: "Distribuição rápida para todas as plataformas de streaming" },
     { id: "symphonic", name: "Symphonic", initials: "SY", color: "bg-purple-600", description: "Distribuição e marketing para artistas e selos independentes" },
     { id: "soundon", name: "SoundOn", initials: "SO", color: "bg-black", description: "Distribuidora oficial do TikTok com monetização integrada" },
-    { id: "musicpro", name: "MusicPro", initials: "MP", color: "bg-green-600", description: "Distribuição profissional com suporte dedicado e royalties mensais" },
+    { id: "musicpro", name: "MusicPro", initials: "MP", color: "bg-green-600", description: "Distribuição profissional com suporte dedicado e recebimentos externos de direitos mensais" },
     { id: "somvibe", name: "SomVibe", initials: "SV", color: "bg-primary", description: "Distribuidora brasileira independente com foco no mercado nacional" },
   ];
 

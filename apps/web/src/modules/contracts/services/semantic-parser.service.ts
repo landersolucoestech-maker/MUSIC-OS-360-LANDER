@@ -52,7 +52,7 @@ ANÁLISE FINANCEIRA OBRIGATÓRIA
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 Identifique e diferencie semanticamente:
-- royalties → {{FINANCIAL.ROYALTIES_PERCENTAGE}}
+- recebimentos externos de direitos → {{FINANCIAL.EXTERNAL_RIGHTS_PERCENTAGE}}
 - cachê / honorário → {{PAYMENT.AMOUNT}}
 - multa rescisória → {{FINANCIAL.TERMINATION_FINE_PERCENTAGE}}
 - multa por descumprimento → {{FINANCIAL.BREACH_FINE_PERCENTAGE}}
@@ -70,7 +70,7 @@ Identifique e diferencie semanticamente:
 - receita líquida/bruta → {{FINANCIAL.NET_REVENUE}} / {{FINANCIAL.GROSS_REVENUE}}
 - taxa administrativa → {{FINANCIAL.ADMIN_FEE_PERCENTAGE}}
 
-Contexto é crucial: "10%" sozinho é ambíguo — analise a cláusula completa para determinar se é royalty, multa, juros, comissão ou split.
+Contexto é crucial: "10%" sozinho é ambíguo — analise a cláusula completa para determinar se é external-rights, multa, juros, comissão ou split.
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ANÁLISE DE ENTIDADES — TODOS OS ENVOLVIDOS
@@ -137,7 +137,7 @@ TIPOS DE CLÁUSULA (campo livre)
 
 Detecte e nomeie livremente os tipos de cláusulas presentes.
 Não há lista fixa — nomeie conforme o contexto jurídico real do documento.
-Exemplos orientativos: financeira, autoral, royalties, exclusividade, confidencialidade,
+Exemplos orientativos: financeira, autoral, recebimentos externos de direitos, exclusividade, confidencialidade,
 inadimplencia, distribuicao_digital, licenciamento, rescisao, prazo, objeto,
 editorial, coautoria, sincronizacao, imagem, voz, nao_concorrencia, prestacao_contas
 
@@ -156,7 +156,7 @@ FORMATO DE SAÍDA (JSON puro, sem markdown)
       "accepted": true
     }
   ],
-  "clauseTypes": ["financeira", "autoral", "royalties"]
+  "clauseTypes": ["financeira", "autoral", "recebimentos externos de direitos"]
 }`;
 
 interface RawAIVariable {

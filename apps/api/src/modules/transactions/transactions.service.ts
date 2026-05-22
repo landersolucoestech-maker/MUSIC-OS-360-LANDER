@@ -1,7 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, Optional, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TransactionEntity } from '../../database/entities';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 import type { QueryTransactionDto } from './dto/query-transaction.dto';
 import type { TransactionDetailsDTO } from './dto/transaction-details.dto';
 import type {
@@ -11,6 +13,9 @@ import type {
 } from './validators/transacao.validator';
 
 type AnyRecord = Record<string, unknown>;
+
+const PAID_STATUSES      = new Set(['pago', 'confirmado', 'concluido']);
+const CANCELLED_STATUSES = new Set(['cancelado', 'cancelled']);
 
 function toNumber(value: unknown): number {
   if (typeof value === 'number') return value;
@@ -156,7 +161,11 @@ function toTransactionDetails(entity: TransactionEntity): TransactionDetailsDTO 
 export class TransactionsService {
   private readonly repo: Repository<TransactionEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    @Optional() private readonly events: EventsService,
+    @Optional() private readonly activityLogs: ActivityLogsService,
+  ) {
     if (ds) this.repo = ds.getRepository(TransactionEntity);
   }
 
@@ -196,30 +205,201 @@ export class TransactionsService {
 
   async create(tenantId: string, userId: string, dto: CreateTransacaoDto): Promise<TransactionEntity> {
     const entity = this.repo!.create(buildPersistencePayload(tenantId, userId, dto) as Parameters<Repository<TransactionEntity>['create']>[0]);
-    return this.repo!.save(entity as TransactionEntity);
+    const saved = await this.repo!.save(entity as TransactionEntity);
+
+    const valor = String((dto as AnyRecord).valor ?? '0');
+
+    if (this.events) {
+      this.events.emitTyped(DOMAIN_EVENTS.TRANSACTION_CREATED, {
+        tenantId,
+        userId,
+        aggregateType: 'transaction',
+        aggregateId:   saved.id,
+        payload: {
+          transactionId: saved.id,
+          tenantId,
+          tipo:          saved.tipo ?? (dto as AnyRecord).tipoTransacao as string ?? '',
+          categoria:     saved.categoria ?? (dto as AnyRecord).categoria as string ?? '',
+          valor,
+          contratoId:    saved.contrato_id ?? null,
+          artistaId:     saved.artista_id ?? null,
+          createdBy:     userId,
+        },
+      });
+    }
+
+    if (this.activityLogs) {
+      try {
+        await this.activityLogs.create(tenantId, userId, {
+          entity_type:  'transaction',
+          entity_id:    saved.id,
+          action:       'created',
+          description:  `Transacção ${saved.tipo} R$${valor} criada`,
+          metadata:     { tipo: saved.tipo, categoria: saved.categoria, valor },
+        });
+      } catch { /* non-critical */ }
+    }
+
+    return saved;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateTransacaoDto): Promise<TransactionEntity> {
     const existing = await this.findEntityById(tenantId, id);
+    this.assertEditable(existing);
+
+    const newStatus = (dto as AnyRecord).status as string | undefined;
     await this.repo!.update(
       { id, tenant_id: tenantId } as AnyRecord,
       { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() } as AnyRecord,
     );
-    return this.findEntityById(tenantId, id);
+    const updated = await this.findEntityById(tenantId, id);
+    await this.emitStatusEvents(tenantId, userId, existing, updated, newStatus);
+    return updated;
   }
 
   async patch(tenantId: string, userId: string, id: string, dto: PatchTransacaoDto): Promise<TransactionEntity> {
     const existing = await this.findEntityById(tenantId, id);
+    this.assertEditable(existing);
+
+    const newStatus = (dto as AnyRecord).status as string | undefined;
     await this.repo!.update(
       { id, tenant_id: tenantId } as AnyRecord,
       { ...buildPersistencePayload(tenantId, userId, dto, existing), updated_at: new Date() } as AnyRecord,
     );
-    return this.findEntityById(tenantId, id);
+    const updated = await this.findEntityById(tenantId, id);
+    await this.emitStatusEvents(tenantId, userId, existing, updated, newStatus);
+    return updated;
   }
 
-  async softDelete(tenantId: string, id: string) {
-    await this.findEntityById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as AnyRecord, { deleted_at: new Date() } as AnyRecord);
+  async softDelete(tenantId: string, userId: string, id: string) {
+    const existing = await this.findEntityById(tenantId, id);
+
+    if (CANCELLED_STATUSES.has(existing.status as string)) {
+      throw new BadRequestException('Transacção já cancelada');
+    }
+
+    const cancelledAt = new Date().toISOString();
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as AnyRecord,
+      { deleted_at: new Date(), updated_by: userId } as AnyRecord,
+    );
+
+    if (this.events) {
+      this.events.emitTyped(DOMAIN_EVENTS.TRANSACTION_CANCELLED, {
+        tenantId,
+        userId,
+        aggregateType: 'transaction',
+        aggregateId:   id,
+        payload: {
+          transactionId: id,
+          tenantId,
+          tipo:          existing.tipo as string,
+          valor:         String(existing.valor),
+          cancelledBy:   userId,
+          cancelledAt,
+        },
+      });
+    }
+
+    if (this.activityLogs) {
+      try {
+        await this.activityLogs.create(tenantId, userId, {
+          entity_type:  'transaction',
+          entity_id:    id,
+          action:       'cancelled',
+          description:  `Transacção R$${existing.valor} cancelada`,
+          metadata:     { tipo: existing.tipo, valor: String(existing.valor), cancelledAt },
+        });
+      } catch { /* non-critical */ }
+    }
+
     return { deleted: true };
+  }
+
+  // ── Helpers ──────────────────────────────────────────────────────────────────
+
+  private assertEditable(entity: TransactionEntity): void {
+    if (CANCELLED_STATUSES.has(entity.status as string)) {
+      throw new ForbiddenException('Transacção cancelada não pode ser editada');
+    }
+  }
+
+  private async emitStatusEvents(
+    tenantId: string,
+    userId: string,
+    before: TransactionEntity,
+    after: TransactionEntity,
+    requestedStatus: string | undefined,
+  ): Promise<void> {
+    if (!requestedStatus || requestedStatus === before.status) return;
+
+    const nowIso = new Date().toISOString();
+    const valor  = String(after.valor);
+
+    if (this.events) {
+      this.events.emitTyped(DOMAIN_EVENTS.TRANSACTION_STATUS_CHANGED, {
+        tenantId,
+        userId,
+        aggregateType: 'transaction',
+        aggregateId:   after.id,
+        payload: {
+          transactionId:  after.id,
+          tenantId,
+          tipo:           after.tipo as string,
+          valor,
+          previousStatus: before.status as string,
+          newStatus:      requestedStatus,
+          changedBy:      userId,
+        },
+      });
+
+      if (PAID_STATUSES.has(requestedStatus)) {
+        this.events.emitTyped(DOMAIN_EVENTS.TRANSACTION_PAID, {
+          tenantId,
+          userId,
+          aggregateType: 'transaction',
+          aggregateId:   after.id,
+          payload: {
+            transactionId: after.id,
+            tenantId,
+            tipo:          after.tipo as string,
+            valor,
+            contratoId:    after.contrato_id ?? null,
+            artistaId:     after.artista_id  ?? null,
+            paidBy:        userId,
+            paidAt:        nowIso,
+          },
+        });
+      }
+
+      if (CANCELLED_STATUSES.has(requestedStatus)) {
+        this.events.emitTyped(DOMAIN_EVENTS.TRANSACTION_CANCELLED, {
+          tenantId,
+          userId,
+          aggregateType: 'transaction',
+          aggregateId:   after.id,
+          payload: {
+            transactionId: after.id,
+            tenantId,
+            tipo:          after.tipo as string,
+            valor,
+            cancelledBy:   userId,
+            cancelledAt:   nowIso,
+          },
+        });
+      }
+    }
+
+    if (this.activityLogs) {
+      try {
+        await this.activityLogs.create(tenantId, userId, {
+          entity_type:  'transaction',
+          entity_id:    after.id,
+          action:       'status_changed',
+          description:  `Transacção ${before.status} → ${requestedStatus}`,
+          metadata:     { previousStatus: before.status, newStatus: requestedStatus, valor },
+        });
+      } catch { /* non-critical */ }
+    }
   }
 }

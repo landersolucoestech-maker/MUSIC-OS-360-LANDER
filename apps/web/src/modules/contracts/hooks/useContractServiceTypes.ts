@@ -11,7 +11,7 @@ import type {
 } from "@/modules/contracts/types/contracts.types";
 
 export type ClientType = "artista" | "pessoa_fisica" | "pessoa_juridica";
-export type FinancialModel = "valor_fixo" | "royalties" | "misto" | "recorrente";
+export type FinancialModel = "valor_fixo" | "recebimentos externos de direitos" | "misto" | "recorrente";
 
 export interface ContractServiceType {
   id: string;
@@ -21,7 +21,7 @@ export interface ContractServiceType {
   category: string | null;
   client_types: ClientType[];
   financial_model: FinancialModel;
-  requires_royalties: boolean;
+  requires_external_rights_terms: boolean;
   requires_fixed_value: boolean;
   requires_advance: boolean;
   requires_financial_support: boolean;
@@ -78,7 +78,7 @@ function rowToType(row: StorageRow): ContractServiceType {
     category: row.category != null ? String(row.category) : null,
     client_types: Array.isArray(row.client_types) ? (row.client_types as ClientType[]) : [],
     financial_model: (row.financial_model as FinancialModel) ?? "valor_fixo",
-    requires_royalties: Boolean(row.requires_royalties),
+    requires_external_rights_terms: Boolean(row.requires_external_rights_terms),
     requires_fixed_value: Boolean(row.requires_fixed_value),
     requires_advance: Boolean(row.requires_advance),
     requires_financial_support: Boolean(row.requires_financial_support),

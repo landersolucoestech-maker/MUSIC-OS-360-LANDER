@@ -189,7 +189,7 @@ export default function RightsMonitoring() {
   return (
     <MainLayout
       title="Rights Monitoring"
-      description="Monitoramento de execução pública, auditoria ECAD e reconciliação de royalties"
+      description="Monitoramento de execução pública, auditoria ECAD e reconciliação de recebimentos externos de direitos"
       actions={
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncCatalog} data-testid="button-sync-catalog">

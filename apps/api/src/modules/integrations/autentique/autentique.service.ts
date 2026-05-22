@@ -1,36 +1,55 @@
-import { Injectable, Logger, Inject, UnauthorizedException, ServiceUnavailableException } from '@nestjs/common';
+/**
+ * autentique.service.ts
+ *
+ * Hardened integration with Autentique digital signature platform.
+ *
+ * Hardening applied (Phase 5):
+ *   - Idempotency: webhook external_id deduplication via WebhookService
+ *   - Timeout: AbortController (15s) on every outbound API call
+ *   - Retry metadata: retry_count + last_failure_at tracked in IntegrationEntity.metadata
+ *   - Failure activity logs: failures written to activity_logs with context
+ *   - Dead-letter: webhook events persisted via WebhookService even on processing error
+ *   - Provider metadata: provider, provider_event_id, provider_status, synced_at stored on contract
+ */
+
+import {
+  Injectable, Logger, Inject, Optional,
+  UnauthorizedException, ServiceUnavailableException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
-import { timingSafeEqual } from 'crypto';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { IntegrationEntity, ContractEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
+import { EventsService, DOMAIN_EVENTS } from '../../../core/events/events.service';
+import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
+import { WebhookService } from '../webhooks/webhook.service';
 import { IntegrationStatus } from '@music-os-360/types';
 
-const AUTENTIQUE_API = 'https://api.autentique.com.br/v2';
-
-function safeEquals(a: string, b: string): boolean {
-  const left = Buffer.from(a);
-  const right = Buffer.from(b);
-  return left.length === right.length && timingSafeEqual(left, right);
-}
+const AUTENTIQUE_API    = 'https://api.autentique.com.br/v2';
+const FETCH_TIMEOUT_MS  = 15_000;
 
 @Injectable()
 export class AutentiqueService {
   private readonly logger = new Logger(AutentiqueService.name);
-  private readonly integRepo: Repository<IntegrationEntity> | null = null;
-  private readonly contractRepo: Repository<ContractEntity> | null = null;
+  private readonly integRepo:   Repository<IntegrationEntity> | null = null;
+  private readonly contractRepo: Repository<ContractEntity>   | null = null;
 
   constructor(
-    @Inject(DATA_SOURCE) ds: DataSource | null,
+    @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
     private readonly encryption: EncryptionService,
     private readonly config: ConfigService,
+    @Optional() private readonly events: EventsService,
+    @Optional() private readonly activityLogs: ActivityLogsService,
+    @Optional() private readonly webhookSvc: WebhookService,
   ) {
     if (ds) {
-      this.integRepo = ds.getRepository(IntegrationEntity);
+      this.integRepo    = ds.getRepository(IntegrationEntity);
       this.contractRepo = ds.getRepository(ContractEntity);
     }
   }
+
+  // ── Internal helpers ─────────────────────────────────────────────────────────
 
   private assertRepos(): void {
     if (!this.integRepo || !this.contractRepo) {
@@ -44,7 +63,6 @@ export class AutentiqueService {
       .createQueryBuilder('i')
       .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider: 'autentique' })
       .getOne();
-
     if (!row?.credentials_encrypted) {
       throw new ServiceUnavailableException('Autentique not configured for this tenant');
     }
@@ -52,12 +70,81 @@ export class AutentiqueService {
     return (JSON.parse(creds) as { api_token: string }).api_token;
   }
 
+  /** Fetch with AbortController timeout and retry metadata tracking on failure. */
+  private async timedFetch(
+    tenantId: string, url: string, init: RequestInit,
+  ): Promise<Response> {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+    try {
+      const res = await fetch(url, { ...init, signal: controller.signal });
+      clearTimeout(timer);
+      return res;
+    } catch (err) {
+      clearTimeout(timer);
+      const isTimeout = (err as Error).name === 'AbortError';
+      const message   = isTimeout ? `Autentique API timeout (${FETCH_TIMEOUT_MS}ms)` : String(err);
+      await this.recordFailure(tenantId, message);
+      throw new ServiceUnavailableException(message);
+    }
+  }
+
+  /** Increment failure_count + record last_failure_at in integration metadata. */
+  private async recordFailure(tenantId: string, reason: string): Promise<void> {
+    if (!this.integRepo) return;
+    try {
+      const row = await this.integRepo
+        .createQueryBuilder('i')
+        .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider: 'autentique' })
+        .getOne();
+      if (row) {
+        const retryCount = ((row.metadata as any)?.retry_count ?? 0) + 1;
+        await this.integRepo.update({ id: row.id } as any, {
+          failure_count: (row.failure_count ?? 0) + 1,
+          status:        IntegrationStatus.ERROR,
+          metadata: {
+            ...row.metadata,
+            retry_count:     retryCount,
+            last_failure_at: new Date().toISOString(),
+            last_failure_reason: reason.substring(0, 500),
+          },
+        } as any);
+      }
+    } catch { /* best-effort — don't throw from error handler */ }
+  }
+
+  /** Reset failure counters after a successful operation. */
+  private async recordSuccess(tenantId: string): Promise<void> {
+    if (!this.integRepo) return;
+    try {
+      const row = await this.integRepo
+        .createQueryBuilder('i')
+        .where('i.tenant_id = :tenantId AND i.provider = :provider', { tenantId, provider: 'autentique' })
+        .getOne();
+      if (row) {
+        await this.integRepo.update({ id: row.id } as any, {
+          failure_count: 0,
+          status:        IntegrationStatus.CONNECTED,
+          last_sync_at:  new Date(),
+          metadata: {
+            ...row.metadata,
+            synced_at:   new Date().toISOString(),
+            provider:    'autentique',
+            retry_count: 0,
+          },
+        } as any);
+      }
+    } catch { /* best-effort */ }
+  }
+
+  // ── Public API ───────────────────────────────────────────────────────────────
+
   async sendForSignature(params: {
-    tenantId: string;
+    tenantId:   string;
     contractId: string;
-    name: string;
+    name:       string;
     fileBase64: string;
-    signers: Array<{ name: string; email: string }>;
+    signers:    Array<{ name: string; email: string }>;
   }): Promise<{ documentId: string }> {
     this.assertRepos();
     const token = await this.getToken(params.tenantId);
@@ -68,63 +155,204 @@ export class AutentiqueService {
       }
     `;
 
-    const res = await fetch(`${AUTENTIQUE_API}/graphql`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-      body: JSON.stringify({
-        query: mutation,
-        variables: {
-          document: { name: params.name, content_base64: params.fileBase64 },
-          signers: params.signers.map((s) => ({ name: s.name, email: s.email, action: 'SIGN' })),
-        },
-      }),
-    });
+    let res: Response;
+    try {
+      res = await this.timedFetch(params.tenantId, `${AUTENTIQUE_API}/graphql`, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body:    JSON.stringify({
+          query:     mutation,
+          variables: {
+            document: { name: params.name, content_base64: params.fileBase64 },
+            signers:  params.signers.map((s) => ({ name: s.name, email: s.email, action: 'SIGN' })),
+          },
+        }),
+      });
+    } catch (err) {
+      // timedFetch already recorded the failure; log to activity
+      if (this.activityLogs && params.contractId) {
+        await this.activityLogs.create(params.tenantId, 'autentique:service', {
+          entity_type:  'contract',
+          entity_id:    params.contractId,
+          action:       'send_for_signature_failed',
+          description:  `Falha ao enviar contrato "${params.name}" para Autentique`,
+          metadata:     { error: String(err), provider: 'autentique' },
+        }).catch(() => {});
+      }
+      throw err;
+    }
 
     const data = await res.json() as any;
-    if (data.errors) throw new ServiceUnavailableException(data.errors[0].message);
+    if (data.errors) {
+      const errMsg = String(data.errors[0]?.message ?? 'Autentique API error');
+      await this.recordFailure(params.tenantId, errMsg);
+      throw new ServiceUnavailableException(errMsg);
+    }
+
     const docId = data.data.createDocument.id as string;
 
     if (params.contractId) {
       await this.contractRepo!
         .createQueryBuilder()
         .update(ContractEntity)
-        .set({ status: 'aguardando_assinatura', autentique_doc_id: docId, signing_platform: 'autentique', updated_at: new Date() } as any)
-        .where('id = :contractId AND tenant_id = :tenantId', { contractId: params.contractId, tenantId: params.tenantId })
+        .set({
+          status:           'aguardando_assinatura',
+          autentique_doc_id: docId,
+          signing_platform: 'autentique',
+          updated_at:       new Date(),
+          metadata: () => `metadata || '${JSON.stringify({
+            provider: 'autentique', provider_doc_id: docId,
+            synced_at: new Date().toISOString(), provider_status: 'awaiting_signature',
+          })}'::jsonb`,
+        } as any)
+        .where('id = :contractId AND tenant_id = :tenantId', {
+          contractId: params.contractId, tenantId: params.tenantId,
+        })
         .execute();
     }
 
-    this.logger.log(`Autentique: documento ${docId} enviado para assinatura`);
+    await this.recordSuccess(params.tenantId);
+
+    if (params.contractId && this.events) {
+      this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_SENT_FOR_SIGNATURE, {
+        tenantId:      params.tenantId,
+        userId:        'autentique:service',
+        aggregateType: 'contract',
+        aggregateId:   params.contractId,
+        payload: {
+          contractId:      params.contractId,
+          tenantId:        params.tenantId,
+          titulo:          params.name,
+          artistId:        null,
+          autentiqueDocId: docId,
+          sentBy:          'autentique:service',
+        },
+      });
+    }
+
+    this.logger.log(`Autentique: document ${docId} sent for signature — contract=${params.contractId}`);
     return { documentId: docId };
   }
 
   async handleWebhook(payload: any, secret?: string): Promise<{ received: true }> {
     this.assertRepos();
 
+    // 1. Validate shared secret
     const expectedSecret = this.config.get<string>('AUTENTIQUE_WEBHOOK_SECRET');
-    if (!expectedSecret) {
-      throw new ServiceUnavailableException('AUTENTIQUE_WEBHOOK_SECRET not configured');
-    }
-    if (!secret || !safeEquals(secret, expectedSecret)) {
-      throw new UnauthorizedException('Invalid Autentique webhook secret');
+    if (!expectedSecret) throw new ServiceUnavailableException('AUTENTIQUE_WEBHOOK_SECRET not configured');
+
+    const secretValid = this.webhookSvc
+      ? this.webhookSvc.validateSharedSecret(secret ?? '', expectedSecret)
+      : secret === expectedSecret;
+
+    if (!secretValid) throw new UnauthorizedException('Invalid Autentique webhook secret');
+
+    // 2. Ingest via WebhookService (idempotency + persistence)
+    const eventType   = String(payload?.event ?? 'unknown');
+    const externalId  = String(payload?.event_id ?? payload?.document?.id ?? payload?.document_id ?? '');
+    const tenantId    = null; // Autentique webhooks don't carry tenant — resolved via document lookup
+
+    const ingestResult = this.webhookSvc
+      ? await this.webhookSvc.ingest({ provider: 'autentique', eventType, externalId: externalId || null, tenantId, payload })
+      : { isDuplicate: false, eventId: 'no-svc', status: 'pending' as any };
+
+    if (ingestResult.isDuplicate) {
+      this.logger.warn(`[autentique/webhook] Duplicate event ignored: externalId=${externalId}`);
+      return { received: true };
     }
 
-    if (payload.event !== 'document.signed') return { received: true };
+    // 3. Only process document.signed events
+    if (eventType !== 'document.signed') {
+      this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
+      return { received: true };
+    }
+
     const docId = (payload.document_id ?? payload.document?.id) as string | undefined;
-    if (!docId) return { received: true };
+    if (!docId) {
+      this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
+      return { received: true };
+    }
 
-    const contract = await this.contractRepo!
-      .createQueryBuilder('c')
-      .where('c.autentique_doc_id = :docId', { docId })
-      .getOne();
+    try {
+      const contract = await this.contractRepo!
+        .createQueryBuilder('c')
+        .where('c.autentique_doc_id = :docId', { docId })
+        .getOne();
 
-    if (contract) {
+      if (!contract) {
+        this.logger.warn(`[autentique/webhook] No contract found for docId=${docId}`);
+        this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
+        return { received: true };
+      }
+
+      const signedAt   = new Date().toISOString();
+      const providerEventId = externalId || docId;
+
+      // 4. Update contract status + provider metadata
       await this.contractRepo!
         .createQueryBuilder()
         .update(ContractEntity)
-        .set({ status: 'assinado', updated_at: new Date() } as any)
+        .set({
+          status:     'assinado',
+          updated_at: new Date(),
+          metadata: () => `metadata || '${JSON.stringify({
+            provider:          'autentique',
+            provider_event_id: providerEventId,
+            provider_status:   'signed',
+            synced_at:         signedAt,
+          })}'::jsonb`,
+        } as any)
         .where('id = :id', { id: contract.id })
         .execute();
-      this.logger.log(`Contrato assinado via Autentique: ${docId}`);
+
+      await this.recordSuccess(contract.tenant_id);
+
+      this.logger.log(`[autentique/webhook] Contract ${contract.id} signed via docId=${docId}`);
+
+      // 5. Activity log
+      if (this.activityLogs) {
+        await this.activityLogs.create(contract.tenant_id, 'autentique:webhook', {
+          entity_type:  'contract',
+          entity_id:    contract.id,
+          action:       'signed_via_webhook',
+          description:  `Contrato assinado via Autentique webhook (docId=${docId})`,
+          metadata:     { docId, providerEventId, signedAt, provider: 'autentique' },
+        }).catch(() => {});
+      }
+
+      // 6. Emit domain event
+      if (this.events) {
+        this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_SIGNED, {
+          tenantId:      contract.tenant_id,
+          userId:        'autentique:webhook',
+          aggregateType: 'contract',
+          aggregateId:   contract.id,
+          payload: {
+            contractId: contract.id,
+            tenantId:   contract.tenant_id,
+            titulo:     contract.titulo ?? '',
+            artistId:   (contract as any).artista_id ?? null,
+            signedBy:   'autentique:webhook',
+            signedAt,
+          },
+        });
+      }
+
+      this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
+    } catch (err) {
+      const errMsg = String(err);
+      this.logger.error(`[autentique/webhook] Processing failed: ${errMsg}`);
+      this.webhookSvc?.markProcessed(ingestResult.eventId, 'failed', errMsg);
+
+      if (this.activityLogs) {
+        await this.activityLogs.create('system', 'autentique:webhook', {
+          entity_type:  'webhook',
+          entity_id:    ingestResult.eventId,
+          action:       'webhook_processing_failed',
+          description:  `Falha ao processar webhook Autentique: ${errMsg.substring(0, 200)}`,
+          metadata:     { docId, eventType, error: errMsg.substring(0, 500), provider: 'autentique' },
+        }).catch(() => {});
+      }
     }
 
     return { received: true };
@@ -139,9 +367,21 @@ export class AutentiqueService {
       .getOne();
 
     if (existing) {
-      await this.integRepo!.update({ id: existing.id } as any, { credentials_encrypted, status: IntegrationStatus.CONNECTED, failure_count: 0, updated_at: new Date() } as any);
+      await this.integRepo!.update({ id: existing.id } as any, {
+        credentials_encrypted,
+        status:        IntegrationStatus.CONNECTED,
+        failure_count: 0,
+        metadata: { ...existing.metadata, provider: 'autentique', configured_at: new Date().toISOString() },
+        updated_at:    new Date(),
+      } as any);
     } else {
-      const entity = this.integRepo!.create({ tenant_id: tenantId, provider: 'autentique', status: IntegrationStatus.CONNECTED, credentials_encrypted });
+      const entity = this.integRepo!.create({
+        tenant_id:             tenantId,
+        provider:              'autentique',
+        status:                IntegrationStatus.CONNECTED,
+        credentials_encrypted,
+        metadata: { provider: 'autentique', configured_at: new Date().toISOString() },
+      });
       await this.integRepo!.save(entity);
     }
   }

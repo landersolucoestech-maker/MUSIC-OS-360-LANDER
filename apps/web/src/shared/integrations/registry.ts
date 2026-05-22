@@ -29,7 +29,7 @@ export const INTEGRATION_REGISTRY: Record<IntegrationId, IntegrationMeta> = {
     id: "resend",
     name: "Resend",
     category: "email",
-    description: "Envio transaccional de e-mails: convites, alertas de contrato, royalties e relatórios.",
+    description: "Envio transaccional de e-mails: convites, alertas de contrato, recebimentos externos de direitos e relatórios.",
     docsUrl: "https://resend.com/docs",
     credentialsKey: "musicos360_resend_credentials",
   },

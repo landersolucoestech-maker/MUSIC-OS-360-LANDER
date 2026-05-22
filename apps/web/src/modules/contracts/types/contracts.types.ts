@@ -145,7 +145,7 @@ export interface ContractClause {
 }
 
 export interface FinancialSettings {
-  royaltiesEnabled: boolean;
+  externalRightsTermsEnabled: boolean;
   fixedValueEnabled: boolean;
   advanceEnabled: boolean;
   supportEnabled: boolean;

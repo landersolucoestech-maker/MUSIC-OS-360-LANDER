@@ -98,6 +98,22 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
       throw new UnauthorizedException('Authentication token missing');
     }
 
+    // In non-production, accept dev tokens signed with ENCRYPTION_KEY (HS256)
+    const nodeEnv = this.config.get<string>('NODE_ENV') ?? 'development';
+    if (nodeEnv !== 'production') {
+      const devClaims = this.tryVerifyDevToken(token);
+      if (devClaims) {
+        request.auth = {
+          userId:    devClaims.sub as string,
+          sessionId: String(devClaims['session_id'] ?? ''),
+          orgId:     (devClaims['app_metadata'] as any)?.org_id ?? null,
+          orgRole:   (devClaims['app_metadata'] as any)?.role ?? null,
+          claims:    devClaims as Record<string, unknown>,
+        };
+        return true;
+      }
+    }
+
     const claims = await this.verifyToken(token);
 
     if (!claims.sub || typeof claims.sub !== 'string') {
@@ -113,6 +129,21 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     };
 
     return true;
+  }
+
+  private tryVerifyDevToken(token: string): Record<string, unknown> | null {
+    try {
+      const secret = this.config.get<string>('ENCRYPTION_KEY');
+      if (!secret) return null;
+      const decoded = jwt.verify(token, secret, {
+        algorithms: ['HS256'],
+        issuer: 'music-os-360-dev',
+      });
+      if (typeof decoded !== 'object' || !decoded) return null;
+      return decoded as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 
   private verifyToken(token: string): Promise<AuthClaims> {

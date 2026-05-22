@@ -1,6 +1,6 @@
 import { create } from "zustand";
 
-export type LicensingTab = "licenses" | "requests" | "royalties";
+export type LicensingTab = "licenses" | "requests" | "recebimentos externos de direitos";
 
 interface LicensingFilters {
   status?: string;

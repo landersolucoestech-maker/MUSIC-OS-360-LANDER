@@ -14,16 +14,20 @@ export interface SeedResult {
 }
 
 export async function seedDefaultTenant(ds: DataSource): Promise<SeedResult> {
-  const orgId    = '00000000-0000-0000-0000-000000000001';
-  const tenantId = '00000000-0000-0000-0000-000000000002';
-  const orgSlug  = 'dev-org';
+  const tenantId = process.env['SEED_TENANT_ID'] ?? '10000000-0000-0000-0000-000000000002';
+  const orgId    = process.env['SEED_ORG_ID']    ?? tenantId;
+  const orgSlug  = process.env['SEED_ORG_SLUG']  ?? 'musicos360-demo';
 
   // ── organizations ──────────────────────────────────────────────────────────
+  const orgName    = process.env['SEED_ORG_NAME']  ?? 'MUSIC OS 360 Demo';
+  const tenantName = process.env['SEED_ORG_NAME']  ?? 'MUSIC OS 360 Demo';
+
   await ds.query(`
     INSERT INTO organizations (id, name, slug, plan, billing_status, industry)
     VALUES ($1, $2, $3, 'enterprise', 'active', 'gravadora')
-    ON CONFLICT (id) DO NOTHING
-  `, [orgId, 'Dev Organization (Seed)', orgSlug]);
+    ON CONFLICT (id) DO UPDATE
+      SET name = EXCLUDED.name, slug = EXCLUDED.slug
+  `, [orgId, orgName, orgSlug]);
 
   console.log(`  ✓ organizations: ${orgSlug} (${orgId})`);
 
@@ -31,8 +35,9 @@ export async function seedDefaultTenant(ds: DataSource): Promise<SeedResult> {
   await ds.query(`
     INSERT INTO tenants (id, org_id, name, slug, plan, active)
     VALUES ($1, $2, $3, $4, 'enterprise', TRUE)
-    ON CONFLICT (id) DO NOTHING
-  `, [tenantId, orgId, 'Dev Tenant (Seed)', 'dev-tenant']);
+    ON CONFLICT (id) DO UPDATE
+      SET name = EXCLUDED.name, slug = EXCLUDED.slug, active = TRUE
+  `, [tenantId, orgId, tenantName, orgSlug]);
 
   console.log(`  ✓ tenants: dev-tenant (${tenantId})`);
 

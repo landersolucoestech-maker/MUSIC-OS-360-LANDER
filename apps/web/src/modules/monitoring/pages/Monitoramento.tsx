@@ -229,7 +229,7 @@ export default function Monitoramento() {
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-lg">Conciliação ECAD</CardTitle>
-                <CardDescription>Relatórios de royalties por período</CardDescription>
+                <CardDescription>Relatórios de recebimentos externos de direitos por período</CardDescription>
               </div>
               <RequirePermission module="monitoring" action="write">
                 <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)}>
@@ -305,7 +305,7 @@ export default function Monitoramento() {
           </DialogHeader>
           <div className="space-y-4 py-2">
             <p className="text-sm text-muted-foreground">
-              Selecione um arquivo CSV ou XLSX exportado do portal ECAD para importar o relatório de royalties.
+              Selecione um arquivo CSV ou XLSX exportado do portal ECAD para importar o relatório de recebimentos externos de direitos.
             </p>
             <div
               className="border-2 border-dashed border-border rounded-lg p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"

@@ -697,7 +697,7 @@ queryClient.invalidateQueries({ queryKey: ["artistas"] });
 
 | Tema | Clarificação |
 |------|-------------|
-| **Royalties como domínio** | "Royalties" é APENAS uma categoria de transação no Accounting. Não existe módulo de royalties. Não existe motor de splits/distribuição. |
+| **Recebimentos externos de direitos como domínio** | "Recebimentos externos de direitos" é APENAS uma categoria de transação no Accounting. Não existe módulo de recebimentos externos de direitos. Não existe motor de splits/distribuição. |
 | **Contabilidade de artistas** | O módulo Accounting é da empresa (label/editora), não do artista individual |
 | **Analytics individual de artista** | Analytics é apenas para perfis de empresa (YouTube, TikTok, Instagram, Meta Ads, Google Ads). Análise individual → Visão 360° modal no módulo Artists |
 | **IA como módulo** | Não existe módulo "IA Assistente". IA existe apenas como botões de formulário em Marketing e Artists (`AIGenerateButton`) |
@@ -715,7 +715,7 @@ Accounting = receita - despesa = lucro líquido
            + emissão de notas fiscais
 
 NÃO inclui:
-  - Cálculo de royalties
+  - Cálculo de recebimentos externos de direitos
   - Motor de splits / distribuição
   - Pagamentos a artistas
   - Integração com sistemas de distribuição

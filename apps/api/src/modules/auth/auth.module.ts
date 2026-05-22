@@ -10,12 +10,19 @@
 
 import { Module } from '@nestjs/common';
 import { RbacModule } from '../../core/rbac/rbac.module';
+import { DatabaseModule } from '../../database/database.module';
 import { AuthController } from './auth.controller';
+import { DevAuthController } from './dev-auth.controller';
 import { AuthContextService } from './auth-context.service';
 
+// DevAuthController is only registered outside production — the route must not
+// exist at all in production (defense-in-depth beyond the 403 guard in the controller).
+const DEV_CONTROLLERS =
+  process.env['NODE_ENV'] !== 'production' ? [DevAuthController] : [];
+
 @Module({
-  imports:     [RbacModule],
-  controllers: [AuthController],
+  imports:     [RbacModule, DatabaseModule],
+  controllers: [AuthController, ...DEV_CONTROLLERS],
   providers:   [AuthContextService],
   exports:     [AuthContextService],
 })

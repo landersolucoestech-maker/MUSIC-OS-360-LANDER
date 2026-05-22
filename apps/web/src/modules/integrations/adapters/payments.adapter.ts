@@ -8,7 +8,7 @@
  * Em produção, o backend cria Checkout/Portal sessions e devolve a URL.
  *
  * Âmbito: billing da plataforma (subscriptions tenant).
- * NÃO cobre royalties de artistas (domínio Accounting).
+ * NÃO cobre recebimentos externos de direitos de artistas (domínio Accounting).
  *
  * Uso:
  *   import { paymentsAdapter } from "@/modules/integrations/adapters/payments.adapter";

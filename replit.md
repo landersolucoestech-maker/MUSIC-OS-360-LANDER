@@ -110,7 +110,7 @@ modules/<name>/
 ## Architecture decisions
 - **Storage abstraction**: `apps/web/src/shared/lib/storage.ts` is the single port for all data access. Services call `storage.*` — never localStorage directly. Supports both mock (MOCK_DATA) and HTTP (real API) modes transparently.
 - **Mapper pattern**: each domain module has a single mapper file as the source of truth for all form ↔ DB transformations (no logic in components)
-- **Accounting scope**: ONLY revenue - expenses = net profit; P&L by project/artist; recoupment tracking. NO royalties logic.
+- **Accounting scope**: ONLY revenue - expenses = net profit; P&L by project/artist; recoupment tracking. NO recebimentos externos de direitos logic.
 - **Releases module**: Lançamentos musicais (álbum/single/EP, distribuidora, plataformas) + Gestão de Shares; routes `/lancamentos`, `/gestao-shares`
 - **Monitoring module**: includes `ECADViewModal` for ECAD conciliation details
 - **Analytics module**: ONLY social/ads platforms: YouTube, TikTok, Instagram, Meta Ads, Google Ads. No individual artist analysis (covered by Visão 360 modal).
@@ -118,7 +118,7 @@ modules/<name>/
 
 ## Product
 - Music Catalog: obras, fonogramas, shares, licenses, ISRC/ISWC
-- Accounting: transactions, P&L, cash flow, invoices, OFX, recoupment — no payout/split engine; no royalties calculations
+- Accounting: transactions, P&L, cash flow, invoices, OFX, recoupment — no payout/split engine; no recebimentos externos de direitos calculations
 - Contracts: templates, digital signing, expiry alerts
 - CRM: artists, clients, contacts, leads Kanban
 - Marketing: campaigns, content calendar, briefing, tasks, IA Criativa
@@ -128,7 +128,7 @@ modules/<name>/
 
 ## User preferences
 - Brand name: **MUSIC OS 360** (never "LANDER 360", "lander360", or "LanderZap")
-- Financial module: **Accounting** (renamed from Financeiro) — route prefix `/accounting`; "royalties" is ONLY a valid transaction category label, never a product domain
+- Financial module: **Accounting** (renamed from Financeiro) — route prefix `/accounting`; "recebimentos externos de direitos" is ONLY a valid transaction category label, never a product domain
 - Messaging feature: **MusicChat** (route `/chat`)
 - Design: enterprise blue `hsl(217 91% 60%)`, dark navy `hsl(222 47% 4%)`, Plus Jakarta Sans + IBM Plex Mono
 - Semantic red: destructive/cancelled/rejected/expired/negative values ONLY

@@ -68,7 +68,7 @@ support/        → Suporte
 - **Tarefa** (tasks)
 - **Evento** (calendar)
 - **Nota Fiscal** (fiscal)
-- **Compartilhamento** (shares/royalties)
+- **Compartilhamento** (shares/recebimentos externos de direitos)
 
 ---
 
@@ -95,7 +95,7 @@ Central operacional da carreira do artista.
 ├── Releases              (todos os lançamentos)
 ├── Campaigns             (campanhas vinculadas)
 ├── Collaborations        (parcerias ativas)
-├── Financeiro            (receitas, royalties)
+├── Financeiro            (receitas, recebimentos externos de direitos)
 ├── Contracts             (contratos ativos e arquivados)
 ├── Tasks                 (tarefas do artista)
 ├── Assets                (avatares, fotos, etc)
@@ -128,7 +128,7 @@ Central operacional do lançamento.
 ├── Schedule              (timeline de ações)
 ├── Pre-release           (pré-save, playlist pitching)
 ├── Financial             (custos, receitas)
-├── Royalties             (splits de compositor)
+├── Recebimentos externos de direitos             (splits de compositor)
 ├── Analytics             (streams, listeners)
 ├── Approvals             (aprovações pendentes)
 ├── Deliverables          (arquivos necessários)
@@ -215,7 +215,7 @@ Central operacional de contrato.
 ├── Registros             (direitos, ECAD)
 ├── Compartilhamento      (shares de compositor)
 ├── Releases              (em quais releases usada)
-├── Royalties             (histórico de royalties)
+├── Recebimentos externos de direitos             (histórico de recebimentos externos de direitos)
 ├── Aprovações            (registro, aprovação)
 └── Activity              (histórico)
 ```
@@ -267,7 +267,7 @@ Central operacional de contrato.
     /team
     /schedule
     /financial
-    /royalties
+    /recebimentos externos de direitos
     /analytics
     /approvals
     /activity
@@ -833,7 +833,7 @@ export const workspaceRoutes = [
       { path: "team", element: <ReleaseTeam /> },
       { path: "schedule", element: <ReleaseSchedule /> },
       { path: "financial", element: <ReleaseFinancial /> },
-      { path: "royalties", element: <ReleaseRoyalties /> },
+      { path: "recebimentos externos de direitos", element: <ReleaseRecebimentos externos de direitos /> },
       { path: "analytics", element: <ReleaseAnalytics /> },
       { path: "approvals", element: <ReleaseApprovals /> },
       { path: "activity", element: <ReleaseActivity /> },

@@ -3,7 +3,7 @@ import { IsString, IsOptional, IsNumber, IsIn, IsBoolean, MaxLength } from 'clas
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-const TIPOS    = ['imposto', 'comissao', 'royalty', 'desconto', 'taxa', 'outros'] as const;
+const TIPOS    = ['imposto', 'comissao', 'external_rights_fee', 'desconto', 'taxa', 'outros'] as const;
 const CALCULOS = ['percentual', 'fixo', 'faixa'] as const;
 
 export class CreateFinancialRuleDto {

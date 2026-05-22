@@ -1,59 +1,55 @@
 # ─── Stage 1: Build ───────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:20-alpine3.21 AS builder
+
+# Patch Alpine system packages before build to reduce scanner findings
+RUN apk upgrade --no-cache
+
+RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
 
 WORKDIR /app
 
-# Copiar manifestos do monorepo e da API
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY packages/ ./packages/
-COPY turbo.json ./
+# Copy workspace manifests (allows pnpm to resolve the monorepo graph)
+COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
+COPY apps/api/package.json ./apps/api/
+COPY packages/auth/package.json          ./packages/auth/
+COPY packages/config/package.json        ./packages/config/
+COPY packages/observability/package.json ./packages/observability/
+COPY packages/schemas/package.json       ./packages/schemas/
+COPY packages/types/package.json         ./packages/types/
+COPY packages/ui/package.json            ./packages/ui/
+COPY packages/utils/package.json         ./packages/utils/
 
-# Instalar todas as dependências (incluindo devDeps para build)
-RUN npm ci --workspace=apps/api
+RUN pnpm install --frozen-lockfile
 
-# Copiar código-fonte da API
-COPY apps/api/ ./apps/api/
+# Copy source after deps to maximise layer cache hits
+COPY apps/api/  ./apps/api/
+COPY packages/  ./packages/
 
-# Compilar TypeScript
-RUN cd apps/api && npm run build
+RUN pnpm --filter @music-os-360/api build
 
-# ─── Stage 2: Production ──────────────────────────────────────────────────────
-FROM node:20-alpine AS production
+# ─── Stage 2: Production (distroless — no shell, no package manager, minimal CVEs) ──
+FROM gcr.io/distroless/nodejs20-debian12:nonroot AS production
 
-# Metadados
 LABEL org.opencontainers.image.title="MUSIC OS 360 API"
 LABEL org.opencontainers.image.description="Enterprise Music Management SaaS — NestJS API"
 
-# Utilizador não-root para segurança
-RUN addgroup -g 1001 nestjs && adduser -u 1001 -G nestjs -s /bin/sh -D nestjs
-
 WORKDIR /app
 
-# Copiar apenas dependências de produção
-COPY --from=builder /app/package*.json ./
-COPY --from=builder /app/apps/api/package*.json ./apps/api/
+# Copy prod dependencies from builder
+COPY --from=builder --chown=65532:65532 /app/node_modules        ./node_modules
+COPY --from=builder --chown=65532:65532 /app/apps/api/node_modules ./apps/api/node_modules
+COPY --from=builder --chown=65532:65532 /app/apps/api/dist        ./apps/api/dist
+COPY --from=builder --chown=65532:65532 /app/packages             ./packages
 
-RUN npm ci --workspace=apps/api --omit=dev && npm cache clean --force
+# distroless:nonroot already runs as UID 65532 — no USER directive needed
 
-# Copiar build compilado
-COPY --from=builder /app/apps/api/dist ./apps/api/dist
-
-# Alterar proprietário para o utilizador não-root
-RUN chown -R nestjs:nestjs /app
-
-USER nestjs
-
-WORKDIR /app/apps/api
-
-# Variáveis de ambiente de runtime (sobrepostas por docker run -e ou k8s secrets)
 ENV NODE_ENV=production
 ENV PORT=3001
 
 EXPOSE 3001
 
-# Health check interno
-HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
-  CMD wget -qO- http://localhost:3001/api/v1/health || exit 1
+# No shell in distroless — configure platform health check externally:
+#   Railway / Render / Fly.io → HTTP GET /api/v1/health/live → expect 200
+WORKDIR /app/apps/api
 
-CMD ["node", "dist/main.js"]
+CMD ["dist/main.js"]

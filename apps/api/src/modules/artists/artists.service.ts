@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
@@ -161,6 +161,13 @@ export class ArtistsService {
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<ArtistEntity> {
     const existing = await this.findById(tenantId, id);
+
+    // ── Status transition validation ───────────────────────────────────────────
+    const statusChanging = dto.status != null && dto.status !== existing.status;
+    if (statusChanging) {
+      this.validateStatusTransition(existing, dto);
+    }
+
     const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
     const changedFields: string[] = [];
 
@@ -213,6 +220,7 @@ export class ArtistsService {
     await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
     const result = await this.findById(tenantId, id);
 
+    // ── Domain events ──────────────────────────────────────────────────────────
     if (changedFields.length > 0) {
       this.events.emitTyped(DOMAIN_EVENTS.ARTIST_UPDATED, {
         tenantId,
@@ -229,12 +237,75 @@ export class ArtistsService {
       });
     }
 
+    // Status change gets its own dedicated event for fine-grained handlers
+    if (statusChanging) {
+      this.events.emitTyped(DOMAIN_EVENTS.ARTIST_STATUS_CHANGED, {
+        tenantId,
+        userId,
+        aggregateType: 'artist',
+        aggregateId:   id,
+        payload: {
+          artistId:       id,
+          tenantId,
+          nomeArtistico:  result.nome_artistico,
+          previousStatus: existing.status,
+          newStatus:      dto.status!,
+          changedBy:      userId,
+        },
+      });
+    }
+
     return toResponse(result);
   }
 
-  async softDelete(tenantId: string, id: string): Promise<{ deleted: boolean }> {
-    await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+  async softDelete(tenantId: string, userId: string, id: string): Promise<{ deleted: boolean }> {
+    const existing = await this.findById(tenantId, id);
+    await this.repo!.update(
+      { id, tenant_id: tenantId } as any,
+      { deleted_at: new Date(), updated_by: userId } as any,
+    );
+
+    this.events.emitTyped(DOMAIN_EVENTS.ARTIST_DELETED, {
+      tenantId,
+      userId,
+      aggregateType: 'artist',
+      aggregateId:   id,
+      payload: {
+        artistId:      id,
+        tenantId,
+        nomeArtistico: existing.nome_artistico,
+        deletedBy:     userId,
+      },
+    });
+
     return { deleted: true };
+  }
+
+  // ── Lifecycle validation ─────────────────────────────────────────────────────
+
+  private validateStatusTransition(existing: ArtistEntity, dto: UpdateArtistDto): void {
+    const newStatus = dto.status!;
+
+    if (newStatus === ArtistStatus.ATIVO) {
+      const genero      = dto.genero_musical ?? existing.genero_musical;
+      const hasEmail    = (dto as any).email    != null || existing.email_encrypted    != null;
+      const hasTelefone = (dto as any).telefone != null || existing.telefone_encrypted != null;
+
+      const errors: string[] = [];
+      if (!genero)                  errors.push('genero_musical obrigatório para ativar artista');
+      if (!hasEmail && !hasTelefone) errors.push('email ou telefone obrigatório para ativar artista');
+
+      if (errors.length > 0) throw new BadRequestException(errors.join('; '));
+    }
+
+    // contratado: contrato_id deve ser fornecido no update ou já existir
+    if (newStatus === ArtistStatus.CONTRATADO) {
+      const contratoId = dto.contrato_id ?? existing.contrato_id;
+      if (!contratoId) {
+        throw new BadRequestException(
+          'contrato_id obrigatório ao mover artista para status "contratado"',
+        );
+      }
+    }
   }
 }

@@ -57,8 +57,8 @@ export class TenantGuard implements CanActivate {
 
     const tenantHeader = readTenantHeader(request);
 
-    if (tenantHeader && tenantHeader !== auth.orgId) {
-      throw new ForbiddenException('Tenant header does not match authenticated organization');
+    if (!tenantHeader) {
+      throw new ForbiddenException('X-Tenant-ID header is required for protected tenant routes');
     }
 
     const tenant = await this.tenantRepo
@@ -76,7 +76,11 @@ export class TenantGuard implements CanActivate {
     const tenantOrgId = String((tenant as unknown as Record<string, unknown>)['org_id'] ?? '');
     const tenantExternalOrgId = String((tenant as unknown as Record<string, unknown>)['external_auth_org_id'] ?? '');
 
-    if (tenantHeader && tenantHeader !== tenantOrgId && tenantHeader !== tenantExternalOrgId) {
+    if (
+      tenantHeader !== tenantOrgId &&
+      tenantHeader !== tenantExternalOrgId &&
+      tenantHeader !== auth.orgId
+    ) {
       throw new ForbiddenException('Tenant header does not match resolved tenant');
     }
 

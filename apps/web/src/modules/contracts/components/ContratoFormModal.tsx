@@ -288,21 +288,21 @@ const ContractForm = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {selectedType ? (
               <>
-                {/* Selecionar tipo de pagamento (valor fixo ou royalties) — para qualquer tipo de cliente */}
+                {/* Selecionar tipo de pagamento (valor fixo ou recebimentos externos de direitos) — para qualquer tipo de cliente */}
                 {selectedType.allow_installments && (
                   <>
                     <div className="space-y-2">
                       <Label>Tipo de Pagamento</Label>
                       <Select
                         value={form.watch("payment_type")}
-                        onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "royalties")}
+                        onValueChange={(value) => form.setValue("payment_type", value as "valor_fixo" | "recebimentos externos de direitos")}
                       >
                         <SelectTrigger data-testid="select-payment-type">
                           <SelectValue placeholder="Selecione o tipo de pagamento" />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="valor_fixo">Valor Fixo</SelectItem>
-                          <SelectItem value="royalties">Royalties</SelectItem>
+                          <SelectItem value="recebimentos externos de direitos">Recebimentos externos de direitos</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -313,22 +313,22 @@ const ContractForm = ({
                           {...form.register("fixed_value", { valueAsNumber: true })} />
                       </div>
                     )}
-                    {form.watch("payment_type") === "royalties" && (
+                    {form.watch("payment_type") === "recebimentos externos de direitos" && (
                       <div className="space-y-2">
-                        <Label htmlFor="royalties_pct_sel">Royalties (%)</Label>
-                        <Input id="royalties_pct_sel" type="number" step="0.01" min="0" max="100" placeholder="0,00"
-                          {...form.register("royalties_percentage", { valueAsNumber: true })} />
+                        <Label htmlFor="recebimentos externos de direitos_pct_sel">Termos externos de direitos (%)</Label>
+                        <Input id="recebimentos externos de direitos_pct_sel" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                          {...form.register("external_rights_percentage", { valueAsNumber: true })} />
                       </div>
                     )}
                   </>
                 )}
 
-                {/* Royalties direto (tipo não usa seletor de pagamento) */}
-                {selectedType.requires_royalties && !selectedType.allow_installments && (
+                {/* Recebimentos externos de direitos direto (tipo não usa seletor de pagamento) */}
+                {selectedType.requires_external_rights_terms && !selectedType.allow_installments && (
                   <div className="space-y-2">
-                    <Label htmlFor="royalties_percentage">Royalties (%)</Label>
-                    <Input id="royalties_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
-                      {...form.register("royalties_percentage", { valueAsNumber: true })} />
+                    <Label htmlFor="external_rights_percentage">Termos externos de direitos (%)</Label>
+                    <Input id="external_rights_percentage" type="number" step="0.01" min="0" max="100" placeholder="0,00"
+                      {...form.register("external_rights_percentage", { valueAsNumber: true })} />
                   </div>
                 )}
 
@@ -599,7 +599,7 @@ export const ContratoFormModal = ({
       title, service_type, status,
       arquivo_url, notas_versao, lancamento_id,
       start_date, end_date, fixed_value,
-      royalties_percentage, advance_payment, financial_support, observations,
+      external_rights_percentage, advance_payment, financial_support, observations,
       signers,
     } = data;
 

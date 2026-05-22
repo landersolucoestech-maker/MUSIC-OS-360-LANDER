@@ -56,10 +56,32 @@ export class SecurityStartupService implements OnApplicationBootstrap {
         message: 'DATABASE_URL não definida — API em modo standalone sem persistência',
       },
       {
+        name:    'SUPABASE_SERVICE_ROLE_KEY presente em produção',
+        fatal:   true,
+        check:   () => !isProduction || Boolean(this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')),
+        message: 'SUPABASE_SERVICE_ROLE_KEY não definida — operações admin Supabase não funcionarão',
+      },
+      {
+        name:    'STRIPE_WEBHOOK_SECRET presente quando Stripe activo',
+        fatal:   true,
+        check:   () => {
+          if (!isProduction) return true;
+          const stripeActive = Boolean(this.config.get<string>('STRIPE_SECRET_KEY'));
+          return !stripeActive || Boolean(this.config.get<string>('STRIPE_WEBHOOK_SECRET'));
+        },
+        message: 'STRIPE_WEBHOOK_SECRET não definido — webhooks Stripe serão rejeitados em produção',
+      },
+      {
         name:    'SENTRY_DSN presente em produção',
-        fatal:   false,
+        fatal:   true,
         check:   () => !isProduction || Boolean(this.config.get<string>('SENTRY_DSN')),
         message: 'SENTRY_DSN não definido em produção — erros não serão reportados ao Sentry',
+      },
+      {
+        name:    'RESEND_API_KEY presente em produção',
+        fatal:   false,
+        check:   () => !isProduction || Boolean(this.config.get<string>('RESEND_API_KEY')),
+        message: 'RESEND_API_KEY não definida em produção — emails transacionais não serão enviados',
       },
       {
         name:    'JWT_SECRET / SUPABASE_JWT_SECRET presente',

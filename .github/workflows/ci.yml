@@ -146,6 +146,48 @@ jobs:
         run: pnpm audit --audit-level=high --prod
         continue-on-error: true
 
+  # ─── DB Verification — RLS + tenant isolation (needs real Supabase) ──────────
+  # Runs on main/develop only. Requires DATABASE_URL secret in repo settings.
+  # To enable: add DATABASE_URL (pooler URL with %23-encoded password) to
+  # GitHub → Settings → Secrets and variables → Actions → Repository secrets.
+  db-verify:
+    name: DB Verify (RLS + Tenant Isolation)
+    runs-on: ubuntu-latest
+    needs: [quality]
+    if: |
+      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
+      vars.DB_VERIFY_ENABLED == 'true'
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: verify:rls (all tenant tables have RLS + policies)
+        run: pnpm --filter @music-os-360/api verify:rls
+        working-directory: .
+
+      - name: verify:tenant-isolation (cross-tenant DB blocks)
+        run: pnpm --filter @music-os-360/api verify:tenant-isolation
+        working-directory: .
+
+  # ─── Smoke Test — full API integration (post-deploy, staging only) ───────────
+  # smoke-test requires a live API server; run it in your deployment pipeline:
+  #   1. Deploy to staging
+  #   2. API_URL=https://staging.api.musicos360.app pnpm --filter @music-os-360/api smoke-test
+  # The smoke-test auto-bootstraps auth via GET /api/v1/dev-auth/token (staging only).
+
   # ─── Release — inject SENTRY_RELEASE on merge to main ─────────────────────────
   release-tag:
     name: Tag Release
