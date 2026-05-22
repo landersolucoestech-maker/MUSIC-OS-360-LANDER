@@ -108,7 +108,7 @@ export function BriefingFormModal({ open, onOpenChange, initialData, mode }: Bri
   const onSubmit = async (data: BriefingFormData) => {
     try {
       if (mode === "edit" && initialData?.id) {
-        await updateBriefing.mutateAsync({ id: initialData.id as string, data: data as never });
+        await updateBriefing.mutateAsync({ id: initialData.id as string, ...data } as never);
       } else {
         await addBriefing.mutateAsync(data as never);
       }

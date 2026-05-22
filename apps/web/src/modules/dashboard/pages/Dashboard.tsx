@@ -7,12 +7,13 @@ import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Users, FileText, DollarSign, Calendar, ArrowRight,
   Music, TrendingUp, BarChart3, AlertTriangle, Activity,
-  UserCheck, Radio, Shield, Disc3, Clock, UserCog, Rocket,
-  CheckCircle2, Package, ExternalLink,
+  UserCheck, Radio, Shield, Clock, ListChecks, Upload,
+  ServerCrash, Workflow, Inbox,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { parseISO, differenceInDays, isAfter } from "date-fns";
+import { parseISO, differenceInDays } from "date-fns";
 import { useMetrics } from "../hooks/useMetrics";
+import { useOperationalDashboard } from "../hooks/useOperationalDashboard";
 import { useEventos } from "@/modules/events/hooks/useEventos";
 import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
@@ -117,6 +118,131 @@ function SectionHeader({
           </Button>
         </Link>
       )}
+    </div>
+  );
+}
+
+// ─── Dashboard ────────────────────────────────────────────────────────────────
+
+// ─── Operational Alert ────────────────────────────────────────────────────────
+
+interface AlertItemProps {
+  label: string;
+  value: number;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  variant: "destructive" | "warning" | "info";
+}
+
+function AlertItem({ label, value, href, icon: Icon, variant }: AlertItemProps) {
+  const cls = {
+    destructive: "border-destructive/30 bg-destructive/5 text-destructive",
+    warning:     "border-warning/30 bg-warning/5 text-warning",
+    info:        "border-primary/20 bg-primary/5 text-primary",
+  }[variant];
+
+  return (
+    <Link to={href}>
+      <div className={cn("flex items-center gap-3 rounded-lg border px-4 py-3 hover:opacity-80 transition-opacity cursor-pointer", cls)}>
+        <Icon className="h-4 w-4 shrink-0" />
+        <div className="flex-1 min-w-0">
+          <p className="text-xs font-medium leading-snug">{label}</p>
+        </div>
+        <span className="font-mono font-bold text-lg leading-none">{value}</span>
+        <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
+      </div>
+    </Link>
+  );
+}
+
+function OperationalAlerts() {
+  const { dashboard } = useOperationalDashboard();
+  if (!dashboard) return null;
+
+  const alerts: AlertItemProps[] = [
+    dashboard.overdue_tasks_count > 0 && {
+      label: "Tarefas atrasadas",
+      value: dashboard.overdue_tasks_count,
+      href: "/tarefas",
+      icon: ListChecks,
+      variant: "destructive" as const,
+    },
+    dashboard.overdue_invoices_count > 0 && {
+      label: "Invoices vencidas",
+      value: dashboard.overdue_invoices_count,
+      href: "/accounting/nota-fiscal",
+      icon: AlertTriangle,
+      variant: "destructive" as const,
+    },
+    dashboard.failed_external_syncs > 0 && {
+      label: "Sincronizações com falha",
+      value: dashboard.failed_external_syncs,
+      href: "/configuracoes",
+      icon: ServerCrash,
+      variant: "destructive" as const,
+    },
+    dashboard.contracts_expiring_soon_count > 0 && {
+      label: "Contratos vencendo em 30 dias",
+      value: dashboard.contracts_expiring_soon_count,
+      href: "/contratos",
+      icon: FileText,
+      variant: "warning" as const,
+    },
+    dashboard.stalled_pipelines_count > 0 && {
+      label: "Pipelines parados",
+      value: dashboard.stalled_pipelines_count,
+      href: "/crm",
+      icon: Workflow,
+      variant: "warning" as const,
+    },
+    dashboard.pending_tasks_count > 0 && {
+      label: "Tarefas pendentes",
+      value: dashboard.pending_tasks_count,
+      href: "/tarefas",
+      icon: ListChecks,
+      variant: "info" as const,
+    },
+    dashboard.onboarding_in_progress_count > 0 && {
+      label: "Onboardings em andamento",
+      value: dashboard.onboarding_in_progress_count,
+      href: "/artistas",
+      icon: Users,
+      variant: "info" as const,
+    },
+    dashboard.pending_distribution_setups > 0 && {
+      label: "Setups de distribuição pendentes",
+      value: dashboard.pending_distribution_setups,
+      href: "/lancamentos",
+      icon: Upload,
+      variant: "info" as const,
+    },
+    dashboard.pending_external_syncs > 0 && {
+      label: "Sincronizações externas pendentes",
+      value: dashboard.pending_external_syncs,
+      href: "/configuracoes",
+      icon: Inbox,
+      variant: "info" as const,
+    },
+  ].filter(Boolean) as AlertItemProps[];
+
+  if (alerts.length === 0) return null;
+
+  const critical = alerts.filter((a) => a.variant === "destructive");
+  const warn     = alerts.filter((a) => a.variant === "warning");
+  const info     = alerts.filter((a) => a.variant === "info");
+
+  return (
+    <div>
+      <SectionHeader
+        title="Atenção Operacional"
+        description="Itens que requerem ação imediata ou acompanhamento"
+        action={{ label: "Ver tarefas", href: "/tarefas" }}
+      />
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        {[...critical, ...warn, ...info].slice(0, 9).map((a) => (
+          <AlertItem key={a.label} {...a} />
+        ))}
+      </div>
     </div>
   );
 }
@@ -343,6 +469,9 @@ export default function Dashboard() {
             sub={<span>{eventosMes === 1 ? "evento" : "eventos"} no mês atual</span>}
           />
         </div>
+
+        {/* ── Operational Alerts ── */}
+        <OperationalAlerts />
 
         {/* ── Main Grid: Atividades Recentes + Agenda ── */}
         <div className="grid gap-6 lg:grid-cols-[1fr_340px]">

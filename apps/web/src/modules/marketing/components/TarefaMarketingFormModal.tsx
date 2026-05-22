@@ -71,7 +71,7 @@ export function TarefaMarketingFormModal({ open, onOpenChange, initialData, mode
   const onSubmit = async (data: TarefaMarketingFormData) => {
     try {
       if (mode === "edit" && initialData?.id) {
-        await updateTarefa.mutateAsync({ id: initialData.id as string, data: data as never });
+        await updateTarefa.mutateAsync({ id: initialData.id as string, ...data } as never);
       } else {
         await addTarefa.mutateAsync(data as never);
       }

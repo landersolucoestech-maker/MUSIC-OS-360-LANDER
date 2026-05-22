@@ -327,7 +327,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
         } catch { /* cross-origin durante o fluxo OAuth — ignorar */ }
       }
 
-      if (popupRef.current.closed) {
+      if (popupRef.current?.closed) {
         popupRef.current = null;
         setStep("permissions");
       }
