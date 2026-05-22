@@ -108,7 +108,7 @@ function expect(val: unknown, label: string) {
 }
 
 async function healthCheck(): Promise<void> {
-  const candidates = [`${API_URL}/api/v1/health`, `${API_URL}/health`];
+  const candidates = [`${API_URL}/api/v1/health/live`];
   const errors: string[] = [];
 
   for (const url of candidates) {
@@ -121,7 +121,7 @@ async function healthCheck(): Promise<void> {
     }
   }
 
-  throw new Error(`health check falhou em todas as rotas: ${errors.join(' | ')}`);
+  throw new Error(`health check publico falhou: ${errors.join(' | ')}`);
 }
 
 async function main(): Promise<void> {
@@ -136,7 +136,7 @@ async function main(): Promise<void> {
   const hasAuth = !!SMOKE_TOKEN;
   const hasTenant = !!SMOKE_TENANT && !!SMOKE_TOKEN;
 
-  await test('Health check responde 200', healthCheck);
+  await test('Health liveness público responde 200', healthCheck);
 
   await test('Endpoint protegido sem token → 401/403', async () => {
     const r = await request('GET', '/artists', undefined, false);
