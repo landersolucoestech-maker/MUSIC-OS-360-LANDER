@@ -8,7 +8,7 @@ import {
   Users, FileText, DollarSign, Calendar, ArrowRight,
   Music, TrendingUp, BarChart3, AlertTriangle, Activity,
   UserCheck, Radio, Shield, Clock, ListChecks, Upload,
-  ServerCrash, Workflow, Inbox,
+  ServerCrash, Workflow,
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { parseISO, differenceInDays } from "date-fns";
@@ -163,7 +163,7 @@ function OperationalAlerts() {
     dashboard.overdue_tasks_count > 0 && {
       label: "Tarefas atrasadas",
       value: dashboard.overdue_tasks_count,
-      href: "/tarefas",
+      href: "/crm",
       icon: ListChecks,
       variant: "destructive" as const,
     },
@@ -198,7 +198,7 @@ function OperationalAlerts() {
     dashboard.pending_tasks_count > 0 && {
       label: "Tarefas pendentes",
       value: dashboard.pending_tasks_count,
-      href: "/tarefas",
+      href: "/crm",
       icon: ListChecks,
       variant: "info" as const,
     },
@@ -220,7 +220,7 @@ function OperationalAlerts() {
       label: "Sincronizações externas pendentes",
       value: dashboard.pending_external_syncs,
       href: "/configuracoes",
-      icon: Inbox,
+      icon: Activity,
       variant: "info" as const,
     },
   ].filter(Boolean) as AlertItemProps[];
@@ -236,7 +236,6 @@ function OperationalAlerts() {
       <SectionHeader
         title="Atenção Operacional"
         description="Itens que requerem ação imediata ou acompanhamento"
-        action={{ label: "Ver tarefas", href: "/tarefas" }}
       />
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {[...critical, ...warn, ...info].slice(0, 9).map((a) => (

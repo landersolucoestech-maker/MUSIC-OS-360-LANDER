@@ -49,7 +49,6 @@ import {
   MessagesSquare,
   BookOpen,
   ServerCrash,
-  Inbox,
   Mic2,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
@@ -87,9 +86,6 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { title: "Dashboard",       href: "/",           icon: LayoutDashboard },
-  { title: "Tarefas",         href: "/tarefas",    icon: ListChecks },
-  { title: "Timeline",        href: "/timeline",   icon: Activity },
-  { title: "Notificações",    href: "/notificacoes", icon: Inbox },
   { title: "Artistas",        href: "/artistas",   icon: Users,        featureFlag: "moduleArtists" },
   { title: "Projetos",        href: "/projetos",   icon: FolderKanban, featureFlag: "moduleProjects" },
   {
