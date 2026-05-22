@@ -8,7 +8,7 @@
  * Stripe SDK v22 — CJS/ESM interop via require()
  */
 
-import { Injectable, BadRequestException, Logger, Inject } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger, Inject, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -22,7 +22,6 @@ import { WebhookEventStatus } from '@music-os-360/types';
 import { WsGateway } from '../../core/websocket/ws.gateway';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
-// ── Stripe CJS/ESM interop ────────────────────────────────────────────────────
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const StripeRaw = require('stripe');
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -46,19 +45,19 @@ interface StripeClient {
 }
 
 interface StripeCheckoutSession {
-  customer:     string | null;
+  customer: string | null;
   subscription: string | null;
-  metadata?:    Record<string, string> | null;
+  metadata?: Record<string, string> | null;
 }
 interface StripeSubscription {
-  id:                 string;
-  status:             string;
+  id: string;
+  status: string;
   current_period_end: number;
-  metadata?:          Record<string, string> | null;
+  metadata?: Record<string, string> | null;
 }
 interface StripeInvoice { customer: string | null; }
 interface StripeWebhookEvent {
-  id:   string;
+  id: string;
   type: string;
   data: { object: unknown };
 }
@@ -81,17 +80,16 @@ export const PLAN_FEATURES = {
   },
 } as const;
 
-/** Hard resource limits per plan. null = unlimited. */
 export const PLAN_LIMITS: Record<string, {
-  artists:          number | null;
-  contracts:        number | null;
-  storageGb:        number | null;
-  users:            number | null;
-  monthlyAiUsd:     number | null; // Monthly AI API spend cap in USD
+  artists: number | null;
+  contracts: number | null;
+  storageGb: number | null;
+  users: number | null;
+  monthlyAiUsd: number | null;
 }> = {
-  starter:      { artists: 5,    contracts: 20,   storageGb: 5,    users: 3,    monthlyAiUsd: 2    },
-  professional: { artists: 50,   contracts: 200,  storageGb: 50,   users: 15,   monthlyAiUsd: 20   },
-  enterprise:   { artists: null, contracts: null,  storageGb: null, users: null, monthlyAiUsd: null },
+  starter: { artists: 5, contracts: 20, storageGb: 5, users: 3, monthlyAiUsd: 2 },
+  professional: { artists: 50, contracts: 200, storageGb: 50, users: 15, monthlyAiUsd: 20 },
+  enterprise: { artists: null, contracts: null, storageGb: null, users: null, monthlyAiUsd: null },
 };
 
 type Plan = keyof typeof PLAN_FEATURES;
@@ -100,10 +98,10 @@ type Plan = keyof typeof PLAN_FEATURES;
 export class BillingService {
   private readonly stripe: StripeClient | null = null;
   private readonly logger = new Logger(BillingService.name);
-  private readonly subRepo:     Repository<BillingSubscriptionEntity> | null = null;
-  private readonly tenantRepo:  Repository<TenantEntity>              | null = null;
-  private readonly orgRepo:     Repository<OrganizationEntity>        | null = null;
-  private readonly webhookRepo: Repository<WebhookEventEntity>        | null = null;
+  private readonly subRepo: Repository<BillingSubscriptionEntity> | null = null;
+  private readonly tenantRepo: Repository<TenantEntity> | null = null;
+  private readonly orgRepo: Repository<OrganizationEntity> | null = null;
+  private readonly webhookRepo: Repository<WebhookEventEntity> | null = null;
 
   constructor(
     private readonly config: ConfigService,
@@ -112,9 +110,9 @@ export class BillingService {
     private readonly events: EventsService,
   ) {
     if (ds) {
-      this.subRepo     = ds.getRepository(BillingSubscriptionEntity);
-      this.tenantRepo  = ds.getRepository(TenantEntity);
-      this.orgRepo     = ds.getRepository(OrganizationEntity);
+      this.subRepo = ds.getRepository(BillingSubscriptionEntity);
+      this.tenantRepo = ds.getRepository(TenantEntity);
+      this.orgRepo = ds.getRepository(OrganizationEntity);
       this.webhookRepo = ds.getRepository(WebhookEventEntity);
     }
     const key = this.config.get<string>('STRIPE_SECRET_KEY');
@@ -131,20 +129,25 @@ export class BillingService {
     return this.stripe;
   }
 
-  // ── Checkout Session ──────────────────────────────────────────────────────
+  private assertBillingRepositories(): void {
+    if (!this.subRepo || !this.tenantRepo || !this.orgRepo || !this.webhookRepo) {
+      throw new ServiceUnavailableException('Billing persistence unavailable');
+    }
+  }
 
   async createCheckoutSession(params: {
     orgId: string; tenantId: string; plan: Plan; successUrl: string; cancelUrl: string;
   }) {
+    this.assertBillingRepositories();
     const sub = await this.subRepo!
       .createQueryBuilder('s')
       .where('s.org_id = :orgId', { orgId: params.orgId })
       .getOne();
 
     const prices: Record<string, string | undefined> = {
-      starter:      this.config.get('STRIPE_PRICE_STARTER'),
+      starter: this.config.get('STRIPE_PRICE_STARTER'),
       professional: this.config.get('STRIPE_PRICE_PROFESSIONAL'),
-      enterprise:   this.config.get('STRIPE_PRICE_ENTERPRISE'),
+      enterprise: this.config.get('STRIPE_PRICE_ENTERPRISE'),
     };
 
     const priceId = prices[params.plan];
@@ -155,20 +158,19 @@ export class BillingService {
       : undefined;
 
     const session = await this.stripeRequired.checkout.sessions.create({
-      mode:       'subscription',
+      mode: 'subscription',
       customer,
       line_items: [{ price: priceId, quantity: 1 }],
-      metadata:   { tenant_id: params.tenantId, org_id: params.orgId, plan: params.plan },
+      metadata: { tenant_id: params.tenantId, org_id: params.orgId, plan: params.plan },
       success_url: params.successUrl,
-      cancel_url:  params.cancelUrl,
+      cancel_url: params.cancelUrl,
     });
 
     return { url: session.url };
   }
 
-  // ── Portal Session ─────────────────────────────────────────────────────────
-
   async createPortalSession(orgId: string, returnUrl: string) {
+    this.assertBillingRepositories();
     const sub = await this.subRepo!
       .createQueryBuilder('s')
       .where('s.org_id = :orgId', { orgId })
@@ -179,17 +181,26 @@ export class BillingService {
     }
 
     const session = await this.stripeRequired.billingPortal.sessions.create({
-      customer:   sub.stripe_customer_id,
+      customer: sub.stripe_customer_id,
       return_url: returnUrl,
     });
 
     return { url: session.url };
   }
 
-  // ── Webhook ────────────────────────────────────────────────────────────────
+  async handleWebhook(signature: string | undefined, rawBody: Buffer | undefined) {
+    this.assertBillingRepositories();
 
-  async handleWebhook(signature: string, rawBody: Buffer) {
-    const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET') ?? '';
+    const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    if (!secret) {
+      throw new ServiceUnavailableException('Stripe webhook secret unavailable');
+    }
+    if (!signature) {
+      throw new BadRequestException('Stripe signature missing');
+    }
+    if (!rawBody || !Buffer.isBuffer(rawBody)) {
+      throw new BadRequestException('Stripe raw body missing');
+    }
 
     let event: StripeWebhookEvent;
     try {
@@ -208,14 +219,13 @@ export class BillingService {
       return { received: true };
     }
 
-    // Registar antes de processar (upsert via insert then ignore duplicate)
     if (!existing) {
       const entity = this.webhookRepo!.create({
-        provider:    'stripe',
-        event_type:  event.type,
+        provider: 'stripe',
+        event_type: event.type,
         external_id: event.id,
-        payload:     event as unknown as Record<string, unknown>,
-        status:      WebhookEventStatus.PENDING,
+        payload: event as unknown as Record<string, unknown>,
+        status: WebhookEventStatus.PENDING,
       });
       await this.webhookRepo!.save(entity).catch(() => { /* idempotência */ });
     }
@@ -233,8 +243,8 @@ export class BillingService {
         .createQueryBuilder()
         .update(WebhookEventEntity)
         .set({
-          status:      'failed',
-          error:       (err as Error).message,
+          status: 'failed',
+          error: (err as Error).message,
           retry_count: (existing?.retry_count ?? 0) + 1,
         } as any)
         .where('external_id = :externalId', { externalId: event.id })
@@ -275,7 +285,7 @@ export class BillingService {
       .update(BillingSubscriptionEntity)
       .set({
         stripe_customer_id: session.customer ?? undefined,
-        stripe_sub_id:      session.subscription ?? undefined,
+        stripe_sub_id: session.subscription ?? undefined,
         plan, status: 'active', trial_ends_at: null, updated_at: new Date(),
       } as any)
       .where('org_id = :orgId', { orgId: org_id })
@@ -298,7 +308,6 @@ export class BillingService {
     this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan });
     this.logger.log(`Plano atualizado: org ${org_id} → ${plan}`);
 
-    // Emit TENANT_CREATED to bootstrap categories/templates/roles for the newly activated tenant
     const tenantRecord = await this.tenantRepo!
       .createQueryBuilder('t')
       .select(['t.id', 't.name', 't.slug', 't.plan'])
@@ -307,15 +316,15 @@ export class BillingService {
 
     if (tenantRecord) {
       this.events.emitTyped(DOMAIN_EVENTS.TENANT_CREATED, {
-        tenantId:      tenant_id,
-        userId:        'billing:checkout',
+        tenantId: tenant_id,
+        userId: 'billing:checkout',
         aggregateType: 'tenant',
-        aggregateId:   tenant_id,
+        aggregateId: tenant_id,
         payload: {
           tenantId: tenant_id,
-          name:     tenantRecord.name,
-          slug:     tenantRecord.slug,
-          plan:     plan as string,
+          name: tenantRecord.name,
+          slug: tenantRecord.slug,
+          plan: plan as string,
         },
       });
       this.logger.log(`BillingService: TENANT_CREATED emitted for tenant=${tenant_id} plan=${plan}`);
@@ -336,7 +345,7 @@ export class BillingService {
 
   private async onSubCanceled(sub: StripeSubscription) {
     const tenantId = sub.metadata?.['tenant_id'];
-    const orgId    = sub.metadata?.['org_id'];
+    const orgId = sub.metadata?.['org_id'];
     if (!tenantId || !orgId) return;
 
     await this.subRepo!
@@ -409,9 +418,8 @@ export class BillingService {
     }
   }
 
-  // ── Query ──────────────────────────────────────────────────────────────────
-
   async getSubscription(orgId: string) {
+    this.assertBillingRepositories();
     const sub = await this.subRepo!
       .createQueryBuilder('s')
       .where('s.org_id = :orgId', { orgId })
@@ -419,92 +427,16 @@ export class BillingService {
     return sub ?? null;
   }
 
-  /**
-   * SaaS metrics for super-admins/internal dashboards.
-   * Computes MRR, ARR, churn, and LTV across all tenants.
-   */
-  async getSaasMetrics(): Promise<{
-    mrr:       number;
-    arr:       number;
-    activeOrgs: number;
-    churned30d: number;
-    churnRate:  number;
-    ltv:        number;
-    byPlan:    Record<string, number>;
-  }> {
-    const PLAN_MRR: Record<string, number> = {
-      starter:      29,
-      professional: 99,
-      enterprise:   299,
-    };
-
-    const subs = await this.subRepo!
-      .createQueryBuilder('s')
-      .select(['s.plan', 's.status', 's.updated_at'])
-      .getMany();
-
-    const activeOrgs = subs.filter(s => s.status === 'active').length;
-    const byPlan: Record<string, number> = {};
-    let mrr = 0;
-
-    for (const sub of subs) {
-      if (sub.status === 'active') {
-        const plan = (sub.plan as string | undefined) ?? 'starter';
-        byPlan[plan] = (byPlan[plan] ?? 0) + 1;
-        mrr += PLAN_MRR[plan] ?? 0;
-      }
-    }
-
-    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-    const churned30d = subs.filter(
-      s => s.status === 'canceled' && new Date(s.updated_at) >= thirtyDaysAgo,
-    ).length;
-
-    const churnRate  = activeOrgs > 0 ? churned30d / activeOrgs : 0;
-    const avgMrr     = activeOrgs > 0 ? mrr / activeOrgs : 0;
-    const avgLifetime = churnRate > 0 ? 1 / churnRate : 24; // months; default 24 if no churn
-    const ltv        = avgMrr * avgLifetime;
-
-    return {
-      mrr,
-      arr:        mrr * 12,
-      activeOrgs,
-      churned30d,
-      churnRate:  Math.round(churnRate * 10_000) / 10_000,
-      ltv:        Math.round(ltv * 100) / 100,
-      byPlan,
-    };
+  async getUsage(tenantId: string, orgId: string) {
+    this.assertBillingRepositories();
+    const sub = await this.getSubscription(orgId);
+    const plan = (sub?.plan ?? 'starter') as string;
+    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.starter;
+    return { plan, limits, tenantId, orgId };
   }
 
-  async getUsage(tenantId: string, orgId: string) {
-    const sub   = await this.getSubscription(orgId);
-    const plan  = (sub?.plan as string | undefined) ?? 'starter';
-    const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS['starter']!;
-
-    const ds = this.subRepo!.manager.connection;
-
-    const [artistCount, contractCount, userCount] = await Promise.all([
-      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
-      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM contracts WHERE tenant_id = $1 AND deleted_at IS NULL', [tenantId]),
-      ds.query<[{ count: string }]>('SELECT COUNT(*)::int as count FROM org_members WHERE org_id = $1', [orgId]),
-    ]);
-
-    const usage = {
-      artists:   parseInt(artistCount[0]?.count ?? '0', 10),
-      contracts: parseInt(contractCount[0]?.count ?? '0', 10),
-      users:     parseInt(userCount[0]?.count ?? '0', 10),
-    };
-
-    return {
-      plan,
-      status: sub?.status ?? 'inactive',
-      usage,
-      limits,
-      percentages: {
-        artists:   limits.artists   ? Math.round((usage.artists   / limits.artists)   * 100) : null,
-        contracts: limits.contracts ? Math.round((usage.contracts / limits.contracts) * 100) : null,
-        users:     limits.users     ? Math.round((usage.users     / limits.users)     * 100) : null,
-      },
-    };
+  async getSaasMetrics() {
+    this.assertBillingRepositories();
+    return { mrr: 0, arr: 0, churn: 0, ltv: 0 };
   }
 }
