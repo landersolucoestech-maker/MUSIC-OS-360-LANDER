@@ -22,11 +22,11 @@
     "preview": "cd apps/web && npx vite preview --host 0.0.0.0 --port 5000",
     "test:coverage": "cd apps/web && npx vitest run --coverage",
     "typecheck:web": "cd apps/web && npx tsc --noEmit -p tsconfig.app.json",
-    "db:generate": "cd apps/api && npm run db:generate",
-    "db:push": "cd apps/api && npm run db:migrate",
-    "db:migrate": "cd apps/api && npm run db:migrate",
-    "db:rollback": "cd apps/api && npm run db:rollback",
-    "db:check": "cd apps/api && npm run db:check"
+    "db:generate": "pnpm --filter @music-os-360/api db:generate",
+    "db:push": "pnpm --filter @music-os-360/api db:migrate",
+    "db:migrate": "pnpm --filter @music-os-360/api db:migrate",
+    "db:rollback": "pnpm --filter @music-os-360/api db:rollback",
+    "db:check": "pnpm --filter @music-os-360/api db:check"
   },
   "dependencies": {
     "@bull-board/api": "^7.0.0",
