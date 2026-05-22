@@ -1,20 +1,26 @@
 import {
   Controller, Get, Post, Patch, Delete,
   Body, Param, Query,
-  ParseUUIDPipe, Req,
+  ParseUUIDPipe, Req, Headers, BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
-import { Public }        from '../../core/decorators/public.decorator';
+import { Public } from '../../core/decorators/public.decorator';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
-import { CurrentUser }   from '../../core/decorators/current-user.decorator';
-import { RequireRole }   from '../../core/decorators/roles.decorator';
-import { Audit }         from '../../core/interceptors/audit.interceptor';
-import { FormsService }  from './forms.service';
-import type { Request }  from 'express';
-import type { JwtAuth }  from '../../core/guards/auth.guard';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { RequireRole } from '../../core/decorators/roles.decorator';
+import { Audit } from '../../core/interceptors/audit.interceptor';
+import { FormsService } from './forms.service';
+import type { Request } from 'express';
+import type { JwtAuth } from '../../core/guards/auth.guard';
 import {
   CreateFormDto, UpdateFormDto, QueryFormDto, SubmitFormDto,
 } from './dto/forms.dto';
+
+function readHeader(value: string | string[] | undefined): string | null {
+  if (Array.isArray(value)) return value[0]?.trim() || null;
+  if (typeof value === 'string') return value.trim() || null;
+  return null;
+}
 
 @ApiTags('Forms')
 @ApiBearerAuth()
@@ -48,8 +54,8 @@ export class FormsController {
   @ApiOperation({ summary: 'Criar formulário' })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   JwtAuth,
-    @Body()          dto:    CreateFormDto,
+    @CurrentUser() user: JwtAuth,
+    @Body() dto: CreateFormDto,
   ) {
     return this.service.create(tenant.id, user.userId, dto);
   }
@@ -77,37 +83,38 @@ export class FormsController {
     return this.service.softDelete(tenant.id, id);
   }
 
-  // ── Submissions ──────────────────────────────────────────────────────────
-
   @Get(':id/submissions')
   @RequireRole('viewer')
   @ApiOperation({ summary: 'Listar submissões do formulário' })
   listSubmissions(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-    @Query('limit')  limit?:  number,
+    @Query('limit') limit?: number,
     @Query('offset') offset?: number,
   ) {
     return this.service.listSubmissions(tenant.id, id, limit ?? 50, offset ?? 0);
   }
 
-  /**
-   * Public endpoint — forms can be submitted by unauthenticated visitors.
-   * Tenant is identified via X-Tenant-ID header (validated by TenantGuard).
-   * Rate limiting applied by RateLimitGuard.
-   */
   @Post(':id/submit')
   @Public()
-  @ApiOperation({ summary: 'Submeter formulário (público — não requer auth)' })
+  @ApiOperation({ summary: 'Submeter formulário público usando X-Tenant-ID' })
   submit(
-    @CurrentTenant() tenant: { id: string },
+    @Headers('x-tenant-id') tenantHeader: string | string[] | undefined,
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: SubmitFormDto,
-    @Req() req:  Request,
+    @Req() req: Request,
   ) {
-    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim()
+    const tenantId = readHeader(tenantHeader);
+    if (!tenantId) {
+      throw new BadRequestException('X-Tenant-ID is required for public form submissions');
+    }
+
+    const ip = readHeader(req.headers['cf-connecting-ip'])
+      ?? readHeader(req.headers['x-real-ip'])
+      ?? readHeader(req.headers['x-forwarded-for'])?.split(',')[0]?.trim()
       ?? req.socket.remoteAddress
       ?? null;
-    return this.service.submit(tenant.id, id, dto, ip ?? undefined);
+
+    return this.service.submit(tenantId, id, dto, ip ?? undefined);
   }
 }
