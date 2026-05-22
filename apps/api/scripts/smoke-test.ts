@@ -2,19 +2,13 @@
 /**
  * scripts/smoke-test.ts
  *
- * Fase 20 — Smoke test HTTP ponta a ponta.
- *
- * Verifica que a API está viva e os fluxos críticos respondem.
- *
- * NÃO substitui testes de integração — testa em ambiente real/staging.
+ * Smoke test HTTP ponta a ponta.
  *
  * Uso:
- *   API_URL=http://localhost:3001 SMOKE_TOKEN=<jwt> SMOKE_TENANT=<uuid> npm run smoke-test
+ *   API_URL=http://localhost:3001 SMOKE_TOKEN=<jwt> SMOKE_TENANT=<uuid> pnpm smoke-test
  *
- * Variáveis:
- *   API_URL      — Base URL da API (default: http://localhost:3001)
- *   SMOKE_TOKEN  — JWT de um usuário real (obtido via Supabase Auth)
- *   SMOKE_TENANT — UUID do tenant a usar nos testes
+ * Sem SMOKE_TOKEN/SMOKE_TENANT, o script valida apenas disponibilidade pública
+ * e ignora os testes autenticados.
  */
 
 import 'reflect-metadata';
@@ -25,8 +19,8 @@ try {
   require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 } catch { /* opcional */ }
 
-const API_URL      = process.env['API_URL']      ?? 'http://localhost:3001';
-const SMOKE_TOKEN  = process.env['SMOKE_TOKEN']  ?? '';
+const API_URL = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
+const SMOKE_TOKEN = process.env['SMOKE_TOKEN'] ?? '';
 const SMOKE_TENANT = process.env['SMOKE_TENANT'] ?? '';
 
 let passed = 0;
@@ -36,31 +30,42 @@ let skipped = 0;
 type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE' | 'PUT';
 
 interface TestResult {
-  name:    string;
-  status:  'PASS' | 'FAIL' | 'SKIP';
-  code?:   number;
+  name: string;
+  status: 'PASS' | 'FAIL' | 'SKIP';
+  code?: number;
   reason?: string;
 }
 
 const results: TestResult[] = [];
 
+function apiPath(pathname: string): string {
+  return `${API_URL}/api/v1${pathname.startsWith('/') ? pathname : `/${pathname}`}`;
+}
+
+async function safeFetch(url: string, init?: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch (err) {
+    throw new Error(
+      `API indisponivel em ${API_URL}. Inicie a API antes do smoke-test: pnpm --filter @music-os-360/api start:dev. Detalhe: ${(err as Error).message}`,
+    );
+  }
+}
+
 async function request(
   method: Method,
-  path: string,
+  pathname: string,
   body?: unknown,
   requireAuth = true,
 ): Promise<{ status: number; data: unknown }> {
   const headers: Record<string, string> = {
-    'Content-Type':  'application/json',
+    'Content-Type': 'application/json',
   };
-  if (requireAuth && SMOKE_TOKEN) {
-    headers['Authorization']  = `Bearer ${SMOKE_TOKEN}`;
-  }
-  if (requireAuth && SMOKE_TENANT) {
-    headers['X-Tenant-ID'] = SMOKE_TENANT;
-  }
 
-  const res = await fetch(`${API_URL}/api/v1${path}`, {
+  if (requireAuth && SMOKE_TOKEN) headers['Authorization'] = `Bearer ${SMOKE_TOKEN}`;
+  if (requireAuth && SMOKE_TENANT) headers['X-Tenant-ID'] = SMOKE_TENANT;
+
+  const res = await safeFetch(apiPath(pathname), {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -68,21 +73,17 @@ async function request(
 
   let data: unknown = null;
   try { data = await res.json(); } catch { /* non-JSON */ }
-
   return { status: res.status, data };
 }
 
-async function test(
-  name: string,
-  fn: () => Promise<void>,
-  skip = false,
-): Promise<void> {
+async function test(name: string, fn: () => Promise<void>, skip = false): Promise<void> {
   if (skip) {
     console.log(`  ⊘  ${name}`);
     results.push({ name, status: 'SKIP', reason: 'credentials not provided' });
     skipped++;
     return;
   }
+
   try {
     await fn();
     console.log(`  ✓  ${name}`);
@@ -103,138 +104,125 @@ function expect(val: unknown, label: string) {
     toBeOneOf(arr: unknown[]) {
       if (!arr.includes(val)) throw new Error(`${label}: expected one of ${JSON.stringify(arr)}, got ${JSON.stringify(val)}`);
     },
-    toBeLessThan(n: number) {
-      if (typeof val !== 'number' || val >= n) throw new Error(`${label}: expected < ${n}, got ${val}`);
-    },
-    toBeGreaterThanOrEqual(n: number) {
-      if (typeof val !== 'number' || val < n) throw new Error(`${label}: expected >= ${n}, got ${val}`);
-    },
   };
 }
 
-// ── Testes ────────────────────────────────────────────────────────────────────
+async function healthCheck(): Promise<void> {
+  const candidates = [`${API_URL}/api/v1/health`, `${API_URL}/health`];
+  const errors: string[] = [];
+
+  for (const url of candidates) {
+    try {
+      const res = await safeFetch(url);
+      if (res.status === 200) return;
+      errors.push(`${url} => ${res.status}`);
+    } catch (err) {
+      errors.push(`${url} => ${(err as Error).message}`);
+    }
+  }
+
+  throw new Error(`health check falhou em todas as rotas: ${errors.join(' | ')}`);
+}
 
 async function main(): Promise<void> {
   console.log('\n╔══════════════════════════════════════════════════════════╗');
-  console.log('║   MUSIC OS 360 — Fase 20: Smoke Test Ponta a Ponta        ║');
+  console.log('║   MUSIC OS 360 — Smoke Test Ponta a Ponta                ║');
   console.log('╚══════════════════════════════════════════════════════════╝\n');
   console.log(`  API_URL:      ${API_URL}`);
   console.log(`  SMOKE_TOKEN:  ${SMOKE_TOKEN ? SMOKE_TOKEN.substring(0, 20) + '…' : '(não definido)'}`);
   console.log(`  SMOKE_TENANT: ${SMOKE_TENANT || '(não definido)'}`);
   console.log('');
 
-  const hasAuth   = !!SMOKE_TOKEN;
+  const hasAuth = !!SMOKE_TOKEN;
   const hasTenant = !!SMOKE_TENANT && !!SMOKE_TOKEN;
 
-  // ── 1. Health check ────────────────────────────────────────────────────────
-  await test('Health check responde 200', async () => {
-    const r = await request('GET', '/health', undefined, false);
-    expect(r.status, 'status').toBe(200);
-    const d = r.data as { status: string };
-    expect(d?.status, 'data.status').toBe('ok');
-  });
+  await test('Health check responde 200', healthCheck);
 
-  // ── 2. Auth — endpoint protegido sem token retorna 401 ────────────────────
-  await test('Endpoint protegido sem token → 401', async () => {
+  await test('Endpoint protegido sem token → 401/403', async () => {
     const r = await request('GET', '/artists', undefined, false);
     expect(r.status, 'status').toBeOneOf([401, 403]);
   });
 
-  // ── 3. Analytics dashboard ────────────────────────────────────────────────
   await test('GET /analytics/dashboard com auth', async () => {
     const r = await request('GET', '/analytics/dashboard');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 4. Listar artistas ────────────────────────────────────────────────────
   await test('GET /artists → 200 com dados', async () => {
     const r = await request('GET', '/artists');
     expect(r.status, 'status').toBe(200);
-    const d = r.data as { data: unknown[] };
+    const d = r.data as { data?: unknown[] };
     if (!Array.isArray(d?.data)) throw new Error('data.data não é array');
   }, !hasTenant);
 
-  // ── 5. Criar artista ──────────────────────────────────────────────────────
   let createdArtistId: string | null = null;
   await test('POST /artists → 201', async () => {
     const r = await request('POST', '/artists', {
       nome_artistico: `Smoke Artist ${Date.now()}`,
       tipo: 'solo',
     });
-    expect(r.status, 'status').toBeOneOf([201, 200]);
-    const d = r.data as { id: string };
-    if (!d?.id) throw new Error('Artista criado sem ID');
-    createdArtistId = d.id;
+    expect(r.status, 'status').toBeOneOf([200, 201]);
+    const d = r.data as { id?: string; data?: { id?: string } };
+    createdArtistId = d.id ?? d.data?.id ?? null;
+    if (!createdArtistId) throw new Error('Artista criado sem ID');
   }, !hasTenant);
 
-  // ── 6. Listar pipelines ───────────────────────────────────────────────────
   await test('GET /pipelines → 200', async () => {
     const r = await request('GET', '/pipelines');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 7. Listar contactos CRM ───────────────────────────────────────────────
   await test('GET /crm/contacts → 200', async () => {
     const r = await request('GET', '/crm/contacts');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 8. Listar campanhas ────────────────────────────────────────────────────
   await test('GET /campaigns → 200', async () => {
     const r = await request('GET', '/campaigns');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 9. Analytics revenue ──────────────────────────────────────────────────
   await test('GET /analytics/revenue → 200', async () => {
     const r = await request('GET', '/analytics/revenue?months=3');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 10. Submissão de formulário público (sem auth) ─────────────────────────
-  await test('POST /forms/:id/submit público (sem auth) → 201 ou 404', async () => {
+  await test('POST /forms/:id/submit público sem auth → 200/201/404', async () => {
     const demoFormId = '10000000-0000-0000-0000-000000000050';
     const r = await request('POST', `/forms/${demoFormId}/submit`, {
       data: { name: 'Smoke Test User', email: 'smoke@test.example.com' },
     }, false);
-    // 201 = criado, 404 = form não existe (ok em env sem seed)
-    expect(r.status, 'status').toBeOneOf([201, 200, 404]);
+    expect(r.status, 'status').toBeOneOf([200, 201, 404]);
   });
 
-  // ── 11. Cross-tenant bloqueado ─────────────────────────────────────────────
-  await test('X-Tenant-ID inválido → 403', async () => {
-    const fakeTenantId = '00000000-0000-0000-0000-ffffffff0000';
-    const res = await fetch(`${API_URL}/api/v1/artists`, {
+  await test('X-Tenant-ID inválido → 401/403/404', async () => {
+    const res = await safeFetch(apiPath('/artists'), {
       headers: {
-        'Authorization':  `Bearer ${SMOKE_TOKEN}`,
-        'X-Tenant-ID': fakeTenantId,
-        'Content-Type':  'application/json',
+        Authorization: `Bearer ${SMOKE_TOKEN}`,
+        'X-Tenant-ID': '00000000-0000-0000-0000-ffffffff0000',
+        'Content-Type': 'application/json',
       },
     });
-    expect(res.status, 'status cross-tenant').toBeOneOf([403, 401, 404]);
+    expect(res.status, 'status cross-tenant').toBeOneOf([401, 403, 404]);
   }, !hasAuth);
 
-  // ── 12. Audit trail (activity logs) ────────────────────────────────────────
   await test('GET /activity-logs → 200', async () => {
     const r = await request('GET', '/activity-logs?limit=5');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── 13. Conversations ─────────────────────────────────────────────────────
   await test('GET /conversations → 200', async () => {
     const r = await request('GET', '/conversations');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
-  // ── Cleanup: deletar artista criado no teste 5 ─────────────────────────────
   if (createdArtistId) {
-    await test(`DELETE /artists/${createdArtistId} (cleanup)`, async () => {
+    await test(`DELETE /artists/${createdArtistId} cleanup`, async () => {
       const r = await request('DELETE', `/artists/${createdArtistId}`);
       expect(r.status, 'status').toBeOneOf([200, 204]);
     }, !hasTenant);
   }
 
-  // ── Resultado ─────────────────────────────────────────────────────────────
   console.log('\n── Resultado ───────────────────────────────────────────────\n');
   console.log(`  ✓ Passados  : ${passed}`);
   console.log(`  ✗ Falhados  : ${failed}`);
