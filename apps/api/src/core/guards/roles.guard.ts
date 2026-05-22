@@ -4,10 +4,6 @@
  * Guard de RBAC por hierarquia de roles.
  * Verifica que o currentMember tem role suficiente para aceder à rota.
  * Usado em conjunto com @RequireRole(...) / @Roles(...).
- *
- * Passthrough: quando o DB não está ligado (TenantGuard em modo passthrough),
- * currentMember é undefined — nesse caso assume-se 'owner' para não bloquear
- * o desenvolvimento local sem base de dados.
  */
 
 import {
@@ -63,10 +59,10 @@ export class RolesGuard implements CanActivate {
 
     const { currentMember } = context.switchToHttp().getRequest<Request>();
 
-    // No DB connected (TenantGuard passthrough) — allow all for local dev
-    if (!currentMember) return true;
+    if (!currentMember) {
+      throw new ForbiddenException('Contexto RBAC ausente. TenantGuard deve resolver o membro antes da autorização.');
+    }
 
-    // 'role' is the column name in OrgMemberEntity
     const memberRole  = (currentMember as Record<string, unknown>)?.['role'] as string ?? SystemRole.VIEWER;
     const memberLevel = ROLE_HIERARCHY[memberRole] ?? 0;
     const minRequired = Math.min(...required.map((r) => ROLE_HIERARCHY[r] ?? 99));
