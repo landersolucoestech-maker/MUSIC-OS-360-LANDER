@@ -1,17 +1,33 @@
-import { Injectable, Logger, Inject, Optional } from '@nestjs/common';
-import { InjectQueue }  from '@nestjs/bullmq';
-import { Queue }        from 'bullmq';
+import { Injectable, Logger, Inject, Optional, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { DataSource, Repository } from 'typeorm';
-import { DATA_SOURCE }  from '../../../database/database.module';
+import { createHmac, randomUUID, timingSafeEqual } from 'crypto';
+import { DATA_SOURCE } from '../../../database/database.module';
 import { OAuthConnectionEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import { CircuitBreakerRegistry } from '../../../core/resilience/circuit-breaker.registry';
-import { QUEUE_NAMES }   from '../../../queues/queue.constants';
+import { QUEUE_NAMES } from '../../../queues/queue.constants';
 
 const PROVIDER = 'spotify';
-
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
-const SPOTIFY_API      = 'https://api.spotify.com/v1';
+const SPOTIFY_API = 'https://api.spotify.com/v1';
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+interface SpotifyOAuthState {
+  tenantId: string;
+  userId: string;
+  nonce: string;
+  exp: number;
+}
+
+function base64UrlEncode(value: string): string {
+  return Buffer.from(value, 'utf8').toString('base64url');
+}
+
+function base64UrlDecode(value: string): string {
+  return Buffer.from(value, 'base64url').toString('utf8');
+}
 
 @Injectable()
 export class SpotifyService {
@@ -32,6 +48,67 @@ export class SpotifyService {
     return this.cbRegistry.fetch(PROVIDER, url, init);
   }
 
+  private requireRepo(): Repository<OAuthConnectionEntity> {
+    if (!this.repo) throw new ServiceUnavailableException('OAuth persistence unavailable');
+    return this.repo;
+  }
+
+  private getStateSecret(): string {
+    const secret = process.env['SPOTIFY_OAUTH_STATE_SECRET'] ?? process.env['ENCRYPTION_KEY'] ?? '';
+    if (!secret || /^0+$/.test(secret)) {
+      throw new ServiceUnavailableException('Spotify OAuth state secret unavailable');
+    }
+    return secret;
+  }
+
+  private sign(payload: string): string {
+    return createHmac('sha256', this.getStateSecret()).update(payload).digest('base64url');
+  }
+
+  private createState(tenantId: string, userId: string): string {
+    const state: SpotifyOAuthState = {
+      tenantId,
+      userId,
+      nonce: randomUUID(),
+      exp: Date.now() + STATE_TTL_MS,
+    };
+    const payload = base64UrlEncode(JSON.stringify(state));
+    const signature = this.sign(payload);
+    return `${payload}.${signature}`;
+  }
+
+  private verifyState(rawState: string): SpotifyOAuthState {
+    const [payload, signature] = rawState.split('.');
+    if (!payload || !signature) {
+      throw new BadRequestException('Invalid Spotify OAuth state');
+    }
+
+    const expected = this.sign(payload);
+    const providedBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expected);
+
+    if (providedBuffer.length !== expectedBuffer.length || !timingSafeEqual(providedBuffer, expectedBuffer)) {
+      throw new BadRequestException('Invalid Spotify OAuth state signature');
+    }
+
+    let state: SpotifyOAuthState;
+    try {
+      state = JSON.parse(base64UrlDecode(payload)) as SpotifyOAuthState;
+    } catch {
+      throw new BadRequestException('Invalid Spotify OAuth state payload');
+    }
+
+    if (!state.tenantId || !state.userId || !state.nonce || !state.exp) {
+      throw new BadRequestException('Incomplete Spotify OAuth state');
+    }
+
+    if (state.exp < Date.now()) {
+      throw new BadRequestException('Expired Spotify OAuth state');
+    }
+
+    return state;
+  }
+
   isConfigured(): boolean {
     return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
   }
@@ -40,26 +117,35 @@ export class SpotifyService {
     return !!(process.env['SPOTIFY_ADS_CLIENT_ID'] && process.env['SPOTIFY_ADS_CLIENT_SECRET']);
   }
 
-  // OAuth para Spotify Ads (usa SPOTIFY_ADS_CLIENT_ID)
   getAuthUrl(tenantId: string, userId: string): string {
-    const clientId    = process.env['SPOTIFY_ADS_CLIENT_ID'] ?? process.env['SPOTIFY_CLIENT_ID'] ?? '';
+    const clientId = process.env['SPOTIFY_ADS_CLIENT_ID'] ?? process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const redirectUri = process.env['SPOTIFY_REDIRECT_URI'] ?? '';
-    const state       = Buffer.from(JSON.stringify({ tenantId, userId })).toString('base64');
-    const params      = new URLSearchParams({
-      response_type: 'code', client_id: clientId, scope: 'user-read-private user-read-email',
-      redirect_uri: redirectUri, state,
+    if (!clientId || !redirectUri) {
+      throw new ServiceUnavailableException('Spotify OAuth not configured');
+    }
+
+    const state = this.createState(tenantId, userId);
+    const params = new URLSearchParams({
+      response_type: 'code',
+      client_id: clientId,
+      scope: 'user-read-private user-read-email',
+      redirect_uri: redirectUri,
+      state,
     });
     return `${SPOTIFY_ACCOUNTS}/authorize?${params}`;
   }
 
-  // Client Credentials — token para métricas públicas (usa SPOTIFY_CLIENT_ID)
   private async getClientCredentialsToken(): Promise<string> {
-    const clientId     = process.env['SPOTIFY_CLIENT_ID']     ?? '';
+    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
+    if (!clientId || !clientSecret) {
+      throw new ServiceUnavailableException('Spotify client credentials unavailable');
+    }
+
     const res = await this.fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       },
       body: new URLSearchParams({ grant_type: 'client_credentials' }),
@@ -68,22 +154,28 @@ export class SpotifyService {
     return data.access_token as string;
   }
 
-  // Extrai o ID do artista de um link do Spotify
   extractArtistId(spotifyUrl: string): string | null {
     const match = spotifyUrl.match(/artist\/([A-Za-z0-9]+)/);
     return match ? match[1] : null;
   }
 
   async handleCallback(code: string, state: string): Promise<void> {
-    const { tenantId, userId } = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
-    const clientId      = process.env['SPOTIFY_CLIENT_ID']     ?? '';
-    const clientSecret  = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
-    const redirectUri   = process.env['SPOTIFY_REDIRECT_URI']  ?? '';
+    if (!code) throw new BadRequestException('Spotify authorization code missing');
+    const verifiedState = this.verifyState(state);
+    const { tenantId, userId } = verifiedState;
+
+    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
+    const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
+    const redirectUri = process.env['SPOTIFY_REDIRECT_URI'] ?? '';
+
+    if (!clientId || !clientSecret || !redirectUri) {
+      throw new ServiceUnavailableException('Spotify OAuth not configured');
+    }
 
     const tokenRes = await this.fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       },
       body: new URLSearchParams({ code, redirect_uri: redirectUri, grant_type: 'authorization_code' }),
@@ -96,7 +188,6 @@ export class SpotifyService {
     this.logger.log(`Spotify OAuth: ${userId}@${tenantId} conectado`);
   }
 
-  // Aceita link do perfil (https://open.spotify.com/artist/ID) ou ID direto
   async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ followers: number; popularity: number; name: string; image: string | null } | null> {
     if (!this.isConfigured()) return null;
 
@@ -109,47 +200,52 @@ export class SpotifyService {
       return null;
     }
 
-    // Usa Client Credentials (dados públicos, não precisa de OAuth do usuário)
     const token = await this.getClientCredentialsToken();
-    const res   = await this.fetch(`${SPOTIFY_API}/artists/${artistId}`, {
+    const res = await this.fetch(`${SPOTIFY_API}/artists/${artistId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;
     this.logger.log(`Spotify: ${data.name} — ${data.followers?.total?.toLocaleString()} followers`);
     return {
-      followers:  data.followers?.total ?? 0,
+      followers: data.followers?.total ?? 0,
       popularity: data.popularity ?? 0,
-      name:       data.name ?? '',
-      image:      data.images?.[0]?.url ?? null,
+      name: data.name ?? '',
+      image: data.images?.[0]?.url ?? null,
     };
   }
 
   private async upsertConnection(tenantId: string, userId: string, tokens: any): Promise<void> {
+    const repo = this.requireRepo();
     const expiresAt = new Date(Date.now() + (tokens.expires_in as number) * 1000);
-    const existing  = await this.repo!
+    const existing = await repo
       .createQueryBuilder('o')
       .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider: 'spotify' })
       .getOne();
 
     if (existing) {
-      await this.repo!.update({ id: existing.id } as any, {
-        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+      await repo.update({ id: existing.id } as any, {
+        access_token_encrypted: this.encryption.encrypt(tokens.access_token),
         refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : existing.refresh_token_encrypted,
-        expires_at: expiresAt, updated_at: new Date(),
+        expires_at: expiresAt,
+        updated_at: new Date(),
       } as any);
     } else {
-      const entity = this.repo!.create({
-        tenant_id: tenantId, user_id: userId, provider: 'spotify', expires_at: expiresAt,
-        access_token_encrypted:  this.encryption.encrypt(tokens.access_token),
+      const entity = repo.create({
+        tenant_id: tenantId,
+        user_id: userId,
+        provider: 'spotify',
+        expires_at: expiresAt,
+        access_token_encrypted: this.encryption.encrypt(tokens.access_token),
         refresh_token_encrypted: tokens.refresh_token ? this.encryption.encrypt(tokens.refresh_token) : null,
         scopes: 'user-read-private user-read-email',
       });
-      await this.repo!.save(entity);
+      await repo.save(entity);
     }
   }
 
   async getValidToken(tenantId: string): Promise<string | null> {
-    const conn = await this.repo!
+    const repo = this.requireRepo();
+    const conn = await repo
       .createQueryBuilder('o')
       .where('o.tenant_id = :tenantId AND o.provider = :provider', { tenantId, provider: 'spotify' })
       .getOne();
@@ -162,21 +258,26 @@ export class SpotifyService {
   }
 
   private async refreshToken(conn: OAuthConnectionEntity): Promise<string> {
-    const clientId     = process.env['SPOTIFY_CLIENT_ID']     ?? '';
+    const repo = this.requireRepo();
+    const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
     const refreshToken = this.encryption.decrypt(conn.refresh_token_encrypted ?? '');
 
-    const res  = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
+    if (!clientId || !clientSecret || !refreshToken) {
+      throw new ServiceUnavailableException('Spotify refresh credentials unavailable');
+    }
+
+    const res = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
       headers: {
-        'Content-Type':  'application/x-www-form-urlencoded',
+        'Content-Type': 'application/x-www-form-urlencoded',
         'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
       },
       body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: refreshToken }),
     });
     const data = await res.json() as any;
 
-    await this.repo!.update({ id: conn.id } as any, {
+    await repo.update({ id: conn.id } as any, {
       access_token_encrypted: this.encryption.encrypt(data.access_token),
       expires_at: new Date(Date.now() + data.expires_in * 1000),
       updated_at: new Date(),
@@ -186,7 +287,8 @@ export class SpotifyService {
   }
 
   async disconnect(tenantId: string, userId: string): Promise<void> {
-    await this.repo!
+    const repo = this.requireRepo();
+    await repo
       .createQueryBuilder()
       .delete()
       .from(OAuthConnectionEntity)
