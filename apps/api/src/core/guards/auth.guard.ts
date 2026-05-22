@@ -1,20 +1,3 @@
-﻿/**
- * core/guards/auth.guard.ts
- *
- * Guard global de autenticaÃ§Ã£o via JWT do Supabase.
- * Verifica assinatura usando o JWKS pÃºblico do Supabase (ES256).
- * Rotas marcadas com @Public() sÃ£o excluÃ­das da validaÃ§Ã£o.
- *
- * JWKS endpoint: https://<SUPABASE_URL>/auth/v1/.well-known/jwks.json
- *
- * Claims Supabase:
- *   sub                  â†’ userId (UUID)
- *   email                â†’ email do usuÃ¡rio
- *   role                 â†’ "authenticated" (padrÃ£o Supabase)
- *   app_metadata.org_id  â†’ orgId do tenant
- *   app_metadata.role    â†’ papel RBAC da aplicaÃ§Ã£o
- */
-
 import {
   Injectable,
   CanActivate,
@@ -32,39 +15,46 @@ import * as jwksRsa from 'jwks-rsa';
 export const IS_PUBLIC_KEY = 'isPublic';
 
 export interface JwtAuth {
-  userId:    string;
+  userId: string;
   sessionId: string;
-  orgId:     string | null;
-  orgRole:   string | null;
-  claims:    Record<string, unknown>;
+  orgId: string | null;
+  orgRole: string | null;
+  claims: Record<string, unknown>;
 }
 
 declare module 'express' {
   interface Request {
-    auth?:          JwtAuth;
-    tenant?:        Record<string, unknown>;
+    auth?: JwtAuth;
+    tenant?: Record<string, unknown>;
     currentMember?: Record<string, unknown>;
   }
 }
 
 export interface AuthClaims {
-  sub?:           string;
-  email?:         string;
-  role?:          string;
-  aud?:           string | string[];
-  exp?:           number;
-  iat?:           number;
-  jti?:           string;
-  session_id?:    string;
-  app_metadata?:  { org_id?: string; role?: string; [key: string]: unknown };
+  sub?: string;
+  email?: string;
+  role?: string;
+  aud?: string | string[];
+  iss?: string;
+  exp?: number;
+  iat?: number;
+  jti?: string;
+  session_id?: string;
+  app_metadata?: { org_id?: string; role?: string; [key: string]: unknown };
   user_metadata?: Record<string, unknown>;
-  [key: string]:  unknown;
+  [key: string]: unknown;
+}
+
+function normalizeSupabaseUrl(value: string): string {
+  return value.trim().replace(/\/+$/, '');
 }
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate, OnModuleInit {
   private readonly logger = new Logger(JwtAuthGuard.name);
   private jwksClient!: jwksRsa.JwksClient;
+  private issuer!: string;
+  private readonly audience = 'authenticated';
 
   constructor(
     private readonly config: ConfigService,
@@ -72,29 +62,25 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
   ) {}
 
   onModuleInit(): void {
-    const supabaseUrl =
+    const rawSupabaseUrl =
       this.config.get<string>('SUPABASE_URL') ??
       process.env['VITE_SUPABASE_URL'] ??
       '';
+    const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
 
     if (!supabaseUrl) {
-      if (this.config.get<string>('NODE_ENV') === 'production') {
-        throw new Error('SUPABASE_URL is required in production');
-      }
-      this.logger.error(
-        'SUPABASE_URL nÃ£o configurado â€” JwtAuthGuard nÃ£o conseguirÃ¡ validar tokens. ' +
-        'Defina SUPABASE_URL (ou VITE_SUPABASE_URL) nas Secrets do Replit.',
-      );
+      throw new Error('SUPABASE_URL is required for JWT validation');
     }
 
-    const jwksUri = `${supabaseUrl}/auth/v1/.well-known/jwks.json`;
+    this.issuer = `${supabaseUrl}/auth/v1`;
+    const jwksUri = `${this.issuer}/.well-known/jwks.json`;
     this.logger.log(`JWKS endpoint: ${jwksUri}`);
 
     this.jwksClient = jwksRsa({
       jwksUri,
-      cache:       true,
-      cacheMaxAge: 60 * 60 * 1000, // 1 hora
-      rateLimit:   true,
+      cache: true,
+      cacheMaxAge: 60 * 60 * 1000,
+      rateLimit: true,
     });
   }
 
@@ -105,22 +91,25 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     ]);
     if (isPublic) return true;
 
-
     const request = context.switchToHttp().getRequest<Request>();
-    const token   = this.extractToken(request);
+    const token = this.extractToken(request);
 
     if (!token) {
-      throw new UnauthorizedException('Token de autenticaÃ§Ã£o ausente');
+      throw new UnauthorizedException('Authentication token missing');
     }
 
     const claims = await this.verifyToken(token);
 
+    if (!claims.sub || typeof claims.sub !== 'string') {
+      throw new UnauthorizedException('JWT subject missing');
+    }
+
     request.auth = {
-      userId:    String(claims.sub ?? ''),
+      userId: claims.sub,
       sessionId: String(claims.session_id ?? claims.jti ?? ''),
-      orgId:     claims.app_metadata?.org_id ?? null,
-      orgRole:   claims.app_metadata?.role   ?? null,
-      claims:    claims as Record<string, unknown>,
+      orgId: claims.app_metadata?.org_id ?? null,
+      orgRole: claims.app_metadata?.role ?? null,
+      claims: claims as Record<string, unknown>,
     };
 
     return true;
@@ -130,7 +119,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     return new Promise((resolve, reject) => {
       const getKey: jwt.GetPublicKeyOrSecret = (header, callback) => {
         if (!header.kid) {
-          return callback(new Error('JWT sem kid â€” nÃ£o Ã© possÃ­vel buscar chave JWKS'));
+          return callback(new Error('JWT kid missing'));
         }
         this.jwksClient.getSigningKey(header.kid, (err, key) => {
           if (err) return callback(err);
@@ -141,17 +130,21 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
       jwt.verify(
         token,
         getKey,
-        { algorithms: ['ES256'] },
+        {
+          algorithms: ['ES256'],
+          issuer: this.issuer,
+          audience: this.audience,
+        },
         (err, decoded) => {
           if (err) {
             if (err instanceof jwt.TokenExpiredError) {
-              return reject(new UnauthorizedException('Token expirado'));
+              return reject(new UnauthorizedException('Token expired'));
             }
-            this.logger.warn(`Falha na verificaÃ§Ã£o do JWT: ${err.message}`);
-            return reject(new UnauthorizedException('Token invÃ¡lido ou expirado'));
+            this.logger.warn(`JWT verification failed: ${err.message}`);
+            return reject(new UnauthorizedException('Invalid or expired token'));
           }
           if (!decoded || typeof decoded !== 'object') {
-            return reject(new UnauthorizedException('Token invÃ¡lido'));
+            return reject(new UnauthorizedException('Invalid token'));
           }
           resolve(decoded as AuthClaims);
         },
