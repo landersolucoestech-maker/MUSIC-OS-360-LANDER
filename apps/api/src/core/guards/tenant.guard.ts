@@ -5,7 +5,6 @@ import {
   UnauthorizedException,
   ForbiddenException,
   ServiceUnavailableException,
-  Logger,
   Inject,
 } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -25,7 +24,6 @@ function readTenantHeader(request: Request): string | null {
 
 @Injectable()
 export class TenantGuard implements CanActivate {
-  private readonly logger = new Logger(TenantGuard.name);
   private readonly tenantRepo: Repository<TenantEntity> | null = null;
   private readonly memberRepo: Repository<OrgMemberEntity> | null = null;
 
