@@ -1,5 +1,5 @@
-import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional }                  from '@nestjs/swagger';
+import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn, IsArray, IsEmail } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class OAuthInitDto {
   @ApiProperty({ description: 'Plataforma que iniciará o fluxo OAuth' })
@@ -38,6 +38,34 @@ export class ConfigureAutentiqueDto {
   apiToken!: string;
 }
 
+export class AutentiqueSignerDto {
+  @ApiProperty({ description: 'Nome do signatário' })
+  @IsString() @IsNotEmpty()
+  name!: string;
+
+  @ApiProperty({ description: 'E-mail do signatário' })
+  @IsEmail()
+  email!: string;
+}
+
+export class CreateAutentiqueDocumentDto {
+  @ApiProperty({ description: 'Nome do documento' })
+  @IsString() @IsNotEmpty()
+  name!: string;
+
+  @ApiProperty({ description: 'Conteúdo do arquivo em base64' })
+  @IsString() @IsBase64()
+  fileBase64!: string;
+
+  @ApiProperty({ description: 'Lista de signatários', type: 'array' })
+  @IsArray()
+  signers!: AutentiqueSignerDto[];
+
+  @ApiPropertyOptional({ description: 'ID do contrato interno vinculado ao documento' })
+  @IsOptional() @IsString()
+  contractId?: string;
+}
+
 export class SendForSignatureDto {
   @ApiProperty({ description: 'ID do contrato na plataforma' })
   @IsString() @IsNotEmpty()
@@ -52,7 +80,8 @@ export class SendForSignatureDto {
   fileBase64!: string;
 
   @ApiProperty({ description: 'Lista de signatários', type: 'array' })
-  signers!: Array<{ name: string; email: string }>;
+  @IsArray()
+  signers!: AutentiqueSignerDto[];
 }
 
 export class RecognizeAudioDto {
