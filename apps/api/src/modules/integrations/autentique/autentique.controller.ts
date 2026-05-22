@@ -7,12 +7,12 @@ import { AutentiqueService } from './autentique.service';
 import { CreateAutentiqueDocumentDto, SendForSignatureDto } from '../dto/integrations.dto';
 
 @ApiTags('Autentique')
-@ApiBearerAuth()
 @Controller('integrations/autentique')
 export class AutentiqueController {
   constructor(private readonly autentique: AutentiqueService) {}
 
   @Post('documents')
+  @ApiBearerAuth()
   @RequireRole('editor')
   @Audit('integration.autentique_document_created')
   @ApiOperation({ summary: 'Criar documento Autentique para assinatura' })
@@ -28,6 +28,7 @@ export class AutentiqueController {
   }
 
   @Post('signature-requests')
+  @ApiBearerAuth()
   @RequireRole('editor')
   @Audit('integration.autentique_signature_requested')
   @ApiOperation({ summary: 'Enviar contrato/documento para assinatura Autentique' })
@@ -44,7 +45,7 @@ export class AutentiqueController {
 
   @Post('webhook')
   @Public()
-  @ApiOperation({ summary: 'Webhook Autentique protegido por secret' })
+  @ApiOperation({ summary: 'Webhook Autentique protegido por x-autentique-secret' })
   @HttpCode(HttpStatus.OK)
   webhook(
     @Body() payload: any,
