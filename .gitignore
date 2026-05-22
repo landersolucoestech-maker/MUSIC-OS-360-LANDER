@@ -4,9 +4,18 @@ build/
 
 # Replit internal
 .local/
+.replit_integration_files/
 
 # Dependencies
 node_modules/
+
+# Monorepo / task runner cache
+.turbo/
+
+# Local agent/tool state
+.claude/
+.agents/
+.config/
 
 # Environment variables
 .env
@@ -16,6 +25,9 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # OS
 .DS_Store
@@ -33,6 +45,14 @@ Thumbs.db
 # Test / coverage
 coverage/
 .vitest-cache/
+
+# Database / generated temporary artifacts
+*.dump
+*.bak
+*.tmp
+*-temp.sql
+*.sqlite
+*.sqlite3
 
 # Misc generated
 *.local
