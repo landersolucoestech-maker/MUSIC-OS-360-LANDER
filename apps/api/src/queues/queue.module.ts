@@ -18,6 +18,7 @@ import { QUEUE_NAMES }             from './queue.constants';
 import { EmailProcessor }           from './processors/email.processor';
 import { NotificationsProcessor }   from './processors/notifications.processor';
 import { AIJobsProcessor }          from './processors/ai-jobs.processor';
+import { ExternalDataProcessor }    from './processors/external-data.processor';
 
 import { EmailQueueService }         from './services/email-queue.service';
 import { NotificationsQueueService } from './services/notifications-queue.service';
@@ -162,6 +163,7 @@ export class QueueModule {
         EmailProcessor,
         NotificationsProcessor,
         AIJobsProcessor,
+        ExternalDataProcessor,
       ],
       exports: [
         BullModule,

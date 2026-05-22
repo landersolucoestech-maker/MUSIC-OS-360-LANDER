@@ -51,6 +51,60 @@ export class WorkflowQueueService {
     this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.EXTERNAL_DATA_SYNC} jobId=${job.id} artistId=${payload.artistId}`);
   }
 
+  async enqueueDistributorSubmit(payload: {
+    tenantId: string;
+    userId: string;
+    providerId: string;
+    artistId: string;
+    releaseId: string | null;
+    phonogramIds: string[];
+    idempotencyKey?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.DISTRIBUTOR_SUBMIT, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.DISTRIBUTOR_SUBMIT} jobId=${job.id} provider=${payload.providerId}`);
+  }
+
+  async enqueueDistributorStatusCheck(payload: {
+    tenantId: string;
+    userId: string;
+    providerId: string;
+    submissionId: string;
+    entityType: string | null;
+    entityId: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.DISTRIBUTOR_STATUS_CHECK, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.DISTRIBUTOR_STATUS_CHECK} jobId=${job.id} submission=${payload.submissionId}`);
+  }
+
+  async enqueueSocietySubmit(payload: {
+    tenantId: string;
+    userId: string;
+    providerId: string;
+    artistId: string | null;
+    workIds: string[];
+    phonogramIds: string[];
+    idempotencyKey?: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.SOCIETY_SUBMIT, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.SOCIETY_SUBMIT} jobId=${job.id} provider=${payload.providerId}`);
+  }
+
+  async enqueueSocietyStatusCheck(payload: {
+    tenantId: string;
+    userId: string;
+    providerId: string;
+    submissionId: string;
+    entityType: string | null;
+    entityId: string | null;
+  }, opts?: Partial<JobsOptions>): Promise<void> {
+    if (!this.streamingAvailable) return;
+    const job = await this.streamingQueue!.add(WORKFLOW_JOB_NAMES.SOCIETY_STATUS_CHECK, payload, { attempts: 3, ...opts });
+    this.logger.log(`[streaming-sync] enqueued ${WORKFLOW_JOB_NAMES.SOCIETY_STATUS_CHECK} jobId=${job.id} submission=${payload.submissionId}`);
+  }
+
   async enqueueOnboardingCheck(payload: {
     tenantId:  string;
     artistId:  string;

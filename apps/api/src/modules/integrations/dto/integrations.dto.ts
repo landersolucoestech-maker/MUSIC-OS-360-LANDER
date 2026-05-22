@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn, IsArray, IsEmail } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn, IsArray, IsEmail, IsObject } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class OAuthInitDto {
@@ -104,4 +104,73 @@ export class SyncSpotifyArtistDto {
   @ApiProperty({ description: 'ID do artista no Spotify' })
   @IsString() @IsNotEmpty()
   spotifyArtistId!: string;
+}
+
+export class RequestExternalDataSyncDto {
+  @ApiProperty() @IsString() @IsNotEmpty()
+  artistId!: string;
+
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray()
+  workIds?: string[];
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  societyHint?: string;
+}
+
+export class DistributorSubmitDto {
+  @ApiPropertyOptional({ default: 'mock-distributor' }) @IsOptional() @IsString()
+  providerId?: string;
+
+  @ApiProperty() @IsString() @IsNotEmpty()
+  artistId!: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  releaseId?: string;
+
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray()
+  phonogramIds?: string[];
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  idempotencyKey?: string;
+
+  @ApiPropertyOptional({ type: Object }) @IsOptional() @IsObject()
+  metadata?: Record<string, unknown>;
+}
+
+export class SocietySubmitDto {
+  @ApiPropertyOptional({ default: 'mock-society' }) @IsOptional() @IsString()
+  providerId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  artistId?: string;
+
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray()
+  workIds?: string[];
+
+  @ApiPropertyOptional({ type: [String] }) @IsOptional() @IsArray()
+  phonogramIds?: string[];
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  idempotencyKey?: string;
+
+  @ApiPropertyOptional({ type: Object }) @IsOptional() @IsObject()
+  metadata?: Record<string, unknown>;
+}
+
+export class ExternalDataStatusCheckDto {
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  providerId?: string;
+
+  @ApiProperty() @IsString() @IsNotEmpty()
+  submissionId!: string;
+
+  @ApiPropertyOptional({ enum: ['artist', 'release', 'work', 'phonogram'] })
+  @IsOptional() @IsIn(['artist', 'release', 'work', 'phonogram'])
+  entityType?: 'artist' | 'release' | 'work' | 'phonogram';
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  entityId?: string;
+
+  @ApiPropertyOptional() @IsOptional() @IsString()
+  idempotencyKey?: string;
 }

@@ -15,6 +15,8 @@ import { GoogleAdsService }    from './google-ads/google-ads.service';
 import { AbramusService }      from './abramus/abramus.service';
 import { IntegrationsController } from './integrations.controller';
 import { AutentiqueController } from './autentique/autentique.controller';
+import { ExternalDataController } from './external-data.controller';
+import { WebhookService }         from './webhooks/webhook.service';
 
 const ALL_SERVICES = [
   IntegrationBaseService,
@@ -29,11 +31,12 @@ const ALL_SERVICES = [
   TikTokService,
   GoogleAdsService,
   AbramusService,
+  WebhookService,
 ];
 
 @Module({
   imports:     [QueueModule, AppCacheModule],
-  controllers: [IntegrationsController, AutentiqueController],
+  controllers: [IntegrationsController, AutentiqueController, ExternalDataController],
   providers:   ALL_SERVICES,
   exports:     ALL_SERVICES,
 })

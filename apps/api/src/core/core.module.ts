@@ -26,6 +26,8 @@ import { RateLimitService }           from './security/rate-limit.service';
 import { RateLimitGuard }             from './guards/rate-limit.guard';
 import { MailService }                from './mail/mail.service';
 import { PostHogService }             from './analytics/posthog.service';
+import { ExternalDataProviderRegistry } from './external-data/external-data-provider-registry.service';
+import { ExternalDataExchangeService }  from './external-data/external-data-exchange.service';
 
 @Global()
 @Module({
@@ -42,6 +44,8 @@ import { PostHogService }             from './analytics/posthog.service';
     RateLimitGuard,
     MailService,
     PostHogService,
+    ExternalDataProviderRegistry,
+    ExternalDataExchangeService,
   ],
   exports: [
     EncryptionService,
@@ -56,6 +60,8 @@ import { PostHogService }             from './analytics/posthog.service';
     RateLimitGuard,
     MailService,
     PostHogService,
+    ExternalDataProviderRegistry,
+    ExternalDataExchangeService,
   ],
 })
 export class CoreModule {}

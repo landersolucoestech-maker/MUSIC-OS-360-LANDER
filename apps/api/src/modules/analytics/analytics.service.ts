@@ -117,6 +117,7 @@ export class AnalyticsService {
       overduePipelineCount,
       stalledPipelineCount,
       pendingDistributionSetups,
+      externalDataStats,
     ] = await Promise.all([
       this.countTable('artists', tenantId),
       this.ds.query<Array<{ status: string; cnt: string }>>(
@@ -220,6 +221,7 @@ export class AnalyticsService {
         `SELECT COUNT(*)::int AS cnt FROM artists WHERE tenant_id = $1 AND deleted_at IS NULL AND (metadata->>'distribution_setup_requested_at') IS NOT NULL AND (metadata->>'distribution_setup_completed_at') IS NULL`,
         [tenantId],
       ),
+      this.getExternalDataExchangeStats(tenantId),
     ]);
 
     const artistStatusMap   = Object.fromEntries(artistsByStatus.map((r)   => [r.status, parseInt(r.cnt)]));
@@ -260,7 +262,13 @@ export class AnalyticsService {
       overdue_followups_count:       parseInt(overduePipelineCount[0]?.cnt ?? '0'),
       stalled_pipelines_count:       parseInt(stalledPipelineCount[0]?.cnt ?? '0'),
       pending_distribution_setups:   parseInt(pendingDistributionSetups[0]?.cnt ?? '0'),
-      pending_external_syncs:        0,
+      pending_external_syncs:        externalDataStats.pending_external_syncs,
+      failed_external_syncs:         externalDataStats.failed_external_syncs,
+      successful_external_syncs:     externalDataStats.successful_external_syncs,
+      distributor_submissions_count: externalDataStats.distributor_submissions_count,
+      society_submissions_count:     externalDataStats.society_submissions_count,
+      external_validation_errors_count: externalDataStats.external_validation_errors_count,
+      pending_provider_requirements_count: externalDataStats.pending_provider_requirements_count,
       generated_at:                  new Date().toISOString(),
     };
   }
@@ -297,5 +305,55 @@ export class AnalyticsService {
       [tenantId],
     );
     return parseInt(row?.cnt ?? '0');
+  }
+
+  private async getExternalDataExchangeStats(tenantId: string): Promise<{
+    pending_external_syncs: number;
+    failed_external_syncs: number;
+    successful_external_syncs: number;
+    distributor_submissions_count: number;
+    society_submissions_count: number;
+    external_validation_errors_count: number;
+    pending_provider_requirements_count: number;
+  }> {
+    const [row] = await this.ds!.query<Array<Record<string, string>>>(`
+      WITH exchange_entries AS (
+        SELECT value AS item
+        FROM artists, jsonb_each(COALESCE(metadata->'external_data_exchange', '{}'::jsonb))
+        WHERE tenant_id = $1 AND deleted_at IS NULL
+        UNION ALL
+        SELECT value AS item
+        FROM releases, jsonb_each(COALESCE(metadata->'external_data_exchange', '{}'::jsonb))
+        WHERE tenant_id = $1 AND deleted_at IS NULL
+        UNION ALL
+        SELECT value AS item
+        FROM works, jsonb_each(COALESCE(metadata->'external_data_exchange', '{}'::jsonb))
+        WHERE tenant_id = $1 AND deleted_at IS NULL
+        UNION ALL
+        SELECT value AS item
+        FROM phonograms, jsonb_each(COALESCE(metadata->'external_data_exchange', '{}'::jsonb))
+        WHERE tenant_id = $1 AND deleted_at IS NULL
+      )
+      SELECT
+        COUNT(*) FILTER (WHERE item->>'status' IN ('pending','processing'))::int AS pending_external_syncs,
+        COUNT(*) FILTER (WHERE item->>'status' IN ('failed','rejected'))::int AS failed_external_syncs,
+        COUNT(*) FILTER (WHERE item->>'status' IN ('approved','completed') OR item->>'delivery_status' = 'delivered' OR item->>'registration_status' = 'registered')::int AS successful_external_syncs,
+        COUNT(*) FILTER (WHERE item->>'kind' = 'distributor')::int AS distributor_submissions_count,
+        COUNT(*) FILTER (WHERE item->>'kind' = 'society')::int AS society_submissions_count,
+        COALESCE(SUM(jsonb_array_length(COALESCE(item->'validation_errors', '[]'::jsonb))), 0)::int AS external_validation_errors_count,
+        COALESCE(SUM(jsonb_array_length(COALESCE(item->'pending_requirements', '[]'::jsonb))), 0)::int AS pending_provider_requirements_count
+      FROM exchange_entries
+    `, [tenantId]);
+
+    const num = (key: string) => parseInt(row?.[key] ?? '0');
+    return {
+      pending_external_syncs: num('pending_external_syncs'),
+      failed_external_syncs: num('failed_external_syncs'),
+      successful_external_syncs: num('successful_external_syncs'),
+      distributor_submissions_count: num('distributor_submissions_count'),
+      society_submissions_count: num('society_submissions_count'),
+      external_validation_errors_count: num('external_validation_errors_count'),
+      pending_provider_requirements_count: num('pending_provider_requirements_count'),
+    };
   }
 }
