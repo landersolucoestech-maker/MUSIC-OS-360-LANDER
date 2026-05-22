@@ -47,12 +47,10 @@ export class TenantGuard implements CanActivate {
     }
 
     if (!this.tenantRepo || !this.memberRepo) {
-      if (process.env['NODE_ENV'] === 'production') {
-        throw new ServiceUnavailableException('Tenant database unavailable');
-      }
-      this.logger.warn('DB nÃ£o configurado â€” TenantGuard em modo passthrough apenas fora de produÃ§Ã£o');
-      return true;
-    }
+  throw new ServiceUnavailableException(
+    'Tenant database unavailable',
+  );
+}
 
     // Primary lookup: org_id UUID (Supabase app_metadata.org_id â†’ organizations.id).
     // Fallback:       external_auth_org_id for tenants provisioned before the Supabase migration.
