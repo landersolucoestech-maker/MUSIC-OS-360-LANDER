@@ -5,14 +5,14 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
-import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
-import { CurrentUser }     from '../../core/decorators/current-user.decorator';
-import { RequireRole }     from '../../core/decorators/roles.decorator';
-import { Audit }           from '../../core/interceptors/audit.interceptor';
+import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
+import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { RequireRole } from '../../core/decorators/roles.decorator';
+import { Audit } from '../../core/interceptors/audit.interceptor';
 import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
 import { ZodValidationPipe } from '../../core/pipes/zod-validation.pipe';
-import { TransactionsService }     from './transactions.service';
-import { QueryTransactionDto }     from './dto/query-transaction.dto';
+import { TransactionsService } from './transactions.service';
+import { QueryTransactionDto } from './dto/query-transaction.dto';
 import {
   createTransacaoSchema,
   patchTransacaoSchema,
@@ -44,26 +44,26 @@ export class TransactionsController {
   }
 
   @Post()
-  @RequireRole('editor')
+  @RequireRole('financial')
   @Audit('transaction.created')
   @UseInterceptors(IdempotencyInterceptor)
-  @ApiOperation({ summary: 'Criar transacção' })
+  @ApiOperation({ summary: 'Criar transacção (financial+)' })
   @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne duplicação de transacções', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser() user: { userId: string },
     @Body(new ZodValidationPipe(createTransacaoSchema)) dto: CreateTransacaoDto,
   ) {
     return this.service.create(tenant.id, user.userId, dto);
   }
 
   @Put(':id')
-  @RequireRole('editor')
+  @RequireRole('financial')
   @Audit('transaction.updated')
-  @ApiOperation({ summary: 'Actualizar transacção (full replace — same rules as create)' })
+  @ApiOperation({ summary: 'Actualizar transacção (financial+)' })
   replace(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(createTransacaoSchema)) dto: CreateTransacaoDto,
   ) {
@@ -71,12 +71,12 @@ export class TransactionsController {
   }
 
   @Patch(':id')
-  @RequireRole('editor')
+  @RequireRole('financial')
   @Audit('transaction.updated')
-  @ApiOperation({ summary: 'Actualizar transacção (partial update)' })
+  @ApiOperation({ summary: 'Actualizar transacção parcial (financial+)' })
   update(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser() user: { userId: string },
     @Param('id', ParseUUIDPipe) id: string,
     @Body(new ZodValidationPipe(patchTransacaoSchema)) dto: PatchTransacaoDto,
   ) {
@@ -86,7 +86,7 @@ export class TransactionsController {
   @Delete(':id')
   @RequireRole('manager')
   @Audit('transaction.cancelled')
-  @ApiOperation({ summary: 'Cancelar transacção (soft delete)' })
+  @ApiOperation({ summary: 'Cancelar transacção (manager+)' })
   remove(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
