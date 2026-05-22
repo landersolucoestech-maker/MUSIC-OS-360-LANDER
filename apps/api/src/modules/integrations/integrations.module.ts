@@ -14,6 +14,7 @@ import { TikTokService }       from './tiktok/tiktok.service';
 import { GoogleAdsService }    from './google-ads/google-ads.service';
 import { AbramusService }      from './abramus/abramus.service';
 import { IntegrationsController } from './integrations.controller';
+import { AutentiqueController } from './autentique/autentique.controller';
 
 const ALL_SERVICES = [
   IntegrationBaseService,
@@ -32,7 +33,7 @@ const ALL_SERVICES = [
 
 @Module({
   imports:     [QueueModule, AppCacheModule],
-  controllers: [IntegrationsController],
+  controllers: [IntegrationsController, AutentiqueController],
   providers:   ALL_SERVICES,
   exports:     ALL_SERVICES,
 })
