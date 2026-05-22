@@ -68,6 +68,9 @@ export {
   EmployeeEntity        as Employee,
   PayrollEntryEntity    as PayrollEntry,
   LeaveRequestEntity    as LeaveRequest,
+  InventoryItemEntity   as InventoryItem,
+  LicenseEntity         as License,
+  FinancialRuleEntity   as FinancialRule,
 } from './entities';
 
 // ─── Common primitives ────────────────────────────────────────────────────────

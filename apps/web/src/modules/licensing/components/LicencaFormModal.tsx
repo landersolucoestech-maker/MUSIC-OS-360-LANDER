@@ -12,6 +12,7 @@ import { FieldError } from "@/shared/components/FormField";
 import { toast } from "sonner";
 import { FileText, Music, DollarSign, Building } from "lucide-react";
 import { licencaSchema, type LicencaFormData } from "@/modules/licensing/lib/licenca-schema";
+import { useLicencas } from "@/modules/licensing/hooks/useLicencas";
 
 interface LicencaFormModalProps {
   open: boolean;
@@ -43,6 +44,7 @@ const DEFAULT_VALUES: LicencaFormData = {
 export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaFormModalProps) {
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Nova Licença de Sync" : mode === "edit" ? "Editar Licença" : "Detalhes da Licença";
+  const { addLicenca, updateLicenca } = useLicencas();
 
   const {
     register,
@@ -78,10 +80,38 @@ export function LicencaFormModal({ open, onOpenChange, licenca, mode }: LicencaF
     }
   }, [open, licenca, reset]);
 
-  const onSubmit = (_data: LicencaFormData) => {
+  const buildPayload = (data: LicencaFormData) => ({
+    titulo:        data.titulo,
+    tipo:          data.tipoLicenca || undefined,
+    obra_musical:  data.obraMusical || undefined,
+    artista:       data.artista || undefined,
+    cliente:       data.cliente || undefined,
+    projeto:       data.projeto || undefined,
+    midia_destino: data.midiaDestino || undefined,
+    territorio:    data.territorio || undefined,
+    status:        "pendente",
+    data_inicio:   data.dataInicio || undefined,
+    data_fim:      data.dataFim || undefined,
+    valor:         data.valor ? Number(data.valor) : undefined,
+    moeda:         data.moeda,
+    observacoes:   data.observacoes || undefined,
+  });
+
+  const onSubmit = async (data: LicencaFormData) => {
     if (isViewMode) return;
-    toast.success(mode === "create" ? "Licença criada com sucesso!" : "Licença atualizada com sucesso!");
-    onOpenChange(false);
+    try {
+      const payload = buildPayload(data);
+      if (mode === "edit" && licenca?.id) {
+        await updateLicenca.mutateAsync({ id: licenca.id as string, data: payload as never });
+        toast.success("Licença atualizada com sucesso.");
+      } else {
+        await addLicenca.mutateAsync(payload as never);
+        toast.success("Licença criada com sucesso.");
+      }
+      onOpenChange(false);
+    } catch {
+      toast.error("Erro ao salvar licença");
+    }
   };
 
   return (

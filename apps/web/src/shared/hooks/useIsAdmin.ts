@@ -9,7 +9,7 @@ import { useCurrentRole } from "./useHasRole";
  */
 export function useIsAdmin() {
   const role = useCurrentRole();
-  const adminRoles = ["super_admin", "tenant_owner", "admin"];
+  const adminRoles = ["super_admin", "tenant_owner", "owner", "admin"];
   return {
     // Deny by default — never grant admin when role is absent
     isAdmin:   role !== null && adminRoles.includes(role),

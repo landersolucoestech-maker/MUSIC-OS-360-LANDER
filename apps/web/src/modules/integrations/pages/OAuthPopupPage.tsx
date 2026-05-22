@@ -530,45 +530,86 @@ function buildOAuthUrl(platform: string, nonce: string): string | null {
   return `${cfg.authUrl}?${params.toString()}`;
 }
 
+const META_APP_ID    = (import.meta.env.VITE_META_APP_ID    as string | undefined) ?? "";
+const GOOGLE_ID      = (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "";
+const TIKTOK_KEY     = (import.meta.env.VITE_TIKTOK_CLIENT_KEY as string | undefined) ?? "";
+
 const PRODUCTION_OAUTH_CONFIGS: Record<string, PlatformOAuthConfig> = {
-  corp_instagram: {
-    authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
-    clientId: (import.meta.env.VITE_META_APP_ID as string | undefined) ?? "",
-    scopes:   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
-  },
+  // ── Meta / Facebook ───────────────────────────────────────────────────────
   meta_business: {
     authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
-    clientId: (import.meta.env.VITE_META_APP_ID as string | undefined) ?? "",
+    clientId: META_APP_ID,
+    scopes:   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement,ads_management,business_management",
+  },
+  meta_ads: {
+    authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
+    clientId: META_APP_ID,
+    scopes:   "ads_management,ads_read,business_management",
+  },
+  corp_instagram: {
+    authUrl:  "https://www.facebook.com/v18.0/dialog/oauth",
+    clientId: META_APP_ID,
     scopes:   "instagram_basic,instagram_content_publish,pages_show_list,pages_read_engagement",
   },
-  corp_tiktok: {
-    authUrl:      "https://www.tiktok.com/v2/auth/authorize",
-    clientId:     (import.meta.env.VITE_TIKTOK_CLIENT_KEY as string | undefined) ?? "",
-    // TikTok authorize endpoint uses `client_key`, not `client_id`
-    clientIdParam: "client_key",
-    scopes:       "video.publish,user.info.basic",
-  },
-  tiktok_business: {
-    authUrl:      "https://www.tiktok.com/v2/auth/authorize",
-    clientId:     (import.meta.env.VITE_TIKTOK_CLIENT_KEY as string | undefined) ?? "",
-    clientIdParam: "client_key",
-    scopes:       "video.publish,user.info.basic",
-  },
-  corp_youtube: {
+  // ── Google / YouTube ──────────────────────────────────────────────────────
+  google_business: {
     authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
-    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
-    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    clientId: GOOGLE_ID,
+    scopes:   "https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly https://www.googleapis.com/auth/adwords",
   },
   youtube_business: {
     authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
-    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
-    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
+    clientId: GOOGLE_ID,
+    scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly https://www.googleapis.com/auth/yt-analytics.readonly",
   },
-  google_business: {
+  corp_youtube: {
     authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
-    clientId: (import.meta.env.VITE_GOOGLE_CLIENT_ID as string | undefined) ?? "",
+    clientId: GOOGLE_ID,
     scopes:   "https://www.googleapis.com/auth/youtube.upload https://www.googleapis.com/auth/youtube.readonly",
   },
+  google_ads: {
+    authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: GOOGLE_ID,
+    scopes:   "https://www.googleapis.com/auth/adwords",
+  },
+  youtube_ads: {
+    authUrl:  "https://accounts.google.com/o/oauth2/v2/auth",
+    clientId: GOOGLE_ID,
+    scopes:   "https://www.googleapis.com/auth/adwords https://www.googleapis.com/auth/youtube.readonly",
+  },
+  // ── TikTok ────────────────────────────────────────────────────────────────
+  tiktok_business: {
+    authUrl:       "https://www.tiktok.com/v2/auth/authorize",
+    clientId:      TIKTOK_KEY,
+    clientIdParam: "client_key",
+    scopes:        "user.info.basic,video.list",
+  },
+  tiktok_ads: {
+    authUrl:       "https://ads.tiktok.com/marketing_api/auth",
+    clientId:      TIKTOK_KEY,
+    clientIdParam: "app_id",
+    scopes:        "user.info.basic",
+  },
+  corp_tiktok: {
+    authUrl:       "https://www.tiktok.com/v2/auth/authorize",
+    clientId:      TIKTOK_KEY,
+    clientIdParam: "client_key",
+    scopes:        "user.info.basic,video.list",
+  },
+};
+
+// ─── External URLs for non-OAuth platforms ───────────────────────────────────
+// Platforms that have no public OAuth API: we redirect the user to the real
+// login page of each platform in a new tab, then they confirm connection.
+
+const EXTERNAL_REDIRECT_URLS: Record<string, string> = {
+  nfe:       "https://www.nfe.fazenda.gov.br/portal/principal.aspx",
+  onerpm:    "https://app.onerpm.com/",
+  distrokid: "https://distrokid.com/signin/",
+  symphonic: "https://app.symphonicms.com/",
+  soundon:   "https://soundon.global/",
+  musicpro:  "https://app.musicpro.com.br/",
+  somvibe:   "https://somvibe.com.br/",
 };
 
 // ─── Helper ───────────────────────────────────────────────────────────────────
@@ -603,6 +644,20 @@ function sendSuccessAndClose(platform: string) {
   window.close();
 }
 
+/**
+ * For non-OAuth platforms (distributors, NF-e): always sends a success message
+ * so the parent can mark the integration as connected after the user confirms.
+ */
+function sendBridgeSuccessAndClose(platform: string) {
+  if (window.opener) {
+    window.opener.postMessage(
+      { type: "musicos360_oauth_success", platform, access_token: `connected_${platform}` },
+      window.location.origin,
+    );
+  }
+  window.close();
+}
+
 // ─── Componente principal ────────────────────────────────────────────────────
 
 export default function OAuthPopupPage() {
@@ -628,8 +683,9 @@ export default function OAuthPopupPage() {
   const cardBorder  = isDark ? "none" : (isGov ? "1px solid #c8d0d9" : "1px solid #dadce0");
   const cardShadow  = isDark ? "0 4px 32px rgba(0,0,0,.5)" : "0 2px 12px rgba(0,0,0,.08)";
 
-  // Step inicial
-  const initialStep: Step = isGov ? "govMethod" : "choose";
+  // Em modo real nunca mostrar seletor de contas falsas — vai direto para email.
+  // Em modo demo (MOCK_MODE=true) mantém o seletor de contas para demonstração.
+  const initialStep: Step = isGov ? "govMethod" : (MOCK_MODE ? "choose" : "email");
 
   const [step, setStep]           = useState<Step>(initialStep);
   const [email, setEmail]         = useState("");
@@ -641,20 +697,48 @@ export default function OAuthPopupPage() {
   const [certFile, setCertFile]   = useState("");
   const [certPin, setCertPin]     = useState("");
   const [certPinShow, setCertPinShow] = useState(false);
+  const [oauthError, setOauthError] = useState<string | null>(null);
+
+  // Platforms whose OAuth is initiated by the backend (avoids localhost redirect issues).
+  // The backend generates the auth URL with its own callback URI (127.0.0.1:3001).
+  const BACKEND_AUTH_ENDPOINTS: Record<string, string> = {
+    spotify_ads:  "/integrations/spotify/auth",
+    corp_spotify: "/integrations/spotify/auth",
+  };
 
   // Production mode: immediately redirect to the real platform OAuth entry URL.
-  // The state param carries `${platform}:${nonce}` for CSRF validation in callback.
-  // Synthetic demo tokens are never emitted in production paths.
-  // The real access_token arrives via /oauth/callback.
   useEffect(() => {
     if (MOCK_MODE) return;
-    const url = buildOAuthUrl(platform, nonce);
-    if (url) {
-      window.location.replace(url);
+
+    // Backend-initiated OAuth (Spotify) — popup calls API to get the auth URL.
+    const backendPath = BACKEND_AUTH_ENDPOINTS[platform];
+    if (backendPath) {
+      const apiBase = (import.meta.env.VITE_API_URL as string) ?? "http://localhost:3001/api/v1";
+      try {
+        // Supabase client uses storageKey "musicos360_auth" (see lib/supabase.ts)
+        const sessionData = JSON.parse(localStorage.getItem("musicos360_auth") ?? "null");
+        const token = sessionData?.access_token as string | undefined;
+        if (!token) {
+          setOauthError("Sessão não encontrada. Feche este popup, faça login e tente novamente.");
+          return;
+        }
+        fetch(`${apiBase}${backendPath}`, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.json())
+          .then((data: { url?: string }) => {
+            if (data.url) window.location.replace(data.url);
+            else setOauthError("API não retornou URL de autenticação. Verifique as credenciais Spotify no servidor.");
+          })
+          .catch(() => setOauthError("Não foi possível conectar à API. Verifique se o servidor está rodando na porta 3001."));
+      } catch {
+        setOauthError("Não foi possível ler a sessão do browser.");
+      }
+      return;
     }
-    // If no client_id is configured, stay on this page and render the
-    // "credentials not configured" UI (handled in the JSX render below).
-  }, [platform, nonce]);
+
+    // Frontend OAuth (Meta, Google, TikTok) — redirect directly to platform.
+    const url = buildOAuthUrl(platform, nonce);
+    if (url) window.location.replace(url);
+  }, [platform, nonce]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handlers
   const onAccountClick = () => {
@@ -739,6 +823,116 @@ export default function OAuthPopupPage() {
             ))}
           </div>
         ))}
+      </div>
+    );
+  }
+
+  // OAuth error page — shown when backend fetch fails or session is missing.
+  if (oauthError) {
+    const errBg = cfg.variant === "spotify" ? "#121212" : "#fff";
+    const errTxt = cfg.variant === "spotify" ? "#a0a0a0" : "#5f6368";
+    return (
+      <div style={{ backgroundColor: errBg, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "0 24px" }}>
+        <div style={{ fontSize: 32 }}>⚠️</div>
+        <p style={{ color: errTxt, fontSize: 14, margin: 0, fontFamily: "sans-serif", textAlign: "center", maxWidth: 320, lineHeight: 1.6 }}>{oauthError}</p>
+        <button onClick={() => window.close()} style={{ padding: "8px 20px", fontSize: 13, cursor: "pointer", borderRadius: 4, border: `1px solid ${errTxt}`, background: "none", color: errTxt }}>
+          Fechar
+        </button>
+      </div>
+    );
+  }
+
+  // In production mode, show only a spinner — never flash the mock UI.
+  // Covers both: direct OAuth (Meta/Google/TikTok) and backend-initiated OAuth (Spotify).
+  if (!MOCK_MODE && (buildOAuthUrl(platform, nonce) || BACKEND_AUTH_ENDPOINTS[platform])) {
+    const spinColor = cfg.variant === "spotify" ? "#1DB954" : "#4285F4";
+    return (
+      <div style={{ backgroundColor: cfg.variant === "spotify" ? "#121212" : "#fff", minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16 }}>
+        <div style={{ width: 36, height: 36, border: `3px solid ${spinColor}`, borderTopColor: "transparent", borderRadius: "50%", animation: "spin .8s linear infinite" }} />
+        <p style={{ color: cfg.variant === "spotify" ? "#a0a0a0" : "#5f6368", fontSize: 14, margin: 0, fontFamily: "sans-serif" }}>Redirecionando…</p>
+        <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+      </div>
+    );
+  }
+
+  // Production mode + no OAuth config + no bridge page = credentials not configured.
+  if (!MOCK_MODE && !EXTERNAL_REDIRECT_URLS[platform]) {
+    return (
+      <div style={{ backgroundColor: cfg.bgColor, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 16, padding: "0 24px", fontFamily: "sans-serif" }}>
+        <div style={{ fontSize: 32 }}>{cfg.logo}</div>
+        <p style={{ color: "#5f6368", fontSize: 15, fontWeight: 600, margin: 0 }}>{cfg.name}</p>
+        <p style={{ color: "#5f6368", fontSize: 13, margin: 0, textAlign: "center", maxWidth: 300, lineHeight: 1.6 }}>
+          Integração com {cfg.name} ainda não está configurada. Configure as credenciais da plataforma no servidor e tente novamente.
+        </p>
+        <button onClick={() => window.close()} style={{ padding: "8px 20px", fontSize: 13, cursor: "pointer", borderRadius: 4, border: "1px solid #5f6368", background: "none", color: "#5f6368" }}>
+          Fechar
+        </button>
+      </div>
+    );
+  }
+
+  // Bridge page for non-OAuth platforms (distributors, NF-e).
+  // Opens the real platform URL in a new tab; user confirms connection manually.
+  const externalUrl = EXTERNAL_REDIRECT_URLS[platform];
+  if (externalUrl) {
+    const bridgeCardBg  = cfg.cardBgOverride ?? (isDark ? "#1e1e1e" : "#ffffff");
+    const bridgeTextMain = isGov ? "#1a1a2e" : (isDark ? "#ffffff" : "#202124");
+    const bridgeTextSub  = isGov ? "#555577" : (isDark ? "#a0a0a0" : "#5f6368");
+    const bridgeDivider  = isDark ? "#333333" : "#e0e0e0";
+    const bridgeBorder   = isDark ? "none" : (isGov ? "1px solid #c8d0d9" : "1px solid #dadce0");
+
+    return (
+      <div style={{ backgroundColor: cfg.bgColor, minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "24px 16px", fontFamily: "'Inter', -apple-system, sans-serif" }}>
+        <div style={{ backgroundColor: bridgeCardBg, borderRadius: 12, border: bridgeBorder, width: "min(400px, calc(100vw - 32px))", padding: "36px 32px 28px", boxShadow: isDark ? "0 4px 32px rgba(0,0,0,.5)" : "0 2px 12px rgba(0,0,0,.08)", display: "flex", flexDirection: "column", alignItems: "center", gap: 20 }}>
+
+          {/* Logo */}
+          {renderLogoIcon()}
+
+          {/* Title & instruction */}
+          <div style={{ textAlign: "center" }}>
+            <div style={{ fontSize: 20, fontWeight: 700, color: bridgeTextMain, marginBottom: 8 }}>
+              Conectar ao {cfg.name}
+            </div>
+            <div style={{ fontSize: 13, color: bridgeTextSub, lineHeight: 1.6 }}>
+              Clique no botão abaixo para acessar o <strong>{cfg.name}</strong>. Após conectar sua conta, volte aqui e confirme.
+            </div>
+          </div>
+
+          {/* Open platform button */}
+          <a
+            href={externalUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, width: "100%", padding: "14px 20px", backgroundColor: cfg.buttonBg, color: cfg.buttonText, borderRadius: cfg.borderRadius, fontSize: 15, fontWeight: 700, textDecoration: "none", boxSizing: "border-box" }}
+          >
+            Abrir {cfg.name} ↗
+          </a>
+
+          {/* Divider */}
+          <div style={{ width: "100%", display: "flex", alignItems: "center", gap: 10 }}>
+            <div style={{ flex: 1, height: 1, backgroundColor: bridgeDivider }} />
+            <span style={{ fontSize: 11, color: bridgeTextSub, fontWeight: 600, letterSpacing: 1 }}>APÓS CONECTAR</span>
+            <div style={{ flex: 1, height: 1, backgroundColor: bridgeDivider }} />
+          </div>
+
+          {/* Confirm connected button */}
+          <button
+            onClick={() => sendBridgeSuccessAndClose(platform)}
+            style={{ width: "100%", padding: "13px 20px", backgroundColor: "transparent", color: cfg.accentColor, border: `2px solid ${cfg.accentColor}`, borderRadius: cfg.borderRadius, cursor: "pointer", fontSize: 14, fontWeight: 700 }}
+            onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = cfg.accentColor; (e.currentTarget as HTMLButtonElement).style.color = cfg.buttonText; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.backgroundColor = "transparent"; (e.currentTarget as HTMLButtonElement).style.color = cfg.accentColor; }}
+          >
+            Já me conectei ✓
+          </button>
+
+          {/* Cancel */}
+          <button
+            onClick={() => window.close()}
+            style={{ fontSize: 12, color: bridgeTextSub, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}
+          >
+            Fechar sem conectar
+          </button>
+        </div>
       </div>
     );
   }

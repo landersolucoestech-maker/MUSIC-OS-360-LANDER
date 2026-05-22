@@ -6,6 +6,7 @@ import { useAuth } from "@/app/providers/AuthContext";
 export type AppRole =
   | "super_admin"
   | "tenant_owner"
+  | "owner"
   | "admin"
   | "accounting"
   | "juridico"
@@ -21,6 +22,7 @@ export type AppRole =
 const ROLE_HIERARCHY: Record<AppRole, number> = {
   super_admin:       0,
   tenant_owner:      1,
+  owner:             1,
   admin:             2,
   accounting:        3,
   juridico:          3,
@@ -36,6 +38,7 @@ const ROLE_HIERARCHY: Record<AppRole, number> = {
 export const ROLE_LABELS: Record<AppRole, string> = {
   super_admin:       "Super Admin",
   tenant_owner:      "Proprietário",
+  owner:             "Proprietário",
   admin:             "Administrador",
   accounting:        "Gestor Accounting",
   juridico:          "Jurídico / Contratos",

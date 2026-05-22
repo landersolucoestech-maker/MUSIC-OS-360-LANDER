@@ -4,11 +4,12 @@ import {
   TransacaoFormData,
   initialFormData,
 } from "@/modules/accounting/lib/transacao-constants";
-import { transacaoToFormFields } from "@/modules/accounting/mappers";
+import { transacaoToFormFields, formToTransacaoPayload } from "@/modules/accounting/mappers";
 import { applyResets } from "@/modules/accounting/components/transacao-form/rules/financial-reset-rules";
 import type { FinancialFormRules } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
 import { useFinancialValidation } from "./useFinancialValidation";
 import type { ValidationErrors } from "@/modules/accounting/components/transacao-form/validation/financial-form-validation";
+import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 
 interface UseTransacaoFormOptions {
   open:       boolean;
@@ -35,6 +36,7 @@ export function useTransacaoForm({
 }: UseTransacaoFormOptions): UseTransacaoFormReturn {
   const [formData, setFormData]         = useState<TransacaoFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const { addTransacao, updateTransacao } = useTransacoes();
 
   // Single source of truth for errors — all validation state lives here
   const validation = useFinancialValidation();
@@ -73,14 +75,13 @@ export function useTransacaoForm({
 
     setIsSubmitting(true);
     try {
-      // TODO(api-integration): build submit payload here.
-      // When wiring real API: append motivoViagem to observacao
-      // if (rules.exibirMotivoViagem && formData.motivoViagem) {
-      //   const prefixo = "[MOTIVO VIAGEM]: ";
-      //   if (!observacao.includes(prefixo)) observacao = `${prefixo}${formData.motivoViagem}\n${observacao}`.trim();
-      // }
-      await new Promise(resolve => setTimeout(resolve, 500));
-      toast.success(mode === "create" ? "Transação criada com sucesso!" : "Transação atualizada com sucesso!");
+      const payload = formToTransacaoPayload(formData);
+      const transacaoId = transacao?.id as string | undefined;
+      if (mode === "edit" && transacaoId) {
+        await updateTransacao.mutateAsync({ id: transacaoId, data: payload as never });
+      } else {
+        await addTransacao.mutateAsync(payload as never);
+      }
       onClose();
     } catch {
       toast.error("Erro ao salvar transação. Tente novamente.");

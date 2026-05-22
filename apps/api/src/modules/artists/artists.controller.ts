@@ -40,7 +40,7 @@ export class ArtistsController {
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.findById(tenant.id, id);
+    return this.service.findByIdForResponse(tenant.id, id);
   }
 
   @Post()

@@ -36,8 +36,13 @@ export class SpotifyService {
     return !!(process.env['SPOTIFY_CLIENT_ID'] && process.env['SPOTIFY_CLIENT_SECRET']);
   }
 
+  isAdsConfigured(): boolean {
+    return !!(process.env['SPOTIFY_ADS_CLIENT_ID'] && process.env['SPOTIFY_ADS_CLIENT_SECRET']);
+  }
+
+  // OAuth para Spotify Ads (usa SPOTIFY_ADS_CLIENT_ID)
   getAuthUrl(tenantId: string, userId: string): string {
-    const clientId    = process.env['SPOTIFY_CLIENT_ID']   ?? '';
+    const clientId    = process.env['SPOTIFY_ADS_CLIENT_ID'] ?? process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const redirectUri = process.env['SPOTIFY_REDIRECT_URI'] ?? '';
     const state       = Buffer.from(JSON.stringify({ tenantId, userId })).toString('base64');
     const params      = new URLSearchParams({
@@ -45,6 +50,28 @@ export class SpotifyService {
       redirect_uri: redirectUri, state,
     });
     return `${SPOTIFY_ACCOUNTS}/authorize?${params}`;
+  }
+
+  // Client Credentials — token para métricas públicas (usa SPOTIFY_CLIENT_ID)
+  private async getClientCredentialsToken(): Promise<string> {
+    const clientId     = process.env['SPOTIFY_CLIENT_ID']     ?? '';
+    const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
+    const res = await this.fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/x-www-form-urlencoded',
+        'Authorization': `Basic ${Buffer.from(`${clientId}:${clientSecret}`).toString('base64')}`,
+      },
+      body: new URLSearchParams({ grant_type: 'client_credentials' }),
+    });
+    const data = await res.json() as any;
+    return data.access_token as string;
+  }
+
+  // Extrai o ID do artista de um link do Spotify
+  extractArtistId(spotifyUrl: string): string | null {
+    const match = spotifyUrl.match(/artist\/([A-Za-z0-9]+)/);
+    return match ? match[1] : null;
   }
 
   async handleCallback(code: string, state: string): Promise<void> {
@@ -69,16 +96,32 @@ export class SpotifyService {
     this.logger.log(`Spotify OAuth: ${userId}@${tenantId} conectado`);
   }
 
-  async syncArtistMetrics(tenantId: string, spotifyArtistId: string): Promise<{ followers: number; popularity: number } | null> {
-    const token = await this.getValidToken(tenantId);
-    if (!token) return null;
+  // Aceita link do perfil (https://open.spotify.com/artist/ID) ou ID direto
+  async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ followers: number; popularity: number; name: string; image: string | null } | null> {
+    if (!this.isConfigured()) return null;
 
-    const res  = await this.fetch(`${SPOTIFY_API}/artists/${spotifyArtistId}`, {
+    const artistId = spotifyUrlOrId.includes('spotify.com')
+      ? this.extractArtistId(spotifyUrlOrId)
+      : spotifyUrlOrId;
+
+    if (!artistId) {
+      this.logger.warn(`Spotify: link inválido — ${spotifyUrlOrId}`);
+      return null;
+    }
+
+    // Usa Client Credentials (dados públicos, não precisa de OAuth do usuário)
+    const token = await this.getClientCredentialsToken();
+    const res   = await this.fetch(`${SPOTIFY_API}/artists/${artistId}`, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;
     this.logger.log(`Spotify: ${data.name} — ${data.followers?.total?.toLocaleString()} followers`);
-    return { followers: data.followers?.total ?? 0, popularity: data.popularity ?? 0 };
+    return {
+      followers:  data.followers?.total ?? 0,
+      popularity: data.popularity ?? 0,
+      name:       data.name ?? '',
+      image:      data.images?.[0]?.url ?? null,
+    };
   }
 
   private async upsertConnection(tenantId: string, userId: string, tokens: any): Promise<void> {

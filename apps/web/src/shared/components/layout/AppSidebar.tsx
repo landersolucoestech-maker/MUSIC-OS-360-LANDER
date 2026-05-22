@@ -148,7 +148,7 @@ export function AppSidebar() {
   const { tenant, isFeatureEnabled } = useTenant();
   const { isAdmin } = useIsAdmin();
   const currentRole = useCurrentRole();
-  const isSuperAdmin = currentRole === "super_admin";
+  const isSuperAdmin = currentRole === "super_admin" || currentRole === "owner" || currentRole === "tenant_owner";
   const [collapsed, setCollapsed] = useState(false);
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const location = useLocation();

@@ -41,11 +41,12 @@ interface MainLayoutProps {
 }
 
 const ROLE_LABEL: Record<string, string> = {
+  owner:        "Proprietário",
   tenant_owner: "Proprietário",
-  admin: "Administrador",
-  manager: "Gerente",
-  editor: "Editor",
-  viewer: "Visualizador",
+  admin:        "Administrador",
+  manager:      "Gerente",
+  editor:       "Editor",
+  viewer:       "Visualizador",
 };
 
 const MOCK_NOTIFICATIONS = [

@@ -15,6 +15,8 @@ export class CreateInventoryItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) responsavel?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) setor?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() data_entrada?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) local_compra?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) numero_nota_fiscal?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
 }
 

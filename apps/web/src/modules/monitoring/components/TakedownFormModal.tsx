@@ -12,6 +12,7 @@ import { FieldError } from "@/shared/components/FormField";
 import { toast } from "sonner";
 import { AlertTriangle, Link2, FileText } from "lucide-react";
 import { takedownSchema, type TakedownFormData } from "@/modules/monitoring/lib/takedown-schema";
+import { useTakedowns } from "@/modules/monitoring/hooks/useTakedowns";
 
 interface TakedownFormModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ const motivos = ["Uso não autorizado", "Violação de direitos autorais", "Plá
 export function TakedownFormModal({ open, onOpenChange, takedown, mode }: TakedownFormModalProps) {
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Registrar Takedown" : mode === "edit" ? "Editar Takedown" : "Detalhes do Takedown";
+  const { addTakedown, updateTakedown } = useTakedowns();
 
   const {
     register,
@@ -86,10 +88,18 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     }
   }, [open, takedown, reset]);
 
-  const onSubmit = (_data: TakedownFormData) => {
+  const onSubmit = async (data: TakedownFormData) => {
     if (isViewMode) return;
-    toast.success(mode === "create" ? "Takedown registrado com sucesso!" : "Takedown atualizado com sucesso!");
-    onOpenChange(false);
+    try {
+      if (mode === "edit" && takedown?.id) {
+        await updateTakedown.mutateAsync({ id: takedown.id as string, data: data as never });
+      } else {
+        await addTakedown.mutateAsync(data as never);
+      }
+      onOpenChange(false);
+    } catch {
+      toast.error("Erro ao salvar takedown");
+    }
   };
 
   return (

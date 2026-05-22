@@ -16,6 +16,7 @@ import { ptBR } from "date-fns/locale";
 import { CalendarIcon, Loader2 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { tarefaMarketingSchema, type TarefaMarketingFormData } from "@/modules/marketing/lib/tarefa-marketing-schema";
+import { useTarefasMarketing } from "@/modules/marketing/hooks/useTarefasMarketing";
 
 interface TarefaMarketingFormModalProps {
   open: boolean;
@@ -65,10 +66,15 @@ export function TarefaMarketingFormModal({ open, onOpenChange, initialData, mode
     }
   }, [open, initialData, mode, reset]);
 
-  const onSubmit = async (_data: TarefaMarketingFormData) => {
+  const { addTarefa, updateTarefa } = useTarefasMarketing();
+
+  const onSubmit = async (data: TarefaMarketingFormData) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(mode === "create" ? "Tarefa criada com sucesso!" : "Tarefa atualizada com sucesso!");
+      if (mode === "edit" && initialData?.id) {
+        await updateTarefa.mutateAsync({ id: initialData.id as string, data: data as never });
+      } else {
+        await addTarefa.mutateAsync(data as never);
+      }
       onOpenChange(false);
     } catch {
       toast.error("Erro ao salvar tarefa");

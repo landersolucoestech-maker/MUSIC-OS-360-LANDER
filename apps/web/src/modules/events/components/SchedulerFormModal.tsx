@@ -14,6 +14,7 @@ import { format, parse, parseISO, isValid } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { useClientes } from "@/modules/crm/hooks/useClientes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 
 interface SchedulerFormModalProps {
@@ -44,8 +45,6 @@ const statusOptions = [
   { value: "cancelado", label: "Cancelado" },
 ];
 
-// Artistas serão carregados do banco de dados
-const artistasOptions: { value: string; label: string }[] = [];
 
 const tiposRelacionadosArtista = [
   "sessoes_estudio",
@@ -171,6 +170,8 @@ const validationFieldLabels: Record<string, string> = {
 export function SchedulerFormModal({ open, onOpenChange, evento, mode }: SchedulerFormModalProps) {
   const queryClient = useQueryClient();
   const { clientes } = useClientes();
+  const { artistas } = useArtistas();
+  const artistasOptions = artistas.map((a: any) => ({ value: a.id, label: a.nome_artistico || a.nome || a.id }));
   
   // Filtrar apenas contatos PJ do CRM para o campo de local
   const locaisCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");

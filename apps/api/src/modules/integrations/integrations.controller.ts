@@ -1,5 +1,5 @@
 import {
-  Controller, Post, Get, Delete, Body, Param, Query,
+  Controller, Post, Get, Delete, Body, Param, Query, Redirect,
   HttpCode, HttpStatus, Request, BadRequestException, InternalServerErrorException,
 } from '@nestjs/common';
 import { ConfigService }              from '@nestjs/config';
@@ -110,9 +110,9 @@ export class IntegrationsController {
     const appUrl      = this.config.get<string>('APP_URL') ?? 'http://localhost:5000';
     const redirect_uri = `${appUrl}/oauth/callback`;
 
-    const isInstagram = platform === 'corp_instagram' || platform === 'meta_business';
-    const isTikTok    = platform === 'corp_tiktok'    || platform === 'tiktok_business';
-    const isYouTube   = platform === 'corp_youtube'   || platform === 'youtube_business' || platform === 'google_business';
+    const isInstagram = platform === 'corp_instagram' || platform === 'meta_business' || platform === 'meta_ads';
+    const isTikTok    = platform === 'corp_tiktok'    || platform === 'tiktok_business' || platform === 'tiktok_ads';
+    const isYouTube   = platform === 'corp_youtube'   || platform === 'youtube_business' || platform === 'google_business' || platform === 'google_ads' || platform === 'youtube_ads';
 
     try {
       if (isInstagram) {
@@ -146,8 +146,8 @@ export class IntegrationsController {
       }
 
       if (isYouTube) {
-        const clientId     = this.config.get<string>('GOOGLE_CLIENT_ID')     ?? '';
-        const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? '';
+        const clientId     = this.config.get<string>('GOOGLE_CLIENT_ID')     ?? this.config.get<string>('GOOGLE_ADS_CLIENT_ID')     ?? '';
+        const clientSecret = this.config.get<string>('GOOGLE_CLIENT_SECRET') ?? this.config.get<string>('GOOGLE_ADS_CLIENT_SECRET') ?? '';
         if (!clientId || !clientSecret) throw new BadRequestException('GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET não configurados');
 
         const res  = await fetch('https://oauth2.googleapis.com/token', {
@@ -241,10 +241,24 @@ export class IntegrationsController {
     return { url: this.spotify.getAuthUrl(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId) };
   }
 
+  @Get('spotify/callback')
+  @Public()
+  @Redirect()
+  @ApiOperation({ summary: 'Callback OAuth Spotify (redirect do Spotify)' })
+  async spotifyCallbackGet(@Query('code') code: string, @Query('state') state: string) {
+    const frontendUrl = process.env['FRONTEND_URL'] ?? 'http://localhost:5000';
+    try {
+      await this.spotify.handleCallback(code, state);
+      return { url: `${frontendUrl}/settings/integrations?spotify=connected` };
+    } catch {
+      return { url: `${frontendUrl}/settings/integrations?spotify=error` };
+    }
+  }
+
   @Post('spotify/callback')
   @RequireRole('editor')
   @Audit('integration.connected')
-  @ApiOperation({ summary: 'Callback OAuth Spotify' })
+  @ApiOperation({ summary: 'Callback OAuth Spotify (POST manual)' })
   @HttpCode(HttpStatus.OK)
   spotifyCallback(@Body() dto: SpotifyConnectDto) {
     return this.spotify.handleCallback(dto.code, dto.state);

@@ -15,6 +15,7 @@ import { Plus, X, Loader2 } from "lucide-react";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { AIGenerateButton } from "@/shared/components/AIGenerateButton";
 import { briefingSchema, type BriefingFormData } from "@/modules/marketing/lib/briefing-schema";
+import { useBriefings } from "@/modules/marketing/hooks/useBriefings";
 
 interface BriefingFormModalProps {
   open: boolean;
@@ -102,10 +103,15 @@ export function BriefingFormModal({ open, onOpenChange, initialData, mode }: Bri
     }
   };
 
-  const onSubmit = async (_data: BriefingFormData) => {
+  const { addBriefing, updateBriefing } = useBriefings();
+
+  const onSubmit = async (data: BriefingFormData) => {
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      toast.success(mode === "create" ? "Briefing criado com sucesso!" : "Briefing atualizado com sucesso!");
+      if (mode === "edit" && initialData?.id) {
+        await updateBriefing.mutateAsync({ id: initialData.id as string, data: data as never });
+      } else {
+        await addBriefing.mutateAsync(data as never);
+      }
       onOpenChange(false);
     } catch {
       toast.error("Erro ao salvar briefing");

@@ -9,6 +9,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getAccessToken } from "@/shared/lib/api-client";
 import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -246,6 +247,9 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
 };
 
+// Plataformas cujo OAuth é iniciado pelo backend (têm endpoint próprio)
+const BACKEND_OAUTH_PLATFORMS = new Set<MarketingPlatformId>(["spotify_ads", "corp_spotify"]);
+
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 
 type DialogStep = "permissions" | "waiting" | "success";
@@ -304,23 +308,51 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
     return () => window.removeEventListener("message", handler);
   }, [open, platform, handleSuccess]);
 
-  // Polling: detecta se o popup foi fechado manualmente sem login
+  // Polling: detecta popup fechado ou redirect de sucesso (Spotify)
   useEffect(() => {
     if (step !== "waiting") return;
     const interval = setInterval(() => {
-      if (popupRef.current && popupRef.current.closed) {
+      if (!popupRef.current) return;
+
+      // Spotify: backend redireciona de volta com ?spotify=connected na mesma origem
+      if (BACKEND_OAUTH_PLATFORMS.has(platform)) {
+        try {
+          const href = popupRef.current.location.href;
+          if (href.includes("spotify=connected")) {
+            popupRef.current.close();
+            popupRef.current = null;
+            handleSuccess();
+            return;
+          }
+        } catch { /* cross-origin durante o fluxo OAuth — ignorar */ }
+      }
+
+      if (popupRef.current.closed) {
         popupRef.current = null;
         setStep("permissions");
       }
     }, 500);
     return () => clearInterval(interval);
-  }, [step]);
+  }, [step, platform, handleSuccess]);
 
   const openPopup = async () => {
-    // In MOCK_MODE skip the backend init call and generate a local UUID.
-    // In production, request a server-issued single-use exchange_token.
-    // That token binds the code exchange to this authenticated user session,
-    // preventing the exchange endpoint from being used as an open broker.
+    const w = 480, h = 600;
+    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
+    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
+    const popupFeatures = `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`;
+
+    // Abre o popup IMEDIATAMENTE (dentro do gesto do utilizador, antes de qualquer await)
+    // para evitar que o bloqueador de popups do browser rejeite a janela.
+    // O popup começa em about:blank e é navegado para a URL correta após o fetch.
+    const popup = window.open("about:blank", `musicos360_oauth_${platform}`, popupFeatures);
+    if (!popup) {
+      toast.error(
+        "Popup bloqueado pelo browser. Clique no ícone 🚫 na barra de endereço e permita popups para este site.",
+      );
+      return;
+    }
+    popupRef.current = popup;
+
     let exchangeToken: string;
 
     if (MOCK_MODE) {
@@ -337,37 +369,28 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
           body: JSON.stringify({ platform }),
         });
         if (!res.ok) {
+          popup.close();
+          popupRef.current = null;
           const body = await res.json().catch(() => ({})) as Record<string, unknown>;
           const msg = (body["message"] as string | undefined) ?? `HTTP ${res.status}`;
           console.error("[OAuth] /oauth/init failed:", msg);
+          toast.error(`Erro ao iniciar autenticação: ${msg}`);
           return;
         }
         const data = (await res.json()) as { exchange_token: string };
         exchangeToken = data.exchange_token;
       } catch (err) {
+        popup.close();
+        popupRef.current = null;
         console.error("[OAuth] /oauth/init error:", err);
+        toast.error("Não foi possível conectar à API. Verifique se o servidor está rodando.");
         return;
       }
     }
 
-    // Store as nonce — OAuthCallbackPage reads from opener sessionStorage
-    // to validate CSRF before sending to the backend exchange endpoint.
     sessionStorage.setItem(`musicos360_oauth_nonce_${platform}`, exchangeToken);
-
-    const url = `/oauth/${platform}?nonce=${encodeURIComponent(exchangeToken)}`;
-    const w = 480;
-    const h = 600;
-    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
-    const top = Math.round(window.screenY + (window.outerHeight - h) / 2);
-    const popup = window.open(
-      url,
-      `musicos360_oauth_${platform}`,
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-    );
-    if (popup) {
-      popupRef.current = popup;
-      setStep("waiting");
-    }
+    popup.location.href = `/oauth/${platform}?nonce=${encodeURIComponent(exchangeToken)}`;
+    setStep("waiting");
   };
 
   const handleClose = (val: boolean) => {

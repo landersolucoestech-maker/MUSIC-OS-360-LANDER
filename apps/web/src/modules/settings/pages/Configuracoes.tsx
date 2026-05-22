@@ -48,8 +48,6 @@ import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSign
 import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
-import { ACRCloudConfigDialog } from "@/modules/integrations/components/ACRCloudConfigDialog";
-import { useACRCloudStatus } from "@/modules/integrations/hooks/useACRCloud";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
 import {
@@ -103,7 +101,7 @@ const PERMISSION_MODULES = [
   { id: "musicchat", name: "MusicChat" },
 ];
 
-// E-mails mock retornados após OAuth de cada distribuidora (constante de módulo — estável entre renders)
+// E-mails fallback após OAuth de cada distribuidora (constante de módulo — estável entre renders)
 const DIST_MOCK_EMAILS: Record<string, string> = {
   onerpm:    "musicbusiness@onerpm.com",
   distrokid: "musicbusiness@distrokid.com",
@@ -112,6 +110,9 @@ const DIST_MOCK_EMAILS: Record<string, string> = {
   musicpro:  "musicbusiness@musicpro.com",
   somvibe:   "musicbusiness@somvibe.com.br",
 };
+
+// IDs canônicos das distribuidoras — usado para filtrar postMessages
+const DISTRIBUTOR_IDS = new Set(Object.keys(DIST_MOCK_EMAILS));
 
 export default function Configuracoes() {
   const { tenant, setTenant } = useTenant();
@@ -137,7 +138,7 @@ export default function Configuracoes() {
     () => usuarios.find((u) => u.id === user?.id)?.role,
     [usuarios, user?.id],
   );
-  const isAdmin = currentUserRole === "admin";
+  const isAdmin = currentUserRole === "admin" || currentUserRole === "owner";
   const [seedLoading, setSeedLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -203,7 +204,6 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
-  const [acrcloudConfigOpen, setAcrcloudConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
 
   const DIST_STORAGE_KEY = "musicos360_distributor_connections";
@@ -233,8 +233,8 @@ export default function Configuracoes() {
         toast.success("SEFAZ autenticado. Configure os detalhes da NF-e.");
         return;
       }
-      // Distribuidora popup success
-      if (!platformId || !DIST_MOCK_EMAILS[platformId]) return;
+      // Distribuidora popup success — ignore messages from non-distributor platforms
+      if (!platformId || !DISTRIBUTOR_IDS.has(platformId)) return;
       distPopupRef.current = null;
       handleDistOAuthSuccess(platformId);
     };
@@ -280,7 +280,6 @@ export default function Configuracoes() {
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
-  const { data: acrcloudStatus } = useACRCloudStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
@@ -505,16 +504,6 @@ export default function Configuracoes() {
       category: "Fiscal",
       configurable: true,
     },
-    // ── Monitoramento Musical ─────────────────────────────────────────────────
-    {
-      id: "acrcloud",
-      name: "ACRCloud",
-      icon: "📡",
-      status: acrcloudStatus?.connected ? "conectado" : "desconectado",
-      description: "Motor de fingerprint de áudio · Identificação de execuções · Alertas de uso · Infraestrutura da plataforma",
-      category: "Monitoramento Musical",
-      configurable: true,
-    },
     // ── Captação de Leads ─────────────────────────────────────────────────────
     // Integração via snippet de código (pixel JS + webhook + iframe) — sem OAuth.
     {
@@ -555,7 +544,6 @@ export default function Configuracoes() {
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
-    acrcloud:      () => setAcrcloudConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => openNfePopup(),
   };
@@ -1791,11 +1779,6 @@ export default function Configuracoes() {
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
             />
-            <ACRCloudConfigDialog
-              open={acrcloudConfigOpen}
-              onOpenChange={setAcrcloudConfigOpen}
-            />
-
             {oauthDialogPlatform && (
               <MarketingOAuthDialog
                 open={Boolean(oauthDialogPlatform)}
@@ -2332,7 +2315,7 @@ export default function Configuracoes() {
           </TabsContent>
         </Tabs>
 
-        {(
+        {isAdmin && (
           <Card className="mt-6 border-warning/30 bg-warning/5">
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center gap-2 text-warning text-base">

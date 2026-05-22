@@ -76,7 +76,7 @@ const transactionTypeMeta: Record<string, TypeMeta> = {
     sign: "+",
   },
   comissao: {
-    label: "Comissao",
+    label: "Comissão",
     icon: WalletCards,
     badgeClass: "border-cyan-200 bg-cyan-50 text-cyan-700",
     amountClass: "text-cyan-600 dark:text-cyan-400",
@@ -104,7 +104,7 @@ const transactionTypeMeta: Record<string, TypeMeta> = {
     sign: "-",
   },
   transferencia: {
-    label: "Transferencia",
+    label: "Transferência",
     icon: RefreshCcw,
     badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
     amountClass: "text-slate-800 dark:text-slate-200",

@@ -12,6 +12,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { inventarioSchema, type InventarioFormData } from "@/modules/inventory/lib/inventario-schema";
 import { FieldError } from "@/shared/components/FormField";
+import { useInventario } from "@/modules/inventory/hooks/useInventario";
 
 interface InventarioFormModalProps {
   open: boolean;
@@ -137,18 +138,34 @@ export function InventarioFormModal({ open, onOpenChange, item, mode }: Inventar
     }
   }, [item, open, reset]);
 
-  const onSubmit = async (data: InventarioFormData) => {
+  const { addInventario, updateInventario } = useInventario();
+
+  const onSubmit = async (data: InventarioFormData & { setor?: string; responsavel?: string; localCompra?: string; numeroNotaFiscal?: string; dataEntrada?: string }) => {
     if (isViewMode) return;
-
-    // Simular envio
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-
-    toast.success(
-      mode === "create"
-        ? "Item cadastrado com sucesso!"
-        : "Item atualizado com sucesso!"
-    );
-    onOpenChange(false);
+    try {
+      const payload = {
+        nome:                data.nome,
+        categoria:           data.categoria || undefined,
+        quantidade:          data.quantidade ?? 1,
+        valor_unitario:      data.valor_unitario ?? undefined,
+        localizacao:         data.localizacao || undefined,
+        status:              data.status || "disponivel",
+        responsavel:         data.responsavel || undefined,
+        setor:               data.setor || undefined,
+        data_entrada:        data.dataEntrada || undefined,
+        local_compra:        data.localCompra || undefined,
+        numero_nota_fiscal:  data.numeroNotaFiscal || undefined,
+        observacoes:         data.observacoes || undefined,
+      };
+      if (mode === "edit" && item?.id) {
+        await updateInventario.mutateAsync({ id: item.id as string, data: payload as never });
+      } else {
+        await addInventario.mutateAsync(payload as never);
+      }
+      onOpenChange(false);
+    } catch {
+      toast.error("Erro ao salvar item. Tente novamente.");
+    }
   };
 
   const formatDateForInput = (dateString: string) => {

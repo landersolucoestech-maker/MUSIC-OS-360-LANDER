@@ -4,7 +4,12 @@ import { ApiProperty, ApiPropertyOptional }                  from '@nestjs/swagg
 export class OAuthInitDto {
   @ApiProperty({ description: 'Plataforma que iniciará o fluxo OAuth' })
   @IsString() @IsNotEmpty()
-  @IsIn(['corp_instagram', 'meta_business', 'corp_tiktok', 'tiktok_business', 'corp_youtube', 'youtube_business', 'google_business'])
+  @IsIn([
+    'corp_instagram', 'meta_business', 'meta_ads',
+    'corp_tiktok', 'tiktok_business', 'tiktok_ads',
+    'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',
+    'spotify_ads', 'corp_spotify',
+  ])
   platform!: string;
 }
 
@@ -15,7 +20,11 @@ export class OAuthExchangeDto {
 
   @ApiProperty({ description: 'Identificador da plataforma (ex: corp_instagram, corp_tiktok, corp_youtube)' })
   @IsString() @IsNotEmpty()
-  @IsIn(['corp_instagram', 'meta_business', 'corp_tiktok', 'tiktok_business', 'corp_youtube', 'youtube_business', 'google_business'])
+  @IsIn([
+    'corp_instagram', 'meta_business', 'meta_ads',
+    'corp_tiktok', 'tiktok_business', 'tiktok_ads',
+    'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',
+  ])
   platform!: string;
 
   @ApiProperty({ description: 'Token de troca de uso único emitido por POST /oauth/init (substitui redirect_uri)' })

@@ -63,13 +63,19 @@ export function usePlanFeatures() {
     return { features: ALL_ENABLED, plan: 'enterprise' as const, status: 'active', isLoading: false, isTrialing: false, isCancelled: false };
   }
 
+  // When subscription is null (no billing configured / Stripe not set up),
+  // default to ALL_ENABLED so modules are accessible during development.
+  if (!subscription && !isLoading) {
+    return { features: ALL_ENABLED, plan: 'enterprise' as const, status: 'active', isLoading: false, isTrialing: false, isCancelled: false };
+  }
+
   const rawFeatures = (subscription as any)?.features ?? {};
-  const features: PlanFeatures = { ...STARTER_FEATURES, ...rawFeatures };
+  const features: PlanFeatures = { ...ALL_ENABLED, ...rawFeatures };
 
   return {
     features,
-    plan:        (subscription?.plan ?? 'starter') as string,
-    status:      subscription?.status ?? 'trial',
+    plan:        (subscription?.plan ?? 'enterprise') as string,
+    status:      subscription?.status ?? 'active',
     isLoading,
     isTrialing:  subscription?.status === 'trial',
     isCancelled: subscription?.status === 'cancelled',
