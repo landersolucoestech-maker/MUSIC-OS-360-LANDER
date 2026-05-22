@@ -1,12 +1,13 @@
 /**
  * health/health.controller.ts
  *
- * Endpoint público de health check — usado por load balancers, k8s probes
- * e alertas de monitoramento.
+ * Public surface:
+ *   GET /api/v1/health/live     -> liveness only
  *
- * GET /api/v1/health          → liveness + readiness + DB + memória
- * GET /api/v1/health/live     → liveness only (processo up)
- * GET /api/v1/health/ready    → readiness (DB conectado)
+ * Protected surface:
+ *   GET /api/v1/health          -> full health details
+ *   GET /api/v1/health/ready    -> readiness details
+ *   GET /api/v1/health/integrations -> integration circuit breaker states
  */
 
 import { Controller, Get } from '@nestjs/common';
@@ -32,49 +33,39 @@ export class HealthController {
     private readonly cbRegistry: CircuitBreakerRegistry,
   ) {}
 
-  /** Full health check — liveness + readiness + resources */
   @Get()
-  @Public()
   @HealthCheck()
-  @ApiOperation({ summary: 'Full health check (liveness + readiness + resources)' })
+  @ApiOperation({ summary: 'Protected full health check' })
   check() {
     return this.health.check([
       () => this.db.isHealthy('database'),
-      () => this.memory.checkHeap('memory_heap', 512 * 1024 * 1024),   // 512 MB
-      () => this.memory.checkRSS('memory_rss', 1024 * 1024 * 1024),    // 1 GB
+      () => this.memory.checkHeap('memory_heap', 512 * 1024 * 1024),
+      () => this.memory.checkRSS('memory_rss', 1024 * 1024 * 1024),
     ]);
   }
 
-  /** Liveness probe — apenas verifica se o processo está UP (sem DB) */
   @Get('live')
   @Public()
-  @ApiOperation({ summary: 'Liveness probe (processo up)' })
+  @ApiOperation({ summary: 'Public liveness probe' })
   liveness() {
     return {
-      status:          'up',
-      ts:              new Date().toISOString(),
-      uptime_seconds:  Math.round(process.uptime()),
-      version:         process.env['npm_package_version'] ?? '1.0.0',
-      environment:     process.env['NODE_ENV'] ?? 'development',
+      status: 'up',
+      ts: new Date().toISOString(),
     };
   }
 
-  /** Circuit breaker states for all external integrations */
   @Get('integrations')
-  @Public()
-  @ApiOperation({ summary: 'Circuit breaker states for external integrations' })
+  @ApiOperation({ summary: 'Protected circuit breaker states for external integrations' })
   integrations() {
     return {
-      ts:      new Date().toISOString(),
+      ts: new Date().toISOString(),
       breakers: this.cbRegistry.getStates(),
     };
   }
 
-  /** Readiness probe — verifica se a DB está acessível */
   @Get('ready')
-  @Public()
   @HealthCheck()
-  @ApiOperation({ summary: 'Readiness probe (DB conectado)' })
+  @ApiOperation({ summary: 'Protected readiness probe' })
   readiness() {
     return this.health.check([
       () => this.db.isHealthy('database'),
