@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import jwt from 'jsonwebtoken';
+import { redactSensitiveObject } from '../src/core/security/redact';
 import { Client as PgClient } from 'pg';
 
 type HttpResult = { res: Response; json: any; text: string };
@@ -540,12 +541,12 @@ async function main() {
     }, {}),
     requests,
   };
-  console.log(JSON.stringify(summary, null, 2));
+  console.log(JSON.stringify(redactSensitiveObject(summary), null, 2));
   if (failures.length) process.exit(1);
 }
 
 main().catch((err) => {
-  console.error(JSON.stringify({
+  console.error(JSON.stringify(redactSensitiveObject({
     runId,
     result: 'FALHOU',
     fatal: {
@@ -557,6 +558,6 @@ main().catch((err) => {
     failures,
     evidence,
     requests,
-  }, null, 2));
+  }), null, 2));
   process.exit(1);
 });

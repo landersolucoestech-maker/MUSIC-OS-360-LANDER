@@ -1,6 +1,7 @@
 #!/usr/bin/env tsx
 import { existsSync, readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { redactSensitiveObject } from '../src/core/security/redact';
 import {
   DeleteObjectCommand,
   GetObjectCommand,
@@ -199,7 +200,7 @@ async function main() {
       secret: same(process.env.R2_SECRET_ACCESS_KEY, process.env.R2_SECRET_KEY),
     },
   };
-  console.log(JSON.stringify({ section: 'config', config }, null, 2));
+  console.log(JSON.stringify({ section: 'config', config: redactSensitiveObject(config) }, null, 2));
   console.log(JSON.stringify({ section: 'clock', result: await clockCheck() }, null, 2));
 
   for (const region of ['auto', 'us-east-1'] as Region[]) {

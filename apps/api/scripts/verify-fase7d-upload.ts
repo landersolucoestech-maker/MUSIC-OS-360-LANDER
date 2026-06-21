@@ -2,6 +2,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { setTimeout as delay } from 'node:timers/promises';
 import jwt from 'jsonwebtoken';
+import { redactSensitiveObject } from '../src/core/security/redact';
 import { Client as PgClient } from 'pg';
 import {
   DeleteObjectCommand,
@@ -480,7 +481,7 @@ async function main() {
   checks.db = uploadRows.rows;
   await pg.end();
 
-  console.log(JSON.stringify({ runId, result: 'PASSOU', checks, requests }, null, 2));
+  console.log(JSON.stringify(redactSensitiveObject({ runId, result: 'PASSOU', checks, requests }), null, 2));
 }
 
 main().catch((err) => {

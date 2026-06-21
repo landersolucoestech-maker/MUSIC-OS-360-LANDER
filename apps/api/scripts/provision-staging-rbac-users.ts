@@ -120,7 +120,9 @@ async function main(): Promise<void> {
     }
 
     console.log('\n# Credenciais para o harness:');
-    console.log(`# RBAC_HARNESS_*_PASSWORD=${PASSWORD}`);
+    // Never print the password (CWE-312/532). Set PROVISION_PASSWORD explicitly
+    // so you control/know the value; it is not echoed to logs.
+    console.log('# RBAC_HARNESS_*_PASSWORD = (defina/leia via env PROVISION_PASSWORD)');
     console.log(credentials.join('\n'));
     console.log(`# RBAC_HARNESS_TENANT_A/B/C=${tenantIds.slice(0, 3).join(' / ')}`);
   } finally {
