@@ -6,6 +6,7 @@
  */
 import { Injectable } from '@nestjs/common';
 import { getFieldLabelPtBr, normalizeFieldKey } from '../i18n/field-labels.pt-br';
+import { isWritableKey } from '../../../core/security/safe-object';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 
 export interface HeaderMapping {
@@ -27,12 +28,19 @@ export class ImportMapperService {
       byName.set(col.toLowerCase(), col);
     }
 
-    const mapping: Record<string, string | null> = {};
+    // Bag sem protótipo: cabeçalho do arquivo é chave dinâmica controlada pelo
+    // usuário; null-proto + isWritableKey impedem property injection (CWE-915).
+    const mapping: Record<string, string | null> = Object.create(null);
     const unknownColumns: string[] = [];
     const ignoredColumns: string[] = [];
 
     for (const header of headers) {
       const h = header.trim();
+      // Cabeçalho que tenta poluir protótipo (__proto__, constructor, …) é ignorado.
+      if (!isWritableKey(header)) {
+        ignoredColumns.push(header);
+        continue;
+      }
       const hl = h.toLowerCase();
       // tenant_id (em qualquer forma) nunca é importado — segurança multi-tenant.
       if (hl === 'tenant_id' || normalizeFieldKey(h).toLowerCase() === 'tenantid' || hl === 'tenant') {

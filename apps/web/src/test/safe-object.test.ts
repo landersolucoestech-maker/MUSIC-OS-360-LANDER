@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { isSafeKey, assertSafeKey, UnsafeKeyError } from "@/shared/lib/safe-object";
+import { isSafeKey, assertSafeKey, UnsafeKeyError, stripUnsafeKeys } from "@/shared/lib/safe-object";
 
 describe("safe-object guards (remote property injection, CWE-915)", () => {
   it("accepts normal id-like keys", () => {
@@ -28,5 +28,22 @@ describe("safe-object guards (remote property injection, CWE-915)", () => {
     }
     // guard denied the write → prototype intact
     expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  describe("stripUnsafeKeys (safe merge of user data)", () => {
+    it("drops prototype-polluting keys, keeps the rest", () => {
+      const dirty = JSON.parse(
+        '{"name":"ok","__proto__":{"polluted":true},"constructor":1,"valueOf":2,"valid-key":"v"}',
+      ) as Record<string, unknown>;
+      const clean = stripUnsafeKeys(dirty);
+      expect(clean).toEqual({ name: "ok", "valid-key": "v" });
+    });
+
+    it("a merge built from the cleaned object does not pollute the prototype", () => {
+      const malicious = JSON.parse('{"__proto__":{"polluted":true},"x":1}') as Record<string, unknown>;
+      const merged = { ...stripUnsafeKeys(malicious) };
+      expect((merged as Record<string, unknown>).x).toBe(1);
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+    });
   });
 });

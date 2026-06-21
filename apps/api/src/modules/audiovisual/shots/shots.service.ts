@@ -80,13 +80,19 @@ export class AudiovisualShotsService {
 
   async reorder(tenantId: string, projectId: string, ids: string[]) {
     await this.assertProject(tenantId, projectId);
-    for (let i = 0; i < ids.length; i++) {
+    // ids vem do corpo da requisição: materializa uma lista local validada
+    // (apenas strings) antes de iterar, evitando iteração sobre objeto
+    // controlado pelo usuário (CWE-915).
+    const safeIds = (Array.isArray(ids) ? ids : []).filter(
+      (id): id is string => typeof id === 'string',
+    );
+    for (let i = 0; i < safeIds.length; i++) {
       await this.r.update(
-        { id: ids[i], tenant_id: tenantId, audiovisual_project_id: projectId } as never,
+        { id: safeIds[i], tenant_id: tenantId, audiovisual_project_id: projectId } as never,
         { ordering: i, updated_at: new Date() } as never,
       );
     }
-    return { reordered: ids.length };
+    return { reordered: safeIds.length };
   }
 
   private async nextOrdering(tenantId: string, projectId: string): Promise<number> {

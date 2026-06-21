@@ -5,6 +5,7 @@
  */
 import { BadRequestException, Injectable } from '@nestjs/common';
 import * as XLSX from 'xlsx';
+import { isWritableKey } from '../../../core/security/safe-object';
 import { IMPORT_MAX_ROWS, type ImportFormat, type ParsedFile } from './import.types';
 
 function formatFromName(filename: string): ImportFormat {
@@ -53,11 +54,11 @@ export class ImportParserService {
     const body = nonEmpty.slice(1);
     this.assertRowLimit(body.length);
     const rows = body.map((line) => {
-      const rec: Record<string, string> = {};
-      headers.forEach((h, idx) => { if (h) rec[h] = String(line[idx] ?? ''); });
+      const rec: Record<string, string> = Object.create(null);
+      headers.forEach((h, idx) => { if (isWritableKey(h)) rec[h] = String(line[idx] ?? ''); });
       return rec;
     });
-    return { format: 'csv', headers: headers.filter(Boolean), rows };
+    return { format: 'csv', headers: headers.filter(isWritableKey), rows };
   }
 
   private parseJson(content: Buffer): ParsedFile {
@@ -70,9 +71,10 @@ export class ImportParserService {
 
     const headerSet = new Set<string>();
     const rows = arr.map((o) => {
-      const rec: Record<string, string> = {};
+      const rec: Record<string, string> = Object.create(null);
       if (o && typeof o === 'object') {
         for (const [k, v] of Object.entries(o as Record<string, unknown>)) {
+          if (!isWritableKey(k)) continue; // ignora chaves poluentes (__proto__, …)
           headerSet.add(k);
           rec[k] = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
         }
@@ -94,11 +96,11 @@ export class ImportParserService {
     this.assertRowLimit(body.length);
 
     const rows = body.map((line) => {
-      const rec: Record<string, string> = {};
-      headers.forEach((h, i) => { if (h) rec[h] = String((line as unknown[])[i] ?? ''); });
+      const rec: Record<string, string> = Object.create(null);
+      headers.forEach((h, i) => { if (isWritableKey(h)) rec[h] = String((line as unknown[])[i] ?? ''); });
       return rec;
     });
-    return { format: 'xlsx', headers: headers.filter(Boolean), rows };
+    return { format: 'xlsx', headers: headers.filter(isWritableKey), rows };
   }
 
   private assertRowLimit(n: number): void {

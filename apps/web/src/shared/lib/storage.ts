@@ -15,6 +15,7 @@ import { getCurrentOrgId } from "./tenant";
 import { TenantError, NotFoundError, TransactionError, ConflictError, IntegrationError } from "./errors";
 import { api, TABLE_ENDPOINT, PENDING_TABLES } from "./api-client";
 import { MOCK_MODE } from "./env";
+import { stripUnsafeKeys } from "./safe-object";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -166,7 +167,7 @@ const mockStorage = {
     const now = new Date().toISOString();
     const orgId = isTenantScoped(table) ? getCurrentOrgId() : undefined;
     const newRow = {
-      ...data,
+      ...stripUnsafeKeys(data as Record<string, unknown>),
       ...(orgId !== undefined && { org_id: orgId }),
       id: `mock-${table}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       user_id: MOCK_USER_ID,
@@ -193,7 +194,7 @@ const mockStorage = {
     const before = { ...rows[idx] };
     const { org_id: _dropped, version: _v, ...safeData } = data as Record<string, unknown>;
     const currentVersion = (rows[idx]["version"] as number) ?? 0;
-    const updated = { ...rows[idx], ...safeData, version: currentVersion + 1, updated_at: new Date().toISOString() } as T;
+    const updated = { ...rows[idx], ...stripUnsafeKeys(safeData), version: currentVersion + 1, updated_at: new Date().toISOString() } as T;
     rows[idx] = updated;
     writeAuditEntry({
       entity: table, entity_id: id, action: "update", before, after: { ...updated },

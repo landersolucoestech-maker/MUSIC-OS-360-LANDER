@@ -21,6 +21,7 @@ import { EXPORT_DEFAULT_PAGE_SIZE, type ExportFormat, type ExportQueryParams } f
 import type { ImportValidationResult } from './import/import.types';
 import type { EntitiesInventory } from './entity-metadata.types';
 import type { ReportEntityDefinition } from './definitions/report-entity-definition.types';
+import { isSafeKey } from '../../core/security/safe-object';
 
 interface ImportValidateBody {
   filename: string;
@@ -33,9 +34,11 @@ const RESERVED_QUERY_KEYS = new Set(['format', 'columns', 'sort', 'order', 'page
 function parseExportParams(query: Record<string, string | string[] | undefined>): ExportQueryParams {
   const str = (v: string | string[] | undefined): string | undefined =>
     Array.isArray(v) ? v[0] : v;
-  const filters: Record<string, string> = {};
+  // Chave de filtro vem da query string (controlada pelo cliente): null-proto +
+  // isSafeKey impedem property injection / prototype pollution (CWE-915).
+  const filters: Record<string, string> = Object.create(null);
   for (const [k, v] of Object.entries(query)) {
-    if (RESERVED_QUERY_KEYS.has(k)) continue;
+    if (RESERVED_QUERY_KEYS.has(k) || !isSafeKey(k)) continue;
     const val = str(v);
     if (val !== undefined) filters[k] = val;
   }

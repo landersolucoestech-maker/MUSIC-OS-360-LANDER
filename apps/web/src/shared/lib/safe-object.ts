@@ -39,3 +39,16 @@ export function assertSafeKey(key: unknown): string {
   }
   return key;
 }
+
+/**
+ * Shallow copy with prototype-polluting keys removed. Use before spreading or
+ * merging a user-controlled object so `__proto__`/`constructor`/… cannot reach
+ * the merge target (CWE-915). Keeps every other (free-form) key intact.
+ */
+export function stripUnsafeKeys<T extends Record<string, unknown>>(obj: T): Partial<T> {
+  const out: Record<string, unknown> = {};
+  for (const k of Object.keys(obj)) {
+    if (!FORBIDDEN_KEYS.has(k)) out[k] = obj[k];
+  }
+  return out as Partial<T>;
+}
