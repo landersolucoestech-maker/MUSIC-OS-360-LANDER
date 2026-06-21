@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useTenant } from "@/app/providers/TenantContext";
 import { api } from "@/shared/lib/api-client";
 import { MOCK_MODE } from "@/shared/lib/env";
+import { isSafeKey } from "@/shared/lib/safe-object";
 import {
   MOCK_TICKETS, MOCK_MESSAGES, MOCK_CHAT_ROOMS,
   MOCK_CHAT_MESSAGES, MOCK_REQUESTS, MOCK_KNOWLEDGE_ARTICLES,
@@ -141,7 +142,10 @@ export function useTicketMessages(ticketId: string) {
     return seeded;
   });
 
-  const messages = allMessages[ticketId] ?? [];
+  // Guard the user-controlled ticketId before using it as a dynamic object key
+  // (prevents remote property injection / prototype pollution — CWE-915).
+  const safeTicketId = isSafeKey(ticketId) ? ticketId : null;
+  const messages = safeTicketId ? (allMessages[safeTicketId] ?? []) : [];
 
   const addMessage = useCallback(
     (text: string, role: "user" | "support" = "support") => {
@@ -156,13 +160,14 @@ export function useTicketMessages(ticketId: string) {
         internal_note: false,
         created_at: new Date().toISOString(),
       };
+      if (!safeTicketId) return; // invalid/injection key — deny, preserve state
       setAllMessages((prev) => {
-        const updated = { ...prev, [ticketId]: [...(prev[ticketId] ?? []), next] };
+        const updated = { ...prev, [safeTicketId]: [...(prev[safeTicketId] ?? []), next] };
         save(lsKey("support_messages", tenantId), updated);
         return updated;
       });
     },
-    [ticketId, tenantId]
+    [safeTicketId, tenantId]
   );
 
   return { messages, addMessage };
