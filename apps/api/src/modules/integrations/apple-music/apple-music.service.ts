@@ -4,8 +4,10 @@ import { DataSource }           from 'typeorm';
 import { DATA_SOURCE }          from '../../../database/database.module';
 import { EncryptionService }    from '../../../core/security/encryption.service';
 import { IntegrationBaseService } from '../integration-base.service';
+import { assertAllowedHost } from '../../../core/resilience/safe-url';
 
 const APPLE_API = 'https://api.music.apple.com/v1';
+const APPLE_HOSTS = ['api.music.apple.com'] as const;
 const PROVIDER  = 'apple_music';
 
 interface AppleCreds {
@@ -52,7 +54,8 @@ export class AppleMusicService extends IntegrationBaseService {
   async getArtistFromCatalog(tenantId: string, artistId: string, storefront = 'br') {
     const token = await this.getToken(tenantId);
     if (!token) return { error: 'Apple Music não configurado' };
-    const res = await fetch(`${APPLE_API}/catalog/${storefront}/artists/${artistId}`, { headers: { Authorization: `Bearer ${token}` } });
+    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(storefront)}/artists/${encodeURIComponent(artistId)}`, APPLE_HOSTS);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return { error: `Apple Music API error: ${res.status}` };
     const d    = await res.json() as any;
     const attr = d.data?.[0]?.attributes ?? {};
@@ -67,7 +70,8 @@ export class AppleMusicService extends IntegrationBaseService {
   async searchCatalog(tenantId: string, term: string, types = 'artists,albums', storefront = 'br', limit = 10) {
     const token = await this.getToken(tenantId);
     if (!token) return { error: 'Apple Music não configurado' };
-    const res = await fetch(`${APPLE_API}/catalog/${storefront}/search?term=${encodeURIComponent(term)}&types=${types}&limit=${limit}`, { headers: { Authorization: `Bearer ${token}` } });
+    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(storefront)}/search?term=${encodeURIComponent(term)}&types=${encodeURIComponent(types)}&limit=${encodeURIComponent(String(limit))}`, APPLE_HOSTS);
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return { error: `Apple Music API error: ${res.status}` };
     return res.json();
   }

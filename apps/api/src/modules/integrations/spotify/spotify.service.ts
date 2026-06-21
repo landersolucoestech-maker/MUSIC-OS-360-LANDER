@@ -7,11 +7,13 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { OAuthConnectionEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import { CircuitBreakerRegistry } from '../../../core/resilience/circuit-breaker.registry';
+import { assertAllowedHost } from '../../../core/resilience/safe-url';
 import { QUEUE_NAMES } from '../../../queues/queue.constants';
 
 const PROVIDER = 'spotify';
 const SPOTIFY_ACCOUNTS = 'https://accounts.spotify.com';
 const SPOTIFY_API = 'https://api.spotify.com/v1';
+const SPOTIFY_HOSTS = ['api.spotify.com'] as const;
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 interface SpotifyOAuthState {
@@ -201,7 +203,8 @@ export class SpotifyService {
     }
 
     const token = await this.getClientCredentialsToken();
-    const res = await this.fetch(`${SPOTIFY_API}/artists/${artistId}`, {
+    const url = assertAllowedHost(`${SPOTIFY_API}/artists/${encodeURIComponent(artistId)}`, SPOTIFY_HOSTS);
+    const res = await this.fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;
