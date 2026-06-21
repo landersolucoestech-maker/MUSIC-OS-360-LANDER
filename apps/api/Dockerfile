@@ -11,6 +11,7 @@ WORKDIR /app
 # Copy workspace manifests (allows pnpm to resolve the monorepo graph)
 COPY pnpm-workspace.yaml package.json pnpm-lock.yaml turbo.json ./
 COPY apps/api/package.json ./apps/api/
+COPY packages/ai-skills/package.json     ./packages/ai-skills/
 COPY packages/auth/package.json          ./packages/auth/
 COPY packages/config/package.json        ./packages/config/
 COPY packages/observability/package.json ./packages/observability/
@@ -25,7 +26,9 @@ RUN pnpm install --frozen-lockfile
 COPY apps/api/  ./apps/api/
 COPY packages/  ./packages/
 
-RUN pnpm --filter @music-os-360/api build
+RUN pnpm --filter @music-os-360/types build \
+ && pnpm --filter @music-os-360/ai-skills build \
+ && pnpm --filter @music-os-360/api build
 
 # ─── Stage 2: Production (distroless — no shell, no package manager, minimal CVEs) ──
 FROM gcr.io/distroless/nodejs20-debian12:nonroot AS production
@@ -38,8 +41,9 @@ WORKDIR /app
 # Copy prod dependencies from builder
 COPY --from=builder --chown=65532:65532 /app/node_modules        ./node_modules
 COPY --from=builder --chown=65532:65532 /app/apps/api/node_modules ./apps/api/node_modules
-COPY --from=builder --chown=65532:65532 /app/apps/api/dist        ./apps/api/dist
-COPY --from=builder --chown=65532:65532 /app/packages             ./packages
+COPY --from=builder --chown=65532:65532 /app/apps/api/dist          ./apps/api/dist
+COPY --from=builder --chown=65532:65532 /app/apps/api/bootstrap.cjs ./apps/api/dist/bootstrap.cjs
+COPY --from=builder --chown=65532:65532 /app/packages               ./packages
 
 # distroless:nonroot already runs as UID 65532 — no USER directive needed
 
@@ -52,4 +56,4 @@ EXPOSE 3001
 #   Railway / Render / Fly.io → HTTP GET /api/v1/health/live → expect 200
 WORKDIR /app/apps/api
 
-CMD ["dist/main.js"]
+CMD ["dist/bootstrap.cjs"]
