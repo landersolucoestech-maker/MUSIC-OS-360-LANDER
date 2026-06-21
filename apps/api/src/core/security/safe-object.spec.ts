@@ -48,10 +48,13 @@ describe('safe-object (property injection / prototype pollution, CWE-915)', () =
       for (const k of ['', null, undefined, 0, {}]) expect(isWritableKey(k)).toBe(false);
     });
 
-    it('accepts free-form keys (accents, spaces, punctuation, brackets)', () => {
+    it('rejects keys that start with "_" or contain brackets', () => {
+      for (const k of ['a[b]', '_hidden', '__x']) expect(isWritableKey(k)).toBe(false);
+    });
+
+    it('accepts free-form keys (accents, spaces, dots, punctuation)', () => {
       for (const k of [
         'a.b',
-        'a[b]',
         'valid_key',
         'valid-key',
         'validKey123',

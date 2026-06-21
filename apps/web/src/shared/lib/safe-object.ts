@@ -48,7 +48,10 @@ export function assertSafeKey(key: unknown): string {
 export function stripUnsafeKeys<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(obj)) {
-    if (!FORBIDDEN_KEYS.has(k)) out[k] = obj[k];
+    // Explicit comparisons are the recognized prototype-pollution barrier.
+    if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+    if (FORBIDDEN_KEYS.has(k)) continue;
+    out[k] = obj[k];
   }
   return out as Partial<T>;
 }

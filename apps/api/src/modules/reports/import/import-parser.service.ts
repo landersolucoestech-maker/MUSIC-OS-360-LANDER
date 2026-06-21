@@ -8,6 +8,10 @@ import * as XLSX from 'xlsx';
 import { isWritableKey } from '../../../core/security/safe-object';
 import { IMPORT_MAX_ROWS, type ImportFormat, type ParsedFile } from './import.types';
 
+// Teto de bytes do CSV: limita a varredura caractere-a-caractere a um tamanho
+// previsível, evitando iteração não-limitada sobre entrada do usuário (CWE-834).
+const IMPORT_MAX_CSV_CHARS = 16 * 1024 * 1024; // 16 MB de texto
+
 function formatFromName(filename: string): ImportFormat {
   if (/\.json$/i.test(filename)) return 'json';
   if (/\.(xlsx|xls)$/i.test(filename)) return 'xlsx';
@@ -29,6 +33,9 @@ export class ImportParserService {
   /** Parser CSV robusto (aspas, vírgulas/quebras escapadas, BOM). */
   private parseCsv(content: Buffer): ParsedFile {
     let text = content.toString('utf8');
+    if (text.length > IMPORT_MAX_CSV_CHARS) {
+      throw new BadRequestException('Arquivo CSV excede o tamanho máximo permitido.');
+    }
     if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // remove BOM
     const matrix: string[][] = [];
     let row: string[] = [];

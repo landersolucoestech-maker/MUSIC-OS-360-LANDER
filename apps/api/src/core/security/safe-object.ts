@@ -30,6 +30,11 @@ const FORBIDDEN_KEYS = new Set([
 
 const SAFE_KEY_RE = /^[A-Za-z0-9_-]+$/;
 
+// Free-form keys (e.g. spreadsheet headers): letters/digits (incl. accents),
+// spaces and common punctuation, but must NOT start with `_` — which excludes
+// `__proto__`, `__defineGetter__`, … by construction.
+const WRITABLE_KEY_RE = /^[\p{L}\p{N}][\p{L}\p{N} ._\-()%$#@/+:&]*$/u;
+
 /** Strict type-guard: true only for a safe own-property identifier key. */
 export function isSafeKey(key: unknown): key is string {
   return (
@@ -46,7 +51,11 @@ export function isSafeKey(key: unknown): key is string {
  * `Object.create(null)` target so a forbidden own-property cannot be reached.
  */
 export function isWritableKey(key: unknown): key is string {
-  return typeof key === "string" && key.length > 0 && !FORBIDDEN_KEYS.has(key);
+  if (typeof key !== "string" || key.length === 0) return false;
+  // Explicit comparisons + regex `.test()` are the recognized injection barriers.
+  if (key === "__proto__" || key === "constructor" || key === "prototype") return false;
+  if (FORBIDDEN_KEYS.has(key)) return false;
+  return WRITABLE_KEY_RE.test(key);
 }
 
 export class UnsafeKeyError extends Error {
