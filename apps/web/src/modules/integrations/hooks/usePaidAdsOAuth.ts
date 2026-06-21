@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { safeSessionSet } from "@/shared/lib/safe-storage";
 
 export type PaidAdsPlatform = "meta_ads" | "google_ads" | "tiktok_ads";
 
@@ -50,7 +51,7 @@ function loadConnections(): Partial<Record<PaidAdsPlatform, PaidAdsOAuthConnecti
 function saveConnections(
   connections: Partial<Record<PaidAdsPlatform, PaidAdsOAuthConnection>>
 ): void {
-  try { sessionStorage.setItem(STORAGE_KEY, JSON.stringify(connections)); } catch { /* ignore */ }
+  safeSessionSet(STORAGE_KEY, connections); // strips any token/secret (CWE-312)
 }
 
 export function usePaidAdsOAuth() {

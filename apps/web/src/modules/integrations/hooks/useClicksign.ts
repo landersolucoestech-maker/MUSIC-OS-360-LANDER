@@ -1,10 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { safeSessionSet } from "@/shared/lib/safe-storage";
 
 const CRED_KEY = "musicos360_clicksign_credentials";
 
 interface StoredCreds {
-  api_key: string;
+  // The Clicksign api_key is a secret and is NEVER persisted to browser storage
+  // (CWE-312). Only non-sensitive connection metadata is kept client-side.
+  api_key?: string;
   account_email?: string;
   saved_at: string;
 }
@@ -13,7 +16,8 @@ function readCreds(): StoredCreds | null {
   try { return JSON.parse(sessionStorage.getItem(CRED_KEY) || "null"); } catch { return null; }
 }
 function writeCreds(c: StoredCreds) {
-  try { sessionStorage.setItem(CRED_KEY, JSON.stringify(c)); } catch { /* ignore */ }
+  // safeSessionSet strips any sensitive key (api_key, *token, secret, …).
+  safeSessionSet(CRED_KEY, c);
 }
 function clearCreds() {
   try { sessionStorage.removeItem(CRED_KEY); } catch { /* ignore */ }

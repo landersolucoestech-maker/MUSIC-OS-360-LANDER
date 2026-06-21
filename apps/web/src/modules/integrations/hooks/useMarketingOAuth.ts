@@ -27,6 +27,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { MOCK_MODE } from "@/shared/lib/env";
+import { safeSessionSet } from "@/shared/lib/safe-storage";
 import type {
   MarketingPlatformId,
   MarketingCategory,
@@ -159,7 +160,7 @@ function loadConnections(): ConnectionMap {
 
 function saveConnections(connections: ConnectionMap): void {
   try {
-    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(connections));
+    safeSessionSet(STORAGE_KEY, connections); // strips any token/secret (CWE-312)
   } catch {
     // ignore quota errors
   }
