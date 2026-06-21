@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import DOMPurify from "dompurify";
 import { Download, Eye, FileText } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import {
@@ -201,7 +202,10 @@ export function ChatAttachment({ attachment }: { attachment: ChatAttachmentData 
         const arrayBuffer = await response.arrayBuffer();
         const mammoth = await import("mammoth");
         const result = await mammoth.convertToHtml({ arrayBuffer });
-        setPreview({ type: "html", html: result.value });
+        // Sanitize the converted HTML before it ever reaches the DOM (CWE-79):
+        // a crafted .docx could otherwise inject <script>/onerror/etc.
+        const safeHtml = DOMPurify.sanitize(result.value, { USE_PROFILES: { html: true } });
+        setPreview({ type: "html", html: safeHtml });
         setViewerOpen(true);
         return;
       }
@@ -307,7 +311,7 @@ export function ChatAttachment({ attachment }: { attachment: ChatAttachmentData 
             <ScrollArea className="h-[70vh] w-full rounded-md border border-border p-4">
               <div
                 className="prose prose-sm max-w-none text-foreground"
-                dangerouslySetInnerHTML={{ __html: preview.html }}
+                dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(preview.html, { USE_PROFILES: { html: true } }) }}
               />
             </ScrollArea>
           )}
