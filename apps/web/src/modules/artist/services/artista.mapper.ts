@@ -169,29 +169,47 @@ export function validateYoutubeUrl(url: string): UrlValidationState {
   return extractYoutubeId(url) !== null ? "valid" : "invalid";
 }
 
+/**
+ * Validates that `url` is a real URL whose host is (a subdomain of) `host`.
+ * Parses the URL instead of matching an unanchored substring regex, so a value
+ * like `https://evil.com/?x=instagram.com/` is correctly rejected (CWE-20).
+ */
+function hasHost(url: string, host: string): boolean {
+  const trimmed = url.trim();
+  // Tolerate scheme-less input (users paste "instagram.com/x") without weakening
+  // the check: the value is still parsed as a URL and the HOST is compared.
+  const candidate = /^https?:\/\//i.test(trimmed) ? trimmed : `https://${trimmed}`;
+  try {
+    const h = new URL(candidate).hostname.toLowerCase();
+    return h === host || h.endsWith(`.${host}`);
+  } catch {
+    return false;
+  }
+}
+
 export function validateInstagramUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return /instagram\.com\//i.test(url) ? "valid" : "invalid";
+  return hasHost(url, "instagram.com") ? "valid" : "invalid";
 }
 
 export function validateTiktokUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return /tiktok\.com\//i.test(url) ? "valid" : "invalid";
+  return hasHost(url, "tiktok.com") ? "valid" : "invalid";
 }
 
 export function validateSoundcloudUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return /soundcloud\.com\//i.test(url) ? "valid" : "invalid";
+  return hasHost(url, "soundcloud.com") ? "valid" : "invalid";
 }
 
 export function validateDeezerUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return /deezer\.com\//i.test(url) ? "valid" : "invalid";
+  return hasHost(url, "deezer.com") ? "valid" : "invalid";
 }
 
 export function validateAppleMusicUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return /music\.apple\.com\//i.test(url) ? "valid" : "invalid";
+  return hasHost(url, "music.apple.com") ? "valid" : "invalid";
 }
 
 // ─── Mapeamento canônico de colunas ──────────────────────────────

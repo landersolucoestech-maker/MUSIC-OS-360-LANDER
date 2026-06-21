@@ -193,7 +193,16 @@ export class SpotifyService {
   async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ followers: number; popularity: number; name: string; image: string | null } | null> {
     if (!this.isConfigured()) return null;
 
-    const artistId = spotifyUrlOrId.includes('spotify.com')
+    // Proper URL host check (not a substring match): `evil.com/spotify.com`
+    // must NOT be treated as a Spotify URL (CWE-20).
+    let isSpotifyUrl = false;
+    try {
+      const host = new URL(spotifyUrlOrId).hostname.toLowerCase();
+      isSpotifyUrl = host === 'spotify.com' || host.endsWith('.spotify.com');
+    } catch {
+      isSpotifyUrl = false;
+    }
+    const artistId = isSpotifyUrl
       ? this.extractArtistId(spotifyUrlOrId)
       : spotifyUrlOrId;
 
