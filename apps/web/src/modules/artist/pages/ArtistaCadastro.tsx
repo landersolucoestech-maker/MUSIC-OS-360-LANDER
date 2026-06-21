@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, useParams, Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { safeImageSrc, safeLinkHref } from "@/shared/lib/safe-url";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -1185,7 +1186,7 @@ export default function ArtistaCadastro() {
                     data-testid="input-banner-url"
                   />
                   {bannerUrl && (
-                    <img src={bannerUrl} alt="Banner preview" className="w-full h-24 object-cover rounded-md border mt-2" />
+                    <img src={safeImageSrc(bannerUrl)} alt="Banner preview" className="w-full h-24 object-cover rounded-md border mt-2" />
                   )}
                 </div>
 
@@ -1217,7 +1218,7 @@ export default function ArtistaCadastro() {
                     <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mt-2">
                       {galeriaUrls.map((url, idx) => (
                         <div key={idx} className="relative group">
-                          <img src={url} alt={`Galeria ${idx + 1}`} className="w-full aspect-square object-cover rounded-md border" />
+                          <img src={safeImageSrc(url)} alt={`Galeria ${idx + 1}`} className="w-full aspect-square object-cover rounded-md border" />
                           <button
                             type="button"
                             onClick={() => setGaleriaUrls((prev) => prev.filter((_, i) => i !== idx))}
@@ -1316,7 +1317,7 @@ export default function ArtistaCadastro() {
                         <div key={idx} className="flex items-center gap-2 p-2 rounded-md border bg-muted/30">
                           <FileText className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                           <span className="text-sm flex-1 truncate">{doc.nome}</span>
-                          <a href={doc.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs shrink-0">
+                          <a href={safeLinkHref(doc.url)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline text-xs shrink-0">
                             Abrir
                           </a>
                           <button

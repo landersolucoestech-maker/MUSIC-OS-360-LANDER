@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { MUSICAL_GENRES } from "@/constants/musicalGenres";
+import { safeImageSrc } from "@/shared/lib/safe-url";
 import {
   Dialog,
   DialogContent,
@@ -2048,7 +2049,7 @@ export function LancamentoFormModal({
                 </>
               ) : formData.assetCapaUrl ? (
                 <img
-                  src={formData.assetCapaUrl}
+                  src={safeImageSrc(formData.assetCapaUrl)}
                   alt="Capa"
                   className="w-full h-full object-cover"
                 />
@@ -2477,7 +2478,7 @@ export function LancamentoFormModal({
                   />
                 ) : formData.assetCapaUrl ? (
                   <img
-                    src={formData.assetCapaUrl}
+                    src={safeImageSrc(formData.assetCapaUrl)}
                     alt="Capa"
                     className="w-36 h-36 rounded-lg object-cover border border-border"
                   />
