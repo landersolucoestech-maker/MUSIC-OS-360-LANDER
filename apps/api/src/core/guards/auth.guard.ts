@@ -3,6 +3,7 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
+  HttpException,
   Logger,
   OnModuleInit,
 } from '@nestjs/common';
@@ -11,6 +12,8 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
 import * as jwksRsa from 'jwks-rsa';
+import { AUTH_DISABLED, DEV_AUTH } from '../auth-disabled';
+import { RbacErrorLogService } from '../rbac/rbac-error-log.service';
 
 export const IS_PUBLIC_KEY = 'isPublic';
 
@@ -59,9 +62,36 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
   constructor(
     private readonly config: ConfigService,
     private readonly reflector: Reflector,
+    private readonly errorLog: RbacErrorLogService,
   ) {}
 
+  /**
+   * Thin wrapper that records UNEXPECTED guard failures (non-HttpException) as
+   * `guard_error`. Normal 401/403 denials are HttpExceptions and are NOT errors.
+   */
+  async canActivate(context: ExecutionContext): Promise<boolean> {
+    try {
+      return await this.runGuard(context);
+    } catch (error) {
+      if (!(error instanceof HttpException)) {
+        const request = context.switchToHttp().getRequest<Request>();
+        void this.errorLog.record({
+          errorType: 'guard_error',
+          errorSource: 'JwtAuthGuard',
+          request,
+          error,
+        });
+      }
+      throw error;
+    }
+  }
+
   onModuleInit(): void {
+    if (AUTH_DISABLED) {
+      this.logger.warn('AUTH_DISABLED=true — JWT validation bypassed temporarily');
+      return;
+    }
+
     const rawSupabaseUrl =
       this.config.get<string>('SUPABASE_URL') ??
       process.env['VITE_SUPABASE_URL'] ??
@@ -84,7 +114,13 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     });
   }
 
-  async canActivate(context: ExecutionContext): Promise<boolean> {
+  private async runGuard(context: ExecutionContext): Promise<boolean> {
+    if (AUTH_DISABLED) {
+      const request = context.switchToHttp().getRequest<Request>();
+      request.auth = DEV_AUTH;
+      return true;
+    }
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
