@@ -68,7 +68,7 @@ export const MOCK_PLANS: AdminPlan[] = [
     max_users: 10,
     max_artists: 100,
     max_storage_gb: 25,
-    features: ["Tudo do Starter", "Analytics", "Marketing", "Suporte prioritário"],
+    features: ["Tudo do Starter", "Métricas", "Marketing", "Suporte prioritário"],
     active_subscribers: 18,
     mrr: 12582,
     color: "#3B82F6",
@@ -199,3 +199,4 @@ export const MOCK_ADMIN_NOTIFICATIONS: AdminNotification[] = [
   { id: "n-004", type: "system", severity: "warning", title: "Storage degradado", message: "Serviço de storage com latência elevada (380ms).", read: true, created_at: d(-1), action_url: "/admin/system" },
   { id: "n-005", type: "alert", severity: "success", title: "MRR recorde", message: "MRR atingiu R$ 124.750 — crescimento de 12,4% no mês.", read: true, created_at: d(-2) },
 ];
+

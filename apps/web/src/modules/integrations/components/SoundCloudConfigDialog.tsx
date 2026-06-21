@@ -19,6 +19,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
 import { CheckCircle, XCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { SiSoundcloud } from "react-icons/si";
 import {
   useSoundCloudStatus,
   useSoundCloudSaveCredentials,
@@ -65,7 +66,7 @@ export function SoundCloudConfigDialog({ open, onOpenChange }: SoundCloudConfigD
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-400/10">
-              <span className="text-xl">☁️</span>
+               <SiSoundcloud className="h-5 w-5 text-[#FF5500]" />
             </div>
             <div>
               <DialogTitle className="text-base">SoundCloud</DialogTitle>
@@ -96,7 +97,7 @@ export function SoundCloudConfigDialog({ open, onOpenChange }: SoundCloudConfigD
                 )}
               </div>
               {isConnected && (
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs">
+                <Badge variant="success">
                   Ativo
                 </Badge>
               )}

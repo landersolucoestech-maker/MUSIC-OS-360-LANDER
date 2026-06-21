@@ -26,13 +26,14 @@ import { Separator } from "@/shared/ui/separator";
 import {
   CheckCircle2, Link2, Loader2, LogOut, Info,
   Globe, Zap, BarChart3, ChevronDown, ChevronUp,
-  Copy, ExternalLink, Music2,
+  Copy, ExternalLink,
 } from "lucide-react";
 import {
   SiInstagram, SiTiktok, SiYoutube, SiSpotify,
   SiMeta, SiGoogleads, SiApplemusic, SiSoundcloud,
 } from "react-icons/si";
 import { cn } from "@/shared/lib/utils";
+import { DeezerIcon } from "@/shared/ui/deezer-icon";
 import { useMarketingOAuth } from "@/modules/integrations/hooks/useMarketingOAuth";
 import type { MarketingPlatformId } from "@/shared/integrations/contracts/marketing.contract";
 
@@ -61,7 +62,7 @@ const CORPORATE_METRICS: PlatformDef[] = [
     label: "TikTok Business", sublabel: "Conta oficial da empresa",
     icon: SiTiktok, color: "#010101",
     scopes: ["user.info.basic", "video.list", "research.adlib.basic"],
-    description: "Analytics da conta TikTok corporativa: views, seguidores, engajamento e conteúdos em destaque.",
+    description: "Métricas da conta TikTok corporativa: views, seguidores, engajamento e conteúdos em destaque.",
   },
   {
     id: "corp_youtube",
@@ -118,7 +119,7 @@ const PAID_ADS: PlatformDef[] = [
   {
     id: "deezer_ads",
     label: "Deezer Ad Manager", sublabel: "Áudio e banner",
-    icon: Music2, color: "#A238FF",
+    icon: DeezerIcon, color: "#A238FF",
     scopes: ["basic_access", "ads_management"],
     description: "Anúncios de áudio e banner no Deezer. Ouvintes segmentados por playlist e gênero.",
   },
@@ -184,7 +185,7 @@ function PlatformCard({
             {isConnected && (
               <Badge
                 variant="secondary"
-                className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                className="text-[10px] px-1.5 py-0 h-4 bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
               >
                 <CheckCircle2 className="h-2.5 w-2.5 mr-0.5" /> Conectado
               </Badge>
@@ -251,7 +252,7 @@ function PlatformCard({
               ].map(row => (
                 <div key={row.label} className="rounded-lg bg-muted/40 px-3 py-2">
                   <p className="text-muted-foreground mb-0.5">{row.label}</p>
-                  <p className="font-mono font-medium text-foreground truncate">{row.value}</p>
+                  <p className="font-sans font-medium text-foreground truncate">{row.value}</p>
                 </div>
               ))}
             </div>
@@ -262,7 +263,7 @@ function PlatformCard({
                 {platform.scopes.map(s => (
                   <code
                     key={s}
-                    className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 font-mono text-muted-foreground"
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-muted/60 font-sans text-muted-foreground"
                   >
                     {s}
                   </code>
@@ -321,7 +322,7 @@ function WebsiteSection() {
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-foreground">URL do formulário público</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[11px] font-mono bg-muted/60 px-2.5 py-1.5 rounded-lg text-muted-foreground truncate">
+            <code className="flex-1 text-[11px] font-sans bg-muted/60 px-2.5 py-1.5 rounded-lg text-muted-foreground truncate">
               {PUBLIC_FORM_URL}
             </code>
             <CopyBtn text={PUBLIC_FORM_URL} id="url" />
@@ -339,7 +340,7 @@ function WebsiteSection() {
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-foreground">Embed iFrame para landing pages</p>
           <div className="relative">
-            <code className="block text-[10px] font-mono bg-muted/60 px-2.5 py-2 rounded-lg text-muted-foreground leading-relaxed pr-8">
+            <code className="block text-[10px] font-sans bg-muted/60 px-2.5 py-2 rounded-lg text-muted-foreground leading-relaxed pr-8">
               {`<iframe src="${PUBLIC_FORM_URL}" width="100%" height="480" frameborder="0"></iframe>`}
             </code>
             <button
@@ -362,7 +363,7 @@ function WebsiteSection() {
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-foreground">API Key (Webhook & integração directa)</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 text-[11px] font-mono bg-muted/60 px-2.5 py-1.5 rounded-lg text-muted-foreground">
+            <code className="flex-1 text-[11px] font-sans bg-muted/60 px-2.5 py-1.5 rounded-lg text-muted-foreground">
               mk_live_••••••••••••••••
             </code>
             <CopyBtn text="mk_live_real_key_here" id="api" />
@@ -447,7 +448,7 @@ export function MarketingIntegrationsDialog({ open, onOpenChange }: Props) {
               {totalConnected > 0 && (
                 <div className="flex items-center gap-1.5 mt-2">
                   <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-                  <span className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                  <span className="text-xs text-emerald-600 font-medium">
                     {totalConnected} plataforma{totalConnected !== 1 ? "s" : ""} conectada{totalConnected !== 1 ? "s" : ""}
                   </span>
                 </div>
@@ -534,3 +535,5 @@ export function MarketingIntegrationsDialog({ open, onOpenChange }: Props) {
     </Dialog>
   );
 }
+
+

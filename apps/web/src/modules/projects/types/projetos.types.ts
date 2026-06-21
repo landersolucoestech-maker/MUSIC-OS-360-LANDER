@@ -44,3 +44,4 @@ export interface ProjetoWithRelationsExtended extends ProjetoWithRelations {
   nome?: string | null;
   data_prevista_fim?: string | null;
 }
+

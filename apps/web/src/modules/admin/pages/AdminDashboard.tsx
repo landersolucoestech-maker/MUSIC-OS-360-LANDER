@@ -7,15 +7,20 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import {
-  MOCK_KPIS, MOCK_REVENUE, MOCK_TENANTS, MOCK_SECURITY_EVENTS, MOCK_ADMIN_NOTIFICATIONS,
-} from "../data/mockAdmin";
+  ADMIN_KPIS as MOCK_KPIS,
+  ADMIN_REVENUE as MOCK_REVENUE,
+  ADMIN_TENANTS as MOCK_TENANTS,
+  ADMIN_SECURITY_EVENTS as MOCK_SECURITY_EVENTS,
+  ADMIN_NOTIFICATIONS as MOCK_ADMIN_NOTIFICATIONS,
+  ADMIN_DATA_IS_MOCK,
+} from "../data/admin-source";
 import {
   TrendingUp, TrendingDown, DollarSign, Users, Building2,
   AlertCircle, CheckCircle2, Activity, Zap,
   CreditCard, ChevronRight, ArrowUpRight, ArrowDownRight,
 } from "lucide-react";
 
-/* ── Analytics data (merged from AdminAnalytics) ── */
+/* ── Métricas data (merged from AdminAnalytics) ── */
 const PLAN_DIST = [
   { plan: "Starter",    count: 45, color: "#6B7280" },
   { plan: "Growth",     count: 30, color: "#3B82F6" },
@@ -54,7 +59,7 @@ function KPICard({
 }) {
   const inner = (
     <div className={cn(
-      "group rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-3 transition-all duration-200",
+      "group rounded-2xl border border-border bg-card p-5 space-y-3 transition-all duration-200",
       href && "hover:border-blue-500/25 hover:bg-blue-500/[0.03] cursor-pointer",
     )}
       data-testid={`kpi-${label.toLowerCase().replace(/\s+/g, "-")}`}
@@ -66,9 +71,9 @@ function KPICard({
         {trend !== undefined && <PctBadge value={trend} />}
       </div>
       <div>
-        <p className="text-2xl font-bold text-white tracking-tight">{value}</p>
-        <p className="text-[11.5px] text-white/40 mt-0.5">{label}</p>
-        {sub && <p className="text-[10.5px] text-white/25 mt-0.5">{sub}</p>}
+        <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
+        {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
       </div>
     </div>
   );
@@ -81,13 +86,13 @@ function ChartTooltip({ active, payload, label }: {
 }) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-[hsl(222_47%_8%)] p-3 shadow-xl">
-      <p className="text-[11px] text-white/50 mb-2">{label}</p>
+    <div className="rounded-xl border border-border bg-card p-3">
+      <p className="text-[11px] text-muted-foreground mb-2">{label}</p>
       {payload.map((p) => (
         <div key={p.name} className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full" style={{ background: p.color }} />
-          <span className="text-[12px] text-white/70">{p.name}:</span>
-          <span className="text-[12px] font-semibold text-white">{fmtBRL(p.value)}</span>
+          <span className="text-[12px] text-muted-foreground">{p.name}:</span>
+          <span className="text-[12px] font-semibold text-foreground">{fmtBRL(p.value)}</span>
         </div>
       ))}
     </div>
@@ -119,20 +124,20 @@ export default function AdminDashboard() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white">Dashboard Executivo</h1>
-            <p className="text-[12.5px] text-white/40 mt-0.5">
+            <h1 className="text-xl font-bold text-foreground">Painel Executivo</h1>
+            <p className="text-[12px] text-muted-foreground mt-0.5">
               Visão global da plataforma — {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })}
             </p>
           </div>
           <div className="flex items-center gap-2">
             {unresolvedEvents.length > 0 && (
               <Link to="/admin/security">
-                <Badge className="gap-1.5 bg-red-500/10 text-red-400 border border-red-500/30 text-[11px] hover:bg-red-500/20">
+                <Badge variant="danger" className="gap-1.5">
                   <AlertCircle className="h-3 w-3" /> {unresolvedEvents.length} alertas
                 </Badge>
               </Link>
             )}
-            <Badge className="gap-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 text-[11px]">
+            <Badge variant="success" className="gap-1.5">
               <CheckCircle2 className="h-3 w-3" /> Sistema operacional
             </Badge>
           </div>
@@ -149,36 +154,30 @@ export default function AdminDashboard() {
         <div className="grid lg:grid-cols-[1fr_380px] gap-5">
 
           {/* MRR Evolution */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
+          <div className="rounded-2xl border border-border bg-card p-5">
             <div className="flex items-center justify-between mb-5">
               <div>
-                <h2 className="text-[13px] font-semibold text-white">Evolução MRR</h2>
-                <p className="text-[11px] text-white/40 mt-0.5">Receita recorrente mensal</p>
+                <h2 className="text-[13px] font-semibold text-foreground">Evolução MRR</h2>
+                <p className="text-[11px] text-muted-foreground mt-0.5">Receita recorrente mensal</p>
               </div>
-              <Link to="/admin/revenue" className="flex items-center gap-1 text-[11.5px] text-blue-400 hover:text-blue-300 transition-colors">
+              <Link to="/admin/revenue" className="flex items-center gap-1 text-[11px] text-primary hover:text-primary-hover transition-colors">
                 Ver detalhes <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
             <ResponsiveContainer width="100%" height={220}>
               <AreaChart data={MOCK_REVENUE}>
-                <defs>
-                  <linearGradient id="mrrGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
                 <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
                 <Tooltip content={<ChartTooltip />} />
-                <Area type="monotone" dataKey="mrr" stroke="#3B82F6" strokeWidth={2} fill="url(#mrrGrad)" name="MRR" dot={false} />
+                <Area type="monotone" dataKey="mrr" stroke="hsl(var(--primary))" strokeWidth={2} fill="hsl(var(--primary))" fillOpacity={0.12} name="MRR" dot={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
 
           {/* Distribuição por Plano */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5">
-            <h2 className="text-[13px] font-semibold text-white mb-4">Distribuição por Plano</h2>
+          <div className="rounded-2xl border border-border bg-card p-5">
+            <h2 className="text-[13px] font-semibold text-foreground mb-4">Distribuição por Plano</h2>
             <div className="space-y-3">
               {PLAN_DIST.map((p) => {
                 const total = PLAN_DIST.reduce((a, x) => a + x.count, 0);
@@ -188,20 +187,20 @@ export default function AdminDashboard() {
                     <div className="flex items-center justify-between mb-1">
                       <span className="text-[12px] font-medium" style={{ color: p.color }}>{p.plan}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[11px] text-white/35">{p.count} tenants</span>
-                        <span className="text-[12px] font-semibold text-white/60">{pct}%</span>
+                        <span className="text-[11px] text-muted-foreground">{p.count} tenants</span>
+                        <span className="text-[12px] font-semibold text-muted-foreground">{pct}%</span>
                       </div>
                     </div>
-                    <div className="h-1.5 rounded-full bg-white/[0.06] overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                       <div className="h-full rounded-full" style={{ width: `${pct}%`, background: p.color }} />
                     </div>
                   </div>
                 );
               })}
             </div>
-            <div className="mt-5 border-t border-white/[0.06] pt-4">
-              <h3 className="text-[12px] font-semibold text-white mb-3 flex items-center gap-2">
-                <Users className="h-3.5 w-3.5 text-white/30" /> Por País
+            <div className="mt-5 border-t border-border pt-4">
+              <h3 className="text-[12px] font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Users className="h-3.5 w-3.5 text-muted-foreground" /> Por País
               </h3>
               <div className="space-y-2">
                 {[
@@ -210,10 +209,10 @@ export default function AdminDashboard() {
                   { country: "EUA",      flag: "🇺🇸", count: MOCK_TENANTS.filter(t => t.country === "US").length },
                 ].filter(c => c.count > 0).map((c) => (
                   <div key={c.country} className="flex items-center justify-between">
-                    <span className="text-[12px] text-white/60 flex items-center gap-2">
+                    <span className="text-[12px] text-muted-foreground flex items-center gap-2">
                       <span>{c.flag}</span> {c.country}
                     </span>
-                    <span className="text-[12px] font-semibold text-white/50">{c.count}</span>
+                    <span className="text-[12px] font-semibold text-muted-foreground">{c.count}</span>
                   </div>
                 ))}
               </div>
@@ -226,10 +225,10 @@ export default function AdminDashboard() {
         <div className="grid lg:grid-cols-[1fr_340px] gap-5">
 
           {/* Recent tenants */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <h2 className="text-[13px] font-semibold text-white">Tenants Recentes</h2>
-              <Link to="/admin/clients" className="text-[11.5px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h2 className="text-[13px] font-semibold text-foreground">Tenants Recentes</h2>
+              <Link to="/admin/clients" className="text-[11px] text-primary hover:text-primary-hover flex items-center gap-1">
                 Ver todos <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -239,26 +238,26 @@ export default function AdminDashboard() {
                   active: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                   suspended: "text-red-400 bg-red-500/10 border-red-500/20",
                   trial: "text-blue-400 bg-blue-500/10 border-blue-500/20",
-                  cancelled: "text-white/30 bg-white/5 border-white/10",
+                  cancelled: "text-muted-foreground bg-muted border-border",
                   pending: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
                 };
                 const PLAN_COLOR: Record<string, string> = {
-                  starter: "text-white/40",
+                  starter: "text-muted-foreground",
                   growth: "text-blue-400",
-                  pro: "text-purple-400",
+                  pro: "text-primary",
                   enterprise: "text-amber-400",
                 };
                 const statusColor = STATUS_COLOR[t.status] ?? "";
                 const planColor = PLAN_COLOR[t.plan] ?? "";
                 return (
-                  <div key={t.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-white/[0.02] transition-colors" data-testid={`tenant-row-${t.id}`}>
+                  <div key={t.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted transition-colors" data-testid={`tenant-row-${t.id}`}>
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
                         <Building2 className="h-4 w-4 text-blue-400/70" />
                       </div>
                       <div>
-                        <p className="text-[13px] font-medium text-white">{t.name}</p>
-                        <p className="text-[11px] text-white/35">{t.users_count} usuários · {t.artists_count} artistas</p>
+                        <p className="text-[13px] font-medium text-foreground">{t.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{t.users_count} usuários · {t.artists_count} artistas</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2.5">
@@ -266,7 +265,7 @@ export default function AdminDashboard() {
                       <Badge variant="outline" className={cn("text-[10px] border h-5 px-1.5", statusColor)}>
                         {t.status === "active" ? "Ativo" : t.status === "suspended" ? "Suspenso" : t.status === "trial" ? "Trial" : t.status}
                       </Badge>
-                      <span className="text-[12px] font-semibold text-white/70">{fmtBRL(t.mrr)}<span className="text-[10px] text-white/30">/mês</span></span>
+                      <span className="text-[12px] font-semibold text-muted-foreground">{fmtBRL(t.mrr)}<span className="text-[10px] text-muted-foreground">/mês</span></span>
                     </div>
                   </div>
                 );
@@ -275,10 +274,10 @@ export default function AdminDashboard() {
           </div>
 
           {/* Notifications + Alerts */}
-          <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
-              <h2 className="text-[13px] font-semibold text-white">Alertas</h2>
-              <Link to="/admin/notifications" className="text-[11.5px] text-blue-400 hover:text-blue-300 flex items-center gap-1">
+          <div className="rounded-2xl border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
+              <h2 className="text-[13px] font-semibold text-foreground">Alertas</h2>
+              <Link to="/admin/notifications" className="text-[11px] text-primary hover:text-primary-hover flex items-center gap-1">
                 Ver todos <ChevronRight className="h-3.5 w-3.5" />
               </Link>
             </div>
@@ -296,17 +295,17 @@ export default function AdminDashboard() {
                   error: AlertCircle, warning: AlertCircle,
                   info: Zap, success: CheckCircle2,
                 };
-                const svColor = SV_COLOR[n.severity] ?? "text-white/40";
-                const svBg = SV_BG[n.severity] ?? "bg-white/5";
+                const svColor = SV_COLOR[n.severity] ?? "text-muted-foreground";
+                const svBg = SV_BG[n.severity] ?? "bg-muted";
                 const SvIcon = SV_ICON[n.severity] ?? AlertCircle;
                 return (
-                  <div key={n.id} className="flex gap-3 px-5 py-3.5 hover:bg-white/[0.02] transition-colors" data-testid={`notif-${n.id}`}>
+                  <div key={n.id} className="flex gap-3 px-5 py-3.5 hover:bg-muted transition-colors" data-testid={`notif-${n.id}`}>
                     <div className={cn("h-7 w-7 rounded-lg flex items-center justify-center shrink-0 mt-0.5", svBg)}>
                       <SvIcon className={cn("h-3.5 w-3.5", svColor)} />
                     </div>
                     <div className="min-w-0">
-                      <p className="text-[12px] font-medium text-white">{n.title}</p>
-                      <p className="text-[11px] text-white/35 leading-snug mt-0.5 line-clamp-2">{n.message}</p>
+                      <p className="text-[12px] font-medium text-foreground">{n.title}</p>
+                      <p className="text-[11px] text-muted-foreground leading-snug mt-0.5 line-clamp-2">{n.message}</p>
                     </div>
                   </div>
                 );
@@ -314,7 +313,7 @@ export default function AdminDashboard() {
               {unreadNotifs.length === 0 && (
                 <div className="px-5 py-8 text-center">
                   <CheckCircle2 className="h-8 w-8 text-emerald-400/30 mx-auto mb-2" />
-                  <p className="text-[12px] text-white/30">Nenhum alerta pendente</p>
+                  <p className="text-[12px] text-muted-foreground">Nenhum alerta pendente</p>
                 </div>
               )}
             </div>
@@ -325,3 +324,7 @@ export default function AdminDashboard() {
     </AdminLayout>
   );
 }
+
+
+
+

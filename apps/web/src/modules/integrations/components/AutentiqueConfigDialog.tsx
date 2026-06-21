@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -52,13 +50,11 @@ export function AutentiqueConfigDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-autentique-config">
-        <DialogHeader>
-          <DialogTitle>Integração Autentique</DialogTitle>
-          <DialogDescription>
-            Conecte sua conta do Autentique para enviar e acompanhar
-            contratos com assinatura digital direto do MUSIC OS 360.
-          </DialogDescription>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="autentique"
+          title="Integração Autentique"
+          description="Conecte sua conta do Autentique para enviar e acompanhar contratos com assinatura digital direto do MUSIC OS 360."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

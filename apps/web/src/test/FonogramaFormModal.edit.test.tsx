@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
+import { screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "./_helpers/render-with-providers";
 import React from "react";
 
 const { updateFonogramaMock, addFonogramaMock } = vi.hoisted(() => ({
@@ -77,7 +78,7 @@ describe("FonogramaFormModal edit mode", () => {
   };
 
   it("pre-fills every field from the persisted fonograma row", async () => {
-    render(
+    renderWithProviders(
       <FonogramaFormModal
         open={true}
         onOpenChange={() => {}}
@@ -111,7 +112,7 @@ describe("FonogramaFormModal edit mode", () => {
   });
 
   it("saves edits via updateFonograma with the right payload", async () => {
-    render(
+    renderWithProviders(
       <FonogramaFormModal
         open={true}
         onOpenChange={vi.fn()}

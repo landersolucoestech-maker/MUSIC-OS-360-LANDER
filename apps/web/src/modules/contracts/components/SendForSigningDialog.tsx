@@ -149,7 +149,7 @@ export function SendForSigningDialog({
           </div>
         ) : (
           <div className="p-3 bg-muted/30 border border-border rounded-lg">
-            <p className="text-xs font-medium mb-2 text-muted-foreground uppercase tracking-wide">
+            <p className="text-xs font-medium mb-2 text-muted-foreground  tracking-wide">
               Signatários ({signers.length})
             </p>
             <div className="space-y-1">
@@ -165,7 +165,7 @@ export function SendForSigningDialog({
 
         {/* Provider selector */}
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+          <p className="text-xs font-medium text-muted-foreground  tracking-wide mb-3">
             Provedor de Assinatura
           </p>
           {loadingProviders ? (
@@ -202,7 +202,7 @@ export function SendForSigningDialog({
                   </div>
                   <div className="shrink-0 flex items-center gap-2">
                     {p.connected ? (
-                      <Badge className="bg-success/10 text-success border-success/20 text-[10px] border gap-1">
+                      <Badge variant="success" className="gap-1">
                         <CheckCircle2 className="h-2.5 w-2.5" />
                         Conectado
                       </Badge>

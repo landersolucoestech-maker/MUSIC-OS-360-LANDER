@@ -14,6 +14,18 @@ const envSchema = z.object({
       { message: 'DATABASE_URL is required in production' },
     ),
 
+  // ── RLS defense-in-depth (P2-2) ─────────────────────────────────────────────
+  // Optional connection string for an application DB role WITHOUT BYPASSRLS.
+  // When unset the app keeps using DATABASE_URL (current behaviour). Only consumed
+  // when DATABASE_SESSION_CONTEXT_ENABLED=true; never auto-rotated.
+  APP_DATABASE_URL: z.string().optional(),
+  // Master switch for runtime session-context (SET LOCAL app.current_tenant_id).
+  // OFF by default → zero behavioural change. Must be explicitly 'true' to enable.
+  DATABASE_SESSION_CONTEXT_ENABLED: z.enum(['true', 'false']).default('false'),
+  // Reserved gate documenting that the API should connect with a NOBYPASSRLS role.
+  // OFF by default; enabling is an explicit operator decision per environment.
+  DATABASE_RLS_ENFORCEMENT: z.enum(['true', 'false']).default('false'),
+
   REDIS_QUEUE_URL: z
     .string()
     .optional()
@@ -21,6 +33,20 @@ const envSchema = z.object({
       (val) => process.env['NODE_ENV'] !== 'production' || !!val,
       { message: 'REDIS_QUEUE_URL is required in production' },
     ),
+  REDIS_URL: z.string().optional(),
+  REDIS_HOST: z.string().optional(),
+  REDIS_PORT: z.coerce.number().optional(),
+  REDIS_PASSWORD: z.string().optional(),
+  RBAC_PERSISTED_AUTHORITY: z.enum(['OFF', 'SHADOW', 'ON']).default('SHADOW'),
+  RBAC_DUAL_READ_TELEMETRY: z.enum(['true', 'false']).default('true'),
+  RBAC_DISTRIBUTED_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
+  RBAC_AUDIT_MIRROR_ENABLED: z.enum(['true', 'false']).default('true'),
+  RBAC_DECISION_RETENTION_DAYS: z.coerce.number().min(1).max(365).default(30),
+  RBAC_DECISION_RETENTION_INTERVAL_HOURS: z.coerce
+    .number()
+    .min(1)
+    .max(168)
+    .default(6),
 
   SUPABASE_URL: z
     .string()
@@ -34,7 +60,17 @@ const envSchema = z.object({
   JWT_EXPIRES_IN: z.string().default('1h'),
   JWT_REFRESH_EXPIRES_IN: z.string().default('30d'),
 
-  CORS_ORIGINS: z.string().default('http://localhost:5000'),
+  CORS_ORIGINS: z
+    .string()
+    .default('http://localhost:5000')
+    .refine(
+      (val) => {
+        if (process.env['NODE_ENV'] !== 'production') return true;
+        // Production must NOT include localhost / 127.0.0.1
+        return !/localhost|127\.0\.0\.1/i.test(val);
+      },
+      { message: 'CORS_ORIGINS cannot contain localhost in production' },
+    ),
 
   ENCRYPTION_KEY: z
     .string()
@@ -67,6 +103,7 @@ const envSchema = z.object({
     ),
 
   STRIPE_SECRET_KEY: z.string().optional(),
+  STRIPE_CONNECT_CLIENT_ID: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z
     .string()
     .optional()
@@ -137,7 +174,26 @@ const envSchema = z.object({
   POSTHOG_HOST: z.string().default('https://app.posthog.com'),
 
   IDEMPOTENCY_TTL_HOURS: z.coerce.number().min(1).max(168).default(24),
-  APP_URL: z.string().default('http://localhost:5000'),
+  APP_URL: z
+    .string()
+    .default('http://localhost:5000')
+    .refine(
+      (val) => {
+        if (process.env['NODE_ENV'] !== 'production') return true;
+        return !/localhost|127\.0\.0\.1/i.test(val);
+      },
+      { message: 'APP_URL cannot point to localhost in production' },
+    ),
+  FRONTEND_URL: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (process.env['NODE_ENV'] !== 'production') return true;
+        return !val || !/localhost|127\.0\.0\.1/i.test(val);
+      },
+      { message: 'FRONTEND_URL cannot point to localhost in production' },
+    ),
 
   ACRCLOUD_HOST: z.string().optional(),
   ACRCLOUD_ACCESS_KEY: z.string().optional(),
@@ -160,6 +216,10 @@ const envSchema = z.object({
   TIKTOK_CLIENT_KEY: z.string().optional(),
   TIKTOK_CLIENT_SECRET: z.string().optional(),
   TIKTOK_REDIRECT_URI: z.string().optional(),
+
+  DOCUSIGN_INTEGRATION_KEY: z.string().optional(),
+  DOCUSIGN_CLIENT_SECRET: z.string().optional(),
+  DOCUSIGN_AUTH_BASE_URL: z.string().url().default('https://account-d.docusign.com'),
 
   GOOGLE_ADS_CLIENT_ID: z.string().optional(),
   GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),

@@ -1,0 +1,21 @@
+# PASSO 12-J.7 — Datasources do Grafana (provisionados automaticamente).
+apiVersion: 1
+datasources:
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  # Datasource Postgres para os painéis RBAC shadow (lê rbac_decision_logs).
+  - name: MusicOS-Postgres
+    type: postgres
+    access: proxy
+    url: ${MUSICOS_DB_HOST}:5432
+    database: ${MUSICOS_DB_NAME}
+    user: ${MUSICOS_DB_USER}
+    secureJsonData:
+      password: ${MUSICOS_DB_PASSWORD}
+    jsonData:
+      sslmode: disable
+      postgresVersion: 1600

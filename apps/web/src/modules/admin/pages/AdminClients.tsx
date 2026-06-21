@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
@@ -15,7 +18,7 @@ import {
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_TENANTS, MOCK_SUBSCRIPTIONS } from "../data/mockAdmin";
+import { ADMIN_TENANTS as MOCK_TENANTS, ADMIN_SUBSCRIPTIONS as MOCK_SUBSCRIPTIONS } from "../data/admin-source";
 import type { AdminTenant, TenantStatus, PlanTier } from "../types";
 import {
   Building2, Search, Users, DollarSign,
@@ -27,7 +30,7 @@ const STATUS_STYLE: Record<TenantStatus, string> = {
   active:    "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   suspended: "text-red-400 bg-red-500/10 border-red-500/20",
   trial:     "text-blue-400 bg-blue-500/10 border-blue-500/20",
-  cancelled: "text-white/30 bg-white/5 border-white/10",
+  cancelled: "text-muted-foreground bg-muted border-border",
   pending:   "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
   past_due:  "text-orange-400 bg-orange-500/10 border-orange-500/20",
 };
@@ -36,9 +39,9 @@ const STATUS_LABEL: Record<TenantStatus, string> = {
   cancelled: "Cancelado", pending: "Pendente", past_due: "Em atraso",
 };
 const PLAN_COLOR: Record<PlanTier, string> = {
-  starter:    "text-white/50",
+  starter:    "text-muted-foreground",
   growth:     "text-blue-400",
-  pro:        "text-purple-400",
+  pro:        "text-primary",
   enterprise: "text-amber-400",
 };
 
@@ -54,13 +57,13 @@ function StorageBar({ used, limit }: { used: number; limit: number }) {
   const pct = Math.min((used / limit) * 100, 100);
   return (
     <div className="flex items-center gap-1.5">
-      <div className="h-1 w-16 rounded-full bg-white/10 overflow-hidden">
+      <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
         <div
           className={cn("h-full rounded-full transition-all", pct > 80 ? "bg-red-500" : pct > 60 ? "bg-yellow-500" : "bg-blue-500")}
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="text-[10px] text-white/35">{pct.toFixed(0)}%</span>
+      <span className="text-[10px] text-muted-foreground">{pct.toFixed(0)}%</span>
     </div>
   );
 }
@@ -87,6 +90,8 @@ export default function AdminClients() {
     return true;
   });
 
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filtered, 10);
+
   function toggleStatus(id: string) {
     setTenants(prev => prev.map(t =>
       t.id === id ? { ...t, status: t.status === "active" ? "suspended" : "active" } : t
@@ -106,8 +111,8 @@ export default function AdminClients() {
 
         {/* Header */}
         <div>
-          <h1 className="text-xl font-bold text-white">Clientes</h1>
-          <p className="text-[12.5px] text-white/40 mt-0.5">Gestão global de tenants</p>
+          <h1 className="text-xl font-bold text-foreground">Clientes</h1>
+          <p className="text-[12px] text-muted-foreground mt-0.5">Gestão global de tenants</p>
         </div>
 
         {/* KPI Strip */}
@@ -116,14 +121,14 @@ export default function AdminClients() {
             { label: "Tenants Ativos",  value: fmt(stats.active), icon: Building2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
             { label: "Em Trial",        value: fmt(stats.trial),  icon: RefreshCw,  color: "text-blue-400",    bg: "bg-blue-500/10" },
             { label: "Suspensos",       value: fmt(stats.susp),   icon: PowerOff,   color: "text-red-400",     bg: "bg-red-500/10" },
-            { label: "MRR Total",       value: fmtBRL(stats.mrr), icon: DollarSign, color: "text-white/70",    bg: "bg-white/5" },
+            { label: "MRR Total",       value: fmtBRL(stats.mrr), icon: DollarSign, color: "text-muted-foreground",    bg: "bg-muted" },
           ].map(({ label, value, icon: Icon, color, bg }) => (
-            <div key={label} className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-4">
+            <div key={label} className="rounded-2xl border border-border bg-card p-4">
               <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
                 <Icon className={cn("h-4 w-4", color)} />
               </div>
-              <p className="text-xl font-bold text-white">{value}</p>
-              <p className="text-[11px] text-white/35 mt-0.5">{label}</p>
+              <p className="text-xl font-bold text-foreground">{value}</p>
+              <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
             </div>
           ))}
         </div>
@@ -131,17 +136,17 @@ export default function AdminClients() {
         {/* Filters */}
         <div className="flex gap-3">
           <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, email ou slug..."
-              className="pl-9 h-8 text-xs bg-white/[0.03] border-white/[0.07] text-white placeholder:text-white/25 focus:border-blue-500/40"
+              className="pl-9 h-8 text-xs bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-ring"
               value={search}
               onChange={e => setSearch(e.target.value)}
               data-testid="input-search-tenants"
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatus}>
-            <SelectTrigger className="h-8 text-xs w-36 bg-white/[0.03] border-white/[0.07] text-white/60" data-testid="select-status">
+            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px] bg-muted border-border text-muted-foreground" data-testid="select-status">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -152,7 +157,7 @@ export default function AdminClients() {
             </SelectContent>
           </Select>
           <Select value={planFilter} onValueChange={setPlan}>
-            <SelectTrigger className="h-8 text-xs w-36 bg-white/[0.03] border-white/[0.07] text-white/60" data-testid="select-plan">
+            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px] bg-muted border-border text-muted-foreground" data-testid="select-plan">
               <SelectValue placeholder="Plano" />
             </SelectTrigger>
             <SelectContent>
@@ -166,26 +171,32 @@ export default function AdminClients() {
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
+        <div className="rounded-2xl border border-border bg-card overflow-hidden">
+          <ListSectionHeader
+            title="Lista de Clientes"
+            count={filtered.length}
+            description="Acompanhe tenants, planos, status, cobrança e uso da plataforma"
+            className="px-4 pt-4"
+          />
           <Table>
             <TableHeader>
-              <TableRow className="border-white/[0.06] hover:bg-transparent">
+              <TableRow className="border-border hover:bg-transparent">
                 {["Tenant", "Plano", "Status", "Usuários", "Storage", "MRR", "Ciclo", "Próxima Cobrança", "Método", "Desde", ""].map((h, i) => (
-                  <TableHead key={i} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider whitespace-nowrap">
+                  <TableHead key={i} className="text-[11px] font-semibold text-muted-foreground  tracking-wider whitespace-nowrap">
                     {h}
                   </TableHead>
                 ))}
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((t) => {
+              {pageItems.map((t) => {
                 const sub = subByTenant[t.id];
                 return (
-                  <TableRow key={t.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`tenant-${t.id}`}>
+                  <TableRow key={t.id} className="border-border hover:bg-muted transition-colors" data-testid={`tenant-${t.id}`}>
                     <TableCell className="py-3.5">
                       <div>
-                        <p className="text-[13px] font-medium text-white">{t.name}</p>
-                        <p className="text-[11px] text-white/35 mt-0.5">{t.owner_email}</p>
+                        <p className="text-[13px] font-medium text-foreground">{t.name}</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">{t.owner_email}</p>
                       </div>
                     </TableCell>
                     <TableCell className="py-3.5">
@@ -194,51 +205,51 @@ export default function AdminClients() {
                       </span>
                     </TableCell>
                     <TableCell className="py-3.5">
-                      <Badge variant="outline" className={cn("text-[10.5px] border", STATUS_STYLE[t.status])}>
+                      <Badge variant="outline" className={cn("text-[10px] border", STATUS_STYLE[t.status])}>
                         {STATUS_LABEL[t.status]}
                       </Badge>
                     </TableCell>
                     <TableCell className="py-3.5">
                       <div className="flex items-center gap-1.5">
-                        <Users className="h-3.5 w-3.5 text-white/25" />
-                        <span className="text-[12.5px] text-white/60">{t.users_count}</span>
+                        <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                        <span className="text-[12px] text-muted-foreground">{t.users_count}</span>
                       </div>
                     </TableCell>
                     <TableCell className="py-3.5">
                       <StorageBar used={t.storage_used_mb} limit={t.storage_limit_mb} />
                     </TableCell>
                     <TableCell className="py-3.5">
-                      <span className="text-[13px] font-semibold text-white/80">
-                        {t.mrr > 0 ? fmtBRL(t.mrr) : <span className="text-white/25">—</span>}
+                      <span className="text-[13px] font-semibold text-muted-foreground">
+                        {t.mrr > 0 ? fmtBRL(t.mrr) : <span className="text-muted-foreground">—</span>}
                       </span>
                     </TableCell>
                     <TableCell className="py-3.5 whitespace-nowrap">
-                      <span className="text-[12px] text-white/50">
-                        {sub ? CYCLE_LABEL[sub.billing_cycle] ?? sub.billing_cycle : <span className="text-white/20">—</span>}
+                      <span className="text-[12px] text-muted-foreground">
+                        {sub ? CYCLE_LABEL[sub.billing_cycle] ?? sub.billing_cycle : <span className="text-muted-foreground">—</span>}
                       </span>
                     </TableCell>
                     <TableCell className="py-3.5 whitespace-nowrap">
                       {sub?.next_payment_at ? (
-                        <div className="flex items-center gap-1 text-[11.5px] text-white/45">
+                        <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                           <Calendar className="h-3 w-3 shrink-0" />
                           {fmtDate(sub.next_payment_at)}
                         </div>
                       ) : (
-                        <span className="text-[12px] text-white/20">—</span>
+                        <span className="text-[12px] text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="py-3.5 whitespace-nowrap">
                       {sub?.payment_method && sub.payment_method !== "—" ? (
-                        <div className="flex items-center gap-1.5 text-[11.5px] text-white/45">
-                          <CreditCard className="h-3 w-3 shrink-0 text-white/25" />
+                        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                          <CreditCard className="h-3 w-3 shrink-0 text-muted-foreground" />
                           <span className="truncate max-w-[130px]">{sub.payment_method}</span>
                         </div>
                       ) : (
-                        <span className="text-[12px] text-white/20">—</span>
+                        <span className="text-[12px] text-muted-foreground">—</span>
                       )}
                     </TableCell>
                     <TableCell className="py-3.5 whitespace-nowrap">
-                      <div className="flex items-center gap-1 text-[11px] text-white/35">
+                      <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                         <Calendar className="h-3 w-3" />
                         {fmtDate(t.created_at)}
                       </div>
@@ -247,7 +258,7 @@ export default function AdminClients() {
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button
-                            className="p-1.5 rounded-lg hover:bg-white/10 text-white/60 hover:text-white transition-colors"
+                            className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                             data-testid={`actions-${t.id}`}
                           >
                             <MoreHorizontal className="h-4 w-4" />
@@ -255,10 +266,10 @@ export default function AdminClients() {
                         </DropdownMenuTrigger>
                         <DropdownMenuContent
                           align="end"
-                          className="w-40 bg-[hsl(222_47%_6%)] border-white/[0.08] text-white/80"
+                          className="w-40 bg-card border-border text-muted-foreground"
                         >
                           <DropdownMenuItem
-                            className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+                            className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
                             onClick={() => setSelected(t)}
                             data-testid={`view-${t.id}`}
                           >
@@ -266,13 +277,13 @@ export default function AdminClients() {
                             Ver
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+                            className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
                             data-testid={`edit-${t.id}`}
                           >
-                            <Pencil className="h-3.5 w-3.5 text-white/40" />
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                             Editar
                           </DropdownMenuItem>
-                          <DropdownMenuSeparator className="bg-white/[0.06]" />
+                          <DropdownMenuSeparator className="bg-muted" />
                           <DropdownMenuItem
                             className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
                             data-testid={`delete-${t.id}`}
@@ -288,14 +299,22 @@ export default function AdminClients() {
               })}
             </TableBody>
           </Table>
+          <TablePagination
+            total={total}
+            page={page}
+            pageSize={pageSize}
+            onPageChange={setPage}
+            onPageSizeChange={setPageSize}
+            itemLabel="tenants"
+          />
         </div>
       </div>
 
       {/* Detail modal */}
       <Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-        <DialogContent className="sm:max-w-lg bg-[hsl(222_47%_6%)] border-white/[0.08]">
+        <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
-            <DialogTitle className="text-white flex items-center gap-2">
+            <DialogTitle className="text-foreground flex items-center gap-2">
               <Building2 className="h-4.5 w-4.5 text-blue-400" />
               {selected?.name}
             </DialogTitle>
@@ -308,23 +327,23 @@ export default function AdminClients() {
                   { label: "Status", value: STATUS_LABEL[selected.status], accent: "" },
                   { label: "Usuários", value: fmt(selected.users_count), accent: "" },
                   { label: "Artistas", value: fmt(selected.artists_count), accent: "" },
-                  { label: "MRR", value: fmtBRL(selected.mrr), accent: "text-white/80" },
+                  { label: "MRR", value: fmtBRL(selected.mrr), accent: "text-muted-foreground" },
                   { label: "País", value: selected.country, accent: "" },
                 ].map(({ label, value, accent }) => (
-                  <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
-                    <p className="text-[10.5px] text-white/30 mb-1">{label}</p>
-                    <p className={cn("text-[13px] font-semibold capitalize", accent || "text-white/70")}>{value}</p>
+                  <div key={label} className="rounded-xl bg-muted border border-border p-3">
+                    <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+                    <p className={cn("text-[13px] font-semibold capitalize", accent || "text-muted-foreground")}>{value}</p>
                   </div>
                 ))}
               </div>
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs border-white/10 text-white/60 hover:text-white" onClick={() => setSelected(null)}>
-                  <ExternalLink className="h-3.5 w-3.5" /> Acessar Workspace
+                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => setSelected(null)}>
+                  <ExternalLink className="h-3.5 w-3.5" /> Acessar Ambiente
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs border-white/10 text-white/60 hover:text-white" onClick={() => setSelected(null)}>
+                <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => setSelected(null)}>
                   <ArrowUpCircle className="h-3.5 w-3.5" /> Alterar Plano
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-white/10 text-white/60 hover:text-white" onClick={() => { toggleStatus(selected.id); setSelected(null); }}>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => { toggleStatus(selected.id); setSelected(null); }}>
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -335,3 +354,4 @@ export default function AdminClients() {
     </AdminLayout>
   );
 }
+

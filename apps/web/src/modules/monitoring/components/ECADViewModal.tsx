@@ -6,8 +6,10 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { FileText, CheckCircle, AlertTriangle, Clock } from "lucide-react";
+import { EcadIcon } from "@/shared/ui/brand-icons";
+import { CheckCircle, AlertTriangle, Clock } from "lucide-react";
 
 interface ECADViewModalProps {
   open: boolean;
@@ -24,13 +26,13 @@ export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProp
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "Conciliado":
-        return <Badge className="bg-success hover:bg-success text-success-foreground"><CheckCircle className="h-3 w-3 mr-1" />{status}</Badge>;
+        return <Badge variant="success"><CheckCircle className="h-3 w-3 mr-1" />{status}</Badge>;
       case "Pendente":
-        return <Badge className="bg-warning hover:bg-warning text-warning-foreground"><Clock className="h-3 w-3 mr-1" />{status}</Badge>;
+        return <Badge variant="warning"><Clock className="h-3 w-3 mr-1" />{status}</Badge>;
       case "Divergência":
-        return <Badge className="bg-destructive hover:bg-destructive text-destructive-foreground"><AlertTriangle className="h-3 w-3 mr-1" />{status}</Badge>;
+        return <Badge variant="danger"><AlertTriangle className="h-3 w-3 mr-1" />{status}</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="neutral">{status}</Badge>;
     }
   };
 
@@ -39,7 +41,7 @@ export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProp
       <DialogContent className="max-w-3xl bg-card border-border">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground">
-            <FileText className="h-5 w-5" />
+            <EcadIcon className="h-5 w-5" />
             Detalhes da Conciliação ECAD
           </DialogTitle>
         </DialogHeader>
@@ -54,7 +56,7 @@ export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProp
 
             {/* Badges */}
             <div className="flex gap-2">
-              <Badge className="bg-warning hover:bg-warning text-warning-foreground">
+              <Badge variant="warning">
                 {periodo.status}
               </Badge>
             </div>
@@ -83,8 +85,13 @@ export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProp
 
             {/* Tabela de Detalhes */}
             <div>
-              <p className="text-sm text-muted-foreground mb-3">Detalhes das Execuções</p>
               <div className="rounded-lg border border-border overflow-hidden">
+                <ListSectionHeader
+                  title="Detalhes das Execuções"
+                  count={detalhesEcad.length}
+                  description="Acompanhe obras, ISRCs, execuções, valores ECAD e status"
+                  className="px-4 pt-4"
+                />
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/30">
@@ -100,7 +107,7 @@ export function ECADViewModal({ open, onOpenChange, periodo }: ECADViewModalProp
                       detalhesEcad.map((item) => (
                         <TableRow key={item.id}>
                           <TableCell className="font-medium text-foreground">{item.obra}</TableCell>
-                          <TableCell className="font-mono text-sm text-foreground">{item.isrc}</TableCell>
+                          <TableCell className="font-sans text-sm text-foreground">{item.isrc}</TableCell>
                           <TableCell className="text-foreground">{item.execucoes}</TableCell>
                           <TableCell className="text-foreground">{item.valorEcad}</TableCell>
                           <TableCell>{getStatusBadge(item.status)}</TableCell>

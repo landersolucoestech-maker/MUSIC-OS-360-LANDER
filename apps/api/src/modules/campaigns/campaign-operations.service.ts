@@ -56,14 +56,14 @@ export class CampaignOperationsService {
     const updates: Record<string, unknown> = { ...dto, updated_at: new Date() };
     if (dto.status === 'done' && !task.completed_at) updates['completed_at'] = new Date();
     if (dto.due_date) updates['due_date'] = new Date(dto.due_date);
-    await this.tasks.update({ id: taskId }, updates);
-    return this.tasks.findOne({ where: { id: taskId } });
+    await this.tasks.update({ id: taskId, campaign_id: campaignId, tenant_id: tenantId }, updates);
+    return this.tasks.findOne({ where: { id: taskId, campaign_id: campaignId, tenant_id: tenantId } });
   }
 
   async deleteTask(tenantId: string, campaignId: string, taskId: string) {
     const t = await this.tasks.findOne({ where: { id: taskId, campaign_id: campaignId, tenant_id: tenantId } });
     if (!t) throw new NotFoundException('Tarefa não encontrada');
-    await this.tasks.delete({ id: taskId });
+    await this.tasks.delete({ id: taskId, campaign_id: campaignId, tenant_id: tenantId });
     return { deleted: true };
   }
 
@@ -108,7 +108,7 @@ export class CampaignOperationsService {
   async deleteAsset(tenantId: string, campaignId: string, assetId: string) {
     const a = await this.assets.findOne({ where: { id: assetId, campaign_id: campaignId, tenant_id: tenantId } });
     if (!a) throw new NotFoundException('Asset não encontrado');
-    await this.assets.update({ id: assetId }, { deleted_at: new Date() });
+    await this.assets.update({ id: assetId, campaign_id: campaignId, tenant_id: tenantId }, { deleted_at: new Date() });
     return { deleted: true };
   }
 }

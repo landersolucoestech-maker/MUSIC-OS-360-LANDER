@@ -5,7 +5,7 @@ import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto, AssignRoleDto, QueryUserDto } from './dto/users.dto';
+import { CreateUserDto, UpdateUserDto, AssignRoleDto, QueryUserDto, InviteUserDto } from './dto/users.dto';
 
 @ApiTags('Users') @ApiBearerAuth() @Controller('users')
 export class UsersController {
@@ -14,17 +14,52 @@ export class UsersController {
   @Get()    @RequireRole('manager') @ApiOperation({ summary: 'Listar utilizadores' })
   list(@CurrentTenant() t: { id: string }, @Query() q: QueryUserDto) { return this.svc.list(t.id, q); }
 
-  @Get(':id') @RequireRole('manager') @ApiOperation({ summary: 'Obter utilizador' })
-  findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.findById(t.id, id); }
-
   @Post() @RequireRole('owner') @Audit('user.created') @ApiOperation({ summary: 'Criar utilizador' })
   create(@CurrentTenant() t: { id: string }, @CurrentUser() u: { userId: string }, @Body() dto: CreateUserDto) { return this.svc.create(t.id, dto, u.userId); }
+
+  @Post('invitations') @RequireRole('admin') @Audit('user.invited') @ApiOperation({ summary: 'Convidar utilizador por email' })
+  invite(@CurrentTenant() t: { id: string }, @CurrentUser() u: { userId: string; orgRole?: string }, @Body() dto: InviteUserDto) {
+    return this.svc.invite(t.id, dto.email, dto.roleId, u.userId, u.orgRole);
+  }
+
+  @Get('invitations') @RequireRole('admin') @ApiOperation({ summary: 'Listar convites do tenant' })
+  invitations(@CurrentTenant() t: { id: string }) {
+    return this.svc.listInvitations(t.id);
+  }
+
+  @Post('invitations/:id/resend') @RequireRole('admin') @Audit('user.invitation_resent')
+  resendInvitation(
+    @CurrentTenant() t: { id: string },
+    @CurrentUser() u: { userId: string; orgRole?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.resendInvitation(t.id, id, u.userId, u.orgRole);
+  }
+
+  @Delete('invitations/:id') @RequireRole('admin') @Audit('user.invitation_cancelled')
+  cancelInvitation(
+    @CurrentTenant() t: { id: string },
+    @CurrentUser() u: { orgRole?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+  ) {
+    return this.svc.cancelInvitation(t.id, id, u.orgRole);
+  }
+
+  @Get(':id') @RequireRole('manager') @ApiOperation({ summary: 'Obter utilizador' })
+  findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
+    return this.svc.findById(t.id, id);
+  }
 
   @Patch(':id') @RequireRole('manager') @Audit('user.updated') @ApiOperation({ summary: 'Actualizar utilizador' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() _u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateUserDto) { return this.svc.update(t.id, id, dto); }
 
-  @Patch(':id/role') @RequireRole('owner') @Audit('user.role_changed') @ApiOperation({ summary: 'Alterar role do utilizador (owner+)' })
-  assignRole(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string, @Body() dto: AssignRoleDto) { return this.svc.assignRole(t.id, id, dto.role); }
+  @Patch(':id/role') @RequireRole('admin') @Audit('user.role_changed') @ApiOperation({ summary: 'Alterar role do utilizador respeitando hierarquia' })
+  assignRole(
+    @CurrentTenant() t: { id: string },
+    @CurrentUser() u: { orgRole?: string },
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: AssignRoleDto,
+  ) { return this.svc.assignRole(t.id, id, dto.role, u.orgRole); }
 
   @Delete(':id') @RequireRole('owner') @Audit('user.deleted') @ApiOperation({ summary: 'Desactivar utilizador' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) { return this.svc.remove(t.id, id); }

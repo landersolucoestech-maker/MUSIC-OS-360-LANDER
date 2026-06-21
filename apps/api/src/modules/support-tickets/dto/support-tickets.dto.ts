@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsDate, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 import { SupportTicketStatus, SupportTicketPriority } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -17,7 +18,8 @@ export class CreateSupportTicketDto {
 
 export class UpdateSupportTicketDto extends PartialType(CreateSupportTicketDto) {
   @ApiPropertyOptional({ enum: SupportTicketStatus }) @IsOptional() @IsIn(STATUSES) status?: string;
-  @ApiPropertyOptional() @IsOptional() resolvedAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() resolvedAt?: Date;
 }
 
 export class QuerySupportTicketDto extends PaginationDto {

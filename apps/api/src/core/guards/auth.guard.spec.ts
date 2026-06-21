@@ -47,6 +47,9 @@ function makeToken(payload: Record<string, unknown>, expiresIn = '1h'): string {
     algorithm: 'ES256',
     expiresIn,
     keyid: 'test-kid',
+    // P0-09: auth.guard requires issuer + audience match; must mirror onModuleInit values.
+    issuer:   'https://test.supabase.co/auth/v1',
+    audience: 'authenticated',
   } as jwt.SignOptions);
 }
 

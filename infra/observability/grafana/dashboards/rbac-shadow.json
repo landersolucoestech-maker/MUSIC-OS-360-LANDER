@@ -1,0 +1,133 @@
+{
+  "annotations": { "list": [] },
+  "editable": true,
+  "graphTooltip": 1,
+  "links": [],
+  "panels": [
+    {
+      "title": "ALLOW por minuto",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "sum(rate(rbac_allow_total{authority=\"SHADOW\"}[1m]))", "legendFormat": "ALLOW/min" }
+      ]
+    },
+    {
+      "title": "DENY por minuto",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 8, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "sum(rate(rbac_deny_total{authority=\"SHADOW\"}[1m]))", "legendFormat": "DENY/min" }
+      ]
+    },
+    {
+      "title": "WOULD_ALLOW / WOULD_DENY",
+      "type": "timeseries",
+      "gridPos": { "h": 8, "w": 8, "x": 16, "y": 0 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "sum(rate(rbac_would_allow_total{authority=\"SHADOW\"}[5m]))", "legendFormat": "WOULD_ALLOW" },
+        { "expr": "sum(rate(rbac_would_deny_total{authority=\"SHADOW\"}[5m]))", "legendFormat": "WOULD_DENY" }
+      ]
+    },
+    {
+      "title": "Top endpoints divergentes",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 12, "x": 0, "y": 8 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT endpoint, comparison_result, count(*) AS requests FROM rbac_decision_logs WHERE $__timeFilter(created_at) AND comparison_result IN ('WOULD_ALLOW','WOULD_DENY') GROUP BY endpoint, comparison_result ORDER BY requests DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "title": "Top recursos",
+      "type": "barchart",
+      "gridPos": { "h": 9, "w": 12, "x": 12, "y": 8 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "topk(10, sum by (resource) (increase(rbac_requests_total{authority=\"SHADOW\"}[$__range])))", "legendFormat": "{{resource}}" }
+      ]
+    },
+    {
+      "title": "Top roles impactadas",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 8, "x": 0, "y": 17 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT role_slug, comparison_result, count(*) AS requests FROM rbac_decision_logs WHERE $__timeFilter(created_at) AND comparison_result IN ('WOULD_ALLOW','WOULD_DENY') GROUP BY role_slug, comparison_result ORDER BY requests DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "title": "Top tenants impactados",
+      "type": "table",
+      "gridPos": { "h": 9, "w": 8, "x": 8, "y": 17 },
+      "datasource": { "type": "postgres", "uid": "${DS_POSTGRES}" },
+      "targets": [
+        {
+          "format": "table",
+          "rawSql": "SELECT tenant_id, comparison_result, count(*) AS requests FROM rbac_decision_logs WHERE $__timeFilter(created_at) AND comparison_result IN ('WOULD_ALLOW','WOULD_DENY') GROUP BY tenant_id, comparison_result ORDER BY requests DESC LIMIT 20"
+        }
+      ]
+    },
+    {
+      "title": "Latencia RBAC p95",
+      "type": "timeseries",
+      "gridPos": { "h": 9, "w": 8, "x": 16, "y": 17 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "histogram_quantile(0.95, sum by (le) (rate(rbac_latency_ms_bucket{authority=\"SHADOW\"}[5m])))", "legendFormat": "p95" }
+      ]
+    },
+    {
+      "title": "Cache hit rate",
+      "type": "stat",
+      "gridPos": { "h": 6, "w": 8, "x": 0, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "sum(rate(rbac_cache_hit_total[5m])) / clamp_min(sum(rate(rbac_cache_hit_total[5m])) + sum(rate(rbac_cache_miss_total[5m])), 1)", "legendFormat": "hit rate" }
+      ],
+      "fieldConfig": { "defaults": { "unit": "percentunit" }, "overrides": [] }
+    },
+    {
+      "title": "Decisoes por authority",
+      "type": "barchart",
+      "gridPos": { "h": 6, "w": 16, "x": 8, "y": 26 },
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [
+        { "expr": "sum by (authority) (increase(rbac_requests_total[$__range]))", "legendFormat": "{{authority}}" }
+      ]
+    }
+  ],
+  "refresh": "30s",
+  "schemaVersion": 39,
+  "tags": ["rbac", "security", "shadow"],
+  "templating": {
+    "list": [
+      {
+        "name": "DS_PROMETHEUS",
+        "type": "datasource",
+        "query": "prometheus",
+        "label": "Prometheus"
+      },
+      {
+        "name": "DS_POSTGRES",
+        "type": "datasource",
+        "query": "postgres",
+        "label": "PostgreSQL"
+      }
+    ]
+  },
+  "time": { "from": "now-24h", "to": "now" },
+  "timezone": "browser",
+  "title": "MUSIC OS 360 - RBAC Shadow",
+  "uid": "music-os-rbac-shadow",
+  "version": 1
+}

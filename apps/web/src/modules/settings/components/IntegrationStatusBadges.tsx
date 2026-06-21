@@ -1,10 +1,9 @@
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@/shared/ui/tooltip";
-import { cn } from "@/shared/lib/utils";
 
 export type IntegrationConnectionStatus = "conectado" | "desconectado";
 
@@ -23,12 +22,10 @@ interface IntegrationStatusBadgesProps {
   testIdPrefix?: string;
 }
 
-const noticeVariantClasses: Record<IntegrationNoticeVariant, string> = {
-  warning:
-    "border-warning/60 text-warning bg-warning/10",
-  info: "border-blue-500/60 text-blue-700 bg-blue-500/10 dark:text-blue-400",
-  destructive:
-    "border-destructive/60 text-destructive bg-destructive/10",
+const noticeBadgeVariant: Record<IntegrationNoticeVariant, BadgeVariant> = {
+  warning: "warning",
+  info: "info",
+  destructive: "danger",
 };
 
 export function IntegrationStatusBadges({
@@ -42,8 +39,8 @@ export function IntegrationStatusBadges({
         const variant = notice.variant ?? "warning";
         const badge = (
           <Badge
-            variant="outline"
-            className={cn("cursor-help", noticeVariantClasses[variant])}
+            variant={noticeBadgeVariant[variant]}
+            className="cursor-help"
             data-testid={
               testIdPrefix
                 ? `${testIdPrefix}-notice-${notice.id}`
@@ -74,12 +71,7 @@ export function IntegrationStatusBadges({
         );
       })}
       <Badge
-        variant="outline"
-        className={
-          status === "conectado"
-            ? "text-success border-success"
-            : "text-muted-foreground"
-        }
+        variant={status === "conectado" ? "success" : "neutral"}
         data-testid={
           testIdPrefix ? `${testIdPrefix}-status` : undefined
         }

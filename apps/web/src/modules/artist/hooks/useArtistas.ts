@@ -37,3 +37,4 @@ export function useArtistas() {
     deleteArtista: result.delete,
   };
 }
+

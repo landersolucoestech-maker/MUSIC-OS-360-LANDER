@@ -25,7 +25,7 @@ const setoresOptions = [
   "Administrativo / Corporativo",
   "Arquivo e Documentação",
   "Artístico (A&R – Artistas & Repertório)",
-  "Comercial / Vendas",
+  "Comercial",
   "Comunicação e Imprensa (PR)",
   "Distribuição Digital",
   "Editora Musical (Publishing)",
@@ -406,7 +406,8 @@ export function InventarioFormModal({ open, onOpenChange, item, mode }: Inventar
               </Button>
               <Button
                 type="submit"
-                className="bg-primary hover:bg-primary/90"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
                 disabled={isSubmitting}
               >
                 {isSubmitting
@@ -422,3 +423,4 @@ export function InventarioFormModal({ open, onOpenChange, item, mode }: Inventar
     </Dialog>
   );
 }
+

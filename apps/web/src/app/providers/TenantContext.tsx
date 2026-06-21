@@ -1,11 +1,13 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { AUTH_DISABLED, MOCK_MODE, IS_DEV } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
+import { tenantModulePermissionKeys } from "@/shared/lib/permission-map";
 import { api, getAccessToken } from "@/shared/lib/api-client";
 import { useAuth } from "./AuthContext";
 import type { SaasAuthContext } from "@/shared/types/saas-context";
+import { SYSTEM_REGIONAL_SETTINGS } from "@/shared/lib/system-regional-settings";
 
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
@@ -28,7 +30,7 @@ export type TenantModuleKey =
   | "artists" | "catalog" | "releases" | "contracts"
   | "accounting" | "crm" | "marketing" | "events"
   | "inventory" | "rh" | "monitoring" | "licensing"
-  | "projects" | "leads" | "audit" | "settings";
+  | "projects" | "leads" | "audit" | "settings" | "musicchat";
 
 export type TenantPermissions = Record<TenantModuleKey, TenantModulePermission>;
 
@@ -140,9 +142,9 @@ const MOCK_TENANT: Tenant = {
   onboarding: DEFAULT_ONBOARDING,
   meta: {
     createdAt: "2024-01-15T00:00:00.000Z",
-    timezone:  "America/Sao_Paulo",
-    locale:    "pt-BR",
-    currency:  "BRL",
+    timezone:  SYSTEM_REGIONAL_SETTINGS.timezone,
+    locale:    SYSTEM_REGIONAL_SETTINGS.locale,
+    currency:  SYSTEM_REGIONAL_SETTINGS.currency,
     version:   1,
   },
 };
@@ -152,6 +154,8 @@ const MOCK_TENANT: Tenant = {
 interface TenantContextType {
   tenant:           Tenant;
   setTenant:        React.Dispatch<React.SetStateAction<Tenant>>;
+  /** FONTE ÚNICA de autorização: membership.permissions (resource:action). null = ainda não carregado. */
+  permissionKeys:   string[] | null;
   isFeatureEnabled: (flag: keyof FeatureFlags) => boolean;
   hasPermission:    (module: TenantModuleKey, action: keyof TenantModulePermission) => boolean;
   canRead:          (module: TenantModuleKey) => boolean;
@@ -162,48 +166,17 @@ interface TenantContextType {
 
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
-// ─── Helpers — leitura do localStorage (persistido pelo Register.tsx) ─────────
-
-/** Shape do objeto salvo pelo Register.tsx em musicos360_current_tenant */
-interface StoredTenantData {
-  id?:         string;
-  name?:       string;
-  slug?:       string;
-  segment?:    string;
-  industry?:   string;
-  cnpj?:       string;
-  phone?:      string;
-  address?:    string;
-  plan?:       string;
-  adminEmail?: string;
-}
-
-function readStoredTenant(): StoredTenantData | null {
-  try {
-    const raw = localStorage.getItem("musicos360_current_tenant");
-    return raw ? (JSON.parse(raw) as StoredTenantData) : null;
-  } catch { return null; }
-}
-
 function buildInitialTenant(): Tenant {
+  if (AUTH_DISABLED) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
   if (MOCK_MODE) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
-  const stored = readStoredTenant();
-  const industry = ((stored?.segment ?? stored?.industry) as TenantIndustry | undefined);
-  const plan     = (stored?.plan as TenantPlan | undefined);
   return {
     ...MOCK_TENANT,
-    id:          stored?.id       ?? MOCK_TENANT.id,
-    name:        stored?.name     ?? MOCK_TENANT.name,
-    slug:        stored?.slug     ?? MOCK_TENANT.slug,
-    industry:    industry         ?? MOCK_TENANT.industry,
-    cnpj:        stored?.cnpj     ?? MOCK_TENANT.cnpj,
-    phone:       stored?.phone    ?? MOCK_TENANT.phone,
-    address:     stored?.address  ?? MOCK_TENANT.address,
-    plan:        plan             ?? "starter",
-    // Permissions start at viewer (safe default).
-    // useSyncTenantFromJWT elevates to owner once the signed-in email is verified
-    // against adminEmail stored by Register.tsx.
+    id:          "",
+    name:        "MUSIC OS 360",
+    slug:        "",
+    plan:        "starter",
     permissions: ROLE_PERMISSIONS.viewer,
+    onboarding: DEFAULT_ONBOARDING,
   };
 }
 
@@ -230,11 +203,34 @@ function normalizeFeatures(features: Record<string, unknown>): FeatureFlags {
   return next;
 }
 
+function normalizeOnboarding(settings: Record<string, unknown>): TenantOnboarding {
+  const raw = settings["onboarding"];
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return DEFAULT_ONBOARDING;
+  }
+  const onboarding = raw as Record<string, unknown>;
+  const completed = onboarding["completed"] === true;
+  return {
+    ...DEFAULT_ONBOARDING,
+    completed,
+    currentStep: completed ? "complete" : "company_profile",
+    steps: {
+      ...DEFAULT_ONBOARDING.steps,
+      company_profile: completed,
+      complete: completed,
+    },
+  };
+}
+
 export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { session } = useAuth();
   const [tenant, setTenant] = useState<Tenant>(buildInitialTenant);
+  // FONTE ÚNICA de autorização: permissões resource:action vindas de membership.permissions.
+  // null = ainda não carregado (ou MOCK/AUTH_DISABLED) → usePermissions faz fail-open de UI.
+  const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null);
 
   useEffect(() => {
+    if (AUTH_DISABLED) return;
     if (MOCK_MODE || !session?.access_token) return;
 
     let active = true;
@@ -242,6 +238,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
       .then((context) => {
         if (!active) return;
         const tenantRole = appRoleToTenantRole(context.membership.role);
+        setPermissionKeys(Array.isArray(context.membership.permissions) ? context.membership.permissions : []);
         setTenant(prev => ({
           ...prev,
           id:          context.workspace.id || prev.id,
@@ -249,6 +246,13 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
           slug:        context.workspace.slug || prev.slug,
           plan:        normalizePlan(context.workspace.plan),
           features:    normalizeFeatures(context.workspace.features),
+          onboarding:  normalizeOnboarding(context.workspace.settings),
+          config: {
+            ...prev.config,
+            logoUrl: typeof context.workspace.settings["logoUrl"] === "string"
+              ? context.workspace.settings["logoUrl"] as string
+              : prev.config.logoUrl,
+          },
           permissions: ROLE_PERMISSIONS[tenantRole],
           billing: {
             ...prev.billing,
@@ -268,11 +272,18 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session?.access_token]);
 
-  const isFeatureEnabled = (flag: keyof FeatureFlags): boolean =>
-    tenant.features[flag] ?? false;
+  // ── AUDIT MODE (temporário): todos os módulos/feature-flags habilitados para inspeção (reverter: tenant.features[flag] ?? false) ──
+  const isFeatureEnabled = (_flag: keyof FeatureFlags): boolean => true;
 
-  const hasPermission = (module: TenantModuleKey, action: keyof TenantModulePermission): boolean =>
-    tenant.permissions[module]?.[action] ?? false;
+  // FONTE ÚNICA de autorização: membership.permissions (resource:action).
+  // Permissivo APENAS em dev/mock/auth-disabled. Em produção, ausência de permissões
+  // (permissionKeys === null, ainda carregando ou indisponível) NÃO abre — fail-closed.
+  const hasPermission = (module: TenantModuleKey, action: keyof TenantModulePermission): boolean => {
+    if (MOCK_MODE || AUTH_DISABLED || IS_DEV) return true;
+    if (permissionKeys === null) return false;
+    const keys = tenantModulePermissionKeys(module, action);
+    return keys.some((key) => permissionKeys.includes(key));
+  };
 
   const canRead   = (m: TenantModuleKey) => hasPermission(m, "read");
   const canWrite  = (m: TenantModuleKey) => hasPermission(m, "write");
@@ -280,7 +291,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const canExport = (m: TenantModuleKey) => hasPermission(m, "export");
 
   return (
-    <TenantContext.Provider value={{ tenant, setTenant, isFeatureEnabled, hasPermission, canRead, canWrite, canDelete, canExport }}>
+    <TenantContext.Provider value={{ tenant, setTenant, permissionKeys, isFeatureEnabled, hasPermission, canRead, canWrite, canDelete, canExport }}>
       {children}
     </TenantContext.Provider>
   );
@@ -325,44 +336,20 @@ function parseJwtClaims(token: string): JwtAppClaims | null {
  * Fontes de dados (por prioridade decrescente):
  *   1. JWT app_metadata.role + app_metadata.org_id (injetado pelo Supabase Hook)
  *   2. JWT top-level role / org_id (fallback para tokens legados)
- *   3. localStorage adminEmail === userEmail → promove a owner
  *
  * Re-executa em:
  *   • mudança de userEmail (login inicial)
  *   • evento window "musicos360:auth:tokenRefreshed" (refresh de token)
  */
-export function useSyncTenantFromJWT(userEmail?: string): void {
+export function useSyncTenantFromJWT(_userEmail?: string): void {
   const { setTenant } = useTenant();
 
   // Função interna de sincronização — partilhada pelos dois efeitos abaixo
   const syncFromJwt = React.useCallback(() => {
     if (MOCK_MODE) return;
+    if (AUTH_DISABLED) return;
 
-    // ── 1. Metadados de org do localStorage ────────────────────────────────────
-    const stored = readStoredTenant();
-    if (stored) {
-      const industry  = ((stored.segment ?? stored.industry) as TenantIndustry | undefined);
-      const plan      = (stored.plan as TenantPlan | undefined);
-      const isFounder = !!(userEmail && stored.adminEmail &&
-        userEmail.trim().toLowerCase() === stored.adminEmail.trim().toLowerCase());
-      const permissions = isFounder ? ROLE_PERMISSIONS.owner : ROLE_PERMISSIONS.viewer;
-
-      setTenant(prev => ({
-        ...prev,
-        id:          stored.id      ?? prev.id,
-        name:        stored.name    ?? prev.name,
-        slug:        stored.slug    ?? prev.slug,
-        industry:    industry       ?? prev.industry,
-        cnpj:        stored.cnpj    ?? prev.cnpj,
-        phone:       stored.phone   ?? prev.phone,
-        address:     stored.address ?? prev.address,
-        plan:        plan           ?? prev.plan,
-        permissions,
-      }));
-      devTenantLog("Tenant carregado do localStorage:", { id: stored.id, name: stored.name, isFounder });
-    }
-
-    // ── 2. JWT claims (app_metadata.role + app_metadata.org_id via Hook) ───────
+    // JWT claims (app_metadata.role + app_metadata.org_id via Hook)
     const token = getAccessToken();
     if (!token) {
       devTenantLog("Nenhum token em memória — aguardando login");
@@ -393,7 +380,7 @@ export function useSyncTenantFromJWT(userEmail?: string): void {
     }));
     devTenantLog(`Permissões elevadas para role "${tenantRole}" (org: ${claimOrgId ?? "mantida"})`);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [userEmail]);
+  }, []);
 
   // Efeito 1: dispara no login / quando o email do utilizador muda
   useEffect(() => {

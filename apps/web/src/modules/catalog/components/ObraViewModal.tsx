@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Separator } from "@/shared/ui/separator";
@@ -34,35 +35,19 @@ interface ObraViewModalProps {
 function StatusBadge({ status }: { status?: string }) {
   const s = status?.toLowerCase() ?? "";
   if (s === "registrado")
-    return (
-      <Badge className="bg-success hover:bg-success text-success-foreground">
-        Registrado
-      </Badge>
-    );
+    return <Badge variant="success">Registrado</Badge>;
   if (s === "analise" || s === "análise")
-    return (
-      <Badge className="bg-warning hover:bg-warning text-warning-foreground">
-        Em Análise
-      </Badge>
-    );
+    return <Badge variant="warning">Em Análise</Badge>;
   if (s === "pendente")
-    return (
-      <Badge className="bg-warning hover:bg-warning text-warning-foreground">
-        Pendente
-      </Badge>
-    );
+    return <Badge variant="warning">Pendente</Badge>;
   if (s === "rejeitado")
-    return (
-      <Badge className="bg-destructive hover:bg-destructive text-destructive-foreground">
-        Rejeitado
-      </Badge>
-    );
+    return <Badge variant="danger">Rejeitado</Badge>;
   return <Badge variant="secondary">{status ?? "—"}</Badge>;
 }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+    <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
       {children}
     </p>
   );
@@ -93,7 +78,7 @@ function MonoField({
   return (
     <div className="p-3 bg-muted/30 rounded-lg">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="font-mono text-sm font-medium text-primary">
+      <p className="font-sans text-sm font-medium text-primary">
         {value || "—"}
       </p>
     </div>
@@ -153,38 +138,47 @@ export function ObraViewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl bg-card border-border">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-3 pr-6">
-            <DialogTitle className="flex items-center gap-2 text-foreground">
-              <Music className="h-5 w-5 text-primary" />
-              Detalhes da Obra
-            </DialogTitle>
-            <ObraTipoBadge tipo={obra.tipo_obra} />
-          </div>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle>Detalhes da Obra</DialogTitle>
+          <DialogDescription>Informações completas da obra musical</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[75vh]">
-          <div className="space-y-5 pr-2">
+        <ScrollArea className="max-h-[calc(90vh-120px)]">
+          <div className="px-6 pb-6 space-y-6">
 
-            {/* Título + Status */}
-            <div className="flex items-start justify-between gap-3">
-              <h2 className="text-xl font-bold text-foreground">
-                {obra.titulo || "—"}
-              </h2>
-              <StatusBadge status={obra.status} />
-            </div>
-
-            <Separator />
-
-            {/* Artista e Projeto */}
-            <div>
-              <SectionTitle>Artista e Projeto</SectionTitle>
-              <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                <InfoField label="Artista Responsável" value={artistaNome} />
-                <InfoField label="Projeto Vinculado"   value={projetoTitulo} />
+            {/* Header da Obra */}
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center shrink-0">
+                <Music className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="flex-1">
+                <h2 className="text-lg font-bold">{obra.titulo || "—"}</h2>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <StatusBadge status={obra.status} />
+                  <ObraTipoBadge tipo={obra.tipo_obra} />
+                </div>
+                {obra.created_at && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    📅 Cadastrado em: {new Date(obra.created_at).toLocaleDateString("pt-BR")}
+                  </p>
+                )}
               </div>
             </div>
+
+            {/* Projeto Vinculado — exibido apenas quando há vínculo */}
+            {(artistaNome || projetoTitulo) && (
+              <>
+                <Separator />
+                <div>
+                  <SectionTitle>Projeto Vinculado</SectionTitle>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                    {projetoTitulo && <InfoField label="Projeto" value={projetoTitulo} />}
+                    {artistaNome && <InfoField label="Artista do Projeto" value={artistaNome} />}
+                  </div>
+                </div>
+              </>
+            )}
 
             <Separator />
 
@@ -199,18 +193,21 @@ export function ObraViewModal({
               </div>
             </div>
 
-            <Separator />
-
-            {/* Códigos de Registro */}
-            <div>
-              <SectionTitle>Códigos de Registro</SectionTitle>
-              <div className="grid grid-cols-2 gap-3">
-                <MonoField label="Código ABRAMUS" value={obra.cod_abramus} />
-                <MonoField label="Código ECAD"    value={obra.cod_ecad} />
-                <MonoField label="ISRC"            value={obra.isrc} />
-                <MonoField label="ISWC"            value={obra.iswc} />
-              </div>
-            </div>
+            {/* Códigos de Registro — exibido apenas quando há algum código */}
+            {(obra.cod_abramus || obra.cod_ecad || obra.isrc || obra.iswc) && (
+              <>
+                <Separator />
+                <div>
+                  <SectionTitle>Códigos de Registro</SectionTitle>
+                  <div className="grid grid-cols-2 gap-3">
+                    {obra.cod_abramus && <MonoField label="Código de Cadastro da Sociedade" value={obra.cod_abramus} />}
+                    {obra.cod_ecad && <MonoField label="Código ECAD" value={obra.cod_ecad} />}
+                    {obra.isrc && <MonoField label="ISRC" value={obra.isrc} />}
+                    {obra.iswc && <MonoField label="ISWC" value={obra.iswc} />}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Participantes (Nome, Função, %, Link) */}
             {participantes.length > 0 && (
@@ -395,3 +392,4 @@ export function ObraViewModal({
     </Dialog>
   );
 }
+

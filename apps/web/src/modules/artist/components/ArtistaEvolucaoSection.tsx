@@ -2,12 +2,11 @@ import { useMemo } from "react";
 import {
   ArrowDownRight,
   ArrowUpRight,
-  Headphones,
   Minus,
-  Music2,
   Youtube,
 } from "lucide-react";
-import { SiSoundcloud, SiApplemusic, SiTiktok, SiInstagram } from "react-icons/si";
+import { SiSpotify, SiSoundcloud, SiApplemusic, SiTiktok, SiInstagram } from "react-icons/si";
+import { DeezerIcon } from "@/shared/ui/deezer-icon";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
@@ -359,7 +358,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
         <ArtistaEvolutionCard
           title="Spotify"
           subtitle="Seguidores"
-          Icon={Music2}
+          Icon={SiSpotify as any}
           accent="#1DB954"
           isLoading={spotifyQ.isLoading}
           isMissingConfig={!spotifyArtistId}
@@ -387,7 +386,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
         <ArtistaEvolutionCard
           title="Deezer"
           subtitle="Fãs"
-          Icon={Headphones}
+          Icon={DeezerIcon as any}
           accent="#A238FF"
           isLoading={deezerQ.isLoading}
           isMissingConfig={!deezerUrl}
@@ -464,3 +463,4 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
     </div>
   );
 }
+

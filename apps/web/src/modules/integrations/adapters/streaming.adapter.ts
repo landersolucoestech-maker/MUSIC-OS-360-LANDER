@@ -64,3 +64,4 @@ export function getAdsAdapter(platform: AdsPlatformId): IAdsProvider {
   _adsCache.set(platform, provider);
   return provider;
 }
+

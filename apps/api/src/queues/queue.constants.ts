@@ -17,6 +17,8 @@ export const QUEUE_NAMES = {
   IMPORTS:            'imports',
   BILLING:            'billing',
   UPLOADS_PROCESS:    'uploads-process',
+  MARKETING_PUBLISHING: 'marketing-publishing',
+  ARTIST_PLATFORM_SYNC: 'artist-platform-sync',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
@@ -54,7 +56,20 @@ export const WORKFLOW_JOB_NAMES = {
   DISTRIBUTOR_STATUS_CHECK: 'distributor.status-check',
   ONBOARDING_CHECK:     'onboarding-check',
   WORKFLOW_FOLLOWUP:    'workflow-followup',
-  PIPELINE_MONITOR:     'pipeline-monitor',
 } as const;
 
 export type WorkflowJobName = (typeof WORKFLOW_JOB_NAMES)[keyof typeof WORKFLOW_JOB_NAMES];
+
+export const MARKETING_PUBLISHING_JOB_NAMES = {
+  PUBLISH_CONTENT: 'publish-content',
+} as const;
+
+export type MarketingPublishingJobName =
+  (typeof MARKETING_PUBLISHING_JOB_NAMES)[keyof typeof MARKETING_PUBLISHING_JOB_NAMES];
+
+export const ARTIST_PLATFORM_PROFILE_JOB_NAMES = {
+  SYNC: 'artist-platform-profile-sync',
+} as const;
+
+export type ArtistPlatformProfileJobName =
+  (typeof ARTIST_PLATFORM_PROFILE_JOB_NAMES)[keyof typeof ARTIST_PLATFORM_PROFILE_JOB_NAMES];

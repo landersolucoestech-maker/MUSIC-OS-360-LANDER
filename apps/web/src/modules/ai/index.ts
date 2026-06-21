@@ -57,5 +57,20 @@ export type {
   GenerateLaunchStrategyResult,
 } from "./application";
 
+// ── Fiação read-only das 12 Skills novas ──────────────────────────────────────
+export { getRunSkillUseCase, RunSkillUseCase, buildSkillProvenance } from "./application";
+export type {
+  RunSkillInput,
+  RunSkillResult,
+  RunnableSkillName,
+  SkillParsedOutput,
+  SkillProvenance,
+  SkillProvenanceSource,
+} from "./application";
+
 // ── Hooks ─────────────────────────────────────────────────────────────────────
-export { useAI, useAIJob, useAIJobs, useAIAnalytics, useAIMonthCost } from "./hooks";
+export { useAI, useAIJob, useAIJobs, useAIAnalytics, useAIMonthCost, useSkill } from "./hooks";
+
+// ── Pages (tela interna de teste — não registra rota global) ──────────────────
+export { SkillsPlayground } from "./pages";
+

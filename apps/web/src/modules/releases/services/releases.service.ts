@@ -23,3 +23,4 @@ export const releasesService = {
   },
   async deleteShare(id: string) { return storage.delete("shares", id); },
 };
+

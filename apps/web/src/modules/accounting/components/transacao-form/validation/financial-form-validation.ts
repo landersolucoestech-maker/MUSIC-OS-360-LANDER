@@ -3,6 +3,22 @@ import type { FinancialFormRules } from "@/modules/accounting/components/transac
 
 export type ValidationErrors = Partial<Record<keyof TransacaoFormData, string>>;
 
+function parseMoney(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) return Number.NaN;
+
+  const normalized = trimmed.includes(",")
+    ? trimmed.replace(/\./g, "").replace(",", ".")
+    : trimmed;
+
+  return Number(normalized);
+}
+
+function parsePositiveInteger(value: string): number {
+  if (!/^\d+$/.test(value.trim())) return Number.NaN;
+  return Number(value);
+}
+
 export function validateTransacaoForm(
   f: TransacaoFormData,
   rules: FinancialFormRules,
@@ -29,7 +45,8 @@ export function validateTransacaoForm(
     errors.descricao = "Informe a descrição";
   }
 
-  if (!f.valor || parseFloat(f.valor) <= 0) {
+  const valor = parseMoney(f.valor);
+  if (!Number.isFinite(valor) || valor <= 0) {
     errors.valor = "Informe um valor válido";
   }
 
@@ -66,9 +83,11 @@ export function validateTransacaoForm(
   }
 
   if (rules.exibirParcelamento) {
-    if (!f.quantidadeParcelas || parseInt(f.quantidadeParcelas) < 2) {
+    const quantidadeParcelas = parsePositiveInteger(f.quantidadeParcelas);
+    if (!Number.isInteger(quantidadeParcelas) || quantidadeParcelas < 2) {
       errors.quantidadeParcelas = "Mínimo 2 parcelas";
     }
+
     if (!f.dataPrimeiraParcela) {
       errors.dataPrimeiraParcela = "Informe a data da primeira parcela";
     }
@@ -76,3 +95,4 @@ export function validateTransacaoForm(
 
   return errors;
 }
+

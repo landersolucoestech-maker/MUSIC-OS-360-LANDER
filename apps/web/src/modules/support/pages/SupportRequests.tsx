@@ -24,11 +24,11 @@ const STATUS_COLOR: Record<SupportRequest["status"], string> = {
   in_review: "border-blue-500/30 text-blue-400 bg-blue-500/10",
   approved:  "border-green-500/30 text-green-400 bg-green-500/10",
   rejected:  "border-border text-muted-foreground",
-  done:      "border-purple-500/30 text-purple-400 bg-purple-500/10",
+  done:      "border-primary/30 text-primary bg-primary/10",
 };
 
 const TYPE_COLOR: Record<SupportRequest["type"], string> = {
-  feature:     "text-purple-400",
+  feature:     "text-primary",
   bug:         "text-red-400",
   question:    "text-blue-400",
   billing:     "text-green-400",
@@ -138,7 +138,7 @@ export default function SupportRequests() {
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="h-8 text-xs w-36" data-testid="select-type-filter">
+            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]" data-testid="select-type-filter">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -149,7 +149,7 @@ export default function SupportRequests() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 text-xs w-40" data-testid="select-status-filter">
+            <SelectTrigger className="h-8 text-xs w-auto min-w-[140px]" data-testid="select-status-filter">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +222,7 @@ export default function SupportRequests() {
                     <div className="flex items-start justify-between gap-2 mb-1">
                       <p className="text-[13px] font-semibold text-foreground leading-snug">{req.title}</p>
                       <div className="flex items-center gap-1.5 shrink-0">
-                        <span className={cn("text-[10.5px] font-medium", TYPE_COLOR[req.type])}>
+                        <span className={cn("text-[10px] font-medium", TYPE_COLOR[req.type])}>
                           {REQUEST_TYPE_LABELS[req.type]}
                         </span>
                         <Badge variant="outline" className={cn("text-[10px] border", STATUS_COLOR[req.status])}>
@@ -231,7 +231,7 @@ export default function SupportRequests() {
                       </div>
                     </div>
                     <p className="text-[12px] text-muted-foreground line-clamp-2 mb-2">{req.description}</p>
-                    <div className="flex items-center gap-2 text-[10.5px] text-muted-foreground/60">
+                    <div className="flex items-center gap-2 text-[10px] text-muted-foreground/60">
                       <span>{formatDate(req.created_at)}</span>
                     </div>
                   </div>
@@ -311,3 +311,4 @@ export default function SupportRequests() {
     </MainLayout>
   );
 }
+

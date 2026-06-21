@@ -1,12 +1,14 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
+import { act, screen, fireEvent, waitFor } from "@testing-library/react";
+import { renderWithProviders } from "./_helpers/render-with-providers";
 import React from "react";
 
 // Mocks must be declared before importing the component.
-const { updateObraMock, addObraMock } = vi.hoisted(() => ({
+const { updateObraMock, addObraMock, toastErrorMock } = vi.hoisted(() => ({
   updateObraMock: vi.fn().mockResolvedValue({}),
   addObraMock: vi.fn().mockResolvedValue({}),
+  toastErrorMock: vi.fn(),
 }));
 
 vi.mock("@/modules/catalog/hooks/useObras", () => {
@@ -42,7 +44,7 @@ vi.mock("@/shared/hooks/useCurrentOrgId", () => ({
 vi.mock("sonner", () => ({
   toast: {
     success: vi.fn(),
-    error: vi.fn(),
+    error: toastErrorMock,
   },
 }));
 
@@ -52,6 +54,7 @@ describe("ObraFormModal edit mode", () => {
   beforeEach(() => {
     updateObraMock.mockClear();
     addObraMock.mockClear();
+    toastErrorMock.mockClear();
   });
 
   const baseObra = {
@@ -68,7 +71,7 @@ describe("ObraFormModal edit mode", () => {
   };
 
   it("pre-fills every field from the persisted obra row", () => {
-    render(
+    renderWithProviders(
       <ObraFormModal
         open={true}
         onOpenChange={() => {}}
@@ -97,7 +100,7 @@ describe("ObraFormModal edit mode", () => {
 
   it("saves edits via updateObra with normalized payload", async () => {
     const onOpenChange = vi.fn();
-    render(
+    renderWithProviders(
       <ObraFormModal
         open={true}
         onOpenChange={onOpenChange}
@@ -111,12 +114,17 @@ describe("ObraFormModal edit mode", () => {
     fireEvent.change(tituloInput, { target: { value: "Canção Editada" } });
 
     // Accept terms (required)
-    const checkboxes = screen.getAllByRole("checkbox");
-    fireEvent.click(checkboxes[checkboxes.length - 1]);
+    const termosCheckbox = document.querySelector("#termos");
+    expect(termosCheckbox).toBeInTheDocument();
+    fireEvent.click(termosCheckbox!);
 
     // Submit form
     const saveButton = screen.getByTestId("button-submit-obra");
-    fireEvent.click(saveButton);
+    await act(async () => {
+      fireEvent.submit(saveButton.closest("form")!);
+    });
+
+    expect(toastErrorMock).not.toHaveBeenCalled();
 
     await waitFor(() => {
       expect(updateObraMock).toHaveBeenCalledTimes(1);
@@ -137,3 +145,4 @@ describe("ObraFormModal edit mode", () => {
     expect(callArg.genero).toBe("pop");
   });
 });
+

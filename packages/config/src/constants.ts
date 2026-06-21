@@ -8,7 +8,6 @@ export const APP_VERSION = "1.0.0";
 
 export const STORAGE_PREFIX = "musicos360_";
 export const MOCK_DATA_KEY = `${STORAGE_PREFIX}mock_data`;
-export const THEME_KEY = `${STORAGE_PREFIX}theme`;
 export const SIDEBAR_STATE_KEY = `${STORAGE_PREFIX}sidebar_state`;
 
 // ─── Auth cookie names ────────────────────────────────────────────────────────

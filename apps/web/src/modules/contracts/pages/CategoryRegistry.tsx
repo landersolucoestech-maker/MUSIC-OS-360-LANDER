@@ -294,7 +294,7 @@ export default function CategoryRegistry({
                 </span>
               </Label>
               <Input
-                className="h-8 text-xs font-mono"
+                className="h-8 text-xs font-sans"
                 placeholder="licenciamento_sync"
                 value={newValue}
                 onChange={(e) => {
@@ -370,7 +370,7 @@ export default function CategoryRegistry({
               >
                 <div className="grid grid-cols-2 gap-2">
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <Label className="text-[10px]  tracking-wide text-muted-foreground">
                       Nome
                     </Label>
                     <Input
@@ -386,11 +386,11 @@ export default function CategoryRegistry({
                     />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                    <Label className="text-[10px]  tracking-wide text-muted-foreground">
                       Slug
                     </Label>
                     <Input
-                      className="h-7 text-xs font-mono"
+                      className="h-7 text-xs font-sans"
                       value={editing.value}
                       onChange={(e) =>
                         setEditing((prev) =>
@@ -402,7 +402,7 @@ export default function CategoryRegistry({
                   </div>
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <Label className="text-[10px]  tracking-wide text-muted-foreground">
                     Descrição
                   </Label>
                   <Input
@@ -459,7 +459,7 @@ export default function CategoryRegistry({
                   </span>
                   <Badge
                     variant="outline"
-                    className="font-mono text-[10px] px-1.5 py-0 h-4 text-muted-foreground"
+                    className="font-sans text-[10px] px-1.5 py-0 h-4 text-muted-foreground"
                   >
                     {cat.value}
                   </Badge>

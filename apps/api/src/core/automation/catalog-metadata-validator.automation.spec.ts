@@ -1,0 +1,209 @@
+import 'reflect-metadata';
+import { CatalogMetadataValidatorAutomation } from './catalog-metadata-validator.automation';
+import { passThroughTenantContext } from '../../../test/helpers/tenant-context.mock';
+
+// ─── Mocks de fronteira (DB / SkillRunService / AIService) ────────────────────
+
+function makeSkillRun() {
+  return {
+    start: jest.fn(async () => 'run-1'),
+    succeed: jest.fn(async () => undefined),
+    fail: jest.fn(async () => undefined),
+    log: jest.fn(async () => undefined),
+  };
+}
+
+function makeAi(content: string) {
+  return {
+    complete: jest.fn(async () => ({
+      content,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      inputTokens: 1,
+      outputTokens: 1,
+      costUsd: 0,
+      latencyMs: 1,
+    })),
+  };
+}
+
+function makeFailingAi() {
+  return { complete: jest.fn(async () => { throw new Error('Nenhum provider de AI configurado'); }) };
+}
+
+/**
+ * Mock de DataSource que roteia por SQL:
+ *  - SELECT ... FROM skill_runs → skillRunRows
+ *  - SELECT ... FROM works      → workRows
+ *  - SELECT ... FROM phonograms → recordingRows
+ *  - UPDATE                     → undefined
+ */
+function makeDs(opts: { works?: unknown[]; recordings?: unknown[]; skillRuns?: unknown[] }) {
+  const query = jest.fn(async (sql: string) => {
+    if (/FROM\s+skill_runs/i.test(sql)) return opts.skillRuns ?? [];
+    if (/FROM\s+works/i.test(sql)) return opts.works ?? [];
+    if (/FROM\s+phonograms/i.test(sql)) return opts.recordings ?? [];
+    return undefined;
+  });
+  return { ds: { query }, query };
+}
+
+const WORK_ROW = {
+  titulo: 'Aurora',
+  compositor: 'Ana Lima',
+  compositores: 'Ana Lima; Bruno Sá',
+  co_compositores: null,
+  editora: 'Editora X',
+  isrc: null,
+  metadata: {},
+};
+
+const RECORDING_ROW = {
+  titulo: 'Aurora (Ao Vivo)',
+  compositores: 'Ana Lima',
+  interpretes: 'Banda Aurora; Convidado Y',
+  produtores: 'Produtor Z',
+  isrc: 'BR-ABC-24-00001',
+  gravadora: 'Selo Y',
+  metadata: {},
+};
+
+const VALID_JSON = JSON.stringify({
+  isValid: true,
+  score: 88,
+  errors: [],
+  warnings: [],
+  missingFields: [],
+  duplicateRisks: [],
+  rightsRisks: [],
+  normalizedMetadata: { title: 'Aurora', type: 'work', composers: [{ name: 'Ana Lima' }], performers: [], producers: [], shares: [] },
+  recommendedFixes: [],
+});
+
+function workEvent() {
+  return { tenantId: 't1', payload: { tenantId: 't1', workId: 'w1', createdBy: 'u1' } };
+}
+function recordingEvent() {
+  return { tenantId: 't1', payload: { tenantId: 't1', recordingId: 'r1', createdBy: 'u1' } };
+}
+
+describe('CatalogMetadataValidatorAutomation', () => {
+  // ── Obra (work) ─────────────────────────────────────────────────────────────
+
+  it('work: executa, registra skill_run e grava works.metadata.aiCatalogValidation', async () => {
+    const { ds, query } = makeDs({ works: [WORK_ROW] });
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_JSON);
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onWorkCreated(workEvent() as never);
+
+    expect(skillRun.start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skillName: 'catalog-metadata-validator',
+        entityType: 'work',
+        entityId: 'w1',
+        input: { idempotencyKey: 'catalog.work.created:t1:w1' },
+      }),
+    );
+    expect(skillRun.succeed).toHaveBeenCalled();
+    expect(skillRun.fail).not.toHaveBeenCalled();
+
+    // input: type=work + compositores no prompt
+    const aiCalls = ai.complete.mock.calls as unknown as Array<[{ prompt: string; jsonMode: boolean }]>;
+    expect(aiCalls[0][0].prompt).toContain('obra musical (work)');
+    expect(aiCalls[0][0].prompt).toContain('Ana Lima');
+
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE\s+works/i.test(c[0] as string));
+    expect(updateCall).toBeDefined();
+    const meta = JSON.parse((updateCall as unknown as [string, string[]])[1][0]);
+    expect(meta.aiCatalogValidation.skill).toBe('catalog-metadata-validator');
+    expect(meta.aiCatalogValidation.event).toBe('catalog.work.created');
+    expect(meta.aiCatalogValidation.idempotencyKey).toBe('catalog.work.created:t1:w1');
+    expect(meta.aiCatalogValidation.status).toBe('generated');
+  });
+
+  it('work: idempotência metadata — não reprocessa se já gerado com a mesma chave', async () => {
+    const row = { ...WORK_ROW, metadata: { aiCatalogValidation: { idempotencyKey: 'catalog.work.created:t1:w1', status: 'generated' } } };
+    const { ds, query } = makeDs({ works: [row] });
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_JSON);
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onWorkCreated(workEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    expect(query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string))).toBeUndefined();
+  });
+
+  it('work: falha da IA registra fail, não relança e não grava', async () => {
+    const { ds, query } = makeDs({ works: [WORK_ROW] });
+    const skillRun = makeSkillRun();
+    const ai = makeFailingAi();
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await expect(handler.onWorkCreated(workEvent() as never)).resolves.toBeUndefined();
+
+    expect(skillRun.fail).toHaveBeenCalledWith('run-1', 't1', 'catalog-metadata-validator', expect.any(Error));
+    expect(skillRun.succeed).not.toHaveBeenCalled();
+    expect(query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string))).toBeUndefined();
+  });
+
+  // ── Fonograma (recording) ───────────────────────────────────────────────────
+
+  it('recording: executa e grava phonograms.metadata.aiCatalogValidation com type=recording', async () => {
+    const { ds, query } = makeDs({ recordings: [RECORDING_ROW] });
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_JSON);
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onRecordingCreated(recordingEvent() as never);
+
+    expect(skillRun.start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        entityType: 'recording',
+        entityId: 'r1',
+        input: { idempotencyKey: 'catalog.recording.created:t1:r1' },
+      }),
+    );
+    expect(skillRun.succeed).toHaveBeenCalled();
+
+    // input: type=recording + intérpretes + label no prompt
+    const aiCalls = ai.complete.mock.calls as unknown as Array<[{ prompt: string }]>;
+    expect(aiCalls[0][0].prompt).toContain('fonograma/gravação (recording)');
+    expect(aiCalls[0][0].prompt).toContain('Banda Aurora');
+    expect(aiCalls[0][0].prompt).toContain('Selo Y');
+
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE\s+phonograms/i.test(c[0] as string));
+    expect(updateCall).toBeDefined();
+    const meta = JSON.parse((updateCall as unknown as [string, string[]])[1][0]);
+    expect(meta.aiCatalogValidation.event).toBe('catalog.recording.created');
+    expect(meta.aiCatalogValidation.idempotencyKey).toBe('catalog.recording.created:t1:r1');
+  });
+
+  it('recording: idempotência skill_runs — run em andamento/sucesso bloqueia', async () => {
+    const { ds, query } = makeDs({ recordings: [RECORDING_ROW], skillRuns: [{ '1': 1 }] });
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_JSON);
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onRecordingCreated(recordingEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    expect(query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string))).toBeUndefined();
+  });
+
+  it('guarda: tenantId/entityId ausente é ignorado (sem run, sem query)', async () => {
+    const { ds, query } = makeDs({ works: [WORK_ROW] });
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_JSON);
+    const handler = new CatalogMetadataValidatorAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onWorkCreated({ tenantId: 't1', payload: { workId: '' } } as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+});

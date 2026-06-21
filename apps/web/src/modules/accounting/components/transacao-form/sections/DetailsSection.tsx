@@ -27,6 +27,7 @@ export function DetailsSection({
   handleRemoveAnexo,
 }: DetailsSectionProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const isLocalPendingAttachment = formData.anexoUrl.startsWith("blob:");
 
   return (
     <Card className="bg-muted/30 border-border">
@@ -60,7 +61,14 @@ export function DetailsSection({
           {formData.anexoUrl ? (
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
               <FileText className="h-5 w-5 text-muted-foreground" />
-              <span className="flex-1 text-sm truncate">{formData.anexoNome}</span>
+              <div className="flex-1 min-w-0">
+                <span className="block text-sm truncate">{formData.anexoNome}</span>
+                {isLocalPendingAttachment && (
+                  <span className="block text-xs text-muted-foreground">
+                    Arquivo local pendente de upload
+                  </span>
+                )}
+              </div>
               {!disabled && (
                 <Button
                   type="button"
@@ -81,7 +89,7 @@ export function DetailsSection({
                 accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
                 onChange={handleFileUpload}
                 disabled={disabled}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
+                className="flex h-8 w-full rounded-md border border-input bg-background px-3 py-1 text-sm cursor-pointer file:border-0 file:bg-transparent file:text-sm file:font-medium"
               />
               <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none">
                 <Upload className="h-4 w-4 text-muted-foreground" />

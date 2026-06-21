@@ -21,13 +21,13 @@ import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import {
   artistaToFormFields,
   formToArtistaPayload,
   ESPECIALIDADES_LABELS,
 } from "@/modules/artist/mappers";
-import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
+import { formatDate, formatCurrency, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { ContratoStatusBadge, getContratoSituacao } from "@/modules/contracts/components/ContratoStatusBadge";
 import { toast } from "sonner";
 
@@ -1221,7 +1221,7 @@ export default function ArtistaCadastro() {
                           <button
                             type="button"
                             onClick={() => setGaleriaUrls((prev) => prev.filter((_, i) => i !== idx))}
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-destructive/90 text-foreground opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                           >
                             <Trash2 className="h-3 w-3" />
                           </button>
@@ -1397,7 +1397,7 @@ export default function ArtistaCadastro() {
                               <span className="font-medium text-sm truncate">{contrato.titulo}</span>
                               <ContratoStatusBadge situacao={getContratoSituacao([contrato])} />
                               {contrato.exclusivo && (
-                                <Badge className="bg-emerald-600 text-white text-xs gap-1">
+                                <Badge variant="success" className="gap-1">
                                   <Shield className="h-3 w-3" /> Exclusivo
                                 </Badge>
                               )}
@@ -1410,7 +1410,7 @@ export default function ArtistaCadastro() {
                                   {contrato.data_fim ? ` → ${formatDate(contrato.data_fim)}` : ""}
                                 </span>
                               )}
-                              {contrato.valor && <span>{formatCurrency(contrato.valor)}</span>}
+                              {contrato.valor && <span className={getMonetarySemanticClass("neutral")}>{formatCurrency(contrato.valor)}</span>}
                             </div>
                           </div>
                           <Link to="/contratos" title="Abrir em Contratos">
@@ -1438,7 +1438,7 @@ export default function ArtistaCadastro() {
           </Button>
           <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2" data-testid="button-salvar">
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isEdit ? "Salvar Alterações" : "Cadastrar Artista"}
+            {isEdit ? "Salvar Alterações" : "Criar Artista"}
           </Button>
         </div>
 

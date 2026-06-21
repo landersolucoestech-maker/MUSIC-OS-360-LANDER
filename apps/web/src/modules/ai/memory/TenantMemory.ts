@@ -184,3 +184,4 @@ export function getTenantMemory(): TenantMemory {
   }
   return _memoryInstance;
 }
+

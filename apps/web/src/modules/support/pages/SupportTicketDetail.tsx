@@ -97,10 +97,10 @@ export default function SupportTicketDetail() {
             <h1 className="text-base font-semibold text-foreground mb-2">{ticket.subject}</h1>
             <p className="text-[13px] text-muted-foreground leading-relaxed">{ticket.description}</p>
             <div className="flex items-center gap-2 mt-3 flex-wrap">
-              <Badge variant="outline" className={cn("text-[10.5px] border", STATUS_COLOR[ticket.status])}>
+              <Badge variant="outline" className={cn("text-[10px] border", STATUS_COLOR[ticket.status])}>
                 {TICKET_STATUS_LABELS[ticket.status]}
               </Badge>
-              <Badge variant="outline" className={cn("text-[10.5px] border", PRIORITY_COLOR[ticket.priority])}>
+              <Badge variant="outline" className={cn("text-[10px] border", PRIORITY_COLOR[ticket.priority])}>
                 {TICKET_PRIORITY_LABELS[ticket.priority]}
               </Badge>
               <span className="text-[11px] text-muted-foreground">
@@ -144,12 +144,12 @@ export default function SupportTicketDetail() {
                           </Badge>
                         )}
                         {msg.internal_note && (
-                          <Badge variant="outline" className="text-[9px] h-3.5 px-1 border-yellow-500/30 text-yellow-400">
+                          <Badge variant="warning" className="text-[9px] h-3.5 px-1">
                             Nota Interna
                           </Badge>
                         )}
                       </div>
-                      <span className="text-[10.5px] text-muted-foreground">{formatShort(msg.created_at)}</span>
+                      <span className="text-[10px] text-muted-foreground">{formatShort(msg.created_at)}</span>
                     </div>
                     <p className="text-[13px] text-foreground/90 leading-relaxed whitespace-pre-wrap">
                       {msg.message}
@@ -190,7 +190,7 @@ export default function SupportTicketDetail() {
         {/* ── Sidebar ── */}
         <div className="space-y-4">
           <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Gerenciar</p>
+            <p className="text-[12px] font-semibold text-muted-foreground  tracking-wider">Gerenciar</p>
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground">Status</p>
               <Select
@@ -237,7 +237,7 @@ export default function SupportTicketDetail() {
           </div>
 
           <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-            <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">Detalhes</p>
+            <p className="text-[12px] font-semibold text-muted-foreground  tracking-wider">Detalhes</p>
             {[
               { icon: User, label: "Solicitante", value: ticket.created_by },
               { icon: Shield, label: "Responsável", value: ticket.assigned_to ?? "Não atribuído" },
@@ -248,7 +248,7 @@ export default function SupportTicketDetail() {
               <div key={label} className="flex items-start gap-2">
                 <Icon className="h-3.5 w-3.5 text-muted-foreground mt-0.5 shrink-0" />
                 <div>
-                  <p className="text-[10.5px] text-muted-foreground">{label}</p>
+                  <p className="text-[10px] text-muted-foreground">{label}</p>
                   <p className="text-[12px] text-foreground font-medium">{value}</p>
                 </div>
               </div>

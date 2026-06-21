@@ -1,6 +1,6 @@
-﻿// â”€â”€ .env carregado ANTES de qualquer mÃ³dulo (garante process.env para QueueModule.register) â”€â”€
+﻿// ── .env carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
 // Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
-// Replit Secrets jÃ¡ estÃ£o em process.env â€” valores existentes nÃ£o sÃ£o sobrepostos.
+// Replit Secrets já estão em process.env — valores existentes não são sobrepostos.
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -23,36 +23,69 @@ function loadLocalEnv(envPath: string): void {
   }
 }
 
+loadLocalEnv(path.resolve(__dirname, '../.env'));
 loadLocalEnv(path.resolve(process.cwd(), '.env'));
 
-// â”€â”€ Sentry DEVE ser o segundo import â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Sentry DEVE ser o segundo import ───────────────────────────────────────────
 import './instrument';
 
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe, Logger } from '@nestjs/common';
+import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
+import { IoAdapter } from '@nestjs/platform-socket.io';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
 import * as compression from 'compression';
+import * as express from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
 
-// Silencia erros de conexÃ£o Redis inacessÃ­vel em ambiente de desenvolvimento
-// (ex: redis.railway.internal nÃ£o estÃ¡ disponÃ­vel fora da Railway private network)
+// Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
+// (ex: redis.railway.internal não está disponível fora da Railway private network)
+const NETWORK_CODES = new Set(['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT']);
+const NET_LOG_THROTTLE_MS = 30_000;
+let __netLastCode = '';
+let __netLastLogAt = 0;
+
+function suppressNetworkNoise(err: NodeJS.ErrnoException): boolean {
+  if (!err.code || !NETWORK_CODES.has(err.code)) return false;
+  const now = Date.now();
+  if (err.code === __netLastCode && now - __netLastLogAt < NET_LOG_THROTTLE_MS) return true;
+  __netLastCode = err.code;
+  __netLastLogAt = now;
+  console.warn(`[net] Conexao indisponivel (${err.code}): ${err.message?.split('\n')[0]}`);
+  return true;
+}
+
 process.on('uncaughtException', (err: NodeJS.ErrnoException) => {
-  if (err.code === 'ENOTFOUND' || err.code === 'ECONNREFUSED' || err.code === 'ECONNRESET') {
-    // erros de rede nÃ£o fatais â€” log limpo sem stack trace
-    console.warn(`[Redis] ConexÃ£o indisponÃ­vel (${err.code}): ${err.message?.split('\n')[0]}`);
-    return;
-  }
-  // outros erros nÃ£o capturados â†’ relanÃ§a
+  if (suppressNetworkNoise(err)) return;
   throw err;
+});
+
+process.on('unhandledRejection', (reason: unknown) => {
+  if (reason instanceof Error && suppressNetworkNoise(reason as NodeJS.ErrnoException)) return;
+  throw reason;
 });
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+
+  // ── Production security gates (fail-closed) ────────────────────────────────
+  // Abort startup if someone tries to run production with auth/RBAC/tenant
+  // bypassed or with mock mode enabled. These are not silent — the process exits.
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  if (nodeEnv === 'production') {
+    if (process.env.AUTH_DISABLED === 'true') {
+      logger.error('FATAL: AUTH_DISABLED=true is forbidden in production. Aborting.');
+      process.exit(1);
+    }
+    if (process.env.MOCK_MODE === 'true' || process.env.VITE_MOCK_MODE === 'true') {
+      logger.error('FATAL: MOCK_MODE=true is forbidden in production. Aborting.');
+      process.exit(1);
+    }
+  }
 
   const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
@@ -60,7 +93,10 @@ async function bootstrap() {
     rawBody:    true,
   });
 
-  // â”€â”€ SeguranÃ§a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── WebSocket adapter (Socket.IO) — required for @WebSocketGateway to handle /socket.io/ ──
+  app.useWebSocketAdapter(new IoAdapter(app));
+
+  // ── Segurança ──────────────────────────────────────────────────────────────
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -73,7 +109,7 @@ async function bootstrap() {
           upgradeInsecureRequests: process.env['NODE_ENV'] === 'production' ? [] : null,
         },
       },
-      // HSTS: 1 year, include subdomains â€” only in production (HTTPS required)
+      // HSTS: 1 year, include subdomains — only in production (HTTPS required)
       hsts: process.env['NODE_ENV'] === 'production'
         ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
         : false,
@@ -87,9 +123,21 @@ async function bootstrap() {
     }),
   );
 
-  app.use(compression());
+  app.use(
+    compression({
+      // Skip socket.io polling responses — long-poll body must stream unmodified
+      filter: (req, res) => {
+        if (req.path?.startsWith('/socket.io/')) return false;
+        return compression.filter(req, res);
+      },
+    }),
+  );
 
-  // â”€â”€ CORS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Body limits (1MB) — PayloadTooLargeError → 413 via GlobalExceptionFilter ──
+  app.use(express.json({ limit: '1mb' }));
+  app.use(express.urlencoded({ limit: '1mb', extended: true }));
+
+  // ── CORS ─────────────────────────────────────────────────────────────────────
   const allowedOrigins = (
     process.env['CORS_ORIGINS'] ?? 'http://localhost:5000'
   ).split(',');
@@ -109,7 +157,9 @@ async function bootstrap() {
           return callback(null, true);
         }
       }
-      callback(new Error(`CORS: ${origin} nÃ£o permitido`));
+      // Silent reject: no Access-Control-Allow-Origin header is set, browser blocks.
+      // Avoids leaking 500 + server headers to attackers.
+      callback(null, false);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
@@ -119,15 +169,28 @@ async function bootstrap() {
       'X-Tenant-ID',
       'X-Request-ID',
       'X-Correlation-ID',
+      'X-Trace-ID',
+      'traceparent',
       'X-Idempotency-Key',
     ],
-    exposedHeaders: ['X-Request-ID', 'X-Correlation-ID', 'X-Idempotency-Replayed'],
+    exposedHeaders: [
+      'X-Request-ID',
+      'X-Correlation-ID',
+      'X-Trace-ID',
+      'X-Idempotency-Replayed',
+    ],
   });
 
-  // â”€â”€ Prefixo global â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-  app.setGlobalPrefix('api/v1');
+  // ── Prefixo global ───────────────────────────────────────────────────────────
+  app.setGlobalPrefix('api/v1', {
+    exclude: [
+      { path: 'metrics', method: RequestMethod.GET },
+      { path: 'admin/queues', method: RequestMethod.ALL },
+      { path: 'admin/queues/(.*)', method: RequestMethod.ALL },
+    ],
+  });
 
-  // â”€â”€ Pipes, Filters, Interceptors â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Pipes, Filters, Interceptors ─────────────────────────────────────────────
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -142,11 +205,11 @@ async function bootstrap() {
     new TransformInterceptor(),
   );
 
-  // â”€â”€ Swagger (dev / staging apenas) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Swagger (dev / staging apenas) ───────────────────────────────────────────
   if (process.env['NODE_ENV'] !== 'production') {
     const config = new DocumentBuilder()
-      .setTitle('MUSIC OS 360Â° API')
-      .setDescription('Enterprise Music Management SaaS â€” API REST')
+      .setTitle('MUSIC OS 360° API')
+      .setDescription('Enterprise Music Management SaaS — API REST')
       .setVersion('1.0')
       .addBearerAuth(
         { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
@@ -161,11 +224,11 @@ async function bootstrap() {
     });
   }
 
-  // â”€â”€ Graceful Shutdown â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // ── Graceful Shutdown ────────────────────────────────────────────────────────
   app.enableShutdownHooks();
 
   process.on('SIGTERM', async () => {
-    logger.log('SIGTERM recebido â€” iniciando graceful shutdown...');
+    logger.log('SIGTERM recebido — iniciando graceful shutdown...');
     await app.close();
     process.exit(0);
   });
@@ -173,14 +236,16 @@ async function bootstrap() {
   const port = process.env['PORT'] ?? 3001;
   await app.listen(port);
 
-  logger.log(`ðŸŽµ MUSIC OS 360Â° API rodando em http://localhost:${port}/api/v1`);
+  logger.log(`🎵 MUSIC OS 360° API rodando em http://localhost:${port}/api/v1`);
 
   if (process.env['NODE_ENV'] !== 'production') {
-    logger.log(`ðŸ“š Swagger em http://localhost:${port}/docs`);
+    logger.log(`📚 Swagger em http://localhost:${port}/docs`);
   }
 }
 
 bootstrap().catch((err: unknown) => {
-  console.error('Falha crÃ­tica no bootstrap:', err);
+  console.error('Falha crítica no bootstrap:', err);
   process.exit(1);
 });
+// touch Sun May 24 03:01:20     2026
+// fase10b trigger Sun May 24 11:24:00     2026

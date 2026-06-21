@@ -16,15 +16,15 @@ export default function ArtistFinancial() {
             Relatórios de receita, previsões e saldo de pagamentos aparecerão aqui.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-              <p className="text-xs uppercase text-muted-foreground">Artista</p>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs  text-muted-foreground">Artista</p>
               <p className="font-semibold">{entity?.name ?? 'Carregando...'}</p>
               <p className="mt-2 text-sm text-muted-foreground">Resumo financeiro ainda não disponível.</p>
             </div>
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-              <p className="text-xs uppercase text-muted-foreground">Receita</p>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs  text-muted-foreground">Receita</p>
               <p className="font-semibold">R$ 0,00</p>
-              <p className="mt-2 text-sm text-muted-foreground">Aguardando consolidação de vendas e streams.</p>
+              <p className="mt-2 text-sm text-muted-foreground">Aguardando consolidação comercial e streams.</p>
             </div>
           </div>
         </CardContent>
@@ -32,3 +32,5 @@ export default function ArtistFinancial() {
     </div>
   );
 }
+
+

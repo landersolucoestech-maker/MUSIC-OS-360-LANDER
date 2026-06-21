@@ -1,27 +1,14 @@
-/**
- * campaign-events.handler.ts
- *
- * Concrete automations triggered by campaign domain events.
- *
- * CampaignStarted →
- *   1. Enqueue monitoring setup (content-detection bootstrap for campaign assets).
- *   2. Log campaign start for observability.
- *
- * CampaignEnded →
- *   1. Enqueue performance report generation.
- *   2. Enqueue summary notification for the responsible user.
- */
-
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
+import { DatabaseContextService } from '../../../database/database-context.service';
 import { NotificationEntity } from '../../../database/entities';
 import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
-import type { CampaignStartedPayload, CampaignEndedPayload } from '../../../core/events/domain-events.types';
+import type { CampaignEndedPayload, CampaignStartedPayload } from '../../../core/events/domain-events.types';
 
 @Injectable()
 export class CampaignEventsHandler {
@@ -31,19 +18,22 @@ export class CampaignEventsHandler {
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
     @Optional() private readonly queue: QueueService,
+    @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) this.notifRepo = ds.getRepository(NotificationEntity);
   }
 
   @OnEvent(DOMAIN_EVENTS.CAMPAIGN_STARTED)
   async onCampaignStarted(event: DomainEvent<CampaignStartedPayload>): Promise<void> {
-    const { campaignId, tenantId, titulo, startedBy, startedAt } = event.payload;
+    const tenantId = event.tenantId ?? event.payload.tenantId;
+    if (!tenantId) return this.failClosed(event.type);
 
-    // 1. Enqueue monitoring/content-detection setup for campaign
+    const { campaignId, titulo, startedBy, startedAt } = event.payload;
+
     if (this.queue) {
       try {
         await this.queue.addNotification({
-          job:           'setup-campaign-monitoring',
+          job: 'setup-campaign-monitoring',
           campaignId,
           tenantId,
           titulo,
@@ -55,41 +45,45 @@ export class CampaignEventsHandler {
         );
       } catch (err) {
         this.logger.warn(
-          `CampaignEventsHandler: failed to enqueue monitoring for campaign "${campaignId}" — ${String(err)}`,
+          `CampaignEventsHandler: failed to enqueue monitoring for campaign "${campaignId}" - ${String(err)}`,
         );
       }
     }
 
-    // 2. Notify responsible user of campaign start
-    if (this.notifRepo && event.userId) {
-      try {
-        await this.notifRepo.save(
-          this.notifRepo.create({
-            id:        randomUUID(),
+    if (!this.notifRepo || !event.userId) return;
+    try {
+      await this.runInTenantContext(tenantId, async (manager) => {
+        const notifRepo = manager ? manager.getRepository(NotificationEntity) : this.notifRepo;
+        if (!notifRepo) return;
+        await notifRepo.save(
+          notifRepo.create({
+            id: randomUUID(),
             tenant_id: tenantId,
-            user_id:   event.userId,
-            title:     `Campanha iniciada: "${titulo}"`,
-            body:      `Campanha iniciada em ${startedAt} por ${startedBy}. Monitoramento configurado automaticamente.`,
-            type:      DOMAIN_EVENTS.CAMPAIGN_STARTED,
-            entity:    'campaign',
+            user_id: event.userId,
+            title: `Campanha iniciada: "${titulo}"`,
+            body: `Campanha iniciada em ${startedAt} por ${startedBy}. Monitoramento configurado automaticamente.`,
+            type: DOMAIN_EVENTS.CAMPAIGN_STARTED,
+            entity: 'campaign',
             entity_id: campaignId,
-            read_at:   null,
-            metadata:  { startedBy, startedAt, correlationId: event.correlationId ?? null },
+            read_at: null,
+            metadata: { startedBy, startedAt, correlationId: event.correlationId ?? null },
           }),
         );
-      } catch (err) {
-        this.logger.error(
-          `CampaignEventsHandler: failed to persist start notification for campaign "${campaignId}" — ${String(err)}`,
-        );
-      }
+      });
+    } catch (err) {
+      this.logger.error(
+        `CampaignEventsHandler: failed to persist start notification for campaign "${campaignId}" - ${String(err)}`,
+      );
     }
   }
 
   @OnEvent(DOMAIN_EVENTS.CAMPAIGN_ENDED)
   async onCampaignEnded(event: DomainEvent<CampaignEndedPayload>): Promise<void> {
-    const { campaignId, tenantId, titulo, endedAt } = event.payload;
+    const tenantId = event.tenantId ?? event.payload.tenantId;
+    if (!tenantId) return this.failClosed(event.type);
 
-    // 1. Enqueue performance report generation
+    const { campaignId, titulo, endedAt } = event.payload;
+
     if (this.queue) {
       try {
         await this.queue.addReport('campaign-performance', {
@@ -104,33 +98,48 @@ export class CampaignEventsHandler {
         );
       } catch (err) {
         this.logger.warn(
-          `CampaignEventsHandler: failed to enqueue performance report for campaign "${campaignId}" — ${String(err)}`,
+          `CampaignEventsHandler: failed to enqueue performance report for campaign "${campaignId}" - ${String(err)}`,
         );
       }
     }
 
-    // 2. Persist end notification for responsible user
-    if (this.notifRepo && event.userId) {
-      try {
-        await this.notifRepo.save(
-          this.notifRepo.create({
-            id:        randomUUID(),
+    if (!this.notifRepo || !event.userId) return;
+    try {
+      await this.runInTenantContext(tenantId, async (manager) => {
+        const notifRepo = manager ? manager.getRepository(NotificationEntity) : this.notifRepo;
+        if (!notifRepo) return;
+        await notifRepo.save(
+          notifRepo.create({
+            id: randomUUID(),
             tenant_id: tenantId,
-            user_id:   event.userId,
-            title:     `Campanha encerrada: "${titulo}"`,
-            body:      `Campanha encerrada em ${endedAt}. Relatório de performance em processamento.`,
-            type:      DOMAIN_EVENTS.CAMPAIGN_ENDED,
-            entity:    'campaign',
+            user_id: event.userId,
+            title: `Campanha encerrada: "${titulo}"`,
+            body: `Campanha encerrada em ${endedAt}. Relatorio de performance em processamento.`,
+            type: DOMAIN_EVENTS.CAMPAIGN_ENDED,
+            entity: 'campaign',
             entity_id: campaignId,
-            read_at:   null,
-            metadata:  { endedAt, correlationId: event.correlationId ?? null },
+            read_at: null,
+            metadata: { endedAt, correlationId: event.correlationId ?? null },
           }),
         );
-      } catch (err) {
-        this.logger.error(
-          `CampaignEventsHandler: failed to persist end notification for campaign "${campaignId}" — ${String(err)}`,
-        );
-      }
+      });
+    } catch (err) {
+      this.logger.error(
+        `CampaignEventsHandler: failed to persist end notification for campaign "${campaignId}" - ${String(err)}`,
+      );
     }
+  }
+
+  private failClosed(eventType: string): void {
+    this.logger.warn(`CampaignEventsHandler: event "${eventType}" sem tenantId - abortado (fail-closed)`);
+  }
+
+  private runInTenantContext<T>(
+    tenantId: string,
+    work: (manager: EntityManager | undefined) => Promise<T>,
+  ): Promise<T> {
+    return this.dbContext
+      ? this.dbContext.runInTenantContext({ tenantId, orgId: null, role: null }, work)
+      : work(undefined);
   }
 }

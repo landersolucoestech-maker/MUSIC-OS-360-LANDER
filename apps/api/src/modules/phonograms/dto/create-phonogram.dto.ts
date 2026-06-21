@@ -24,6 +24,12 @@ export class CreatePhonogramDto {
   @MaxLength(20)
   isrc?: string;
 
+  @ApiPropertyOptional({ example: 'Pop' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  genero_musical?: string | null;
+
   @ApiPropertyOptional({ example: 312, description: 'Duração em segundos' })
   @IsOptional()
   @Type(() => Number)

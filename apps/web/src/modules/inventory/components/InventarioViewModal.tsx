@@ -6,7 +6,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Package, MapPin, User, DollarSign } from "lucide-react";
-import { formatCurrency } from "@/shared/lib/format-utils";
+import { formatCurrency, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 
 interface InventarioViewModalProps {
   open: boolean;
@@ -33,13 +33,13 @@ export function InventarioViewModal({ open, onOpenChange, item }: InventarioView
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case "em uso":
-        return <Badge className="bg-status-active text-primary-foreground">{status}</Badge>;
+        return <Badge variant="warning">{status}</Badge>;
       case "disponível":
-        return <Badge className="bg-status-confirmed text-primary-foreground">{status}</Badge>;
+        return <Badge variant="success">{status}</Badge>;
       case "manutenção":
-        return <Badge className="bg-status-pending text-primary-foreground">{status}</Badge>;
+        return <Badge variant="warning">{status}</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="neutral">{status}</Badge>;
     }
   };
 
@@ -62,7 +62,7 @@ export function InventarioViewModal({ open, onOpenChange, item }: InventarioView
 
           {/* Badges */}
           <div className="flex gap-2">
-            <Badge className="bg-blue-500 hover:bg-blue-500 text-white">
+            <Badge variant="neutral">
               {item.categoria || "Equipamento"}
             </Badge>
             {getStatusBadge(item.status)}
@@ -89,12 +89,12 @@ export function InventarioViewModal({ open, onOpenChange, item }: InventarioView
               <p className="text-sm text-muted-foreground">Valor Unitário</p>
               <div className="flex items-center gap-1.5">
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
-                <span className="font-medium text-foreground">{valorUnitario == null ? "-" : formatCurrency(valorUnitario)}</span>
+                <span className={`font-medium ${valorUnitario == null ? "text-foreground" : getMonetarySemanticClass("neutral")}`}>{valorUnitario == null ? "-" : formatCurrency(valorUnitario)}</span>
               </div>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Valor Total</p>
-              <p className="font-medium text-success">{valorTotal == null ? "-" : formatCurrency(valorTotal)}</p>
+              <p className={`font-medium ${valorTotal == null ? "text-foreground" : getMonetarySemanticClass("neutral")}`}>{valorTotal == null ? "-" : formatCurrency(valorTotal)}</p>
             </div>
             <div>
               <p className="text-sm text-muted-foreground">Setor</p>

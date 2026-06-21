@@ -4,7 +4,12 @@ import { Button } from "@/shared/ui/button";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Calendar, Clock, MapPin, User, Phone, Mail, Users, DollarSign, Tag, FileText, Pencil, Building2, CheckSquare } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
+import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
+import {
+  normalizeAgendaParticipants,
+  useAgendaParticipants,
+} from "@/modules/events/hooks/useAgendaParticipants";
 
 interface SchedulerViewModalProps {
   open: boolean;
@@ -29,13 +34,13 @@ const tipoEventoLabels: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "confirmado": return <Badge className="bg-success text-[#000000]">Confirmado</Badge>;
+    case "confirmado": return <Badge variant="success">Confirmado</Badge>;
     case "agendado":
-    case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
+    case "pendente": return <Badge variant="warning">Pendente</Badge>;
     case "realizado":
-    case "concluido": return <Badge className="bg-blue-600 text-[#ffffff]">Realizado</Badge>;
-    case "cancelado": return <Badge className="bg-destructive text-destructive-foreground">Cancelado</Badge>;
-    default: return <Badge variant="secondary">{status || "—"}</Badge>;
+    case "concluido": return <Badge variant="info">Realizado</Badge>;
+    case "cancelado": return <Badge variant="danger">Cancelado</Badge>;
+    default: return <Badge variant="neutral">{status || "—"}</Badge>;
   }
 };
 
@@ -44,7 +49,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: any; ch
     <div className="space-y-3">
       <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground border-b border-border pb-2">
         <Icon className="h-4 w-4" />
-        <span className="uppercase tracking-wide text-xs">{title}</span>
+        <span className=" tracking-wide text-xs">{title}</span>
       </div>
       {children}
     </div>
@@ -61,15 +66,36 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 }
 
 export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: SchedulerViewModalProps) {
+  const { getOptionsByKind } = useOperationalSettings();
+  const eventTypeLabels = Object.fromEntries(getOptionsByKind("event_type").map((option) => [option.value, option.label]));
+  const { getArtistParticipantById } = useAgendaParticipants();
+
   if (!evento) return null;
 
   const artista = evento.artistas;
+  const meta = (evento.metadata as Record<string, unknown> | undefined) ?? {};
+  const storedParticipants = normalizeAgendaParticipants(meta["participants"]);
+  const legacyArtistParticipant = getArtistParticipantById(evento.artista_id);
+  const participants = storedParticipants.length > 0
+    ? storedParticipants
+    : legacyArtistParticipant
+      ? [legacyArtistParticipant]
+      : artista
+        ? [{
+            source: "artist" as const,
+            id: String(artista.id ?? evento.artista_id ?? "legacy-artist"),
+            label: String(artista.nome_artistico || artista.nome || "Artista"),
+            email: artista.email ? String(artista.email) : undefined,
+            phone: artista.telefone ? String(artista.telefone) : undefined,
+            category: "Artista",
+          }]
+        : [];
   const checklist: Array<{ item: string; concluido: boolean }> = Array.isArray(evento.checklist) ? evento.checklist : [];
   const checklistDone = checklist.filter(c => c.concluido).length;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden rounded-[28px] bg-card shadow-xl ring-1 ring-border/10" data-testid="modal-evento-view">
+      <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden rounded-[28px] bg-card ring-1 ring-border/10" data-testid="modal-evento-view">
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-border/10">
           <div className="flex flex-col gap-3">
             <div className="min-w-0">
@@ -81,7 +107,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
             <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="outline" className="text-xs">
                   <Tag className="h-3 w-3 mr-1" />
-                  {tipoEventoLabels[evento.tipo_evento] || evento.tipo_evento}
+                  {eventTypeLabels[evento.tipo_evento] || tipoEventoLabels[evento.tipo_evento] || evento.tipo_evento}
                 </Badge>
                 {getStatusBadge(evento.status)}
                 {evento.tipo_local && (
@@ -115,8 +141,38 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
             </div>
           </Section>
 
+          {participants.length > 0 && (
+            <Section title="Participantes do Evento" icon={User}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {participants.map((participant) => (
+                  <Card key={`${participant.source}:${participant.id}`}>
+                    <CardContent className="p-4 flex items-center gap-3">
+                      <div className="w-10 h-10 bg-primary/10 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate" data-testid="text-evento-artista">
+                          {participant.label}
+                        </p>
+                        {participant.category && (
+                          <p className="text-xs text-muted-foreground">{participant.category}</p>
+                        )}
+                      </div>
+                      {(participant.email || participant.phone) && (
+                        <div className="hidden sm:flex flex-col text-right text-xs text-muted-foreground">
+                          {participant.email && <span>{participant.email}</span>}
+                          {participant.phone && <span>{participant.phone}</span>}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </Section>
+          )}
+
           {/* ARTISTA */}
-          {artista && (
+          {artista && participants.length === 0 && (
             <Section title="Artista" icon={User}>
               <Card>
                 <CardContent className="p-4 flex items-center gap-3">
@@ -185,7 +241,7 @@ export function SchedulerViewModal({ open, onOpenChange, evento, onEdit }: Sched
                   <Card>
                     <CardContent className="p-4">
                       <p className="text-xs text-muted-foreground">Cachê</p>
-                      <p className="text-xl font-bold text-success mt-1" data-testid="text-evento-cache">
+                      <p className={`text-xl font-bold mt-1 ${getMonetarySemanticClass("neutral")}`} data-testid="text-evento-cache">
                         {formatCurrency(evento.valor_cache)}
                       </p>
                     </CardContent>

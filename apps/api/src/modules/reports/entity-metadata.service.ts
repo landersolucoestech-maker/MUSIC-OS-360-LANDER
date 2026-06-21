@@ -1,0 +1,301 @@
+/**
+ * modules/reports/entity-metadata.service.ts
+ *
+ * FASE 1 — varredura REAL das entidades TypeORM (sem depender do frontend e sem
+ * exigir conexão de banco). Lê os metadados de decorator via
+ * `getMetadataArgsStorage()` para as entidades registradas em `ALL_ENTITIES`
+ * (fonte de verdade do DataSource), classifica cada uma explicitamente e expõe
+ * um inventário técnico confiável.
+ *
+ * NÃO implementa import/export. NÃO usa dados fake. NÃO usa hook de frontend.
+ */
+import { Injectable } from '@nestjs/common';
+import { getMetadataArgsStorage } from 'typeorm';
+import { ALL_ENTITIES } from '../../database/entities';
+import { getReportableMetadata } from './reportable.decorator';
+import { tryGetFieldLabelPtBr } from './i18n/field-labels.pt-br';
+import {
+  EntityCategory,
+  type ColumnMeta,
+  type EntityReport,
+  type EntitiesInventory,
+  type RelationMeta,
+} from './entity-metadata.types';
+
+// ─── Classificação central, explícita e exaustiva (117 tabelas) ──────────────────
+// Qualquer tabela ausente daqui cai em UNKNOWN → teste falha (proposital).
+const ENTITY_CATEGORY: Record<string, EntityCategory> = {
+  // ── Operacionais reportáveis ──────────────────────────────────────────────
+  artists: EntityCategory.REPORTABLE,
+  works: EntityCategory.REPORTABLE,
+  phonograms: EntityCategory.REPORTABLE,
+  contracts: EntityCategory.REPORTABLE,
+  contract_templates: EntityCategory.REPORTABLE,
+  transactions: EntityCategory.REPORTABLE,
+  invoices: EntityCategory.REPORTABLE,
+  clients: EntityCategory.REPORTABLE,
+  leads: EntityCategory.REPORTABLE,
+  lead_interactions: EntityCategory.REPORTABLE,
+  campaigns: EntityCategory.REPORTABLE,
+  briefings: EntityCategory.REPORTABLE,
+  events: EntityCategory.REPORTABLE,
+  projects: EntityCategory.REPORTABLE,
+  releases: EntityCategory.REPORTABLE,
+  shares: EntityCategory.REPORTABLE,
+  takedowns: EntityCategory.REPORTABLE,
+  support_tickets: EntityCategory.REPORTABLE,
+  ecad_reports: EntityCategory.REPORTABLE,
+  licenses: EntityCategory.REPORTABLE,
+  inventory_items: EntityCategory.REPORTABLE,
+  content_detections: EntityCategory.REPORTABLE,
+  forms: EntityCategory.REPORTABLE,
+  conversations: EntityCategory.REPORTABLE,
+  operational_tasks: EntityCategory.REPORTABLE,
+  crm_contacts: EntityCategory.REPORTABLE,
+  crm_companies: EntityCategory.REPORTABLE,
+  crm_tasks: EntityCategory.REPORTABLE,
+  financial_categories: EntityCategory.REPORTABLE,
+  financial_rules: EntityCategory.REPORTABLE,
+  employees: EntityCategory.REPORTABLE,
+  payroll_entries: EntityCategory.REPORTABLE,
+  leave_requests: EntityCategory.REPORTABLE,
+  artist_goals: EntityCategory.REPORTABLE,
+  assets: EntityCategory.REPORTABLE,
+  rights_holders: EntityCategory.REPORTABLE,
+  marketing_projects: EntityCategory.REPORTABLE,
+  marketing_strategies: EntityCategory.REPORTABLE,
+  marketing_assets: EntityCategory.REPORTABLE,
+  marketing_content_posts: EntityCategory.REPORTABLE,
+  marketing_tasks: EntityCategory.REPORTABLE,
+  audiovisual_projects: EntityCategory.REPORTABLE,
+  audiovisual_briefings: EntityCategory.REPORTABLE,
+  audiovisual_tasks: EntityCategory.REPORTABLE,
+  audiovisual_assets: EntityCategory.REPORTABLE,
+  audiovisual_deliverables: EntityCategory.REPORTABLE,
+  pipelines: EntityCategory.REPORTABLE,
+  pipeline_opportunities: EntityCategory.REPORTABLE,
+  society_submissions: EntityCategory.REPORTABLE,
+  society_accounts: EntityCategory.REPORTABLE,
+
+  // ── Operacionais NÃO reportáveis (sub-entidades / ruído) ──────────────────
+  notifications: EntityCategory.NOT_REPORTABLE,
+  uploads: EntityCategory.NOT_REPORTABLE,
+  form_submissions: EntityCategory.NOT_REPORTABLE,
+  conversation_messages: EntityCategory.NOT_REPORTABLE,
+  conversation_notes: EntityCategory.NOT_REPORTABLE,
+  crm_tags: EntityCategory.NOT_REPORTABLE,
+  crm_timeline_events: EntityCategory.NOT_REPORTABLE,
+  asset_versions: EntityCategory.NOT_REPORTABLE,
+  campaign_tasks: EntityCategory.NOT_REPORTABLE,
+  campaign_assets: EntityCategory.NOT_REPORTABLE,
+  financial_category_centers: EntityCategory.NOT_REPORTABLE,
+  financial_category_rules: EntityCategory.NOT_REPORTABLE,
+  financial_category_favorites: EntityCategory.NOT_REPORTABLE,
+  marketing_strategy_objectives: EntityCategory.NOT_REPORTABLE,
+  marketing_strategy_initiatives: EntityCategory.NOT_REPORTABLE,
+  marketing_strategy_actions: EntityCategory.NOT_REPORTABLE,
+  marketing_asset_versions: EntityCategory.NOT_REPORTABLE,
+  marketing_asset_approvals: EntityCategory.NOT_REPORTABLE,
+  audiovisual_approvals: EntityCategory.NOT_REPORTABLE,
+  audiovisual_shots: EntityCategory.NOT_REPORTABLE,
+  audiovisual_production_days: EntityCategory.NOT_REPORTABLE,
+  audiovisual_team_members: EntityCategory.NOT_REPORTABLE,
+  pipeline_stages: EntityCategory.NOT_REPORTABLE,
+  external_identifiers: EntityCategory.NOT_REPORTABLE,
+  integrations: EntityCategory.NOT_REPORTABLE,
+
+  // ── Junção (N:N) ──────────────────────────────────────────────────────────
+  crm_contact_tags: EntityCategory.JUNCTION,
+  role_permissions: EntityCategory.JUNCTION,
+  role_template_permissions: EntityCategory.JUNCTION,
+  role_inheritance: EntityCategory.JUNCTION,
+  permission_dependencies: EntityCategory.JUNCTION,
+  permission_conflicts: EntityCategory.JUNCTION,
+  membership_job_functions: EntityCategory.JUNCTION,
+  project_assets: EntityCategory.JUNCTION,
+  task_assets: EntityCategory.JUNCTION,
+  financial_category_links: EntityCategory.JUNCTION,
+
+  // ── Segurança / RBAC / auth / auditoria ──────────────────────────────────
+  auth: EntityCategory.SECURITY,
+  users: EntityCategory.SECURITY,
+  permissions: EntityCategory.SECURITY,
+  permission_groups: EntityCategory.SECURITY,
+  permission_aliases: EntityCategory.SECURITY,
+  role_templates: EntityCategory.SECURITY,
+  roles: EntityCategory.SECURITY,
+  org_members: EntityCategory.SECURITY,
+  oauth_connections: EntityCategory.SECURITY,
+  departments: EntityCategory.SECURITY,
+  positions: EntityCategory.SECURITY,
+  job_functions: EntityCategory.SECURITY,
+  audit_logs: EntityCategory.SECURITY,
+  financial_category_audit_logs: EntityCategory.SECURITY,
+
+  // ── Cobrança ──────────────────────────────────────────────────────────────
+  billing: EntityCategory.BILLING,
+  billing_subscriptions: EntityCategory.BILLING,
+
+  // ── Infra interna de IA ───────────────────────────────────────────────────
+  ai: EntityCategory.AI_INTERNAL,
+  ai_jobs: EntityCategory.AI_INTERNAL,
+  ai_usage_logs: EntityCategory.AI_INTERNAL,
+  skill_runs: EntityCategory.AI_INTERNAL,
+  skill_run_logs: EntityCategory.AI_INTERNAL,
+
+  // ── Infraestrutura (logs, eventos, jobs, org/tenant, sync) ────────────────
+  activity_logs: EntityCategory.INFRA,
+  notification_settings: EntityCategory.INFRA,
+  artist_platform_profiles: EntityCategory.INFRA,
+  asset_usage_logs: EntityCategory.INFRA,
+  domain_event_log: EntityCategory.INFRA,
+  health: EntityCategory.INFRA,
+  hr: EntityCategory.INFRA,
+  organizations: EntityCategory.INFRA,
+  tenants: EntityCategory.INFRA,
+  webhook_events: EntityCategory.INFRA,
+  workflow_transitions: EntityCategory.INFRA,
+  workflow_executions: EntityCategory.INFRA,
+  workflow_execution_logs: EntityCategory.INFRA,
+  financial_category_rule_runs: EntityCategory.INFRA,
+  musicchat_automation_events: EntityCategory.INFRA,
+  musicchat_automation_notifications: EntityCategory.INFRA,
+  musicchat_automation_settings: EntityCategory.INFRA,
+  society_payload_snapshots: EntityCategory.INFRA,
+  society_submission_events: EntityCategory.INFRA,
+  society_sync_jobs: EntityCategory.INFRA,
+  society_validation_errors: EntityCategory.INFRA,
+};
+
+const IDENTITY_COLUMN_NAMES = new Set([
+  'name', 'nome', 'nome_artistico', 'nome_civil', 'nome_fantasia', 'razao_social',
+  'title', 'titulo', 'numero', 'codigo', 'code', 'slug', 'email', 'label',
+  'assunto', 'descricao', 'description', 'referencia', 'ref',
+]);
+
+function isOwnedBy(cls: unknown, target: unknown): boolean {
+  if (target === cls) return true;
+  if (typeof target === 'function' && typeof cls === 'function') {
+    return (cls as { prototype: object }).prototype instanceof (target as { new (): object });
+  }
+  return false;
+}
+
+function typeToString(type: unknown, mode: string): string {
+  if (mode === 'createDate' || mode === 'updateDate' || mode === 'deleteDate') return 'timestamp';
+  if (typeof type === 'function') return (type as { name?: string }).name ?? 'unknown';
+  if (typeof type === 'string') return type;
+  return 'unknown';
+}
+
+@Injectable()
+export class EntityMetadataService {
+  /** Varre todas as entidades registradas e devolve o inventário classificado. */
+  scan(): EntitiesInventory {
+    const storage = getMetadataArgsStorage();
+    const entities: EntityReport[] = [];
+
+    for (const cls of ALL_ENTITIES as unknown[]) {
+      const tableArgs = storage.tables.find((t) => t.target === cls);
+      if (!tableArgs) continue; // não é @Entity (defensivo)
+      const tableName = tableArgs.name ?? '';
+
+      const columnArgs = storage.columns.filter((c) => isOwnedBy(cls, c.target));
+      const generated = new Set(
+        storage.generations.filter((g) => isOwnedBy(cls, g.target)).map((g) => g.propertyName),
+      );
+      const relationArgs = storage.relations.filter((r) => isOwnedBy(cls, r.target));
+
+      const columns: ColumnMeta[] = columnArgs.map((c) => {
+        const dbName = c.options.name ?? c.propertyName;
+        const mode = String(c.mode ?? 'regular');
+        const enumOpt = c.options.enum;
+        return {
+          name: dbName,
+          // Label EXPLÍCITO da camada central; null quando ainda não traduzido
+          // (nunca cai em humanizeKey — sem fallback visual).
+          label: tryGetFieldLabelPtBr(dbName),
+          type: typeToString(c.options.type, mode),
+          nullable: c.options.nullable === true,
+          primary: c.options.primary === true,
+          generated: generated.has(c.propertyName) || c.options.generated != null,
+          isEnum: enumOpt != null,
+          enumValues: Array.isArray(enumOpt) ? enumOpt.map(String) : undefined,
+          isCreatedAt: mode === 'createDate' || dbName === 'created_at',
+          isUpdatedAt: mode === 'updateDate' || dbName === 'updated_at',
+          isDeletedAt: mode === 'deleteDate' || dbName === 'deleted_at',
+          isTenantId: dbName === 'tenant_id',
+        };
+      });
+
+      const relations: RelationMeta[] = relationArgs.map((r) => {
+        const t = r.type as unknown;
+        let targetName = 'unknown';
+        try {
+          const resolved = typeof t === 'function' && (t as { prototype?: unknown }).prototype === undefined
+            ? (t as () => unknown)()
+            : t;
+          targetName = typeof resolved === 'function' ? (resolved as { name?: string }).name ?? 'unknown' : String(resolved);
+        } catch { /* relação por string/lazy — mantém unknown */ }
+        return { property: r.propertyName, type: r.relationType, target: targetName };
+      });
+
+      const hasTenantId = columns.some((c) => c.isTenantId);
+      const hasSoftDelete = columns.some((c) => c.isDeletedAt);
+      const hasTimestamps = columns.some((c) => c.isCreatedAt) && columns.some((c) => c.isUpdatedAt);
+      const hasIdentifiable = columns.some((c) => IDENTITY_COLUMN_NAMES.has(c.name));
+
+      const override = getReportableMetadata(cls);
+      const category = override?.category ?? ENTITY_CATEGORY[tableName] ?? EntityCategory.UNKNOWN;
+
+      // Colunas "visíveis" (candidatas a export) sem label pt-BR — não técnicas.
+      const untranslatedVisible = columns.filter(
+        (c) => !c.primary && !c.generated && !c.isTenantId &&
+          !c.isCreatedAt && !c.isUpdatedAt && !c.isDeletedAt &&
+          !/_id$/.test(c.name) && c.label === null,
+      );
+
+      const risks: string[] = [];
+      if (category === EntityCategory.UNKNOWN) risks.push('UNCLASSIFIED');
+      if (category === EntityCategory.REPORTABLE && !hasTenantId) risks.push('MISSING_TENANT_ID');
+      if (category === EntityCategory.REPORTABLE && !hasIdentifiable) risks.push('NO_IDENTIFIABLE_COLUMN');
+      if (columns.length === 0) risks.push('NO_COLUMNS');
+      if (category === EntityCategory.REPORTABLE && !hasTimestamps) risks.push('NO_TIMESTAMPS');
+      if (category === EntityCategory.REPORTABLE && untranslatedVisible.length > 0) {
+        risks.push(`UNTRANSLATED_COLUMNS:${untranslatedVisible.length}`);
+      }
+
+      // Reportável de fato exige tenant_id + coluna identificável (fail-closed):
+      // entidades declaradas reportáveis sem esses requisitos ficam BLOQUEADAS
+      // (reportable=false) e são sinalizadas via risks, nunca mascaradas.
+      const reportable =
+        category === EntityCategory.REPORTABLE && hasTenantId && hasIdentifiable;
+
+      entities.push({
+        entityName: (cls as { name: string }).name,
+        tableName,
+        category,
+        reportable,
+        columns,
+        relations,
+        hasTenantId,
+        hasSoftDelete,
+        hasTimestamps,
+        risks,
+      });
+    }
+
+    entities.sort((a, b) => a.tableName.localeCompare(b.tableName));
+
+    const reportableEntities = entities.filter((e) => e.reportable).length;
+    const unknownEntities = entities.filter((e) => e.category === EntityCategory.UNKNOWN).length;
+
+    return {
+      totalEntities: entities.length,
+      reportableEntities,
+      nonReportableEntities: entities.length - reportableEntities,
+      unknownEntities,
+      entities,
+    };
+  }
+}

@@ -276,7 +276,7 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
     consumedBy:      ["crm", "contracts"],
     status:          "production",
     description:
-      "Pipeline de leads em Kanban: novo → em contacto → proposta → " +
+      "Leads comerciais: captacao, follow-up, proposta e contrato." +
       "negociação → fechado / perdido. Temperatura, prioridade, " +
       "valor estimado e histórico de actividade.",
   },
@@ -311,6 +311,20 @@ export const MODULE_REGISTRY: Record<TenantModuleKey, ModuleDefinition> = {
       "Configurações do tenant: perfil da empresa, utilizadores, " +
       "papéis e permissões RBAC, integrações (ABRAMUS funcional; " +
       "restantes em stub) e personalizacao operacional de tenant.",
+  },
+
+  musicchat: {
+    key:             "musicchat",
+    name:            "MusicChat",
+    route:           "/chat",
+    featureFlag:     "moduleArtists",
+    primaryEntities: ["Conversation", "ConversationMessage", "MusicChatAutomation"],
+    dependsOn:       ["crm", "leads", "events", "settings"],
+    consumedBy:      ["audit", "marketing", "crm"],
+    status:          "production",
+    description:
+      "Central multicanal de atendimento, conversas, mensagens, triagem automatica, " +
+      "notificacoes internas e automacoes administrativas do MusicChat.",
   },
 };
 
@@ -380,3 +394,4 @@ export const SHARED_LAYER_RULES = {
     "mappers de entidade (pertencem ao módulo)",
   ],
 } as const;
+

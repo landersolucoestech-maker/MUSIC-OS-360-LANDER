@@ -19,6 +19,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
 import { CheckCircle, XCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { SiSpotify } from "react-icons/si";
 import {
   useSpotifyStatus,
   useSpotifySaveCredentials,
@@ -64,8 +65,8 @@ export function SpotifyConfigDialog({ open, onOpenChange }: SpotifyConfigDialogP
       <DialogContent className="max-w-lg" data-testid="dialog-spotify-config">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#1DB954]/10">
-              <span className="text-xl">🎵</span>
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+               <SiSpotify className="h-5 w-5 text-[#1DB954]" />
             </div>
             <div>
               <DialogTitle className="text-base">Spotify for Artists</DialogTitle>
@@ -96,7 +97,7 @@ export function SpotifyConfigDialog({ open, onOpenChange }: SpotifyConfigDialogP
                 )}
               </div>
               {isConnected && (
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs">
+                <Badge variant="success">
                   Ativo
                 </Badge>
               )}
@@ -211,3 +212,4 @@ export function SpotifyConfigDialog({ open, onOpenChange }: SpotifyConfigDialogP
     </Dialog>
   );
 }
+

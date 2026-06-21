@@ -10,6 +10,8 @@ import { Textarea } from "@/shared/ui/textarea";
 import { FormTextarea } from "@/shared/components/FormField";
 import { toast } from "sonner";
 import { projetoSchema } from "@/modules/projects/lib/projeto-schema";
+import { MUSICAL_GENRES } from "@/constants/musicalGenres";
+import { LANGUAGES } from "@/constants/languages";
 import { Plus, Upload, X, Music, FileAudio, Loader2, Link } from "lucide-react";
 
 interface ProjetoFormModalProps {
@@ -44,8 +46,9 @@ interface UploadedAudio {
   size: number;
 }
 
-const generosMusicais = ["Funk", "Pop", "Rock", "Sertanejo", "Trap", "Rap/Hip-Hop", "Pagode", "Forró", "MPB", "Eletrônica", "Gospel", "Reggaeton", "R&B", "Outro"];
-const idiomas = ["Português", "Inglês", "Espanhol", "Francês", "Italiano", "Alemão", "Japonês", "Coreano", "Outro"];
+const generosMusicais = MUSICAL_GENRES;
+
+const idiomas = LANGUAGES;
 
 const formatFileSize = (bytes: number) => {
   if (bytes === 0) return '0 Bytes';
@@ -78,7 +81,6 @@ function normTipo(v: string | null | undefined): string {
   const s = (v || "").toLowerCase().trim();
   if (s === "álbum" || s === "album") return "album";
   if (s === "ep") return "ep";
-  if (s === "turnê" || s === "turne") return "turne";
   return "single";
 }
 function normStatus(v: string | null | undefined): string {
@@ -152,12 +154,12 @@ function ArtistNameInput({ value, onChange, artistas, placeholder, disabled }: A
         autoComplete="off"
       />
       {open && suggestions.length > 0 && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md max-h-48 overflow-y-auto">
           {suggestions.map(a => (
             <button
               key={a.id}
               type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted hover:text-foreground flex flex-col gap-0.5"
               onMouseDown={() => handleSelect(a)}
             >
               <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
@@ -208,6 +210,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
 
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Novo Projeto" : mode === "edit" ? "Editar Projeto" : "Detalhes do Projeto";
+  const showAlbumEpName = tipoLancamento === "album" || tipoLancamento === "ep";
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,14 +234,14 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
       return;
     }
 
-    const titulo = tipoLancamento === "single"
-      ? (musicas[0]?.nome?.trim() || "")
-      : nomeEP.trim();
+    const titulo = showAlbumEpName
+      ? nomeEP.trim()
+      : (musicas[0]?.nome?.trim() || "");
 
     if (!titulo) {
-      toast.error(tipoLancamento === "single"
+      toast.error(!showAlbumEpName
         ? "Digite o nome da música!"
-        : `Digite o nome do ${tipoLancamento === "ep" ? "EP" : tipoLancamento === "turne" ? "Turnê" : "Álbum"}!`);
+        : `Digite o nome do ${tipoLancamento === "ep" ? "EP" : "Álbum"}!`);
       return;
     }
     // Serializa dados das músicas — remove campos apenas locais (File metadata, flag de upload)
@@ -446,7 +449,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
           <Select value={musica.genero} onValueChange={(v) => updateMusica(musica.id, 'genero', v)} disabled={isViewMode}>
             <SelectTrigger><SelectValue placeholder="Selecione o gênero" /></SelectTrigger>
             <SelectContent>
-              {generosMusicais.map(g => <SelectItem key={g} value={g.toLowerCase()}>{g}</SelectItem>)}
+              {generosMusicais.map(g => <SelectItem key={g.value} value={g.value}>{g.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -455,7 +458,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
           <Select value={musica.idioma} onValueChange={(v) => updateMusica(musica.id, 'idioma', v)} disabled={isViewMode}>
             <SelectTrigger><SelectValue placeholder="Selecione o idioma" /></SelectTrigger>
             <SelectContent>
-              {idiomas.map(i => <SelectItem key={i} value={i.toLowerCase()}>{i}</SelectItem>)}
+              {idiomas.map(i => <SelectItem key={i.value} value={i.value}>{i.label}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
@@ -681,32 +684,33 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Tipo de Lançamento */}
-          <div className="space-y-2">
-            <Label>Tipo de Lançamento *</Label>
-            <Select value={tipoLancamento} onValueChange={setTipoLancamento} disabled={isViewMode}>
-              <SelectTrigger className="border-primary"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single">Single</SelectItem>
-                <SelectItem value="ep">EP</SelectItem>
-                <SelectItem value="album">Álbum</SelectItem>
-                <SelectItem value="turne">Turnê</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Nome do EP/Álbum/Turnê (condicional) */}
-          {(tipoLancamento === "ep" || tipoLancamento === "album" || tipoLancamento === "turne") && (
-            <div className="space-y-2">
-              <Label>Nome do {tipoLancamento === "ep" ? "EP" : tipoLancamento === "turne" ? "Turnê" : "Álbum"} *</Label>
-              <Input 
-                value={nomeEP} 
-                onChange={(e) => setNomeEP(e.target.value)} 
-                disabled={isViewMode} 
-                placeholder={`Digite o nome do ${tipoLancamento === "ep" ? "EP" : "Álbum"}`} 
-              />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Tipo de Lançamento */}
+            <div className={showAlbumEpName ? "space-y-2" : "space-y-2 md:col-span-2"}>
+              <Label>Tipo de Lançamento *</Label>
+              <Select value={tipoLancamento} onValueChange={setTipoLancamento} disabled={isViewMode}>
+                <SelectTrigger className="border-primary"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="single">Single</SelectItem>
+                  <SelectItem value="ep">EP</SelectItem>
+                  <SelectItem value="album">Álbum</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          )}
+
+            {/* Nome do EP/Álbum (condicional) */}
+            {showAlbumEpName && (
+              <div className="space-y-2">
+                <Label>Nome do {tipoLancamento === "ep" ? "EP" : "Álbum"} *</Label>
+                <Input
+                  value={nomeEP}
+                  onChange={(e) => setNomeEP(e.target.value)}
+                  disabled={isViewMode}
+                  placeholder={`Digite o nome do ${tipoLancamento === "ep" ? "EP" : "Álbum"}`}
+                />
+              </div>
+            )}
+          </div>
 
           {/* Seção de Músicas */}
           <div className="space-y-4">
@@ -755,7 +759,7 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
               {isViewMode ? "Fechar" : "Cancelar"}
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              <Button type="submit" size="sm" className="h-8 text-xs gap-1.5" disabled={isSubmitting}>
                 {isSubmitting ? "Salvando..." : mode === "create" ? "Criar Projeto" : "Salvar"}
               </Button>
             )}
@@ -765,3 +769,4 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
     </Dialog>
   );
 }
+

@@ -10,12 +10,13 @@
  * Filtros: search free-text, entity_type, action_group, date range (from/to)
  */
 
-import { useState, useMemo } from "react";
+import { Fragment, useState, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import {
   Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/shared/ui/card";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import {
@@ -24,6 +25,8 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/shared/ui/table";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import {
   ShieldCheck, Search, ChevronDown, ChevronRight,
   User, Clock, RefreshCw, Loader2, X,
@@ -42,30 +45,26 @@ function getActionBadge(action: string) {
     action.endsWith(".confirmed")  ||
     action.endsWith(".checkout_started")
   ) {
-    return <Badge className="bg-success/10 text-success border-success/20 text-xs">{action}</Badge>;
+    return <Badge variant="success">{action}</Badge>;
   }
   if (action.endsWith(".updated")) {
-    return <Badge className="bg-primary/10 text-primary border-primary/20 text-xs">{action}</Badge>;
+    return <Badge variant="info">{action}</Badge>;
   }
   if (action.endsWith(".deleted") || action.endsWith(".cancelled") || action.endsWith(".disconnected")) {
-    return <Badge variant="destructive" className="text-xs">{action}</Badge>;
+    return <Badge variant="danger">{action}</Badge>;
   }
-  return <Badge variant="secondary" className="text-xs">{action}</Badge>;
+  return <Badge variant="neutral">{action}</Badge>;
 }
 
 function getRoleBadge(role: string | null) {
   if (!role) return null;
-  const colors: Record<string, string> = {
-    owner:  "bg-purple-500/10 text-purple-400 border-purple-500/20",
-    admin:  "bg-orange-500/10 text-orange-400 border-orange-500/20",
-    editor: "bg-blue-500/10   text-blue-400   border-blue-500/20",
-    viewer: "bg-muted         text-muted-foreground border-border",
+  const variants: Record<string, BadgeVariant> = {
+    owner:  "info",
+    admin:  "warning",
+    editor: "info",
+    viewer: "neutral",
   };
-  return (
-    <Badge className={`text-[10px] border ${colors[role] ?? colors.viewer}`}>
-      {role}
-    </Badge>
-  );
+  return <Badge variant={variants[role] ?? "neutral"}>{role}</Badge>;
 }
 
 // ── Diff viewer ───────────────────────────────────────────────────────────────
@@ -89,13 +88,13 @@ function DiffViewer({ diff, before, after }: {
         </div>
         {Object.entries(diff).map(([field, change]) => (
           <div key={field} className="grid grid-cols-[140px_1fr_1fr] gap-2 text-xs">
-            <span className="font-mono text-muted-foreground truncate">{field}</span>
-            <span className="font-mono bg-destructive/10 text-destructive px-1 rounded truncate">
+            <span className="font-sans text-muted-foreground truncate">{field}</span>
+            <span className="font-sans bg-destructive/10 text-destructive px-1 rounded truncate">
               {change.from === null || change.from === undefined
                 ? <em>null</em>
                 : String(change.from)}
             </span>
-            <span className="font-mono bg-success/10 text-success px-1 rounded truncate">
+            <span className="font-sans bg-success/10 text-success px-1 rounded truncate">
               {change.to === null || change.to === undefined
                 ? <em>null</em>
                 : String(change.to)}
@@ -111,7 +110,7 @@ function DiffViewer({ diff, before, after }: {
       {before && (
         <div>
           <p className="text-[11px] font-semibold text-muted-foreground mb-1">ANTES</p>
-          <pre className="text-xs bg-muted/40 rounded p-2 overflow-auto max-h-32 font-mono">
+          <pre className="text-xs bg-muted/40 rounded p-2 overflow-auto max-h-32 font-sans">
             {JSON.stringify(before, null, 2)}
           </pre>
         </div>
@@ -119,7 +118,7 @@ function DiffViewer({ diff, before, after }: {
       {after && (
         <div>
           <p className="text-[11px] font-semibold text-muted-foreground mb-1">DEPOIS</p>
-          <pre className="text-xs bg-success/5 rounded p-2 overflow-auto max-h-32 font-mono">
+          <pre className="text-xs bg-success/5 rounded p-2 overflow-auto max-h-32 font-sans">
             {JSON.stringify(after, null, 2)}
           </pre>
         </div>
@@ -177,6 +176,8 @@ export default function AuditTrail() {
     });
   }, [entries, search, entityFilter, actionFilter, fromDate, toDate]);
 
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filtered, 10);
+
   const hasActiveFilters = search || entityFilter !== "all" || actionFilter !== "all" || fromDate || toDate;
 
   const clearFilters = () => {
@@ -203,7 +204,7 @@ export default function AuditTrail() {
             <div>
               <h1 className="text-xl font-semibold text-foreground">Audit Trail</h1>
               <p className="text-sm text-muted-foreground">
-                Histórico imutável de todas as operações críticas — restrito a Owner/Admin
+                Histórico imutável de todas as operações críticas — restrito a Proprietário/Admin
               </p>
             </div>
           </div>
@@ -270,22 +271,36 @@ export default function AuditTrail() {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-4 gap-3">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Seletor de datas — sempre imediatamente à esquerda da busca */}
+              <DatePickerField
+                value={fromDate}
+                onChange={setFromDate}
+                placeholder="Data início"
+                className="h-8 text-xs w-[150px]"
+              />
+              <DatePickerField
+                value={toDate}
+                onChange={setToDate}
+                placeholder="Data fim"
+                className="h-8 text-xs w-[150px]"
+              />
+
               {/* Search */}
-              <div className="relative col-span-2">
+              <div className="relative flex-1 min-w-[220px]">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   data-testid="input-audit-search"
                   placeholder="Pesquisar por acção, actor, ID, correlation…"
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-9"
+                  className="pl-9 h-8 text-sm"
                 />
               </div>
 
               {/* Entity */}
               <Select value={entityFilter} onValueChange={setEntityFilter}>
-                <SelectTrigger data-testid="select-audit-entity">
+                <SelectTrigger data-testid="select-audit-entity" className="h-8 text-sm w-[160px]">
                   <SelectValue placeholder="Entidade" />
                 </SelectTrigger>
                 <SelectContent>
@@ -299,7 +314,7 @@ export default function AuditTrail() {
 
               {/* Action */}
               <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger data-testid="select-audit-action">
+                <SelectTrigger data-testid="select-audit-action" className="h-8 text-sm w-[160px]">
                   <SelectValue placeholder="Tipo de acção" />
                 </SelectTrigger>
                 <SelectContent>
@@ -311,42 +326,18 @@ export default function AuditTrail() {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Date range row */}
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">De (data inicial)</p>
-                <DatePickerField
-                  value={fromDate}
-                  onChange={setFromDate}
-                  placeholder="Seleccionar data inicial"
-                />
-              </div>
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Até (data final)</p>
-                <DatePickerField
-                  value={toDate}
-                  onChange={setToDate}
-                  placeholder="Seleccionar data final"
-                />
-              </div>
-            </div>
           </CardContent>
         </Card>
 
         {/* Audit log table */}
         <Card className="border-border/50">
-          <CardHeader className="pb-2">
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-sm font-medium">
-                {isLoading ? "A carregar…" : `Eventos (${filtered.length}${filtered.length !== entries.length ? ` de ${entries.length}` : ""})`}
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Clique numa linha para expandir o diff before/after
-              </CardDescription>
-            </div>
-          </CardHeader>
           <CardContent className="p-0">
+            <ListSectionHeader
+              title="Eventos"
+              count={filtered.length}
+              description="Clique numa linha para expandir o diff before/after"
+              className="px-6 pt-6"
+            />
             <div className="rounded-b-lg overflow-hidden">
               {isLoading ? (
                 <div className="flex items-center justify-center py-16 gap-3 text-muted-foreground">
@@ -375,10 +366,9 @@ export default function AuditTrail() {
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filtered.map(entry => (
-                        <>
+                      pageItems.map(entry => (
+                        <Fragment key={entry.id}>
                           <TableRow
-                            key={entry.id}
                             data-testid={`row-audit-${entry.id}`}
                             className="cursor-pointer hover:bg-muted/30 transition-colors"
                             onClick={() => toggleExpand(entry.id)}
@@ -389,7 +379,7 @@ export default function AuditTrail() {
                                 : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />
                               }
                             </TableCell>
-                            <TableCell className="py-2 text-xs font-mono text-muted-foreground">
+                            <TableCell className="py-2 text-xs font-sans text-muted-foreground">
                               <div className="flex items-center gap-1">
                                 <Clock className="w-3 h-3 shrink-0" />
                                 {format(new Date(entry.created_at), "dd/MM/yy HH:mm:ss", { locale: ptBR })}
@@ -398,7 +388,7 @@ export default function AuditTrail() {
                             <TableCell className="py-2 text-xs">
                               <div className="flex items-center gap-1.5">
                                 <User className="w-3 h-3 text-muted-foreground shrink-0" />
-                                <span className="font-mono truncate max-w-[110px]" title={entry.user_id ?? undefined}>
+                                <span className="font-sans truncate max-w-[110px]" title={entry.user_id ?? undefined}>
                                   {entry.user_id ?? <em className="text-muted-foreground">system</em>}
                                 </span>
                               </div>
@@ -412,7 +402,7 @@ export default function AuditTrail() {
                             <TableCell className="py-2 text-xs font-medium capitalize">
                               {entry.entity}
                             </TableCell>
-                            <TableCell className="py-2 text-xs font-mono text-muted-foreground truncate max-w-[110px]">
+                            <TableCell className="py-2 text-xs font-sans text-muted-foreground truncate max-w-[110px]">
                               {entry.entity_id ?? <em>—</em>}
                             </TableCell>
                             <TableCell className="py-2">
@@ -433,18 +423,18 @@ export default function AuditTrail() {
 
                           {/* Expanded diff panel */}
                           {expandedId === entry.id && (
-                            <TableRow key={`${entry.id}-diff`} className="bg-muted/10 hover:bg-muted/10">
+                            <TableRow className="bg-muted/10 hover:bg-muted/10">
                               <TableCell colSpan={8} className="py-3 px-6">
                                 <div className="space-y-3">
                                   <div className="flex flex-wrap gap-4 text-xs text-muted-foreground">
                                     {entry.ip_address && (
-                                      <span>IP: <code className="font-mono">{entry.ip_address}</code></span>
+                                      <span>IP: <code className="font-sans">{entry.ip_address}</code></span>
                                     )}
                                     {entry.http_path && (
-                                      <span>Path: <code className="font-mono">{entry.http_path}</code></span>
+                                      <span>Path: <code className="font-sans">{entry.http_path}</code></span>
                                     )}
                                     {entry.correlation_id && (
-                                      <span>Correlation: <code className="font-mono">{entry.correlation_id}</code></span>
+                                      <span>Correlation: <code className="font-sans">{entry.correlation_id}</code></span>
                                     )}
                                   </div>
                                   <DiffViewer
@@ -456,13 +446,23 @@ export default function AuditTrail() {
                               </TableCell>
                             </TableRow>
                           )}
-                        </>
+                        </Fragment>
                       ))
                     )}
                   </TableBody>
                 </Table>
               )}
             </div>
+            {filtered.length > 0 && (
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="eventos"
+              />
+            )}
           </CardContent>
         </Card>
 
@@ -473,3 +473,5 @@ export default function AuditTrail() {
     </MainLayout>
   );
 }
+
+

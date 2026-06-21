@@ -1,8 +1,9 @@
 import { useState, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Button } from "@/shared/ui/button";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
 import { Textarea } from "@/shared/ui/textarea";
 import { Label } from "@/shared/ui/label";
@@ -10,9 +11,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
-import {
-  Sheet, SheetContent, SheetHeader, SheetTitle,
-} from "@/shared/ui/sheet";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -40,12 +38,12 @@ interface TicketWithWorkflow extends SupportTicket {
 }
 
 /* ── colours ── */
-const STATUS_COLOR: Record<TicketStatus, string> = {
-  open:             "border-blue-500/30 text-blue-400 bg-blue-500/10",
-  in_progress:      "border-yellow-500/30 text-yellow-400 bg-yellow-500/10",
-  waiting_customer: "border-orange-500/30 text-orange-400 bg-orange-500/10",
-  resolved:         "border-green-500/30 text-green-400 bg-green-500/10",
-  closed:           "border-border text-muted-foreground bg-muted/40",
+const STATUS_VARIANT: Record<TicketStatus, BadgeVariant> = {
+  open:             "info",
+  in_progress:      "warning",
+  waiting_customer: "warning",
+  resolved:         "success",
+  closed:           "neutral",
 };
 const PRIORITY_DOT: Record<TicketPriority, string> = {
   critical: "bg-red-500",
@@ -114,26 +112,23 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
   }
 
   return (
-    <Sheet open onOpenChange={onClose}>
-      <SheetContent
-        side="right"
-        className="w-full sm:w-[75vw] lg:w-[68vw] max-w-4xl p-0 flex flex-col bg-card border-l border-border/60"
-      >
+    <Dialog open onOpenChange={onClose}>
+      <DialogContent className="flex max-h-[90vh] w-full max-w-4xl flex-col overflow-hidden bg-card p-0">
         {/* Header */}
-        <SheetHeader className="px-6 pt-5 pb-3 border-b border-border/60 shrink-0">
+        <DialogHeader className="px-6 pt-5 pb-3 border-b border-border/60 shrink-0">
           <div className="flex items-center gap-2 text-[11px] text-muted-foreground mb-1">
-            <span className="font-mono">{ticket.ticket_number}</span>
+            <span className="font-sans">{ticket.ticket_number}</span>
             <span>·</span>
-            <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
+            <Badge variant={STATUS_VARIANT[ticket.status]} className="text-[9px] h-4 px-1.5">
               {TICKET_STATUS_LABELS[ticket.status]}
             </Badge>
-            <Badge variant="outline" className="text-[9.5px] h-4 px-1.5 border border-border/60 text-muted-foreground ml-1">
+            <Badge variant="outline" className="text-[9px] h-4 px-1.5 border border-border/60 text-muted-foreground ml-1">
               {TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}
             </Badge>
           </div>
-          <SheetTitle className="text-[15px] font-semibold text-left leading-snug">
+          <DialogTitle className="text-[15px] font-semibold text-left leading-snug">
             {ticket.subject}
-          </SheetTitle>
+          </DialogTitle>
 
           {/* Controls — priority and open full (status controlled by WorkflowTransitionPanel below) */}
           <div className="flex items-center gap-2 pt-2 flex-wrap">
@@ -162,15 +157,15 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               className="mt-1"
             />
           )}
-        </SheetHeader>
+        </DialogHeader>
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left — thread */}
           <div className="flex-1 flex flex-col overflow-hidden border-r border-border/60">
             {/* Description */}
             <div className="px-5 py-3 border-b border-border/60 shrink-0">
-              <p className="text-[12.5px] text-muted-foreground leading-relaxed">{ticket.description}</p>
-              <div className="flex flex-wrap gap-3 mt-2 text-[10.5px] text-muted-foreground">
+              <p className="text-[12px] text-muted-foreground leading-relaxed">{ticket.description}</p>
+              <div className="flex flex-wrap gap-3 mt-2 text-[10px] text-muted-foreground">
                 <span className="flex items-center gap-1"><User className="h-3 w-3" />{ticket.created_by}</span>
                 <span className="flex items-center gap-1"><Tag className="h-3 w-3" />{TICKET_CATEGORY_LABELS[ticket.category as import("../types").TicketCategory]}</span>
                 <span className="flex items-center gap-1"><Calendar className="h-3 w-3" />{formatShort(ticket.created_at)}</span>
@@ -181,7 +176,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
             <ScrollArea className="flex-1 px-5 py-3">
               {messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-32 text-center">
-                  <p className="text-[12.5px] text-muted-foreground">Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
+                  <p className="text-[12px] text-muted-foreground">Nenhuma mensagem ainda. Inicie a conversa abaixo.</p>
                 </div>
               ) : (
                 <div className="space-y-3">
@@ -204,9 +199,9 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
                               ? <Shield className="h-3 w-3 text-primary" />
                               : <User className="h-3 w-3 text-muted-foreground" />
                             }
-                            <span className="text-[11.5px] font-semibold text-foreground">{msg.sender_name}</span>
+                            <span className="text-[11px] font-semibold text-foreground">{msg.sender_name}</span>
                             {isSupport && (
-                              <Badge variant="outline" className="text-[8.5px] h-3.5 px-1 border-primary/30 text-primary">
+                              <Badge variant="outline" className="text-[8px] h-3.5 px-1 border-primary/30 text-primary">
                                 Suporte
                               </Badge>
                             )}
@@ -239,7 +234,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
                   }}
                 />
                 <div className="flex items-center justify-between">
-                  <span className="text-[10.5px] text-muted-foreground">Ctrl+Enter para enviar</span>
+                  <span className="text-[10px] text-muted-foreground">Ctrl+Enter para enviar</span>
                   <Button
                     size="sm"
                     className="gap-1.5 text-xs"
@@ -257,7 +252,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
           {/* Right — management panel */}
           <div className="w-56 shrink-0 flex flex-col gap-5 px-4 py-4 overflow-y-auto">
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Responsável</p>
+              <p className="text-[10px] font-semibold text-muted-foreground  tracking-wider mb-2">Responsável</p>
               <Select value={editAssignee} onValueChange={applyAssignee}>
                 <SelectTrigger className="h-8 text-xs" data-testid="select-drawer-assignee">
                   <UserCheck className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
@@ -273,7 +268,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
             </div>
 
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">SLA Deadline</p>
+              <p className="text-[10px] font-semibold text-muted-foreground  tracking-wider mb-2">SLA Deadline</p>
               <div className="relative">
                 <CalendarClock className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
                 <input
@@ -286,7 +281,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
               </div>
               {ticket.sla_deadline && (
                 <p className={cn(
-                  "text-[10.5px] mt-1.5 flex items-center gap-1",
+                  "text-[10px] mt-1.5 flex items-center gap-1",
                   new Date(ticket.sla_deadline) < new Date() ? "text-red-400" : "text-muted-foreground",
                 )}>
                   <Clock className="h-3 w-3" />
@@ -296,7 +291,7 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
             </div>
 
             <div>
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-2">Detalhes</p>
+              <p className="text-[10px] font-semibold text-muted-foreground  tracking-wider mb-2">Detalhes</p>
               <div className="space-y-2 text-[11px] text-muted-foreground">
                 <div className="flex items-center gap-1.5">
                   <Shield className="h-3 w-3" />
@@ -321,8 +316,8 @@ function TicketDrawer({ ticket, onClose, onUpdate }: DrawerProps) {
             </div>
           </div>
         </div>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -449,7 +444,7 @@ export default function SupportTickets() {
             <div key={label} className="rounded-xl border border-border/60 bg-card p-3 text-center">
               <Icon className={cn("h-4 w-4 mx-auto mb-1", color)} />
               <p className="text-lg font-bold text-foreground">{count}</p>
-              <p className="text-[10.5px] text-muted-foreground">{label}</p>
+              <p className="text-[10px] text-muted-foreground">{label}</p>
             </div>
           ))}
         </div>
@@ -463,6 +458,12 @@ export default function SupportTickets() {
             </div>
           ) : (
             <>
+              <ListSectionHeader
+                title="Lista de Tickets"
+                count={filtered.length}
+                description="Acompanhe solicitações, categorias, prioridades e prazos de atendimento"
+                className="px-4 pt-4"
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -484,7 +485,7 @@ export default function SupportTickets() {
                       onClick={() => setActiveTicket(ticket)}
                       data-testid={`row-ticket-${ticket.id}`}
                     >
-                      <TableCell className="font-mono text-[11px] text-muted-foreground">{ticket.ticket_number}</TableCell>
+                      <TableCell className="font-sans text-[11px] text-muted-foreground">{ticket.ticket_number}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <div className={cn("h-2 w-2 rounded-full shrink-0", PRIORITY_DOT[ticket.priority])} />
@@ -502,7 +503,7 @@ export default function SupportTickets() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <Badge variant="outline" className={cn("text-[10px] h-4 px-1.5 border", STATUS_COLOR[ticket.status])}>
+                        <Badge variant={STATUS_VARIANT[ticket.status]} className="text-[10px] h-4 px-1.5">
                           {TICKET_STATUS_LABELS[ticket.status]}
                         </Badge>
                       </TableCell>

@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -104,13 +102,11 @@ export function AbramusConfigDialog({
         className="max-w-lg"
         data-testid="dialog-abramus-config"
       >
-        <DialogHeader>
-          <DialogTitle>Integração ABRAMUS</DialogTitle>
-          <DialogDescription>
-            Conecte sua conta da ABRAMUS para buscar e importar obras e
-            fonogramas registrados.
-          </DialogDescription>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="abramus"
+          title="Integração ABRAMUS"
+          description="Conecte sua conta da ABRAMUS para buscar e importar obras e fonogramas registrados."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
@@ -429,7 +425,7 @@ function SummaryCard({
       className="rounded-md border bg-background p-2"
       data-testid={testid}
     >
-      <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+      <p className="text-[11px]  tracking-wide text-muted-foreground">
         {label}
       </p>
       <p className="text-sm font-semibold">{data.fetched} importados</p>

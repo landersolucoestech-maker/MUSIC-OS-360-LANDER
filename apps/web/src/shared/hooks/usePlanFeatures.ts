@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { stripeClient } from '@/modules/integrations/clients/stripe.client';
-import { MOCK_MODE } from '@/shared/lib/env';
+import { AUTH_DISABLED, MOCK_MODE } from '@/shared/lib/env';
 
 export interface PlanFeatures {
   moduleArtists:     boolean;
@@ -43,10 +43,14 @@ const ALL_ENABLED = Object.fromEntries(
 
 export function usePlanFeatures() {
   const queryClient = useQueryClient();
+  // Local-only convenience. Both flags are forced false by env.ts in a
+  // production bundle, so billing can never be bypassed in production.
+  const bypassBilling = MOCK_MODE || AUTH_DISABLED;
 
   const { data: subscription, isLoading } = useQuery({
     queryKey: ['billing', 'subscription'],
-    queryFn:  () => (MOCK_MODE ? Promise.resolve(null) : stripeClient.getSubscription()),
+    queryFn:  () => (bypassBilling ? Promise.resolve(null) : stripeClient.getSubscription()),
+    enabled:  !bypassBilling,
     staleTime: 5 * 60 * 1000,
     retry: 1,
   });
@@ -59,18 +63,18 @@ export function usePlanFeatures() {
     return () => window.removeEventListener('billing:plan_upgraded', handler);
   }, [queryClient]);
 
-  if (MOCK_MODE) {
+  if (bypassBilling) {
     return { features: ALL_ENABLED, plan: 'enterprise' as const, status: 'active', isLoading: false, isTrialing: false, isCancelled: false };
   }
 
-  // When subscription is null (no billing configured / Stripe not set up),
-  // default to ALL_ENABLED so modules are accessible during development.
+  // Missing billing state must fail closed in a real environment. Local mock
+  // mode is handled above and may still expose the complete product surface.
   if (!subscription && !isLoading) {
-    return { features: ALL_ENABLED, plan: 'enterprise' as const, status: 'active', isLoading: false, isTrialing: false, isCancelled: false };
+    return { features: STARTER_FEATURES, plan: 'starter' as const, status: 'inactive', isLoading: false, isTrialing: false, isCancelled: false };
   }
 
   const rawFeatures = (subscription as any)?.features ?? {};
-  const features: PlanFeatures = { ...ALL_ENABLED, ...rawFeatures };
+  const features: PlanFeatures = { ...STARTER_FEATURES, ...rawFeatures };
 
   return {
     features,
@@ -81,3 +85,4 @@ export function usePlanFeatures() {
     isCancelled: subscription?.status === 'cancelled',
   };
 }
+

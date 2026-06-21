@@ -28,4 +28,11 @@ export const settingsService = {
   saveNotificationPrefs(data: Record<string, unknown>): void {
     storage.setRaw("notification_prefs", data);
   },
+
+  getOperationalLists(): Record<string, unknown>[] {
+    return storage.getRaw<Record<string, unknown>[]>("operational_lists") ?? [];
+  },
+  saveOperationalLists(data: Record<string, unknown>[]): void {
+    storage.setRaw("operational_lists", data);
+  },
 };

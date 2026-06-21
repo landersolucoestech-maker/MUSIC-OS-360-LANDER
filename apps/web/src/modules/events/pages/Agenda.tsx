@@ -1,13 +1,16 @@
 import { useState, useMemo, useRef } from "react";
-import { endOfWeek, format, startOfMonth, startOfWeek, subWeeks, addWeeks, addMonths, subMonths } from "date-fns";
+import { endOfWeek, format, startOfMonth, startOfWeek, subWeeks, addWeeks, addMonths, subMonths, addYears, subYears } from "date-fns";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
+import { MetricCard } from "@/shared/components/MetricCard";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
-import { Calendar, Plus, Loader2, Eye, Pencil, Trash2 } from "lucide-react";
+import { Input } from "@/shared/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import { cn } from "@/shared/lib/utils";
+import { Calendar, Plus, Loader2, Eye, Pencil, Trash2, CalendarDays, CheckCircle2, Clock, CalendarClock, ChevronLeft, ChevronRight, Search } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
 import { SchedulerFormModal } from "@/modules/events/components/SchedulerFormModal";
 import { SchedulerViewModal } from "@/modules/events/components/SchedulerViewModal";
@@ -15,11 +18,14 @@ import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FeatureGate } from "@/shared/components/FeatureGate";
 import { toast } from "sonner";
-import { SchedulerToolbar } from "@/modules/events/components/SchedulerToolbar";
-import { SchedulerWeekView } from "@/modules/events/components/SchedulerWeekView";
-import { SchedulerMonthView } from "@/modules/events/components/SchedulerMonthView";
-import { SchedulerDayView } from "@/modules/events/components/SchedulerDayView";
+import { EntityCalendarView, type CalendarEvent } from "@/shared/components/EntityCalendarView";
 import type { SchedulerViewMode } from "@/modules/events/components/types";
+import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
+import {
+  normalizeAgendaParticipants,
+  summarizeAgendaParticipants,
+  useAgendaParticipants,
+} from "@/modules/events/hooks/useAgendaParticipants";
 const getXLSX = () => import("xlsx");
 
 type Evento = Record<string, any>;
@@ -39,13 +45,13 @@ const tipoEventoLabels: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   switch (status) {
-    case "confirmado": return <Badge className="bg-success text-[#000000]">Confirmado</Badge>;
+    case "confirmado": return <Badge variant="success">Confirmado</Badge>;
     case "agendado":
     case "pendente":
-    case "negociacao": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
-    case "realizado": return <Badge className="bg-blue-600 text-[#ffffff]">Realizado</Badge>;
-    case "cancelado": return <Badge className="bg-destructive text-destructive-foreground">Cancelado</Badge>;
-    default: return <Badge variant="secondary">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
+    case "negociacao": return <Badge variant="warning">Pendente</Badge>;
+    case "realizado": return <Badge variant="info">Realizado</Badge>;
+    case "cancelado": return <Badge variant="danger">Cancelado</Badge>;
+    default: return <Badge variant="neutral">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   }
 };
 
@@ -53,7 +59,18 @@ const VIEW_OPTIONS: { value: SchedulerViewMode; label: string }[] = [
   { value: "dia", label: "Dia" },
   { value: "semana", label: "Semana" },
   { value: "mes", label: "Mês" },
+  { value: "ano", label: "Ano" },
 ];
+
+// Cor do chip por status (mesma identidade do calendário de conteúdo).
+const STATUS_TONE: Record<string, string> = {
+  confirmado: "border-emerald-300/40 bg-emerald-400/15 text-emerald-700",
+  realizado: "border-sky-300/40 bg-sky-400/15 text-sky-700",
+  agendado: "border-amber-300/40 bg-amber-400/15 text-amber-700",
+  pendente: "border-amber-300/40 bg-amber-400/15 text-amber-700",
+  negociacao: "border-amber-300/40 bg-amber-400/15 text-amber-700",
+  cancelado: "border-rose-300/40 bg-rose-400/15 text-rose-700",
+};
 
 const TIPO_OPTIONS = [
   { value: "all-type", label: "Todos Tipos" },
@@ -79,10 +96,47 @@ const STATUS_OPTIONS = [
   { value: "negociacao", label: "Negociação", dot: "bg-amber-400" },
 ];
 
+function ToolbarSelect({
+  value,
+  onValueChange,
+  options,
+  className,
+}: {
+  value: string;
+  onValueChange: (value: string) => void;
+  options: { value: string; label: string }[];
+  className?: string;
+}) {
+  return (
+    <Select value={value} onValueChange={onValueChange}>
+      <SelectTrigger className={cn("h-8 text-xs", className)}>
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((option) => (
+          <SelectItem key={option.value} value={option.value}>
+            {option.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export default function Agenda() {
   const { eventos: rawEventos, isLoading, deleteEvento, addEvento } = useEventos();
   const eventos = rawEventos as Evento[];
-  const { artistas } = useArtistas();
+  const { getOptionsByKind } = useOperationalSettings();
+  const eventTypeOptions = getOptionsByKind("event_type");
+  const eventTypeLabels = useMemo(
+    () => Object.fromEntries(eventTypeOptions.map((option) => [option.value, option.label])),
+    [eventTypeOptions],
+  );
+  const typeOptions = useMemo(
+    () => [{ value: "all-type", label: "Todos Tipos" }, ...(eventTypeOptions.length > 0 ? eventTypeOptions : TIPO_OPTIONS.slice(1))],
+    [eventTypeOptions],
+  );
+  const { getArtistParticipantById } = useAgendaParticipants();
 
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; evento?: Evento }>({ open: false, mode: "create" });
   const [viewModal, setViewModal] = useState<{ open: boolean; evento?: Evento }>({ open: false });
@@ -94,7 +148,13 @@ export default function Agenda() {
   const [statusFilter, setStatusFilter] = useState("all-status");
   const excelInputRef = useRef<HTMLInputElement>(null);
 
-  const getArtistaById = useMemo(() => (id: string | null) => id ? artistas.find(a => a.id === id) : undefined, [artistas]);
+  const getEventoParticipants = useMemo(() => (evento: Evento) => {
+    const meta = (evento.metadata as Record<string, unknown> | undefined) ?? {};
+    const stored = normalizeAgendaParticipants(meta["participants"]);
+    if (stored.length > 0) return stored;
+    const artist = getArtistParticipantById(evento.artista_id);
+    return artist ? [artist] : [];
+  }, [getArtistParticipantById]);
 
   const handleExcelExport = async () => {
     if (eventos.length === 0) {
@@ -106,7 +166,7 @@ export default function Agenda() {
       titulo: e.titulo,
       tipo_evento: e.tipo_evento,
       status: e.status,
-      artista: getArtistaById(e.artista_id)?.nome_artistico || "",
+      participantes: summarizeAgendaParticipants(getEventoParticipants(e)),
       data_inicio: e.data_inicio,
       horario_inicio: e.horario_inicio || "",
       data_fim: e.data_fim || "",
@@ -180,15 +240,14 @@ export default function Agenda() {
 
   const filteredEventos = useMemo(() => {
     return eventos.filter((evento) => {
-      const artista = getArtistaById(evento.artista_id);
       const matchesSearch = evento.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         evento.local?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        artista?.nome_artistico?.toLowerCase().includes(searchTerm.toLowerCase());
+        summarizeAgendaParticipants(getEventoParticipants(evento)).toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === "all-type" || evento.tipo_evento?.toLowerCase() === typeFilter.toLowerCase();
       const matchesStatus = statusFilter === "all-status" || evento.status?.toLowerCase() === statusFilter.toLowerCase();
       return matchesSearch && matchesType && matchesStatus;
     });
-  }, [eventos, searchTerm, typeFilter, statusFilter, artistas]);
+  }, [eventos, searchTerm, typeFilter, statusFilter, getEventoParticipants]);
 
   const schedulerEvents = useMemo(() => filteredEventos.map((evento) => {
     const start = evento.data_inicio ? new Date(`${evento.data_inicio}T${evento.horario_inicio ?? "00:00"}:00`) : new Date();
@@ -197,17 +256,32 @@ export default function Agenda() {
     return {
       id: evento.id,
       title: evento.titulo ?? "Evento",
-      artist: getArtistaById(evento.artista_id)?.nome_artistico,
+      artist: summarizeAgendaParticipants(getEventoParticipants(evento)) || undefined,
       startDate: start,
       endDate: end,
       location: evento.local,
       status: evento.status ?? "pendente",
       cache: evento.valor_cache ?? undefined,
-      type: tipoEventoLabels[evento.tipo_evento] ?? evento.tipo_evento ?? "Evento",
+      type: eventTypeLabels[evento.tipo_evento] ?? tipoEventoLabels[evento.tipo_evento] ?? evento.tipo_evento ?? "Evento",
       allDay: !evento.horario_inicio,
       raw: evento,
     };
-  }), [filteredEventos, getArtistaById]);
+  }), [filteredEventos, getEventoParticipants, eventTypeLabels]);
+
+  const isoFromDate = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const calendarEvents: CalendarEvent[] = useMemo(() => schedulerEvents.map((e) => ({
+    id: e.id,
+    title: e.title,
+    dateISO: isoFromDate(e.startDate),
+    time: e.allDay ? null : (e.raw.horario_inicio ?? `${String(e.startDate.getHours()).padStart(2, "0")}:${String(e.startDate.getMinutes()).padStart(2, "0")}`),
+    toneClass: STATUS_TONE[String(e.status)] ?? undefined,
+    hint: e.artist ? `${e.title} · ${e.artist}` : e.title,
+  })), [schedulerEvents]);
+
+  const openEventView = (id: string) => {
+    const evento = eventos.find((ev) => ev.id === id);
+    if (evento) setViewModal({ open: true, evento });
+  };
 
   const metricas = useMemo(() => {
     const confirmados = eventos.filter(e => e.status === "confirmado").length;
@@ -238,6 +312,9 @@ export default function Agenda() {
     if (viewMode === "mes") {
       return format(currentDate, "MMMM 'de' yyyy");
     }
+    if (viewMode === "ano") {
+      return format(currentDate, "yyyy");
+    }
     return format(currentDate, "d 'de' MMMM yyyy");
   }, [currentDate, viewMode]);
 
@@ -245,10 +322,12 @@ export default function Agenda() {
   const goPrev = () => {
     if (viewMode === "semana") setCurrentDate((date) => subWeeks(date, 1));
     if (viewMode === "mes") setCurrentDate((date) => subMonths(date, 1));
+    if (viewMode === "ano") setCurrentDate((date) => subYears(date, 1));
   };
   const goNext = () => {
     if (viewMode === "semana") setCurrentDate((date) => addWeeks(date, 1));
     if (viewMode === "mes") setCurrentDate((date) => addMonths(date, 1));
+    if (viewMode === "ano") setCurrentDate((date) => addYears(date, 1));
   };
 
   const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status";
@@ -287,36 +366,60 @@ export default function Agenda() {
   return (
     <FeatureGate feature="moduleEvents" featureName="Agenda & Eventos">
       <MainLayout title="Agenda" description="Gerencie shows, turnês e compromissos com foco operacional" actions={createButton}>
-        <div className="space-y-5">
-          <div className="flex flex-wrap items-center gap-2 rounded-[28px] border border-border/20 bg-card/80 px-4 py-3 text-sm text-foreground shadow-sm">
-            <span className="rounded-full bg-muted/70 px-3 py-2 font-semibold">{metricas.total} Eventos</span>
-            <span className="rounded-full bg-muted/70 px-3 py-2 font-semibold">{metricas.confirmados} Confirmados</span>
-            <span className="rounded-full bg-muted/70 px-3 py-2 font-semibold">{metricas.pendentes} Pendentes</span>
-            <span className="rounded-full bg-muted/70 px-3 py-2 font-semibold">{metricas.proximos7Dias} Próximos</span>
+        <div className="space-y-6">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <MetricCard title="Eventos" value={metricas.total} description="no total" icon={CalendarDays} accent="primary" />
+            <MetricCard title="Confirmados" value={metricas.confirmados} description="eventos confirmados" icon={CheckCircle2} accent="success" />
+            <MetricCard title="Pendentes" value={metricas.pendentes} description="aguardando confirmação" icon={Clock} accent="warning" />
+            <MetricCard title="Próximos 7 dias" value={metricas.proximos7Dias} description="na próxima semana" icon={CalendarClock} accent="primary" />
           </div>
 
-          <SchedulerToolbar
-            periodLabel={periodLabel}
-            currentView={viewMode}
-            viewOptions={VIEW_OPTIONS}
-            onViewModeChange={setViewMode}
-            onToday={goToToday}
-            onPrev={goPrev}
-            onNext={goNext}
-            search={searchTerm}
-            onSearchChange={setSearchTerm}
-            type={typeFilter}
-            onTypeChange={setTypeFilter}
-            typeOptions={TIPO_OPTIONS}
-            status={statusFilter}
-            onStatusChange={setStatusFilter}
-            statusOptions={STATUS_OPTIONS}
-            extraFilters={hasActiveFilters ? (
-              <Button variant="outline" size="sm" className="h-10" onClick={handleClearFilters}>
+          <div className="flex flex-wrap items-center gap-2 rounded-lg bg-muted/30 p-3">
+            <Button variant="outline" size="sm" className="h-8 px-3" onClick={goToToday}>
+              Hoje
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={goPrev} aria-label="Período anterior">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={goNext} aria-label="Próximo período">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+            <span className="min-w-[132px] px-1 text-sm font-medium text-muted-foreground">{periodLabel}</span>
+
+            <div className="relative min-w-[200px] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={searchTerm}
+                onChange={(event) => setSearchTerm(event.target.value)}
+                placeholder="Buscar evento..."
+                className="h-8 pl-9"
+              />
+            </div>
+
+            <ToolbarSelect
+              value={viewMode}
+              onValueChange={(value) => setViewMode(value as SchedulerViewMode)}
+              options={VIEW_OPTIONS}
+              className="w-[100px]"
+            />
+            <ToolbarSelect
+              value={typeFilter}
+              onValueChange={setTypeFilter}
+              options={typeOptions}
+              className="w-[132px]"
+            />
+            <ToolbarSelect
+              value={statusFilter}
+              onValueChange={setStatusFilter}
+              options={STATUS_OPTIONS}
+              className="w-[132px]"
+            />
+            {hasActiveFilters && (
+              <Button variant="outline" size="sm" className="h-8 px-3" onClick={handleClearFilters}>
                 Limpar filtros
               </Button>
-            ) : undefined}
-          />
+            )}
+          </div>
 
           <div className="space-y-4">
             {filteredEventos.length === 0 ? (
@@ -337,32 +440,12 @@ export default function Agenda() {
                   </div>
                 </CardContent>
               </Card>
-            ) : viewMode === "dia" ? (
-              <SchedulerDayView
-                day={currentDate}
-                events={schedulerEvents}
-                onSlotClick={(date, hour) => setFormModal({ open: true, mode: "create" })}
-                onView={(event) => setViewModal({ open: true, evento: event.raw as Evento })}
-                onEdit={(event) => setFormModal({ open: true, mode: "edit", evento: event.raw as Evento })}
-                onDelete={(event) => setDeleteModal({ open: true, evento: event.raw as Evento })}
-              />
-            ) : viewMode === "semana" ? (
-              <SchedulerWeekView
-                weekStart={startOfWeek(currentDate, { weekStartsOn: 1 })}
-                events={schedulerEvents}
-                onSlotClick={(date, hour) => setFormModal({ open: true, mode: "create" })}
-                onView={(event) => setViewModal({ open: true, evento: event.raw as Evento })}
-                onEdit={(event) => setFormModal({ open: true, mode: "edit", evento: event.raw as Evento })}
-                onDelete={(event) => setDeleteModal({ open: true, evento: event.raw as Evento })}
-              />
             ) : (
-              <SchedulerMonthView
-                month={startOfMonth(currentDate)}
-                events={schedulerEvents}
-                onSlotClick={(date, hour) => setFormModal({ open: true, mode: "create" })}
-                onView={(event) => setViewModal({ open: true, evento: event.raw as Evento })}
-                onEdit={(event) => setFormModal({ open: true, mode: "edit", evento: event.raw as Evento })}
-                onDelete={(event) => setDeleteModal({ open: true, evento: event.raw as Evento })}
+              <EntityCalendarView
+                view={(viewMode === "dia" || viewMode === "semana" || viewMode === "mes" || viewMode === "ano") ? viewMode : "mes"}
+                referenceDate={currentDate}
+                events={calendarEvents}
+                onSelect={openEventView}
               />
             )}
           </div>

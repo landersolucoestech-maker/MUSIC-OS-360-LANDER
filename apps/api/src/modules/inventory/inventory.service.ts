@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { InventoryItemEntity } from '../../database/entities';
@@ -6,14 +6,21 @@ import type { CreateInventoryItemDto, UpdateInventoryItemDto, QueryInventoryDto 
 
 @Injectable()
 export class InventoryService {
-  private readonly repo: Repository<InventoryItemEntity>;
+  private readonly repo: Repository<InventoryItemEntity> | null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource) {
-    this.repo = ds.getRepository(InventoryItemEntity);
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    this.repo = ds?.getRepository(InventoryItemEntity) ?? null;
+  }
+
+  private get repository(): Repository<InventoryItemEntity> {
+    if (!this.repo) {
+      throw new ServiceUnavailableException('Database unavailable for inventory');
+    }
+    return this.repo;
   }
 
   async list(tenantId: string, query: QueryInventoryDto) {
-    const qb = this.repo.createQueryBuilder('i')
+    const qb = this.repository.createQueryBuilder('i')
       .where('i.tenant_id = :tenantId', { tenantId })
       .andWhere('i.deleted_at IS NULL');
 
@@ -30,25 +37,25 @@ export class InventoryService {
   }
 
   async findById(tenantId: string, id: string): Promise<InventoryItemEntity> {
-    const item = await this.repo.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as any });
+    const item = await this.repository.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as any });
     if (!item) throw new NotFoundException('Item de inventário não encontrado');
     return item;
   }
 
   async create(tenantId: string, userId: string, dto: CreateInventoryItemDto): Promise<InventoryItemEntity> {
-    const item = this.repo.create({ tenant_id: tenantId, ...dto, created_by: userId, updated_by: userId } as any);
-    return this.repo.save(item as any) as any;
+    const item = this.repository.create({ tenant_id: tenantId, ...dto, created_by: userId, updated_by: userId } as any);
+    return this.repository.save(item as any) as any;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateInventoryItemDto): Promise<InventoryItemEntity> {
     await this.findById(tenantId, id);
-    await this.repo.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date(), updated_by: userId } as any);
+    await this.repository.update({ id, tenant_id: tenantId } as any, { ...dto, updated_at: new Date(), updated_by: userId } as any);
     return this.findById(tenantId, id);
   }
 
   async softDelete(tenantId: string, id: string) {
     await this.findById(tenantId, id);
-    await this.repo.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
+    await this.repository.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
   }
 }

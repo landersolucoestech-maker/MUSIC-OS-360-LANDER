@@ -3,6 +3,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
 import { ContractTemplatesService }    from './contract-templates.service';
 import { CreateContractTemplateDto }   from './dto/create-contract-template.dto';
@@ -17,6 +18,7 @@ export class ContractTemplatesController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('contract_template:read')
   @ApiOperation({ summary: 'Listar templates de contrato' })
   list(@CurrentTenant() t: { id: string }, @Query() q: QueryContractTemplateDto) {
     return this.svc.list(t.id, q);
@@ -24,6 +26,7 @@ export class ContractTemplatesController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('contract_template:read')
   @ApiOperation({ summary: 'Obter template por ID' })
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.findById(t.id, id);
@@ -31,6 +34,7 @@ export class ContractTemplatesController {
 
   @Post()
   @RequireRole('editor')
+  @RequirePermission('contract_template:create')
   @Audit('contract_template.created')
   @ApiOperation({ summary: 'Criar template' })
   create(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Body() dto: CreateContractTemplateDto) {
@@ -39,6 +43,7 @@ export class ContractTemplatesController {
 
   @Patch(':id')
   @RequireRole('editor')
+  @RequirePermission('contract_template:update')
   @Audit('contract_template.updated')
   @ApiOperation({ summary: 'Actualizar template' })
   update(@CurrentTenant() t: { id: string }, @CurrentUser() u: any, @Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateContractTemplateDto) {
@@ -47,6 +52,7 @@ export class ContractTemplatesController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('contract_template:archive')
   @Audit('contract_template.deleted')
   @ApiOperation({ summary: 'Arquivar template' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {

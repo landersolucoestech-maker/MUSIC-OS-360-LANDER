@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -53,13 +51,11 @@ export function ClicksignConfigDialog({ open, onOpenChange }: ClicksignConfigDia
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-clicksign-config">
-        <DialogHeader>
-          <DialogTitle>Integração Clicksign</DialogTitle>
-          <DialogDescription>
-            Conecte sua conta Clicksign para enviar e acompanhar contratos com
-            assinatura eletrônica com validade jurídica direto do MUSIC OS 360.
-          </DialogDescription>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="clicksign"
+          title="Integração Clicksign"
+          description="Conecte sua conta Clicksign para enviar e acompanhar contratos com assinatura eletrônica com validade jurídica direto do MUSIC OS 360."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

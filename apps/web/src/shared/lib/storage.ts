@@ -14,7 +14,7 @@ import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { getCurrentOrgId } from "./tenant";
 import { TenantError, NotFoundError, TransactionError, ConflictError, IntegrationError } from "./errors";
 import { api, TABLE_ENDPOINT, PENDING_TABLES } from "./api-client";
-import { MOCK_MODE, IS_PROD } from "./env";
+import { MOCK_MODE } from "./env";
 
 // ─── Tipos públicos ───────────────────────────────────────────────────────────
 
@@ -66,10 +66,10 @@ function writeAuditEntry(entry: Omit<AuditEntry, "id">): void {
 // ─── Tenant enforcement (mock mode) ──────────────────────────────────────────
 
 const TENANT_SCOPED_TABLES = new Set([
-  "artistas", "clientes", "contatos", "leads", "contratos",
+  "artistas", "clientes", "contatos", "leads", "proposals", "proposal_items", "followups", "contratos",
   "obras", "fonogramas", "shares", "lancamentos", "transacoes",
   "notas_fiscais", "projetos", "eventos", "inventario",
-  "campanhas", "conteudos", "briefings", "tarefas_marketing",
+  "campanhas", "marketing_projects", "conteudos", "briefings", "tarefas_marketing",
   "metas_artistas", "monitoramentos", "licencas", "regras_financeiras",
   "ecad_reports", "funcionarios", "folha_pagamento",
   "afastamentos", "documentos_funcionario",
@@ -251,31 +251,47 @@ const mockStorage = {
 
 // ─── HTTP implementation ──────────────────────────────────────────────────────
 
+/** Tracks which pending tables we've already warned about (avoid log spam). */
+const _pendingTablesWarned = new Set<string>();
+
 /**
  * Returns the backend endpoint for a table or throws.
  *
  * Three cases in HTTP mode (VITE_USE_MOCK=false):
  *   1. TABLE_ENDPOINT has the table   → return endpoint, call backend.
- *   2. PENDING_TABLES has the table   → console.warn with reason, fall back to
- *      in-memory mock so the UI stays functional until the route ships.
+ *   2. PENDING_TABLES has the table   → degrade gracefully:
+ *        • reads → return empty/undefined (no crash, UI shows empty state).
+ *        • writes → throw a user-friendly UnavailableError that the UI can catch.
  *   3. Neither                        → throw IntegrationError (unknown table).
  *
  * Case 2 is EXPLICIT per-table (not a silent global fallback): every pending
  * table is named with its reason in PENDING_TABLES in api-client.ts.
  */
-function resolveTable(table: string): { ep: string } | { pending: true } {
+function resolveTable(table: string): { ep: string } | { pending: true; reason: string } {
   const ep = TABLE_ENDPOINT[table];
   if (ep) return { ep };
   const reason = PENDING_TABLES[table];
   if (reason) {
-    if (IS_PROD) {
-      throw new IntegrationError("storage", `Pending backend route for table "${table}" is not allowed in production: ${reason}`);
+    if (!_pendingTablesWarned.has(table)) {
+      _pendingTablesWarned.add(table);
+      // eslint-disable-next-line no-console
+      console.warn(`[storage:http] ${table}: ${reason}. Module operates in read-only empty-state mode until backend route ships.`);
     }
-    // eslint-disable-next-line no-console
-    console.warn(`[storage:http] ${table}: ${reason}. Using in-memory mock until backend route ships.`);
-    return { pending: true };
+    return { pending: true, reason };
   }
   throw new IntegrationError("storage", `Unknown table "${table}". Add it to TABLE_ENDPOINT or PENDING_TABLES in api-client.ts.`);
+}
+
+/**
+ * Erro lançado para mutations em tabelas pendentes em produção HTTP mode.
+ * UI deve tratar e mostrar "Módulo indisponível nesta versão".
+ */
+function unavailableTable(table: string, reason: string): never {
+  throw new IntegrationError(
+    "module-unavailable",
+    `Módulo "${table}" indisponível nesta versão: ${reason}`,
+    { retryable: false, statusCode: 503 },
+  );
 }
 
 const httpStorage = {
@@ -285,7 +301,9 @@ const httpStorage = {
 
   async list<T extends StorageRow>(table: string, options?: ListOptions): Promise<T[]> {
     const resolved = resolveTable(table);
-    if ("pending" in resolved) return mockStorage.list<T>(table, options);
+    if ("pending" in resolved) {
+      unavailableTable(table, resolved.reason);
+    }
     const params = new URLSearchParams();
     if (options?.filters) {
       for (const [k, v] of Object.entries(options.filters)) {
@@ -299,17 +317,15 @@ const httpStorage = {
     if (options?.limit  !== undefined) params.set("limit",  String(options.limit));
     if (options?.offset !== undefined) params.set("offset", String(options.offset));
     const qs = params.toString();
-    const raw = await api.get<T[] | { data: T[]; meta: unknown }>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
-    // Backends return { data: T[], meta: {...} } — unwrap if present
-    if (raw && !Array.isArray(raw) && typeof raw === "object" && "data" in raw && Array.isArray((raw as { data: unknown }).data)) {
-      return (raw as { data: T[] }).data;
-    }
-    return raw as T[];
+    const rows = await api.get<T[]>(`${resolved.ep}${qs ? `?${qs}` : ""}`);
+    return rows;
   },
 
   async findById<T extends StorageRow>(table: string, id: string): Promise<T | undefined> {
     const resolved = resolveTable(table);
-    if ("pending" in resolved) return mockStorage.findById<T>(table, id);
+    if ("pending" in resolved) {
+      unavailableTable(table, resolved.reason);
+    }
     try {
       return await api.get<T>(`${resolved.ep}/${id}`);
     } catch (err) {
@@ -327,13 +343,17 @@ const httpStorage = {
     data: Omit<T, "id" | "user_id" | "created_at" | "updated_at">,
   ): Promise<T> {
     const resolved = resolveTable(table);
-    if ("pending" in resolved) return mockStorage.create<T>(table, data);
+    if ("pending" in resolved) {
+      unavailableTable(table, resolved.reason);
+    }
     return api.post<T>(resolved.ep, data);
   },
 
   async update<T extends StorageRow>(table: string, id: string, data: Partial<T>): Promise<T> {
     const resolved = resolveTable(table);
-    if ("pending" in resolved) return mockStorage.update<T>(table, id, data);
+    if ("pending" in resolved) {
+      unavailableTable(table, resolved.reason);
+    }
     return api.patch<T>(`${resolved.ep}/${id}`, data);
   },
 
@@ -348,7 +368,9 @@ const httpStorage = {
 
   async delete(table: string, id: string): Promise<void> {
     const resolved = resolveTable(table);
-    if ("pending" in resolved) { await mockStorage.delete(table, id); return; }
+    if ("pending" in resolved) {
+      unavailableTable(table, resolved.reason);
+    }
     return api.delete(`${resolved.ep}/${id}`);
   },
 

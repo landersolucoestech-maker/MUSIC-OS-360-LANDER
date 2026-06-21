@@ -1,0 +1,106 @@
+import {
+  Injectable, Inject, NotFoundException, ServiceUnavailableException,
+} from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
+import { DATA_SOURCE } from '../../../database/database.tokens';
+import { AudiovisualShotEntity, AudiovisualProjectEntity } from '../../../database/entities';
+
+export interface CreateShotInput {
+  scene_title?: string;
+  description?: string;
+  location?: string;
+  actors?: unknown[];
+  props?: unknown[];
+  wardrobe?: unknown[];
+  equipment?: unknown[];
+  estimated_duration_sec?: number;
+  notes?: string;
+  ordering?: number;
+}
+
+export interface UpdateShotInput extends Partial<CreateShotInput> {
+  shooting_status?: string;
+}
+
+@Injectable()
+export class AudiovisualShotsService {
+  private readonly repo: Repository<AudiovisualShotEntity> | null;
+  private readonly projects: Repository<AudiovisualProjectEntity> | null;
+
+  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+    this.repo     = ds?.getRepository(AudiovisualShotEntity) ?? null;
+    this.projects = ds?.getRepository(AudiovisualProjectEntity) ?? null;
+  }
+
+  private get r(): Repository<AudiovisualShotEntity> {
+    if (!this.repo) throw new ServiceUnavailableException('Database unavailable');
+    return this.repo;
+  }
+
+  async listByProject(tenantId: string, projectId: string) {
+    await this.assertProject(tenantId, projectId);
+    return this.r.createQueryBuilder('s')
+      .where('s.tenant_id = :tenantId AND s.audiovisual_project_id = :pid AND s.deleted_at IS NULL', { tenantId, pid: projectId })
+      .orderBy('s.ordering', 'ASC').getMany();
+  }
+
+  async create(tenantId: string, projectId: string, input: CreateShotInput) {
+    await this.assertProject(tenantId, projectId);
+    const max = input.ordering ?? await this.nextOrdering(tenantId, projectId);
+    const e = this.r.create({
+      tenant_id: tenantId,
+      audiovisual_project_id: projectId,
+      ordering: max,
+      scene_title:            input.scene_title ?? null,
+      description:            input.description ?? null,
+      location:               input.location ?? null,
+      actors:                 input.actors    ?? [],
+      props:                  input.props     ?? [],
+      wardrobe:               input.wardrobe  ?? [],
+      equipment:              input.equipment ?? [],
+      estimated_duration_sec: input.estimated_duration_sec ?? null,
+      notes:                  input.notes ?? null,
+      shooting_status:        'pending',
+      metadata:               {},
+    } as Partial<AudiovisualShotEntity>);
+    return this.r.save(e as AudiovisualShotEntity);
+  }
+
+  async update(tenantId: string, id: string, input: UpdateShotInput) {
+    const cur = await this.r.findOne({ where: { id, tenant_id: tenantId, deleted_at: null } as never });
+    if (!cur) throw new NotFoundException('Shot não encontrado');
+    await this.r.update({ id, tenant_id: tenantId } as never, { ...input, updated_at: new Date() } as never);
+    return this.r.findOne({ where: { id, tenant_id: tenantId } as never });
+  }
+
+  async remove(tenantId: string, id: string) {
+    await this.r.update({ id, tenant_id: tenantId } as never, { deleted_at: new Date() } as never);
+    return { deleted: true };
+  }
+
+  async reorder(tenantId: string, projectId: string, ids: string[]) {
+    await this.assertProject(tenantId, projectId);
+    for (let i = 0; i < ids.length; i++) {
+      await this.r.update(
+        { id: ids[i], tenant_id: tenantId, audiovisual_project_id: projectId } as never,
+        { ordering: i, updated_at: new Date() } as never,
+      );
+    }
+    return { reordered: ids.length };
+  }
+
+  private async nextOrdering(tenantId: string, projectId: string): Promise<number> {
+    const row = await this.r
+      .createQueryBuilder('s')
+      .select('MAX(s.ordering)', 'max')
+      .where('s.tenant_id = :tenantId AND s.audiovisual_project_id = :pid', { tenantId, pid: projectId })
+      .getRawOne<{ max: number | null }>();
+    return (row?.max ?? -1) + 1;
+  }
+
+  private async assertProject(tenantId: string, projectId: string) {
+    if (!this.projects) throw new ServiceUnavailableException('Database unavailable');
+    const p = await this.projects.findOne({ where: { id: projectId, tenant_id: tenantId, deleted_at: null } as never });
+    if (!p) throw new NotFoundException('Projeto não encontrado');
+  }
+}

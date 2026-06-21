@@ -199,3 +199,4 @@ export function getGenerateLaunchStrategyUseCase(): GenerateLaunchStrategyUseCas
   if (!_instance) _instance = new GenerateLaunchStrategyUseCase();
   return _instance;
 }
+

@@ -62,6 +62,11 @@ export interface AdminPlan {
   active_subscribers: number;
   mrr: number;
   color: string;
+  /** Plano ativo (disponível para novas assinaturas). Ausente = ativo. */
+  active?: boolean;
+  /** Integração Stripe (IDs do produto/preço criados no painel Stripe). */
+  stripe_product_id?: string;
+  stripe_price_id?: string;
 }
 
 export interface AdminTenant {

@@ -9,7 +9,8 @@
 //   * 2+ flat     → trend "flat" + 0%
 // E também: isLoading (skeleton), isMissingConfig, errorMessage.
 import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "./_helpers/render-with-providers";
 import { Music2 } from "lucide-react";
 
 // recharts usa ResizeObserver; o setup já injeta um polyfill mas o Responsive
@@ -141,7 +142,7 @@ describe("computeEvolutionSummary", () => {
 
 describe("<ArtistaEvolutionCard />", () => {
   it("0 snapshots: renderiza estado vazio sem chart", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -162,7 +163,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("1 snapshot: mostra valor atual mas continua sem trend nem chart", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -184,7 +185,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("2+ snapshots crescendo: mostra trend up, percentual e chart", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -212,7 +213,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("2+ snapshots em queda: mostra trend down e percentual negativo", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -234,7 +235,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("2+ snapshots iguais: mostra trend flat e 0%", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -253,7 +254,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("isMissingConfig: renderiza label de plataforma não configurada", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -269,7 +270,7 @@ describe("<ArtistaEvolutionCard />", () => {
   });
 
   it("isLoading: renderiza skeletons no lugar do conteúdo", () => {
-    const { container } = render(
+    const { container } = renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading
@@ -279,13 +280,13 @@ describe("<ArtistaEvolutionCard />", () => {
     expect(
       screen.queryByTestId("evolucao-spotify-current"),
     ).not.toBeInTheDocument();
-    // dois skeletons (header + chart)
-    expect(container.querySelectorAll('[data-slot="skeleton"], .animate-pulse').length)
+    // dois skeletons (valor + chart)
+    expect(container.querySelectorAll(".bg-muted").length)
       .toBeGreaterThanOrEqual(1);
   });
 
   it("errorMessage: renderiza a mensagem de erro em destaque", () => {
-    render(
+    renderWithProviders(
       <ArtistaEvolutionCard
         {...baseProps}
         isLoading={false}
@@ -299,3 +300,4 @@ describe("<ArtistaEvolutionCard />", () => {
     ).not.toBeInTheDocument();
   });
 });
+

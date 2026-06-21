@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -19,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Loader2, Trash2, CheckCircle2, FileText, ShieldCheck } from "lucide-react";
+import { Loader2, Trash2, CheckCircle2, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import {
   useNfeStatus,
@@ -122,19 +120,11 @@ export function NfeConfigDialog({ open, onOpenChange }: NfeConfigDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-nfe-config">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
-              <FileText className="h-4.5 w-4.5 text-primary" />
-            </div>
-            <div>
-              <DialogTitle>Emissão de NF-e</DialogTitle>
-              <DialogDescription className="mt-0.5 text-xs">
-                Configure as credenciais fiscais da sua empresa para emitir notas fiscais eletrônicas diretamente pelo sistema.
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="nfe"
+          title="Emissão de NF-e"
+          description="Configure as credenciais fiscais da sua empresa para emitir notas fiscais eletrônicas diretamente pelo sistema."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

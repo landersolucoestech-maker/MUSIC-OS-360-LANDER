@@ -613,3 +613,4 @@ export function UsuarioFormModal({ open, onOpenChange, usuario, mode }: UsuarioF
     </Dialog>
   );
 }
+

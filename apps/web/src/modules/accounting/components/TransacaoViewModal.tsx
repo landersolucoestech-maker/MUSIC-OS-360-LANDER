@@ -5,7 +5,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-import { formatCurrency, formatDate, formatDateTime } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDate, formatDateTime, getCurrencyToneClass } from "@/shared/lib/format-utils";
 import { accountingService } from "@/modules/accounting/services/accounting.service";
 import {
   AlertCircle,
@@ -51,70 +51,70 @@ const transactionTypeMeta: Record<string, TypeMeta> = {
     label: "Receita",
     icon: TrendingUp,
     badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    amountClass: "text-emerald-600 dark:text-emerald-400",
+    amountClass: "text-emerald-600",
     sign: "+",
   },
   despesa: {
     label: "Despesa",
     icon: TrendingDown,
     badgeClass: "border-rose-200 bg-rose-50 text-rose-700",
-    amountClass: "text-rose-600 dark:text-rose-400",
+    amountClass: "text-rose-600",
     sign: "-",
   },
   imposto: {
     label: "Imposto",
     icon: ReceiptText,
     badgeClass: "border-amber-200 bg-amber-50 text-amber-700",
-    amountClass: "text-amber-600 dark:text-amber-400",
+    amountClass: "text-amber-600",
     sign: "-",
   },
   "recebimentos externos de direitos": {
     label: "Recebimentos externos de direitos",
     icon: ReceiptText,
-    badgeClass: "border-violet-200 bg-violet-50 text-violet-700",
-    amountClass: "text-violet-600 dark:text-violet-400",
+    badgeClass: "border-primary/30 bg-violet-50 text-primary",
+    amountClass: "text-primary",
     sign: "+",
   },
   comissao: {
     label: "Comissão",
     icon: WalletCards,
     badgeClass: "border-cyan-200 bg-cyan-50 text-cyan-700",
-    amountClass: "text-cyan-600 dark:text-cyan-400",
+    amountClass: "text-cyan-600",
     sign: "-",
   },
   reembolso: {
     label: "Reembolso",
     icon: RotateCcw,
     badgeClass: "border-blue-200 bg-blue-50 text-blue-700",
-    amountClass: "text-blue-600 dark:text-blue-400",
+    amountClass: "text-blue-600",
     sign: "+",
   },
   adiantamento: {
     label: "Adiantamento",
     icon: Timer,
     badgeClass: "border-indigo-200 bg-indigo-50 text-indigo-700",
-    amountClass: "text-indigo-600 dark:text-indigo-400",
+    amountClass: "text-indigo-600",
     sign: "-",
   },
   investimento: {
     label: "Investimento",
     icon: Briefcase,
     badgeClass: "border-sky-200 bg-sky-50 text-sky-700",
-    amountClass: "text-sky-600 dark:text-sky-400",
+    amountClass: "text-sky-600",
     sign: "-",
   },
   transferencia: {
     label: "Transferência",
     icon: RefreshCcw,
     badgeClass: "border-slate-200 bg-slate-50 text-slate-700",
-    amountClass: "text-slate-800 dark:text-slate-200",
+    amountClass: "text-slate-800",
     sign: "",
   },
   outros: {
     label: "Outros",
     icon: Banknote,
     badgeClass: "border-zinc-200 bg-zinc-50 text-zinc-700",
-    amountClass: "text-zinc-800 dark:text-zinc-200",
+    amountClass: "text-zinc-800",
     sign: "",
   },
 };
@@ -125,9 +125,9 @@ const statusMeta: Record<string, { label: string; icon: LucideIcon; badgeClass: 
   pago: { label: "Pago", icon: CheckCircle2, badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700", dotClass: "bg-emerald-500" },
   atrasado: { label: "Atrasado", icon: AlertCircle, badgeClass: "border-rose-200 bg-rose-50 text-rose-700", dotClass: "bg-rose-500" },
   parcial: { label: "Parcial", icon: Timer, badgeClass: "border-orange-200 bg-orange-50 text-orange-700", dotClass: "bg-orange-500" },
-  cancelado: { label: "Cancelado", icon: XCircle, badgeClass: "border-zinc-200 bg-zinc-50 text-zinc-600", dotClass: "bg-zinc-500" },
-  cancelada: { label: "Cancelado", icon: XCircle, badgeClass: "border-zinc-200 bg-zinc-50 text-zinc-600", dotClass: "bg-zinc-500" },
-  estornado: { label: "Estornado", icon: RotateCcw, badgeClass: "border-purple-200 bg-purple-50 text-purple-700", dotClass: "bg-purple-500" },
+  cancelado: { label: "Cancelado", icon: XCircle, badgeClass: "border-zinc-200 bg-zinc-50 text-muted-foreground", dotClass: "bg-zinc-500" },
+  cancelada: { label: "Cancelado", icon: XCircle, badgeClass: "border-zinc-200 bg-zinc-50 text-muted-foreground", dotClass: "bg-zinc-500" },
+  estornado: { label: "Estornado", icon: RotateCcw, badgeClass: "border-primary/30 bg-purple-50 text-primary", dotClass: "bg-primary" },
   processando: { label: "Processando", icon: Loader2, badgeClass: "border-cyan-200 bg-cyan-50 text-cyan-700", dotClass: "bg-cyan-500" },
 };
 
@@ -136,13 +136,13 @@ const paymentMethodLabels: Record<string, string> = {
   ted: "TED",
   doc: "DOC",
   boleto: "Boleto",
-  "cartao-credito": "Cartao de credito",
-  cartao_credito: "Cartao de credito",
-  "cartao-debito": "Cartao de debito",
-  cartao_debito: "Cartao de debito",
+  "cartao-credito": "Cartão de crédito",
+  cartao_credito: "Cartão de crédito",
+  "cartao-debito": "Cartão de débito",
+  cartao_debito: "Cartão de débito",
   dinheiro: "Dinheiro",
-  transferencia: "Transferencia bancaria",
-  transferencia_bancaria: "Transferencia bancaria",
+  transferencia: "Transferência bancária",
+  transferencia_bancaria: "Transferência bancária",
   cheque: "Cheque",
 };
 
@@ -217,7 +217,7 @@ function TypeBadge({ type }: { type: string }) {
   const meta = transactionTypeMeta[type] ?? transactionTypeMeta.outros;
   const Icon = meta.icon;
   return (
-    <Badge variant="outline" className={cn("h-7 gap-1.5 rounded-full px-3 font-medium shadow-sm", meta.badgeClass)}>
+    <Badge variant="outline" className={cn("h-7 gap-1.5 rounded-full px-3 font-medium", meta.badgeClass)}>
       <Icon className="h-3.5 w-3.5" />
       {meta.label}
     </Badge>
@@ -228,7 +228,7 @@ function StatusBadge({ status }: { status: string }) {
   const meta = statusMeta[status] ?? statusMeta.pendente;
   const Icon = meta.icon;
   return (
-    <Badge variant="outline" className={cn("h-7 gap-1.5 rounded-full px-3 font-medium shadow-sm", meta.badgeClass)}>
+    <Badge variant="outline" className={cn("h-7 gap-1.5 rounded-full px-3 font-medium", meta.badgeClass)}>
       <span className={cn("h-1.5 w-1.5 rounded-full", meta.dotClass)} />
       <Icon className={cn("h-3.5 w-3.5", status === "processando" && "animate-spin")} />
       {meta.label}
@@ -289,7 +289,7 @@ function AdvancedLine({ label, value, mono }: { label: string; value: ReactNode;
   return (
     <div className="flex min-w-0 items-start justify-between gap-6 border-b border-border/40 py-2.5 last:border-0">
       <span className="text-sm text-muted-foreground">{label}</span>
-      <span className={cn("max-w-[65%] break-words text-right text-sm font-medium text-foreground", mono && "font-mono text-xs")}>
+      <span className={cn("max-w-[65%] break-words text-right text-sm font-medium text-foreground", mono && "font-sans text-xs")}>
         {value}
       </span>
     </div>
@@ -332,7 +332,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
       })
       .catch(() => {
         if (!mounted) return;
-        setError("Nao foi possivel carregar os detalhes desta transacao.");
+        setError("Não foi possível carregar os detalhes desta transação.");
         setDetails(null);
       })
       .finally(() => {
@@ -347,7 +347,8 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
   const status = String(valueOf(t, ["status"]) ?? "pendente").toLowerCase();
   const typeMeta = transactionTypeMeta[type] ?? transactionTypeMeta.outros;
   const amount = numValue(valueOf(t, ["amount", "valor", "grossAmount", "gross_amount"])) ?? 0;
-  const description = textValue(valueOf(t, ["description", "descricao"])) ?? "Transacao financeira";
+  const signedAmount = typeMeta.sign === "-" ? -Math.abs(amount) : typeMeta.sign === "+" ? Math.abs(amount) : amount;
+  const description = textValue(valueOf(t, ["description", "descricao"])) ?? "Transação financeira";
   const transactionDate = valueOf(t, ["transactionDate", "dataTransacao", "data_transacao", "data"]);
   const method = paymentMethod(valueOf(t, ["paymentMethod", "formaPagamento", "forma_pagamento"]));
   const paymentType = labelize(valueOf(t, ["paymentType", "tipoPagamento", "tipo_pagamento"]));
@@ -404,7 +405,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
     ["Taxas", moneyValue(valueOf(t, ["fees", "taxas"]))],
     ["Juros", moneyValue(valueOf(t, ["interest", "juros"]))],
     ["Multa", moneyValue(valueOf(t, ["fine", "multa"]))],
-    ["Codigo transacional", transactionCode],
+    ["Código transacional", transactionCode],
     ["Conta bancária", account],
     ["Banco", bank],
     ["Agencia", agency],
@@ -425,7 +426,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[92vh] max-w-[920px] overflow-y-auto border-border/70 bg-card p-0 shadow-2xl" data-testid="modal-transacao-view">
+      <DialogContent className="max-h-[92vh] max-w-[920px] overflow-y-auto border-border/70 bg-card p-0" data-testid="modal-transacao-view">
         <DialogHeader className="px-6 py-5">
           <DialogTitle className="text-lg font-semibold text-foreground">Detalhes da Transação</DialogTitle>
         </DialogHeader>
@@ -474,7 +475,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
                   <div className="grid gap-4 rounded-3xl border border-border/70 bg-card p-5">
                     <DetailRow label="Método" value={method} />
                     <DetailRow label="Tipo" value={paymentType} />
-                    <DetailRow label="Codigo transacional" value={transactionCode} />
+                    <DetailRow label="Código transacional" value={transactionCode} />
                     <DetailRow label="Recorrência" value={recurrence} />
                     <DetailRow label="Competência" value={competence} />
                     <DetailRow label="Vencimento" value={dueDate} />
@@ -488,7 +489,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
                   <div className="grid gap-3 sm:grid-cols-2">
                     {relationships.map(([label, value]) => (
                       <div key={label} className="rounded-3xl border border-border/70 bg-background/40 p-4">
-                        <p className="text-[11px] uppercase tracking-[0.15em] text-muted-foreground">{label}</p>
+                        <p className="text-[11px]  tracking-[0.15em] text-muted-foreground">{label}</p>
                         <p className="mt-2 truncate text-sm font-semibold text-foreground">{value}</p>
                       </div>
                     ))}
@@ -535,9 +536,9 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
 
             <aside className="sticky top-0 space-y-6 border-l border-border/70 bg-muted/10 p-6">
               <div className="space-y-4 rounded-3xl border border-border/70 bg-card p-5">
-                <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">Resumo</p>
-                <p className={cn("font-mono text-4xl font-semibold tracking-tight", typeMeta.amountClass)} data-testid="text-transacao-valor">
-                  {typeMeta.sign}{formatCurrency(amount)}
+                <p className="text-xs  tracking-[0.15em] text-muted-foreground">Resumo</p>
+                <p className={cn("font-sans text-4xl font-semibold tracking-tight", getCurrencyToneClass(signedAmount))} data-testid="text-transacao-valor">
+                  {signedAmount > 0 ? "+" : ""}{formatCurrency(signedAmount)}
                 </p>
                 <div className="space-y-3">
                   <DetailRow label="Status" value={statusMeta[status]?.label ?? labelize(status)} />
@@ -549,7 +550,7 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
               </div>
 
               <div className="space-y-3 rounded-3xl border border-border/70 bg-card p-5">
-                <p className="text-xs uppercase tracking-[0.15em] text-muted-foreground">Classificação</p>
+                <p className="text-xs  tracking-[0.15em] text-muted-foreground">Classificação</p>
                 <DetailRow label="Categoria" value={category} />
                 <DetailRow label="Centro de custo" value={costCenter} />
                 <DetailRow label="Parcelamento" value={installmentSummary} />
@@ -564,3 +565,5 @@ export function TransacaoViewModal({ open, onOpenChange, transactionId }: Transa
     </Dialog>
   );
 }
+
+

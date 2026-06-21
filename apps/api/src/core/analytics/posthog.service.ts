@@ -9,6 +9,12 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { ConfigService }                        from '@nestjs/config';
 
+function isPostHogPlaceholder(value: string | undefined): boolean {
+  if (!value) return true;
+  // PostHog keys start with phc_ ; placeholder template "phc_YOUR_POSTHOG_KEY"
+  return /YOUR_|PLACEHOLDER|phc_YOUR/i.test(value);
+}
+
 @Injectable()
 export class PostHogService implements OnModuleDestroy {
   private readonly logger  = new Logger(PostHogService.name);
@@ -20,8 +26,10 @@ export class PostHogService implements OnModuleDestroy {
     this.apiKey = config.get<string>('POSTHOG_API_KEY');
     this.host   = config.get<string>('POSTHOG_HOST') ?? 'https://app.posthog.com';
 
-    if (this.apiKey) {
+    if (this.apiKey && !isPostHogPlaceholder(this.apiKey)) {
       this.initClient().catch(err => this.logger.warn(`PostHog init falhou: ${String(err)}`));
+    } else if (this.apiKey && isPostHogPlaceholder(this.apiKey)) {
+      this.logger.log('PostHogService: monitoring disabled — placeholder detected (POSTHOG_API_KEY looks unconfigured)');
     } else {
       this.logger.log('PostHogService: POSTHOG_API_KEY não configurada — analytics desativado');
     }

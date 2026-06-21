@@ -29,3 +29,4 @@ function resolveAnalyticsProvider(): IAnalyticsProvider {
 }
 
 export const analyticsAdapter: IAnalyticsProvider = resolveAnalyticsProvider();
+

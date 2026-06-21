@@ -79,6 +79,9 @@ export interface KnowledgeCategory {
   color: string;
 }
 
+export type KnowledgeArticleType = "article" | "faq" | "tutorial" | "internal_doc";
+export type KnowledgeArticleStatus = "draft" | "published" | "archived";
+
 export interface KnowledgeArticle {
   id: string;
   tenant_id: string;
@@ -93,6 +96,11 @@ export interface KnowledgeArticle {
   created_at: string;
   updated_at: string;
   read_time: number;
+  // Campos administrativos (gestão da Base de Conhecimento)
+  type?: KnowledgeArticleType;
+  published?: boolean;
+  status?: KnowledgeArticleStatus; // Rascunho | Publicado | Arquivado
+  order?: number;
 }
 
 export interface SystemService {

@@ -90,7 +90,7 @@ function ChatWindow({ roomId }: { roomId: string }) {
           <div className="flex flex-col items-center justify-center h-full text-center py-12">
             <MessagesSquare className="h-10 w-10 text-muted-foreground/20 mb-3" />
             <p className="text-[13px] text-muted-foreground">Nenhuma mensagem ainda</p>
-            <p className="text-[11.5px] text-muted-foreground/60 mt-1">Envie uma mensagem para iniciar</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-1">Envie uma mensagem para iniciar</p>
           </div>
         )}
         {messages.map((msg) => {
@@ -116,7 +116,7 @@ function ChatWindow({ roomId }: { roomId: string }) {
                   ? "bg-primary text-primary-foreground rounded-br-sm"
                   : "bg-muted text-foreground rounded-bl-sm",
               )}>
-                <p className="text-[12.5px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
+                <p className="text-[12px] leading-relaxed whitespace-pre-wrap">{msg.message}</p>
                 <p className={cn(
                   "text-[10px] mt-0.5",
                   isMe ? "text-primary-foreground/60 text-right" : "text-muted-foreground",
@@ -151,7 +151,7 @@ function ChatWindow({ roomId }: { roomId: string }) {
       {/* Attached file preview */}
       {attached && (
         <div className="px-3 pb-1 flex items-center gap-2">
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 text-[11.5px] text-foreground flex-1 min-w-0">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-border/60 bg-muted/40 text-[11px] text-foreground flex-1 min-w-0">
             <FileText className="h-3.5 w-3.5 text-primary shrink-0" />
             <span className="truncate font-medium">{attached.name}</span>
             <span className="text-muted-foreground shrink-0">{attached.size}</span>
@@ -251,9 +251,9 @@ export default function SupportChat() {
   return (
     <MainLayout title="Chat ao Vivo" description="Atendimento em tempo real">
       {/* BUG #8 FIX: Banner de modo de demonstração — respostas são automáticas */}
-      <Alert className="mb-4 border-amber-200 bg-amber-50 dark:bg-amber-950/40 dark:border-amber-800">
-        <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-        <AlertDescription className="text-amber-700 dark:text-amber-300 text-sm">
+      <Alert className="mb-4 border-amber-200 bg-amber-50">
+        <AlertTriangle className="h-4 w-4 text-amber-600" />
+        <AlertDescription className="text-amber-700 text-sm">
           <strong>⚠️ Modo de demonstração</strong> — respostas automáticas. Configure o backend para atendimento real.
         </AlertDescription>
       </Alert>
@@ -265,7 +265,7 @@ export default function SupportChat() {
           {/* Room list */}
           <div className="w-72 shrink-0 border-r border-border/60 flex flex-col">
             <div className="px-4 py-3 border-b border-border/60">
-              <p className="text-[12px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <p className="text-[12px] font-semibold text-muted-foreground  tracking-wider">
                 Conversas
               </p>
             </div>
@@ -286,12 +286,12 @@ export default function SupportChat() {
                         "h-1.5 w-1.5 fill-current shrink-0",
                         room.online ? "text-green-400" : "text-muted-foreground/40",
                       )} />
-                      <span className="text-[12.5px] font-medium text-foreground truncate max-w-[140px]">
+                      <span className="text-[12px] font-medium text-foreground truncate max-w-[140px]">
                         {room.participant_name}
                       </span>
                     </div>
                     {room.unread_count > 0 && (
-                      <Badge className="h-4 min-w-4 px-1 text-[9px] bg-primary">
+                      <Badge variant="info" className="h-4 min-w-4 px-1 text-[9px]">
                         {room.unread_count}
                       </Badge>
                     )}
@@ -317,7 +317,7 @@ export default function SupportChat() {
                   <Badge
                     variant="outline"
                     className={cn(
-                      "text-[10.5px] border",
+                      "text-[10px] border",
                       activeRoomData.status === "active"
                         ? "text-green-400 border-green-500/30 bg-green-500/10"
                         : "text-muted-foreground border-border",

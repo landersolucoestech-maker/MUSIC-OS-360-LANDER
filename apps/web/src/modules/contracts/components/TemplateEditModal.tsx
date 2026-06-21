@@ -1,15 +1,9 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Dialog, DialogContent } from "@/shared/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { ScrollArea } from "@/shared/ui/scroll-area";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/ui/sheet";
 import {
   Loader2, Sparkles, Save, ArrowLeft, Plus, ChevronDown, ChevronRight, Check, X, ImageUp,
 } from "lucide-react";
@@ -39,7 +33,7 @@ function HighlightedPreview({ text }: { text: string }) {
   }
   const parts = text.split(/(\{\{[^}]+\}\})/g);
   return (
-    <p className="whitespace-pre-wrap text-sm leading-relaxed font-mono">
+    <p className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
       {parts.map((part, i) => {
         if (/^\{\{[^}]+\}\}$/.test(part)) {
           return (
@@ -73,7 +67,7 @@ function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground  tracking-wider hover:text-foreground transition-colors"
         data-testid={`button-vargroup-edit-${label}`}
       >
         {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
@@ -87,7 +81,7 @@ function RegistryVarGroup({ label, vars, onInsert }: RegistryVarGroupProps) {
               className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
             >
               <div className="min-w-0">
-                <span className="font-mono text-[11px] text-foreground/80 truncate block">
+                <span className="font-sans text-[11px] text-foreground/80 truncate block">
                   {v.placeholder}
                 </span>
                 {v.name && (
@@ -153,17 +147,17 @@ function AiSuggestionsSheet({
   const accepted = suggestions.filter((s) => s.accepted === true);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-96 flex flex-col">
-        <SheetHeader className="shrink-0">
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] w-full max-w-md flex-col">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             Sugestões da IA
-          </SheetTitle>
+          </DialogTitle>
           <p className="text-xs text-muted-foreground">
             Aceite individualmente as substituições que quiser aplicar ao texto.
           </p>
-        </SheetHeader>
+        </DialogHeader>
 
         <ScrollArea className="flex-1 mt-4">
           {suggestions.length === 0 ? (
@@ -174,7 +168,7 @@ function AiSuggestionsSheet({
             <div className="space-y-3 pr-2">
               {pending.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                  <p className="text-[11px] font-semibold  text-muted-foreground mb-2">
                     Pendentes ({pending.length})
                   </p>
                   {pending.map((s) => (
@@ -188,7 +182,7 @@ function AiSuggestionsSheet({
                       </p>
                       <div className="flex items-center gap-1">
                         <span className="text-muted-foreground">→</span>
-                        <span className="font-mono text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
+                        <span className="font-sans text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
                           {s.placeholder}
                         </span>
                       </div>
@@ -220,7 +214,7 @@ function AiSuggestionsSheet({
 
               {accepted.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                  <p className="text-[11px] font-semibold  text-muted-foreground mb-2">
                     Aceites ({accepted.length})
                   </p>
                   {accepted.map((s) => (
@@ -229,7 +223,7 @@ function AiSuggestionsSheet({
                       className="rounded-lg border border-border/40 bg-muted/20 p-2.5 flex items-center gap-2 opacity-60"
                     >
                       <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      <span className="font-mono text-xs text-primary">{s.placeholder}</span>
+                      <span className="font-sans text-xs text-primary">{s.placeholder}</span>
                     </div>
                   ))}
                 </div>
@@ -237,8 +231,8 @@ function AiSuggestionsSheet({
             </div>
           )}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -458,7 +452,7 @@ export function TemplateEditModal({
                 placeholder="Nome do template…"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
-                className="h-8 text-sm font-medium border-none shadow-none focus-visible:ring-0 px-0 bg-transparent"
+                className="h-8 text-sm font-medium border-none focus-visible:ring-0 px-0 bg-transparent"
                 data-testid="input-edit-template-name"
               />
             </div>
@@ -496,7 +490,7 @@ export function TemplateEditModal({
             <div className="flex flex-col flex-1 overflow-hidden border-r">
               {/* Editor */}
               <div className="flex-1 overflow-hidden flex flex-col p-4 gap-2">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider shrink-0">
+                <Label className="text-xs text-muted-foreground  tracking-wider shrink-0">
                   Editor
                 </Label>
                 <textarea
@@ -508,14 +502,14 @@ export function TemplateEditModal({
                     "Use {{GRUPO.CAMPO}} para inserir placeholders,\n" +
                     "ou clique [+] no painel de variáveis à direita."
                   }
-                  className="flex-1 w-full resize-none rounded-md border bg-background px-3 py-2.5 text-sm font-mono focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
+                  className="flex-1 w-full resize-none rounded-md border bg-background px-3 py-2.5 text-sm font-sans focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring placeholder:text-muted-foreground/40"
                   data-testid="textarea-edit-contract-editor"
                 />
               </div>
 
               {/* Preview */}
               <div className="shrink-0 border-t max-h-52 overflow-y-auto bg-muted/20 p-4">
-                <Label className="text-xs text-muted-foreground uppercase tracking-wider block mb-2">
+                <Label className="text-xs text-muted-foreground  tracking-wider block mb-2">
                   Preview
                 </Label>
                 <HighlightedPreview text={text} />
@@ -566,7 +560,7 @@ export function TemplateEditModal({
 
               {/* Custom variable creator */}
               <div className="shrink-0 border-t px-3 py-3 space-y-2">
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                <Label className="text-[11px] text-muted-foreground  tracking-wider">
                   Nova variável custom
                 </Label>
                 <div className="flex gap-1.5">
@@ -575,7 +569,7 @@ export function TemplateEditModal({
                     value={customVar}
                     onChange={(e) => setCustomVar(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleCreateCustomVar(); }}
-                    className="h-7 text-xs font-mono"
+                    className="h-7 text-xs font-sans"
                     data-testid="input-edit-custom-var"
                   />
                   <Button
@@ -595,7 +589,7 @@ export function TemplateEditModal({
 
               {/* Header / Footer image upload */}
               <div className="shrink-0 border-t px-3 py-3 space-y-3">
-                <Label className="text-[11px] text-muted-foreground uppercase tracking-wider">
+                <Label className="text-[11px] text-muted-foreground  tracking-wider">
                   Cabeçalho / Rodapé
                 </Label>
                 {(["header", "footer"] as const).map((kind) => {

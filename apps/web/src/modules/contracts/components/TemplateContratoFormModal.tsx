@@ -257,7 +257,7 @@ export function TemplateContratoFormModal({
                               <button
                                 key={id}
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted cursor-pointer"
                                 onClick={() => toggleArtista(id)}
                                 data-testid={`item-artista-${id}`}
                               >
@@ -339,7 +339,7 @@ export function TemplateContratoFormModal({
                               <button
                                 key={c.id}
                                 type="button"
-                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-accent cursor-pointer"
+                                className="flex w-full items-center gap-2 rounded-sm px-3 py-2 text-sm hover:bg-muted cursor-pointer"
                                 onClick={() => toggleContato(c.id)}
                                 data-testid={`item-contato-${c.id}`}
                               >
@@ -401,3 +401,4 @@ export function TemplateContratoFormModal({
     </Dialog>
   );
 }
+

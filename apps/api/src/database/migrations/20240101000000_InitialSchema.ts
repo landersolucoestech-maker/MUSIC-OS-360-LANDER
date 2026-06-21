@@ -362,7 +362,6 @@ export class InitialSchema20240101000000 implements MigrationInterface {
         "status"             VARCHAR(50)  NOT NULL DEFAULT 'novo',
         "score"              INTEGER      NOT NULL DEFAULT 0,
         "fonte"              VARCHAR(100),
-        "pipeline_stage"     VARCHAR(100),
         "metadata"           JSONB        NOT NULL DEFAULT '{}',
         "created_at"         TIMESTAMP    NOT NULL DEFAULT NOW(),
         "updated_at"         TIMESTAMP    NOT NULL DEFAULT NOW(),

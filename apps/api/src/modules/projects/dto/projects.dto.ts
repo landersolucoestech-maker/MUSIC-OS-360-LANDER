@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsDate, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -13,9 +13,12 @@ export class CreateProjectDto {
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(()=>Number) budget?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3) currency?: string;
-  @ApiPropertyOptional() @IsOptional() startsAt?: Date;
-  @ApiPropertyOptional() @IsOptional() deadlineAt?: Date;
-  @ApiPropertyOptional() @IsOptional() releasedAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() startsAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() deadlineAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() releasedAt?: Date;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }
 

@@ -23,7 +23,8 @@ import * as path from 'path';
 
 // ── Carregar .env ────────────────────────────────────────────────────────────
 try {
-  require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
+  // The API package environment is authoritative. Root .env is fallback only.
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env'), override: true });
   require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
 } catch { /* dotenv opcional */ }
 
@@ -74,6 +75,12 @@ const EXPECTED_TABLES: string[] = [
   'clients',
   'leads',
   'lead_interactions',
+  'contacts',
+  'contact_attachments',
+  'contact_contracts',
+  'contact_timeline',
+  'lead_uploads',
+  'operational_tasks',
   'campaigns',
   'briefings',
   'events',
@@ -103,17 +110,6 @@ const EXPECTED_TABLES: string[] = [
   'conversation_notes',
   'forms',
   'form_submissions',
-  // Phase 7
-  'crm_companies',
-  'crm_contacts',
-  'crm_tags',
-  'crm_contact_tags',
-  'crm_tasks',
-  'crm_timeline_events',
-  // Phase 8
-  'pipelines',
-  'pipeline_stages',
-  'pipeline_opportunities',
   // Phase 11
   'campaign_tasks',
   'campaign_assets',
@@ -132,9 +128,8 @@ const MULTITENANT_TABLES: string[] = [
   'workflow_transitions', 'domain_event_log', 'activity_logs',
   'conversations', 'conversation_messages', 'conversation_notes',
   'forms', 'form_submissions',
-  'crm_companies', 'crm_contacts', 'crm_tags', 'crm_contact_tags',
-  'crm_tasks', 'crm_timeline_events',
-  'pipelines', 'pipeline_stages', 'pipeline_opportunities',
+  'contacts', 'contact_attachments', 'contact_contracts', 'contact_timeline',
+  'lead_uploads', 'operational_tasks',
   'campaign_tasks', 'campaign_assets', 'ai_usage_logs',
 ];
 
@@ -193,7 +188,20 @@ async function main(): Promise<void> {
   console.log('\n── 2. Conectividade com Supabase (PostgreSQL) ───────────────\n');
 
   const { Client } = await import('pg');
-  const client = new Client({ connectionString: process.env['DATABASE_URL'], ssl: { rejectUnauthorized: false } });
+  const databaseUrl = process.env['DATABASE_URL'];
+  let databaseHost = '';
+  try {
+    databaseHost = new URL(databaseUrl ?? '').hostname;
+  } catch {
+    fail('DATABASE_URL inválida');
+    process.exit(1);
+  }
+  const sslDisabled = process.env['DB_SSL'] === 'false'
+    || ['localhost', '127.0.0.1', '::1'].includes(databaseHost);
+  const client = new Client({
+    connectionString: databaseUrl,
+    ssl: sslDisabled ? false : { rejectUnauthorized: false },
+  });
 
   try {
     await client.connect();

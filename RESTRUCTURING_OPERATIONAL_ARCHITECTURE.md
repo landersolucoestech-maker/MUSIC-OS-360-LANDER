@@ -229,7 +229,7 @@ Central operacional de contrato.
 ├── Timeline              (cronograma)
 ├── Team                  (equipe de produção)
 ├── Logistics             (transporte, hospedagem)
-├── Analytics             (vendas, attendance)
+├── Analytics             (comercial, attendance)
 └── Activity              (histórico)
 ```
 

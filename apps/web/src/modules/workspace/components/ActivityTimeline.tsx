@@ -13,7 +13,7 @@ export function ActivityTimeline({ activities, isLoading }: ActivityTimelineProp
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Atividades Recentes</CardTitle>
           <CardDescription>Carregando dados do timeline...</CardDescription>
         </CardHeader>
         <CardContent>
@@ -31,7 +31,7 @@ export function ActivityTimeline({ activities, isLoading }: ActivityTimelineProp
     return (
       <Card>
         <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+          <CardTitle>Atividades Recentes</CardTitle>
           <CardDescription>Sem ações recentes para este artista.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -47,12 +47,12 @@ export function ActivityTimeline({ activities, isLoading }: ActivityTimelineProp
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Recent Activity</CardTitle>
+        <CardTitle>Atividades Recentes</CardTitle>
         <CardDescription>Últimas ações do workspace.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {activities.slice(0, 6).map((item) => (
-          <div key={item.id} className="rounded-2xl border border-border bg-background p-4 shadow-sm">
+          <div key={item.id} className="rounded-2xl border border-border bg-background p-4">
             <div className="flex items-start gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 text-primary">
                 <Activity className="h-5 w-5" />
@@ -79,3 +79,4 @@ export function ActivityTimeline({ activities, isLoading }: ActivityTimelineProp
     </Card>
   );
 }
+

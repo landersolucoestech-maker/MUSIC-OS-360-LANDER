@@ -195,10 +195,10 @@ export function useACRCloudCreateProject() {
     mutationFn: (input) => mockMusicMonitoringProvider.createProject(input),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["acrcloud", "projects"] });
-      toast.success(`Projecto "${data.name}" criado com sucesso.`);
+      toast.success(`Projeto "${data.name}" criado com sucesso.`);
     },
     onError: (err) => {
-      toast.error(`Erro ao criar projecto: ${err.message}`);
+      toast.error(`Erro ao criar projeto: ${err.message}`);
     },
   });
 }
@@ -212,7 +212,7 @@ export function useACRCloudToggleProject() {
       mockMusicMonitoringProvider.toggleProject(projectId, active),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["acrcloud", "projects"] });
-      toast.success(`Projecto "${data.name}" ${data.active ? "activado" : "pausado"}.`);
+      toast.success(`Projeto "${data.name}" ${data.active ? "ativado" : "pausado"}.`);
     },
     onError: (err) => {
       toast.error(err.message);

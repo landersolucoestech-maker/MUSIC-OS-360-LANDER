@@ -8,16 +8,16 @@ interface EventConfig {
 }
 
 const EVENT_CONFIG: Record<DocumentLogEvent, EventConfig> = {
-  created:            { icon: FileText,     label: "Documento criado",                 color: "text-blue-600 dark:text-blue-400"    },
-  template_applied:   { icon: FileText,     label: "Modelo aplicado",                  color: "text-blue-600 dark:text-blue-400"    },
-  sent_for_signature: { icon: Send,         label: "Enviado para assinatura",          color: "text-amber-600 dark:text-amber-400"  },
-  signer_viewed:      { icon: Eye,          label: "Visualizado pelo signatário",      color: "text-purple-600 dark:text-purple-400"},
-  signer_signed:      { icon: CheckCircle2, label: "Assinado",                         color: "text-green-600 dark:text-green-400"  },
+  created:            { icon: FileText,     label: "Documento criado",                 color: "text-blue-600"    },
+  template_applied:   { icon: FileText,     label: "Modelo aplicado",                  color: "text-blue-600"    },
+  sent_for_signature: { icon: Send,         label: "Enviado para assinatura",          color: "text-amber-600"  },
+  signer_viewed:      { icon: Eye,          label: "Visualizado pelo signatário",      color: "text-primary"},
+  signer_signed:      { icon: CheckCircle2, label: "Assinado",                         color: "text-green-600"  },
   signer_rejected:    { icon: XCircle,      label: "Rejeitado pelo signatário",        color: "text-destructive"                    },
-  completed:          { icon: CheckCircle2, label: "Documento completamente assinado", color: "text-green-600 dark:text-green-400"  },
+  completed:          { icon: CheckCircle2, label: "Documento completamente assinado", color: "text-green-600"  },
   cancelled:          { icon: XCircle,      label: "Documento cancelado",              color: "text-destructive"                    },
-  expired:            { icon: AlertCircle,  label: "Documento expirado",               color: "text-orange-600 dark:text-orange-400"},
-  webhook_received:   { icon: Webhook,      label: "Webhook recebido",                 color: "text-slate-500"                      },
+  expired:            { icon: AlertCircle,  label: "Documento expirado",               color: "text-orange-600"},
+  webhook_received:   { icon: Webhook,      label: "Webhook recebido",                 color: "text-muted-foreground"                      },
 };
 
 function TimelineEvent({ log, isLast }: { log: DocumentLog; isLast: boolean }) {
@@ -44,7 +44,7 @@ function TimelineEvent({ log, isLast }: { log: DocumentLog; isLast: boolean }) {
         <p className={`text-sm font-medium leading-none ${cfg.color}`}>{cfg.label}</p>
         <p className="text-xs text-muted-foreground mt-1">{timeLabel}</p>
         {log.payload && Object.keys(log.payload).length > 0 && (
-          <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">
+          <p className="text-[11px] text-muted-foreground mt-0.5 font-sans">
             {Object.entries(log.payload)
               .slice(0, 3)
               .map(([k, v]) => `${k}: ${String(v)}`)
@@ -85,3 +85,4 @@ export function DocumentTimeline({ logs, className = "" }: DocumentTimelineProps
     </div>
   );
 }
+

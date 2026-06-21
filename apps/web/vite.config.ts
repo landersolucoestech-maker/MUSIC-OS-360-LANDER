@@ -99,6 +99,7 @@ export default defineConfig({
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "src"),
+      "@music-os-360/ai-skills": path.resolve(__dirname, "../../packages/ai-skills/src/index.ts"),
     },
   },
   build: {
@@ -137,6 +138,19 @@ export default defineConfig({
         },
       },
     },
+  },
+  optimizeDeps: {
+    include: [
+      "react",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-dom",
+      "react-dom/client",
+      "react-router-dom",
+      "@tanstack/react-query",
+      "@sentry/react",
+      "posthog-js",
+    ],
   },
   server: {
     allowedHosts: true,

@@ -4,113 +4,95 @@ import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent, CardHeader, CardDescription, CardTitle } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Input } from "@/shared/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/shared/ui/collapsible";
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  ClipboardList,
-  Activity,
+  Calendar,
+  Contact,
+  Disc3,
+  DollarSign,
+  FileText,
+  Folder,
   Loader2,
+  Music,
+  Package,
   RefreshCw,
-  Search,
-  ShieldAlert,
+  Rocket,
+  Settings,
+  Users,
   Wrench,
 } from "lucide-react";
 import { useAudit } from "@/shared/hooks/useAudit";
-import { AUDIT_MODULES, type AuditIssue, type AuditModuleId, type AuditSeverity } from "@/shared/lib/audit/types";
-import { AuditLogPanel } from "@/modules/reports/components/AuditLogPanel";
-import { MOCK_AUDIT_LOG } from "@/modules/reports/services/mock-data";
+import type { AuditModuleId } from "@/shared/lib/audit/types";
 import { cn } from "@/shared/lib/utils";
 
-type ModuleFilter = "all" | AuditModuleId;
-type SeverityFilter = "all" | AuditSeverity;
-type TabId = "dados" | "operacoes" | "logs";
+type CompletenessFilter = "all" | "complete" | "incomplete";
+type AuditPanelTabId =
+  | "artistas"
+  | "projetos"
+  | "obras"
+  | "fonogramas"
+  | "lancamentos"
+  | "contratos"
+  | "financeiro"
+  | "agenda"
+  | "inventario"
+  | "crm"
+  | "servicos";
 
-const TABS: { id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
-  { id: "dados",      label: "Dados",               icon: ShieldAlert },
-  { id: "operacoes",  label: "Auditoria de Operações", icon: ClipboardList },
-  { id: "logs",       label: "Logs do Sistema",     icon: Activity },
+const AUDIT_PANEL_TABS: {
+  id: AuditPanelTabId;
+  label: string;
+  title: string;
+  module: AuditModuleId | null;
+  entityType?: string;
+  icon: React.ComponentType<{ className?: string }>;
+}[] = [
+  { id: "artistas", label: "Artistas", title: "Auditoria de Artistas", module: "artistas", icon: Users },
+  { id: "projetos", label: "Projetos", title: "Auditoria de Projetos", module: "projects", icon: Folder },
+  { id: "obras", label: "Obras", title: "Auditoria de Obras", module: "catalog", entityType: "Obra", icon: Music },
+  { id: "fonogramas", label: "Fonogramas", title: "Auditoria de Fonogramas", module: "catalog", entityType: "Fonograma", icon: Disc3 },
+  { id: "lancamentos", label: "Lançamentos", title: "Auditoria de Lançamentos", module: "lancamentos", icon: Rocket },
+  { id: "contratos", label: "Contratos", title: "Auditoria de Contratos", module: "contratos", icon: FileText },
+  { id: "financeiro", label: "Financeiro", title: "Auditoria de Financeiro", module: "accounting", icon: DollarSign },
+  { id: "agenda", label: "Agenda", title: "Auditoria de Agenda", module: "eventos", icon: Calendar },
+  { id: "inventario", label: "Inventário", title: "Auditoria de Inventário", module: "inventory", icon: Package },
+  { id: "crm", label: "CRM", title: "Auditoria de CRM", module: "crm", icon: Contact },
+  { id: "servicos", label: "Serviços", title: "Auditoria de Serviços", module: null, icon: Settings },
 ];
-
-const SYSTEM_LOGS = [
-  { ts: "2026-05-08T09:15:43Z", level: "INFO",  msg: "[import] imp-001: 142 registros importados em Catálogo (CSV)", module: "reports" },
-  { ts: "2026-05-08T10:00:08Z", level: "INFO",  msg: "[export] exp-001: Catálogo exportado em XLSX (142 registros)", module: "reports" },
-  { ts: "2026-05-07T14:22:18Z", level: "ERROR", msg: "[import] imp-002: 7 erros na importação de Artistas — campos inválidos", module: "reports" },
-  { ts: "2026-05-07T16:45:22Z", level: "INFO",  msg: "[export] exp-002: Relatório financeiro exportado em PDF", module: "reports" },
-  { ts: "2026-05-07T11:30:00Z", level: "WARN",  msg: "[contract] CT-0045: cláusula 3 atualizada por Admin", module: "contratos" },
-  { ts: "2026-05-06T11:00:29Z", level: "INFO",  msg: "[import] imp-003: 22 contratos importados via CSV", module: "reports" },
-  { ts: "2026-05-06T10:15:00Z", level: "WARN",  msg: "[catalog] 3 obras removidas do catálogo por Admin", module: "catalog" },
-  { ts: "2026-05-01T08:31:02Z", level: "INFO",  msg: "[import] imp-004: 318 transações OFX importadas em Financeiro", module: "reports" },
-];
-
-const LEVEL_COLORS: Record<string, string> = {
-  INFO:  "text-success",
-  WARN:  "text-warning",
-  ERROR: "text-destructive",
-};
-
-function LogsTab() {
-  return (
-    <div className="rounded-lg border border-border bg-card overflow-hidden font-mono text-xs">
-      <div className="px-4 py-2 border-b border-border bg-muted/50 flex items-center gap-2">
-        <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-        <span className="text-muted-foreground font-medium">System Logs — {SYSTEM_LOGS.length} entradas</span>
-      </div>
-      <div className="divide-y divide-border/30">
-        {SYSTEM_LOGS.map((l, i) => (
-          <div key={i} className="flex items-start gap-3 px-4 py-2.5 hover:bg-muted/20 transition-colors" data-testid={`log-row-${i}`}>
-            <span className="text-muted-foreground whitespace-nowrap shrink-0">{new Date(l.ts).toLocaleString("pt-BR")}</span>
-            <span className={cn("font-bold w-12 shrink-0", LEVEL_COLORS[l.level] ?? "text-muted-foreground")}>{l.level}</span>
-            <span className="text-foreground break-all">{l.msg}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 function DadosTab() {
   const navigate = useNavigate();
   const { data, isLoading, error, refetch } = useAudit();
 
-  const [moduleFilter, setModuleFilter] = useState<ModuleFilter>("all");
-  const [severityFilter, setSeverityFilter] = useState<SeverityFilter>("all");
-  const [search, setSearch] = useState("");
-  const [openModules, setOpenModules] = useState<AuditModuleId[]>([]);
+  const [activeAuditTab, setActiveAuditTab] = useState<AuditPanelTabId>("artistas");
+  const [completenessFilter, setCompletenessFilter] = useState<CompletenessFilter>("incomplete");
 
-  const issues = data?.issues ?? [];
+  const records = data?.records ?? [];
   const summary = data?.summary;
+  const activeTab = AUDIT_PANEL_TABS.find((item) => item.id === activeAuditTab) ?? AUDIT_PANEL_TABS[0];
+  const ActiveIcon = activeTab.icon;
 
-  const filteredIssues = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    return issues.filter((issue) => {
-      if (moduleFilter !== "all" && issue.module !== moduleFilter) return false;
-      if (severityFilter !== "all" && issue.severity !== severityFilter) return false;
-      if (term && !issue.entity_label.toLowerCase().includes(term)) return false;
+  const activeTabRecords = useMemo(() => {
+    if (!activeTab.module) return [];
+    return records.filter((record) => {
+      if (record.module !== activeTab.module) return false;
+      if (activeTab.entityType && record.entity_type !== activeTab.entityType) return false;
       return true;
     });
-  }, [issues, moduleFilter, severityFilter, search]);
+  }, [records, activeTab]);
 
-  const issuesByModule = useMemo(() => {
-    const map = new Map<AuditModuleId, AuditIssue[]>();
-    for (const issue of filteredIssues) {
-      const arr = map.get(issue.module) ?? [];
-      arr.push(issue);
-      map.set(issue.module, arr);
-    }
-    return map;
-  }, [filteredIssues]);
+  const tabRecords = useMemo(() => {
+    return activeTabRecords.filter((record) => {
+      if (completenessFilter === "complete" && !record.is_complete) return false;
+      if (completenessFilter === "incomplete" && record.is_complete) return false;
+      return true;
+    });
+  }, [activeTabRecords, completenessFilter]);
 
-  const toggleModule = (moduleId: AuditModuleId) => {
-    setOpenModules((prev) =>
-      prev.includes(moduleId) ? prev.filter((m) => m !== moduleId) : [...prev, moduleId],
-    );
-  };
+  const completeCount = activeTabRecords.filter((record) => record.is_complete).length;
+  const incompleteCount = activeTabRecords.length - completeCount;
 
   if (isLoading) {
     return (
@@ -138,208 +120,176 @@ function DadosTab() {
 
   return (
     <div className="space-y-6">
-      {/* Resumo */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card data-testid="card-summary-total">
-          <CardHeader className="pb-2">
-            <CardDescription>Total de problemas</CardDescription>
-            <CardTitle className="text-3xl" data-testid="text-summary-total">
-              {summary?.total_issues ?? 0}
+      <div className="grid gap-3 md:grid-cols-4">
+        <Card className="h-[86px] bg-card border-border" data-testid="card-summary-total">
+          <CardHeader className="p-4">
+            <CardDescription className="text-sm font-medium text-muted-foreground">Total de Registros</CardDescription>
+            <CardTitle className="text-2xl font-bold tabular-nums leading-none" data-testid="text-summary-total">
+              {summary?.total_records ?? 0}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Atualizado em {data?.generated_at ? new Date(data.generated_at).toLocaleString("pt-BR") : "-"}
-            </p>
-          </CardContent>
         </Card>
 
-        <Card data-testid="card-summary-obrigatorio">
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <ShieldAlert className="h-4 w-4 text-destructive" />
-              Obrigatórios
-            </CardDescription>
-            <CardTitle className="text-3xl text-destructive" data-testid="text-summary-obrigatorio">
-              {summary?.obrigatorio ?? 0}
+        <Card className="h-[86px] bg-card border-border" data-testid="card-summary-complete">
+          <CardHeader className="p-4">
+            <CardDescription className="text-sm font-medium text-muted-foreground">Registros Completos</CardDescription>
+            <CardTitle className="text-2xl font-bold tabular-nums leading-none text-success" data-testid="text-summary-complete">
+              {summary?.complete_records ?? 0}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Campos essenciais que precisam ser preenchidos.
-            </p>
-          </CardContent>
         </Card>
 
-        <Card data-testid="card-summary-recomendado">
-          <CardHeader className="pb-2">
-            <CardDescription className="flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-warning" />
-              Recomendados
-            </CardDescription>
-            <CardTitle className="text-3xl text-warning" data-testid="text-summary-recomendado">
-              {summary?.recomendado ?? 0}
+        <Card className="h-[86px] bg-card border-border" data-testid="card-summary-incomplete">
+          <CardHeader className="p-4">
+            <CardDescription className="text-sm font-medium text-muted-foreground">Registros Incompletos</CardDescription>
+            <CardTitle className="text-2xl font-bold tabular-nums leading-none text-warning" data-testid="text-summary-incomplete">
+              {summary?.incomplete_records ?? 0}
             </CardTitle>
           </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">
-              Campos opcionais que melhoram relatórios e integrações.
-            </p>
-          </CardContent>
+        </Card>
+
+        <Card className="h-[86px] bg-card border-border" data-testid="card-summary-rate">
+          <CardHeader className="p-4">
+            <CardDescription className="text-sm font-medium text-muted-foreground">Taxa de Completude</CardDescription>
+            <CardTitle className="text-2xl font-bold tabular-nums leading-none" data-testid="text-summary-rate">
+              {summary?.completion_rate ?? 0}%
+            </CardTitle>
+          </CardHeader>
         </Card>
       </div>
 
-      {/* Filtros */}
-      <Card>
-        <CardContent className="pt-4 pb-4">
-          <div className="grid gap-3 md:grid-cols-3">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome do registro"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-                data-testid="input-search-audit"
-              />
-            </div>
-            <Select value={moduleFilter} onValueChange={(v) => setModuleFilter(v as ModuleFilter)}>
-              <SelectTrigger data-testid="select-module-filter">
-                <SelectValue placeholder="Todos os módulos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos os módulos</SelectItem>
-                {AUDIT_MODULES.map((m) => (
-                  <SelectItem key={m.id} value={m.id}>
-                    {m.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as SeverityFilter)}>
-              <SelectTrigger data-testid="select-severity-filter">
-                <SelectValue placeholder="Todas as severidades" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as severidades</SelectItem>
-                <SelectItem value="obrigatorio">Obrigatórios</SelectItem>
-                <SelectItem value="recomendado">Recomendados</SelectItem>
-              </SelectContent>
-            </Select>
+      <Card className="bg-card border-border">
+        <CardContent className="min-h-[180px] space-y-6 p-4">
+          <div className="flex gap-1 overflow-x-auto">
+            {AUDIT_PANEL_TABS.map((item) => {
+              const Icon = item.icon;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setActiveAuditTab(item.id)}
+                  className={cn(
+                    "inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border px-3 text-xs font-medium transition-colors",
+                    activeAuditTab === item.id
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-transparent text-muted-foreground hover:bg-muted hover:text-foreground",
+                  )}
+                  data-testid={`button-audit-entity-${item.id}`}
+                >
+                  <Icon className="h-3.5 w-3.5" />
+                  {item.label}
+                </button>
+              );
+            })}
           </div>
+
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex items-center gap-2">
+              <ActiveIcon className="h-4 w-4 text-foreground" />
+              <h3 className="text-sm font-semibold" data-testid="text-audit-panel-title">
+                {activeTab.title}
+              </h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCompletenessFilter("complete")}
+                className={cn(
+                  "inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold transition-colors",
+                  completenessFilter === "complete"
+                    ? "border-success/40 bg-success/10 text-success"
+                    : "border-success/30 text-success hover:bg-success/10",
+                )}
+                data-testid="button-filter-complete"
+              >
+                <CheckCircle2 className="h-3 w-3" />
+                {completeCount} Completos
+              </button>
+              <button
+                type="button"
+                onClick={() => setCompletenessFilter("incomplete")}
+                className={cn(
+                  "inline-flex h-5 items-center gap-1 rounded-full border px-2 text-[11px] font-semibold transition-colors",
+                  completenessFilter === "incomplete"
+                    ? "border-warning/40 bg-warning/10 text-warning"
+                    : "border-warning/30 text-warning hover:bg-warning/10",
+                )}
+                data-testid="button-filter-incomplete"
+              >
+                <AlertTriangle className="h-3 w-3" />
+                {incompleteCount} Incompletos
+              </button>
+            </div>
+          </div>
+
+          {tabRecords.length === 0 ? (
+            <div className="flex min-h-[86px] items-center justify-center">
+              <p className="text-sm text-muted-foreground" data-testid="text-no-issues">
+                Nenhum registro encontrado
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {tabRecords.map((record) => {
+                const missing = [...record.missing_fields, ...record.recommended_missing_fields];
+                return (
+                  <div
+                    key={record.id}
+                    className="flex flex-col gap-3 py-3 md:flex-row md:items-center md:justify-between"
+                    data-testid={`row-audit-record-${record.id}`}
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="truncate text-sm font-medium" data-testid={`text-entity-${record.id}`}>
+                          {record.entity_label}
+                        </p>
+                        <Badge variant={record.is_complete ? "default" : "outline"} className="text-[11px]">
+                          {record.is_complete ? "Completo" : "Incompleto"}
+                        </Badge>
+                      </div>
+                      {missing.length > 0 ? (
+                        <div className="mt-2 flex flex-wrap gap-1.5" data-testid={`text-missing-${record.id}`}>
+                          {record.missing_fields.map((field) => (
+                            <Badge key={`required-${field}`} variant="destructive" className="text-[11px]">
+                              {field}
+                            </Badge>
+                          ))}
+                          {record.recommended_missing_fields.map((field) => (
+                            <Badge
+                              key={`recommended-${field}`}
+                              variant="secondary"
+                              className="bg-warning/10 text-warning hover:bg-warning/10 text-[11px]"
+                            >
+                              {field}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 text-xs text-muted-foreground">Nenhum campo faltante.</p>
+                      )}
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => navigate(record.fix_path)}
+                      data-testid={`button-fix-${record.id}`}
+                    >
+                      <Wrench className="mr-2 h-4 w-4" />
+                      {record.is_complete ? "Abrir" : "Preencher"}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* Lista por módulo */}
-      {filteredIssues.length === 0 ? (
-        <Card>
-          <CardContent className="py-10 text-center space-y-2">
-            <CheckCircle2 className="h-10 w-10 mx-auto text-success" />
-            <p className="font-medium" data-testid="text-no-issues">
-              Nenhum problema encontrado com os filtros atuais.
-            </p>
-            <p className="text-sm text-muted-foreground">
-              Tudo certo por aqui — ou ajuste os filtros para investigar mais.
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {AUDIT_MODULES.map((m) => {
-            const list = issuesByModule.get(m.id);
-            if (!list || list.length === 0) return null;
-            const isOpen = openModules.includes(m.id);
-            const obrigatorios = list.filter((i) => i.severity === "obrigatorio").length;
-            const recomendados = list.filter((i) => i.severity === "recomendado").length;
-
-            return (
-              <Card key={m.id} data-testid={`card-module-${m.id}`}>
-                <Collapsible open={isOpen} onOpenChange={() => toggleModule(m.id)}>
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="w-full flex items-center justify-between p-4 hover-elevate text-left"
-                      data-testid={`button-toggle-module-${m.id}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        {isOpen ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                        <div>
-                          <p className="font-medium">{m.label}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {list.length} problema(s) · {obrigatorios} obrigatório(s), {recomendados} recomendado(s)
-                          </p>
-                        </div>
-                      </div>
-                      <Badge variant="secondary" data-testid={`badge-issues-${m.id}`}>
-                        {list.length}
-                      </Badge>
-                    </button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <div className="border-t divide-y">
-                      {list.map((issue) => (
-                        <div
-                          key={issue.id}
-                          className="p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-3"
-                          data-testid={`row-issue-${issue.id}`}
-                        >
-                          <div className="space-y-1 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-xs text-muted-foreground">
-                                {issue.entity_type}
-                              </span>
-                              <Badge
-                                variant={issue.severity === "obrigatorio" ? "destructive" : "secondary"}
-                                className={
-                                  issue.severity === "recomendado"
-                                    ? "bg-warning/10 text-warning hover:bg-warning/10"
-                                    : ""
-                                }
-                                data-testid={`badge-severity-${issue.id}`}
-                              >
-                                {issue.severity === "obrigatorio" ? "Obrigatório" : "Recomendado"}
-                              </Badge>
-                            </div>
-                            <p className="font-medium" data-testid={`text-entity-${issue.id}`}>
-                              {issue.entity_label}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Faltando:{" "}
-                              <span className="text-foreground" data-testid={`text-missing-${issue.id}`}>
-                                {issue.missing_fields.join(", ")}
-                              </span>
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => navigate(issue.fix_path)}
-                            data-testid={`button-fix-${issue.id}`}
-                          >
-                            <Wrench className="h-4 w-4 mr-2" />
-                            Corrigir
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  </CollapsibleContent>
-                </Collapsible>
-              </Card>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }
 
 export default function Auditoria() {
   const { isFetching, refetch } = useAudit();
-  const [tab, setTab] = useState<TabId>("dados");
 
   const headerActions = (
     <Button
@@ -360,36 +310,13 @@ export default function Auditoria() {
   return (
     <MainLayout
       title="Auditoria"
-      description="Encontre dados faltantes, inconsistências e registros de operações"
+      description="Exiba e filtre dados faltantes a serem preenchidos"
       actions={headerActions}
     >
-      <div className="space-y-6 pt-[10px] pb-[10px]">
-        {/* Tabs */}
-        <div className="flex gap-1 flex-wrap border-b border-border pb-0">
-          {TABS.map(t => {
-            const Icon = t.icon;
-            return (
-              <button
-                key={t.id}
-                onClick={() => setTab(t.id)}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-xs font-medium border-b-2 -mb-px transition-colors whitespace-nowrap",
-                  tab === t.id
-                    ? "border-primary text-primary"
-                    : "border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30"
-                )}
-                data-testid={`tab-audit-${t.id}`}
-              >
-                <Icon className="h-3.5 w-3.5" /> {t.label}
-              </button>
-            );
-          })}
-        </div>
-
-        {tab === "dados"     && <DadosTab />}
-        {tab === "operacoes" && <AuditLogPanel entries={MOCK_AUDIT_LOG} />}
-        {tab === "logs"      && <LogsTab />}
+      <div className="space-y-4 pt-[10px] pb-[10px]">
+        <DadosTab />
       </div>
     </MainLayout>
   );
 }
+

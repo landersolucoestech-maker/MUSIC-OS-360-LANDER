@@ -1,6 +1,7 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -21,6 +22,7 @@ import {
   MoreVertical, X,
 } from "lucide-react";
 import { SiInstagram, SiTiktok, SiYoutube, SiSpotify, SiSoundcloud, SiApplemusic } from "react-icons/si";
+import { DeezerIcon } from "@/shared/ui/deezer-icon";
 
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
 import { ArtistaPlatformMetrics } from "@/modules/artist/components/ArtistaPlatformMetrics";
@@ -29,6 +31,8 @@ import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
@@ -131,14 +135,15 @@ export default function Artistas() {
       const matchesStatus =
         statusFilter === "todos" ||
         (statusFilter === "exclusivo" && isExclusivo) ||
-        (statusFilter === "parceiro" && !isExclusivo) ||
-        (statusFilter === "onboarding" && artista.status === "onboarding");
+        (statusFilter === "parceiro" && !isExclusivo);
       const matchesGenero = generoFilter === "todos" || artista.genero_musical === generoFilter;
       const tp = (artista.tipo_perfil as string | null | undefined) || "independente";
       const matchesPerfil = perfilFilter === "todos" || tp === perfilFilter;
       return matchesSearch && matchesStatus && matchesGenero && matchesPerfil;
     }).sort((a, b) => a.nome_artistico.localeCompare(b.nome_artistico, "pt-BR", { sensitivity: "base" }));
   }, [todosArtistas, searchTerm, statusFilter, generoFilter, perfilFilter, contratosPorArtista]);
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(artistasFiltrados, 10);
 
   const handleDelete = () => {
     if (deleteModal.artista) {
@@ -280,8 +285,8 @@ export default function Artistas() {
         </div>
 
         {/* ── Filter Bar ── */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[220px]">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/30 p-3">
+          <div className="relative min-w-[240px] flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome, email, gênero…"
@@ -290,39 +295,40 @@ export default function Artistas() {
               className="pl-9 h-8 text-sm bg-card border-border"
             />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border">
-              <SelectValue placeholder="Todos os artistas" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os artistas</SelectItem>
-              <SelectItem value="onboarding">Em Onboarding</SelectItem>
-              <SelectItem value="exclusivo">Exclusivo</SelectItem>
-              <SelectItem value="parceiro">Parceiro</SelectItem>
-            </SelectContent>
-          </Select>
-          <Select value={perfilFilter} onValueChange={setPerfilFilter}>
-            <SelectTrigger className="w-[170px] h-8 text-sm bg-card border-border">
-              <SelectValue placeholder="Todos os Perfis" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos os Perfis</SelectItem>
-              {Object.entries(PERFIL_LABELS).sort(([, a], [, b]) => a.localeCompare(b, "pt-BR")).map(([value, label]) => (
-                <SelectItem key={value} value={value}>{label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select value={generoFilter} onValueChange={setGeneroFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
-              <SelectValue placeholder="Todos Gêneros" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="todos">Todos Gêneros</SelectItem>
-              {generosUnicos.map((g) => (
-                <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-3">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-auto min-w-[142px] shrink-0 h-8 text-sm bg-card border-border">
+                <SelectValue placeholder="Todos os artistas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os artistas</SelectItem>
+                <SelectItem value="exclusivo">Exclusivo</SelectItem>
+                <SelectItem value="parceiro">Parceiro</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={perfilFilter} onValueChange={setPerfilFilter}>
+              <SelectTrigger className="w-auto min-w-[138px] shrink-0 h-8 text-sm bg-card border-border">
+                <SelectValue placeholder="Todos os Perfis" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos os Perfis</SelectItem>
+                {Object.entries(PERFIL_LABELS).sort(([, a], [, b]) => a.localeCompare(b, "pt-BR")).map(([value, label]) => (
+                  <SelectItem key={value} value={value}>{label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={generoFilter} onValueChange={setGeneroFilter}>
+              <SelectTrigger className="w-auto min-w-[132px] shrink-0 h-8 text-sm bg-card border-border">
+                <SelectValue placeholder="Todos Gêneros" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todos">Todos Gêneros</SelectItem>
+                {generosUnicos.map((g) => (
+                  <SelectItem key={g} value={g}>{g.charAt(0).toUpperCase() + g.slice(1)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           {hasActiveFilters && (
             <Button variant="ghost" size="sm" className="h-8 text-xs gap-1.5 text-muted-foreground" onClick={clearFilters}>
               <X className="h-3 w-3" />
@@ -336,33 +342,41 @@ export default function Artistas() {
           )}
         </div>
 
-        {/* ── Bulk Selection Bar ── */}
-        <div className="flex items-center gap-3 pb-2 border-b border-border">
-          <Checkbox
-            checked={selectedArtists.length === artistasFiltrados.length && artistasFiltrados.length > 0}
-            onCheckedChange={toggleSelectAll}
-          />
-          <span className="text-xs text-muted-foreground flex-1">
-            {selectedArtists.length > 0
-              ? `${selectedArtists.length} artista(s) selecionado(s)`
-              : "Selecionar todos"}
-          </span>
-          {selectedArtists.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              className="h-7 text-xs gap-1.5"
-              onClick={handleBulkDelete}
-              data-testid="button-bulk-delete"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Excluir ({selectedArtists.length})
-            </Button>
-          )}
-        </div>
+        <Card>
+          <CardContent className="p-6 space-y-4">
+            <ListSectionHeader
+              title="Lista de Artistas"
+              count={artistasFiltrados.length}
+              description="Acompanhe artistas, vínculos, perfis, gêneros e status de contrato"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Checkbox
+                    checked={selectedArtists.length === artistasFiltrados.length && artistasFiltrados.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedArtists.length > 0
+                      ? `${selectedArtists.length} artista(s) selecionado(s)`
+                      : "Selecionar todos"}
+                  </span>
+                  {selectedArtists.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="h-7 text-xs gap-1.5"
+                      onClick={handleBulkDelete}
+                      data-testid="button-bulk-delete"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir ({selectedArtists.length})
+                    </Button>
+                  )}
+                </div>
+              }
+            />
 
-        {/* ── Artists List ── */}
-        <div className="space-y-3">
+            {/* ── Artists List ── */}
+            <div className="space-y-3">
           {artistasFiltrados.length === 0 ? (
             <EmptyState
               icon={Users}
@@ -372,16 +386,16 @@ export default function Artistas() {
                   ? "Nenhum artista corresponde aos filtros aplicados. Tente ajustar a busca."
                   : "Cadastre um contato como artista no CRM e assine um contrato para que ele apareça aqui."
               }
-              actionLabel={hasActiveFilters ? undefined : "Cadastrar Artista"}
+              actionLabel={hasActiveFilters ? undefined : "Criar Artista"}
               onAction={hasActiveFilters ? undefined : () => setCreateModal(true)}
             />
           ) : (
-            artistasFiltrados.map((artista) => {
+            pageItems.map((artista) => {
               const vinculo = getVinculoLabel(artista.id);
 
               return (
                 <div key={artista.id}>
-                  <Card className="group hover:shadow-md transition-shadow duration-200" data-testid={`card-artista-${artista.id}`}>
+                  <Card className="group duration-200" data-testid={`card-artista-${artista.id}`}>
                     <CardContent className="p-4">
                       <div className="flex items-start gap-4">
                         {/* Checkbox */}
@@ -411,11 +425,7 @@ export default function Artistas() {
                                 <h3 className="font-semibold text-sm leading-tight text-foreground">
                                   {artista.nome_artistico}
                                 </h3>
-                                {artista.status === "onboarding" ? (
-                                  <StatusBadge status="onboarding" label="Onboarding" />
-                                ) : (
-                                  <StatusBadge status={vinculo.status} label={vinculo.label} />
-                                )}
+                                <StatusBadge status={vinculo.status} label={vinculo.label} />
                               </div>
                               {Array.isArray(artista.especialidades) && artista.especialidades.length > 0 && (
                                 <p className="text-[11px] text-muted-foreground leading-tight">
@@ -461,7 +471,7 @@ export default function Artistas() {
                                           : null,
                                         icon: <SiSpotify className="h-4 w-4" />, label: "Spotify",
                                       },
-                                      { url: artista.deezer_url, icon: <Music className="h-4 w-4" />, label: "Deezer" },
+                                      { url: artista.deezer_url, icon: <DeezerIcon className="h-4 w-4" />, label: "Deezer" },
                                       { url: artista.apple_music_url, icon: <SiApplemusic className="h-4 w-4" />, label: "Apple Music" },
                                       { url: artista.soundcloud_url, icon: <SiSoundcloud className="h-4 w-4" />, label: "SoundCloud" },
                                     ];
@@ -606,7 +616,19 @@ export default function Artistas() {
               );
             })
           )}
-        </div>
+          {artistasFiltrados.length > 0 && (
+            <TablePagination
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="artistas"
+            />
+          )}
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Modals */}

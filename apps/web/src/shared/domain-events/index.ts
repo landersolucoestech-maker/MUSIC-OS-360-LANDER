@@ -250,3 +250,4 @@ export function clearAll(): void {
 export function listenerCount(event: DomainEventName): number {
   return _listeners.get(event)?.length ?? 0;
 }
+

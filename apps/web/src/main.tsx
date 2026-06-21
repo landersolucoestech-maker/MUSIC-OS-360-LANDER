@@ -1,9 +1,32 @@
 import { createRoot } from "react-dom/client";
-import * as Sentry from "@sentry/react";
-import posthog from "posthog-js";
-import App from "./App";
 import "./index.css";
 import { MOCK_MODE, validateFrontendEnv } from "@/shared/lib/env";
+
+function renderStartupError(error: unknown): void {
+  const root = document.getElementById("root");
+  if (!root) return;
+
+  const message = error instanceof Error ? error.message : String(error);
+  const stack = error instanceof Error ? error.stack : undefined;
+
+  root.innerHTML = `
+    <div style="min-height:100vh;background:#0b1020;color:#f8fafc;font-family:system-ui,-apple-system,Segoe UI,sans-serif;padding:32px">
+      <div style="max-width:880px;margin:0 auto;border:1px solid rgba(248,250,252,.16);border-radius:8px;background:rgba(15,23,42,.92);padding:24px">
+        <p style="margin:0 0 8px;color:#f87171;font-size:13px;font-weight:700;letter-spacing:.04em">Erro ao iniciar o app</p>
+        <h1 style="margin:0 0 16px;font-size:22px;line-height:1.25">MUSIC OS 360 não conseguiu renderizar</h1>
+        <pre style="white-space:pre-wrap;overflow:auto;background:#020617;border:1px solid rgba(248,250,252,.12);border-radius:6px;padding:16px;font-size:12px;line-height:1.5">${message}${stack ? `\n\n${stack}` : ""}</pre>
+      </div>
+    </div>
+  `;
+}
+
+window.addEventListener("error", (event) => {
+  renderStartupError(event.error ?? event.message);
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  renderStartupError(event.reason);
+});
 
 // Validate required env vars before mounting anything.
 // Returns false and renders an error page in production if vars are missing.
@@ -13,31 +36,56 @@ if (!validateFrontendEnv()) {
 }
 
 // ── Sentry (error monitoring) ─────────────────────────────────────────────
-if (!MOCK_MODE && import.meta.env.VITE_SENTRY_DSN) {
-  Sentry.init({
-    dsn:         import.meta.env.VITE_SENTRY_DSN as string,
-    environment: import.meta.env.MODE as string,
-    release:     import.meta.env.VITE_APP_VERSION as string | undefined,
-    tracesSampleRate:   0.1,
-    replaysSessionSampleRate: 0.05,
-    replaysOnErrorSampleRate:  1.0,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-      Sentry.replayIntegration(),
-    ],
-  });
-}
+async function initObservability(): Promise<void> {
+  if (MOCK_MODE) return;
+
+  if (import.meta.env.VITE_SENTRY_DSN) {
+    try {
+      const Sentry = await import("@sentry/react");
+      Sentry.init({
+        dsn:         import.meta.env.VITE_SENTRY_DSN as string,
+        environment: import.meta.env.MODE as string,
+        release:     import.meta.env.VITE_APP_VERSION as string | undefined,
+        tracesSampleRate:   0.1,
+        replaysSessionSampleRate: 0.05,
+        replaysOnErrorSampleRate:  1.0,
+        integrations: [
+          Sentry.browserTracingIntegration(),
+          Sentry.replayIntegration(),
+        ],
+      });
+    } catch (error) {
+      console.warn("[MUSIC OS 360] Sentry disabled in this runtime:", error);
+    }
+  }
 
 // ── PostHog (product analytics) ───────────────────────────────────────────
-if (!MOCK_MODE && import.meta.env.VITE_POSTHOG_KEY) {
-  posthog.init(import.meta.env.VITE_POSTHOG_KEY as string, {
-    api_host:        "https://app.posthog.com",
-    capture_pageview: true,
-    capture_pageleave: true,
-    autocapture:      false,
-    session_recording: { maskAllInputs: true },
-  });
+  if (import.meta.env.VITE_POSTHOG_KEY) {
+    try {
+      const { default: posthog } = await import("posthog-js");
+      posthog.init(import.meta.env.VITE_POSTHOG_KEY as string, {
+        api_host:        "https://app.posthog.com",
+        capture_pageview: true,
+        capture_pageleave: true,
+        autocapture:      false,
+        session_recording: { maskAllInputs: true },
+      });
+    } catch (error) {
+      console.warn("[MUSIC OS 360] PostHog disabled in this runtime:", error);
+    }
+  }
 }
 
-const root = document.getElementById("root")!;
-createRoot(root).render(<App />);
+async function bootstrap(): Promise<void> {
+  try {
+    const root = document.getElementById("root")!;
+    await initObservability();
+    const { default: App } = await import("./App");
+    createRoot(root).render(<App />);
+  } catch (error) {
+    renderStartupError(error);
+    throw error;
+  }
+}
+
+void bootstrap();

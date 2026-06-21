@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { MUSICAL_GENRES } from "@/constants/musicalGenres";
 import {
   Dialog,
   DialogContent,
@@ -8,6 +9,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Label } from "@/shared/ui/label";
 import {
   Select,
@@ -24,6 +26,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/shared/ui/card";
+import { Badge } from "@/shared/ui/badge";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/shared/ui/popover";
 import { ScrollArea } from "@/shared/ui/scroll-area";
@@ -42,9 +45,14 @@ import {
   AlertCircle,
   CheckCircle2,
   Search,
+  Loader2,
 } from "lucide-react";
+import { useUploadToR2, R2NotConfiguredError } from "@/shared/hooks/useUploadToR2";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { Lancamento } from "@/modules/releases/types";
+import { useDistributionPlatforms } from "@/modules/releases/hooks/useDistributionPlatforms";
+import { resolveReleaseStatus, releaseStatusLabel } from "@/modules/releases/lib/release-status";
+import { formatReleaseDate } from "@/modules/releases/lib/release-format";
 import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import type { ProjetoWithRelations } from "@/modules/projects/hooks/useProjetos";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -71,48 +79,23 @@ const STEPS = [
 // ─────────────────────────────────────────────────────────────────────────────
 // GENRE HELPERS  (unchanged from original)
 // ─────────────────────────────────────────────────────────────────────────────
-const GENERO_OPTS = [
-  "funk",
-  "pop",
-  "rock",
-  "sertanejo",
-  "trap",
-  "rap/hip-hop",
-  "pagode",
-  "forró",
-  "mpb",
-  "eletrônica",
-  "gospel",
-  "reggaeton",
-  "r&b",
-  "outro",
-];
-const GENERO_LABELS: Record<string, string> = {
-  funk: "Funk",
-  pop: "Pop",
-  rock: "Rock",
-  sertanejo: "Sertanejo",
-  trap: "Trap",
-  "rap/hip-hop": "Rap / Hip-Hop",
-  pagode: "Pagode",
-  forró: "Forró",
-  mpb: "MPB",
-  eletrônica: "Eletrônica",
-  gospel: "Gospel",
-  reggaeton: "Reggaeton",
-  "r&b": "R&B",
-  outro: "Outro",
-};
+const sortOptionsByLabel = <T extends { label: string }>(items: T[]) =>
+  [...items].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+
+const GENERO_OPTIONS = MUSICAL_GENRES;
+const GENERO_OPTS = GENERO_OPTIONS.map((o) => o.value);
+const GENERO_LABELS: Record<string, string> = Object.fromEntries(
+  GENERO_OPTIONS.map((o) => [o.value, o.label]),
+);
 const GENERO_ALIASES: Record<string, string> = {
-  eletronico: "eletrônica",
-  electronico: "eletrônica",
-  electronica: "eletrônica",
-  "hip hop": "rap/hip-hop",
-  "hip-hop": "rap/hip-hop",
-  rap: "rap/hip-hop",
-  "bossa nova": "mpb",
-  "mpb/bossa nova": "mpb",
-  forro: "forró",
+  eletronico: "eletronica",
+  electronico: "eletronica",
+  electronica: "eletronica",
+  "hip hop": "hip-hop",
+  rap: "rap",
+  "bossa nova": "bossa-nova",
+  "mpb/bossa nova": "bossa-nova",
+  forro: "forro",
 };
 const normStr = (s: string) =>
   s
@@ -144,46 +127,46 @@ const splitNames = (s: string | null | undefined): string[] => {
 // NEW OPTION LISTS
 // ─────────────────────────────────────────────────────────────────────────────
 const AI_ASSISTANCE_OPTS = [
-  { value: "human_no_ai", label: "Human Created, No AI" },
-  { value: "human_ai_assisted", label: "Human Created, AI Assisted" },
-  { value: "ai_human_edited", label: "AI Generated, Human Edited" },
-  { value: "ai_generated", label: "AI Generated" },
+  { value: "human_no_ai", label: "Criação Humana, Sem IA" },
+  { value: "human_ai_assisted", label: "Criação Humana, Assistida por IA" },
+  { value: "ai_human_edited", label: "Gerado por IA, Editado por Humano" },
+  { value: "ai_generated", label: "Gerado por IA" },
 ];
 
 const EXPLICIT_OPTS = [
-  { value: "no", label: "No" },
-  { value: "yes", label: "Yes (Explicit)" },
-  { value: "clean", label: "Clean Version" },
+  { value: "no", label: "Não" },
+  { value: "yes", label: "Sim (Explícito)" },
+  { value: "clean", label: "Versão Limpa" },
 ];
 
 const VERSION_TYPE_OPTS = [
   { value: "remix", label: "Remix" },
-  { value: "live", label: "Live" },
-  { value: "acoustic", label: "Acoustic" },
+  { value: "live", label: "Ao Vivo" },
+  { value: "acoustic", label: "Acústico" },
   { value: "instrumental_ver", label: "Instrumental" },
-  { value: "karaoke", label: "Karaoke" },
-  { value: "radio_edit", label: "Radio Edit" },
-  { value: "extended", label: "Extended Mix" },
-  { value: "demo", label: "Demo" },
+  { value: "karaoke", label: "Karaokê" },
+  { value: "radio_edit", label: "Edição para Rádio" },
+  { value: "extended", label: "Mix Estendido" },
+  { value: "demo", label: "Demonstração" },
   { value: "cover", label: "Cover" },
-  { value: "other", label: "Other" },
+  { value: "other", label: "Outro" },
 ];
 
 const ARTIST_ROLES = [
-  "Performer",
+  "Artista Principal",
   "Featuring",
-  "Main Artist",
+  "Intérprete",
   "Remixer",
   "DJ",
-  "Choir",
+  "Coro",
 ];
 const PRODUCER_ROLES = [
-  "Producer",
-  "Co-Producer",
-  "Executive Producer",
-  "Mixer",
-  "Mastering Engineer",
-  "Recording Engineer",
+  "Produtor",
+  "Co-Produtor",
+  "Produtor Executivo",
+  "Mixagem",
+  "Engenheiro de Masterização",
+  "Engenheiro de Gravação",
 ];
 const INSTRUMENT_OPTS = [
   "Guitar",
@@ -202,18 +185,19 @@ const INSTRUMENT_OPTS = [
   "Other",
 ];
 
-const IDIOMA_OPTS = [
-  { value: "pt-br", label: "Português (Brasil)" },
-  { value: "en", label: "English" },
-  { value: "es", label: "Español" },
-  { value: "fr", label: "Français" },
-  { value: "de", label: "Deutsch" },
+const IDIOMA_OPTS = sortOptionsByLabel([
+  { value: "de", label: "Alemão" },
+  { value: "ar", label: "Árabe" },
+  { value: "zh", label: "Chinês" },
+  { value: "ko", label: "Coreano" },
+  { value: "es", label: "Espanhol" },
+  { value: "fr", label: "Francês" },
+  { value: "en", label: "Inglês" },
   { value: "it", label: "Italiano" },
-  { value: "ja", label: "日本語" },
-  { value: "ko", label: "한국어" },
-  { value: "zh", label: "中文" },
-  { value: "ar", label: "العربية" },
-];
+  { value: "ja", label: "Japonês" },
+  { value: "pt-br", label: "Português (Brasil)" },
+  { value: "pt", label: "Português" },
+]);
 
 const TIMEZONE_OPTS = [
   {
@@ -240,46 +224,9 @@ const PRICING_OPTS = [
   { value: "free", label: "Free" },
 ];
 
-const STORES_ESSENTIALS = [
-  "Apple Music",
-  "Spotify",
-  "YouTube",
-  "Amazon Music",
-  "Deezer",
-  "Tidal",
-  "SoundCloud",
-  "Pandora",
-  "iHeart Radio",
-  "TikTok",
-  "Facebook",
-  "Facebook Audio Library",
-  "KKBOX",
-  "Audiomack",
-  "Boomplay",
-  "Anghami",
-  "NetEase",
-  "Tencent",
-  "Qobuz",
-  "Snapchat",
-  "Saavn Music",
-  "JOOX Music",
-  "Slacker",
-  "Neurotic Media",
-  "TouchTunes",
-  "FLO",
-  "Rythm",
-  "Lissen",
-  "Fizy",
-  "Soda Music",
-  "Kuack",
-  "Claro Música",
-];
-const STORES_NEIGHBOURING = ["SoundExchange"];
-const STORES_RINGTONES = ["iTunes Ringtones", "Claro Ringtones", "Algar"];
-
 // ─────────────────────────────────────────────────────────────────────────────
 // INTERFACES
-// ───a��─────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────────
 interface ArtistEntry {
   nome: string;
   role: string;
@@ -297,6 +244,7 @@ interface Faixa {
   // version
   isVersionAlternativa: boolean;
   tipoVersao: string;
+  versionCustomName: string;
   // credits
   artistasAdicionais: ArtistEntry[];
   produtores: ArtistEntry[];
@@ -327,7 +275,6 @@ interface ExtraFields {
   preOrder: boolean;
   noPreviewsDuringPreOrder: boolean;
   pricing: string;
-  lojasSelecionadas: string[];
 }
 
 interface LancamentoFormModalProps {
@@ -335,6 +282,7 @@ interface LancamentoFormModalProps {
   onOpenChange: (open: boolean) => void;
   lancamento?: Lancamento;
   mode: "create" | "edit" | "view";
+  onCreatedAndDistributed?: (lancamento: Lancamento) => void | Promise<void>;
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -347,6 +295,7 @@ const mkFaixa = (id = Date.now()): Faixa => ({
   isrc: "",
   isVersionAlternativa: false,
   tipoVersao: "",
+  versionCustomName: "",
   artistasAdicionais: [],
   produtores: [],
   compositores: [""],
@@ -372,7 +321,6 @@ const DEFAULT_EXTRA: ExtraFields = {
   preOrder: false,
   noPreviewsDuringPreOrder: false,
   pricing: "custom",
-  lojasSelecionadas: [...STORES_ESSENTIALS],
 };
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -462,12 +410,12 @@ function ArtistAutocompleteInput({
         className="w-full"
       />
       {open && filtered.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover shadow-md">
+        <div className="absolute z-50 mt-1 w-full max-h-48 overflow-y-auto rounded-md border border-border bg-popover">
           {filtered.map((s) => (
             <button
               key={s}
               type="button"
-              className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-accent hover:text-accent-foreground cursor-pointer text-left"
+              className="flex w-full items-center px-3 py-1.5 text-sm hover:bg-muted hover:text-foreground cursor-pointer text-left"
               onMouseDown={(e) => {
                 e.preventDefault();
                 onChange(s);
@@ -491,12 +439,14 @@ export function LancamentoFormModal({
   onOpenChange,
   lancamento,
   mode,
+  onCreatedAndDistributed,
 }: LancamentoFormModalProps) {
   const { addLancamento, updateLancamento } = useLancamentos();
   const { projetos } = useProjetos();
   const { artistas } = useArtistas();
   const { obras } = useObras();
   const { fonogramas } = useFonogramas();
+  const { upload: uploadToR2, isUploading: isUploadingCoverR2 } = useUploadToR2();
 
   // ── Core state ────────────────────────────────────────────────────────────
   const [currentStep, setCurrentStep] = useState(0);
@@ -506,6 +456,7 @@ export function LancamentoFormModal({
   });
   const [faixas, setFaixas] = useState<Faixa[]>([mkFaixa(1)]);
   const [capaPrincipal, setCapaPrincipal] = useState<File | null>(null);
+  const isUploadingCover = isUploadingCoverR2;
 
   // ── Combobox state (unchanged) ────────────────────────────────────────────
   const [projetoSearch, setProjetoSearch] = useState("");
@@ -515,56 +466,9 @@ export function LancamentoFormModal({
   const [selectedObraId, setSelectedObraId] = useState("");
   const [selectedFonogramaId, setSelectedFonogramaId] = useState("");
 
-  // ── Distributor connections (unchanged) ───────────────────────────────────
-  const DIST_STORAGE_KEY = "musicos360_distributor_connections";
-  const DISTRIBUTORS = [
-    {
-      id: "onerpm",
-      name: "ONErpm",
-      description:
-        "Distribuição global com analytics avançados e suporte a label",
-    },
-    {
-      id: "distrokid",
-      name: "DistroKid",
-      description: "Distribuição rápida para todas as plataformas de streaming",
-    },
-    {
-      id: "symphonic",
-      name: "Symphonic",
-      description:
-        "Distribuição e marketing para artistas e selos independentes",
-    },
-    {
-      id: "soundon",
-      name: "SoundOn",
-      description: "Distribuidora oficial do TikTok com monetização integrada",
-    },
-    {
-      id: "musicpro",
-      name: "MusicPro",
-      description:
-        "Distribuição profissional com suporte dedicado e recebimentos externos de direitos mensais",
-    },
-    {
-      id: "somvibe",
-      name: "SomVibe",
-      description:
-        "Distribuidora brasileira independente com foco no mercado nacional",
-    },
-  ];
-  const [distributorConnections] = useState<
-    Record<string, { username: string }>
-  >(() => {
-    try {
-      return JSON.parse(localStorage.getItem(DIST_STORAGE_KEY) || "{}");
-    } catch {
-      return {};
-    }
-  });
-  const connectedDistributors = DISTRIBUTORS.filter((d) =>
-    Boolean(distributorConnections[d.id]),
-  );
+  // ── Plataformas de distribuição (fonte única: serviço/hook) ────────────────
+  // Apenas plataformas realmente conectadas aparecem como selecionáveis.
+  const { enabledPlatforms: connectedDistributors, hasAnyConnected } = useDistributionPlatforms();
 
   // ── Helper to update extraFields ──────────────────────────────────────────
   const setExtra = <K extends keyof ExtraFields>(k: K, v: ExtraFields[K]) =>
@@ -602,10 +506,30 @@ export function LancamentoFormModal({
     if (!open) return;
     setCurrentStep(0);
     setFormData(lancamentoToFormFields(lancamento ?? null));
+
+    const meta = lancamento
+      ? ((lancamento as Record<string, unknown>)["metadata"] as Record<string, unknown> | undefined) ?? {}
+      : {};
+
+    if (lancamento && Array.isArray(meta["faixas"]) && (meta["faixas"] as unknown[]).length > 0) {
+      setFaixas((meta["faixas"] as Faixa[]).map(f => ({ ...f, arquivoAudio: null })));
+    } else {
+      setFaixas([mkFaixa(1)]);
+    }
+
     setExtraFields({
       ...DEFAULT_EXTRA,
-      lojasSelecionadas: [...STORES_ESSENTIALS],
+      ...(meta["variosArtistas"] !== undefined ? { variosArtistas: meta["variosArtistas"] as boolean } : {}),
+      ...(Array.isArray(meta["artistasAdicionaisAlbum"]) ? { artistasAdicionaisAlbum: meta["artistasAdicionaisAlbum"] as ArtistEntry[] } : {}),
+      ...(meta["generoSecundario"] ? { generoSecundario: String(meta["generoSecundario"]) } : {}),
+      ...(meta["copyrightDataLancamento"] ? { copyrightDataLancamento: String(meta["copyrightDataLancamento"]) } : {}),
+      ...(meta["copyrightDataGravacao"] ? { copyrightDataGravacao: String(meta["copyrightDataGravacao"]) } : {}),
+      ...(meta["ownUpc"] !== undefined ? { ownUpc: Boolean(meta["ownUpc"]) } : {}),
+      ...(meta["territory"] ? { territory: String(meta["territory"]) } : {}),
+      ...(meta["releaseTimezone"] ? { releaseTimezone: String(meta["releaseTimezone"]) } : {}),
+      ...(meta["pricing"] ? { pricing: String(meta["pricing"]) } : {}),
     });
+
     setSelectedObraId(lancamento?.obra_id ?? "");
     setSelectedFonogramaId(lancamento?.fonograma_id ?? "");
     setCapaPrincipal(null);
@@ -613,7 +537,6 @@ export function LancamentoFormModal({
     setArtistaSearch("");
     setProjetoOpen(false);
     setArtistaOpen(false);
-    setFaixas([mkFaixa(1)]);
   }, [open, lancamento]);
 
   const isViewMode = mode === "view";
@@ -951,21 +874,35 @@ export function LancamentoFormModal({
       extraFields.artistasAdicionaisAlbum.filter((_, idx) => idx !== i),
     );
 
-  // Store toggles
-  const toggleStore = (s: string) =>
-    setExtra(
-      "lojasSelecionadas",
-      extraFields.lojasSelecionadas.includes(s)
-        ? extraFields.lojasSelecionadas.filter((x) => x !== s)
-        : [...extraFields.lojasSelecionadas, s],
-    );
-  const toggleStoreGroup = (list: string[], checked: boolean) =>
-    setExtra(
-      "lojasSelecionadas",
-      checked
-        ? [...new Set([...extraFields.lojasSelecionadas, ...list])]
-        : extraFields.lojasSelecionadas.filter((s) => !list.includes(s)),
-    );
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // COVER UPLOAD  — directo ao Cloudflare R2 via presigned URL do backend
+  // ─────────────────────────────────────────────────────────────────────────
+  const handleCoverUpload = async (file: File) => {
+    setCapaPrincipal(file);
+    try {
+      const publicUrl = await uploadToR2({
+        file,
+        category: "images",
+        entity:   "release",
+        entityId: lancamento?.id,
+      });
+      setFormData((prev) => ({ ...prev, assetCapaUrl: publicUrl }));
+    } catch (err) {
+      console.error("[CoverUpload R2]", err);
+      if (err instanceof R2NotConfiguredError) {
+        toast.error("Upload indisponível — armazenamento R2 não configurado no servidor.", {
+          description: "Contate o administrador para habilitar uploads de capa.",
+        });
+      } else if (err instanceof Error) {
+        toast.error("Falha ao enviar capa", { description: err.message });
+      } else {
+        toast.error("Falha desconhecida ao enviar capa.");
+      }
+      // Limpa preview para indicar que o upload não foi concluído
+      setCapaPrincipal(null);
+    }
+  };
 
   // ─────────────────────────────────────────────────────────────────────────
   // SUBMIT
@@ -977,17 +914,62 @@ export function LancamentoFormModal({
       return;
     }
     try {
-      const payload = formToLancamentoPayload(formData);
+      const payload = formToLancamentoPayload(formData, mode === "edit" ? "edit" : "create");
+      // Persist faixas and extraFields in metadata for edit round-trips
+      const savableFaixas = faixas.map(({ arquivoAudio: _, ...f }) => f);
+      const enrichedMeta: Record<string, unknown> = {
+        ...(typeof payload["metadata"] === "object" && payload["metadata"] !== null
+          ? (payload["metadata"] as Record<string, unknown>)
+          : {}),
+        faixas: savableFaixas,
+        territory: extraFields.territory,
+        releaseTimezone: extraFields.releaseTimezone,
+        pricing: extraFields.pricing,
+        generoSecundario: extraFields.generoSecundario,
+        copyrightDataLancamento: extraFields.copyrightDataLancamento,
+        copyrightDataGravacao: extraFields.copyrightDataGravacao,
+        ownUpc: extraFields.ownUpc,
+        variosArtistas: extraFields.variosArtistas,
+        artistasAdicionaisAlbum: extraFields.artistasAdicionaisAlbum,
+      };
+      payload["metadata"] = enrichedMeta;
       if (mode === "edit" && lancamento?.id) {
-        await updateLancamento.mutateAsync({ id: lancamento.id, ...payload });
+        // Only send status if it actually changed — backend workflow rejects same-state transitions
+        if (payload["status"] === lancamento.status) {
+          delete payload["status"];
+        }
+        // platform_status nunca é editável manualmente — preserva o status existente.
+        payload["internal_status"] = lancamento.internal_status ?? lancamento.status ?? null;
+        await updateLancamento.mutateAsync({ id: lancamento.id, ...payload } as never);
         toast.success("Lançamento atualizado!");
       } else {
-        await addLancamento.mutateAsync(payload);
-        toast.success("Lançamento criado!");
+        // Novo lançamento começa como controle interno (rascunho). Sem status de plataforma.
+        payload["internal_status"] = "rascunho";
+        const created = (await addLancamento.mutateAsync(payload as never)) as (Lancamento & { id?: string }) | undefined;
+        // Integração desacoplada: oferecer iniciar o fluxo de shares (via navegação),
+        // somente se houver participantes/créditos suficientes. Sem acoplamento direto.
+        if (created?.id) {
+          const releaseId = created.id;
+          const distributedAt = new Date().toISOString();
+          const updated = await updateLancamento.mutateAsync({
+            id: releaseId,
+            status: "distributed",
+            internal_status: "distributed",
+            metadata: {
+              ...enrichedMeta,
+              distributedAt,
+              distributionCompletedAt: distributedAt,
+            },
+          } as never) as Lancamento;
+          toast.success("Lançamento criado e distribuído!");
+          await onCreatedAndDistributed?.(updated ?? ({ ...created, status: "distributed", internal_status: "distributed" } as Lancamento));
+        } else {
+          toast.success("Lançamento criado!");
+        }
       }
       onOpenChange(false);
     } catch {
-      toast.error("Erro ao salvar lançamento.");
+      // mutation onError já exibe o toast de erro — evita toast duplicado
     }
   };
 
@@ -1158,7 +1140,7 @@ export function LancamentoFormModal({
                           data-testid={`option-projeto-${p.id}`}
                         >
                           <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shrink-0">
-                            <Folder className="h-4 w-4 text-white" />
+                            <Folder className="h-4 w-4 text-foreground" />
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium truncate">
@@ -1241,12 +1223,10 @@ export function LancamentoFormModal({
               artistas principais diferentes.
             </InfoBox>
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={extraFields.variosArtistas}
-                onChange={(e) => setExtra("variosArtistas", e.target.checked)}
+                onCheckedChange={(checked) => setExtra("variosArtistas", checked === true)}
                 disabled={isViewMode}
-                className="w-4 h-4 accent-primary"
                 data-cy="checkbox-various-artists"
               />
               <span className="text-sm">Various Artists</span>
@@ -1319,7 +1299,7 @@ export function LancamentoFormModal({
                             data-testid={`option-artista-${a.id}`}
                           >
                             <div className="w-8 h-8 bg-primary rounded flex items-center justify-center shrink-0">
-                              <Music className="h-4 w-4 text-white" />
+                              <Music className="h-4 w-4 text-foreground" />
                             </div>
                             <p className="text-sm font-medium truncate">
                               {a.nome_artistico ?? "—"}
@@ -1514,12 +1494,10 @@ export function LancamentoFormModal({
               Se você não tiver um código UPC, geraremos um automaticamente.
             </InfoBox>
             <label className="flex items-center gap-2 cursor-pointer mb-3">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={extraFields.ownUpc}
-                onChange={(e) => setExtra("ownUpc", e.target.checked)}
+                onCheckedChange={(checked) => setExtra("ownUpc", checked === true)}
                 disabled={isViewMode}
-                className="w-4 h-4 accent-primary"
                 data-cy="checkbox-own-upc"
               />
               <span className="text-sm">Tenho meu próprio UPC</span>
@@ -1538,30 +1516,18 @@ export function LancamentoFormModal({
             )}
           </div>
 
-          {/* Status */}
+          {/* Status interno — controlado pelo sistema (não editável manualmente).
+              O status de plataforma é atualizado apenas por integração real. */}
           <div className="space-y-2">
-            <Label>Status do Lançamento</Label>
-            <Select
-              value={formData.status}
-              onValueChange={(v) => setFormData({ ...formData, status: v })}
-              disabled={isViewMode}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="planejado">Planejado</SelectItem>
-                <SelectItem value="em_producao">Em Produção</SelectItem>
-                <SelectItem value="analise">Em Análise</SelectItem>
-                <SelectItem value="aprovado">Aprovado</SelectItem>
-                <SelectItem value="aguardando_distribuicao">
-                  Aguardando Distribuição
-                </SelectItem>
-                <SelectItem value="ativo">Ativo / Publicado</SelectItem>
-                <SelectItem value="programado">Programado</SelectItem>
-                <SelectItem value="cancelado">Cancelado</SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Status interno</Label>
+            <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
+              <Badge variant="neutral">
+                {lancamento ? releaseStatusLabel(resolveReleaseStatus(lancamento)) : "Incompleto"}
+              </Badge>
+              <span className="text-xs text-muted-foreground">
+                Controlado pelo sistema. O status de distribuição é definido pela plataforma.
+              </span>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1613,14 +1579,12 @@ export function LancamentoFormModal({
 
             {/* Alternative version */}
             <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={faixa.isVersionAlternativa}
-                onChange={(e) =>
-                  updF(faixa.id, "isVersionAlternativa", e.target.checked)
+                onCheckedChange={(checked) =>
+                  updF(faixa.id, "isVersionAlternativa", checked === true)
                 }
                 disabled={isViewMode}
-                className="w-4 h-4 accent-primary"
                 data-cy="checkbox-alternative-version"
               />
               <span className="text-sm">
@@ -1629,32 +1593,46 @@ export function LancamentoFormModal({
             </label>
 
             {faixa.isVersionAlternativa && (
-              <div className="space-y-2 pl-6 border-l-2 border-primary/20">
+              <div className="space-y-3 pl-6 border-l-2 border-primary/20">
                 <Label>Tipo de Versão</Label>
                 <InfoBox>
                   <strong>Nota:</strong> Tipos como "New Release", "Original",
                   "Studio", "Official" não estão disponíveis para versões
                   alternativas.
                 </InfoBox>
-                <Select
-                  value={faixa.tipoVersao}
-                  onValueChange={(v) => updF(faixa.id, "tipoVersao", v)}
-                  disabled={isViewMode}
-                >
-                  <SelectTrigger
-                    className="w-64"
-                    data-cy="dropdown-version-type"
+                <div className="flex items-end gap-3">
+                  <Select
+                    value={faixa.tipoVersao}
+                    onValueChange={(v) => updF(faixa.id, "tipoVersao", v)}
+                    disabled={isViewMode}
                   >
-                    <SelectValue placeholder="Selecione o tipo de versão" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {VERSION_TYPE_OPTS.map((o) => (
-                      <SelectItem key={o.value} value={o.value}>
-                        {o.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      className="w-64"
+                      data-cy="dropdown-version-type"
+                    >
+                      <SelectValue placeholder="Selecione o tipo de versão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {VERSION_TYPE_OPTS.map((o) => (
+                        <SelectItem key={o.value} value={o.value}>
+                          {o.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  {faixa.tipoVersao === "other" && (
+                    <div className="flex-1 space-y-2">
+                      <Label>Descrição da Versão Customizada</Label>
+                      <Input
+                        placeholder="Ex: Versão extended, remix especial, etc."
+                        value={faixa.versionCustomName || ""}
+                        onChange={(e) => updF(faixa.id, "versionCustomName", e.target.value)}
+                        disabled={isViewMode}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
@@ -1830,7 +1808,7 @@ export function LancamentoFormModal({
 
             {/* AI-Assisted Materials — REQUIRED by DSPs */}
             <div className="space-y-2">
-              <Label>AI-Assisted Materials *</Label>
+              <Label>Materiais com Uso de IA *</Label>
               <InfoBox>
                 Escolha a opção que melhor descreve o processo criativo desta
                 faixa. Declarações incorretas podem causar atrasos ou restrições
@@ -1867,14 +1845,12 @@ export function LancamentoFormModal({
               <Label>Informações de Letra</Label>
 
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={faixa.instrumental}
-                  onChange={(e) =>
-                    updF(faixa.id, "instrumental", e.target.checked)
+                  onCheckedChange={(checked) =>
+                    updF(faixa.id, "instrumental", checked === true)
                   }
                   disabled={isViewMode}
-                  className="w-4 h-4 accent-primary"
                   data-cy="checkbox-instrumental-track"
                 />
                 <span className="text-sm">Faixa Instrumental (sem letra)</span>
@@ -1918,7 +1894,7 @@ export function LancamentoFormModal({
                   </div>
 
                   <div className="space-y-2">
-                    <Label>Explicit *</Label>
+                    <Label>Conteúdo Explícito *</Label>
                     <Select
                       value={faixa.explicit}
                       onValueChange={(v) => updF(faixa.id, "explicit", v)}
@@ -1960,7 +1936,7 @@ export function LancamentoFormModal({
                 }
                 placeholder="BR-ABC-26-00001"
                 disabled={isViewMode}
-                className="w-48 font-mono uppercase"
+                className="w-48 font-sans "
                 maxLength={15}
                 data-cy="input-isrc"
               />
@@ -2056,10 +2032,23 @@ export function LancamentoFormModal({
         <div className="flex flex-col md:flex-row gap-6">
           {/* Preview */}
           <div className="shrink-0">
-            <div className="w-44 h-44 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center">
+            <div className="w-44 h-44 border-2 border-dashed border-border rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center relative">
               {capaPrincipal ? (
+                <>
+                  <img
+                    src={URL.createObjectURL(capaPrincipal)}
+                    alt="Capa"
+                    className="w-full h-full object-cover"
+                  />
+                  {isUploadingCover && (
+                    <div className="absolute inset-0 bg-background/50 flex items-center justify-center">
+                      <Loader2 className="h-8 w-8 animate-spin text-foreground" />
+                    </div>
+                  )}
+                </>
+              ) : formData.assetCapaUrl ? (
                 <img
-                  src={URL.createObjectURL(capaPrincipal)}
+                  src={formData.assetCapaUrl}
                   alt="Capa"
                   className="w-full h-full object-cover"
                 />
@@ -2099,11 +2088,16 @@ export function LancamentoFormModal({
             <div
               className="border-2 border-dashed border-border rounded-lg p-6 text-center cursor-pointer hover:border-muted-foreground/50 transition-colors"
               onClick={() =>
-                !isViewMode &&
+                !isViewMode && !isUploadingCover &&
                 document.getElementById("capa-principal")?.click()
               }
             >
-              {capaPrincipal ? (
+              {isUploadingCover ? (
+                <div className="flex items-center justify-center gap-2">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">Enviando capa…</p>
+                </div>
+              ) : capaPrincipal ? (
                 <div className="flex items-center justify-center gap-2">
                   <CheckCircle2 className="h-5 w-5 text-green-500" />
                   <p className="text-sm font-medium">{capaPrincipal.name}</p>
@@ -2115,6 +2109,25 @@ export function LancamentoFormModal({
                       onClick={(e) => {
                         e.stopPropagation();
                         setCapaPrincipal(null);
+                        setFormData((prev) => ({ ...prev, assetCapaUrl: "" }));
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              ) : formData.assetCapaUrl ? (
+                <div className="flex items-center justify-center gap-2">
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                  <p className="text-sm font-medium truncate max-w-[200px]">Capa salva</p>
+                  {!isViewMode && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData((prev) => ({ ...prev, assetCapaUrl: "" }));
                       }}
                     >
                       <X className="h-4 w-4" />
@@ -2147,9 +2160,9 @@ export function LancamentoFormModal({
               className="hidden"
               onChange={(e) => {
                 const f = e.target.files?.[0];
-                if (f) setCapaPrincipal(f);
+                if (f) void handleCoverUpload(f);
               }}
-              disabled={isViewMode}
+              disabled={isViewMode || isUploadingCover}
             />
           </div>
         </div>
@@ -2161,57 +2174,24 @@ export function LancamentoFormModal({
   // STEP 3 — DISTRIBUTION PREFERENCES
   // ─────────────────────────────────────────────────────────────────────────
   const renderStep3 = () => {
-    const StoreRow = ({ name }: { name: string }) => {
-      const checked = extraFields.lojasSelecionadas.includes(name);
-      return (
-        <label
-          className={`flex items-center justify-between p-2 rounded-lg border cursor-pointer transition-colors
-            ${
-              checked
-                ? "border-primary/50 bg-primary/5"
-                : "border-border hover:bg-muted/40"
-            }`}
-        >
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={checked}
-              onChange={() => !isViewMode && toggleStore(name)}
-              disabled={isViewMode}
-              className="w-4 h-4 accent-primary"
-            />
-            <span className="text-sm">{name}</span>
-          </div>
-          {checked && (
-            <CheckCircle2 className="h-4 w-4 text-primary shrink-0" />
-          )}
-        </label>
-      );
-    };
-
-    const allEssentials = STORES_ESSENTIALS.every((s) =>
-      extraFields.lojasSelecionadas.includes(s),
-    );
-
     return (
       <div className="space-y-6">
         {/* Distribuidora */}
         <Card className="bg-muted/30 border-border">
           <CardHeader className="pb-3">
-            <CardTitle className="text-base">Distribuidora *</CardTitle>
+            <CardTitle className="text-base">Distribuidora</CardTitle>
             <CardDescription>
-              Selecione a distribuidora para envio às plataformas digitais
+              Opcional. Sem plataforma conectada, o lançamento é salvo para controle interno.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {connectedDistributors.length === 0 ? (
-              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-                <AlertCircle className="h-4 w-4 shrink-0" />
-                Nenhuma distribuidora conectada. Configure em{" "}
-                <span className="font-medium text-foreground">
-                  Configurações &gt; Integrações
+            {!hasAnyConnected ? (
+              <div className="flex items-start gap-2 rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  Nenhuma plataforma de distribuição conectada. Este lançamento
+                  será salvo apenas para controle interno.
                 </span>
-                .
               </div>
             ) : (
               <Select
@@ -2237,11 +2217,11 @@ export function LancamentoFormModal({
               </Select>
             )}
             {(() => {
-              const sel = DISTRIBUTORS.find(
+              const sel = connectedDistributors.find(
                 (d) => d.id === formData.distribuidora,
               );
-              const conn = sel ? distributorConnections[sel.id] : null;
               if (!sel) return null;
+              const conn = sel.username ? { username: sel.username } : null;
               return (
                 <div className="border border-border rounded-lg p-4 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -2260,7 +2240,7 @@ export function LancamentoFormModal({
                       )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-green-600 dark:text-green-400">
+                  <div className="flex items-center gap-1 text-sm text-green-600">
                     <CheckCircle2 className="h-4 w-4" /> Conectado
                   </div>
                 </div>
@@ -2324,7 +2304,8 @@ export function LancamentoFormModal({
                     setFormData({ ...formData, dataLancamento: iso })
                   }
                   disabled={isViewMode}
-                  placeholder="MM/DD/YYYY"
+                  placeholder="DD/MM/YYYY"
+                  displayFormat="dd/MM/yyyy"
                 />
               </div>
               <div className="space-y-2">
@@ -2375,25 +2356,21 @@ export function LancamentoFormModal({
             {/* Pre-order */}
             <div className="space-y-2">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={extraFields.preOrder}
-                  onChange={(e) => setExtra("preOrder", e.target.checked)}
+                  onCheckedChange={(checked) => setExtra("preOrder", checked === true)}
                   disabled={isViewMode}
-                  className="w-4 h-4 accent-primary"
                 />
                 <span className="text-sm font-medium">Pre-order</span>
               </label>
               {extraFields.preOrder && (
                 <label className="flex items-center gap-2 cursor-pointer pl-6">
-                  <input
-                    type="checkbox"
+                  <Checkbox
                     checked={extraFields.noPreviewsDuringPreOrder}
-                    onChange={(e) =>
-                      setExtra("noPreviewsDuringPreOrder", e.target.checked)
+                    onCheckedChange={(checked) =>
+                      setExtra("noPreviewsDuringPreOrder", checked === true)
                     }
                     disabled={isViewMode}
-                    className="w-4 h-4 accent-primary"
                   />
                   <span className="text-sm">
                     Sem prévias durante o pré-lançamento
@@ -2422,69 +2399,6 @@ export function LancamentoFormModal({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Store Distribution */}
-        <Card className="bg-muted/30 border-border">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base">Distribuição nas Lojas</CardTitle>
-            <CardDescription>
-              As lojas são baseadas no território selecionado. Todas
-              selecionadas por padrão.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Essentials */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h5 className="font-semibold text-sm">Essentials</h5>
-                {!isViewMode && (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="text-xs h-7"
-                    onClick={() =>
-                      toggleStoreGroup(STORES_ESSENTIALS, !allEssentials)
-                    }
-                  >
-                    {allEssentials ? "Desmarcar todas" : "Selecionar todas"}
-                  </Button>
-                )}
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {STORES_ESSENTIALS.map((s) => (
-                  <StoreRow key={s} name={s} />
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Neighbouring Rights */}
-            <div>
-              <h5 className="font-semibold text-sm mb-3">
-                Neighbouring Rights
-              </h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {STORES_NEIGHBOURING.map((s) => (
-                  <StoreRow key={s} name={s} />
-                ))}
-              </div>
-            </div>
-
-            <Separator />
-
-            {/* Ringtone Stores */}
-            <div>
-              <h5 className="font-semibold text-sm mb-3">Ringtone Stores</h5>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {STORES_RINGTONES.map((s) => (
-                  <StoreRow key={s} name={s} />
-                ))}
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -2561,6 +2475,12 @@ export function LancamentoFormModal({
                     alt="Capa"
                     className="w-36 h-36 rounded-lg object-cover border border-border"
                   />
+                ) : formData.assetCapaUrl ? (
+                  <img
+                    src={formData.assetCapaUrl}
+                    alt="Capa"
+                    className="w-36 h-36 rounded-lg object-cover border border-border"
+                  />
                 ) : (
                   <div className="w-36 h-36 rounded-lg border border-border bg-muted/50 flex items-center justify-center">
                     <ImageIcon className="h-8 w-8 text-muted-foreground/30" />
@@ -2593,7 +2513,7 @@ export function LancamentoFormModal({
                   <span className="text-muted-foreground">
                     Data de Lançamento:
                   </span>
-                  <span>{formData.dataLancamento || "—"}</span>
+                  <span>{formatReleaseDate(formData.dataLancamento) || "—"}</span>
 
                   {extraFields.releaseTime && (
                     <>
@@ -2612,15 +2532,10 @@ export function LancamentoFormModal({
                   <span className="text-muted-foreground">Território:</span>
                   <span>{extraFields.territory}</span>
 
-                  <span className="text-muted-foreground">Lojas:</span>
-                  <span>
-                    {extraFields.lojasSelecionadas.length} selecionadas
-                  </span>
-
                   {formData.codigoUPC && (
                     <>
                       <span className="text-muted-foreground">UPC:</span>
-                      <span className="font-mono">{formData.codigoUPC}</span>
+                      <span className="font-sans">{formData.codigoUPC}</span>
                     </>
                   )}
                 </div>
@@ -2648,7 +2563,7 @@ export function LancamentoFormModal({
                     </p>
                   </div>
                   {f.isrc && (
-                    <span className="text-xs text-muted-foreground font-mono shrink-0">
+                    <span className="text-xs text-muted-foreground font-sans shrink-0">
                       {f.isrc}
                     </span>
                   )}
@@ -2687,20 +2602,20 @@ export function LancamentoFormModal({
 
         {/* Validation summary */}
         {warnings.length === 0 ? (
-          <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700 dark:text-green-400">
+          <div className="flex items-center gap-2 rounded-md border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm text-green-700">
             <CheckCircle2 className="h-4 w-4 shrink-0" />
             Tudo certo! O lançamento está pronto para ser criado.
           </div>
         ) : (
           <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-3 space-y-1">
-            <div className="flex items-center gap-2 text-sm font-medium text-yellow-700 dark:text-yellow-400 mb-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-yellow-700 mb-1">
               <AlertCircle className="h-4 w-4 shrink-0" />
               {warnings.length} alerta(s) encontrado(s):
             </div>
             {warnings.map((w, i) => (
               <p
                 key={i}
-                className="text-xs text-yellow-700 dark:text-yellow-400 pl-6"
+                className="text-xs text-yellow-700 pl-6"
               >
                 • {w}
               </p>
@@ -2763,8 +2678,12 @@ export function LancamentoFormModal({
                 type="button"
                 onClick={handleSubmit}
                 className="bg-primary hover:bg-primary/90"
+                disabled={isUploadingCover}
               >
-                {mode === "create" ? "Criar Lançamento" : "Salvar Alterações"}
+                {isUploadingCover
+                  ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Enviando capa…</>
+                  : mode === "create" ? "Criar Lançamento" : "Salvar Alterações"
+                }
               </Button>
             ) : (
               <Button
@@ -2781,3 +2700,4 @@ export function LancamentoFormModal({
     </Dialog>
   );
 }
+

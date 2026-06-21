@@ -1,0 +1,402 @@
+/**
+ * modules/reports/i18n/field-labels.pt-br.ts
+ *
+ * FASE 2 — camada ÚNICA, centralizada e OBRIGATÓRIA de labels pt-BR.
+ *
+ * Regra absoluta: chave técnica é infraestrutura, label é produto. Nenhum texto
+ * visível ao usuário pode nascer de transformação automática de chave técnica
+ * (humanizeKey/startCase/…). A resolução de label é EXPLÍCITA e falha-rápido
+ * quando ausente — é melhor quebrar o build do que exibir inglês.
+ *
+ * Chaves canônicas em camelCase. `normalizeFieldKey` converte snake_case,
+ * kebab-case e PascalCase para a forma canônica antes da busca.
+ */
+
+/** Dicionário canônico (camelCase → pt-BR). Fonte única de verdade dos labels. */
+export const FIELD_LABELS_PT_BR = {
+  // ── Identidade / pessoa ─────────────────────────────────────────────────────
+  name: 'Nome',
+  nome: 'Nome',
+  fullName: 'Nome completo',
+  nomeArtistico: 'Nome artístico',
+  nomeCivil: 'Nome civil',
+  nomeCompleto: 'Nome completo',
+  nomeFantasia: 'Nome fantasia',
+  legalName: 'Razão social',
+  razaoSocial: 'Razão social',
+  tradeName: 'Nome fantasia',
+  companyName: 'Empresa',
+  empresa: 'Empresa',
+  responsible: 'Responsável',
+  responsavel: 'Responsável',
+  titularConta: 'Titular da conta',
+
+  // ── Contato ─────────────────────────────────────────────────────────────────
+  contactType: 'Tipo de contato',
+  documentType: 'Tipo de documento',
+  documentNumber: 'Número do documento',
+  cpfCnpj: 'CPF/CNPJ',
+  rg: 'RG',
+  phone: 'Telefone',
+  telefone: 'Telefone',
+  whatsapp: 'WhatsApp',
+  email: 'E-mail',
+  instagram: 'Instagram',
+  facebook: 'Facebook',
+  tiktok: 'TikTok',
+  twitter: 'Twitter',
+  website: 'Site',
+
+  // ── Endereço ────────────────────────────────────────────────────────────────
+  address: 'Endereço',
+  endereco: 'Endereço',
+  city: 'Cidade',
+  cidade: 'Cidade',
+  state: 'Estado',
+  estado: 'Estado',
+  country: 'País',
+  pais: 'País',
+  zipCode: 'CEP',
+  cep: 'CEP',
+
+  // ── Conteúdo / CRM ──────────────────────────────────────────────────────────
+  notes: 'Observações',
+  observacoes: 'Observações',
+  observacao: 'Observação',
+  notasInternas: 'Notas internas',
+  description: 'Descrição',
+  descricao: 'Descrição',
+  tags: 'Etiquetas',
+  status: 'Situação',
+  situacao: 'Situação',
+  priority: 'Prioridade',
+  prioridade: 'Prioridade',
+  timeline: 'Histórico',
+  attachments: 'Anexos',
+  anexos: 'Anexos',
+  assunto: 'Assunto',
+  titulo: 'Título',
+  title: 'Título',
+  funcao: 'Função',
+
+  // ── Artistas / streaming ────────────────────────────────────────────────────
+  generoMusical: 'Gênero musical',
+  faseCarreira: 'Fase da carreira',
+  dataNascimento: 'Data de nascimento',
+  managerName: 'Nome do empresário',
+  managerNome: 'Nome do empresário',
+  managerContact: 'Contato do empresário',
+  managerContato: 'Contato do empresário',
+  produtorExecutivo: 'Produtor executivo',
+  agenciaBooking: 'Agência de booking',
+  labelParceira: 'Selo parceiro',
+  signingPlatform: 'Plataforma de assinatura',
+  spotifyArtistId: 'Link do Spotify',
+  youtubeChannelId: 'Link do YouTube',
+  soundcloudUrl: 'Link do SoundCloud',
+  appleMusicUrl: 'Link do Apple Music',
+  deezerUrl: 'Link do Deezer',
+  bannerUrl: 'Banner',
+  fotoUrl: 'Foto',
+  presskitUrl: 'Press kit',
+  documentosPessoaisUrl: 'Documentos pessoais',
+  videoApresentacaoUrl: 'Vídeo de apresentação',
+  galeriaUrls: 'Galeria',
+  spotifyOuvintes: 'Ouvintes no Spotify',
+  youtubeInscritos: 'Inscritos no YouTube',
+  instagramSeguidores: 'Seguidores no Instagram',
+  tiktokSeguidores: 'Seguidores no TikTok',
+
+  // ── Financeiro / contratos ──────────────────────────────────────────────────
+  numero: 'Número',
+  valor: 'Valor',
+  emissao: 'Emissão',
+  vencimento: 'Vencimento',
+  comissao: 'Comissão',
+  porcentagem: 'Porcentagem',
+  participacao: 'Participação',
+  dataInicio: 'Data de início',
+  dataFim: 'Data de fim',
+  banco: 'Banco',
+  agencia: 'Agência',
+  conta: 'Conta',
+  chavePix: 'Chave Pix',
+  temperatura: 'Temperatura',
+  tipo: 'Tipo',
+  tipoCliente: 'Tipo de cliente',
+  tipoPessoa: 'Tipo de pessoa',
+  tipoServico: 'Tipo de serviço',
+
+  // ── Bancárias/streaming extras ──────────────────────────────────────────────
+  slugArtistico: 'Identificador público',
+
+  // ── Técnicas comuns (ETAPA 5) ───────────────────────────────────────────────
+  createdAt: 'Criado em',
+  updatedAt: 'Atualizado em',
+  deletedAt: 'Excluído em',
+  tenantId: 'Tenant',
+  artistId: 'Artista',
+  projectId: 'Projeto',
+  releaseId: 'Lançamento',
+  contractId: 'Contrato',
+  amount: 'Valor',
+  currency: 'Moeda',
+  dueDate: 'Data de vencimento',
+  paidAt: 'Pago em',
+  startsAt: 'Início',
+  endsAt: 'Término',
+
+  // ── Colunas reais das 39 entidades reportáveis (cobertura 100%) ─────────────
+  abramusProtocol: 'Protocolo ABRAMUS',
+  active: 'Ativo',
+  actualCloseDate: 'Data real de fechamento',
+  aiPrompts: 'Prompts de IA',
+  aiTools: 'Ferramentas de IA',
+  aiUsed: 'IA utilizada',
+  allowAiSuggestions: 'Permitir sugestões de IA',
+  allowManualUsage: 'Permitir uso manual',
+  alternativeTitles: 'Títulos alternativos',
+  approved: 'Aprovado',
+  approvedAt: 'Aprovado em',
+  approvedBy: 'Aprovado por',
+  archived: 'Arquivado',
+  archivedAt: 'Arquivado em',
+  arquivoUrl: 'Arquivo',
+  artista: 'Artista',
+  assetType: 'Tipo de ativo',
+  assignedTo: 'Responsável',
+  ativo: 'Ativo',
+  autoGenerated: 'Gerado automaticamente',
+  autoStage: 'Estágio automático',
+  budgetActual: 'Orçamento real',
+  budgetEstimated: 'Orçamento estimado',
+  calculo: 'Cálculo',
+  capaUrl: 'Capa',
+  cargo: 'Cargo',
+  categoria: 'Categoria',
+  category: 'Categoria',
+  categoryKind: 'Tipo de categoria',
+  channel: 'Canal',
+  cliente: 'Cliente',
+  coCompositores: 'Co-compositores',
+  codAbramus: 'Código ABRAMUS',
+  codEcad: 'Código ECAD',
+  code: 'Código',
+  color: 'Cor',
+  completedAt: 'Concluído em',
+  compositor: 'Compositor',
+  compositores: 'Compositores',
+  comprovanteUrl: 'Comprovante',
+  condicoes: 'Condições',
+  contactCount: 'Total de contatos',
+  contentType: 'Tipo de conteúdo',
+  conteudo: 'Conteúdo',
+  context: 'Contexto',
+  copy: 'Texto',
+  copyrightOwner: 'Titular do direito autoral',
+  copyrightYear: 'Ano do direito autoral',
+  countryOfRecording: 'País de gravação',
+  cpfCnpjEncrypted: 'CPF/CNPJ (criptografado)',
+  cpfEncrypted: 'CPF (criptografado)',
+  createdBy: 'Criado por',
+  currentVersion: 'Versão atual',
+  data: 'Data',
+  dataAdmissao: 'Data de admissão',
+  dataDemissao: 'Data de demissão',
+  dataEmissao: 'Data de emissão',
+  dataEntrada: 'Data de entrada',
+  dataLancamento: 'Data de lançamento',
+  dataVencimento: 'Data de vencimento',
+  deliveryDate: 'Data de entrega',
+  deliveryNotes: 'Notas de entrega',
+  departamento: 'Departamento',
+  dependencies: 'Dependências',
+  depthLevel: 'Nível de profundidade',
+  detentores: 'Detentores',
+  director: 'Diretor',
+  distribuidora: 'Distribuidora',
+  documentos: 'Documentos',
+  duracao: 'Duração',
+  durationSec: 'Duração (s)',
+  durationSeconds: 'Duração (s)',
+  editora: 'Editora',
+  emailEncrypted: 'E-mail (criptografado)',
+  especialidades: 'Especialidades',
+  exclusivo: 'Exclusivo',
+  expectedCloseDate: 'Data prevista de fechamento',
+  externalReference: 'Referência externa',
+  fields: 'Campos',
+  fileUrl: 'Arquivo',
+  files: 'Arquivos',
+  fonte: 'Fonte',
+  format: 'Formato',
+  genero: 'Gênero',
+  goals: 'Metas',
+  gravadora: 'Gravadora',
+  icon: 'Ícone',
+  industry: 'Setor',
+  interpretes: 'Intérpretes',
+  isActive: 'Ativo',
+  isInstrumental: 'Instrumental',
+  isrc: 'ISRC',
+  iswc: 'ISWC',
+  jobTitle: 'Cargo',
+  kind: 'Tipo',
+  language: 'Idioma',
+  lastContactedAt: 'Último contato em',
+  local: 'Local',
+  localCompra: 'Local de compra',
+  localizacao: 'Localização',
+  lyrics: 'Letra',
+  managerContatoEncrypted: 'Contato do empresário (criptografado)',
+  metaValor: 'Meta de valor',
+  metadata: 'Metadados',
+  metrics: 'Métricas',
+  midiaDestino: 'Mídia de destino',
+  mimeType: 'Tipo de arquivo',
+  moeda: 'Moeda',
+  motivo: 'Motivo',
+  numeroNotaFiscal: 'Número da nota fiscal',
+  objective: 'Objetivo',
+  objetivo: 'Objetivo',
+  obraMusical: 'Obra musical',
+  orcamento: 'Orçamento',
+  orgSlug: 'Identificador da organização',
+  origemExterna: 'Origem externa',
+  origemExternaSincronizadoEm: 'Sincronizado em (origem externa)',
+  origemLead: 'Origem do lead',
+  owner: 'Proprietário',
+  path: 'Caminho',
+  periodo: 'Período',
+  phoneEncrypted: 'Telefone (criptografado)',
+  pipelineStage: 'Estágio do funil',
+  plataforma: 'Plataforma',
+  plataformas: 'Plataformas',
+  platform: 'Plataforma',
+  prazo: 'Prazo',
+  probabilidadeFechamento: 'Probabilidade de fechamento',
+  probability: 'Probabilidade',
+  producer: 'Produtor',
+  productionCompany: 'Produtora',
+  produtores: 'Produtores',
+  projeto: 'Projeto',
+  protected: 'Protegido',
+  proximoFollowUp: 'Próximo follow-up',
+  publicationError: 'Erro de publicação',
+  publicationStatus: 'Situação da publicação',
+  publishDate: 'Data de publicação',
+  publishTime: 'Horário de publicação',
+  published: 'Publicado',
+  publishedAt: 'Publicado em',
+  quantidade: 'Quantidade',
+  recordingDate: 'Data de gravação',
+  referencia: 'Referência',
+  registryStatus: 'Situação do registro',
+  releaseDate: 'Data de lançamento',
+  resolution: 'Resolução',
+  resolvedAt: 'Resolvido em',
+  resposta: 'Resposta',
+  salario: 'Salário',
+  scheduledFor: 'Agendado para',
+  score: 'Pontuação',
+  segmento: 'Segmento',
+  setor: 'Setor',
+  settings: 'Configurações',
+  sizeBytes: 'Tamanho (bytes)',
+  slaBreached: 'SLA violado',
+  slaDeadline: 'Prazo do SLA',
+  slaDueAt: 'Vencimento do SLA',
+  slug: 'Identificador público',
+  socialLinks: 'Redes sociais',
+  sortOrder: 'Ordem',
+  source: 'Origem',
+  stage: 'Estágio',
+  stageHistory: 'Histórico de estágios',
+  startDate: 'Data de início',
+  statusCadastro: 'Situação do cadastro',
+  subject: 'Assunto',
+  submissionCount: 'Total de envios',
+  systemCategory: 'Categoria do sistema',
+  targetName: 'Nome do alvo',
+  targetType: 'Tipo de alvo',
+  taskKey: 'Chave da tarefa',
+  telefoneEncrypted: 'Telefone (criptografado)',
+  territorio: 'Território',
+  thumbnailUrl: 'Miniatura',
+  ticketNumber: 'Número do chamado',
+  tipoContrato: 'Tipo de contrato',
+  tipoUso: 'Tipo de uso',
+  tomadorDocEncrypted: 'Documento do tomador (criptografado)',
+  tomadorNome: 'Nome do tomador',
+  transactionTypes: 'Tipos de transação',
+  treeOrder: 'Ordem na árvore',
+  type: 'Tipo',
+  upc: 'UPC',
+  updatedBy: 'Atualizado por',
+  uploadedBy: 'Enviado por',
+  url: 'Link',
+  usageCount: 'Total de usos',
+  valorAtual: 'Valor atual',
+  valorEstimado: 'Valor estimado',
+  valorUnitario: 'Valor unitário',
+  value: 'Valor',
+  variaveis: 'Variáveis',
+  version: 'Versão',
+  versionTitle: 'Título da versão',
+  versoes: 'Versões',
+} as const satisfies Record<string, string>;
+
+export type FieldLabelKey = keyof typeof FIELD_LABELS_PT_BR;
+
+/** Reverse map (rótulo pt-BR → chave canônica). Primeira chave vence em empate. */
+export const FIELD_KEYS_BY_LABEL_PT_BR: Record<string, string> = (() => {
+  const m: Record<string, string> = {};
+  for (const [key, label] of Object.entries(FIELD_LABELS_PT_BR)) {
+    const lk = label.toLowerCase();
+    if (m[lk] === undefined) m[lk] = key;
+  }
+  return m;
+})();
+
+/**
+ * Converte uma chave técnica (snake_case, kebab-case, PascalCase, camelCase)
+ * para a forma canônica camelCase. NÃO gera label — só normaliza formato.
+ */
+export function normalizeFieldKey(fieldKey: string): string {
+  const cleaned = String(fieldKey ?? '').trim();
+  if (!cleaned) return '';
+  if (/[_-]/.test(cleaned)) {
+    const parts = cleaned.split(/[_-]+/).filter(Boolean);
+    return (
+      parts[0].toLowerCase() +
+      parts.slice(1).map((p) => p.charAt(0).toUpperCase() + p.slice(1).toLowerCase()).join('')
+    );
+  }
+  // camelCase já normalizado, ou PascalCase → camelCase.
+  return cleaned.charAt(0).toLowerCase() + cleaned.slice(1);
+}
+
+/**
+ * Resolve o label pt-BR de um campo. EXPLÍCITO e fail-fast: lança erro quando o
+ * label não existe (sem fallback visual). Use em UI, relatórios, export, import
+ * e templates.
+ */
+export function getFieldLabelPtBr(fieldKey: string): string {
+  const normalized = normalizeFieldKey(fieldKey);
+  const label = (FIELD_LABELS_PT_BR as Record<string, string>)[normalized];
+  if (!label) {
+    throw new Error(`[i18n] Label pt-BR ausente para o campo: ${fieldKey}`);
+  }
+  return label;
+}
+
+/** Variante SEGURA (não lança) — para inventário/diagnóstico. Retorna null se ausente. */
+export function tryGetFieldLabelPtBr(fieldKey: string): string | null {
+  const normalized = normalizeFieldKey(fieldKey);
+  return (FIELD_LABELS_PT_BR as Record<string, string>)[normalized] ?? null;
+}
+
+/** Reverte um rótulo pt-BR para a chave canônica (round-trip da importação). */
+export function fieldKeyForLabelPtBr(label: string): string | null {
+  return FIELD_KEYS_BY_LABEL_PT_BR[String(label ?? '').trim().toLowerCase()] ?? null;
+}

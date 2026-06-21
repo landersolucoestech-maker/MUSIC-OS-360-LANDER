@@ -1,4 +1,6 @@
 import { useState, useEffect, useRef } from "react";
+import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
+import { LANGUAGE_LABELS } from "@/constants/languages";
 import {
   Dialog,
   DialogContent,
@@ -128,12 +130,12 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
         className="min-w-0"
       />
       {open && suggestions.length > 0 && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md max-h-48 overflow-y-auto">
           {suggestions.map(a => (
             <button
               key={a.id}
               type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted hover:text-foreground flex flex-col gap-0.5"
               onMouseDown={() => handleSelect(a)}
             >
               <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
@@ -153,19 +155,13 @@ export const ObraTipoBadge = ({
 }) => {
   if (tipo === "autoral") {
     return (
-      <Badge
-        className="bg-blue-600 hover:bg-blue-600 text-white"
-        data-testid="badge-tipo-obra-autoral"
-      >
+      <Badge variant="info" data-testid="badge-tipo-obra-autoral">
         Obra Autoral
       </Badge>
     );
   }
   return (
-    <Badge
-      className="bg-warning hover:bg-warning text-warning-foreground"
-      data-testid="badge-tipo-obra-referencia"
-    >
+    <Badge variant="warning" data-testid="badge-tipo-obra-referencia">
       Obra por Referência
     </Badge>
   );
@@ -206,60 +202,8 @@ interface IAElement {
   prompt: string;
 }
 
-const generosMusicais = [
-  "Axé",
-  "Blues",
-  "Bolero",
-  "Bossa Nova",
-  "Clássica",
-  "Country",
-  "Eletrônica",
-  "Folk",
-  "Forró",
-  "Funk",
-  "Gospel",
-  "Indie",
-  "Jazz",
-  "Lo-fi",
-  "Metal",
-  "MPB",
-  "Pagode",
-  "Pop",
-  "Punk",
-  "R&B",
-  "Rap/Hip-Hop",
-  "Reggae",
-  "Reggaeton",
-  "Rock",
-  "Salsa",
-  "Samba",
-  "Sertanejo",
-  "Soul",
-  "Trap",
-  "Outro",
-];
-const idiomas = [
-  "Alemão",
-  "Árabe",
-  "Coreano",
-  "Espanhol",
-  "Francês",
-  "Hebraico",
-  "Hindi",
-  "Holandês",
-  "Inglês",
-  "Italiano",
-  "Japonês",
-  "Latim",
-  "Mandarim",
-  "Norueguês",
-  "Polonês",
-  "Português",
-  "Russo",
-  "Sueco",
-  "Turco",
-  "Outro",
-];
+const generosMusicais = MUSICAL_GENRE_LABELS;
+const idiomas = LANGUAGE_LABELS;
 const situacoes = ["Em Análise", "Pendente", "Registrado", "Rejeitado"];
 const classesFuncao = [
   "Editor",
@@ -606,7 +550,7 @@ export function ObraFormModal({
                 data-testid="projeto-vinculado-card"
               >
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                  <Briefcase className="h-5 w-5 text-white" />
+                  <Briefcase className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p
@@ -748,7 +692,7 @@ export function ObraFormModal({
                               data-testid={`option-projeto-${p.id}`}
                             >
                               <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                                <Briefcase className="h-4 w-4 text-white" />
+                                <Briefcase className="h-4 w-4 text-primary-foreground" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">
@@ -790,13 +734,13 @@ export function ObraFormModal({
               Dados Principais da Obra
             </h3>
             <div className="grid grid-cols-12 gap-3 items-end">
-              {/* Código ABRAMUS — col-span-2 | Row 1 */}
+              {/* Código de Cadastro da Sociedade — col-span-2 | Row 1 */}
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">
-                  Código ABRAMUS
+                  Código de Cadastro da Sociedade
                 </span>
                 <Input
-                  className="h-9 px-2 text-sm min-w-0"
+                  className="h-8 text-sm min-w-0"
                   value={codAbramus}
                   onChange={(e) => setCodAbramus(e.target.value)}
                   disabled={isViewMode}
@@ -809,7 +753,7 @@ export function ObraFormModal({
                   Código ECAD
                 </span>
                 <Input
-                  className="h-9 px-2 text-sm min-w-0"
+                  className="h-8 text-sm min-w-0"
                   value={codEcad}
                   onChange={(e) => setCodEcad(e.target.value)}
                   disabled={isViewMode}
@@ -822,7 +766,7 @@ export function ObraFormModal({
                   ISWC
                 </span>
                 <Input
-                  className="h-9 px-2 text-sm min-w-0"
+                  className="h-8 text-sm min-w-0"
                   value={iswc}
                   onChange={(e) => setIswc(e.target.value)}
                   disabled={isViewMode}
@@ -836,7 +780,7 @@ export function ObraFormModal({
                   Título da Obra *
                 </span>
                 <Input
-                  className="h-9 px-2 text-sm min-w-0"
+                  className="h-8 text-sm min-w-0"
                   value={tituloObra}
                   onChange={(e) => setTituloObra(e.target.value)}
                   disabled={isViewMode}
@@ -853,7 +797,7 @@ export function ObraFormModal({
                   onValueChange={setGeneroMusical}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0">
+                  <SelectTrigger className="h-8 text-sm min-w-0">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -876,7 +820,7 @@ export function ObraFormModal({
                   onValueChange={setIdioma}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0">
+                  <SelectTrigger className="h-8 text-sm min-w-0">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -897,7 +841,7 @@ export function ObraFormModal({
                 <div className="flex items-center gap-1">
                   <Input
                     data-testid="input-duracao-minutos"
-                    className={`h-9 w-12 min-w-0 text-center px-2 text-sm ${duracaoMinError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`h-8 w-12 min-w-0 text-center px-2 text-sm ${duracaoMinError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     value={duracaoMin}
                     onChange={(e) => setDuracaoMin(e.target.value)}
                     disabled={isViewMode}
@@ -908,7 +852,7 @@ export function ObraFormModal({
                   </span>
                   <Input
                     data-testid="input-duracao-segundos"
-                    className={`h-9 w-12 min-w-0 text-center px-2 text-sm ${duracaoSegError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`h-8 w-12 min-w-0 text-center px-2 text-sm ${duracaoSegError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     value={duracaoSeg}
                     onChange={(e) => setDuracaoSeg(e.target.value)}
                     disabled={isViewMode}
@@ -930,7 +874,7 @@ export function ObraFormModal({
                 <span className="text-xs text-muted-foreground mb-1 block">
                   Instrumental?
                 </span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch
                     checked={instrumental === "sim"}
                     onCheckedChange={(v) => setInstrumental(v ? "sim" : "nao")}
@@ -944,7 +888,7 @@ export function ObraFormModal({
                 <span className="text-xs text-muted-foreground mb-1 block">
                   Criada por IA?
                 </span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch
                     checked={criadaPorIA === "sim"}
                     onCheckedChange={(v) => setCriadaPorIA(v ? "sim" : "nao")}
@@ -963,7 +907,7 @@ export function ObraFormModal({
                   onValueChange={setSituacao}
                   disabled={isViewMode}
                 >
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0">
+                  <SelectTrigger className="h-8 text-sm min-w-0">
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
@@ -1319,26 +1263,23 @@ export function ObraFormModal({
             onOpenChange={setOutrosTitulosOpen}
           >
             <div className="border border-border rounded-lg bg-muted/10">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-5">
-                <span className="font-semibold">Outros Títulos</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addOutroTitulo();
-                    }}
-                    disabled={isViewMode}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Adicionar
-                  </Button>
+              <div className="flex items-center gap-2 p-5">
+                <CollapsibleTrigger className="flex flex-1 items-center justify-between">
+                  <span className="font-semibold">Outros Títulos</span>
                   <ChevronDown
                     className={`w-4 h-4 transition-transform ${outrosTitulosOpen ? "rotate-180" : ""}`}
                   />
-                </div>
-              </CollapsibleTrigger>
+                </CollapsibleTrigger>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addOutroTitulo}
+                  disabled={isViewMode}
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Adicionar
+                </Button>
+              </div>
               <CollapsibleContent className="px-5 pb-5 space-y-3">
                 {outrosTitulos.length > 0 ? (
                   outrosTitulos.map((titulo, index) => (
@@ -1374,26 +1315,23 @@ export function ObraFormModal({
           {/* Referência Conexa */}
           <Collapsible open={referenciasOpen} onOpenChange={setReferenciasOpen}>
             <div className="border border-border rounded-lg bg-muted/10">
-              <CollapsibleTrigger className="flex items-center justify-between w-full p-5">
-                <span className="font-semibold">Referência Conexa</span>
-                <div className="flex items-center gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      addReferenciaConexas();
-                    }}
-                    disabled={isViewMode}
-                  >
-                    <Plus className="w-4 h-4 mr-1" /> Adicionar
-                  </Button>
+              <div className="flex items-center gap-2 p-5">
+                <CollapsibleTrigger className="flex flex-1 items-center justify-between">
+                  <span className="font-semibold">Referência Conexa</span>
                   <ChevronDown
                     className={`w-4 h-4 transition-transform ${referenciasOpen ? "rotate-180" : ""}`}
                   />
-                </div>
-              </CollapsibleTrigger>
+                </CollapsibleTrigger>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={addReferenciaConexas}
+                  disabled={isViewMode}
+                >
+                  <Plus className="w-4 h-4 mr-1" /> Adicionar
+                </Button>
+              </div>
               <CollapsibleContent className="px-5 pb-5 space-y-3">
                 {referenciasConexas.length > 0 ? (
                   referenciasConexas.map((ref, index) => (
@@ -1479,7 +1417,8 @@ export function ObraFormModal({
             {!isViewMode && (
               <Button
                 type="submit"
-                className="bg-primary hover:bg-primary/90"
+                size="sm"
+                className="h-8 text-xs gap-1.5"
                 disabled={
                   hasDuracaoError || addObra.isPending || updateObra.isPending
                 }
@@ -1503,3 +1442,4 @@ export function ObraFormModal({
     </Dialog>
   );
 }
+

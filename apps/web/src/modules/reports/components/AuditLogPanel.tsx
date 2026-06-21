@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { Badge } from "@/shared/ui/badge";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -17,10 +18,10 @@ const ACTION_CONFIG: Record<AuditLogEntry["action"], { label: string; icon: Reac
   permission: { label: "Permissão",  icon: ShieldCheck, color: "text-warning" },
 };
 
-const STATUS_CONFIG: Record<AuditLogEntry["status"], { label: string; icon: React.ComponentType<{ className?: string }>; cls: string }> = {
-  success: { label: "Sucesso",  icon: CheckCircle2,   cls: "bg-success/15 text-success border-success/30" },
-  error:   { label: "Erro",     icon: XCircle,        cls: "bg-destructive/15 text-destructive border-destructive/30" },
-  warning: { label: "Aviso",    icon: AlertTriangle,  cls: "bg-warning/15 text-warning border-warning/30" },
+const STATUS_CONFIG: Record<AuditLogEntry["status"], { label: string; icon: React.ComponentType<{ className?: string }>; variant: BadgeVariant }> = {
+  success: { label: "Sucesso",  icon: CheckCircle2,   variant: "success" },
+  error:   { label: "Erro",     icon: XCircle,        variant: "danger" },
+  warning: { label: "Aviso",    icon: AlertTriangle,  variant: "warning" },
 };
 
 function formatDate(iso: string) {
@@ -44,6 +45,13 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
   const [actionFilter, setActionFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  const pendingCount = entries.filter((entry) => entry.status === "warning").length;
+  const inconsistencyCount = entries.filter((entry) => entry.status === "error").length;
+  const incompleteCount = entries.filter((entry) => {
+    const text = entry.description.toLowerCase();
+    return text.includes("incompleto") || text.includes("faltante") || text.includes("pendente");
+  }).length;
+
   const filtered = entries.filter(e => {
     if (moduleFilter !== "Todos" && e.module !== moduleFilter) return false;
     if (actionFilter !== "all" && e.action !== actionFilter) return false;
@@ -61,6 +69,30 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
 
   return (
     <div className="space-y-4">
+      <div className="grid gap-3 md:grid-cols-3">
+        <AuditInsightCard
+          title="Pendências"
+          value={pendingCount}
+          description="Avisos que precisam de revisão operacional"
+          icon={AlertTriangle}
+          className="text-warning"
+        />
+        <AuditInsightCard
+          title="Inconsistências"
+          value={inconsistencyCount}
+          description="Erros ou conflitos registrados no sistema"
+          icon={XCircle}
+          className="text-destructive"
+        />
+        <AuditInsightCard
+          title="Dados incompletos"
+          value={incompleteCount}
+          description="Registros com campos faltantes ou pendentes"
+          icon={AlertTriangle}
+          className="text-amber-600"
+        />
+      </div>
+
       <div className="flex flex-wrap items-center gap-2">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -68,12 +100,12 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
             value={search}
             onChange={e => setSearch(e.target.value)}
             placeholder="Buscar por ação, módulo, usuário..."
-            className="pl-9 h-9 bg-card border-border"
+            className="pl-9 h-8 text-sm bg-card border-border"
             data-testid="audit-search"
           />
         </div>
         <Select value={moduleFilter} onValueChange={setModuleFilter}>
-          <SelectTrigger className="w-36 h-9 text-xs bg-card border-border" data-testid="audit-filter-module">
+          <SelectTrigger className="w-auto min-w-[140px] h-8 text-xs bg-card border-border" data-testid="audit-filter-module">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -81,7 +113,7 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
           </SelectContent>
         </Select>
         <Select value={actionFilter} onValueChange={setActionFilter}>
-          <SelectTrigger className="w-36 h-9 text-xs bg-card border-border" data-testid="audit-filter-action">
+          <SelectTrigger className="w-auto min-w-[140px] h-8 text-xs bg-card border-border" data-testid="audit-filter-action">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -89,7 +121,7 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-32 h-9 text-xs bg-card border-border" data-testid="audit-filter-status">
+          <SelectTrigger className="w-auto min-w-[140px] h-8 text-xs bg-card border-border" data-testid="audit-filter-status">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
@@ -102,16 +134,22 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
       </div>
 
       <div className="rounded-lg border border-border overflow-hidden">
+        <ListSectionHeader
+          title="Histórico de Auditoria"
+          count={filtered.length}
+          description="Acompanhe ações, módulos, usuários, registros e status das operações"
+          className="px-4 pt-4"
+        />
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="text-xs uppercase tracking-wider">Data / Hora</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Ação</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Módulo</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Descrição</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Usuário</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Registros</TableHead>
-              <TableHead className="text-xs uppercase tracking-wider">Status</TableHead>
+              <TableHead className="text-xs  tracking-wider">Data / Hora</TableHead>
+              <TableHead className="text-xs  tracking-wider">Ação</TableHead>
+              <TableHead className="text-xs  tracking-wider">Módulo</TableHead>
+              <TableHead className="text-xs  tracking-wider">Descrição</TableHead>
+              <TableHead className="text-xs  tracking-wider">Usuário</TableHead>
+              <TableHead className="text-xs  tracking-wider">Registros</TableHead>
+              <TableHead className="text-xs  tracking-wider">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -126,7 +164,7 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
               const StatusIcon = sc.icon;
               return (
                 <TableRow key={e.id} data-testid={`audit-row-${e.id}`}>
-                  <TableCell className="text-xs py-3 font-mono text-muted-foreground whitespace-nowrap">{formatDate(e.createdAt)}</TableCell>
+                  <TableCell className="text-xs py-3 font-sans text-muted-foreground whitespace-nowrap">{formatDate(e.createdAt)}</TableCell>
                   <TableCell className="text-xs py-3">
                     <span className={cn("flex items-center gap-1.5 font-medium", ac.color)}>
                       <ActionIcon className="h-3.5 w-3.5 shrink-0" />
@@ -138,11 +176,11 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
                   </TableCell>
                   <TableCell className="text-xs py-3 max-w-[260px] truncate text-foreground">{e.description}</TableCell>
                   <TableCell className="text-xs py-3 text-muted-foreground whitespace-nowrap">{e.user}</TableCell>
-                  <TableCell className="text-xs py-3 font-mono text-center">
+                  <TableCell className="text-xs py-3 font-sans text-center">
                     {e.recordCount != null ? e.recordCount : <span className="text-muted-foreground">—</span>}
                   </TableCell>
                   <TableCell className="text-xs py-3">
-                    <Badge className={cn("text-[10px] border flex items-center gap-1 w-fit", sc.cls)}>
+                    <Badge variant={sc.variant} className="flex items-center gap-1 w-fit">
                       <StatusIcon className="h-2.5 w-2.5" />
                       {sc.label}
                     </Badge>
@@ -157,6 +195,35 @@ export function AuditLogPanel({ entries }: AuditLogPanelProps) {
             {filtered.length} de {entries.length} registros
           </div>
         )}
+      </div>
+    </div>
+  );
+}
+
+function AuditInsightCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  className,
+}: {
+  title: string;
+  value: number;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  className: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs text-muted-foreground">{title}</p>
+          <p className="mt-1 text-2xl font-semibold text-foreground">{value}</p>
+          <p className="mt-2 text-xs text-muted-foreground">{description}</p>
+        </div>
+        <div className={cn("rounded-md border border-current/20 p-2", className)}>
+          <Icon className="h-4 w-4" />
+        </div>
       </div>
     </div>
   );

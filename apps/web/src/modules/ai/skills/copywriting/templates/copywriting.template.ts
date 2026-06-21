@@ -96,3 +96,4 @@ export const COPY_TEMPLATES: CopyTemplate[] = [
 export function getCopyTemplate(pageType: CopyPageType): CopyTemplate | undefined {
   return COPY_TEMPLATES.find((t) => t.pageType === pageType);
 }
+

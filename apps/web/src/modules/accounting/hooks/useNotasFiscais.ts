@@ -18,7 +18,7 @@ export function useNotasFiscais() {
   const result = useDataQuery<NotaFiscalWithRelations>({
     queryKey: [...QUERY_KEYS.NOTAS_FISCAIS],
     table: "notas_fiscais",
-    select: "*, clientes(*), vendas(*)",
+    select: "*, clientes(*)",
     onMutationSuccess: {
       onCreate: (nf) =>
         emit(DomainEvents.INVOICE_CREATED, {

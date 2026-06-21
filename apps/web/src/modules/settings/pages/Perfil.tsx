@@ -194,13 +194,13 @@ export default function Perfil() {
                     onClick={handleAvatarClick}
                     disabled={uploadingAvatar}
                     data-testid="button-upload-avatar"
-                    className="absolute inset-0 rounded-full flex items-center justify-center bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
+                    className="absolute inset-0 rounded-full flex items-center justify-center bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer disabled:cursor-not-allowed"
                     aria-label="Alterar foto de perfil"
                   >
                     {uploadingAvatar ? (
-                      <Loader2 className="h-6 w-6 text-white animate-spin" />
+                      <Loader2 className="h-6 w-6 text-foreground animate-spin" />
                     ) : (
-                      <Camera className="h-6 w-6 text-white" />
+                      <Camera className="h-6 w-6 text-foreground" />
                     )}
                   </button>
                 </div>

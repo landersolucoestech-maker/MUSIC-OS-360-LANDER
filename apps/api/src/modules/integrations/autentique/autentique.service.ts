@@ -17,8 +17,9 @@ import {
   UnauthorizedException, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { DataSource, Repository } from 'typeorm';
-import { DATA_SOURCE } from '../../../database/database.module';
+import { DataSource, EntityManager, Repository } from 'typeorm';
+import { ADMIN_DATA_SOURCE, DATA_SOURCE } from '../../../database/database.module';
+import { DatabaseContextService } from '../../../database/database-context.service';
 import { IntegrationEntity, ContractEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import { EventsService, DOMAIN_EVENTS } from '../../../core/events/events.service';
@@ -34,6 +35,7 @@ export class AutentiqueService {
   private readonly logger = new Logger(AutentiqueService.name);
   private readonly integRepo:   Repository<IntegrationEntity> | null = null;
   private readonly contractRepo: Repository<ContractEntity>   | null = null;
+  private readonly adminContractRepo: Repository<ContractEntity> | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
@@ -42,10 +44,15 @@ export class AutentiqueService {
     @Optional() private readonly events: EventsService,
     @Optional() private readonly activityLogs: ActivityLogsService,
     @Optional() private readonly webhookSvc: WebhookService,
+    @Optional() private readonly dbContext?: DatabaseContextService,
+    @Inject(ADMIN_DATA_SOURCE) @Optional() adminDataSource?: DataSource | null,
   ) {
     if (ds) {
       this.integRepo    = ds.getRepository(IntegrationEntity);
       this.contractRepo = ds.getRepository(ContractEntity);
+    }
+    if (adminDataSource) {
+      this.adminContractRepo = adminDataSource.getRepository(ContractEntity);
     }
   }
 
@@ -274,69 +281,31 @@ export class AutentiqueService {
     }
 
     try {
-      const contract = await this.contractRepo!
-        .createQueryBuilder('c')
-        .where('c.autentique_doc_id = :docId', { docId })
-        .getOne();
+      if (!this.adminContractRepo || !this.dbContext) {
+        throw new ServiceUnavailableException('Autentique tenant bootstrap unavailable');
+      }
 
-      if (!contract) {
+      // Read-only bootstrap: resolve tenant without depending on tenant RLS context.
+      const contractIdentity = await this.adminContractRepo.findOne({
+        where: { autentique_doc_id: docId },
+      });
+
+      if (!contractIdentity?.tenant_id) {
         this.logger.warn(`[autentique/webhook] No contract found for docId=${docId}`);
         this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
         return { received: true };
       }
 
-      const signedAt   = new Date().toISOString();
-      const providerEventId = externalId || docId;
-
-      // 4. Update contract status + provider metadata
-      await this.contractRepo!
-        .createQueryBuilder()
-        .update(ContractEntity)
-        .set({
-          status:     'assinado',
-          updated_at: new Date(),
-          metadata: () => `metadata || '${JSON.stringify({
-            provider:          'autentique',
-            provider_event_id: providerEventId,
-            provider_status:   'signed',
-            synced_at:         signedAt,
-          })}'::jsonb`,
-        } as any)
-        .where('id = :id', { id: contract.id })
-        .execute();
-
-      await this.recordSuccess(contract.tenant_id);
-
-      this.logger.log(`[autentique/webhook] Contract ${contract.id} signed via docId=${docId}`);
-
-      // 5. Activity log
-      if (this.activityLogs) {
-        await this.activityLogs.create(contract.tenant_id, 'autentique:webhook', {
-          entity_type:  'contract',
-          entity_id:    contract.id,
-          action:       'signed_via_webhook',
-          description:  `Contrato assinado via Autentique webhook (docId=${docId})`,
-          metadata:     { docId, providerEventId, signedAt, provider: 'autentique' },
-        }).catch(() => {});
-      }
-
-      // 6. Emit domain event
-      if (this.events) {
-        this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_SIGNED, {
-          tenantId:      contract.tenant_id,
-          userId:        'autentique:webhook',
-          aggregateType: 'contract',
-          aggregateId:   contract.id,
-          payload: {
-            contractId: contract.id,
-            tenantId:   contract.tenant_id,
-            titulo:     contract.titulo ?? '',
-            artistId:   (contract as any).artista_id ?? null,
-            signedBy:   'autentique:webhook',
-            signedAt,
-          },
-        });
-      }
+      await this.dbContext.runInTenantContext(
+        { tenantId: contractIdentity.tenant_id, orgId: null, role: null },
+        (manager) => this.processSignedContract(
+          manager,
+          contractIdentity.id,
+          contractIdentity.tenant_id,
+          docId,
+          externalId,
+        ),
+      );
 
       this.webhookSvc?.markProcessed(ingestResult.eventId, 'processed');
     } catch (err) {
@@ -356,6 +325,71 @@ export class AutentiqueService {
     }
 
     return { received: true };
+  }
+
+  private async processSignedContract(
+    manager: EntityManager,
+    contractId: string,
+    tenantId: string,
+    docId: string,
+    externalId: string,
+  ): Promise<void> {
+    const repo = manager.getRepository(ContractEntity);
+    const contract = await repo.findOne({
+      where: { id: contractId, tenant_id: tenantId },
+    });
+    if (!contract) {
+      throw new Error(`Autentique contract not visible in tenant context: ${contractId}`);
+    }
+
+    const signedAt = new Date().toISOString();
+    const providerEventId = externalId || docId;
+
+    await repo
+      .createQueryBuilder()
+      .update(ContractEntity)
+      .set({
+        status:     'assinado',
+        updated_at: new Date(),
+        metadata: () => `metadata || '${JSON.stringify({
+          provider:          'autentique',
+          provider_event_id: providerEventId,
+          provider_status:   'signed',
+          synced_at:         signedAt,
+        })}'::jsonb`,
+      } as any)
+      .where('id = :id AND tenant_id = :tenantId', { id: contract.id, tenantId })
+      .execute();
+
+    await this.recordSuccess(tenantId);
+    this.logger.log(`[autentique/webhook] Contract ${contract.id} signed via docId=${docId}`);
+
+    if (this.activityLogs) {
+      await this.activityLogs.create(tenantId, 'autentique:webhook', {
+        entity_type:  'contract',
+        entity_id:    contract.id,
+        action:       'signed_via_webhook',
+        description:  `Contrato assinado via Autentique webhook (docId=${docId})`,
+        metadata:     { docId, providerEventId, signedAt, provider: 'autentique' },
+      }).catch(() => {});
+    }
+
+    if (this.events) {
+      this.events.emitTyped(DOMAIN_EVENTS.CONTRACT_SIGNED, {
+        tenantId,
+        userId:        'autentique:webhook',
+        aggregateType: 'contract',
+        aggregateId:   contract.id,
+        payload: {
+          contractId: contract.id,
+          tenantId,
+          titulo:     contract.titulo ?? '',
+          artistId:   (contract as any).artista_id ?? null,
+          signedBy:   'autentique:webhook',
+          signedAt,
+        },
+      });
+    }
   }
 
   async configure(tenantId: string, apiToken: string): Promise<void> {

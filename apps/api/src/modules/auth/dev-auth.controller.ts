@@ -2,6 +2,7 @@ import { Controller, Get, ForbiddenException, Inject, Logger, OnModuleInit } fro
 import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { DataSource, Repository } from 'typeorm';
+import * as jwt from 'jsonwebtoken';
 import { Public } from '../../core/decorators/public.decorator';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TenantEntity, OrgMemberEntity } from '../../database/entities';
@@ -94,6 +95,13 @@ export class DevAuthController implements OnModuleInit {
         .getOne();
 
       if (!exists) {
+        // Dual-write (PASSO 12-G): resolve role_id canônico de 'owner' (role global seedada).
+        const ownerRows = this.ds
+          ? (await this.ds.query(
+              `SELECT "id" FROM "roles" WHERE "slug" = 'owner' AND "tenant_id" IS NULL AND "deleted_at" IS NULL AND "archived_at" IS NULL LIMIT 1`,
+            )) as Array<{ id: string }>
+          : [];
+        const ownerRoleId = ownerRows[0]?.id ?? null;
         const member = this.memberRepo.create({
           org_id:        orgId as any,
           tenant_id:     tenant.id as any,
@@ -101,16 +109,38 @@ export class DevAuthController implements OnModuleInit {
           email:         DEV_EMAIL,
           full_name:     'Dev User',
           role:          'owner',
+          role_id:       ownerRoleId as any,
           is_active:     true,
           joined_at:     new Date(),
         } as any);
         await this.memberRepo.save(member as any);
-        this.logger.log(`Membro dev registado no tenant ${tenant.slug}`);
+        this.logger.log(`Membro dev registado no tenant ${tenant.slug} (role_id=${ownerRoleId ?? 'NULL'})`);
       }
     }
 
+    let token = auth.data.session?.access_token;
+    let tokenSource: 'supabase' | 'dev-local' = 'supabase';
+    const tokenClaims = token ? jwt.decode(token) as { app_metadata?: { org_id?: string } } | null : null;
+
+    if (tokenClaims?.app_metadata?.org_id !== orgId) {
+      const userId = auth.data.user?.id;
+      const secret = this.config.getOrThrow<string>('ENCRYPTION_KEY');
+      token = jwt.sign(
+        {
+          sub: userId,
+          session_id: `dev-auth-${userId}`,
+          app_metadata: { org_id: orgId, role: 'owner' },
+          email: DEV_EMAIL,
+        },
+        secret,
+        { algorithm: 'HS256', issuer: 'music-os-360-dev', expiresIn: '1h' },
+      );
+      tokenSource = 'dev-local';
+      this.logger.warn('Token Supabase dev com org_id divergente; emitindo token local coerente para dev-auth.');
+    }
+
     return {
-      token:    auth.data.session?.access_token,
+      token,
       tenantId,
       orgId,
       user: {
@@ -120,6 +150,7 @@ export class DevAuthController implements OnModuleInit {
         slug:  tenant?.slug,
       },
       _dev: true,
+      tokenSource,
     };
   }
 }

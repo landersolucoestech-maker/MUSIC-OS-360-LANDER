@@ -50,18 +50,18 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
 
     const getStatusBadge = (status: string) => {
       if (status?.toLowerCase().includes("pendente") || status === "planejamento") {
-        return <Badge className="bg-warning text-warning-foreground">Registro Pendente</Badge>;
+        return <Badge variant="warning">Registro Pendente</Badge>;
       }
       if (status === "concluido" || status?.toLowerCase().includes("conclu")) {
-        return <Badge className="bg-success text-[#000000]">Concluído</Badge>;
+        return <Badge variant="success">Concluído</Badge>;
       }
       if (status === "em_andamento") {
-        return <Badge className="bg-yellow-500">Em Andamento</Badge>;
+        return <Badge variant="info">Em Andamento</Badge>;
       }
       if (status === "cancelado") {
-        return <Badge className="bg-gray-500">Cancelado</Badge>;
+        return <Badge variant="danger">Cancelado</Badge>;
       }
-      return <Badge variant="secondary">{status}</Badge>;
+      return <Badge variant="neutral">{status}</Badge>;
     };
 
     return (
@@ -77,10 +77,10 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
               {/* Header do Projeto */}
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center shrink-0">
-                  <Play className="h-5 w-5 text-white ml-0.5" />
+                  <Play className="h-5 w-5 text-foreground ml-0.5" />
                 </div>
                 <div className="flex-1">
-                  <h2 className="text-lg font-bold">{projeto.titulo || projeto.name}</h2>
+                  <h2 className="text-lg font-bold">{projeto.titulo}</h2>
                   <div className="flex items-center gap-2 mt-1">
                     {getStatusBadge(projeto.status)}
                     <Badge variant="outline">{capitalize(projeto.tipo) || "Single"}</Badge>
@@ -98,23 +98,6 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     📅 Cadastrado em: {projeto.created_at ? new Date(projeto.created_at).toLocaleDateString('pt-BR') : new Date().toLocaleDateString('pt-BR')}
                   </p>
                 </div>
-              </div>
-
-              <Separator />
-
-              {/* Artista Responsável */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <User className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-semibold">Responsável</h3>
-                </div>
-                <Card className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <p className="font-medium" data-testid="text-view-artista">
-                      {projeto.artistas?.nome_artistico || projeto.artista || "Não informado"}
-                    </p>
-                  </CardContent>
-                </Card>
               </div>
 
               <Separator />
@@ -159,21 +142,21 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                                 <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <div>
                                   <span className="text-muted-foreground text-xs block">Duração</span>
-                                  <span className="font-medium" data-testid={`text-view-duracao-${idx}`}>{info.duracao || "Não informado"}</span>
+                                  <span className="font-medium" data-testid={`text-view-duracao-${idx}`}>{info.duracao || "—"}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Music2 className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <div>
                                   <span className="text-muted-foreground text-xs block">Gênero</span>
-                                  <span className="font-medium" data-testid={`text-view-genero-${idx}`}>{info.genero ? capitalize(info.genero) : "Não informado"}</span>
+                                  <span className="font-medium" data-testid={`text-view-genero-${idx}`}>{info.genero ? capitalize(info.genero) : "—"}</span>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
                                 <Globe className="h-4 w-4 text-muted-foreground shrink-0" />
                                 <div>
                                   <span className="text-muted-foreground text-xs block">Idioma</span>
-                                  <span className="font-medium" data-testid={`text-view-idioma-${idx}`}>{info.idioma ? capitalize(info.idioma) : "Não informado"}</span>
+                                  <span className="font-medium" data-testid={`text-view-idioma-${idx}`}>{info.idioma ? capitalize(info.idioma) : "—"}</span>
                                 </div>
                               </div>
                             </div>
@@ -187,7 +170,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                                     <span className="text-xs font-medium">Compositores</span>
                                   </div>
                                   <p className="text-sm text-muted-foreground" data-testid={`text-view-compositores-${idx}`}>
-                                    {info.compositores || "Não informado"}
+                                    {info.compositores || "—"}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -198,7 +181,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                                     <span className="text-xs font-medium">Intérpretes</span>
                                   </div>
                                   <p className="text-sm text-muted-foreground" data-testid={`text-view-interpretes-${idx}`}>
-                                    {info.interpretes || "Não informado"}
+                                    {info.interpretes || "—"}
                                   </p>
                                 </CardContent>
                               </Card>
@@ -209,23 +192,37 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                                     <span className="text-xs font-medium">Produtores</span>
                                   </div>
                                   <p className="text-sm text-muted-foreground" data-testid={`text-view-produtores-${idx}`}>
-                                    {info.produtores || "Não informado"}
+                                    {info.produtores || "—"}
                                   </p>
                                 </CardContent>
                               </Card>
                             </div>
 
-                            {/* Letra */}
-                            <div>
-                              <span className="text-xs font-medium text-muted-foreground block mb-1">Letra</span>
-                              {info.letra ? (
+                            {/* Letra — exibida apenas quando preenchida */}
+                            {info.letra && (
+                              <div>
+                                <span className="text-xs font-medium text-muted-foreground block mb-1">Letra</span>
                                 <div className="bg-background/50 rounded-md p-3 max-h-40 overflow-y-auto">
                                   <p className="text-sm whitespace-pre-wrap" data-testid={`text-view-letra-${idx}`}>{info.letra}</p>
                                 </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground" data-testid={`text-view-letra-${idx}`}>Não informado</p>
-                              )}
-                            </div>
+                              </div>
+                            )}
+
+                            {/* Áudio — exibido apenas quando há link cadastrado */}
+                            {info.audioUrl && (
+                              <div>
+                                <span className="text-xs font-medium text-muted-foreground block mb-1">Áudio</span>
+                                <a
+                                  href={info.audioUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-primary hover:underline inline-flex items-center gap-1"
+                                  data-testid={`link-view-audio-${idx}`}
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" /> Ouvir / baixar áudio
+                                </a>
+                              </div>
+                            )}
                           </CardContent>
                         </Card>
                       );
@@ -236,7 +233,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                     <CardContent className="p-4 space-y-4">
                       {/* Fallback para projetos sem descricao JSON */}
                       <div className="flex items-start justify-between gap-2">
-                        <h4 className="font-medium">{projeto.titulo || projeto.name}</h4>
+                        <h4 className="font-medium">{projeto.titulo}</h4>
                         <div className="flex items-center gap-1">
                           <Badge variant="outline" className="text-xs">Solo</Badge>
                           <Badge variant="outline" className="text-xs">Original</Badge>
@@ -247,6 +244,26 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                   </Card>
                 )}
               </div>
+
+              {/* Observações — exibidas apenas quando preenchidas */}
+              {projeto.observacoes && (
+                <>
+                  <Separator />
+                  <div>
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="font-semibold">Observações</h3>
+                    </div>
+                    <Card className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <p className="text-sm whitespace-pre-wrap" data-testid="text-view-observacoes">
+                          {projeto.observacoes}
+                        </p>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </>
+              )}
 
               <Separator />
 
@@ -287,7 +304,7 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
                                 {obra.titulo}
                               </span>
                               {obra.status && (
-                                <Badge variant="outline" className="text-[10px] uppercase">
+                                <Badge variant="outline" className="text-[10px] ">
                                   {obra.status}
                                 </Badge>
                               )}
@@ -322,3 +339,4 @@ export const ProjetoViewModal = forwardRef<HTMLDivElement, ProjetoViewModalProps
     );
   }
 );
+

@@ -24,6 +24,7 @@ import type {
   FinancialRuleTriggeredPayload,
   ArtistOnboardingStartedPayload,
   DistributionSetupRequestedPayload,
+  ProjectCompletedPayload,
   ExternalDataSyncRequestedPayload,
   ContractIntegrationReadyPayload,
   DistributionSyncStartedPayload,
@@ -36,14 +37,31 @@ import type {
   SocietyStatusUpdatedPayload,
   DistributorSubmissionCreatedPayload,
   DistributorStatusUpdatedPayload,
+  ReleaseCreatedPayload,
   ReleasePublishedPayload,
   ReleaseApprovedPayload,
   ReleaseDistributedPayload,
   TakedownRequestedPayload,
   CampaignStartedPayload,
   CampaignEndedPayload,
+  MarketingProjectCreatedPayload,
+  CoverArtTaskCreatedPayload,
+  MarketingPlanCompletedPayload,
+  MarketingTasksGeneratedPayload,
   LeadConvertedPayload,
   AssetUploadedPayload,
+  AssetAvailableForContentPayload,
+  SkillStartedPayload,
+  SkillCompletedPayload,
+  SkillFailedPayload,
+  AssetLinkedToProjectPayload,
+  AssetLinkedToTaskPayload,
+  WorkflowExecutionStartedPayload,
+  WorkflowExecutionCompletedPayload,
+  WorkflowExecutionFailedPayload,
+  CatalogWorkCreatedPayload,
+  CatalogRecordingCreatedPayload,
+  SupportTicketCreatedPayload,
   TicketResolvedPayload,
   WorkflowTransitionedPayload,
   TenantCreatedPayload,
@@ -96,6 +114,7 @@ export interface EventPayloadMap {
   'financial_rule.triggered':    FinancialRuleTriggeredPayload;
   'artist.onboarding_started':   ArtistOnboardingStartedPayload;
   'distribution.setup_requested': DistributionSetupRequestedPayload;
+  'project.completed':           ProjectCompletedPayload;
   'external-data.sync_requested': ExternalDataSyncRequestedPayload;
   'contract.integration_ready':      ContractIntegrationReadyPayload;
   'distribution.sync_started':       DistributionSyncStartedPayload;
@@ -108,16 +127,33 @@ export interface EventPayloadMap {
   'society.status_updated':          SocietyStatusUpdatedPayload;
   'distributor.submission_created':  DistributorSubmissionCreatedPayload;
   'distributor.status_updated':      DistributorStatusUpdatedPayload;
+  'release.created':                 ReleaseCreatedPayload;
   'release.published':               ReleasePublishedPayload;
   'release.approved':      ReleaseApprovedPayload;
   'release.distributed':   ReleaseDistributedPayload;
   'takedown.requested':    TakedownRequestedPayload;
   'campaign.started':      CampaignStartedPayload;
   'campaign.ended':        CampaignEndedPayload;
+  'marketing.project_created': MarketingProjectCreatedPayload;
+  'marketing.cover_art_task_created': CoverArtTaskCreatedPayload;
+  'marketing.plan_completed': MarketingPlanCompletedPayload;
+  'marketing.tasks_generated': MarketingTasksGeneratedPayload;
   'lead.created':          LeadCreatedPayload;
   'lead.updated':          LeadUpdatedPayload;
   'lead.converted':        LeadConvertedPayload;
   'asset.uploaded':        AssetUploadedPayload;
+  'marketing.asset_available_for_content': AssetAvailableForContentPayload;
+  'skill.started':         SkillStartedPayload;
+  'skill.completed':       SkillCompletedPayload;
+  'skill.failed':          SkillFailedPayload;
+  'asset.linked_to_project': AssetLinkedToProjectPayload;
+  'asset.linked_to_task':    AssetLinkedToTaskPayload;
+  'workflow.execution.started':   WorkflowExecutionStartedPayload;
+  'workflow.execution.completed': WorkflowExecutionCompletedPayload;
+  'workflow.execution.failed':    WorkflowExecutionFailedPayload;
+  'catalog.work.created':      CatalogWorkCreatedPayload;
+  'catalog.recording.created': CatalogRecordingCreatedPayload;
+  'support.ticket.created': SupportTicketCreatedPayload;
   'ticket.resolved':       TicketResolvedPayload;
   'workflow.transitioned': WorkflowTransitionedPayload;
   'tenant.created':        TenantCreatedPayload;
@@ -161,6 +197,7 @@ export const DOMAIN_EVENTS = {
   // Operational Workflows
   ARTIST_ONBOARDING_STARTED:    'artist.onboarding_started',
   DISTRIBUTION_SETUP_REQUESTED: 'distribution.setup_requested',
+  PROJECT_COMPLETED:            'project.completed',
   EXTERNAL_DATA_SYNC_REQUESTED: 'external-data.sync_requested',
   CONTRACT_INTEGRATION_READY:   'contract.integration_ready',
 
@@ -179,6 +216,7 @@ export const DOMAIN_EVENTS = {
   DISTRIBUTOR_STATUS_UPDATED:       'distributor.status_updated',
 
   // Releases
+  RELEASE_CREATED:       'release.created',
   RELEASE_PUBLISHED:     'release.published',
   RELEASE_APPROVED:      'release.approved',
   RELEASE_DISTRIBUTED:   'release.distributed',
@@ -189,14 +227,36 @@ export const DOMAIN_EVENTS = {
   // Marketing / CRM
   CAMPAIGN_STARTED:      'campaign.started',
   CAMPAIGN_ENDED:        'campaign.ended',
+  MARKETING_PROJECT_CREATED: 'marketing.project_created',
+  COVER_ART_TASK_CREATED: 'marketing.cover_art_task_created',
+  MARKETING_PLAN_COMPLETED: 'marketing.plan_completed',
+  MARKETING_TASKS_GENERATED: 'marketing.tasks_generated',
   LEAD_CREATED:          'lead.created',
   LEAD_UPDATED:          'lead.updated',
   LEAD_CONVERTED:        'lead.converted',
 
   // Assets
   ASSET_UPLOADED:        'asset.uploaded',
+  ASSET_AVAILABLE_FOR_CONTENT: 'marketing.asset_available_for_content',
+  ASSET_LINKED_TO_PROJECT: 'asset.linked_to_project',
+  ASSET_LINKED_TO_TASK:    'asset.linked_to_task',
+
+  // Skills runtime
+  SKILL_STARTED:         'skill.started',
+  SKILL_COMPLETED:       'skill.completed',
+  SKILL_FAILED:          'skill.failed',
+
+  // Workflow execution
+  WORKFLOW_EXECUTION_STARTED:   'workflow.execution.started',
+  WORKFLOW_EXECUTION_COMPLETED: 'workflow.execution.completed',
+  WORKFLOW_EXECUTION_FAILED:    'workflow.execution.failed',
+
+  // Catalog
+  CATALOG_WORK_CREATED:      'catalog.work.created',
+  CATALOG_RECORDING_CREATED: 'catalog.recording.created',
 
   // Support
+  SUPPORT_TICKET_CREATED: 'support.ticket.created',
   TICKET_RESOLVED:       'ticket.resolved',
 
   // Workflow

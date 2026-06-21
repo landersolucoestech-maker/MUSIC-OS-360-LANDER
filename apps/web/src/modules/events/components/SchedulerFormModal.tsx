@@ -6,15 +6,28 @@ import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
 import { Textarea } from "@/shared/ui/textarea";
 import { FormField, FormTextarea, FieldError } from "@/shared/components/FormField";
 import { toast } from "sonner";
 import { Clock } from "lucide-react";
 import { format, parse, parseISO, isValid } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import {
+  agendaParticipantKey,
+  normalizeAgendaParticipants,
+  summarizeAgendaParticipants,
+  useAgendaParticipants,
+  type AgendaParticipant,
+} from "@/modules/events/hooks/useAgendaParticipants";
+import { useOperationalSettings } from "@/modules/settings/hooks/useOperationalSettings";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 
 interface SchedulerFormModalProps {
@@ -134,24 +147,45 @@ const normalizeTimeValue = (value: unknown): string => {
   return "";
 };
 
-const getInitialFormData = (evento?: any) => ({
-  titulo: evento?.titulo || "",
-  tipoEvento: normalizeSelectValue(evento?.tipoEvento || evento?.tipo_evento, tipoEventoAliases),
-  artista: evento?.artista || evento?.artista_id || "",
-  status: normalizeSelectValue(evento?.status, statusAliases) || "agendado",
-  dataInicio: normalizeEventDate(evento?.dataInicio || evento?.data_inicio),
-  horarioInicio: normalizeTimeValue(evento?.horarioInicio || evento?.horario_inicio),
-  dataFim: normalizeEventDate(evento?.dataFim || evento?.data_fim),
-  horarioFim: normalizeTimeValue(evento?.horarioFim || evento?.horario_fim),
-  nomeLocal: evento?.nomeLocal || evento?.local || "",
-  endereco: evento?.endereco || evento?.endereco || "",
-  contatoLocal: evento?.contatoLocal || evento?.contato_local || "",
-  capacidadePublico: evento?.capacidadePublico || evento?.capacidade_publico || "",
-  valorCache: evento?.valorCache || evento?.valor_cache || "",
-  publicoEsperado: evento?.publicoEsperado || evento?.publico_esperado || "",
-  descricao: evento?.descricao || "",
-  observacoes: evento?.observacoes || "",
-});
+const getInitialFormData = (evento?: any) => {
+  // Backend HTTP retorna entity columns: tipo, data, local. Metadata armazena
+  // descricao, observacoes, valor_cache, etc. Aceita todos os formatos.
+  const meta = (evento?.metadata as Record<string, unknown> | undefined) ?? {};
+  return {
+    titulo: evento?.titulo || evento?.title || "",
+    tipoEvento: normalizeSelectValue(
+      evento?.tipoEvento || evento?.tipo_evento || evento?.tipo || evento?.type,
+      tipoEventoAliases,
+    ),
+    artista: evento?.artista || evento?.artista_id || evento?.artistId || "",
+    participantes: normalizeAgendaParticipants(meta["participants"]),
+    status: normalizeSelectValue(evento?.status, statusAliases) || "agendado",
+    dataInicio: normalizeEventDate(
+      evento?.dataInicio || evento?.data_inicio || evento?.data || evento?.startsAt,
+    ),
+    horarioInicio: normalizeTimeValue(evento?.horarioInicio || evento?.horario_inicio),
+    dataFim: normalizeEventDate(
+      evento?.dataFim || evento?.data_fim || evento?.endsAt,
+    ),
+    horarioFim: normalizeTimeValue(evento?.horarioFim || evento?.horario_fim),
+    nomeLocal: evento?.nomeLocal || evento?.local || evento?.venue || "",
+    endereco: evento?.endereco || (meta["endereco"] as string) || "",
+    contatoLocal: evento?.contatoLocal || evento?.contato_local || (meta["contato_local"] as string) || "",
+    capacidadePublico:
+      evento?.capacidadePublico ||
+      evento?.capacidade_publico ||
+      evento?.capacity ||
+      "",
+    valorCache: evento?.valorCache || evento?.valor_cache || (meta["valor_cache"] as string | number) || "",
+    publicoEsperado:
+      evento?.publicoEsperado ||
+      evento?.publico_esperado ||
+      (meta["publico_esperado"] as string | number) ||
+      "",
+    descricao: evento?.descricao || (meta["descricao"] as string) || "",
+    observacoes: evento?.observacoes || (meta["observacoes"] as string) || "",
+  };
+};
 
 type SchedulerFormData = ReturnType<typeof getInitialFormData>;
 
@@ -170,22 +204,35 @@ const validationFieldLabels: Record<string, string> = {
 export function SchedulerFormModal({ open, onOpenChange, evento, mode }: SchedulerFormModalProps) {
   const queryClient = useQueryClient();
   const { clientes } = useClientes();
-  const { artistas } = useArtistas();
-  const artistasOptions = artistas.map((a: any) => ({ value: a.id, label: a.nome_artistico || a.nome || a.id }));
+  const { getOptionsByKind } = useOperationalSettings();
+  const operationalEventTypeOptions = getOptionsByKind("event_type");
+  const eventTypeOptions = operationalEventTypeOptions.length > 0 ? operationalEventTypeOptions : tiposEvento;
+  const { participants, getParticipantByKey, getArtistParticipantById } = useAgendaParticipants();
   
   // Filtrar apenas contatos PJ do CRM para o campo de local
   const locaisCRM = clientes.filter((c: any) => c.tipo_pessoa === "pessoa_juridica");
   
-  const [formData, setFormData] = useState(getInitialFormData(evento));
+  const hydrateFormData = (currentEvento?: any) => {
+    const initial = getInitialFormData(currentEvento);
+    if (initial.participantes.length === 0 && initial.artista) {
+      const artistParticipant = getArtistParticipantById(initial.artista);
+      if (artistParticipant) {
+        return { ...initial, participantes: [artistParticipant] };
+      }
+    }
+    return initial;
+  };
+
+  const [formData, setFormData] = useState(hydrateFormData(evento));
 
   const { addEvento, updateEvento } = useEventos();
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    setFormData(getInitialFormData(open ? evento : undefined));
+    setFormData(hydrateFormData(open ? evento : undefined));
     setErrors({});
-  }, [evento, mode, open]);
+  }, [evento, mode, open, participants]);
 
   const isViewMode = mode === "view";
   const title = mode === "create" ? "Novo Evento na Agenda" : mode === "edit" ? "Editar Evento" : "Visualizar Evento";
@@ -201,6 +248,27 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   
   // Verificar se o tipo de evento deve puxar local do CRM
   const shouldUseCRMLocal = tiposLocalCRM.includes(formData.tipoEvento);
+  const selectedParticipantKeys = formData.participantes.map(agendaParticipantKey);
+  const selectedParticipantsSummary = summarizeAgendaParticipants(formData.participantes);
+
+  const updateParticipants = (nextParticipants: AgendaParticipant[]) => {
+    const firstArtist = nextParticipants.find((participant) => participant.source === "artist");
+    setFormData({
+      ...formData,
+      participantes: nextParticipants,
+      artista: firstArtist?.id ?? "",
+    });
+  };
+
+  const handleParticipantToggle = (key: string) => {
+    const isSelected = selectedParticipantKeys.includes(key);
+    if (isSelected) {
+      updateParticipants(formData.participantes.filter((participant) => agendaParticipantKey(participant) !== key));
+      return;
+    }
+    const participant = getParticipantByKey(key);
+    if (participant) updateParticipants([...formData.participantes, participant]);
+  };
 
   // Atualizar dados de contato quando selecionar um local do CRM
   const handleLocalCRMChange = (localId: string) => {
@@ -277,28 +345,126 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     return normalizedFormData;
   };
 
-  const buildPayload = (data: SchedulerFormData) => {
-    const dataInicio = normalizeEventDate(data.dataInicio);
-    const dataFim = normalizeEventDate(data.dataFim);
-
-    return {
-      titulo: data.titulo,
-      tipo_evento: data.tipoEvento,
-      artista_id: data.artista || null,
-      status: data.status,
-      data_inicio: dataInicio ? format(dataInicio, "yyyy-MM-dd") : null,
-      horario_inicio: normalizeTimeValue(data.horarioInicio) || null,
-      data_fim: dataFim ? format(dataFim, "yyyy-MM-dd") : null,
-      horario_fim: normalizeTimeValue(data.horarioFim) || null,
-      local: data.nomeLocal || null,
-      endereco: data.endereco || null,
-      contato_local: data.contatoLocal || null,
-      capacidade_publico: data.capacidadePublico || null,
-      valor_cache: data.valorCache || null,
-      publico_esperado: data.publicoEsperado || null,
-      descricao: data.descricao || null,
-      observacoes: data.observacoes || null,
+  // Maps frontend tipoEvento (aliased pt-BR values) → backend CreateEventDto.type enum.
+  // Backend enum: show | festival | recording | meeting | interview | tour | other
+  const mapTipoToBackendType = (tipo: string): string => {
+    const t = (tipo || "").toLowerCase();
+    const map: Record<string, string> = {
+      shows:           "show",
+      show:            "show",
+      show_teatro:     "show",
+      festival:        "festival",
+      rodeio:          "show",
+      lancamento:      "show",
+      evento_corporativo: "other",
+      gravacao:        "recording",
+      gravacoes:       "recording",
+      recording:       "recording",
+      reuniao:         "meeting",
+      reunioes:        "meeting",
+      meeting:         "meeting",
+      entrevista:      "interview",
+      entrevistas:     "interview",
+      interview:       "interview",
+      programas_tv:    "interview",
+      radio:           "interview",
+      podcasts:        "interview",
+      tour:            "tour",
+      turne:           "tour",
     };
+    return map[t] ?? "other";
+  };
+
+  // Combine `YYYY-MM-DD` + `HH:mm` → ISO datetime string for backend.
+  const combineDateAndTime = (date: Date | undefined, time: string): string | undefined => {
+    if (!date || !isValid(date)) return undefined;
+    const normalizedTime = normalizeTimeValue(time);
+    if (normalizedTime) {
+      const [h, m] = normalizedTime.split(":").map((n) => Number(n));
+      const dt = new Date(date);
+      dt.setHours(h, m, 0, 0);
+      return dt.toISOString();
+    }
+    return date.toISOString();
+  };
+
+  const toNumberOrUndefined = (v: unknown): number | undefined => {
+    if (v == null || v === "") return undefined;
+    const n = typeof v === "number" ? v : Number(String(v).replace(/[^0-9.-]/g, ""));
+    return Number.isFinite(n) ? n : undefined;
+  };
+
+  // Maps frontend status (pt-BR) → backend UpdateEventDto.status enum.
+  // Backend enum: scheduled | confirmed | cancelled | completed | postponed
+  const mapStatusToBackend = (status: string): string | undefined => {
+    const s = (status || "").toLowerCase();
+    const map: Record<string, string> = {
+      agendado:    "scheduled",
+      pendente:    "scheduled",
+      confirmado:  "confirmed",
+      cancelado:   "cancelled",
+      concluido:   "completed",
+      realizado:   "completed",
+      postponed:   "postponed",
+      adiado:      "postponed",
+      scheduled:   "scheduled",
+      confirmed:   "confirmed",
+      cancelled:   "cancelled",
+      completed:   "completed",
+    };
+    return map[s];
+  };
+
+  /**
+   * Maps form state → backend CreateEventDto / UpdateEventDto shape.
+   *
+   * Backend NestJS ValidationPipe runs with whitelist + forbidNonWhitelisted,
+   * so any pt-BR field rejects com 400. Campos sem mapeamento DTO direto
+   * (descricao, observacoes, status legado, valores, etc.) vão para metadata.
+   *
+   * @param forUpdate quando true, inclui campo `status` (válido em UpdateEventDto,
+   *                  proibido em CreateEventDto).
+   */
+  const buildPayload = (data: SchedulerFormData, forUpdate = false) => {
+    const dataInicio = normalizeEventDate(data.dataInicio);
+    const dataFim    = normalizeEventDate(data.dataFim);
+
+    const startsAt = combineDateAndTime(dataInicio, data.horarioInicio);
+    const endsAt   = combineDateAndTime(dataFim, data.horarioFim);
+
+    const metadata: Record<string, unknown> = {};
+    if (data.endereco)           metadata["endereco"]           = data.endereco;
+    if (data.contatoLocal)       metadata["contato_local"]      = data.contatoLocal;
+    if (data.valorCache != null && data.valorCache !== "") metadata["valor_cache"] = data.valorCache;
+    if (data.publicoEsperado != null && data.publicoEsperado !== "") metadata["publico_esperado"] = data.publicoEsperado;
+    if (data.descricao)          metadata["descricao"]          = data.descricao;
+    if (data.observacoes)        metadata["observacoes"]        = data.observacoes;
+    if (data.status)             metadata["status_legado"]      = data.status;
+    if (data.participantes.length > 0) metadata["participants"] = data.participantes;
+
+    const payload: Record<string, unknown> = {
+      title: String(data.titulo || "").trim(),
+      type:  mapTipoToBackendType(data.tipoEvento),
+    };
+
+    const firstArtistParticipant = data.participantes.find((participant) => participant.source === "artist");
+    const artistId = (firstArtistParticipant?.id || data.artista || "").trim();
+    if (artistId) payload["artistId"] = artistId;
+    if (data.nomeLocal) payload["venue"] = data.nomeLocal;
+    if (startsAt) payload["startsAt"] = startsAt;
+    if (endsAt)   payload["endsAt"]   = endsAt;
+
+    const capacity = toNumberOrUndefined(data.capacidadePublico);
+    if (capacity !== undefined) payload["capacity"] = capacity;
+
+    if (Object.keys(metadata).length > 0) payload["metadata"] = metadata;
+
+    if (forUpdate) {
+      const mappedStatus = mapStatusToBackend(data.status);
+      if (mappedStatus) payload["status"] = mappedStatus;
+    }
+
+    return payload;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -319,9 +485,9 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
           toast.error("Não foi possível atualizar: evento sem identificador.");
           return;
         }
-        await updateEvento.mutateAsync({ id: evento.id, ...buildPayload(validatedFormData) });
+        await updateEvento.mutateAsync({ id: evento.id, ...buildPayload(validatedFormData, true) });
       } else {
-        await addEvento.mutateAsync(buildPayload(validatedFormData));
+        await addEvento.mutateAsync(buildPayload(validatedFormData, false));
       }
       await queryClient.invalidateQueries({ queryKey: [...QUERY_KEYS.EVENTOS] });
       onOpenChange(false);
@@ -367,14 +533,14 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
               <Label>Tipo de Evento *</Label>
               <Select 
                 value={formData.tipoEvento} 
-                onValueChange={(v) => setFormData({ ...formData, tipoEvento: v, artista: "" })} 
+                onValueChange={(v) => setFormData({ ...formData, tipoEvento: v })} 
                 disabled={isViewMode}
               >
                 <SelectTrigger className={errors.tipoEvento ? "border-destructive" : ""}>
                   <SelectValue placeholder="Selecione o tipo" />
                 </SelectTrigger>
                 <SelectContent>
-                  {tiposEvento.map((tipo) => (
+                  {eventTypeOptions.map((tipo) => (
                     <SelectItem key={tipo.value} value={tipo.value}>
                       {tipo.label}
                     </SelectItem>
@@ -384,30 +550,38 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
               <FieldError error={errors.tipoEvento} />
             </div>
 
-            {/* Artista - Condicional */}
-            {isArtistaRelated && (
-              <div className="space-y-2">
-                <Label>Artista</Label>
-                <Select 
-                  value={formData.artista} 
-                  onValueChange={(v) => setFormData({ ...formData, artista: v })} 
-                  disabled={isViewMode}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um artista" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {artistasOptions.length === 0 ? (
-                      <div className="p-2 text-sm text-muted-foreground">Nenhum artista cadastrado</div>
-                    ) : artistasOptions.map((artista) => (
-                      <SelectItem key={artista.value} value={artista.value}>
-                        {artista.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <div className="space-y-2">
+              <Label>Participantes do Evento</Label>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild disabled={isViewMode}>
+                  <Button type="button" variant="outline" className="h-8 w-full justify-between font-normal">
+                    <span className={selectedParticipantsSummary ? "truncate" : "text-muted-foreground"}>
+                      {selectedParticipantsSummary || "Selecione participantes"}
+                    </span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="max-h-72 w-[var(--radix-dropdown-menu-trigger-width)] overflow-y-auto">
+                  {participants.length === 0 ? (
+                    <div className="p-2 text-sm text-muted-foreground">Nenhum participante cadastrado</div>
+                  ) : participants.map((participant) => {
+                    const key = agendaParticipantKey(participant);
+                    return (
+                      <DropdownMenuCheckboxItem
+                        key={key}
+                        checked={selectedParticipantKeys.includes(key)}
+                        onCheckedChange={() => handleParticipantToggle(key)}
+                        onSelect={(event) => event.preventDefault()}
+                      >
+                        <span className="min-w-0 truncate">{participant.label}</span>
+                        {participant.category && (
+                          <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">{participant.category}</span>
+                        )}
+                      </DropdownMenuCheckboxItem>
+                    );
+                  })}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             {/* Status */}
             <div className="space-y-2">
@@ -622,7 +796,7 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
               Cancelar
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting}>
+              <Button type="submit" size="sm" className="gap-2 bg-primary" disabled={isSubmitting}>
                 {isSubmitting ? "Salvando..." : "Salvar Evento"}
               </Button>
             )}
@@ -632,3 +806,4 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     </Dialog>
   );
 }
+

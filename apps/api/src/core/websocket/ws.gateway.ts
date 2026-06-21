@@ -24,19 +24,7 @@ import {
 import { Server, Socket } from 'socket.io';
 import { Logger }         from '@nestjs/common';
 import { ConfigService }  from '@nestjs/config';
-
-/** Decodes a JWT payload without signature verification (for connection auth). */
-function decodeJwtPayload(token: string): Record<string, unknown> | null {
-  try {
-    const parts = token.split('.');
-    if (parts.length !== 3) return null;
-    const raw    = parts[1]!.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = raw + '='.repeat((4 - raw.length % 4) % 4);
-    return JSON.parse(Buffer.from(padded, 'base64').toString('utf8')) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
+import { TokenVerifierService } from '../security/token-verifier.service';
 
 /** Derives the allowed-origins callback from CORS_ORIGINS env var. */
 function buildOriginCallback(rawOrigins: string, nodeEnv: string) {
@@ -82,7 +70,10 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   /** userId → Set de socketIds (suporte a múltiplas abas) */
   private readonly userSockets = new Map<string, Set<string>>();
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly tokenVerifier: TokenVerifierService,
+  ) {}
 
   async afterInit() {
     const rawOrigins = this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:5000';
@@ -141,44 +132,62 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   }
 
   async handleConnection(socket: Socket) {
+    // P0-07: WS_ENABLED=false disables real-time entirely (until /socket.io/ runtime fixed).
+    if ((this.config.get<string>('WS_ENABLED') ?? 'true') === 'false') {
+      this.logger.warn(`WS: WS_ENABLED=false — socket ${socket.id} rejected`);
+      socket.disconnect(true);
+      return;
+    }
+
     const token =
       (socket.handshake.auth as Record<string, string>)?.token ??
       socket.handshake.headers['authorization']?.replace('Bearer ', '');
 
     if (!token || token === 'undefined') {
+      this.logger.warn(`WS: token ausente — socket ${socket.id} desconectado`);
       socket.disconnect(true);
       return;
     }
 
-    const claims = decodeJwtPayload(token);
-
-    if (!claims) {
-      this.logger.warn(`WS: token JWT malformado — socket ${socket.id} desconectado`);
+    let verified;
+    try {
+      verified = await this.tokenVerifier.verify(token);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`WS: token JWT rejeitado (${msg.split('\n')[0]}) — socket ${socket.id} desconectado`);
       socket.disconnect(true);
       return;
     }
 
-    // Verifica expiração
-    if (typeof claims['exp'] === 'number' && claims['exp'] * 1000 < Date.now()) {
-      this.logger.warn(`WS: token expirado — socket ${socket.id} desconectado`);
+    if (!verified.orgId) {
+      this.logger.warn(`WS: org_id ausente em token verificado — socket ${socket.id} desconectado`);
       socket.disconnect(true);
       return;
     }
 
-    const userId   = String(claims['sub'] ?? '');
-    const tenantId = String(claims['org_id'] ?? 'no-org');
+    // Optional tenant scoping: if handshake declares X-Tenant-ID, must match JWT's org_id.
+    const declaredTenant =
+      (socket.handshake.auth as Record<string, string>)?.tenantId ??
+      (socket.handshake.headers['x-tenant-id'] as string | undefined);
+    if (declaredTenant && declaredTenant !== verified.orgId) {
+      this.logger.warn(
+        `WS: tenant mismatch declared=${declaredTenant} jwt=${verified.orgId} — socket ${socket.id} desconectado`,
+      );
+      socket.disconnect(true);
+      return;
+    }
 
-    socket.data.userId   = userId;
-    socket.data.tenantId = tenantId;
+    socket.data.userId   = verified.sub;
+    socket.data.tenantId = verified.orgId;
 
-    await socket.join(`tenant:${tenantId}`);
-    await socket.join(`user:${userId}`);
+    await socket.join(`tenant:${verified.orgId}`);
+    await socket.join(`user:${verified.sub}`);
 
-    const set = this.userSockets.get(userId) ?? new Set<string>();
+    const set = this.userSockets.get(verified.sub) ?? new Set<string>();
     set.add(socket.id);
-    this.userSockets.set(userId, set);
+    this.userSockets.set(verified.sub, set);
 
-    this.logger.log(`WS conectado: ${userId} / tenant ${tenantId}`);
+    this.logger.log(`WS conectado: ${verified.sub} / tenant ${verified.orgId}`);
   }
 
   handleDisconnect(socket: Socket) {

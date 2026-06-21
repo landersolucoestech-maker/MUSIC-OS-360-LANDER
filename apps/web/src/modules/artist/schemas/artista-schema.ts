@@ -42,17 +42,15 @@ export const artistaSchema = z.object({
   soundcloud: z.string().max(300, "URL inválida").optional().or(z.literal("")),
   deezer: z.string().max(300, "URL inválida").optional().or(z.literal("")),
   appleMusic: z.string().max(300, "URL inválida").optional().or(z.literal("")),
-  tipoPerfil: z.enum(["independente", "com_empresario", "gravadora"]).default("independente"),
+  tipoPerfil: z.enum(["independente", "com_empresario", "gravadora", "editora"]).default("independente"),
   distribuidorasGerais: z.array(z.object({
     id: z.string(),
     email: z.string(),
     nomeCustom: z.string().optional(),
   })).optional(),
-  contatosEquipe: z.array(z.object({
-    nome: z.string(),
-    categoria: z.string(),
-    telefone: z.string(),
-    email: z.string(),
+  // Vínculos com contatos do CRM (apenas referências; dados resolvidos do CRM)
+  contatosVinculados: z.array(z.object({
+    contactId: z.string(),
     distribuidoras: z.array(z.object({
       id: z.string(),
       email: z.string(),
@@ -62,3 +60,4 @@ export const artistaSchema = z.object({
 });
 
 export type ArtistaFormValues = z.infer<typeof artistaSchema>;
+

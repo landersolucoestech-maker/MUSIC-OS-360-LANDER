@@ -1,0 +1,29 @@
+{
+  "name": "@music-os-360/ai-skills",
+  "version": "0.0.1",
+  "description": "MUSIC OS 360 — Lógica pura das AI Skills (prompts, parsers, validators) compartilhada entre web e api",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./project-planning": {
+      "types": "./dist/project-planning/index.d.ts",
+      "default": "./dist/project-planning/index.js"
+    },
+    "./shared": {
+      "types": "./dist/shared/primitives.d.ts",
+      "default": "./dist/shared/primitives.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

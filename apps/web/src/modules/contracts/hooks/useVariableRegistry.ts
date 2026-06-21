@@ -158,3 +158,4 @@ export function useVariableRegistry() {
 
   return { variables, addVariable, updateVariable, removeVariable, removeVariables, importVariables };
 }
+

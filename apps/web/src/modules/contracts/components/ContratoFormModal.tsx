@@ -16,7 +16,7 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { format, parseISO } from "date-fns";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";

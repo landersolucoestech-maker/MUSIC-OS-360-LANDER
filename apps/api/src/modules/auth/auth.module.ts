@@ -14,6 +14,8 @@ import { DatabaseModule } from '../../database/database.module';
 import { AuthController } from './auth.controller';
 import { DevAuthController } from './dev-auth.controller';
 import { AuthContextService } from './auth-context.service';
+import { OnboardingService } from './onboarding.service';
+import { WorkspaceProvisioningService } from './workspace-provisioning.service';
 
 // DevAuthController is only registered outside production — the route must not
 // exist at all in production (defense-in-depth beyond the 403 guard in the controller).
@@ -23,7 +25,11 @@ const DEV_CONTROLLERS =
 @Module({
   imports:     [RbacModule, DatabaseModule],
   controllers: [AuthController, ...DEV_CONTROLLERS],
-  providers:   [AuthContextService],
+  providers:   [
+    AuthContextService,
+    OnboardingService,
+    WorkspaceProvisioningService,
+  ],
   exports:     [AuthContextService],
 })
 export class AuthModule {}

@@ -93,3 +93,4 @@ export type FonogramaUpdate = Partial<FonogramaInsert>;
 export interface FonogramaWithRelations extends Fonograma {
   artistas?: ArtistaRef | null;
 }
+

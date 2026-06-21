@@ -35,18 +35,17 @@ export function MetricCard({
           {/* Left: label + value */}
           <div className="flex-1 min-w-0 space-y-1.5">
             <p className={cn(
-              "text-[10.5px] font-semibold uppercase tracking-[0.07em]",
-              "text-muted-foreground/80 leading-none",
+              "text-sm font-medium text-muted-foreground leading-none",
             )}>
               {title}
             </p>
             <p className={cn(
-              "text-2xl font-semibold tabular-nums tracking-tight text-foreground leading-none font-mono",
+              "text-2xl font-bold tabular-nums tracking-tight text-foreground leading-none",
             )}>
               {value}
             </p>
             {description && (
-              <p className="text-[11.5px] text-muted-foreground leading-snug">
+              <p className="text-xs text-muted-foreground leading-snug">
                 {description}
               </p>
             )}
@@ -73,12 +72,12 @@ export function MetricCard({
               {isPositive
                 ? <TrendingUp className="h-3 w-3" />
                 : <TrendingDown className="h-3 w-3" />}
-              <span className="text-[11.5px] font-semibold font-mono tabular-nums">
+              <span className="text-[11px] font-semibold font-sans tabular-nums">
                 {isPositive ? "+" : ""}{trend.value}%
               </span>
             </div>
             {trend.label && (
-              <span className="text-[11.5px] text-muted-foreground">{trend.label}</span>
+              <span className="text-[11px] text-muted-foreground">{trend.label}</span>
             )}
           </div>
         )}

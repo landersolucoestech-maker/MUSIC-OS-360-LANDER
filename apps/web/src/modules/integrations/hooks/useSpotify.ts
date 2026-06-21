@@ -103,3 +103,4 @@ export function useSpotifyDisconnect() {
 export function useSpotifyTrackMetrics() {
   return { data: null, isLoading: false, fetch: (_isrc: string) => {} };
 }
+

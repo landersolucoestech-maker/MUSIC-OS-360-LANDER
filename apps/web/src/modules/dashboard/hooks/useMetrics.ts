@@ -10,15 +10,20 @@ import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { useProjetos } from "@/modules/projects/hooks/useProjetos";
 import { format, isToday, differenceInDays, startOfMonth, endOfMonth, parseISO, subDays } from "date-fns";
 
 interface ArtistaDestaque {
   id: string;
   nome_artistico: string;
   genero_musical: string | null;
-  shows: number;
-  receita: number;
+  lancamentos: number;
+  /** null = dado de streams ainda não integrado (não exibir como 0). */
+  streams: number | null;
+  projetos: number;
+  foto_url: string | null;
 }
 
 interface ArtistasMetrics {
@@ -36,7 +41,7 @@ interface CRMMetrics {
   total: number;
   ativos: number;
   leads: number;
-  totalVendas: number;
+  valorComercialContratado: number;
   totalContratos: number;
 }
 
@@ -75,8 +80,11 @@ export function useMetrics(): UseMetricsReturn {
   const { transacoes, isLoading: loadingTransacoes } = useTransacoes();
   const { eventos, isLoading: loadingEventos } = useEventos();
   const { clientes, isLoading: loadingClientes } = useClientes();
+  const { lancamentos: lancamentosData, isLoading: loadingLancamentos } = useLancamentos();
+  const { projetos, isLoading: loadingProjetos } = useProjetos();
   const isLoading = loadingArtistas || loadingContratos || loadingTransacoes ||
-                    loadingEventos || loadingClientes;
+                    loadingEventos || loadingClientes || loadingLancamentos ||
+                    loadingProjetos;
 
   const artistasMetrics = useMemo<ArtistasMetrics>(() => {
     const artistasComContrato = artistas.filter(a => a.contrato_id).length;
@@ -119,7 +127,7 @@ export function useMetrics(): UseMetricsReturn {
       total: clientes.length,
       ativos,
       leads,
-      totalVendas: valorTotalContratos,
+      valorComercialContratado: valorTotalContratos,
       totalContratos: contratosClientes.length,
     };
   }, [clientes, contratos]);
@@ -191,43 +199,64 @@ export function useMetrics(): UseMetricsReturn {
       })
       .reduce((acc, t) => acc + t.valor, 0);
 
+    // Backend retorna timestamp na coluna `data`; mock usa `data_inicio`.
+    // Aceita os dois para evitar contagem zerada em HTTP mode.
+    const readEventoData = (e: Record<string, unknown>): string | null => {
+      const v =
+        (e["data_inicio"] as string | null | undefined) ??
+        (e["data"]        as string | null | undefined) ??
+        null;
+      return v ?? null;
+    };
+
     const eventosHoje = eventos.filter(e => {
-      if (!e.data_inicio) return false;
-      try { return isToday(parseISO(e.data_inicio as string)); } catch { return false; }
+      const raw = readEventoData(e as Record<string, unknown>);
+      if (!raw) return false;
+      try { return isToday(parseISO(raw)); } catch { return false; }
     }).length;
 
     const eventosMes = eventos.filter(e => {
-      if (!e.data_inicio) return false;
+      const raw = readEventoData(e as Record<string, unknown>);
+      if (!raw) return false;
       try {
-        const d = parseISO(e.data_inicio as string);
+        const d = parseISO(raw);
         return d >= inicioMes && d <= fimMes;
       } catch { return false; }
     }).length;
 
-    const artistasComReceita = artistas.map(artista => {
-      const eventosArtista = eventos.filter(e => e.artista_id === artista.id);
-      const receita = eventosArtista
-        .filter(e => {
-          const s = (e.status ?? "").toLowerCase();
-          return s === "confirmado" || s === "realizado";
-        })
-        .reduce((acc, e) => acc + ((e as Record<string, unknown>)["valor_cache"] as number || 0), 0);
-      const shows = eventosArtista.filter(e => {
-        const s = (e.status ?? "").toLowerCase();
-        return s === "confirmado" || s === "realizado";
-      }).length;
+    const artistasComMetricas: ArtistaDestaque[] = artistas.map(artista => {
+      const lancamentos = lancamentosData.filter(l => l.artista_id === artista.id).length;
+      const projetosCount = projetos.filter(p => p.artista_id === artista.id).length;
+
+      // Streams: tenta múltiplas fontes; se nenhuma disponível, retorna null
+      // para a UI poder exibir "–" em vez de "0" falso.
+      const a = artista as Record<string, unknown>;
+      const integrationsData = a["integrations_data"] as Record<string, unknown> | undefined;
+      const spotifyData = integrationsData?.["spotify"] as Record<string, unknown> | undefined;
+      const streamsRaw =
+        (a["spotify_ouvintes"] as number | undefined) ??
+        (spotifyData?.["monthly_listeners"] as number | undefined) ??
+        (spotifyData?.["listeners"] as number | undefined);
+      const streams = typeof streamsRaw === "number" && Number.isFinite(streamsRaw)
+        ? streamsRaw
+        : null;
 
       return {
         id: artista.id,
         nome_artistico: artista.nome_artistico,
         genero_musical: artista.genero_musical ?? null,
-        shows,
-        receita,
+        lancamentos,
+        streams,
+        projetos: projetosCount,
+        foto_url: (a["foto_url"] as string | null) ?? null,
       };
     });
 
-    const artistasDestaque = artistasComReceita
-      .sort((a, b) => b.receita - a.receita)
+    const artistasDestaque = artistasComMetricas
+      .sort((a, b) => {
+        if (b.lancamentos !== a.lancamentos) return b.lancamentos - a.lancamentos;
+        return b.projetos - a.projetos;
+      })
       .slice(0, 4);
 
     return {
@@ -239,7 +268,7 @@ export function useMetrics(): UseMetricsReturn {
       eventosMes,
       artistasDestaque,
     };
-  }, [artistas, contratos, transacoes, eventos]);
+  }, [artistas, contratos, transacoes, eventos, lancamentosData, projetos]);
 
   void format; // date-fns import kept for potential future use
 
@@ -251,3 +280,4 @@ export function useMetrics(): UseMetricsReturn {
     isLoading,
   };
 }
+

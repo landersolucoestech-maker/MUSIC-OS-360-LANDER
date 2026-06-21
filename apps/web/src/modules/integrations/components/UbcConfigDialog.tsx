@@ -9,10 +9,8 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -37,7 +35,6 @@ import {
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog";
 import {
-  Music,
   Shield,
   RefreshCw,
   Loader2,
@@ -108,19 +105,11 @@ export function UbcConfigDialog({ open, onOpenChange }: UbcConfigDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-500/10">
-              <Music className="h-5 w-5 text-emerald-500" />
-            </div>
-            <div>
-              <DialogTitle className="text-base">UBC — União Brasileira de Compositores</DialogTitle>
-              <DialogDescription className="text-xs">
-                Sincronize obras, ISWC e dados de registro de composições
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="ubc"
+          title="UBC — União Brasileira de Compositores"
+          description="Sincronize obras, ISWC e dados de registro de composições"
+        />
 
         {/* Status badge */}
         <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
@@ -142,7 +131,7 @@ export function UbcConfigDialog({ open, onOpenChange }: UbcConfigDialogProps) {
             )}
           </div>
           {isConnected && (
-            <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs">
+            <Badge variant="success">
               Activo
             </Badge>
           )}
@@ -252,7 +241,7 @@ export function UbcConfigDialog({ open, onOpenChange }: UbcConfigDialogProps) {
                 Importa todas as obras registradas na UBC para o catálogo local, gerando ISWC automaticamente.
               </p>
               {syncAll.data && (
-                <div className="rounded bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700 dark:text-emerald-400">
+                <div className="rounded bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 text-xs text-emerald-700">
                   Última sync: {syncAll.data.total_inserted} novas obras importadas, {syncAll.data.total_updated} já existentes
                   {syncAll.data.total_errors > 0 && ` · ${syncAll.data.total_errors} erros`}
                 </div>

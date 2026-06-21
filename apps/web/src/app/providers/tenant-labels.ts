@@ -63,7 +63,7 @@ const MODULE_KEYS: TenantModuleKey[] = [
   "artists", "catalog", "releases", "contracts",
   "accounting", "crm", "marketing", "events",
   "inventory", "rh", "monitoring", "licensing",
-  "projects", "leads", "audit", "settings",
+  "projects", "leads", "audit", "settings", "musicchat",
 ];
 
 /** Role-based default permissions */

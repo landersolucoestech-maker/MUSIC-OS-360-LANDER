@@ -14,7 +14,7 @@ import { ArrowDownRight, ArrowUpRight, Minus, type LucideIcon } from "lucide-rea
 import { Card, CardContent } from "@/shared/ui/card";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { cn } from "@/shared/lib/utils";
-export interface MetricEvolutionPoint { date: string; value?: number; streams?: number; followers?: number; saves?: number; [key: string]: unknown; }
+export interface MetricEvolutionPoint { date?: string; captured_at?: string; value?: number; streams?: number; followers?: number; saves?: number; [key: string]: unknown; }
 
 const numberFormatter = new Intl.NumberFormat("pt-BR");
 
@@ -158,11 +158,15 @@ export function ArtistaEvolutionCard({
         typeof p[metric] === "number" && Number.isFinite(p[metric] as number),
       )
       .map((p) => {
-        const dt = parseISO(p.date);
+        // O snapshot real do backend traz `captured_at`; aceitamos `date` por retrocompat.
+        const rawDate = typeof p.captured_at === "string" ? p.captured_at : p.date;
+        const dt = typeof rawDate === "string" ? parseISO(rawDate) : new Date(NaN);
+        const hasValidDate = !Number.isNaN(dt.getTime());
         return {
-          date: p.date,
+          date: typeof rawDate === "string" ? rawDate : "",
           value: Number(p[metric]),
-          label: format(dt, "dd/MM", { locale: ptBR }),
+          // Sem data válida não inventamos um valor: o rótulo fica "—" (transparente).
+          label: hasValidDate ? format(dt, "dd/MM", { locale: ptBR }) : "—",
         };
       });
   }, [points, metric]);
@@ -175,14 +179,13 @@ export function ArtistaEvolutionCard({
       <CardContent className="p-0">
         {/* Cabeçalho */}
         <div
-          className="flex items-center gap-3 px-4 py-3 border-b"
-          style={{ background: `linear-gradient(135deg, ${accent}22 0%, ${accent}05 100%)` }}
+          className="flex items-center gap-3 border-b bg-card px-4 py-3"
         >
           <div
-            className="h-9 w-9 rounded-lg grid place-items-center text-white shrink-0"
+            className="h-9 w-9 rounded-lg grid place-items-center text-foreground shrink-0"
             style={{ backgroundColor: accent }}
           >
-            <Icon className="h-5 w-5" />
+            <Icon className="h-5 w-5 text-white" />
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold leading-tight">{title}</p>
@@ -260,18 +263,6 @@ export function ArtistaEvolutionCard({
                       data={chartData}
                       margin={{ top: 4, right: 8, left: 0, bottom: 0 }}
                     >
-                      <defs>
-                        <linearGradient
-                          id={`grad-${testIdPrefix}`}
-                          x1="0"
-                          y1="0"
-                          x2="0"
-                          y2="1"
-                        >
-                          <stop offset="5%" stopColor={accent} stopOpacity={0.4} />
-                          <stop offset="95%" stopColor={accent} stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
                       <CartesianGrid strokeDasharray="3 3" opacity={0.2} />
                       <XAxis
                         dataKey="label"
@@ -307,7 +298,8 @@ export function ArtistaEvolutionCard({
                         dataKey="value"
                         stroke={accent}
                         strokeWidth={2}
-                        fill={`url(#grad-${testIdPrefix})`}
+                        fill={accent}
+                        fillOpacity={0.12}
                         isAnimationActive={false}
                       />
                     </AreaChart>
@@ -321,3 +313,4 @@ export function ArtistaEvolutionCard({
     </Card>
   );
 }
+

@@ -161,3 +161,4 @@ export const MOCK_ECAD_HISTORICO_ISRC: Record<string, EcadHistoricoISRC[]> = {
     { id: "eh-008-1", isrc: "BRMSC2500008", periodo: "2026-Q1", data_referencia: "2026-03-31", total_execucoes: 0, valor_arrecadado: 0, status: "divergencia", observacoes: "Obra não reportada ao ECAD" },
   ],
 };
+

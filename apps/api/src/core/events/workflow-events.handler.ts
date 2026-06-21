@@ -13,9 +13,10 @@
 
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { randomUUID } from 'crypto';
 import { DATA_SOURCE } from '../../database/database.module';
+import { DatabaseContextService } from '../../database/database-context.service';
 import { AuditLogEntity } from '../../database/entities';
 import { DOMAIN_EVENTS } from './events.service';
 import type { DomainEvent } from './events.service';
@@ -26,7 +27,10 @@ export class WorkflowEventsHandler {
   private readonly logger = new Logger(WorkflowEventsHandler.name);
   private readonly auditRepo: Repository<AuditLogEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) @Optional() ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
+    @Optional() private readonly dbContext?: DatabaseContextService,
+  ) {
     if (ds) this.auditRepo = ds.getRepository(AuditLogEntity);
   }
 
@@ -47,6 +51,13 @@ export class WorkflowEventsHandler {
       transitionedAt,
     } = event.payload;
 
+    if (!event.tenantId) {
+      this.logger.warn(
+        `WorkflowEventsHandler: event "${event.type}" sem tenantId - abortado (fail-closed)`,
+      );
+      return;
+    }
+
     this.logger.log(
       `[WORKFLOW_TRANSITIONED] ${entityType}/${entityId}: ${fromStatus} → ${toStatus} by ${actorId} tenant=${event.tenantId}`,
     );
@@ -54,30 +65,34 @@ export class WorkflowEventsHandler {
     if (!this.auditRepo) return;
 
     try {
-      await this.auditRepo.save(
-        this.auditRepo.create({
-          id:         randomUUID(),
-          tenant_id:  event.tenantId,
-          user_id:    actorId,
-          action:     'workflow.transition',
-          entity:     entityType,
-          entity_id:  entityId,
-          before:     { status: fromStatus },
-          after:      { status: toStatus },
-          ip_address: null,
-          user_agent: null,
-          request_id: event.correlationId ?? null,
-          metadata: {
-            fromStatus,
-            toStatus,
-            actorRole:     actorRole ?? null,
-            reason:        reason ?? null,
-            transitionedAt,
-            correlationId: event.correlationId ?? null,
-            source:        'domain_event',
-          },
-        }),
-      );
+      await this.runInTenantContext(event.tenantId, async (manager) => {
+        const auditRepo = manager ? manager.getRepository(AuditLogEntity) : this.auditRepo;
+        if (!auditRepo) return;
+        await auditRepo.save(
+          auditRepo.create({
+            id:         randomUUID(),
+            tenant_id:  event.tenantId,
+            user_id:    actorId,
+            action:     'workflow.transition',
+            entity:     entityType,
+            entity_id:  entityId,
+            before:     { status: fromStatus },
+            after:      { status: toStatus },
+            ip_address: null,
+            user_agent: null,
+            request_id: event.correlationId ?? null,
+            metadata: {
+              fromStatus,
+              toStatus,
+              actorRole:     actorRole ?? null,
+              reason:        reason ?? null,
+              transitionedAt,
+              correlationId: event.correlationId ?? null,
+              source:        'domain_event',
+            },
+          }),
+        );
+      });
       this.logger.log(
         `WorkflowEventsHandler: audit entry persisted for ${entityType}/${entityId} (${fromStatus} → ${toStatus})`,
       );
@@ -86,5 +101,14 @@ export class WorkflowEventsHandler {
         `WorkflowEventsHandler: failed to persist audit entry for ${entityType}/${entityId} — ${String(err)}`,
       );
     }
+  }
+
+  private runInTenantContext<T>(
+    tenantId: string,
+    work: (manager: EntityManager | undefined) => Promise<T>,
+  ): Promise<T> {
+    return this.dbContext
+      ? this.dbContext.runInTenantContext({ tenantId, orgId: null, role: null }, work)
+      : work(undefined);
   }
 }

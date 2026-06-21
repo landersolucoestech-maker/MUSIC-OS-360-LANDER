@@ -12,6 +12,7 @@ interface DatePickerFieldProps {
   disabled?: boolean;
   placeholder?: string;
   className?: string;
+  displayFormat?: string;
   "data-testid"?: string;
 }
 
@@ -21,6 +22,7 @@ export function DatePickerField({
   disabled,
   placeholder = "Selecione uma data",
   className,
+  displayFormat = "dd/MM/yyyy",
   "data-testid": testId,
 }: DatePickerFieldProps) {
   const [open, setOpen] = useState(false);
@@ -35,7 +37,7 @@ export function DatePickerField({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            "flex h-10 w-full items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-2",
+            "flex h-8 w-full items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-1",
             "text-sm font-normal",
             "transition-colors duration-150",
             "hover:border-border",
@@ -46,7 +48,7 @@ export function DatePickerField({
         >
           <CalendarIcon className="h-4 w-4 text-muted-foreground shrink-0" />
           {selected ? (
-            <span className="text-foreground">{format(selected, "dd/MM/yyyy", { locale: ptBR })}</span>
+            <span className="text-foreground">{format(selected, displayFormat, { locale: ptBR })}</span>
           ) : (
             <span className="text-muted-foreground/70">{placeholder}</span>
           )}

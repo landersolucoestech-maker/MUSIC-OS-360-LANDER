@@ -37,7 +37,7 @@ const METADATA_FIELDS = new Set([
   'distribuidoras_empresa_selecionadas', 'distribuidoras_empresa_emails', 'distribuidoras_gerais',
   'documentos_pessoais_url', 'presskit_url',
   'notas_internas', 'slug_artistico', 'tags_musicais', 'fase_carreira',
-  'contatos_equipe', 'genero',
+  'contatos_vinculados', 'contatos_equipe', 'genero',
 ]);
 
 /** Spreads metadata fields back onto the entity so the frontend can read them as top-level fields. */

@@ -186,3 +186,4 @@ export function makeMockAdsProvider(
 ): MockAdsProvider {
   return new MockAdsProvider(platform);
 }
+

@@ -6,7 +6,7 @@
  * o dialog recebe, conecta e fecha.
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type ComponentType, type CSSProperties } from "react";
 import { getAccessToken } from "@/shared/lib/api-client";
 import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
 import { toast } from "sonner";
@@ -20,13 +20,30 @@ import {
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { Loader2, Check, ShieldCheck, ExternalLink } from "lucide-react";
+import {
+  SiGoogle,
+  SiGoogleads,
+  SiInstagram,
+  SiMeta,
+  SiApplemusic,
+  SiSoundcloud,
+  SiSpotify,
+  SiTiktok,
+  SiYoutube,
+} from "react-icons/si";
+import { DeezerIcon } from "@/shared/ui/deezer-icon";
 import type { MarketingPlatformId } from "@/shared/integrations/contracts/marketing.contract";
+import {
+  IntegrationLogo,
+  type IntegrationLogoId,
+} from "@/shared/integrations";
 
 // ─── Metadados por plataforma ─────────────────────────────────────────────────
 
 interface PlatformMeta {
   name: string;
-  icon: string;
+  icon: ComponentType<{ className?: string; style?: CSSProperties }>;
+  logoId?: IntegrationLogoId;
   buttonLabel: string;
   buttonColor: string;
   buttonTextColor: string;
@@ -37,7 +54,8 @@ interface PlatformMeta {
 const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   meta_business: {
     name: "Meta Business Suite",
-    icon: "📘",
+    icon: SiMeta,
+    logoId: "meta_business",
     buttonLabel: "Entrar com o Facebook",
     buttonColor: "#1877F2",
     buttonTextColor: "#ffffff",
@@ -51,7 +69,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   youtube_business: {
     name: "YouTube Business",
-    icon: "▶️",
+    icon: SiYoutube,
     buttonLabel: "Entrar com o Google",
     buttonColor: "#4285F4",
     buttonTextColor: "#ffffff",
@@ -65,7 +83,8 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   tiktok_business: {
     name: "TikTok for Business",
-    icon: "🎵",
+    icon: SiTiktok,
+    logoId: "tiktok_business",
     buttonLabel: "Entrar no TikTok",
     buttonColor: "#010101",
     buttonTextColor: "#ffffff",
@@ -79,13 +98,14 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   google_business: {
     name: "Google & YouTube",
-    icon: "🔍",
+    icon: SiGoogle,
+    logoId: "google_business",
     buttonLabel: "Entrar com o Google",
     buttonColor: "#4285F4",
     buttonTextColor: "#ffffff",
     authProvider: "Google",
     scopes: [
-      "Aceder ao Google Analytics 4 (GA4)",
+      "Aceder ao Google Métricas 4 (GA4)",
       "Aceder ao Google Search Console",
       "Gerir campanhas e relatórios do Google Ads",
       "Aceder ao YouTube Studio — canal oficial e analytics",
@@ -95,7 +115,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_spotify: {
     name: "Spotify for Artists",
-    icon: "🎧",
+    icon: SiSpotify,
     buttonLabel: "Entrar no Spotify",
     buttonColor: "#1DB954",
     buttonTextColor: "#000000",
@@ -108,7 +128,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_deezer: {
     name: "Deezer for Artists",
-    icon: "🎶",
+    icon: DeezerIcon,
     buttonLabel: "Entrar no Deezer",
     buttonColor: "#FF0092",
     buttonTextColor: "#ffffff",
@@ -120,7 +140,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_soundcloud: {
     name: "SoundCloud Pro",
-    icon: "☁️",
+    icon: SiSoundcloud,
     buttonLabel: "Entrar no SoundCloud",
     buttonColor: "#FF5500",
     buttonTextColor: "#ffffff",
@@ -132,7 +152,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_apple_music: {
     name: "Apple Music for Artists",
-    icon: "🍎",
+    icon: SiApplemusic,
     buttonLabel: "Continuar com o Apple",
     buttonColor: "#555555",
     buttonTextColor: "#ffffff",
@@ -144,7 +164,8 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   spotify_ads: {
     name: "Spotify Ad Studio",
-    icon: "🎧",
+    icon: SiSpotify,
+    logoId: "spotify_ads",
     buttonLabel: "Entrar no Spotify",
     buttonColor: "#1DB954",
     buttonTextColor: "#000000",
@@ -157,7 +178,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   deezer_ads: {
     name: "Deezer Ad Manager",
-    icon: "🎶",
+    icon: DeezerIcon,
     buttonLabel: "Entrar no Deezer",
     buttonColor: "#FF0092",
     buttonTextColor: "#ffffff",
@@ -166,7 +187,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   apple_music_ads: {
     name: "Apple Music Ads",
-    icon: "🍎",
+    icon: SiApplemusic,
     buttonLabel: "Continuar com o Apple",
     buttonColor: "#555555",
     buttonTextColor: "#ffffff",
@@ -175,7 +196,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   soundcloud_ads: {
     name: "SoundCloud Ads",
-    icon: "☁️",
+    icon: SiSoundcloud,
     buttonLabel: "Entrar no SoundCloud",
     buttonColor: "#FF5500",
     buttonTextColor: "#ffffff",
@@ -184,7 +205,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_instagram: {
     name: "Instagram Corporativo",
-    icon: "📸",
+    icon: SiInstagram,
     buttonLabel: "Entrar com o Facebook",
     buttonColor: "#E1306C",
     buttonTextColor: "#ffffff",
@@ -193,25 +214,25 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   corp_tiktok: {
     name: "TikTok Corporativo",
-    icon: "🎵",
+    icon: SiTiktok,
     buttonLabel: "Entrar no TikTok",
     buttonColor: "#010101",
     buttonTextColor: "#ffffff",
     authProvider: "TikTok",
-    scopes: ["Aceder ao TikTok Analytics da conta corporativa", "Visualizar métricas de vídeos e audiência"],
+    scopes: ["Aceder ao TikTok Métricas da conta corporativa", "Visualizar métricas de vídeos e audiência"],
   },
   corp_youtube: {
     name: "YouTube Corporativo",
-    icon: "▶️",
+    icon: SiYoutube,
     buttonLabel: "Entrar com o Google",
     buttonColor: "#FF0000",
     buttonTextColor: "#ffffff",
     authProvider: "Google",
-    scopes: ["Aceder ao YouTube Analytics do canal corporativo", "Visualizar métricas de vídeos e inscritos"],
+    scopes: ["Aceder ao YouTube Métricas do canal corporativo", "Visualizar métricas de vídeos e inscritos"],
   },
   meta_ads: {
     name: "Meta Ads",
-    icon: "📘",
+    icon: SiMeta,
     buttonLabel: "Entrar com o Facebook",
     buttonColor: "#1877F2",
     buttonTextColor: "#ffffff",
@@ -220,7 +241,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   google_ads: {
     name: "Google Ads",
-    icon: "🔍",
+    icon: SiGoogleads,
     buttonLabel: "Entrar com o Google",
     buttonColor: "#4285F4",
     buttonTextColor: "#ffffff",
@@ -229,7 +250,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   tiktok_ads: {
     name: "TikTok Ads",
-    icon: "🎵",
+    icon: SiTiktok,
     buttonLabel: "Entrar no TikTok",
     buttonColor: "#010101",
     buttonTextColor: "#ffffff",
@@ -238,7 +259,7 @@ const PLATFORM_META: Record<MarketingPlatformId, PlatformMeta> = {
   },
   youtube_ads: {
     name: "YouTube Ads",
-    icon: "▶️",
+    icon: SiYoutube,
     buttonLabel: "Entrar com o Google",
     buttonColor: "#FF0000",
     buttonTextColor: "#ffffff",
@@ -268,6 +289,203 @@ interface Props {
   onConnect: (platform: MarketingPlatformId, scopes: string[], access_token?: string) => Promise<void>;
 }
 
+interface AuthorizationPresentationProps {
+  meta: PlatformMeta;
+  onCancel: () => void;
+  onContinue: () => void;
+}
+
+function ScopeRows({
+  scopes,
+  checkColor,
+}: {
+  scopes: string[];
+  checkColor: string;
+}) {
+  return (
+    <ul className="space-y-2">
+      {scopes.map((scope) => (
+        <li key={scope} className="flex items-start gap-2 text-xs leading-relaxed">
+          <Check className="mt-0.5 h-3.5 w-3.5 shrink-0" style={{ color: checkColor }} />
+          {scope}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function MetaAuthorizationPresentation({
+  meta,
+  onCancel,
+  onContinue,
+}: AuthorizationPresentationProps) {
+  return (
+    <>
+      <div className="flex items-center gap-3 bg-[#0866ff] px-6 py-5 text-white">
+        <IntegrationLogo id="meta_business" className="h-12 w-12 border-0" imageClassName="h-10 w-10" />
+        <div>
+          <DialogTitle className="text-base text-white">Continuar com Facebook</DialogTitle>
+          <DialogDescription className="text-xs text-white/80">
+            Autorizar o Meta Business Suite
+          </DialogDescription>
+        </div>
+      </div>
+      <div className="space-y-4 px-6 py-5">
+        <p className="text-sm font-medium">O MUSIC OS 360 solicita acesso aos ativos empresariais selecionados.</p>
+        <div className="rounded-xl border bg-[#f0f2f5] p-4">
+          <ScopeRows scopes={meta.scopes} checkColor="#0866ff" />
+        </div>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">
+          A seleção de conta, senha e consentimento acontece exclusivamente no domínio oficial do Facebook.
+        </p>
+        <AuthorizationActions
+          onCancel={onCancel}
+          onContinue={onContinue}
+          label={meta.buttonLabel}
+          background="#0866ff"
+          foreground="#ffffff"
+        />
+      </div>
+    </>
+  );
+}
+
+function TikTokAuthorizationPresentation({
+  meta,
+  onCancel,
+  onContinue,
+}: AuthorizationPresentationProps) {
+  return (
+    <div className="space-y-5 bg-white px-6 py-6 text-[#161823]">
+      <div className="flex items-center justify-between border-b pb-4">
+        <div className="flex items-center gap-3">
+          <IntegrationLogo id="tiktok_business" className="h-12 w-12" imageClassName="h-9 w-9" />
+          <div>
+            <DialogTitle className="text-base text-[#161823]">TikTok for Business</DialogTitle>
+            <DialogDescription className="text-xs">Business Center authorization</DialogDescription>
+          </div>
+        </div>
+        <span className="h-2.5 w-2.5 rounded-full bg-[#25f4ee] shadow-[5px_0_0_#fe2c55]" />
+      </div>
+      <div>
+        <p className="mb-3 text-sm font-semibold">Acessos solicitados</p>
+        <ScopeRows scopes={meta.scopes} checkColor="#fe2c55" />
+      </div>
+      <p className="text-[11px] leading-relaxed text-[#6b6d75]">
+        O TikTok exibirá a conta empresarial, os termos e as permissões finais antes da autorização.
+      </p>
+      <AuthorizationActions
+        onCancel={onCancel}
+        onContinue={onContinue}
+        label={meta.buttonLabel}
+        background="#161823"
+        foreground="#ffffff"
+      />
+    </div>
+  );
+}
+
+function GoogleAuthorizationPresentation({
+  meta,
+  onCancel,
+  onContinue,
+}: AuthorizationPresentationProps) {
+  return (
+    <div className="space-y-5 bg-[#f8fafd] px-6 py-6 text-[#202124]">
+      <IntegrationLogo id="google_business" className="h-12 w-12 border-0 bg-transparent" imageClassName="h-10 w-10" />
+      <div>
+        <DialogTitle className="text-xl font-normal text-[#202124]">Autorizar Google & YouTube</DialogTitle>
+        <DialogDescription className="mt-1 text-sm text-[#5f6368]">
+          Escolha sua Conta Google na próxima etapa.
+        </DialogDescription>
+      </div>
+      <div className="rounded-2xl border border-[#dadce0] bg-white p-4">
+        <ScopeRows scopes={meta.scopes} checkColor="#1a73e8" />
+      </div>
+      <p className="text-[11px] leading-relaxed text-[#5f6368]">
+        O Google apresentará uma tela oficial para revisar individualmente os acessos solicitados.
+      </p>
+      <AuthorizationActions
+        onCancel={onCancel}
+        onContinue={onContinue}
+        label={meta.buttonLabel}
+        background="#1a73e8"
+        foreground="#ffffff"
+      />
+    </div>
+  );
+}
+
+function SpotifyAuthorizationPresentation({
+  meta,
+  onCancel,
+  onContinue,
+}: AuthorizationPresentationProps) {
+  return (
+    <div className="space-y-5 bg-[#121212] px-6 py-6 text-white">
+      <div className="text-center">
+        <IntegrationLogo id="spotify_ads" className="mx-auto h-14 w-14 border-0 bg-transparent" imageClassName="h-12 w-12" />
+        <DialogTitle className="mt-4 text-xl text-white">Conectar ao Spotify Ad Studio</DialogTitle>
+        <DialogDescription className="mt-1 text-sm text-[#b3b3b3]">
+          Autorize sua conta diretamente no Spotify.
+        </DialogDescription>
+      </div>
+      <div className="border-y border-[#292929] py-4">
+        <ScopeRows scopes={meta.scopes} checkColor="#1ed760" />
+      </div>
+      <p className="text-center text-[11px] leading-relaxed text-[#b3b3b3]">
+        Os recursos disponíveis dependem das permissões liberadas pelo Spotify para este aplicativo.
+      </p>
+      <AuthorizationActions
+        onCancel={onCancel}
+        onContinue={onContinue}
+        label={meta.buttonLabel}
+        background="#1ed760"
+        foreground="#000000"
+        dark
+      />
+    </div>
+  );
+}
+
+function AuthorizationActions({
+  onCancel,
+  onContinue,
+  label,
+  background,
+  foreground,
+  dark = false,
+}: {
+  onCancel: () => void;
+  onContinue: () => void;
+  label: string;
+  background: string;
+  foreground: string;
+  dark?: boolean;
+}) {
+  return (
+    <div className="flex gap-2 pt-1">
+      <Button
+        variant="outline"
+        size="sm"
+        className={dark ? "flex-1 border-[#727272] bg-transparent text-white hover:bg-[#242424] hover:text-white" : "flex-1"}
+        onClick={onCancel}
+      >
+        Cancelar
+      </Button>
+      <Button
+        size="sm"
+        className="flex-1 gap-1.5 font-semibold"
+        style={{ backgroundColor: background, color: foreground, borderColor: background }}
+        onClick={onContinue}
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+        {label}
+      </Button>
+    </div>
+  );
+}
+
 // ─── Componente ───────────────────────────────────────────────────────────────
 
 export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }: Props) {
@@ -275,6 +493,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
   const popupRef = useRef<Window | null>(null);
 
   const meta = PLATFORM_META[platform];
+  const PlatformIcon = meta.icon;
 
   const pendingTokenRef = useRef<string | undefined>(undefined);
 
@@ -404,6 +623,38 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
 
   if (!meta) return null;
 
+  if (
+    step === "permissions" &&
+    (
+      platform === "meta_business" ||
+      platform === "tiktok_business" ||
+      platform === "google_business" ||
+      platform === "spotify_ads"
+    )
+  ) {
+    const presentationProps: AuthorizationPresentationProps = {
+      meta,
+      onCancel: () => handleClose(false),
+      onContinue: openPopup,
+    };
+
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent
+          className={`overflow-hidden p-0 sm:max-w-md ${
+            platform === "spotify_ads" ? "border-[#292929] bg-[#121212]" : ""
+          }`}
+          data-testid={`dialog-oauth-${platform}`}
+        >
+          {platform === "meta_business" && <MetaAuthorizationPresentation {...presentationProps} />}
+          {platform === "tiktok_business" && <TikTokAuthorizationPresentation {...presentationProps} />}
+          {platform === "google_business" && <GoogleAuthorizationPresentation {...presentationProps} />}
+          {platform === "spotify_ads" && <SpotifyAuthorizationPresentation {...presentationProps} />}
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden" data-testid={`dialog-oauth-${platform}`}>
@@ -413,7 +664,18 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
           className="px-5 py-4 flex items-center gap-3"
           style={{ backgroundColor: meta.buttonColor }}
         >
-          <span className="text-2xl leading-none">{meta.icon}</span>
+          {meta.logoId ? (
+            <IntegrationLogo
+              id={meta.logoId}
+              className="h-10 w-10 rounded-lg"
+              imageClassName="h-8 w-8"
+            />
+          ) : (
+            <PlatformIcon
+              className="h-6 w-6 shrink-0"
+              style={{ color: meta.buttonTextColor }}
+            />
+          )}
           <DialogHeader>
             <DialogTitle className="text-sm font-semibold" style={{ color: meta.buttonTextColor }}>
               {meta.name}
@@ -430,7 +692,7 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
           {step === "permissions" && (
             <>
               <div className="rounded-lg border border-border bg-muted/20 p-3 space-y-2">
-                <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground  tracking-wide flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5" />
                   Permissões solicitadas
                 </p>
@@ -517,3 +779,5 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
     </Dialog>
   );
 }
+
+

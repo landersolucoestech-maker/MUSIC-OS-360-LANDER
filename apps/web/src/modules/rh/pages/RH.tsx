@@ -2,12 +2,15 @@ import { useState, useMemo } from "react";
 import { MonthPickerField } from "@/shared/ui/month-picker-field";
 import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { Checkbox } from "@/shared/ui/checkbox";
 import {
   Select,
@@ -48,12 +51,17 @@ import {
 import { FuncionarioFormModal } from "@/modules/rh/components/FuncionarioFormModal";
 import { FolhaPagamentoFormModal } from "@/modules/rh/components/FolhaPagamentoFormModal";
 import { FeriasAusenciasFormModal } from "@/modules/rh/components/FeriasAusenciasFormModal";
+import {
+  FuncionarioViewModal,
+  FolhaPagamentoViewModal,
+  FeriasAusenciasViewModal,
+} from "@/modules/rh/components/RHViewModals";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 import { FileUpload, UploadedFile } from "@/shared/components/FileUpload";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { exportToCSV, CSVColumn } from "@/shared/lib/csv";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import {
   useFuncionarios,
   SETORES,
@@ -117,31 +125,31 @@ const documentosColumns: CSVColumn[] = [
   { key: "descricao", label: "Descrição" },
 ];
 
-const STATUS_BADGE_FUNCIONARIO: Record<string, string> = {
-  ativo: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-  inativo: "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
-  "férias": "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  afastado: "bg-warning/10 text-warning",
-  desligado: "bg-destructive/10 text-destructive",
+const STATUS_VARIANT_FUNCIONARIO: Record<string, BadgeVariant> = {
+  ativo: "success",
+  inativo: "neutral",
+  "férias": "info",
+  afastado: "warning",
+  desligado: "danger",
 };
 
-const STATUS_BADGE_PAGAMENTO: Record<string, string> = {
-  pendente: "bg-warning/10 text-warning",
-  pago: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-  cancelado: "bg-destructive/10 text-destructive",
+const STATUS_VARIANT_PAGAMENTO: Record<string, BadgeVariant> = {
+  pendente: "warning",
+  pago: "success",
+  cancelado: "neutral",
 };
 
-const STATUS_BADGE_AUSENCIA: Record<string, string> = {
-  pendente: "bg-warning/10 text-warning",
-  aprovado: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300",
-  rejeitado: "bg-destructive/10 text-destructive",
-  "em andamento": "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
-  "concluído": "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300",
+const STATUS_VARIANT_AUSENCIA: Record<string, BadgeVariant> = {
+  pendente: "warning",
+  aprovado: "success",
+  rejeitado: "danger",
+  "em andamento": "info",
+  "concluído": "neutral",
 };
 
 export default function RH() {
   const {
-    funcionarios,
+    funcionarios = [],
     isLoading: loadingFuncionarios,
     error: errorFuncionarios,
     deleteFuncionario,
@@ -149,12 +157,12 @@ export default function RH() {
   } = useFuncionarios();
 
   const {
-    folhaPagamento,
+    folhaPagamento = [],
     isLoading: loadingFolha,
     deleteFolhaPagamento,
   } = useFolhaPagamento();
 
-  const { usuarios } = useUsuarios();
+  const { usuarios = [] } = useUsuarios();
   const getUsuarioNome = (userId: string | null) => {
     if (!userId) return null;
     const u = usuarios.find((u) => u.id === userId);
@@ -211,6 +219,8 @@ export default function RH() {
     open: boolean;
     registro?: FolhaPagamento;
   }>({ open: false });
+  const [selectedFolhaIds, setSelectedFolhaIds] = useState<string[]>([]);
+  const [folhaBulkDeleteModal, setFolhaBulkDeleteModal] = useState<{ open: boolean; ids: string[] }>({ open: false, ids: [] });
 
   const [feriasSearch, setFeriasSearch] = useState("");
   const [feriasStatusFilter, setFeriasStatusFilter] = useState("all");
@@ -223,6 +233,8 @@ export default function RH() {
     open: boolean;
     ausencia?: FeriasAusencia;
   }>({ open: false });
+  const [selectedFeriasIds, setSelectedFeriasIds] = useState<string[]>([]);
+  const [feriasBulkDeleteModal, setFeriasBulkDeleteModal] = useState<{ open: boolean; ids: string[] }>({ open: false, ids: [] });
 
   const [docFuncionarioId, setDocFuncionarioId] = useState("");
   const [docTipoDocumento, setDocTipoDocumento] = useState("");
@@ -300,6 +312,10 @@ export default function RH() {
     });
   }, [feriasAusencias, funcionarios, feriasSearch, feriasStatusFilter]);
 
+  const funcionariosPg = usePagination(filteredFuncionarios, 10);
+  const folhaPg = usePagination(filteredFolha, 10);
+  const feriasPg = usePagination(filteredFerias, 10);
+
   const getFuncionarioNome = (id: string | null) => {
     if (!id) return "N/A";
     const func = funcionarios.find((f) => f.id === id);
@@ -347,11 +363,43 @@ export default function RH() {
     }
   };
 
+  const toggleSelectFolha = (id: string) => {
+    setSelectedFolhaIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
+  const toggleSelectAllFolha = () => {
+    const ids = filteredFolha.map((fp) => fp.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selectedFolhaIds.includes(id));
+    setSelectedFolhaIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
+  };
+
+  const handleBulkDeleteFolha = () => {
+    folhaBulkDeleteModal.ids.forEach((id) => deleteFolhaPagamento.mutate(id));
+    setSelectedFolhaIds((current) => current.filter((id) => !folhaBulkDeleteModal.ids.includes(id)));
+    setFolhaBulkDeleteModal({ open: false, ids: [] });
+  };
+
   const handleDeleteFerias = () => {
     if (feriasDeleteModal.ausencia) {
       deleteFeriasAusencia.mutate(feriasDeleteModal.ausencia.id);
       setFeriasDeleteModal({ open: false });
     }
+  };
+
+  const toggleSelectFerias = (id: string) => {
+    setSelectedFeriasIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
+  const toggleSelectAllFerias = () => {
+    const ids = filteredFerias.map((fa) => fa.id);
+    const allSelected = ids.length > 0 && ids.every((id) => selectedFeriasIds.includes(id));
+    setSelectedFeriasIds((current) => allSelected ? current.filter((id) => !ids.includes(id)) : Array.from(new Set([...current, ...ids])));
+  };
+
+  const handleBulkDeleteFerias = () => {
+    feriasBulkDeleteModal.ids.forEach((id) => deleteFeriasAusencia.mutate(id));
+    setSelectedFeriasIds((current) => current.filter((id) => !feriasBulkDeleteModal.ids.includes(id)));
+    setFeriasBulkDeleteModal({ open: false, ids: [] });
   };
 
   const handleApproveReject = (ausencia: FeriasAusencia, newStatus: string) => {
@@ -400,32 +448,6 @@ export default function RH() {
     );
   }
 
-  if (errorFuncionarios) {
-    return (
-      <MainLayout>
-        <div className="flex flex-col items-center justify-center h-64 gap-4">
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold text-destructive" data-testid="text-error-title">
-              Erro ao carregar dados de RH
-            </h2>
-            <p className="text-muted-foreground max-w-md" data-testid="text-error-message">
-              Não foi possível carregar os dados. Verifique se as tabelas foram criadas no banco de dados.
-            </p>
-          </div>
-          <Button
-            variant="outline"
-            onClick={() => refetchFuncionarios()}
-            className="gap-2"
-            data-testid="button-retry"
-          >
-            <Loader2 className="h-4 w-4" />
-            Tentar novamente
-          </Button>
-        </div>
-      </MainLayout>
-    );
-  }
-
   return (
     <FeatureGate feature="moduleRh" featureName="Recursos Humanos">
     <MainLayout
@@ -458,6 +480,20 @@ export default function RH() {
       }
     >
       <div className="space-y-6">
+        {errorFuncionarios && (
+          <div
+            className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/40 px-4 py-3"
+            data-testid="rh-load-warning"
+          >
+            <p className="text-sm text-muted-foreground">
+              Não foi possível carregar os dados de RH agora. Exibindo a página vazia.
+            </p>
+            <Button variant="outline" size="sm" onClick={() => refetchFuncionarios()} className="gap-2" data-testid="button-retry">
+              <Loader2 className="h-4 w-4" />
+              Tentar novamente
+            </Button>
+          </div>
+        )}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <Card data-testid="kpi-total">
             <CardContent className="p-4 flex items-center gap-3">
@@ -473,7 +509,7 @@ export default function RH() {
           <Card data-testid="kpi-ativos">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-emerald-500/10">
-                <UserCheck className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+                <UserCheck className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-kpi-ativos">{kpiCounts.ativos}</p>
@@ -484,7 +520,7 @@ export default function RH() {
           <Card data-testid="kpi-ferias">
             <CardContent className="p-4 flex items-center gap-3">
               <div className="p-2 rounded-lg bg-blue-500/10">
-                <Palmtree className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Palmtree className="h-5 w-5 text-blue-600" />
               </div>
               <div>
                 <p className="text-2xl font-bold" data-testid="text-kpi-ferias">{kpiCounts.ferias}</p>
@@ -525,19 +561,19 @@ export default function RH() {
           </TabsList>
           {activeTab === "funcionarios" && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por nome, email, cargo, CPF..."
                   value={funcSearch}
                   onChange={(e) => setFuncSearch(e.target.value)}
-                  className="pl-9"
+                  className="h-8 pl-9 text-sm bg-card border-border"
                   data-testid="input-search-funcionarios"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={funcStatusFilter} onValueChange={setFuncStatusFilter}>
-                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-func">
+                  <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-filter-status-func">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -550,7 +586,7 @@ export default function RH() {
                   </SelectContent>
                 </Select>
                 <Select value={funcSetorFilter} onValueChange={setFuncSetorFilter}>
-                  <SelectTrigger className="w-[150px]" data-testid="select-filter-setor">
+                  <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-filter-setor">
                     <SelectValue placeholder="Setor" />
                   </SelectTrigger>
                   <SelectContent>
@@ -564,56 +600,55 @@ export default function RH() {
             </div>
           )}
           {activeTab === "folha" && (
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center mt-4">
+              {/* Seletor de datas — sempre imediatamente à esquerda da busca */}
+              <MonthPickerField
+                value={folhaMesFilter}
+                onChange={setFolhaMesFilter}
+                placeholder="Filtrar por mês"
+                className="w-[160px] h-8 text-sm bg-card border-border shrink-0"
+                data-testid="monthpicker-filter-mes-folha"
+              />
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por funcionário ou mês..."
                   value={folhaSearch}
                   onChange={(e) => setFolhaSearch(e.target.value)}
-                  className="pl-9"
+                  className="h-8 pl-9 text-sm bg-card border-border"
                   data-testid="input-search-folha"
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-2">
-                <MonthPickerField
-                  value={folhaMesFilter}
-                  onChange={setFolhaMesFilter}
-                  placeholder="Filtrar por mês"
-                  className="w-[200px]"
-                  data-testid="monthpicker-filter-mes-folha"
-                />
-                <Select value={folhaStatusFilter} onValueChange={setFolhaStatusFilter}>
-                  <SelectTrigger className="w-[130px]" data-testid="select-filter-status-folha">
-                    <SelectValue placeholder="Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos Status</SelectItem>
-                    {STATUS_PAGAMENTO.map((s) => (
-                      <SelectItem key={s} value={s}>
-                        {s.charAt(0).toUpperCase() + s.slice(1)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              <Select value={folhaStatusFilter} onValueChange={setFolhaStatusFilter}>
+                <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0" data-testid="select-filter-status-folha">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos Status</SelectItem>
+                  {STATUS_PAGAMENTO.map((s) => (
+                    <SelectItem key={s} value={s}>
+                      {s.charAt(0).toUpperCase() + s.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
           {activeTab === "ferias" && (
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mt-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <div className="relative flex-1 min-w-[220px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Buscar por funcionário ou tipo..."
                   value={feriasSearch}
                   onChange={(e) => setFeriasSearch(e.target.value)}
-                  className="pl-9"
+                  className="h-8 pl-9 text-sm bg-card border-border"
                   data-testid="input-search-ferias"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <Select value={feriasStatusFilter} onValueChange={setFeriasStatusFilter}>
-                  <SelectTrigger className="w-[140px]" data-testid="select-filter-status-ferias">
+                  <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-filter-status-ferias">
                     <SelectValue placeholder="Status" />
                   </SelectTrigger>
                   <SelectContent>
@@ -642,26 +677,36 @@ export default function RH() {
               />
             ) : (
               <>
-              {selectedFuncIds.length > 0 && (
-                <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                  <span className="text-sm text-muted-foreground flex-1">{selectedFuncIds.length} selecionado(s)</span>
-                  <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteFuncs} data-testid="button-bulk-delete-funcs">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedFuncIds.length})
-                  </Button>
-                </div>
-              )}
+              <Card>
+              <CardContent className="pt-0">
+              <ListSectionHeader
+                title="Lista de Funcionários"
+                count={filteredFuncionarios.length}
+                description="Acompanhe funcionários, cargos, setores, vínculo, salário, status e usuário associado."
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Checkbox
+                      checked={selectedFuncIds.length === filteredFuncionarios.length && filteredFuncionarios.length > 0}
+                      onCheckedChange={toggleSelectAllFuncs}
+                      data-testid="checkbox-select-all-funcs"
+                      aria-label="Selecionar todos"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedFuncIds.length > 0 ? `${selectedFuncIds.length} selecionado(s)` : "Selecionar todos"}
+                    </span>
+                    {selectedFuncIds.length > 0 && (
+                      <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteFuncs} data-testid="button-bulk-delete-funcs">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir ({selectedFuncIds.length})
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
               <Table data-testid="table-funcionarios">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[36px]">
-                      <Checkbox
-                        checked={selectedFuncIds.length === filteredFuncionarios.length && filteredFuncionarios.length > 0}
-                        onCheckedChange={toggleSelectAllFuncs}
-                        data-testid="checkbox-select-all-funcs"
-                        aria-label="Selecionar todos"
-                      />
-                    </TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Cargo</TableHead>
                     <TableHead>Setor</TableHead>
@@ -673,7 +718,7 @@ export default function RH() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFuncionarios.map((f) => (
+                  {funcionariosPg.pageItems.map((f) => (
                     <TableRow key={f.id} data-testid={`row-funcionario-${f.id}`} className={selectedFuncIds.includes(f.id) ? "bg-muted/20" : ""}>
                       <TableCell>
                         <Checkbox
@@ -692,9 +737,9 @@ export default function RH() {
                       <TableCell className="text-muted-foreground">{f.cargo || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{f.setor || "—"}</TableCell>
                       <TableCell className="text-muted-foreground">{f.tipo_contrato || "—"}</TableCell>
-                      <TableCell className="text-right">{f.salario_base ? formatCurrency(Number(f.salario_base)) : "—"}</TableCell>
+                      <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{f.salario_base ? formatCurrency(Number(f.salario_base)) : "—"}</TableCell>
                       <TableCell>
-                        <Badge className={STATUS_BADGE_FUNCIONARIO[f.status || "ativo"] || ""}>
+                        <Badge variant={STATUS_VARIANT_FUNCIONARIO[f.status || "ativo"] || "neutral"}>
                           {(f.status || "ativo").charAt(0).toUpperCase() + (f.status || "ativo").slice(1)}
                         </Badge>
                       </TableCell>
@@ -725,6 +770,16 @@ export default function RH() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={funcionariosPg.total}
+                page={funcionariosPg.page}
+                pageSize={funcionariosPg.pageSize}
+                onPageChange={funcionariosPg.setPage}
+                onPageSizeChange={funcionariosPg.setPageSize}
+                itemLabel="funcionários"
+              />
+              </CardContent>
+              </Card>
               </>
             )}
           </TabsContent>
@@ -745,11 +800,46 @@ export default function RH() {
                 }}
               />
             ) : (
+              <>
+              <Card>
+              <CardContent className="pt-0">
+              <ListSectionHeader
+                title="Folha de Pagamento"
+                count={filteredFolha.length}
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectedFolhaIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => setFolhaBulkDeleteModal({ open: true, ids: filteredFolha.filter((fp) => selectedFolhaIds.includes(fp.id)).map((fp) => fp.id) })}
+                        data-testid="button-delete-selected-folha"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir selecionados
+                      </Button>
+                    )}
+                    <Checkbox
+                      checked={filteredFolha.length > 0 && filteredFolha.every((fp) => selectedFolhaIds.includes(fp.id))}
+                      onCheckedChange={toggleSelectAllFolha}
+                      aria-label="Selecionar todos os registros de pagamento"
+                      data-testid="checkbox-select-all-folha"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedFolhaIds.length > 0 ? `${filteredFolha.filter((fp) => selectedFolhaIds.includes(fp.id)).length} selecionado(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                }
+                description="Acompanhe salários, descontos, bônus, valores líquidos, status e datas de pagamento."
+              />
               <Table data-testid="table-folha">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Funcionário</TableHead>
                     <TableHead>Mês Ref.</TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead className="text-right">Bruto</TableHead>
                     <TableHead className="text-right">Descontos</TableHead>
                     <TableHead className="text-right">Bônus</TableHead>
@@ -760,23 +850,31 @@ export default function RH() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFolha.map((fp) => (
+                  {folhaPg.pageItems.map((fp) => (
                     <TableRow key={fp.id} data-testid={`row-folha-${fp.id}`}>
                       <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id ?? null)}</TableCell>
                       <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
-                      <TableCell className="text-right">{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
-                      <TableCell className="text-right text-destructive">
-                        {fp.descontos ? `- ${formatCurrency(Number(fp.descontos))}` : "—"}
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedFolhaIds.includes(fp.id)}
+                          onCheckedChange={() => toggleSelectFolha(fp.id)}
+                          aria-label={`Selecionar registro de pagamento ${fp.id}`}
+                          data-testid={`checkbox-folha-${fp.id}`}
+                        />
                       </TableCell>
-                      <TableCell className="text-right text-emerald-600 dark:text-emerald-400">
+                      <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
+                      <TableCell className={`text-right ${getMonetarySemanticClass("negative")}`}>
+                        {fp.descontos ? formatCurrency(-Number(fp.descontos)) : "—"}
+                      </TableCell>
+                      <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>
                         {fp.bonus ? `+ ${formatCurrency(Number(fp.bonus))}` : "—"}
                       </TableCell>
-                      <TableCell className="text-right font-semibold">
+                      <TableCell className={`text-right font-semibold ${getMonetarySemanticClass("neutral")}`}>
                         {formatCurrency(Number(fp.salario_liquido) || 0)}
                       </TableCell>
                       <TableCell className="text-muted-foreground">{fp.data_pagamento ? formatDate(fp.data_pagamento) : "—"}</TableCell>
                       <TableCell>
-                        <Badge className={STATUS_BADGE_PAGAMENTO[fp.status || "pendente"] || ""}>
+                        <Badge variant={STATUS_VARIANT_PAGAMENTO[fp.status || "pendente"] || "neutral"}>
                           {(fp.status || "pendente").charAt(0).toUpperCase() + (fp.status || "pendente").slice(1)}
                         </Badge>
                       </TableCell>
@@ -804,6 +902,17 @@ export default function RH() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={folhaPg.total}
+                page={folhaPg.page}
+                pageSize={folhaPg.pageSize}
+                onPageChange={folhaPg.setPage}
+                onPageSizeChange={folhaPg.setPageSize}
+                itemLabel="registros"
+              />
+              </CardContent>
+              </Card>
+              </>
             )}
           </TabsContent>
 
@@ -823,6 +932,40 @@ export default function RH() {
                 }}
               />
             ) : (
+              <>
+              <Card>
+              <CardContent className="pt-0">
+              <ListSectionHeader
+                title="Férias e Ausências"
+                count={filteredFerias.length}
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectedFeriasIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => setFeriasBulkDeleteModal({ open: true, ids: filteredFerias.filter((fa) => selectedFeriasIds.includes(fa.id)).map((fa) => fa.id) })}
+                        data-testid="button-delete-selected-ferias"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir selecionados
+                      </Button>
+                    )}
+                    <Checkbox
+                      checked={filteredFerias.length > 0 && filteredFerias.every((fa) => selectedFeriasIds.includes(fa.id))}
+                      onCheckedChange={toggleSelectAllFerias}
+                      aria-label="Selecionar todos os registros de ferias"
+                      data-testid="checkbox-select-all-ferias"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedFeriasIds.length > 0 ? `${filteredFerias.filter((fa) => selectedFeriasIds.includes(fa.id)).length} selecionado(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                }
+                description="Acompanhe solicitações de férias, ausências, períodos, quantidade de dias e status de aprovação."
+              />
               <Table data-testid="table-ferias">
                 <TableHeader>
                   <TableRow>
@@ -830,13 +973,14 @@ export default function RH() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Início</TableHead>
                     <TableHead>Fim</TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead className="text-center">Dias</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredFerias.map((fa) => (
+                  {feriasPg.pageItems.map((fa) => (
                     <TableRow key={fa.id} data-testid={`row-ferias-${fa.id}`}>
                       <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id ?? null)}</TableCell>
                       <TableCell className="text-muted-foreground">
@@ -846,7 +990,15 @@ export default function RH() {
                       <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
                       <TableCell className="text-center">{fa.dias_totais ?? "—"}</TableCell>
                       <TableCell>
-                        <Badge className={STATUS_BADGE_AUSENCIA[fa.status || "pendente"] || ""}>
+                        <Checkbox
+                          checked={selectedFeriasIds.includes(fa.id)}
+                          onCheckedChange={() => toggleSelectFerias(fa.id)}
+                          aria-label={`Selecionar registro de ferias ${fa.id}`}
+                          data-testid={`checkbox-ferias-${fa.id}`}
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={STATUS_VARIANT_AUSENCIA[fa.status || "pendente"] || "neutral"}>
                           {(fa.status || "pendente").charAt(0).toUpperCase() + (fa.status || "pendente").slice(1)}
                         </Badge>
                       </TableCell>
@@ -886,6 +1038,17 @@ export default function RH() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={feriasPg.total}
+                page={feriasPg.page}
+                pageSize={feriasPg.pageSize}
+                onPageChange={feriasPg.setPage}
+                onPageSizeChange={feriasPg.setPageSize}
+                itemLabel="registros"
+              />
+              </CardContent>
+              </Card>
+              </>
             )}
           </TabsContent>
 
@@ -964,7 +1127,13 @@ export default function RH() {
                     description="Envie documentos usando o formulário acima."
                   />
                 ) : (
-                  <div className="rounded-lg border overflow-x-auto" data-testid="table-documentos">
+                  <Card data-testid="table-documentos">
+                    <CardContent className="pt-0">
+                    <ListSectionHeader
+                      title="Documentos"
+                      count={(documentos || []).length}
+                      description="Acompanhe documentos de funcionários, tipos, vencimentos, anexos e status."
+                    />
                     <Table>
                       <TableHeader>
                         <TableRow>
@@ -1009,7 +1178,8 @@ export default function RH() {
                         ))}
                       </TableBody>
                     </Table>
-                  </div>
+                    </CardContent>
+                  </Card>
                 )}
               </div>
             )}
@@ -1018,24 +1188,39 @@ export default function RH() {
       </div>
 
       <FuncionarioFormModal
-        open={funcFormModal.open}
+        open={funcFormModal.open && funcFormModal.mode !== "view"}
         onOpenChange={(open) => setFuncFormModal({ ...funcFormModal, open })}
         funcionario={funcFormModal.funcionario}
         mode={funcFormModal.mode}
       />
+      <FuncionarioViewModal
+        open={funcFormModal.open && funcFormModal.mode === "view"}
+        onOpenChange={(open) => setFuncFormModal({ ...funcFormModal, open })}
+        funcionario={funcFormModal.funcionario}
+      />
 
       <FolhaPagamentoFormModal
-        open={folhaFormModal.open}
+        open={folhaFormModal.open && folhaFormModal.mode !== "view"}
         onOpenChange={(open) => setFolhaFormModal({ ...folhaFormModal, open })}
         registro={folhaFormModal.registro}
         mode={folhaFormModal.mode}
       />
+      <FolhaPagamentoViewModal
+        open={folhaFormModal.open && folhaFormModal.mode === "view"}
+        onOpenChange={(open) => setFolhaFormModal({ ...folhaFormModal, open })}
+        registro={folhaFormModal.registro}
+      />
 
       <FeriasAusenciasFormModal
-        open={feriasFormModal.open}
+        open={feriasFormModal.open && feriasFormModal.mode !== "view"}
         onOpenChange={(open) => setFeriasFormModal({ ...feriasFormModal, open })}
         ausencia={feriasFormModal.ausencia}
         mode={feriasFormModal.mode}
+      />
+      <FeriasAusenciasViewModal
+        open={feriasFormModal.open && feriasFormModal.mode === "view"}
+        onOpenChange={(open) => setFeriasFormModal({ ...feriasFormModal, open })}
+        ausencia={feriasFormModal.ausencia}
       />
 
       <DeleteConfirmModal
@@ -1060,6 +1245,22 @@ export default function RH() {
         onConfirm={handleDeleteFerias}
         title="Excluir Registro de Ausência"
         description="Tem certeza que deseja excluir este registro de férias/ausência? Esta ação não pode ser desfeita."
+      />
+
+      <DeleteConfirmModal
+        open={folhaBulkDeleteModal.open}
+        onOpenChange={(open) => setFolhaBulkDeleteModal({ ...folhaBulkDeleteModal, open })}
+        onConfirm={handleBulkDeleteFolha}
+        title="Excluir registros de pagamento"
+        description={`Tem certeza que deseja excluir ${folhaBulkDeleteModal.ids.length} registro(s) selecionado(s)? Esta acao nao pode ser desfeita.`}
+      />
+
+      <DeleteConfirmModal
+        open={feriasBulkDeleteModal.open}
+        onOpenChange={(open) => setFeriasBulkDeleteModal({ ...feriasBulkDeleteModal, open })}
+        onConfirm={handleBulkDeleteFerias}
+        title="Excluir registros de férias e ausências"
+        description={`Tem certeza que deseja excluir ${feriasBulkDeleteModal.ids.length} registro(s) selecionado(s)? Esta acao nao pode ser desfeita.`}
       />
 
       <DeleteConfirmModal

@@ -2,7 +2,7 @@
  * modules/integrations/hooks/usePaidAdsOAuth.ts
  *
  * Hook OAuth para plataformas de Tráfego Pago / Campanhas.
- * Idêntico ao useLeadOAuth mas focado em gestão de campanhas e métricas de ads.
+ * Persistencia OAuth focada em gestao de campanhas e metricas de ads.
  *
  * Plataformas: Meta Ads · Google Ads · TikTok Ads
  */

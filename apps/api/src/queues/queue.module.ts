@@ -12,33 +12,82 @@
  */
 
 import { DynamicModule, Global, Module, Logger } from '@nestjs/common';
+import { DiscoveryModule }          from '@nestjs/core';
 import { BullModule }              from '@nestjs/bullmq';
 import { QUEUE_NAMES }             from './queue.constants';
+import { WorkerErrorThrottlerService } from './worker-error-throttler.service';
 
 import { EmailProcessor }           from './processors/email.processor';
 import { NotificationsProcessor }   from './processors/notifications.processor';
 import { AIJobsProcessor }          from './processors/ai-jobs.processor';
 import { ExternalDataProcessor }    from './processors/external-data.processor';
+import { MarketingPublishingProcessor } from './processors/marketing-publishing.processor';
+import { ArtistPlatformSyncProcessor } from './processors/artist-platform-sync.processor';
 
 import { EmailQueueService }         from './services/email-queue.service';
 import { NotificationsQueueService } from './services/notifications-queue.service';
 import { AIJobsQueueService }        from './services/ai-jobs-queue.service';
 import { WorkflowQueueService }      from './services/workflow-queue.service';
+import { MarketingPublishingQueueService } from './services/marketing-publishing-queue.service';
+import { ArtistPlatformProfilesService } from '../modules/artists/platform-profiles/artist-platform-profiles.service';
+import { SpotifyArtistProfileProvider } from '../modules/artists/platform-profiles/providers/spotify-artist-profile.provider';
+import { YouTubeArtistProfileProvider } from '../modules/artists/platform-profiles/providers/youtube-artist-profile.provider';
 
 import { CoreModule }  from '../core/core.module';
 import { AIModule }    from '../modules/ai/ai.module';
 
 const moduleLogger = new Logger('QueueModule');
+const REDIS_ERROR_LOG_INTERVAL_MS = 30_000;
+
+function createRedisErrorLogger() {
+  let lastCode = '';
+  let lastLogAt = 0;
+
+  return (err: NodeJS.ErrnoException) => {
+    const now = Date.now();
+    const code = err.code ?? err.message?.split('\n')[0] ?? 'UNKNOWN';
+    if (code !== lastCode || now - lastLogAt >= REDIS_ERROR_LOG_INTERVAL_MS) {
+      lastCode = code;
+      lastLogAt = now;
+      moduleLogger.warn(`Redis indisponivel (${code}); BullMQ aguardando reconnect`);
+    }
+  };
+}
+
+function createRedisReconnectLogger() {
+  let lastLogAt = 0;
+
+  return (delay: number) => {
+    const now = Date.now();
+    if (now - lastLogAt >= REDIS_ERROR_LOG_INTERVAL_MS) {
+      lastLogAt = now;
+      moduleLogger.warn(`Redis reconectando em ${delay}ms`);
+    }
+  };
+}
+
+function buildRedisUrlFromParts(): string | undefined {
+  const host = process.env['REDIS_HOST'];
+  if (!host) return undefined;
+
+  const port = process.env['REDIS_PORT'] || '6379';
+  const password = process.env['REDIS_PASSWORD'];
+  const auth = password ? `:${encodeURIComponent(password)}@` : '';
+  return `redis://${auth}${host}:${port}`;
+}
+
+function resolveRedisUrl(): string | undefined {
+  return process.env['REDIS_QUEUE_URL'] || process.env['REDIS_URL'] || buildRedisUrlFromParts();
+}
 
 function isIoRedisUrl(url: string | undefined): boolean {
   if (!url) return false;
   if (!url.startsWith('redis://') && !url.startsWith('rediss://')) return false;
   if (url.includes('railway.internal')) return false;
-  if (url.includes('localhost') || url.includes('127.0.0.1')) return false;
   return true;
 }
 
-/** Testa se a URL Redis é realmente acessível (PING + AUTH). Retorna false se falhar. */
+/** Testa se a URL Redis e comandos estao realmente acessiveis. Retorna false se falhar. */
 async function probeRedis(url: string): Promise<boolean> {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const { Redis } = require('ioredis') as { Redis: new (url: string, opts: object) => import('ioredis').Redis };
@@ -52,7 +101,10 @@ async function probeRedis(url: string): Promise<boolean> {
   });
 
   return new Promise<boolean>((resolve) => {
+    let settled = false;
     const done = (ok: boolean) => {
+      if (settled) return;
+      settled = true;
       probe.disconnect(false);
       resolve(ok);
     };
@@ -62,7 +114,19 @@ async function probeRedis(url: string): Promise<boolean> {
       done(false);
     }, 5000);
 
-    probe.on('ready', () => { clearTimeout(timer); done(true); });
+    probe.on('ready', async () => {
+      try {
+        await probe.ping();
+        await probe.eval('return 1', 0);
+        clearTimeout(timer);
+        done(true);
+      } catch (err: unknown) {
+        clearTimeout(timer);
+        const message = err instanceof Error ? err.message : String(err);
+        moduleLogger.warn(`Redis indisponivel para comandos: ${message.split('\n')[0]} - BullMQ desativado`);
+        done(false);
+      }
+    });
     probe.on('error', (err: Error) => {
       clearTimeout(timer);
       moduleLogger.warn(`Redis inacessível: ${err.message?.split('\n')[0]} — BullMQ desativado`);
@@ -84,6 +148,8 @@ const ALL_QUEUES = [
   QUEUE_NAMES.IMPORTS,
   QUEUE_NAMES.BILLING,
   QUEUE_NAMES.UPLOADS_PROCESS,
+  QUEUE_NAMES.MARKETING_PUBLISHING,
+  QUEUE_NAMES.ARTIST_PLATFORM_SYNC,
 ];
 
 @Global()
@@ -94,13 +160,13 @@ export class QueueModule {
       global:    true,
       module:    QueueModule,
       imports:   [],
-      providers: [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService],
-      exports:   [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService],
+      providers: [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService, MarketingPublishingQueueService],
+      exports:   [EmailQueueService, NotificationsQueueService, AIJobsQueueService, WorkflowQueueService, MarketingPublishingQueueService],
     };
   }
 
   static async register(): Promise<DynamicModule> {
-    const url       = process.env['REDIS_QUEUE_URL'];
+    const url       = resolveRedisUrl();
     const isProd    = process.env['NODE_ENV'] === 'production';
 
     if (!isIoRedisUrl(url)) {
@@ -125,18 +191,21 @@ export class QueueModule {
 
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const IORedis    = require('ioredis');
+    const logRedisError = createRedisErrorLogger();
+    const logRedisReconnect = createRedisReconnectLogger();
     const connection = new IORedis(url, {
       maxRetriesPerRequest: null,
       enableReadyCheck:     false,
       enableOfflineQueue:   false,
       lazyConnect:          true,
-      retryStrategy: (times: number) =>
-        times >= 3 ? null : Math.min(times * 2000, 6000),
+      retryStrategy: (times: number) => Math.min(times * 2000, 30_000),
     });
 
-    connection.on('error', (err: NodeJS.ErrnoException) => {
-      moduleLogger.error(`Redis error: ${err.code ?? err.message?.split('\n')[0]}`);
+    connection.on('error', logRedisError);
+    connection.on('ready', () => {
+      moduleLogger.log('Redis pronto para BullMQ');
     });
+    connection.on('reconnecting', logRedisReconnect);
 
     return {
       global: true,
@@ -154,16 +223,24 @@ export class QueueModule {
         BullModule.registerQueue(...ALL_QUEUES.map((name) => ({ name }))),
         CoreModule,
         AIModule,
+        DiscoveryModule,
       ],
       providers: [
         EmailQueueService,
         NotificationsQueueService,
         AIJobsQueueService,
         WorkflowQueueService,
+        MarketingPublishingQueueService,
         EmailProcessor,
         NotificationsProcessor,
         AIJobsProcessor,
         ExternalDataProcessor,
+        MarketingPublishingProcessor,
+        ArtistPlatformSyncProcessor,
+        WorkerErrorThrottlerService,
+        ArtistPlatformProfilesService,
+        SpotifyArtistProfileProvider,
+        YouTubeArtistProfileProvider,
       ],
       exports: [
         BullModule,
@@ -171,6 +248,7 @@ export class QueueModule {
         NotificationsQueueService,
         AIJobsQueueService,
         WorkflowQueueService,
+        MarketingPublishingQueueService,
       ],
     };
   }

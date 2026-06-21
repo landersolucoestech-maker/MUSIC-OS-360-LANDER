@@ -1,1 +1,1 @@
-// @music-os-360 — leads pages
+export { default } from "./LeadsPage";

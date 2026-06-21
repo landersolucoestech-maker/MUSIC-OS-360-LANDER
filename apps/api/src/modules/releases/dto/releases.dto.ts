@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsEnum, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsEnum, IsIn, IsDate, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { ReleaseStatus } from '@music-os-360/types';
 
@@ -12,7 +13,11 @@ export class CreateReleaseDto {
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) upc?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() distributor?: string;
-  @ApiPropertyOptional() @IsOptional() releasedAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  releasedAt?: Date;
   @ApiPropertyOptional() @IsOptional() platforms?: string[];
   @ApiPropertyOptional() @IsOptional() coverUrl?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;

@@ -12,5 +12,5 @@ coverage
 **/coverage
 .turbo
 **/.turbo
-apps/web
-packages
+**/*.test.ts
+**/*.spec.ts

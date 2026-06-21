@@ -203,54 +203,6 @@ export function CRMSkeleton() {
   );
 }
 
-export function VendasSkeleton() {
-  return (
-    <MainLayout>
-      <div className="p-1 space-y-4 py-0">
-        {/* Header */}
-        <div className="flex justify-between items-start">
-          <div className="space-y-2">
-            <Skeleton className="h-8 w-24" />
-            <Skeleton className="h-4 w-64" />
-          </div>
-          <div className="flex gap-2">
-            <Skeleton className="h-9 w-48 rounded" />
-            <Skeleton className="h-9 w-28 rounded" />
-          </div>
-        </div>
-
-        {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <MetricCardSkeleton key={i} />
-          ))}
-        </div>
-
-        {/* Filters */}
-        <div className="flex items-center gap-4">
-          <Skeleton className="h-10 flex-1 rounded" />
-          <Skeleton className="h-10 w-36 rounded" />
-          <Skeleton className="h-10 w-40 rounded" />
-          <Skeleton className="h-10 w-36 rounded" />
-        </div>
-
-        {/* List */}
-        <Card>
-          <CardHeader>
-            <Skeleton className="h-5 w-32" />
-            <Skeleton className="h-4 w-40" />
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <ListItemSkeleton key={i} />
-            ))}
-          </CardContent>
-        </Card>
-      </div>
-    </MainLayout>
-  );
-}
-
 export function ArtistasSkeleton() {
   return (
     <MainLayout>
@@ -352,3 +304,4 @@ export function PageSkeleton() {
     </div>
   );
 }
+

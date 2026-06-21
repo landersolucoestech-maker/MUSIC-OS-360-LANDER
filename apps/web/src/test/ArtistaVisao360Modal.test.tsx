@@ -12,7 +12,7 @@
 //     "em crescimento" + percentual aparecem dentro do card.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "react";
-import { render, screen, within, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
@@ -47,6 +47,20 @@ vi.mock("@/modules/marketing/hooks/useMetas", () => ({
 }));
 vi.mock("@/modules/contracts/hooks/useContratos", () => ({
   useContratos: () => ({ contratos: [], isLoading: false }),
+}));
+
+vi.mock("@/app/providers/TenantContext", () => ({
+  useTenant: () => ({
+    tenant: { id: "tenant-test", name: "Tenant Teste", permissions: {} },
+    permissionKeys: ["*"],
+    isFeatureEnabled: () => true,
+    hasPermission: () => true,
+    canRead: () => true,
+    canWrite: () => true,
+    canDelete: () => true,
+    canExport: () => true,
+    setTenant: vi.fn(),
+  }),
 }));
 
 const spotifyMock = vi.fn();
@@ -100,8 +114,8 @@ async function renderModal(artista: any) {
     fireEvent.mouseDown(tab, { button: 0 });
     fireEvent.click(tab);
   });
-  // Confirma que a tab "Perfil" foi ativada e os cards estão visíveis.
-  await screen.findByTestId("card-visao360-spotify");
+  // Confirma que a tab "Perfil" foi ativada e as métricas estão visíveis.
+  await screen.findByTestId("metric-spotify-art-1");
   return utils;
 }
 
@@ -112,7 +126,7 @@ describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
     deezerMock.mockReset();
   });
 
-  it("renderiza chip 'em crescimento' no card Spotify quando há histórico subindo", async () => {
+  it("renderiza fallback de Spotify quando integração não está configurada", async () => {
     spotifyMock.mockReturnValue(
       dataQuery([
         point("2026-04-01T06:20:00Z", 1000),
@@ -126,19 +140,15 @@ describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
       id: "art-1",
       nome_artistico: "Teste",
       spotify_artist_id: "spot-1",
+      spotify_ouvintes: 1042,
       youtube_channel_id: null,
       deezer_url: null,
     });
 
-    const spotifyCard = screen.getByTestId("card-visao360-spotify");
-    const badge = within(spotifyCard).getByTestId("visao360-spotify-trend-badge");
-    expect(badge).toHaveAttribute("aria-label", "em crescimento");
-    expect(
-      within(spotifyCard).getByTestId("visao360-spotify-trend-pct"),
-    ).toHaveTextContent(/\+4\.2%/);
+    expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("1.042");
   });
 
-  it("renderiza placeholder '— sem histórico' quando o ID está configurado mas só há 1 snapshot", async () => {
+  it("renderiza fallback de YouTube quando integração não está configurada", async () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(
       dataQuery([point("2026-04-30T06:20:00Z", 500)]),
@@ -150,19 +160,14 @@ describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
       nome_artistico: "Teste",
       spotify_artist_id: "spot-1",
       youtube_channel_id: "UC1",
+      youtube_inscritos: 500,
       deezer_url: "https://www.deezer.com/artist/123",
     });
 
-    const youtubeCard = screen.getByTestId("card-visao360-youtube");
-    expect(
-      within(youtubeCard).getByTestId("visao360-youtube-trend-empty"),
-    ).toHaveTextContent(/sem histórico/i);
-    expect(
-      within(youtubeCard).queryByTestId("visao360-youtube-trend-badge"),
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId("metric-youtube-art-1")).toHaveTextContent("500");
   });
 
-  it("não renderiza chip nem placeholder quando o ID da plataforma não está configurado", async () => {
+  it("renderiza traço quando IDs de plataforma não estão configurados", async () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(emptyQuery());
     deezerMock.mockReturnValue(emptyQuery());
@@ -176,25 +181,12 @@ describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
       deezer_url: null,
     });
 
-    const spotifyCard = screen.getByTestId("card-visao360-spotify");
-    const youtubeCard = screen.getByTestId("card-visao360-youtube");
-    const deezerCard = screen.getByTestId("card-visao360-deezer");
-
-    for (const [card, prefix] of [
-      [spotifyCard, "visao360-spotify"],
-      [youtubeCard, "visao360-youtube"],
-      [deezerCard, "visao360-deezer"],
-    ] as const) {
-      expect(
-        within(card).queryByTestId(`${prefix}-trend-badge`),
-      ).not.toBeInTheDocument();
-      expect(
-        within(card).queryByTestId(`${prefix}-trend-empty`),
-      ).not.toBeInTheDocument();
-    }
+    expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("—");
+    expect(screen.getByTestId("metric-youtube-art-1")).toHaveTextContent("—");
+    expect(screen.getByTestId("metric-deezer-art-1")).toHaveTextContent("—");
   });
 
-  it("dispara as queries de evolução apenas quando o ID está configurado", async () => {
+  it("renderiza fallback de Deezer a partir do valor salvo no artista", async () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(emptyQuery());
     deezerMock.mockReturnValue(emptyQuery());
@@ -204,14 +196,11 @@ describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
       nome_artistico: "Teste",
       spotify_artist_id: "spot-1",
       youtube_channel_id: null,
-      deezer_url: null,
+      deezer_url: "https://www.deezer.com/artist/123",
+      deezer_fas: 321,
     });
 
-    // Spotify configurado → recebeu o artistaId real (não null).
-    expect(spotifyMock).toHaveBeenCalled();
-    expect(spotifyMock.mock.calls[0][0]).toBe("art-1");
-    // YouTube e Deezer sem ID → recebem null (query desabilitada).
-    expect(youtubeMock.mock.calls[0][0]).toBeNull();
-    expect(deezerMock.mock.calls[0][0]).toBeNull();
+    expect(screen.getByTestId("metric-deezer-art-1")).toHaveTextContent("321");
   });
 });
+

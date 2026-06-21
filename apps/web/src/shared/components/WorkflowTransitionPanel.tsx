@@ -41,6 +41,20 @@ interface WorkflowTransitionPanelProps {
 }
 
 function formatStatus(status: string): string {
+  const labels: Record<string, string> = {
+    draft: 'Pendente',
+    metadata_pending: 'Pendente',
+    assets_pending: 'Pendente',
+    review: 'Em análise',
+    approved: 'Aprovado',
+    scheduled: 'Programado',
+    distributed: 'Distribuída',
+    released: 'Publicado',
+    archived: 'Arquivado',
+    cancelled: 'Cancelado',
+  };
+  const key = status?.toLowerCase().replace(/ /g, '_') || '';
+  if (labels[key]) return labels[key];
   return status
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
@@ -71,7 +85,7 @@ export function WorkflowTransitionPanel({
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       <GitBranch className="h-4 w-4 text-muted-foreground" />
-      <Badge variant="secondary" className="text-xs font-mono uppercase tracking-wide">
+      <Badge variant="secondary" className="text-xs font-sans  tracking-wide">
         {displayStatus}
       </Badge>
 

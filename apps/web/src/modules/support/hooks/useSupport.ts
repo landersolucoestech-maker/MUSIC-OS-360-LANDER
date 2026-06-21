@@ -7,6 +7,11 @@ import {
   MOCK_TICKETS, MOCK_MESSAGES, MOCK_CHAT_ROOMS,
   MOCK_CHAT_MESSAGES, MOCK_REQUESTS, MOCK_KNOWLEDGE_ARTICLES,
 } from "../data/mockSupport";
+
+// Em produção, nenhum dado fictício é seeded em localStorage para evitar
+// confundir o operador. Endpoints reais ainda não existem para chat/knowledge
+// /requests/messages — retornam vazio até o backend ser implementado.
+const SUPPORT_SEED_OK = MOCK_MODE;
 import type {
   SupportTicket, SupportMessage, ChatRoom, ChatMessage, SupportRequest,
   KnowledgeArticle,
@@ -47,8 +52,7 @@ export function useTickets() {
         save(lsKey("support_tickets", tenantId), seeded);
         return seeded;
       }
-      const res = await api.get<{ data: SupportTicket[] }>("/support-tickets?limit=200");
-      return (res as unknown as { data: SupportTicket[] }).data ?? [];
+      return api.get<SupportTicket[]>("/support-tickets?limit=200");
     },
     staleTime: 30_000,
   });
@@ -128,7 +132,7 @@ export function useTicketMessages(ticketId: string) {
   const [allMessages, setAllMessages] = useState<Record<string, SupportMessage[]>>(() => {
     const stored = load<Record<string, SupportMessage[]>>(lsKey("support_messages", tenantId), {});
     if (Object.keys(stored).length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
+    if (!SUPPORT_SEED_OK) return {}; // produção: sem seed fictício
     const seeded: Record<string, SupportMessage[]> = {};
     for (const [key, msgs] of Object.entries(MOCK_MESSAGES)) {
       seeded[key] = msgs.map((m) => ({ ...m, tenant_id: tenantId }));
@@ -173,7 +177,7 @@ export function useChatRooms() {
   const [rooms, setRooms] = useState<ChatRoom[]>(() => {
     const stored = load<ChatRoom[]>(lsKey("support_chats", tenantId), []);
     if (stored.length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
+    if (!SUPPORT_SEED_OK) return []; // produção: sem seed fictício
     const seeded = MOCK_CHAT_ROOMS.map((r) => ({ ...r, tenant_id: tenantId }));
     save(lsKey("support_chats", tenantId), seeded);
     return seeded;
@@ -201,7 +205,7 @@ export function useChatMessages(roomId: string) {
   const [allMessages, setAllMessages] = useState<Record<string, ChatMessage[]>>(() => {
     const stored = load<Record<string, ChatMessage[]>>(lsKey("support_chat_messages", tenantId), {});
     if (Object.keys(stored).length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
+    if (!SUPPORT_SEED_OK) return {}; // produção: sem seed fictício
     const seeded: Record<string, ChatMessage[]> = {};
     for (const [key, msgs] of Object.entries(MOCK_CHAT_MESSAGES)) {
       seeded[key] = msgs.map((m) => ({ ...m, tenant_id: tenantId }));
@@ -245,21 +249,119 @@ export function useKnowledgeArticles() {
   const [articles, setArticles] = useState<KnowledgeArticle[]>(() => {
     const stored = load<KnowledgeArticle[]>(lsKey("support_knowledge", tenantId), []);
     if (stored.length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
+    if (!SUPPORT_SEED_OK) return []; // produção: sem seed fictício
     const seeded = MOCK_KNOWLEDGE_ARTICLES.map((a) => ({ ...a, tenant_id: tenantId }));
     save(lsKey("support_knowledge", tenantId), seeded);
     return seeded;
   });
 
-  const incrementViews = useCallback((id: string) => {
-    setArticles((prev) => {
-      const updated = prev.map((a) => a.id === id ? { ...a, views: a.views + 1 } : a);
-      save(lsKey("support_knowledge", tenantId), updated);
-      return updated;
-    });
-  }, [tenantId]);
+  const persist = useCallback(
+    (updater: (prev: KnowledgeArticle[]) => KnowledgeArticle[]) => {
+      setArticles((prev) => {
+        const updated = updater(prev);
+        save(lsKey("support_knowledge", tenantId), updated);
+        return updated;
+      });
+    },
+    [tenantId],
+  );
 
-  return { articles, incrementViews };
+  const incrementViews = useCallback(
+    (id: string) => {
+      persist((prev) => prev.map((a) => (a.id === id ? { ...a, views: a.views + 1 } : a)));
+    },
+    [persist],
+  );
+
+  const createArticle = useCallback(
+    (data: Partial<KnowledgeArticle> & Pick<KnowledgeArticle, "title" | "category_id" | "category_name" | "content">) => {
+      const now = new Date().toISOString();
+      persist((prev) => {
+        const maxOrder = prev.reduce((max, a) => Math.max(max, a.order ?? 0), 0);
+        const next: KnowledgeArticle = {
+          id: `kb-${Date.now()}`,
+          tenant_id: tenantId,
+          category_id: data.category_id,
+          category_name: data.category_name,
+          title: data.title,
+          summary: data.summary ?? "",
+          content: data.content,
+          views: 0,
+          helpful_count: 0,
+          featured: data.featured ?? false,
+          created_at: now,
+          updated_at: now,
+          read_time: data.read_time ?? Math.max(1, Math.round(data.content.split(/\s+/).length / 200)),
+          type: data.type ?? "article",
+          published: data.published ?? true,
+          order: data.order ?? maxOrder + 1,
+        };
+        return [...prev, next];
+      });
+    },
+    [persist, tenantId],
+  );
+
+  const updateArticle = useCallback(
+    (id: string, data: Partial<KnowledgeArticle>) => {
+      persist((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, ...data, updated_at: new Date().toISOString() } : a)),
+      );
+    },
+    [persist],
+  );
+
+  const removeArticle = useCallback(
+    (id: string) => {
+      persist((prev) => prev.filter((a) => a.id !== id));
+    },
+    [persist],
+  );
+
+  const togglePublished = useCallback(
+    (id: string) => {
+      persist((prev) =>
+        prev.map((a) =>
+          a.id === id
+            ? { ...a, published: !(a.published ?? true), updated_at: new Date().toISOString() }
+            : a,
+        ),
+      );
+    },
+    [persist],
+  );
+
+  const moveArticle = useCallback(
+    (id: string, direction: "up" | "down") => {
+      persist((prev) => {
+        const sorted = [...prev].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+        const index = sorted.findIndex((a) => a.id === id);
+        if (index < 0) return prev;
+        const swapWith = direction === "up" ? index - 1 : index + 1;
+        if (swapWith < 0 || swapWith >= sorted.length) return prev;
+        const current = sorted[index];
+        const other = sorted[swapWith];
+        const currentOrder = current.order ?? index + 1;
+        const otherOrder = other.order ?? swapWith + 1;
+        return prev.map((a) => {
+          if (a.id === current.id) return { ...a, order: otherOrder };
+          if (a.id === other.id) return { ...a, order: currentOrder };
+          return a;
+        });
+      });
+    },
+    [persist],
+  );
+
+  return {
+    articles,
+    incrementViews,
+    createArticle,
+    updateArticle,
+    removeArticle,
+    togglePublished,
+    moveArticle,
+  };
 }
 
 /* ── Requests ── */
@@ -271,7 +373,7 @@ export function useRequests() {
   const [requests, setRequests] = useState<SupportRequest[]>(() => {
     const stored = load<SupportRequest[]>(lsKey("support_requests", tenantId), []);
     if (stored.length > 0) return stored;
-    // Seed from mock, remapping tenant_id to the current tenant
+    if (!SUPPORT_SEED_OK) return []; // produção: sem seed fictício
     const seeded = MOCK_REQUESTS.map((r) => ({ ...r, tenant_id: tenantId }));
     save(lsKey("support_requests", tenantId), seeded);
     return seeded;
@@ -332,7 +434,7 @@ export const TICKET_PRIORITY_LABELS: Record<TicketPriority, string> = {
 
 export const TICKET_CATEGORY_LABELS: Record<TicketCategory, string> = {
   financeiro: "Financeiro",
-  analytics: "Analytics",
+  analytics: "Métricas",
   distribuicao: "Distribuição",
   contratos: "Contratos",
   artistas: "Artistas",
@@ -358,3 +460,4 @@ export const REQUEST_TYPE_LABELS: Record<SupportRequest["type"], string> = {
   billing: "Cobrança",
   integration: "Integração",
 };
+

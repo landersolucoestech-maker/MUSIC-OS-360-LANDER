@@ -87,6 +87,9 @@ export class CreateArtistDto {
   @ApiPropertyOptional() @IsOptional() @IsString() produtor_executivo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() agencia_booking?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() label_parceira?: string;
+  // Vínculos com contatos do CRM (apenas referências: { contactId, distribuidoras? })
+  @ApiPropertyOptional() @IsOptional() @IsArray() contatos_vinculados?: unknown[];
+  // @deprecated Contatos embutidos (legado / auto-cadastro público). Mantido para retrocompat.
   @ApiPropertyOptional() @IsOptional() @IsArray() contatos_equipe?: unknown[];
 
   // ── Interno ───────────────────────────────────────────────────────────────────

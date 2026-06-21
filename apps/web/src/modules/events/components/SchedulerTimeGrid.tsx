@@ -59,7 +59,7 @@ export function SchedulerTimeGrid({
   }, [allDayEvents, days]);
 
   return (
-    <div className="overflow-x-auto rounded-[32px] border border-border/20 bg-background/90 shadow-sm">
+    <div className="overflow-x-auto rounded-[32px] border border-border/20 bg-background/90">
       <div className="min-w-[940px]">
         <div className="grid border-b border-border/20" style={{ gridTemplateColumns: "72px repeat(7, minmax(0, 1fr))" }}>
           <div className="h-16 border-r border-border/20 bg-background" />
@@ -68,7 +68,7 @@ export function SchedulerTimeGrid({
               key={day.toISOString()}
               className={`h-16 border-r border-border/20 last:border-r-0 px-3 py-3 text-center ${isToday(day) ? "bg-primary/5" : "bg-background"}`}
             >
-              <div className="text-[10px] font-semibold uppercase tracking-[0.35em] text-muted-foreground">
+              <div className="text-[10px] font-semibold  tracking-[0.35em] text-muted-foreground">
                 {format(day, "EEE").toUpperCase()}
               </div>
               <div className="mt-2 text-lg font-semibold text-foreground">{format(day, "d")}</div>
@@ -79,7 +79,7 @@ export function SchedulerTimeGrid({
 
         {allDayEvents.length > 0 && (
           <div className="grid border-b border-border/20" style={{ gridTemplateColumns: "72px repeat(7, minmax(0, 1fr))" }}>
-            <div className="flex items-center justify-center border-r border-border/20 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground bg-background/95">
+            <div className="flex items-center justify-center border-r border-border/20 text-[10px] font-semibold  tracking-[0.2em] text-muted-foreground bg-background/95">
               Dia todo
             </div>
             {days.map((day, index) => (
@@ -107,7 +107,7 @@ export function SchedulerTimeGrid({
               style={{ gridTemplateColumns: "72px repeat(7, minmax(0, 1fr))" }}
             >
               <div className="flex items-start justify-end pr-3 pt-2 border-r border-border/20 bg-background/95">
-                <span className="text-[11px] font-mono text-muted-foreground/70">{hour}</span>
+                <span className="text-[11px] font-sans text-muted-foreground/70">{hour}</span>
               </div>
               {days.map((day, dayIndex) => {
                 const items = eventsBySlot[dayIndex]?.[hour] ?? [];

@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { ESPECIALIDADES_LABELS } from "@/modules/artist/mappers";
+import { useContacts } from "@/modules/crm-relationships/hooks/useContacts";
+import { contactTypeOptions, labelFor } from "@/modules/crm-relationships/constants";
 import {
   Dialog,
   DialogContent,
@@ -102,7 +104,7 @@ const estagiosCarreira = [
 ];
 
 // imports movidos para cá após remoção de CircularProgress
-import { formatCurrency } from "@/shared/lib/format-utils";
+import { formatCurrency, getCurrencyToneClass, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useFonogramas } from "@/modules/catalog/hooks/useFonogramas";
 import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
@@ -159,23 +161,23 @@ const getHistoricoIcon = (tipo: string) => {
 const getHistoricoBadge = (tipo: string) => {
   switch (tipo) {
     case "criacao":
-      return <Badge className="bg-success text-[#000000]">Criação</Badge>;
+      return <Badge variant="success">Criação</Badge>;
     case "edicao":
-      return <Badge className="bg-blue-600 text-[#ffffff]">Edição</Badge>;
+      return <Badge variant="info">Edição</Badge>;
     case "obra":
-      return <Badge className="bg-purple-600">Obra</Badge>;
+      return <Badge variant="info">Obra</Badge>;
     case "contrato":
       return (
-        <Badge className="bg-warning text-warning-foreground">Contrato</Badge>
+        <Badge variant="warning">Contrato</Badge>
       );
     case "financeiro":
-      return <Badge className="bg-emerald-600">Financeiro</Badge>;
+      return <Badge variant="success">Financeiro</Badge>;
     case "exclusao":
-      return <Badge variant="destructive">Exclusão</Badge>;
+      return <Badge variant="danger">Exclusão</Badge>;
     case "status":
-      return <Badge className="bg-primary">Status</Badge>;
+      return <Badge variant="info">Status</Badge>;
     default:
-      return <Badge variant="secondary">Outro</Badge>;
+      return <Badge variant="neutral">Outro</Badge>;
   }
 };
 
@@ -196,12 +198,46 @@ const categoriasMeta = [
   { value: "carreira", label: "Carreira" },
 ];
 
+const primaryCompactButtonClass = "h-8 text-xs gap-1.5";
+const activeBlueBadgeClass = "bg-primary text-primary-foreground border-primary";
+
 const statusMeta = [
-  { value: "em_progresso", label: "Em Progresso", color: "bg-warning" },
+  { value: "em_progresso", label: "Em Progresso", color: activeBlueBadgeClass },
   { value: "concluida", label: "Concluída", color: "bg-success" },
   { value: "pausada", label: "Pausada", color: "bg-gray-500" },
   { value: "cancelada", label: "Cancelada", color: "bg-destructive" },
 ];
+
+const getProjectStatusBadgeClass = (status?: string | null) => {
+  if (status === "em_andamento") return activeBlueBadgeClass;
+  if (status === "concluido") return "bg-success";
+  return "bg-gray-600 text-white border-gray-600";
+};
+
+const STATUS_LABELS_PT_BR: Record<string, string> = {
+  analise: "Análise",
+  em_analise: "Em Análise",
+  em_producao: "Em Produção",
+  em_andamento: "Em Andamento",
+  concluido: "Concluído",
+  concluida: "Concluída",
+  ativo: "Ativo",
+  registrado: "Registrado",
+  pendente: "Pendente",
+};
+
+const formatStatusPtBr = (status?: string | null): string => {
+  const normalized = (status ?? "").trim().toLowerCase();
+  if (!normalized) return "Não informado";
+
+  const key = normalized
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[\s-]+/g, "_");
+
+  return STATUS_LABELS_PT_BR[key] ??
+    key.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
+};
 
 export function ArtistaVisao360Modal({
   open,
@@ -221,6 +257,17 @@ export function ArtistaVisao360Modal({
   } = useMetas();
   const { contratos } = useContratos();
   const { transacoes } = useTransacoes();
+  const { contacts } = useContacts();
+
+  // Resolve os contatos vinculados (referências) com os dados atuais do CRM.
+  const contatosVinculadosResolvidos = useMemo(() => {
+    const raw = (artista as Record<string, unknown> | null | undefined)?.contatos_vinculados;
+    if (!Array.isArray(raw)) return [];
+    const byId = new Map(contacts.map((c) => [c.id, c]));
+    return (raw as Array<{ contactId?: string }>)
+      .map((v) => (typeof v?.contactId === "string" ? byId.get(v.contactId) : undefined))
+      .filter((c): c is NonNullable<typeof c> => Boolean(c));
+  }, [artista, contacts]);
 
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [showMetaForm, setShowMetaForm] = useState(false);
@@ -453,6 +500,9 @@ export function ArtistaVisao360Modal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+        <DialogTitle className="sr-only">
+          Visão 360 do artista {artista.nome_artistico}
+        </DialogTitle>
         {/* Header com Banner */}
         <div className="border-b border-border">
           {artista.banner_url && (
@@ -465,14 +515,13 @@ export function ArtistaVisao360Modal({
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-background/80 to-transparent" />
             </div>
           )}
           <div className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div
-                  className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-white shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}
+                  className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-foreground shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}
                 >
                   {artista.foto_url ? (
                     <img
@@ -489,11 +538,11 @@ export function ArtistaVisao360Modal({
                     {artista.nome_artistico}
                   </h2>
                   <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="bg-muted">
+                    <Badge variant="neutral">
                       {artista.genero_musical || "Não informado"}
                     </Badge>
                     {artista.status === "onboarding" ? (
-                      <Badge className="bg-warning text-warning-foreground">
+                      <Badge variant="warning">
                         Onboarding
                       </Badge>
                     ) : (
@@ -510,13 +559,9 @@ export function ArtistaVisao360Modal({
                             ATIVO_S.has((c.status || "").toLowerCase()),
                         );
                         return isExclusivo ? (
-                          <Badge className="bg-success hover:bg-success text-success-foreground">
-                            Artista exclusivo
-                          </Badge>
+                          <Badge variant="success">Artista exclusivo</Badge>
                         ) : (
-                          <Badge className="bg-primary hover:bg-primary text-primary-foreground">
-                            Artista parceiro
-                          </Badge>
+                          <Badge variant="info">Artista parceiro</Badge>
                         );
                       })()
                     )}
@@ -602,7 +647,7 @@ export function ArtistaVisao360Modal({
                                 {artista.estagio_carreira}
                               </span>
                             </div>
-                            <span className="absolute -top-1 -right-1 text-[9px] bg-teal-500 text-white px-1.5 py-0.5 rounded-full">
+                            <span className="absolute -top-1 -right-1 text-[9px] bg-teal-500 text-foreground px-1.5 py-0.5 rounded-full">
                               de 10
                             </span>
                           </div>
@@ -627,9 +672,9 @@ export function ArtistaVisao360Modal({
                               key={n}
                               className={`h-6 w-6 rounded-full flex items-center justify-center text-[10px] font-medium ${
                                 n < artista.estagio_carreira
-                                  ? "bg-teal-500 text-white"
+                                  ? "bg-teal-500 text-foreground"
                                   : n === artista.estagio_carreira
-                                    ? "bg-teal-500 text-white ring-2 ring-teal-400 ring-offset-1 ring-offset-background"
+                                    ? "bg-teal-500 text-foreground ring-2 ring-teal-400 ring-offset-1 ring-offset-background"
                                     : "bg-muted text-muted-foreground"
                               }`}
                             >
@@ -679,7 +724,7 @@ export function ArtistaVisao360Modal({
                 <Card className="bg-muted/30">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-2 text-muted-foreground mb-2">
-                      <Building className="h-4 w-4 text-purple-500" />
+                      <Building className="h-4 w-4 text-primary" />
                       <span className="text-sm">Projetos</span>
                     </div>
                     <p className="text-2xl font-bold">{projetosReais.length}</p>
@@ -803,27 +848,27 @@ export function ArtistaVisao360Modal({
                   <div className="grid grid-cols-4 gap-4">
                     <div>
                       <p className="text-sm text-muted-foreground">Receitas</p>
-                      <p className="text-xl font-bold text-success">
+                      <p className={`text-xl font-bold ${getCurrencyToneClass(receitasTotal)}`}>
                         {formatCurrency(receitasTotal)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Despesas</p>
-                      <p className="text-xl font-bold text-destructive">
-                        {formatCurrency(despesasTotal)}
+                      <p className={`text-xl font-bold ${getCurrencyToneClass(-despesasTotal)}`}>
+                        {formatCurrency(-despesasTotal)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Saldo</p>
                       <p
-                        className={`text-xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}
+                        className={`text-xl font-bold ${getCurrencyToneClass(saldoTotal)}`}
                       >
                         {formatCurrency(saldoTotal)}
                       </p>
                     </div>
                     <div>
                       <p className="text-sm text-muted-foreground">Pendentes</p>
-                      <p className="text-xl font-bold text-warning">
+                      <p className={`text-xl font-bold ${getCurrencyToneClass(pendentesTotal)}`}>
                         {formatCurrency(pendentesTotal)}
                       </p>
                     </div>
@@ -1032,40 +1077,34 @@ export function ArtistaVisao360Modal({
                     <CreditCard className="h-5 w-5 text-muted-foreground" />
                     <h3 className="font-semibold">Dados Bancários</h3>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div>
+                  <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 lg:grid-cols-3">
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Banco</p>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium break-words">
                         {artista.banco?.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase()) || "Não informado"}
                       </p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Agência</p>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium break-words">
                         {artista.agencia || "Não informado"}
                       </p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Conta</p>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium break-words">
                         {artista.conta || "Não informado"}
                       </p>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 mt-4">
-                    <div>
-                      <p className="text-xs text-muted-foreground">
-                        Titular da Conta
-                      </p>
-                      <p className="text-sm font-medium">
-                        {artista.titular_conta ||
-                          artista.nome_civil ||
-                          "Não informado"}
+                    <div className="space-y-1">
+                      <p className="text-xs text-muted-foreground">Titular da Conta</p>
+                      <p className="text-sm font-medium break-words">
+                        {artista.titular_conta || artista.nome_civil || "Não informado"}
                       </p>
                     </div>
-                    <div>
+                    <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">Chave PIX</p>
-                      <p className="text-sm font-medium">
+                      <p className="text-sm font-medium break-words">
                         {artista.chave_pix || "Não informado"}
                       </p>
                     </div>
@@ -1340,7 +1379,45 @@ export function ArtistaVisao360Modal({
                 );
               })()}
 
-              {/* Equipa / Contactos */}
+              {/* Equipe Vinculada (CRM) — dados resolvidos dinamicamente do CRM */}
+              {contatosVinculadosResolvidos.length > 0 && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Users className="h-5 w-5 text-muted-foreground" />
+                      <h3 className="font-semibold">Equipe Vinculada (CRM)</h3>
+                    </div>
+                    <div className="space-y-4">
+                      {contatosVinculadosResolvidos.map((c) => (
+                        <div key={c.id} className="p-3 rounded-lg border border-border/50 bg-background/40 space-y-2">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold">{c.name}</p>
+                            <Badge variant="outline" className="text-xs">
+                              {labelFor(contactTypeOptions, c.contactType)}
+                            </Badge>
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            {(c.phone || c.whatsapp) && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">Telefone</p>
+                                <p className="text-sm">{c.phone || c.whatsapp}</p>
+                              </div>
+                            )}
+                            {c.email && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">E-mail</p>
+                                <p className="text-sm">{c.email}</p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Equipa / Contactos (legado — dados embutidos antigos / auto-cadastro público) */}
               {(() => {
                 type ContatoEquipeItem = { nome: string; categoria: string; telefone: string; email: string; distribuidoras?: Array<{ id: string; email: string; nomeCustom?: string }> };
                 const equipe: ContatoEquipeItem[] = Array.isArray((artista as Record<string, unknown>).contatos_equipe)
@@ -1481,9 +1558,9 @@ export function ArtistaVisao360Modal({
                             href={url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                            className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                           >
-                            <ExternalLink className="h-5 w-5 text-white" />
+                            <ExternalLink className="h-5 w-5 text-foreground" />
                           </a>
                         </div>
                       ))}
@@ -1511,7 +1588,7 @@ export function ArtistaVisao360Modal({
                   </div>
                   {artista.video_apresentacao_url ? (
                     <div className="space-y-3">
-                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-black">
+                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-background">
                         <iframe
                           src={(() => {
                             const url =
@@ -1747,7 +1824,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {(obra.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                  {formatStatusPtBr(obra.status)}
                                 </Badge>
                               </div>
                             ))}
@@ -1784,7 +1861,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {(fono.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                  {formatStatusPtBr(fono.status)}
                                 </Badge>
                               </div>
                             ))}
@@ -1823,7 +1900,7 @@ export function ArtistaVisao360Modal({
                                   variant="outline"
                                   className="text-xs shrink-0"
                                 >
-                                  {(lanc.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                  {formatStatusPtBr(lanc.status)}
                                 </Badge>
                               </div>
                             ))}
@@ -1861,9 +1938,9 @@ export function ArtistaVisao360Modal({
                                     )}
                                 </div>
                                 <Badge
-                                  className={`text-xs shrink-0 ${proj.status === "concluido" ? "bg-success" : proj.status === "em_andamento" ? "bg-blue-600" : "bg-gray-600"}`}
+                                  className={`text-xs shrink-0 ${getProjectStatusBadgeClass(proj.status)}`}
                                 >
-                                  {(proj.status ?? "").replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                                  {formatStatusPtBr(proj.status)}
                                 </Badge>
                               </div>
                             ))}
@@ -1885,7 +1962,7 @@ export function ArtistaVisao360Modal({
                     <p className="text-sm text-muted-foreground">
                       Receitas Total
                     </p>
-                    <p className="text-2xl font-bold text-success">
+                    <p className={`text-2xl font-bold ${getCurrencyToneClass(receitasTotal)}`}>
                       {formatCurrency(receitasTotal)}
                     </p>
                   </CardContent>
@@ -1895,8 +1972,8 @@ export function ArtistaVisao360Modal({
                     <p className="text-sm text-muted-foreground">
                       Despesas Total
                     </p>
-                    <p className="text-2xl font-bold text-destructive">
-                      {formatCurrency(despesasTotal)}
+                    <p className={`text-2xl font-bold ${getCurrencyToneClass(-despesasTotal)}`}>
+                      {formatCurrency(-despesasTotal)}
                     </p>
                   </CardContent>
                 </Card>
@@ -1904,7 +1981,7 @@ export function ArtistaVisao360Modal({
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Saldo</p>
                     <p
-                      className={`text-2xl font-bold ${saldoTotal >= 0 ? "text-blue-500" : "text-destructive"}`}
+                      className={`text-2xl font-bold ${getCurrencyToneClass(saldoTotal)}`}
                     >
                       {formatCurrency(saldoTotal)}
                     </p>
@@ -1913,7 +1990,7 @@ export function ArtistaVisao360Modal({
                 <Card className="bg-warning/10 border-warning/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">Pendentes</p>
-                    <p className="text-2xl font-bold text-warning">
+                    <p className={`text-2xl font-bold ${getCurrencyToneClass(pendentesTotal)}`}>
                       {formatCurrency(pendentesTotal)}
                     </p>
                   </CardContent>
@@ -1953,8 +2030,8 @@ export function ArtistaVisao360Modal({
                             <p
                               className={`text-sm font-bold ${t.tipo === "receita" ? "text-success" : "text-destructive"}`}
                             >
-                              {t.tipo === "receita" ? "+" : "-"}
-                              {formatCurrency(t.valor)}
+                              {t.tipo === "receita" ? "+" : ""}
+                              {formatCurrency(t.tipo === "receita" ? t.valor : -t.valor)}
                             </p>
                             <p className="text-[10px] text-muted-foreground">
                               {t.status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) ?? "—"}
@@ -2056,7 +2133,7 @@ export function ArtistaVisao360Modal({
                               </p>
                               {contrato.valor != null && (
                                 <p className="text-xs text-muted-foreground">
-                                  Valor: {formatCurrency(contrato.valor)}
+                                  Valor: <span className={getMonetarySemanticClass("neutral")}>{formatCurrency(contrato.valor)}</span>
                                 </p>
                               )}
                             </div>
@@ -2109,10 +2186,10 @@ export function ArtistaVisao360Modal({
                     </div>
                     <Button
                       size="sm"
-                      className="bg-primary hover:bg-primary/90"
+                      className={primaryCompactButtonClass}
                       onClick={() => setShowMetaForm(true)}
                     >
-                      <Plus className="h-4 w-4 mr-1" />
+                      <Plus className="h-3.5 w-3.5" />
                       Nova Meta
                     </Button>
                   </div>
@@ -2160,10 +2237,10 @@ export function ArtistaVisao360Modal({
                       </p>
                       <Button
                         size="sm"
-                        className="bg-primary hover:bg-primary/90"
+                        className={primaryCompactButtonClass}
                         onClick={() => setShowMetaForm(true)}
                       >
-                        <Plus className="h-4 w-4 mr-1" />
+                        <Plus className="h-3.5 w-3.5" />
                         Criar Primeira Meta
                       </Button>
                     </div>

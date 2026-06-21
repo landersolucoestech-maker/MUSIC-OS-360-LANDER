@@ -6,23 +6,21 @@ import { Badge } from "@/shared/ui/badge";
 import { ScrollArea } from "@/shared/ui/scroll-area";
 import {
   Users, FileText, DollarSign, Calendar, ArrowRight,
-  Music, TrendingUp, BarChart3, AlertTriangle, Activity,
+  Music, TrendingUp, AlertTriangle, Activity,
   UserCheck, Radio, Shield, Clock, ListChecks, Upload,
-  ServerCrash, Workflow,
+  ServerCrash, Layers, Disc,
 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { parseISO, differenceInDays } from "date-fns";
+import { differenceInDays } from "date-fns";
 import { useMetrics } from "../hooks/useMetrics";
 import { useOperationalDashboard } from "../hooks/useOperationalDashboard";
-import { useEventos } from "@/modules/events/hooks/useEventos";
-import { useContratos, type ContratoWithRelations } from "@/modules/contracts/hooks/useContratos";
-import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useEventos, type EventoWithRelations } from "@/modules/events/hooks/useEventos";
 import { formatCurrency } from "@/shared/lib/format-utils";
 import { DashboardSkeleton } from "@/shared/components/PageSkeletons";
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
 import { useWsEvent } from "@/shared/hooks/useWsEvent";
 import { cn } from "@/shared/lib/utils";
+import { useActivityHistory, type AuditLogRow } from "../hooks/useActivityHistory";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -37,6 +35,117 @@ interface ActivityItem {
 }
 
 const MAX_ITEMS = 30;
+
+// ─── Próximos Compromissos (Agenda) ─────────────────────────────────────────
+// Categorias oficiais do módulo Agenda (SchedulerFormModal). Normaliza tanto os
+// slugs do formulário (plural) quanto os do enum EventoTipo (singular) para o
+// rótulo PT-BR exibido no badge. Valores desconhecidos/vazios caem em "Outro".
+const COMPROMISSO_CATEGORIAS: Record<string, string> = {
+  show: "Show", shows: "Show", festival: "Show", rodeio: "Show",
+  reuniao: "Reunião", reunioes: "Reunião",
+  gravacao: "Sessão de Estúdio", sessao_estudio: "Sessão de Estúdio", sessoes_estudio: "Sessão de Estúdio",
+  ensaio: "Ensaio", ensaios: "Ensaio",
+  sessao_fotos: "Sessão de Fotos", sessoes_fotos: "Sessão de Fotos",
+  producao_conteudo: "Produção de Conteúdo",
+  entrevista: "Entrevista", entrevistas: "Entrevista",
+  podcast: "Podcast", podcasts: "Podcast",
+  programa_tv: "Programa de TV", programas_tv: "Programa de TV",
+  radio: "Rádio",
+  evento: "Evento",
+};
+
+// Status que removem o evento da lista de próximos compromissos (passado/encerrado).
+const COMPROMISSO_STATUS_OCULTOS = new Set([
+  "cancelado", "concluido", "realizado", "arquivado",
+]);
+
+function normalizarSlug(value: unknown): string {
+  if (typeof value !== "string") return "";
+  return value.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+}
+
+function categoriaCompromissoLabel(tipo: unknown): string {
+  const slug = normalizarSlug(tipo);
+  return COMPROMISSO_CATEGORIAS[slug] ?? "Outro";
+}
+
+// Combina data (date-only ou ISO) + horário "HH:mm" num Date comparável.
+// Sem horário, assume fim do dia para manter o compromisso visível o dia todo.
+function compromissoDataHora(raw: unknown, horario: unknown): Date | null {
+  if (typeof raw !== "string" || !raw) return null;
+  const datePart = raw.includes("T") ? raw.slice(0, 10) : raw;
+  const hora =
+    typeof horario === "string" && /^\d{1,2}:\d{2}/.test(horario)
+      ? horario.slice(0, 5)
+      : "23:59";
+  const dt = new Date(`${datePart}T${hora}:00`);
+  return Number.isFinite(dt.getTime()) ? dt : null;
+}
+
+// ─── Audit Log → ActivityItem mapper ────────────────────────────────────────
+const ENTITY_ICON: Record<string, React.ReactNode> = {
+  artists:      <Users   className="h-3.5 w-3.5" />,
+  artistas:     <Users   className="h-3.5 w-3.5" />,
+  contracts:    <FileText className="h-3.5 w-3.5" />,
+  contratos:    <FileText className="h-3.5 w-3.5" />,
+  releases:     <Music   className="h-3.5 w-3.5" />,
+  lancamentos:  <Music   className="h-3.5 w-3.5" />,
+  works:        <Music   className="h-3.5 w-3.5" />,
+  obras:        <Music   className="h-3.5 w-3.5" />,
+  phonograms:   <Music   className="h-3.5 w-3.5" />,
+  fonogramas:   <Music   className="h-3.5 w-3.5" />,
+  leads:        <UserCheck className="h-3.5 w-3.5" />,
+  transactions: <DollarSign className="h-3.5 w-3.5" />,
+  transacoes:   <DollarSign className="h-3.5 w-3.5" />,
+  events:       <Calendar className="h-3.5 w-3.5" />,
+  eventos:      <Calendar className="h-3.5 w-3.5" />,
+};
+
+const ENTITY_BADGE: Record<string, string> = {
+  artists:      "Artista",     artistas: "Artista",
+  contracts:    "Contrato",    contratos: "Contrato",
+  releases:     "Lançamento",  lancamentos: "Lançamento",
+  works:        "Obra",        obras: "Obra",
+  phonograms:   "Fonograma",   fonogramas: "Fonograma",
+  leads:        "CRM",
+  transactions: "Accounting",  transacoes: "Accounting",
+  events:       "Agenda",      eventos: "Agenda",
+};
+
+function describeAuditAction(action: string, entity: string): string {
+  const verbMap: Record<string, string> = {
+    create:  "criado",
+    created: "criado",
+    update:  "atualizado",
+    updated: "atualizado",
+    delete:  "removido",
+    deleted: "removido",
+    sign:    "assinado",
+    signed:  "assinado",
+  };
+  const verb = verbMap[action.toLowerCase()] ?? action;
+  const label = ENTITY_BADGE[entity] ?? entity;
+  return `${label} ${verb}`;
+}
+
+function mapAuditToActivity(row: AuditLogRow): ActivityItem {
+  const after = (row.after ?? {}) as Record<string, unknown>;
+  const description =
+    (after["titulo"]         as string | undefined) ??
+    (after["nome_artistico"] as string | undefined) ??
+    (after["nome"]           as string | undefined) ??
+    (row.entity_id ?? "—");
+  const ts = row.created_at ? new Date(row.created_at) : new Date();
+  return {
+    id:           row.id,
+    icon:         ENTITY_ICON[row.entity] ?? <Shield className="h-3.5 w-3.5" />,
+    label:        describeAuditAction(row.action, row.entity),
+    description:  String(description),
+    badge:        ENTITY_BADGE[row.entity] ?? "Sistema",
+    badgeVariant: row.action.includes("delete") ? "outline" : "default",
+    timestamp:    Number.isFinite(ts.getTime()) ? ts : new Date(),
+  };
+}
 
 function timeAgo(date: Date): string {
   const diffMs = Date.now() - date.getTime();
@@ -59,35 +168,38 @@ interface StatCardProps {
   accent?: "primary" | "success" | "warning" | "destructive";
 }
 
+// Mesma identidade visual dos KPI Cards da página Artistas (MetricCard).
 const accentIcon: Record<NonNullable<StatCardProps["accent"]>, string> = {
-  primary:     "bg-primary/10 border-primary/20 text-primary",
-  success:     "bg-success/10 border-success/20 text-success",
-  warning:     "bg-warning/10 border-warning/20 text-warning",
-  destructive: "bg-destructive/10 border-destructive/20 text-destructive",
+  primary:     "bg-primary/8 text-primary border-primary/15",
+  success:     "bg-success/8 text-success border-success/15",
+  warning:     "bg-warning/8 text-warning border-warning/15",
+  destructive: "bg-destructive/8 text-destructive border-destructive/15",
 };
 
 function StatCard({ label, value, sub, icon: Icon, accent = "primary" }: StatCardProps) {
   return (
-    <Card className="group hover:shadow-md transition-shadow duration-200">
-      <CardContent className="p-5">
+    <Card className="overflow-hidden">
+      <CardContent className="p-4">
         <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground leading-none">
+          <div className="flex-1 min-w-0 space-y-1.5">
+            <p className="text-sm font-medium text-muted-foreground leading-none">
               {label}
             </p>
-            <p className="text-2xl font-mono font-semibold tabular-nums tracking-tight mt-2.5 text-foreground leading-none">
+            <p className="text-2xl font-bold tabular-nums tracking-tight text-foreground leading-none">
               {value}
             </p>
+            {sub && (
+              <div className="text-xs text-muted-foreground leading-snug">
+                {sub}
+              </div>
+            )}
           </div>
-          <div className={cn("rounded-lg p-2.5 border shrink-0 mt-0.5", accentIcon[accent])}>
-            <Icon className="h-4 w-4" />
-          </div>
+          {Icon && (
+            <div className={cn("rounded-lg p-2.5 border shrink-0", accentIcon[accent])}>
+              <Icon className="h-[15px] w-[15px]" />
+            </div>
+          )}
         </div>
-        {sub && (
-          <div className="mt-3 pt-3 border-t border-border/60 text-xs text-muted-foreground">
-            {sub}
-          </div>
-        )}
       </CardContent>
     </Card>
   );
@@ -148,7 +260,7 @@ function AlertItem({ label, value, href, icon: Icon, variant }: AlertItemProps) 
         <div className="flex-1 min-w-0">
           <p className="text-xs font-medium leading-snug">{label}</p>
         </div>
-        <span className="font-mono font-bold text-lg leading-none">{value}</span>
+        <span className="font-sans font-bold text-lg leading-none">{value}</span>
         <ArrowRight className="h-3.5 w-3.5 shrink-0 opacity-60" />
       </div>
     </Link>
@@ -186,13 +298,6 @@ function OperationalAlerts() {
       value: dashboard.contracts_expiring_soon_count,
       href: "/contratos",
       icon: FileText,
-      variant: "warning" as const,
-    },
-    dashboard.stalled_pipelines_count > 0 && {
-      label: "Pipelines parados",
-      value: dashboard.stalled_pipelines_count,
-      href: "/crm",
-      icon: Workflow,
       variant: "warning" as const,
     },
     dashboard.pending_tasks_count > 0 && {
@@ -248,21 +353,48 @@ function OperationalAlerts() {
 
 // ─── Dashboard ────────────────────────────────────────────────────────────────
 
+/** Iniciais para o placeholder padrão do avatar do artista. */
+function getInitials(nome: string): string {
+  return nome
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join("");
+}
+
 export default function Dashboard() {
   const [visao360Modal, setVisao360Modal] = useState<{ open: boolean; artista?: any }>({ open: false });
   const { dashboardMetrics, artistasMetrics, isLoading } = useMetrics();
   const { eventos } = useEventos();
-  const { contratos } = useContratos();
-  const { lancamentos } = useLancamentos();
-  const { artistas } = useArtistas();
 
   // ── Activity state ──────────────────────────────────────────────────────────
   const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const { data: historyRows } = useActivityHistory(MAX_ITEMS);
+
+  // Hydrate feed with persisted history once it arrives. Subsequent realtime
+  // pushes prepend on top, dedup by id, then keep MAX_ITEMS.
+  useEffect(() => {
+    if (!historyRows || historyRows.length === 0) return;
+    setActivities((prev) => {
+      const mapped = historyRows.map(mapAuditToActivity);
+      const seen   = new Set<string>();
+      const merged: ActivityItem[] = [];
+      for (const item of [...prev, ...mapped]) {
+        if (seen.has(item.id)) continue;
+        seen.add(item.id);
+        merged.push(item);
+      }
+      merged.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      return merged.slice(0, MAX_ITEMS);
+    });
+  }, [historyRows]);
 
   const push = useCallback((item: Omit<ActivityItem, "id" | "timestamp">) => {
-    setActivities((prev) =>
-      [{ id: crypto.randomUUID(), timestamp: new Date(), ...item }, ...prev].slice(0, MAX_ITEMS),
-    );
+    setActivities((prev) => {
+      const next: ActivityItem = { id: crypto.randomUUID(), timestamp: new Date(), ...item };
+      return [next, ...prev].slice(0, MAX_ITEMS);
+    });
   }, []);
 
   // WS subscriptions
@@ -384,34 +516,42 @@ export default function Dashboard() {
 
   // ── Derived data ────────────────────────────────────────────────────────────
 
-  const contratosPorArtista = useMemo(() => {
-    const map = new Map<string, ContratoWithRelations[]>();
-    for (const c of contratos) {
-      if (!c.artista_id) continue;
-      const arr = map.get(c.artista_id) ?? [];
-      arr.push(c);
-      map.set(c.artista_id, arr);
-    }
-    return map;
-  }, [contratos]);
-
   const { totalArtistas, contratosAtivos, contratosVencendo, receitaMensal, eventosMes, artistasDestaque } =
     dashboardMetrics;
 
-  const today = useMemo(() => new Date().toISOString().split("T")[0], []);
-
-  const eventosHoje = useMemo(
-    () => eventos.filter((e) => e.data_inicio === today),
-    [eventos, today],
-  );
+  // Próximos compromissos: somente eventos futuros (data/hora >= agora), sem os
+  // encerrados/cancelados/arquivados, em ordem cronológica e limitado a 5.
+  // O escopo por tenant já é garantido pela camada de dados (useEventos → tenant).
+  const proximosCompromissos = useMemo(() => {
+    const agora = Date.now();
+    return eventos
+      .map((evento) => {
+        // Frontend usa `data_inicio`; backend retorna `data` na coluna timestamp.
+        const raw =
+          (evento.data_inicio as string | null | undefined) ??
+          ((evento as { data?: string | null }).data ?? null);
+        return { evento, quando: compromissoDataHora(raw, evento.horario_inicio) };
+      })
+      .filter(
+        (item): item is { evento: EventoWithRelations; quando: Date } => {
+          if (!item.quando) return false;
+          if (item.quando.getTime() < agora) return false;
+          return !COMPROMISSO_STATUS_OCULTOS.has(normalizarSlug(item.evento.status));
+        },
+      )
+      .sort((a, b) => a.quando.getTime() - b.quando.getTime())
+      .slice(0, 5);
+  }, [eventos]);
 
   const artistasComEventos = useMemo(
     () => artistasDestaque.map((a) => ({
       id: a.id,
       nome: a.nome_artistico,
       genero: a.genero_musical || "Outro",
-      shows: a.shows,
-      receita: a.receita,
+      lancamentos: a.lancamentos,
+      streams: a.streams, // pode ser null → UI exibe "–"
+      projetos: a.projetos,
+      foto_url: a.foto_url,
     })),
     [artistasDestaque],
   );
@@ -420,7 +560,7 @@ export default function Dashboard() {
 
   return (
     <MainLayout title="Dashboard" description="Visão geral do seu negócio musical">
-      <div className="space-y-8">
+      <div className="space-y-6">
 
         {/* ── KPI Stats ── */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -431,7 +571,7 @@ export default function Dashboard() {
             accent="primary"
             sub={
               <span>
-                <span className="font-mono font-semibold text-success">{artistasMetrics.comContrato}</span>
+                <span className="font-sans font-semibold text-success">{artistasMetrics.comContrato}</span>
                 {" "}com contrato ativo
               </span>
             }
@@ -445,7 +585,7 @@ export default function Dashboard() {
               contratosVencendo > 0 ? (
                 <span className="flex items-center gap-1">
                   <AlertTriangle className="h-3 w-3 text-warning" />
-                  <span className="font-mono font-semibold text-warning">{contratosVencendo}</span>
+                  <span className="font-sans font-semibold text-warning">{contratosVencendo}</span>
                   {" "}vencendo em breve
                 </span>
               ) : (
@@ -469,11 +609,8 @@ export default function Dashboard() {
           />
         </div>
 
-        {/* ── Operational Alerts ── */}
-        <OperationalAlerts />
-
-        {/* ── Main Grid: Atividades Recentes + Agenda ── */}
-        <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
+        {/* ── Main Grid: Atividades Recentes + Agenda (larguras iguais) ── */}
+        <div className="grid gap-6 lg:grid-cols-2">
 
           {/* Atividades Recentes — all system events */}
           <Card data-testid="card-activity-feed">
@@ -491,7 +628,7 @@ export default function Dashboard() {
                   </div>
                 </div>
                 {activities.length > 0 && (
-                  <Badge variant="secondary" className="font-mono text-xs">
+                  <Badge variant="secondary" className="font-sans text-xs">
                     {activities.length}
                   </Badge>
                 )}
@@ -534,7 +671,7 @@ export default function Dashboard() {
                           </div>
                           <p className="text-xs text-muted-foreground truncate mt-0.5">{item.description}</p>
                         </div>
-                        <span className="text-xs text-muted-foreground shrink-0 font-mono">
+                        <span className="text-xs text-muted-foreground shrink-0 font-sans">
                           {timeAgo(item.timestamp)}
                         </span>
                       </div>
@@ -545,7 +682,7 @@ export default function Dashboard() {
             </CardContent>
           </Card>
 
-          {/* Agenda de Hoje */}
+          {/* Próximos Compromissos */}
           <Card className="flex flex-col">
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -553,44 +690,65 @@ export default function Dashboard() {
                   <Calendar className="h-3.5 w-3.5 text-primary" />
                 </div>
                 <div>
-                  <CardTitle className="text-sm font-semibold">Agenda de Hoje</CardTitle>
+                  <CardTitle className="text-sm font-semibold">Próximos Compromissos</CardTitle>
                   <CardDescription className="text-xs mt-0">
-                    {new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long" })}
+                    Compromissos agendados em ordem cronológica
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col pt-0">
-              {eventosHoje.length > 0 ? (
-                <div className="flex-1 divide-y divide-border/60">
-                  {eventosHoje.map((evento) => (
-                    <div key={evento.id} className="flex items-start gap-3 py-3 first:pt-0">
-                      <div className="w-14 shrink-0 text-center">
-                        <span className="text-xs font-mono font-semibold text-primary">
-                          {evento.horario_inicio || "–"}
+              {proximosCompromissos.length > 0 ? (
+                <ul className="flex-1 divide-y divide-border/60">
+                  {proximosCompromissos.map(({ evento, quando }) => (
+                    <li
+                      key={evento.id}
+                      className="flex flex-col gap-1 py-3 first:pt-0 sm:flex-row sm:items-start sm:gap-3"
+                      data-testid={`compromisso-${evento.id}`}
+                    >
+                      <div className="flex shrink-0 items-center gap-2 sm:w-16 sm:flex-col sm:items-center sm:gap-0 sm:text-center">
+                        <span className="text-xs font-sans font-semibold text-foreground">
+                          {quando.toLocaleDateString("pt-BR")}
+                        </span>
+                        <span className="text-xs font-sans text-primary sm:mt-0.5">
+                          {evento.horario_inicio
+                            ? String(evento.horario_inicio).slice(0, 5)
+                            : "Dia inteiro"}
                         </span>
                       </div>
-                      <div className="w-px self-stretch bg-primary/20" />
-                      <div className="flex-1 min-w-0">
+                      <div className="hidden w-px self-stretch bg-primary/20 sm:block" />
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium leading-tight">{evento.titulo}</p>
-                        <Badge variant="outline" className="text-[10px] px-1.5 py-0 mt-1.5 border-border text-muted-foreground">
-                          {evento.tipo_evento}
+                        <Badge
+                          variant="outline"
+                          className="mt-1.5 px-1.5 py-0 text-[10px] border-border text-muted-foreground"
+                        >
+                          {categoriaCompromissoLabel(evento.tipo_evento)}
                         </Badge>
                       </div>
-                    </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               ) : (
                 <div className="flex-1 flex flex-col items-center justify-center py-8 text-center">
                   <div className="rounded-xl bg-muted/60 border border-border p-4 mb-3">
                     <Calendar className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <p className="text-sm font-medium text-muted-foreground">Sem eventos hoje</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Dia livre na agenda</p>
+                  <p className="text-sm font-medium text-muted-foreground">
+                    Nenhum compromisso agendado
+                  </p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    Os próximos eventos, reuniões e produções aparecerão aqui.
+                  </p>
                 </div>
               )}
               <Link to="/agenda" className="mt-4 block">
-                <Button variant="outline" size="sm" className="w-full h-8 text-xs">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full h-8 text-xs"
+                  aria-label="Ver agenda completa"
+                >
                   Ver Agenda Completa
                 </Button>
               </Link>
@@ -610,66 +768,99 @@ export default function Dashboard() {
               {artistasComEventos.map((artista, index) => (
                 <Card
                   key={artista.id}
-                  className="group hover:shadow-md transition-shadow duration-200"
+                  className="group relative overflow-hidden duration-200"
                   data-testid={`card-artista-destaque-${artista.id}`}
                 >
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="min-w-0 flex-1">
-                        <h3 className="font-semibold text-sm leading-tight truncate">{artista.nome}</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">{artista.genero}</p>
-                      </div>
+                  {/* Imagem do artista cobre o card inteiro; placeholder padrão quando sem foto */}
+                  {artista.foto_url ? (
+                    <>
+                      <img
+                        src={artista.foto_url}
+                        alt={artista.nome}
+                        className="absolute inset-0 h-full w-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/45 to-black/10" />
+                    </>
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center bg-muted">
+                      <span className="text-3xl font-semibold text-muted-foreground/70">
+                        {getInitials(artista.nome)}
+                      </span>
+                    </div>
+                  )}
+
+                  <div className={cn(
+                    "relative z-10 flex min-h-[300px] flex-col p-4",
+                    artista.foto_url && "text-white",
+                  )}>
+                    <div className="flex justify-end">
                       <span className={cn(
-                        "text-[11px] font-mono font-bold px-1.5 py-0.5 rounded-sm border ml-2 shrink-0",
+                        "text-[11px] font-bold tabular-nums tracking-tight px-1.5 py-0.5 rounded-sm border",
                         index === 0
                           ? "bg-warning/10 text-warning border-warning/20"
-                          : "bg-muted text-muted-foreground border-border"
+                          : artista.foto_url
+                            ? "bg-white/15 text-white border-white/30"
+                            : "bg-muted text-muted-foreground border-border"
                       )}>
                         #{index + 1}
                       </span>
                     </div>
 
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <BarChart3 className="h-3 w-3" />
-                          Shows
-                        </span>
-                        <span className="text-xs font-mono font-semibold">{artista.shows}</span>
+                    <div className="mt-auto space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-sm leading-tight truncate">{artista.nome}</h3>
+                        <p className={cn("text-xs mt-0.5", artista.foto_url ? "text-white/80" : "text-muted-foreground")}>{artista.genero}</p>
                       </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <DollarSign className="h-3 w-3" />
-                          Receita
-                        </span>
-                        <span className="text-xs font-mono font-semibold">{formatCurrency(artista.receita)}</span>
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Music className="h-3 w-3" />
-                          Contratos
-                        </span>
-                        <span className="text-xs font-mono font-semibold">
-                          {contratosPorArtista.get(artista.id)?.length ?? 0}
-                        </span>
-                      </div>
-                    </div>
 
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full mt-3 h-7 text-xs text-muted-foreground hover:text-foreground border border-border/60 hover:border-border"
-                      onClick={() =>
-                        setVisao360Modal({
-                          open: true,
-                          artista: artistasDestaque.find((a) => a.id === artista.id),
-                        })
-                      }
-                      data-testid={`button-ver-perfil-${artista.id}`}
-                    >
-                      Ver perfil 360°
-                    </Button>
-                  </CardContent>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className={cn("flex items-center gap-1.5 text-xs", artista.foto_url ? "text-white/80" : "text-muted-foreground")}>
+                            <Layers className="h-3 w-3" />
+                            Projetos
+                          </span>
+                          <span className="text-xs font-sans font-semibold">{artista.projetos}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={cn("flex items-center gap-1.5 text-xs", artista.foto_url ? "text-white/80" : "text-muted-foreground")}>
+                            <Radio className="h-3 w-3" />
+                            Streams
+                          </span>
+                          <span className="text-xs font-sans font-semibold">
+                            {artista.streams == null
+                              ? "–"
+                              : artista.streams.toLocaleString("pt-BR")}
+                          </span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className={cn("flex items-center gap-1.5 text-xs", artista.foto_url ? "text-white/80" : "text-muted-foreground")}>
+                            <Disc className="h-3 w-3" />
+                            Lançamentos
+                          </span>
+                          <span className="text-xs font-sans font-semibold">{artista.lancamentos}</span>
+                        </div>
+                      </div>
+
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(
+                          "w-full mt-1 h-7 text-xs border",
+                          artista.foto_url
+                            ? "text-white border-white/40 hover:bg-white/10 hover:text-white"
+                            : "text-muted-foreground hover:text-foreground border-border/60 hover:border-border"
+                        )}
+                        onClick={() =>
+                          setVisao360Modal({
+                            open: true,
+                            artista: artistasDestaque.find((a) => a.id === artista.id),
+                          })
+                        }
+                        data-testid={`button-ver-perfil-${artista.id}`}
+                      >
+                        Ver perfil 360°
+                      </Button>
+                    </div>
+                  </div>
                 </Card>
               ))}
             </div>
@@ -683,7 +874,7 @@ export default function Dashboard() {
                 <p className="text-xs text-muted-foreground mb-4">Comece cadastrando seus artistas para ver os destaques aqui.</p>
                 <Link to="/artistas">
                   <Button size="sm" className="h-8 text-xs">
-                    Cadastrar Artista
+                    Criar Artista
                   </Button>
                 </Link>
               </CardContent>
@@ -700,3 +891,4 @@ export default function Dashboard() {
     </MainLayout>
   );
 }
+

@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -61,13 +59,11 @@ export function ResendConfigDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-resend-config">
-        <DialogHeader>
-          <DialogTitle>Integração Resend</DialogTitle>
-          <DialogDescription>
-            Configure a conta do Resend para enviar e-mails transacionais
-            (notificações, resets, convites) a partir do seu próprio domínio.
-          </DialogDescription>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="resend"
+          title="Integração Resend"
+          description="Configure a conta do Resend para enviar e-mails transacionais (notificações, resets, convites) a partir do seu próprio domínio."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

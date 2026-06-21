@@ -18,7 +18,7 @@ import {
 import { useTemplatesContratos } from "@/modules/contracts/hooks/useTemplatesContratos";
 import { useCategoryRegistry } from "@/modules/contracts/hooks/useCategoryRegistry";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 import type { TemplateContrato, ContractVariable, WizardSignerRecord } from "@/modules/contracts/types/contracts.types";
 import type { ContratoWithRelations, ContratoInsert } from "@/modules/contracts/hooks/useContratos";
@@ -351,7 +351,7 @@ function StepTemplate({
                   "w-full text-left rounded-lg border p-4 transition-colors",
                   selected
                     ? "border-primary bg-primary/5 ring-1 ring-primary"
-                    : "border-border hover:border-primary/40 hover:bg-accent/30",
+                    : "border-border hover:border-primary/40 hover:bg-muted/30",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -551,14 +551,14 @@ function PartyCard({
             </div>
             <div className="space-y-1">
               <Label className="text-xs">CNPJ</Label>
-              <Input className="h-8 text-xs font-mono" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
+              <Input className="h-8 text-xs font-sans" value={party.cnpj || ""} onChange={(e) => set({ cnpj: e.target.value })} placeholder="00.000.000/0000-00" />
             </div>
             <div className="space-y-1 col-span-2">
               <Label className="text-xs">Endereço</Label>
               <Input className="h-8 text-xs" value={party.endereco || ""} onChange={(e) => set({ endereco: e.target.value })} placeholder="Rua, número, cidade - UF" />
             </div>
             <div className="space-y-1 col-span-2 border-t border-border pt-2 mt-1">
-              <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wide">Dados do Representante Legal</p>
+              <p className="text-[10px] font-medium text-muted-foreground  tracking-wide">Dados do Representante Legal</p>
             </div>
             <div className="space-y-1 col-span-2">
               <Label className="text-xs">Nome do Representante Legal</Label>
@@ -595,12 +595,12 @@ function PartyCard({
 
         <div className="space-y-1">
           <Label className="text-xs">CPF {party.tipo === "pj" ? "(Repr.)" : ""}</Label>
-          <Input className="h-8 text-xs font-mono" value={party.cpf || ""} onChange={(e) => set({ cpf: e.target.value })} placeholder="000.000.000-00" />
+          <Input className="h-8 text-xs font-sans" value={party.cpf || ""} onChange={(e) => set({ cpf: e.target.value })} placeholder="000.000.000-00" />
         </div>
 
         <div className="space-y-1">
           <Label className="text-xs">RG {party.tipo === "pj" ? "(Repr.)" : ""}</Label>
-          <Input className="h-8 text-xs font-mono" value={party.rg || ""} onChange={(e) => set({ rg: e.target.value })} placeholder="RG" />
+          <Input className="h-8 text-xs font-sans" value={party.rg || ""} onChange={(e) => set({ rg: e.target.value })} placeholder="RG" />
         </div>
 
         <div className="space-y-1">
@@ -657,7 +657,7 @@ function VariableField({
         return (
           <div className="relative">
             <Input
-              className="h-8 text-xs font-mono pr-8"
+              className="h-8 text-xs font-sans pr-8"
               type="number"
               value={value}
               onChange={(e) => onChange(e.target.value)}
@@ -674,7 +674,7 @@ function VariableField({
           <div className="relative">
             <span className="absolute left-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
             <Input
-              className="h-8 text-xs font-mono pl-8"
+              className="h-8 text-xs font-sans pl-8"
               type="number"
               value={value}
               onChange={(e) => onChange(e.target.value)}
@@ -725,7 +725,7 @@ function VariableField({
       <div className="flex items-center gap-1.5">
         <Label className="text-xs">{manifest.label}</Label>
         {manifest.required && <span className="text-destructive text-xs">*</span>}
-        <span className="text-[10px] text-muted-foreground/60 font-mono">{manifest.key}</span>
+        <span className="text-[10px] text-muted-foreground/60 font-sans">{manifest.key}</span>
       </div>
       {renderInput()}
     </div>
@@ -821,7 +821,7 @@ function PreviewPanel({
   return (
     <div className="flex flex-col h-full">
       <div className="px-4 py-2 border-b border-border flex items-center justify-between shrink-0">
-        <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Pré-visualização</span>
+        <span className="text-xs font-medium text-muted-foreground  tracking-wide">Pré-visualização</span>
         <span className="text-[10px] text-muted-foreground">
           Campos <span className="text-primary font-medium">destacados</span> ainda não preenchidos
         </span>
@@ -1269,7 +1269,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-[95vw] w-full p-0 overflow-hidden gap-0"
+        className="max-w-5xl w-full p-0 overflow-hidden gap-0"
         style={{ height: "90vh" }}
       >
         <DialogTitle className="sr-only">
@@ -1281,7 +1281,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
           {/* ── Step sidebar ─────────────────────────────────────────────── */}
           <div className="hidden md:flex flex-col w-52 border-r border-border bg-muted/30 shrink-0">
             <div className="p-4 border-b border-border">
-              <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="text-xs font-semibold  tracking-wide text-muted-foreground">
                 {isEdit ? "Editar Contrato" : "Novo Contrato"}
               </p>
               {state.templateNome && (
@@ -1302,7 +1302,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
                     className={cn(
                       "w-full flex items-center gap-2.5 px-3 py-2 rounded-md text-xs transition-colors text-left",
                       active && "bg-primary text-primary-foreground font-medium",
-                      !active && done && "text-foreground hover:bg-accent cursor-pointer",
+                      !active && done && "text-foreground hover:bg-muted cursor-pointer",
                       !active && !done && "text-muted-foreground cursor-default",
                     )}
                   >
@@ -1340,7 +1340,7 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
             </div>
 
             <ScrollArea className="flex-1 px-5 py-4">
-              <div className="max-w-2xl">
+              <div className="mx-auto w-full max-w-3xl">
                 {stepContent}
               </div>
             </ScrollArea>
@@ -1416,3 +1416,4 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
     </Dialog>
   );
 }
+

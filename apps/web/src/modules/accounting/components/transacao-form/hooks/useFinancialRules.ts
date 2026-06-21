@@ -42,11 +42,11 @@ export function useFinancialRules({
 
     // Apply stored overrides for matching combination
     const { tipoTransacao, tipoCliente, categoria } = formData;
-    const overridden = { ...computed };
+    const overridden: FinancialFormRules = { ...computed };
     for (const ruleKey of Object.keys(DISPLAY_RULES) as (keyof typeof DISPLAY_RULES)[]) {
       const k = buildKey(tipoTransacao, tipoCliente, categoria, ruleKey);
       if (k in stored) {
-        (overridden as Record<string, unknown>)[ruleKey] = stored[k];
+        overridden[ruleKey] = stored[k];
       }
     }
     return overridden;

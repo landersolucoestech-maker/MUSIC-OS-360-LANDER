@@ -297,7 +297,7 @@ export const CONSTANTS_NAMING = {
  *   /accounting/*              → módulo de contabilidade
  *   /contratos                 → lista de contratos
  *   /crm/clientes              → CRM — clientes
- *   /crm/leads                 → CRM — pipeline de leads
+ *   /leads                     -> Leads comerciais
  *   /marketing/campanhas       → marketing — campanhas
  *   /lancamentos               → lançamentos musicais
  *   /gestao-shares             → gestão de shares/participações
@@ -334,7 +334,6 @@ export const ROUTE_PATTERNS = {
  *   musicos360_rt                      → refresh token de autenticação
  *   musicos360_tenant                  → dados do tenant activo
  *   musicos360_<id>_credentials        → credenciais de integração por ID
- *   musicos360_theme                   → preferência de tema (light/dark)
  *   musicos360_sidebar_collapsed       → estado da sidebar
  *   musicos360_command_palette_history → histórico do command palette
  *
@@ -348,7 +347,6 @@ export const LOCALSTORAGE_KEYS = {
   refreshToken:      "musicos360_rt",
   tenant:            "musicos360_tenant",
   credentials:       "musicos360_<integration_id>_credentials",
-  theme:             "musicos360_theme",
   sidebarCollapsed:  "musicos360_sidebar_collapsed",
   commandHistory:    "musicos360_command_palette_history",
 } as const;
@@ -364,7 +362,6 @@ export const LOCALSTORAGE_KEYS = {
  *   musicos360:dataChanged   → MOCK_DATA foi alterado (trigger de refetch)
  *   musicos360:tenantChanged → tenant activo foi alterado
  *   musicos360:authChanged   → estado de autenticação alterado
- *   musicos360:themeChanged  → preferência de tema alterada
  *
  * PROIBIDO:
  *   - Eventos sem prefixo `musicos360:`
@@ -374,7 +371,6 @@ export const CUSTOM_EVENTS = {
   dataChanged:   "musicos360:dataChanged",
   tenantChanged: "musicos360:tenantChanged",
   authChanged:   "musicos360:authChanged",
-  themeChanged:  "musicos360:themeChanged",
 } as const;
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -408,3 +404,4 @@ export const TEST_ID_PATTERNS = {
   prefixes: ["button", "input", "link", "select", "table",
              "row", "card", "badge", "modal", "text", "img", "status"] as const,
 } as const;
+

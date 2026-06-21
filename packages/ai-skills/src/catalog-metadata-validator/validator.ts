@@ -1,0 +1,69 @@
+/**
+ * packages/ai-skills/src/catalog-metadata-validator/validator.ts
+ *
+ * Validação de entrada/saída. Usa o tipo compartilhado SkillValidationResult.
+ * Regras de bloqueio (erros) ficam aqui; avisos não-bloqueantes (ISRC ausente em
+ * recording, soma de shares ≠ 100) são tratados no parser/fallback como warnings.
+ */
+
+import type {
+  CatalogMetadataValidatorInput,
+  CatalogMetadataValidatorOutput,
+} from "./contracts";
+import type { SkillValidationResult } from "../shared/primitives";
+
+export type ValidationResult = SkillValidationResult;
+
+export function validateCatalogMetadataValidatorInput(
+  input: CatalogMetadataValidatorInput,
+): SkillValidationResult {
+  const errors: string[] = [];
+
+  if (!input.title?.trim()) errors.push("title é obrigatório");
+
+  if (input.type !== "work" && input.type !== "recording") {
+    errors.push('type é obrigatório e deve ser "work" ou "recording"');
+  }
+
+  if (input.type === "work") {
+    if (!Array.isArray(input.composers) || input.composers.length === 0) {
+      errors.push("composers deve ter pelo menos 1 item para type=work");
+    }
+  }
+
+  if (input.type === "recording") {
+    if (!Array.isArray(input.performers) || input.performers.length === 0) {
+      errors.push("performers deve ter pelo menos 1 item para type=recording");
+    }
+  }
+
+  if (input.shares !== undefined) {
+    if (!Array.isArray(input.shares)) {
+      errors.push("shares deve ser uma lista");
+    } else {
+      const invalid = input.shares.some((s) => typeof s.percentage !== "number" || Number.isNaN(s.percentage));
+      if (invalid) errors.push("cada share.percentage deve ser um número");
+    }
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+export function validateCatalogMetadataValidatorOutput(
+  output: CatalogMetadataValidatorOutput,
+): SkillValidationResult {
+  const errors: string[] = [];
+
+  if (typeof output.isValid !== "boolean") errors.push("isValid deve ser booleano");
+
+  if (typeof output.score !== "number") {
+    errors.push("score deve ser numérico");
+  } else if (output.score < 0 || output.score > 100) {
+    errors.push("score deve estar entre 0 e 100");
+  }
+
+  if (!Array.isArray(output.errors))   errors.push("errors deve ser uma lista");
+  if (!Array.isArray(output.warnings)) errors.push("warnings deve ser uma lista");
+
+  return { valid: errors.length === 0, errors };
+}

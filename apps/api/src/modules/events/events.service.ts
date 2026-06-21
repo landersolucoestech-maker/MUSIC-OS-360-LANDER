@@ -1,14 +1,18 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Optional } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { EventEntity } from '../../database/entities';
 import type { CreateEventDto, UpdateEventDto, QueryEventDto } from './dto/events.dto';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class EventsService {
   private readonly repo: Repository<EventEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    @Optional() private readonly activityLogs?: ActivityLogsService,
+  ) {
     if (ds) this.repo = ds.getRepository(EventEntity);
   }
 
@@ -42,15 +46,50 @@ export class EventsService {
     return result;
   }
 
+  /**
+   * Maps CreateEventDto / UpdateEventDto (camelCase EN) → EventEntity columns (snake_case PT).
+   * Backend DTO usa title/type/startsAt/venue/artistId; tabela usa titulo/tipo/data/local/artista_id.
+   */
+  private dtoToEntity(dto: Partial<CreateEventDto & UpdateEventDto>): Partial<EventEntity> {
+    const d = dto as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    if (d['title']     != null) out['titulo']     = d['title'];
+    if (d['type']      != null) out['tipo']       = d['type'];
+    if (d['artistId']  != null) out['artista_id'] = d['artistId'];
+    if (d['venue']     != null) out['local']      = d['venue'];
+    if (d['startsAt']  != null) out['data']       = new Date(d['startsAt'] as string | Date);
+    if (d['status']    != null) out['status']     = d['status'];
+    if (d['metadata']  != null) out['metadata']   = d['metadata'];
+    return out as Partial<EventEntity>;
+  }
+
   async create(tenantId: string, userId: string, dto: CreateEventDto): Promise<EventEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
-    return this.repo!.save(entity as any) as any;
+    const mapped = this.dtoToEntity(dto);
+    if (!mapped.data) {
+      // Coluna NOT NULL — usa "agora" como fallback seguro se startsAt não veio.
+      mapped.data = new Date();
+    }
+    const entity = this.repo!.create({
+      tenant_id:  tenantId,
+      ...mapped,
+      created_by: userId,
+      updated_by: userId,
+    } as Partial<EventEntity>);
+    const saved = await this.repo!.save(entity as EventEntity);
+    await this.recordActivity(tenantId, userId, saved.id, 'created', `Evento "${saved.titulo}" criado`, {
+      titulo: saved.titulo,
+      tipo: saved.tipo,
+      artistaId: saved.artista_id,
+      data: saved.data,
+    });
+    return saved;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateEventDto): Promise<EventEntity> {
     await this.findById(tenantId, id);
+    const mapped = this.dtoToEntity(dto);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...mapped, updated_at: new Date(), updated_by: userId } as any);
     return this.findById(tenantId, id);
   }
 
@@ -59,5 +98,27 @@ export class EventsService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
+  }
+
+  private async recordActivity(
+    tenantId: string,
+    userId: string,
+    entityId: string,
+    action: string,
+    description: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (!this.activityLogs) return;
+    try {
+      await this.activityLogs.create(tenantId, userId || 'system', {
+        entity_type: 'event',
+        entity_id:   entityId,
+        action,
+        description,
+        metadata,
+      });
+    } catch {
+      // Activity feed failures are detected by runtime validation but must not corrupt CRUD persistence.
+    }
   }
 }

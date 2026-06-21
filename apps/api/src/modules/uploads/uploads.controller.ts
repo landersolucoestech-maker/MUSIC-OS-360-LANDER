@@ -11,7 +11,7 @@
 
 import {
   Controller, Post, Get, Param, Body,
-  NotFoundException, ServiceUnavailableException, Logger, Inject,
+  BadRequestException, NotFoundException, ServiceUnavailableException, Logger, Inject,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { Audit } from '../../core/interceptors/audit.interceptor';
@@ -23,6 +23,7 @@ import { StorageService }  from '../../storage/storage.service';
 import { UploadStatus }    from '@music-os-360/types';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
+import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { PresignUploadDto } from './dto/presign-upload.dto';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
@@ -54,6 +55,7 @@ export class UploadsController {
   // ── POST /uploads/presign ────────────────────────────────────────────────────
 
   @Post('presign')
+  @RequireRole('editor')
   @Audit('upload.presigned')
   @ApiOperation({ summary: 'Obter URL pré-assinada para upload directo ao R2' })
   async presign(
@@ -62,7 +64,7 @@ export class UploadsController {
     @Body()          dto:    PresignUploadDto,
   ) {
     const repo = this.requireRepo();
-    const { presignedUrl, key, fileId } = await this.storage.createPresignedUpload({
+    const { presignedUrl, key, fileId, publicUrl } = await this.storage.createPresignedUpload({
       tenantId:  tenant.id,
       userId:    user.userId,
       category:  dto.category,
@@ -89,12 +91,13 @@ export class UploadsController {
     await repo.save(entity);
 
     this.logger.log(`Presign registado: ${fileId} / tenant ${tenant.id}`);
-    return { presignedUrl, key, fileId };
+    return { presignedUrl, key, fileId, publicUrl };
   }
 
   // ── POST /uploads/:fileId/confirm ────────────────────────────────────────────
 
   @Post(':fileId/confirm')
+  @RequireRole('editor')
   @Audit('upload.confirmed')
   @ApiOperation({ summary: 'Confirmar que upload foi concluído' })
   async confirm(
@@ -106,12 +109,18 @@ export class UploadsController {
     const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
+      .andWhere('u.deleted_at IS NULL')
+      .andWhere("u.status != 'deleted'")
       .getOne();
 
     if (!row) throw new NotFoundException('Upload não encontrado');
 
+    if (!(await this.storage.exists(row.r2_key))) {
+      throw new BadRequestException('Arquivo ainda nao existe no storage R2');
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await repo.update({ id: row.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
+    await repo.update({ id: row.id, tenant_id: tenant.id } as any, { status: 'confirmed', confirmed_at: new Date() } as any);
     this.logger.log(`Upload confirmado: ${fileId}`);
 
     // Emit ASSET_UPLOADED domain event — triggers media processing via UploadEventsHandler
@@ -132,12 +141,16 @@ export class UploadsController {
       },
     });
 
-    return repo.createQueryBuilder('u').where('u.id = :id', { id: row.id }).getOne();
+    return repo
+      .createQueryBuilder('u')
+      .where('u.id = :id AND u.tenant_id = :tenantId', { id: row.id, tenantId: tenant.id })
+      .getOne();
   }
 
   // ── GET /uploads/:fileId/download ────────────────────────────────────────────
 
   @Get(':fileId/download')
+  @RequireRole('viewer')
   @ApiOperation({ summary: 'Obter URL temporária de download (expira em 1h)' })
   async download(
     @CurrentTenant() tenant: { id: string },
@@ -147,6 +160,8 @@ export class UploadsController {
     const row = await repo
       .createQueryBuilder('u')
       .where('u.file_id = :fileId AND u.tenant_id = :tenantId', { fileId, tenantId: tenant.id })
+      .andWhere('u.deleted_at IS NULL')
+      .andWhere("u.status != 'deleted'")
       .getOne();
 
     if (!row) throw new NotFoundException('Arquivo não encontrado');

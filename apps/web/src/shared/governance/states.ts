@@ -239,7 +239,7 @@ export const LANCAMENTO_STATE_MACHINE: StateMachine = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// LEAD — Pipeline de vendas
+// LEAD — CRM comercial de captacao
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const LEAD_STATE_MACHINE: StateMachine = {
@@ -383,3 +383,4 @@ export const SEMANTIC_COLOR_RULES = {
   red:    ["cancelado", "rejeitado", "vencido", "desligado", "falhou", "perdido",
            "demitido", "descartado"],
 } as const;
+

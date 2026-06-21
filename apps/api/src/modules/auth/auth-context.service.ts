@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable, Optional } from '@nestjs/common';
 import { RbacService } from '../../core/rbac/rbac.service';
+import { DataSource } from 'typeorm';
+import { DATA_SOURCE } from '../../database/database.tokens';
 
 interface AuthClaims {
   email?: string;
@@ -23,9 +25,12 @@ function asObject(value: unknown): Record<string, unknown> {
 
 @Injectable()
 export class AuthContextService {
-  constructor(private readonly rbac: RbacService) {}
+  constructor(
+    private readonly rbac: RbacService,
+    @Optional() @Inject(DATA_SOURCE) private readonly ds?: DataSource | null,
+  ) {}
 
-  build(
+  async build(
     auth: { userId: string; orgId: string | null; orgRole: string | null; claims: Record<string, unknown> },
     tenant: Record<string, unknown> | undefined,
     member: Record<string, unknown> | undefined,
@@ -34,8 +39,27 @@ export class AuthContextService {
     const appMetadata = asObject(claims.app_metadata);
     const userMetadata = asObject(claims.user_metadata);
     const role = asString(member?.['role'], auth.orgRole ?? 'viewer');
+    const roleId = typeof member?.['role_id'] === 'string' && (member['role_id'] as string).length > 0
+      ? (member['role_id'] as string)
+      : null;
     const tenantId = asString(tenant?.['id'], auth.orgId ?? '');
     const orgId = asString(tenant?.['org_id'], auth.orgId ?? tenantId);
+
+    // DUAL-SOURCE (FASE 5): permissões do banco quando role_id existir; senão, matriz legada.
+    const permissions = await this.rbac.getEffectivePermissions({
+      role,
+      role_id: roleId,
+      tenant_id: tenantId.length > 0 ? tenantId : null,
+    });
+    if (this.ds && tenantId && auth.userId) {
+      await this.ds.query(
+        `UPDATE "tenant_invitations"
+            SET "status" = 'accepted', "accepted_at" = COALESCE("accepted_at", now()),
+                "updated_at" = now()
+          WHERE "tenant_id" = $1 AND "auth_user_id" = $2 AND "status" = 'pending'`,
+        [tenantId, auth.userId],
+      ).catch(() => undefined);
+    }
 
     return {
       user: {
@@ -59,7 +83,7 @@ export class AuthContextService {
         authUserId: auth.userId,
         role,
         isActive: asBoolean(member?.['is_active'], true),
-        permissions: this.rbac.getPermissions(role),
+        permissions,
         hierarchyLevel: this.rbac.getHierarchyLevel(role),
       },
       claims: {

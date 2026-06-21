@@ -1,7 +1,5 @@
-import { useQueryClient } from "@tanstack/react-query";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
-import { storage } from "@/shared/lib/storage";
 import { emit, DomainEvents } from "@/shared/domain-events";
 import { useTenant } from "@/app/providers/TenantContext";
 import type { Obra, ObraInsert, ObraUpdate, ObraWithRelations } from "../types/catalog.types";
@@ -9,7 +7,6 @@ import type { Obra, ObraInsert, ObraUpdate, ObraWithRelations } from "../types/c
 export type { Obra, ObraInsert, ObraUpdate, ObraWithRelations };
 
 export function useObras() {
-  const queryClient = useQueryClient();
   const { tenant } = useTenant();
   const orgId = tenant?.id ?? "unknown";
 
@@ -40,23 +37,6 @@ export function useObras() {
     delete: { success: "Obra excluída com sucesso!", error: "Erro ao excluir obra" },
   });
 
-  const bulkUpdateEcad = async (ids: string[], codEcad: string): Promise<{ succeeded: number; failed: number }> => {
-    const results = await Promise.allSettled(
-      ids.map((id) =>
-        storage.update<ObraWithRelations & { id: string }>(
-          "obras",
-          id,
-          { cod_ecad: codEcad } as Partial<ObraWithRelations & { id: string }>,
-        )
-      )
-    );
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.OBRAS });
-    queryClient.invalidateQueries({ queryKey: QUERY_KEYS.PROJETOS });
-    const succeeded = results.filter((r) => r.status === "fulfilled").length;
-    const failed = results.filter((r) => r.status === "rejected").length;
-    return { succeeded, failed };
-  };
-
   return {
     obras: result.data,
     isLoading: result.isLoading,
@@ -64,6 +44,5 @@ export function useObras() {
     addObra: result.create,
     updateObra: result.update,
     deleteObra: result.delete,
-    bulkUpdateEcad,
   };
 }

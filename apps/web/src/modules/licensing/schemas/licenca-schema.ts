@@ -1,28 +1,35 @@
 import { z } from "zod";
 
-export const licencaSchema = z.object({
-  titulo: z.string()
-    .min(1, "Título é obrigatório")
-    .max(200, "Título deve ter no máximo 200 caracteres")
-    .trim(),
-  tipoLicenca: z.string().optional().or(z.literal("")),
-  obraMusical: z.string()
-    .min(1, "Obra musical é obrigatória")
-    .max(200, "Nome da obra deve ter no máximo 200 caracteres")
-    .trim(),
-  artista: z.string().max(150, "Nome do artista deve ter no máximo 150 caracteres").optional().or(z.literal("")),
-  cliente: z.string()
-    .min(1, "Cliente é obrigatório")
-    .max(150, "Nome do cliente deve ter no máximo 150 caracteres")
-    .trim(),
-  projeto: z.string().max(200, "Nome do projeto deve ter no máximo 200 caracteres").optional().or(z.literal("")),
-  midiaDestino: z.string().max(150, "Mídia de destino deve ter no máximo 150 caracteres").optional().or(z.literal("")),
-  territorio: z.string().max(150, "Território deve ter no máximo 150 caracteres").optional().or(z.literal("")),
-  dataInicio: z.string().optional().or(z.literal("")),
-  dataFim: z.string().optional().or(z.literal("")),
-  valor: z.string().optional().or(z.literal("")),
-  moeda: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
-  observacoes: z.string().max(2000, "Observações deve ter no máximo 2000 caracteres").optional().or(z.literal("")),
-});
+export const licencaSchema = z
+  .object({
+    titulo: z.string().min(1, "Título é obrigatório").max(200, "Título deve ter no máximo 200 caracteres").trim(),
+    tipoLicenca: z.string().optional().or(z.literal("")),
+    obraId: z.string().min(1, "Obra musical é obrigatória"),
+    clienteId: z.string().min(1, "Cliente é obrigatório"),
+    projeto: z.string().max(200, "Nome do projeto deve ter no máximo 200 caracteres").optional().or(z.literal("")),
+    midiaDestino: z.string().max(150).optional().or(z.literal("")),
+    territorio: z.string().max(150).optional().or(z.literal("")),
+    status: z.string().optional().or(z.literal("")),
+    dataInicio: z.string().optional().or(z.literal("")),
+    dataFim: z.string().optional().or(z.literal("")),
+    // Remuneração
+    remunerationType: z.enum(["FIXED", "PERCENTAGE", "FIXED_PLUS_PERCENTAGE"]).default("FIXED"),
+    currency: z.enum(["BRL", "USD", "EUR"]).default("BRL"),
+    amount: z.string().optional().or(z.literal("")),
+    percentage: z.string().optional().or(z.literal("")),
+    observacoes: z.string().max(2000, "Observações deve ter no máximo 2000 caracteres").optional().or(z.literal("")),
+  })
+  .superRefine((data, ctx) => {
+    const hasAmount = data.amount !== undefined && data.amount !== "" && Number(data.amount) > 0;
+    const hasPercentage = data.percentage !== undefined && data.percentage !== "" && Number(data.percentage) > 0;
+
+    if (data.remunerationType === "FIXED" || data.remunerationType === "FIXED_PLUS_PERCENTAGE") {
+      if (!data.currency) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["currency"], message: "Moeda é obrigatória" });
+      if (!hasAmount) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["amount"], message: "Informe um valor válido" });
+    }
+    if (data.remunerationType === "PERCENTAGE" || data.remunerationType === "FIXED_PLUS_PERCENTAGE") {
+      if (!hasPercentage) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ["percentage"], message: "Informe um percentual válido" });
+    }
+  });
 
 export type LicencaFormData = z.infer<typeof licencaSchema>;

@@ -1,9 +1,15 @@
-import { Injectable, Inject, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { OrgMemberEntity } from '../../database/entities';
 import type { CreateUserDto, UpdateUserDto, QueryUserDto } from './dto/users.dto';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { MembershipRoleResolverService } from './membership-role-resolver.service';
+import { RbacDistributedCacheService } from '../../core/rbac/rbac-distributed-cache.service';
+import { ConfigService } from '@nestjs/config';
+import { createClient } from '@supabase/supabase-js';
+import { ROLE_HIERARCHY } from '../../core/rbac/role-hierarchy';
+import { MailService } from '../../core/mail/mail.service';
 
 @Injectable()
 export class UsersService {
@@ -12,6 +18,10 @@ export class UsersService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly events: EventsService,
+    private readonly roleResolver: MembershipRoleResolverService,
+    private readonly rbacCache: RbacDistributedCacheService,
+    private readonly config: ConfigService,
+    private readonly mail: MailService,
   ) {
     if (ds) this.repo = ds.getRepository(OrgMemberEntity);
   }
@@ -59,6 +69,8 @@ export class UsersService {
       .getOne();
     if (!anyMember) throw new NotFoundException('Tenant sem organização associada');
 
+    // Dual-write (PASSO 12-G): grava `role` (legado) E `role_id` (canônico resolvido).
+    const roleId = await this.roleResolver.resolveOrThrow(tenantId, dto.role);
     const entity = this.repo!.create({
       org_id:        anyMember.org_id,
       tenant_id:     tenantId,
@@ -66,9 +78,11 @@ export class UsersService {
       email:         dto.email,
       full_name:     dto.fullName ?? null,
       role:          dto.role,
+      role_id:       roleId,
       is_active:     true,
     });
     const saved = await this.repo!.save(entity as any) as any;
+    await this.invalidateMembershipCache(tenantId, dto.userId);
 
     this.events.emitTyped(DOMAIN_EVENTS.USER_INVITED, {
       tenantId,
@@ -88,24 +102,261 @@ export class UsersService {
   }
 
   async update(tenantId: string, id: string, dto: UpdateUserDto): Promise<OrgMemberEntity> {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
     const updates: Record<string, unknown> = { updated_at: new Date() };
     if (dto.fullName != null) updates.full_name = dto.fullName;
-    if (dto.role     != null) updates.role      = dto.role;
+    // Dual-write (PASSO 12-G): ao mudar `role`, resolve e grava `role_id` junto.
+    if (dto.role     != null) {
+      updates.role    = dto.role;
+      updates.role_id = await this.roleResolver.resolveOrThrow(tenantId, dto.role, { membershipId: id });
+    }
     if (dto.status   != null) updates.is_active = dto.status === 'active';
     await this.repo!.update({ id, tenant_id: tenantId } as any, updates as any);
+    await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return this.findById(tenantId, id);
   }
 
-  async assignRole(tenantId: string, id: string, role: string): Promise<OrgMemberEntity> {
-    await this.findById(tenantId, id);
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { role, updated_at: new Date() } as any);
+  async invite(tenantId: string, email: string, roleId: string, invitedBy: string, actorRole = 'viewer') {
+    const roles = await this.repo!.manager.query(
+      `SELECT "slug" FROM "roles"
+        WHERE "id" = $1
+          AND ("tenant_id" = $2 OR "tenant_id" IS NULL)
+          AND "deleted_at" IS NULL
+          AND "archived_at" IS NULL
+          AND "is_assignable" = true
+        LIMIT 1`,
+      [roleId, tenantId],
+    ) as Array<{ slug: string }>;
+    const role = roles[0]?.slug;
+    if (!role) throw new NotFoundException('Papel não encontrado ou não atribuível');
+    await this.assertCanAssignRole(tenantId, actorRole, role);
+
+    const tenantRows = await this.repo!.manager.query(
+      `SELECT "org_id", "slug" FROM "tenants"
+        WHERE "id" = $1 AND "active" = true AND "deleted_at" IS NULL`,
+      [tenantId],
+    ) as Array<{ org_id: string; slug: string }>;
+    const tenant = tenantRows[0];
+
+    const existing = await this.repo!.manager.query(
+      `SELECT 1 FROM "org_members"
+        WHERE "tenant_id" = $1 AND lower("email") = lower($2)
+          AND "is_active" = true AND "deleted_at" IS NULL LIMIT 1`,
+      [tenantId, email],
+    ) as unknown[];
+    if (existing.length > 0) throw new ConflictException('Email já pertence a este tenant');
+    const pending = await this.repo!.manager.query(
+      `SELECT 1 FROM "tenant_invitations"
+        WHERE "tenant_id" = $1 AND lower("email") = lower($2)
+          AND "status" = 'pending' LIMIT 1`,
+      [tenantId, email],
+    ) as unknown[];
+    if (pending.length > 0) throw new ConflictException('Já existe um convite pendente para este email');
+    if (!tenant) throw new NotFoundException('Tenant não encontrado ou inativo');
+
+    const supabase = this.supabaseAdmin();
+    const redirectBase = this.config.get<string>('WEB_URL') ?? 'http://localhost:5000';
+    const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
+      redirectTo: `${redirectBase}/reset-password`,
+      data: { org_id: tenant.org_id, tenant_id: tenantId, tenant_slug: tenant.slug, role },
+    });
+    if (error || !data.user) {
+      throw new ConflictException(error?.message ?? 'Não foi possível criar o convite');
+    }
+
+    const metadataResult = await supabase.auth.admin.updateUserById(data.user.id, {
+      app_metadata: { org_id: tenantId, role },
+    });
+    if (metadataResult.error) {
+      await supabase.auth.admin.deleteUser(data.user.id, true).catch(() => undefined);
+      throw new ConflictException(metadataResult.error.message);
+    }
+
+    const membership = await this.create(tenantId, {
+      userId: data.user.id,
+      email,
+      role,
+    }, invitedBy);
+    const invitations = await this.repo!.manager.query(
+      `INSERT INTO "tenant_invitations" (
+         "tenant_id", "org_id", "email", "role_id", "auth_user_id", "invited_by"
+       )
+       VALUES ($1, $2, lower($3), $4, $5, $6)
+       RETURNING "id", "email", "role_id", "invited_by", "status",
+                 "expires_at", "created_at"`,
+      [tenantId, tenant.org_id, email, membership.role_id, data.user.id, invitedBy],
+    ) as Array<Record<string, unknown>>;
+    return invitations[0];
+  }
+
+  async listInvitations(tenantId: string) {
+    await this.repo!.manager.query(
+      `UPDATE "tenant_invitations"
+          SET "status" = 'expired', "updated_at" = now()
+        WHERE "tenant_id" = $1 AND "status" = 'pending' AND "expires_at" <= now()`,
+      [tenantId],
+    );
+    return this.repo!.manager.query(
+      `SELECT invitation."id", invitation."email", invitation."role_id",
+              invitation."invited_by", invitation."status", invitation."expires_at",
+              invitation."last_sent_at", invitation."created_at",
+              jsonb_build_object(
+                'id', role."id", 'name', role."name", 'slug', role."slug"
+              ) AS "role"
+         FROM "tenant_invitations" invitation
+         JOIN "roles" role ON role."id" = invitation."role_id"
+        WHERE invitation."tenant_id" = $1
+          AND invitation."status" = 'pending'
+        ORDER BY invitation."created_at" DESC`,
+      [tenantId],
+    );
+  }
+
+  async resendInvitation(tenantId: string, id: string, invitedBy: string, actorRole = 'viewer') {
+    const invitations = await this.repo!.manager.query(
+      `SELECT invitation.*, role."slug" AS "role_slug", tenant."name" AS "tenant_name"
+         FROM "tenant_invitations" invitation
+         JOIN "roles" role ON role."id" = invitation."role_id"
+         JOIN "tenants" tenant ON tenant."id" = invitation."tenant_id"
+        WHERE invitation."id" = $1 AND invitation."tenant_id" = $2
+          AND invitation."status" = 'pending' LIMIT 1`,
+      [id, tenantId],
+    ) as Array<Record<string, unknown>>;
+    const invitation = invitations[0];
+    if (!invitation) throw new NotFoundException('Convite pendente não encontrado');
+    await this.assertCanAssignRole(tenantId, actorRole, String(invitation['role_slug']));
+
+    const redirectBase = this.config.get<string>('WEB_URL') ?? 'http://localhost:5000';
+    const { data, error } = await this.supabaseAdmin().auth.admin.generateLink({
+      type: 'invite',
+      email: String(invitation['email']),
+      options: {
+        redirectTo: `${redirectBase}/reset-password`,
+        data: { tenant_id: tenantId, role: invitation['role_slug'] },
+      },
+    });
+    if (error || !data.properties?.action_link) {
+      throw new ConflictException(error?.message ?? 'Não foi possível reenviar o convite');
+    }
+    await this.mail.send({
+      to: String(invitation['email']),
+      subject: `Convite para ${String(invitation['tenant_name'])}`,
+      html: this.mail.inviteHtml(String(invitation['tenant_name']), data.properties.action_link),
+    });
+    await this.repo!.manager.query(
+      `UPDATE "tenant_invitations"
+          SET "last_sent_at" = now(), "expires_at" = now() + interval '7 days',
+              "invited_by" = $3, "updated_at" = now()
+        WHERE "id" = $1 AND "tenant_id" = $2`,
+      [id, tenantId, invitedBy],
+    );
+    return { resent: true };
+  }
+
+  async cancelInvitation(tenantId: string, id: string, actorRole = 'viewer') {
+    const rows = await this.repo!.manager.query(
+      `UPDATE "tenant_invitations" invitation
+          SET "status" = 'cancelled', "cancelled_at" = now(), "updated_at" = now()
+         FROM "roles" role
+        WHERE invitation."id" = $1 AND invitation."tenant_id" = $2
+          AND invitation."status" = 'pending'
+          AND role."id" = invitation."role_id"
+        RETURNING invitation."auth_user_id", role."slug" AS "role_slug"`,
+      [id, tenantId],
+    ) as Array<{ auth_user_id: string | null; role_slug: string }>;
+    const invitation = rows[0];
+    if (!invitation) throw new NotFoundException('Convite pendente não encontrado');
+    await this.assertCanAssignRole(tenantId, actorRole, invitation.role_slug);
+    if (invitation.auth_user_id) {
+      await this.repo!.manager.query(
+        `UPDATE "org_members"
+            SET "is_active" = false, "updated_at" = now()
+          WHERE "tenant_id" = $1 AND "auth_user_id" = $2`,
+        [tenantId, invitation.auth_user_id],
+      );
+      await this.supabaseAdmin().auth.admin.updateUserById(invitation.auth_user_id, {
+        app_metadata: {},
+      });
+      await this.invalidateMembershipCache(tenantId, invitation.auth_user_id);
+    }
+    return { cancelled: true };
+  }
+
+  async assignRole(tenantId: string, id: string, role: string, actorRole = 'viewer'): Promise<OrgMemberEntity> {
+    const current = await this.findById(tenantId, id);
+    await this.assertCanAssignRole(tenantId, actorRole, role);
+    if ((current.role === 'owner' || current.role === 'tenant_owner') && role !== current.role) {
+      await this.assertNotLastOwner(tenantId, id);
+    }
+    // Dual-write (PASSO 12-G): grava `role` (legado) E `role_id` (canônico).
+    const roleId = await this.roleResolver.resolveOrThrow(tenantId, role, { membershipId: id });
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { role, role_id: roleId, updated_at: new Date() } as any);
+    await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return this.findById(tenantId, id);
   }
 
   async remove(tenantId: string, id: string) {
-    await this.findById(tenantId, id);
+    const current = await this.findById(tenantId, id);
+    if (current.role === 'owner' || current.role === 'tenant_owner') {
+      await this.assertNotLastOwner(tenantId, id);
+    }
     await this.repo!.update({ id, tenant_id: tenantId } as any, { is_active: false, updated_at: new Date() } as any);
+    await this.invalidateMembershipCache(tenantId, current.auth_user_id);
     return { deleted: true };
+  }
+
+  private async invalidateMembershipCache(
+    tenantId: string,
+    authUserId: string,
+  ): Promise<void> {
+    await this.rbacCache.delete(`membership:${tenantId}:${authUserId}`);
+  }
+
+  private async assertNotLastOwner(tenantId: string, membershipId: string): Promise<void> {
+    const owners = await this.repo!
+      .createQueryBuilder('m')
+      .where('m.tenant_id = :tenantId', { tenantId })
+      .andWhere('m.id <> :membershipId', { membershipId })
+      .andWhere('m.is_active = true')
+      .andWhere('m.deleted_at IS NULL')
+      .andWhere('m.role IN (:...roles)', { roles: ['owner', 'tenant_owner'] })
+      .getCount();
+    if (owners === 0) {
+      throw new BadRequestException('O último owner ativo do tenant não pode ser removido ou rebaixado');
+    }
+  }
+
+  private async assertCanAssignRole(
+    tenantId: string,
+    actorRole: string,
+    targetRole: string,
+  ): Promise<void> {
+    const slugs = Array.from(new Set([actorRole, targetRole]));
+    const roleRows = await this.repo!.manager.query(
+      `SELECT "slug", "hierarchy_level"
+         FROM "roles"
+        WHERE "slug" = ANY($1::text[])
+          AND ("tenant_id" = $2 OR "tenant_id" IS NULL)
+          AND "deleted_at" IS NULL
+          AND "archived_at" IS NULL
+        ORDER BY ("tenant_id" = $2) DESC`,
+      [slugs, tenantId],
+    ) as Array<{ slug: string; hierarchy_level: number }>;
+    const levels = new Map<string, number>();
+    for (const row of roleRows) {
+      if (!levels.has(row.slug)) levels.set(row.slug, Number(row.hierarchy_level));
+    }
+    const actorLevel = levels.get(actorRole) ?? ROLE_HIERARCHY[actorRole] ?? 0;
+    const targetLevel = levels.get(targetRole) ?? ROLE_HIERARCHY[targetRole] ?? 0;
+    if (targetLevel >= actorLevel && actorRole !== 'owner' && actorRole !== 'tenant_owner' && actorRole !== 'super_admin') {
+      throw new BadRequestException('Não é permitido atribuir um papel igual ou superior ao próprio nível');
+    }
+  }
+
+  private supabaseAdmin() {
+    return createClient(
+      this.config.getOrThrow<string>('SUPABASE_URL'),
+      this.config.getOrThrow<string>('SUPABASE_SERVICE_ROLE_KEY'),
+    );
   }
 }

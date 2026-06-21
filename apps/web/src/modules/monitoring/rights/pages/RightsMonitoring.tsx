@@ -1,50 +1,77 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import {
   Shield, Radio, Search, RefreshCw, Upload, FileText,
-  Mic2, AlertTriangle, FileSearch, Globe, CheckCircle, Clock, X
+  Mic2, AlertTriangle, FileSearch, X, Trash2
 } from "lucide-react";
 import { RightsKPICards } from "../components/RightsKPICards";
 import { ExecucoesTable } from "../components/ExecucoesTable";
 import { DivergenciasPanel, MOCK_DIVERGENCIAS } from "../components/DivergenciasPanel";
+import { ResolverDivergenciaModal } from "../components/ResolverDivergenciaModal";
 import type { Divergencia } from "../components/DivergenciasPanel";
 import { EcadImportModal } from "../components/EcadImportModal";
 import { ExecucaoDetailModal } from "../components/ExecucaoDetailModal";
+import { formatRightsDate, formatRightsDateTime } from "../utils/date-format";
 import {
-  MOCK_EXECUCOES_PUBLICAS,
-  MOCK_BROADCAST_DETECTIONS,
-  MOCK_CUE_SHEETS,
-  MOCK_SETLISTS,
-  MOCK_ECAD_PERIODOS,
-} from "../services/mock-data";
+  RIGHTS_EXECUCOES as MOCK_EXECUCOES_PUBLICAS,
+  RIGHTS_BROADCAST_DETECTIONS as MOCK_BROADCAST_DETECTIONS,
+  RIGHTS_CUE_SHEETS as MOCK_CUE_SHEETS,
+  RIGHTS_SETLISTS as MOCK_SETLISTS,
+  RIGHTS_ECAD_PERIODOS as MOCK_ECAD_PERIODOS,
+  RIGHTS_DATA_IS_MOCK,
+} from "../services/rights-source";
 import { getIsrcIndex, computeEcadMatchRate, findOrphanIsrcs, getCatalogArtistas } from "../services/catalog-lookup";
 import type { RightsExecution } from "../types";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
 type Tab = "overview" | "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias" | "auditoria";
+type BulkDeleteScope = "radio_tv" | "shows_setlists" | "cue_sheets" | "divergencias";
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(n);
 
-const STATUS_ECAD: Record<string, { label: string; className: string }> = {
-  recebido:   { label: "Recebido",   className: "bg-success/15 text-success border-success/30" },
-  pendente:   { label: "Pendente",   className: "bg-warning/15 text-warning border-warning/30" },
-  processado: { label: "Processado", className: "bg-primary/15 text-primary border-primary/30" },
-  erro:       { label: "Erro",       className: "bg-destructive/15 text-destructive border-destructive/30" },
+// Status → variant global (componente Badge). Único mapa para toda a página.
+const STATUS_VARIANT: Record<string, BadgeVariant> = {
+  confirmado: "success", enviado: "info", aprovado: "success", recebido: "success",
+  pendente: "warning", nao_reportado: "neutral", divergencia: "danger",
+  processado: "info", erro: "danger",
 };
+const statusVariant = (s: string): BadgeVariant => STATUS_VARIANT[s] ?? "neutral";
+const STATUS_ECAD_LABEL: Record<string, string> = {
+  recebido: "Recebido", pendente: "Pendente", processado: "Processado", erro: "Erro",
+};
+const fmtStatus = (s: string) => s.replace(/_/g, " ");
+const fmtDur = (seg: number) => `${Math.floor(seg / 60)}:${String(seg % 60).padStart(2, "0")}`;
+const DASH = "—";
 
 
 export default function RightsMonitoring() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<Tab>("overview");
+  const [selectedRadioIds, setSelectedRadioIds] = useState<string[]>([]);
+  const [selectedSetlistIds, setSelectedSetlistIds] = useState<string[]>([]);
+  const [selectedCueIds, setSelectedCueIds] = useState<string[]>([]);
+  const [deletedRadioIds, setDeletedRadioIds] = useState<string[]>([]);
+  const [deletedSetlistIds, setDeletedSetlistIds] = useState<string[]>([]);
+  const [deletedCueIds, setDeletedCueIds] = useState<string[]>([]);
+  const [deletedDivergenciaIds, setDeletedDivergenciaIds] = useState<string[]>([]);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState<{ scope: BulkDeleteScope; ids: string[] } | null>(null);
   const [search, setSearch] = useState("");
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
@@ -54,6 +81,10 @@ export default function RightsMonitoring() {
   const [detailOpen, setDetailOpen] = useState(false);
   // Refresh counter — bump to rebuild the ISRC index from catalog on demand
   const [catalogRevision, setCatalogRevision] = useState(0);
+  // Resolução de divergências — estado local da sessão (app mock-first, sem backend)
+  const [divOverrides, setDivOverrides] = useState<Record<string, Partial<Divergencia>>>({});
+  const [selectedDivergencia, setSelectedDivergencia] = useState<Divergencia | null>(null);
+  const [resolverOpen, setResolverOpen] = useState(false);
 
   // Build ISRC → obra index from catalog; rebuilds when catalogRevision changes
   const isrcIndex = useMemo(() => getIsrcIndex(), [catalogRevision]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -128,6 +159,13 @@ export default function RightsMonitoring() {
     });
   }, [execucoes, search, dateFrom, dateTo, artistaFilter]);
 
+  const overviewPg = usePagination(filtered, 10);
+  const radioRows = useMemo(
+    () => MOCK_BROADCAST_DETECTIONS.filter((row) => !deletedRadioIds.includes(row.id)),
+    [deletedRadioIds],
+  );
+  const radioPg = usePagination(radioRows, 10);
+
   const confirmados   = filtered.filter(e => e.status === "confirmado").length;
   const naoReportados = filtered.filter(e => e.status === "nao_reportado").length;
   const divergencias  = filtered.filter(e => e.status === "divergencia").length;
@@ -140,6 +178,93 @@ export default function RightsMonitoring() {
 
   const valorEstimado = filtered.reduce((s, e) => s + e.valor_estimado, 0);
   const valorRecebido = MOCK_ECAD_PERIODOS.filter(p => p.status === "recebido").reduce((s, p) => s + p.valor_total, 0);
+
+  // ── Tabela plana: Shows & Setlists (uma linha por música executada) ──
+  const setlistRows = useMemo(
+    () =>
+      MOCK_SETLISTS.flatMap((sl) =>
+        sl.musicas.map((m) => {
+          const cat = isrcIndex.get(m.isrc);
+          return {
+            id: `${sl.id}-${m.ordem}`,
+            evento: sl.evento,
+            data: sl.data,
+            local: sl.local,
+            musica: m.obra_titulo,
+            artista: sl.artista,
+            interprete: sl.artista,
+            compositor: cat?.compositor || m.compositor,
+            publisher: cat?.editora || "",
+            iswc: cat?.iswc || "",
+            isrc: m.isrc,
+            duracao: m.duracao_segundos,
+            status: sl.status,
+          };
+        }),
+      ).filter((row) => !deletedSetlistIds.includes(row.id)),
+    [deletedSetlistIds, isrcIndex],
+  );
+  const setlistPg = usePagination(setlistRows, 15);
+
+  // ── Tabela plana: Cue Sheets (uma linha por obra utilizada) ──
+  const cueRows = useMemo(
+    () =>
+      MOCK_CUE_SHEETS.flatMap((cs) =>
+        cs.obras.map((o, i) => {
+          const cat = isrcIndex.get(o.isrc);
+          return {
+            id: `${cs.id}-${i}`,
+            producao: cs.producao,
+            episodio: cs.episodio || "",
+            data: cs.data_exibicao,
+            musica: o.obra_titulo,
+            compositor: cat?.compositor || o.compositor,
+            publisher: cat?.editora || o.publisher,
+            iswc: cat?.iswc || "",
+            isrc: o.isrc,
+            cod_ecad: cat?.cod_ecad || "",
+            tipo_uso: o.tipo_uso,
+            duracao: o.duracao_segundos,
+            status: cs.status,
+          };
+        }),
+      ).filter((row) => !deletedCueIds.includes(row.id)),
+    [deletedCueIds, isrcIndex],
+  );
+  const cuePg = usePagination(cueRows, 15);
+
+  const toggleRadioSelectAll = () => {
+    setSelectedRadioIds((current) =>
+      current.length === radioRows.length && radioRows.length > 0
+        ? []
+        : radioRows.map((row) => row.id),
+    );
+  };
+  const toggleRadioSelect = (id: string) => {
+    setSelectedRadioIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
+  const toggleSetlistSelectAll = () => {
+    setSelectedSetlistIds((current) =>
+      current.length === setlistRows.length && setlistRows.length > 0
+        ? []
+        : setlistRows.map((row) => row.id),
+    );
+  };
+  const toggleSetlistSelect = (id: string) => {
+    setSelectedSetlistIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
+
+  const toggleCueSelectAll = () => {
+    setSelectedCueIds((current) =>
+      current.length === cueRows.length && cueRows.length > 0
+        ? []
+        : cueRows.map((row) => row.id),
+    );
+  };
+  const toggleCueSelect = (id: string) => {
+    setSelectedCueIds((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  };
 
   // Build dynamic divergências for orphan ISRCs (no obra in catalog)
   const orphanIsrcs = useMemo(() => findOrphanIsrcs(uniqueIsrcs, isrcIndex), [uniqueIsrcs, isrcIndex]);
@@ -165,15 +290,30 @@ export default function RightsMonitoring() {
   );
 
   // Merge static + dynamic divergências (remove static div-005 which is now superseded by dynamic)
+  // e aplica overrides de resolução (estado local).
   const allDivergencias: Divergencia[] = useMemo(() => {
     const staticFiltered = MOCK_DIVERGENCIAS.filter(d => d.id !== "div-005");
-    return [...staticFiltered, ...dynamicDivergencias];
-  }, [dynamicDivergencias]);
+    return [...staticFiltered, ...dynamicDivergencias].map(d =>
+      divOverrides[d.id] ? { ...d, ...divOverrides[d.id] } : d,
+    ).filter((d) => !deletedDivergenciaIds.includes(d.id));
+  }, [deletedDivergenciaIds, dynamicDivergencias, divOverrides]);
 
   const openDivergencias = allDivergencias.filter(d => d.status !== "resolvida");
 
+  const handleResolveDivergencia = (updated: Divergencia) => {
+    setDivOverrides(prev => ({
+      ...prev,
+      [updated.id]: {
+        status: updated.status,
+        observacoes: updated.observacoes,
+        data_resolucao: updated.data_resolucao,
+        historico: updated.historico,
+      },
+    }));
+  };
+
   const TABS: { key: Tab; label: string; icon: React.ReactNode; badge?: number }[] = [
-    { key: "overview",        label: "Overview",        icon: <Shield className="h-4 w-4" /> },
+    { key: "overview",        label: "Resumo",        icon: <Shield className="h-4 w-4" /> },
     { key: "radio_tv",        label: "Rádio & TV",      icon: <Radio className="h-4 w-4" />, badge: MOCK_BROADCAST_DETECTIONS.length },
     { key: "shows_setlists",  label: "Shows & Setlists",icon: <Mic2 className="h-4 w-4" />, badge: MOCK_SETLISTS.length },
     { key: "cue_sheets",      label: "Cue Sheets",      icon: <FileText className="h-4 w-4" />, badge: MOCK_CUE_SHEETS.length },
@@ -186,16 +326,43 @@ export default function RightsMonitoring() {
     setDetailOpen(true);
   }
 
+  const requestBulkDelete = (scope: BulkDeleteScope, ids: string[]) => {
+    if (ids.length === 0) return;
+    setPendingBulkDelete({ scope, ids });
+  };
+
+  const handleConfirmBulkDelete = () => {
+    if (!pendingBulkDelete) return;
+
+    if (pendingBulkDelete.scope === "radio_tv") {
+      setDeletedRadioIds((current) => [...new Set([...current, ...pendingBulkDelete.ids])]);
+      setSelectedRadioIds([]);
+    }
+    if (pendingBulkDelete.scope === "shows_setlists") {
+      setDeletedSetlistIds((current) => [...new Set([...current, ...pendingBulkDelete.ids])]);
+      setSelectedSetlistIds([]);
+    }
+    if (pendingBulkDelete.scope === "cue_sheets") {
+      setDeletedCueIds((current) => [...new Set([...current, ...pendingBulkDelete.ids])]);
+      setSelectedCueIds([]);
+    }
+    if (pendingBulkDelete.scope === "divergencias") {
+      setDeletedDivergenciaIds((current) => [...new Set([...current, ...pendingBulkDelete.ids])]);
+    }
+
+    setPendingBulkDelete(null);
+  };
+
   return (
     <MainLayout
-      title="Rights Monitoring"
+      title="Monitoramento de Direitos"
       description="Monitoramento de execução pública, auditoria ECAD e reconciliação de recebimentos externos de direitos"
       actions={
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2" onClick={handleSyncCatalog} data-testid="button-sync-catalog">
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleSyncCatalog} data-testid="button-sync-catalog">
             <RefreshCw className="h-3.5 w-3.5" />Sincronizar
           </Button>
-          <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90" onClick={() => setImportModalOpen(true)} data-testid="button-import-ecad">
+          <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setImportModalOpen(true)} data-testid="button-import-ecad">
             <Upload className="h-3.5 w-3.5" />Importar ECAD
           </Button>
         </div>
@@ -214,372 +381,464 @@ export default function RightsMonitoring() {
           valorRecebido={valorRecebido}
         />
 
-        {/* Tab bar */}
-        <div className="flex items-center gap-1 flex-wrap border-b border-border/60 pb-0">
-          {TABS.map(tab => (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-t-md border-b-2 transition-colors whitespace-nowrap -mb-px ${
-                activeTab === tab.key
-                  ? "border-primary text-primary bg-primary/5"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/30"
-              }`}
-            >
-              {tab.icon}
-              {tab.label}
-              {tab.badge !== undefined && tab.badge > 0 && (
-                <span className={`text-xs px-1.5 py-0.5 rounded-full font-semibold ${activeTab === tab.key ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
-                  {tab.badge}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+        {/* Abas (componente global) */}
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as Tab)} className="space-y-5">
+          <TabsList className="flex h-auto flex-wrap justify-start gap-1">
+            {TABS.map(tab => (
+              <TabsTrigger key={tab.key} value={tab.key} className="gap-1.5" data-testid={`tab-${tab.key}`}>
+                {tab.icon}
+                {tab.label}
+                {tab.badge !== undefined && tab.badge > 0 && (
+                  <Badge variant="neutral" className="ml-1">{tab.badge}</Badge>
+                )}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
         {/* ── Overview ── */}
-        {activeTab === "overview" && (
+        <TabsContent value="overview" className="mt-0">
+          <div className="mb-4 flex flex-wrap items-center gap-3 rounded-lg bg-muted/30 p-3">
+            <div className="flex items-center gap-1">
+              <DatePickerField
+                value={dateFrom}
+                onChange={setDateFrom}
+                placeholder="Data inicial"
+                className="h-8 w-[126px] shrink-0 bg-card border-border text-sm"
+                data-testid="input-date-from"
+              />
+              <span className="text-muted-foreground text-xs px-1">até</span>
+              <DatePickerField
+                value={dateTo}
+                onChange={setDateTo}
+                placeholder="Data final"
+                className="h-8 w-[126px] shrink-0 bg-card border-border text-sm"
+                data-testid="input-date-to"
+              />
+            </div>
+
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar música, artista, origem, ISRC..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                className="pl-8 h-8 text-sm bg-card border-border"
+                data-testid="input-search-execucoes"
+              />
+            </div>
+
+            <Select value={artistaFilter} onValueChange={setArtistFilter}>
+              <SelectTrigger className="h-8 w-auto min-w-[142px] shrink-0 bg-card border-border text-sm" data-testid="select-artista-filter">
+                <SelectValue placeholder="Todos os artistas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos os artistas</SelectItem>
+                {artistaOptions.map(a => (
+                  <SelectItem key={a.id} value={a.nome_artistico}>{a.nome_artistico}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {hasActiveFilters && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
+                onClick={clearFilters}
+                data-testid="button-clear-filters"
+              >
+                <X className="h-3.5 w-3.5" />
+                Limpar
+              </Button>
+            )}
+          </div>
           <Card className="border-border/60">
-            <CardHeader className="pb-3 space-y-3">
-              <div className="flex flex-row items-start justify-between gap-3">
-                <div>
-                  <CardTitle className="text-sm font-semibold">Execuções Públicas Detectadas</CardTitle>
-                  <CardDescription className="text-xs">
-                    Rádio · TV · Shows · Eventos · Web Rádios · Casas Noturnas
-                    {orphanIsrcs.length > 0 && (
-                      <span className="ml-2 text-destructive font-medium">
-                        · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
-                      </span>
-                    )}
-                  </CardDescription>
-                </div>
-              </div>
-
-              {/* Filter row */}
-              <div className="flex items-center gap-2 flex-wrap">
-                <div className="relative flex-1 min-w-[200px]">
-                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar música, artista, origem, ISRC..."
-                    value={search}
-                    onChange={e => setSearch(e.target.value)}
-                    className="pl-8 h-8 text-sm bg-background"
-                    data-testid="input-search-execucoes"
-                  />
-                </div>
-
-                <Select value={artistaFilter} onValueChange={setArtistFilter}>
-                  <SelectTrigger className="h-8 text-xs w-44" data-testid="select-artista-filter">
-                    <SelectValue placeholder="Todos os artistas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os artistas</SelectItem>
-                    {artistaOptions.map(a => (
-                      <SelectItem key={a.id} value={a.nome_artistico}>{a.nome_artistico}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-
-                <div className="flex items-center gap-1">
-                  <Input
-                    type="date"
-                    value={dateFrom}
-                    onChange={e => setDateFrom(e.target.value)}
-                    className="h-8 text-xs w-36 bg-background"
-                    data-testid="input-date-from"
-                    title="Data inicial"
-                  />
-                  <span className="text-muted-foreground text-xs px-1">até</span>
-                  <Input
-                    type="date"
-                    value={dateTo}
-                    onChange={e => setDateTo(e.target.value)}
-                    className="h-8 text-xs w-36 bg-background"
-                    data-testid="input-date-to"
-                    title="Data final"
-                    min={dateFrom || undefined}
-                  />
-                </div>
-
-                {hasActiveFilters && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 px-2 gap-1 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={clearFilters}
-                    data-testid="button-clear-filters"
-                  >
-                    <X className="h-3.5 w-3.5" />
-                    Limpar
-                  </Button>
-                )}
-              </div>
-            </CardHeader>
             <CardContent className="p-0">
-              <ExecucoesTable execucoes={filtered} onViewDetail={handleViewDetail} />
+              <ListSectionHeader
+                title="Monitoramento de Execuções Públicas"
+                count={overviewPg.total}
+                description="Acompanhe execuções identificadas em rádio, TV, shows, eventos, web rádios e casas noturnas, com conciliação ECAD, estimativas de arrecadação e validação de vínculos entre obras e fonogramas."
+                className="px-6 pt-6"
+              />
+              {orphanIsrcs.length > 0 && (
+                <p className="px-6 pb-3 text-xs font-medium text-destructive">
+                  ⚠️ {orphanIsrcs.length} ISRC identificado{orphanIsrcs.length > 1 ? "s" : ""} sem obra vinculada no catálogo.
+                </p>
+              )}
+              <ExecucoesTable execucoes={overviewPg.pageItems} onViewDetail={handleViewDetail} />
+              <TablePagination
+                total={overviewPg.total}
+                page={overviewPg.page}
+                pageSize={overviewPg.pageSize}
+                onPageChange={overviewPg.setPage}
+                onPageSizeChange={overviewPg.setPageSize}
+                itemLabel="execuções"
+              />
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
         {/* ── Rádio & TV ── */}
-        {activeTab === "radio_tv" && (
+        <TabsContent value="radio_tv" className="mt-0">
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Broadcast Detections — Rádio & TV</CardTitle>
-              <CardDescription className="text-xs">Execuções detectadas via fingerprinting em emissoras de rádio e televisão</CardDescription>
-            </CardHeader>
             <CardContent className="p-0">
+              <ListSectionHeader
+                title="Broadcast Detections — Rádio & TV"
+                count={radioPg.total}
+                description="Execuções detectadas via fingerprinting em emissoras de rádio e televisão"
+                className="px-6 pt-6"
+                action={radioRows.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectedRadioIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => requestBulkDelete("radio_tv", selectedRadioIds)}
+                        data-testid="button-delete-selected-radio-tv"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir selecionadas
+                      </Button>
+                    )}
+                    <Checkbox
+                      checked={selectedRadioIds.length === radioRows.length && radioRows.length > 0}
+                      onCheckedChange={toggleRadioSelectAll}
+                      aria-label="Selecionar todas as detecções"
+                      data-testid="checkbox-select-all-radio-tv"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedRadioIds.length > 0 ? `${selectedRadioIds.length} selecionada(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                ) : undefined}
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Música / Artista</TableHead>
-                    <TableHead className="hidden md:table-cell">Emissora</TableHead>
-                    <TableHead className="hidden lg:table-cell">Canal</TableHead>
-                    <TableHead className="hidden lg:table-cell">Tipo</TableHead>
-                    <TableHead className="hidden xl:table-cell">Data/Hora</TableHead>
-                    <TableHead className="hidden xl:table-cell">ISRC</TableHead>
-                    <TableHead className="text-right hidden md:table-cell">Valor Est.</TableHead>
-                    <TableHead>Status</TableHead>
+                    <TableHead className="w-8"></TableHead>
+                    <TableHead className="min-w-[220px] w-[30%]">Música / Artista</TableHead>
+                    <TableHead className="hidden md:table-cell min-w-[140px] w-[18%]">Emissora</TableHead>
+                    <TableHead className="hidden lg:table-cell w-[120px]">Canal</TableHead>
+                    <TableHead className="hidden lg:table-cell w-[96px]">Tipo</TableHead>
+                    <TableHead className="hidden xl:table-cell w-[132px]">Data/Hora</TableHead>
+                    <TableHead className="hidden xl:table-cell w-[120px]">ISRC</TableHead>
+                    <TableHead className="text-right hidden md:table-cell w-[112px]">Valor Est.</TableHead>
+                    <TableHead className="w-[112px]">Status</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {MOCK_BROADCAST_DETECTIONS.map(det => {
-                    const statusMap: Record<string, string> = {
-                      confirmado:    "bg-success/15 text-success border-success/30",
-                      pendente:      "bg-warning/15 text-warning border-warning/30",
-                      divergencia:   "bg-destructive/15 text-destructive border-destructive/30",
-                      nao_reportado: "bg-muted text-muted-foreground border-border",
-                    };
-                    const dt = new Date(det.data_hora);
+                  {radioPg.pageItems.map(det => {
+                    const dt = formatRightsDateTime(det.data_hora);
                     const catalogObra = isrcIndex.get(det.isrc);
                     return (
                       <TableRow key={det.id}>
                         <TableCell>
-                          <p className="font-semibold">{det.obra_titulo}</p>
-                          <p className="text-xs text-muted-foreground">{det.artista}</p>
+                          <Checkbox
+                            checked={selectedRadioIds.includes(det.id)}
+                            onCheckedChange={() => toggleRadioSelect(det.id)}
+                            aria-label={`Selecionar ${det.obra_titulo}`}
+                            data-testid={`checkbox-radio-tv-${det.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <p className="max-w-[260px] truncate font-semibold">{det.obra_titulo}</p>
+                          <p className="max-w-[260px] truncate text-xs text-muted-foreground">{det.artista}</p>
                           {catalogObra && (
                             <p className="text-xs text-muted-foreground/70 mt-0.5">
                               {catalogObra.compositor} · {catalogObra.editora}
                             </p>
                           )}
                         </TableCell>
-                        <TableCell className="hidden md:table-cell text-sm">{det.emissora}</TableCell>
-                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground">{det.canal}</TableCell>
+                        <TableCell className="hidden md:table-cell text-sm"><span className="block max-w-[180px] truncate">{det.emissora}</span></TableCell>
+                        <TableCell className="hidden lg:table-cell text-xs text-muted-foreground"><span className="block max-w-[120px] truncate">{det.canal}</span></TableCell>
                         <TableCell className="hidden lg:table-cell">
                           <span className="text-xs bg-muted/50 px-2 py-1 rounded-md capitalize">{det.tipo.replace("_", " ")}</span>
                         </TableCell>
                         <TableCell className="hidden xl:table-cell text-xs text-muted-foreground">
-                          {dt.toLocaleDateString("pt-BR")} {dt.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                          {dt.full}
                         </TableCell>
                         <TableCell className="hidden xl:table-cell">
                           <div>
-                            <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{det.isrc}</code>
+                            <span className="block max-w-[180px] truncate text-sm">{det.isrc}</span>
                             {catalogObra?.cod_ecad && (
                               <p className="text-xs text-muted-foreground mt-0.5">{catalogObra.cod_ecad}</p>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right hidden md:table-cell text-sm font-medium tabular-nums">{fmtBRL(det.valor_estimado)}</TableCell>
+                        <TableCell className="text-right hidden md:table-cell text-sm">{fmtBRL(det.valor_estimado)}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${statusMap[det.status] ?? ""}`}>
-                            {det.status.replace("_", " ")}
-                          </span>
+                          <Badge variant={statusVariant(det.status)} className="capitalize">{fmtStatus(det.status)}</Badge>
                         </TableCell>
                       </TableRow>
                     );
                   })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={radioPg.total}
+                page={radioPg.page}
+                pageSize={radioPg.pageSize}
+                onPageChange={radioPg.setPage}
+                onPageSizeChange={radioPg.setPageSize}
+                itemLabel="detecções"
+              />
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
-        {/* ── Shows & Setlists ── */}
-        {activeTab === "shows_setlists" && (
-          <div className="space-y-3">
-            {MOCK_SETLISTS.map(sl => {
-              const slStatusMap: Record<string, string> = {
-                confirmado: "bg-success/15 text-success border-success/30",
-                enviado:    "bg-primary/15 text-primary border-primary/30",
-                pendente:   "bg-warning/15 text-warning border-warning/30",
-              };
-              return (
-                <Card key={sl.id} className="border-border/60">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <p className="font-semibold text-sm">{sl.evento}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{sl.artista} · {sl.local} · {sl.data}</p>
-                      </div>
-                      <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border flex-shrink-0 ${slStatusMap[sl.status] ?? ""}`}>
-                        {sl.status}
-                      </span>
-                    </div>
-                    <div className="border-t border-border/40 pt-3">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs py-1.5">#</TableHead>
-                            <TableHead className="text-xs py-1.5">Música</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden sm:table-cell">Compositor</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden md:table-cell">ISRC</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden lg:table-cell">Publisher</TableHead>
-                            <TableHead className="text-xs py-1.5 text-right">Duração</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {sl.musicas.map(m => {
-                            const catalogObra = isrcIndex.get(m.isrc);
-                            return (
-                              <TableRow key={m.ordem}>
-                                <TableCell className="text-xs py-1.5 text-muted-foreground">{m.ordem}</TableCell>
-                                <TableCell className="text-xs py-1.5 font-medium">{m.obra_titulo}</TableCell>
-                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden sm:table-cell">{m.compositor}</TableCell>
-                                <TableCell className="text-xs py-1.5 hidden md:table-cell">
-                                  <code className="font-mono text-muted-foreground">{m.isrc}</code>
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden lg:table-cell">
-                                  {catalogObra?.editora ?? <span className="text-warning text-xs">Sem publisher</span>}
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5 text-right text-muted-foreground">{Math.floor(m.duracao_segundos / 60)}:{String(m.duracao_segundos % 60).padStart(2, "0")}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        {/* ── Shows & Setlists ── (tabela única plana: uma linha por música) */}
+        <TabsContent value="shows_setlists" className="mt-0">
+          <Card className="border-border/60">
+            <CardContent className="p-0">
+              <ListSectionHeader
+                title="Shows & Setlists"
+                count={setlistRows.length}
+                description="Músicas executadas em shows, eventos e setlists importados"
+                className="px-6 pt-6"
+                action={setlistRows.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectedSetlistIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => requestBulkDelete("shows_setlists", selectedSetlistIds)}
+                        data-testid="button-delete-selected-setlists"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir selecionadas
+                      </Button>
+                    )}
+                    <Checkbox
+                      checked={selectedSetlistIds.length === setlistRows.length && setlistRows.length > 0}
+                      onCheckedChange={toggleSetlistSelectAll}
+                      aria-label="Selecionar todos os setlists"
+                      data-testid="checkbox-select-all-setlists"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedSetlistIds.length > 0 ? `${selectedSetlistIds.length} selecionada(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                ) : undefined}
+              />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs w-8"></TableHead>
+                      <TableHead className="text-xs">Evento</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                      <TableHead className="text-xs">Local</TableHead>
+                      <TableHead className="text-xs">Música</TableHead>
+                      <TableHead className="text-xs">Artista/Banda</TableHead>
+                      <TableHead className="text-xs">Intérprete</TableHead>
+                      <TableHead className="text-xs">Compositor</TableHead>
+                      <TableHead className="text-xs">Publisher</TableHead>
+                      <TableHead className="text-xs">ISWC</TableHead>
+                      <TableHead className="text-xs">ISRC</TableHead>
+                      <TableHead className="text-xs text-right">Duração</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {setlistPg.pageItems.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-xs">
+                          <Checkbox
+                            checked={selectedSetlistIds.includes(r.id)}
+                            onCheckedChange={() => toggleSetlistSelect(r.id)}
+                            aria-label={`Selecionar ${r.musica}`}
+                            data-testid={`checkbox-setlist-${r.id}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs font-medium"><span className="block max-w-[200px] truncate">{r.evento}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatRightsDate(r.data)}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[180px] truncate">{r.local}</span></TableCell>
+                        <TableCell className="text-xs font-medium"><span className="block max-w-[200px] truncate">{r.musica}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.artista}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.interprete}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.compositor || DASH}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.publisher || DASH}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.iswc || DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.isrc}</TableCell>
+                        <TableCell className="text-xs text-right text-muted-foreground whitespace-nowrap">{fmtDur(r.duracao)}</TableCell>
+                        <TableCell><Badge variant={statusVariant(r.status)} className="capitalize">{fmtStatus(r.status)}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {setlistRows.length === 0 && (
+                <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma execução registrada.</div>
+              )}
+              {setlistRows.length > 0 && (
+                <TablePagination
+                  total={setlistPg.total}
+                  page={setlistPg.page}
+                  pageSize={setlistPg.pageSize}
+                  onPageChange={setlistPg.setPage}
+                  onPageSizeChange={setlistPg.setPageSize}
+                  itemLabel="execuções"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
-        {/* ── Cue Sheets ── */}
-        {activeTab === "cue_sheets" && (
-          <div className="space-y-3">
-            {MOCK_CUE_SHEETS.map(cs => {
-              const csStatusMap: Record<string, string> = {
-                aprovado:   "bg-success/15 text-success border-success/30",
-                pendente:   "bg-warning/15 text-warning border-warning/30",
-                enviado:    "bg-primary/15 text-primary border-primary/30",
-                divergencia:"bg-destructive/15 text-destructive border-destructive/30",
-              };
-              return (
-                <Card key={cs.id} className="border-border/60">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-3 mb-3">
-                      <div>
-                        <p className="font-semibold text-sm">{cs.producao}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{cs.canal}{cs.episodio ? ` · ${cs.episodio}` : ""} · {cs.data_exibicao}</p>
-                      </div>
-                      <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border flex-shrink-0 ${csStatusMap[cs.status] ?? ""}`}>
-                        {cs.status}
-                      </span>
-                    </div>
-                    <div className="border-t border-border/40 pt-3">
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead className="text-xs py-1.5">Música</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden sm:table-cell">Compositor</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden md:table-cell">Publisher</TableHead>
-                            <TableHead className="text-xs py-1.5 hidden lg:table-cell">Cód. ECAD</TableHead>
-                            <TableHead className="text-xs py-1.5">Tipo de Uso</TableHead>
-                            <TableHead className="text-xs py-1.5 text-right">Duração</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {cs.obras.map((o, i) => {
-                            const catalogObra = isrcIndex.get(o.isrc);
-                            return (
-                              <TableRow key={i}>
-                                <TableCell className="text-xs py-1.5 font-medium">{o.obra_titulo}</TableCell>
-                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden sm:table-cell">
-                                  {catalogObra?.compositor ?? o.compositor}
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5 text-muted-foreground hidden md:table-cell">
-                                  {catalogObra?.editora ?? o.publisher}
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5 hidden lg:table-cell">
-                                  {catalogObra?.cod_ecad
-                                    ? <code className="font-mono text-success text-xs">{catalogObra.cod_ecad}</code>
-                                    : <span className="text-warning text-xs">Sem cod_ecad</span>
-                                  }
-                                </TableCell>
-                                <TableCell className="text-xs py-1.5"><span className="bg-muted/50 px-1.5 py-0.5 rounded text-xs">{o.tipo_uso.replace("_", " ")}</span></TableCell>
-                                <TableCell className="text-xs py-1.5 text-right text-muted-foreground">{Math.floor(o.duracao_segundos / 60)}:{String(o.duracao_segundos % 60).padStart(2, "0")}</TableCell>
-                              </TableRow>
-                            );
-                          })}
-                        </TableBody>
-                      </Table>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+        {/* ── Cue Sheets ── (tabela única plana: uma linha por obra) */}
+        <TabsContent value="cue_sheets" className="mt-0">
+          <Card className="border-border/60">
+            <CardContent className="p-0">
+              <ListSectionHeader
+                title="Cue Sheets"
+                count={cueRows.length}
+                description="Obras sincronizadas em produções audiovisuais e cue sheets"
+                className="px-6 pt-6"
+                action={cueRows.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectedCueIds.length > 0 && (
+                      <Button
+                        type="button"
+                        variant="destructive"
+                        size="sm"
+                        className="h-8 text-xs gap-1.5"
+                        onClick={() => requestBulkDelete("cue_sheets", selectedCueIds)}
+                        data-testid="button-delete-selected-cue-sheets"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir selecionadas
+                      </Button>
+                    )}
+                    <Checkbox
+                      checked={selectedCueIds.length === cueRows.length && cueRows.length > 0}
+                      onCheckedChange={toggleCueSelectAll}
+                      aria-label="Selecionar todos os cue sheets"
+                      data-testid="checkbox-select-all-cue-sheets"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedCueIds.length > 0 ? `${selectedCueIds.length} selecionada(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                ) : undefined}
+              />
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="text-xs w-8"></TableHead>
+                      <TableHead className="text-xs">Produção</TableHead>
+                      <TableHead className="text-xs">Episódio</TableHead>
+                      <TableHead className="text-xs">Data</TableHead>
+                      <TableHead className="text-xs">Música</TableHead>
+                      <TableHead className="text-xs">Artista/Banda</TableHead>
+                      <TableHead className="text-xs">Intérprete</TableHead>
+                      <TableHead className="text-xs">Compositor</TableHead>
+                      <TableHead className="text-xs">Publisher</TableHead>
+                      <TableHead className="text-xs">ISWC</TableHead>
+                      <TableHead className="text-xs">ISRC</TableHead>
+                      <TableHead className="text-xs">Código ECAD</TableHead>
+                      <TableHead className="text-xs">Tipo de Uso</TableHead>
+                      <TableHead className="text-xs text-right">Duração</TableHead>
+                      <TableHead className="text-xs">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cuePg.pageItems.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="text-xs">
+                          <Checkbox
+                            checked={selectedCueIds.includes(r.id)}
+                            onCheckedChange={() => toggleCueSelect(r.id)}
+                            aria-label={`Selecionar ${r.musica}`}
+                            data-testid={`checkbox-cue-sheet-${r.id}`}
+                          />
+                        </TableCell>
+                        <TableCell className="text-xs font-medium"><span className="block max-w-[200px] truncate">{r.producao}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.episodio || DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{formatRightsDate(r.data)}</TableCell>
+                        <TableCell className="text-xs font-medium"><span className="block max-w-[200px] truncate">{r.musica}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground">{DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.compositor || DASH}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground"><span className="block max-w-[160px] truncate">{r.publisher || DASH}</span></TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.iswc || DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.isrc}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground whitespace-nowrap">{r.cod_ecad || DASH}</TableCell>
+                        <TableCell className="text-xs text-muted-foreground capitalize">{r.tipo_uso.replace("_", " ")}</TableCell>
+                        <TableCell className="text-xs text-right text-muted-foreground whitespace-nowrap">{fmtDur(r.duracao)}</TableCell>
+                        <TableCell><Badge variant={statusVariant(r.status)} className="capitalize">{fmtStatus(r.status)}</Badge></TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              {cueRows.length === 0 && (
+                <div className="p-8 text-center text-sm text-muted-foreground">Nenhuma utilização registrada.</div>
+              )}
+              {cueRows.length > 0 && (
+                <TablePagination
+                  total={cuePg.total}
+                  page={cuePg.page}
+                  pageSize={cuePg.pageSize}
+                  onPageChange={cuePg.setPage}
+                  onPageSizeChange={cuePg.setPageSize}
+                  itemLabel="utilizações"
+                />
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         {/* ── Divergências ── */}
-        {activeTab === "divergencias" && (
+        <TabsContent value="divergencias" className="mt-0">
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4 text-destructive" />
-                Painel de Divergências
-              </CardTitle>
-              <CardDescription className="text-xs">
-                Inconsistências detectadas entre execuções monitoradas e relatórios ECAD
-                {orphanIsrcs.length > 0 && (
-                  <span className="ml-1 text-destructive font-medium">
-                    · {orphanIsrcs.length} ISRC{orphanIsrcs.length > 1 ? "s" : ""} sem obra no catálogo
-                  </span>
-                )}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DivergenciasPanel divergencias={allDivergencias} />
+            <CardContent className="p-0">
+              <DivergenciasPanel
+                divergencias={allDivergencias}
+                onResolve={(d) => { setSelectedDivergencia(d); setResolverOpen(true); }}
+                onBulkDelete={(ids) => requestBulkDelete("divergencias", ids)}
+              />
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
 
         {/* ── Auditoria ── */}
-        {activeTab === "auditoria" && (
+        <TabsContent value="auditoria" className="mt-0">
           <Card className="border-border/60">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">Auditoria ECAD</CardTitle>
-              <CardDescription className="text-xs">Histórico de períodos e arrecadação por trimestre</CardDescription>
-            </CardHeader>
             <CardContent className="p-0">
+              <ListSectionHeader
+                title="Auditoria ECAD"
+                count={MOCK_ECAD_PERIODOS.length}
+                description="Histórico de períodos e arrecadação por trimestre"
+                className="px-6 pt-6"
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Período</TableHead>
-                    <TableHead className="hidden md:table-cell">Data Referência</TableHead>
-                    <TableHead className="text-right">Valor Total</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="hidden lg:table-cell">Observações</TableHead>
+                    <TableHead className="w-[120px]">Período</TableHead>
+                    <TableHead className="hidden md:table-cell w-[132px]">Data Referência</TableHead>
+                    <TableHead className="text-right w-[132px]">Valor Total</TableHead>
+                    <TableHead className="w-[112px]">Status</TableHead>
+                    <TableHead className="hidden lg:table-cell min-w-[240px]">Observações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {MOCK_ECAD_PERIODOS.map(p => {
-                    const cfg = STATUS_ECAD[p.status] ?? { label: p.status, className: "bg-muted text-muted-foreground border-border" };
                     return (
                       <FeatureGate key={p.id} feature="moduleMonitoring" featureName="Monitoramento">
                         <TableRow>
                           <TableCell className="font-semibold">{p.periodo}</TableCell>
                           <TableCell className="text-sm text-muted-foreground hidden md:table-cell">
-                            {new Date(p.data_referencia).toLocaleDateString("pt-BR")}
+                            {formatRightsDate(p.data_referencia)}
                           </TableCell>
-                          <TableCell className="text-right font-medium tabular-nums">
+                          <TableCell className="text-right">
                             {fmtBRL(p.valor_total)}
                           </TableCell>
                           <TableCell>
-                            <span className={`inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${cfg.className}`}>
-                              {cfg.label}
-                            </span>
+                            <Badge variant={statusVariant(p.status)}>{STATUS_ECAD_LABEL[p.status] ?? fmtStatus(p.status)}</Badge>
                           </TableCell>
                           <TableCell className="text-xs text-muted-foreground hidden lg:table-cell">{p.observacoes}</TableCell>
                         </TableRow>
@@ -590,7 +849,8 @@ export default function RightsMonitoring() {
               </Table>
             </CardContent>
           </Card>
-        )}
+        </TabsContent>
+        </Tabs>
 
 
         {/* Modals */}
@@ -599,6 +859,19 @@ export default function RightsMonitoring() {
           exec={selectedExec}
           open={detailOpen}
           onOpenChange={setDetailOpen}
+        />
+        <ResolverDivergenciaModal
+          divergencia={selectedDivergencia}
+          open={resolverOpen}
+          onOpenChange={setResolverOpen}
+          onSubmit={handleResolveDivergencia}
+        />
+        <DeleteConfirmModal
+          open={Boolean(pendingBulkDelete)}
+          onOpenChange={(open) => !open && setPendingBulkDelete(null)}
+          title="Excluir selecionados"
+          description="Esta ação remove os registros selecionados desta visualização. Deseja continuar?"
+          onConfirm={handleConfirmBulkDelete}
         />
 
       </div>

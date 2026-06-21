@@ -45,7 +45,7 @@ export function AbramusSearchRow({
 
   const heading = (
     <p
-      className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1"
+      className="text-xs font-semibold text-muted-foreground  tracking-wide px-2 py-1"
       role="presentation"
       data-testid="abramus-section-heading"
     >
@@ -252,7 +252,7 @@ export function AbramusSearchRow({
               data-testid={`abramus-result-${item.external_id}`}
             >
               <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center shrink-0">
-                <Music className="h-4 w-4 text-white" />
+                <Music className="h-4 w-4 text-foreground" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -267,7 +267,7 @@ export function AbramusSearchRow({
                   {isAlreadyImported && (
                     <Badge
                       variant="outline"
-                      className="text-[10px] px-1.5 py-0 h-4 shrink-0 gap-1 border-emerald-500/40 text-emerald-700 dark:text-emerald-400"
+                      className="text-[10px] px-1.5 py-0 h-4 shrink-0 gap-1 border-emerald-500/40 text-emerald-700"
                       title="Esta obra do ABRAMUS já foi importada anteriormente"
                       data-testid={`badge-already-imported-${item.external_id}`}
                     >

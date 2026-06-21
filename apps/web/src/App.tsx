@@ -5,7 +5,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/app/providers/AuthContext";
 import { TenantProvider } from "@/app/providers/TenantContext";
-import { ThemeProvider } from "@/app/providers/ThemeContext";
+import { useTenant } from "@/app/providers/TenantContext";
 import { ErrorBoundary } from "@/shared/infrastructure/ErrorBoundary";
 import { RouteErrorBoundary } from "@/shared/infrastructure/RouteErrorBoundary";
 import { PageSkeleton } from "@/shared/components/PageSkeletons";
@@ -13,7 +13,7 @@ import { createQueryClient } from "@/shared/lib/query-config";
 import type { SuspenseRouteComponent } from "@/app/routes/types";
 import "@/shared/domain-events/consistency";
 import { RealtimeLayer } from "@/shared/infrastructure/RealtimeLayer";
-import { MOCK_MODE } from "@/shared/lib/env";
+import { AUTH_DISABLED, MOCK_MODE } from "@/shared/lib/env";
 import { runClientMigrations } from "@/shared/lib/migrations";
 import { publicRoutes } from "@/app/routes/public.routes";
 import { artistRoutes } from "@/app/routes/artist.routes";
@@ -29,10 +29,12 @@ import { adminRoutes } from "@/app/routes/admin.routes";
 import { contractsRoutes } from "@/app/routes/contracts.routes";
 import { reportsRoutes } from "@/app/routes/reports.routes";
 import { supportRoutes } from "@/app/routes/support.routes";
+import { audiovisualRoutes } from "@/app/routes/audiovisual.routes";
 
 runClientMigrations();
 
 const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
+const Landing = lazy(() => import("@/shared/pages/Landing"));
 
 const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
   <RouteErrorBoundary>
@@ -44,10 +46,20 @@ const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
 
 function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  if (AUTH_DISABLED) return <>{children}</>;
   if (MOCK_MODE) return <>{children}</>;
   if (loading) return <PageSkeleton />;
   if (!user) return <Navigate to="/auth" replace />;
   return <>{children}</>;
+}
+
+function Home() {
+  const { user, loading } = useAuth();
+  const { tenant } = useTenant();
+  if (loading) return <PageSkeleton />;
+  if (!user) return <Landing />;
+  if (!tenant.onboarding.completed) return <Navigate to="/onboarding" replace />;
+  return <Dashboard />;
 }
 
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
@@ -60,9 +72,10 @@ const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
 
 function SuperAdminGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
+  if (AUTH_DISABLED) return <>{children}</>;
   if (MOCK_MODE) return <>{children}</>;
   if (loading) return <PageSkeleton />;
-  const role = user?.user_metadata?.["role"] as string | undefined;
+  const role = user?.role;
   if (!user || role !== "super_admin") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
@@ -76,7 +89,6 @@ const SuperAdminRoute: SuspenseRouteComponent = ({ children }) => (
 const App = () => {
   const [queryClient] = useState(() => createQueryClient());
   return (
-  <ThemeProvider>
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
@@ -88,7 +100,7 @@ const App = () => {
               <Routes>
                 {publicRoutes(SuspenseRoute)}
 
-                <Route path="/" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/" element={<SuspenseRoute><Home /></SuspenseRoute>} />
                 <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
 
                 {artistRoutes(ProtectedRoute)}
@@ -106,6 +118,7 @@ const App = () => {
                 {adminRoutes(SuspenseRoute, SuperAdminRoute)}
                 {reportsRoutes(ProtectedRoute)}
                 {supportRoutes(ProtectedRoute)}
+                {audiovisualRoutes(ProtectedRoute)}
               </Routes>
             </BrowserRouter>
           </TooltipProvider>
@@ -113,8 +126,8 @@ const App = () => {
       </AuthProvider>
     </QueryClientProvider>
   </ErrorBoundary>
-  </ThemeProvider>
   );
 };
 
 export default App;
+

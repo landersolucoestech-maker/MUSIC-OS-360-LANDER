@@ -9,8 +9,8 @@
 
 import { describe, it, expect } from "vitest";
 import { render, screen, within } from "@testing-library/react";
-import { ExecucaoDetailModal } from "@/modules/rights-monitoring/components/ExecucaoDetailModal";
-import type { RightsExecution } from "@/modules/rights-monitoring/types";
+import { ExecucaoDetailModal } from "@/modules/monitoring/rights/components/ExecucaoDetailModal";
+import type { RightsExecution } from "@/modules/monitoring/rights/types";
 
 const BASE_EXEC: RightsExecution = {
   id: "re-001",
@@ -176,3 +176,4 @@ describe("<ExecucaoDetailModal /> — edge cases", () => {
     expect(screen.getByText(/Não cadastrado/i)).toBeInTheDocument();
   });
 });
+

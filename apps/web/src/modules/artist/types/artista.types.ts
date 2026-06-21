@@ -14,6 +14,19 @@ export interface ArtistaResponsavel {
   email: string;
 }
 
+/**
+ * Vínculo entre o artista e um contato do CRM (CRM > Contatos).
+ * O artista armazena APENAS a referência (`contactId`) — Nome/Categoria/
+ * Telefone/E-mail são resolvidos dinamicamente do CRM em tempo de exibição,
+ * evitando duplicação de dados. As `distribuidoras` são específicas da relação
+ * artista↔contato (não do contato) e só se aplicam quando a categoria do
+ * contato no CRM for Empresário / Gravadora / Editora.
+ */
+export interface ArtistaContatoVinculado {
+  contactId: string;
+  distribuidoras?: ArtistaDistribuidoraEntry[];
+}
+
 export interface ArtistaRelacionamento {
   tipo: "empresario" | "gravadora" | "editora" | "booker" | "juridico" | "financeiro" | "contador" | "assessoria";
   nome: string;
@@ -102,6 +115,17 @@ export interface Artista {
   label_parceira?: string | null;
   documentos?: { nome: string; url: string }[] | null;
   distribuidoras_gerais?: Array<{ id: string; email: string; nomeCustom?: string }> | null;
+  /**
+   * Contatos da equipe vinculados a partir do CRM (fonte única).
+   * Substitui o antigo `contatos_equipe` embutido no cadastro/edição de artista.
+   */
+  contatos_vinculados?: ArtistaContatoVinculado[] | null;
+  /**
+   * @deprecated Contatos de equipe embutidos (cópias). Mantido apenas para
+   * retrocompatibilidade com dados antigos e com o fluxo público de auto-cadastro
+   * (ArtistaSignupPublic), que não tem acesso ao CRM. Novos cadastros/edições no
+   * painel usam `contatos_vinculados`.
+   */
   contatos_equipe?: Array<{
     nome: string;
     categoria: string;
@@ -118,3 +142,4 @@ export interface Artista {
 export type ArtistaInsert = Omit<Artista, "id" | "user_id" | "created_at" | "updated_at">;
 export type ArtistaUpdate = Partial<ArtistaInsert>;
 export type ArtistaAssinado = Artista;
+

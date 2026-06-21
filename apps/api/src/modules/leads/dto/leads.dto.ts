@@ -1,5 +1,16 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsEmail, IsNumber, MaxLength } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsIn,
+  IsEmail,
+  IsNumber,
+  IsBoolean,
+  IsObject,
+  MaxLength,
+  IsNotEmpty,
+  Equals,
+} from 'class-validator';
 import { Type } from 'class-transformer';
 import { LeadStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -28,4 +39,24 @@ export class QueryLeadDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() stage?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() assignedTo?: string;
+}
+
+export class PublicArtistApplicationDto {
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) artisticName!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) fullName!: string;
+  @ApiProperty() @IsEmail() @MaxLength(255) email!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(50) phone!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) state?: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(120) musicalGenre!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) objective?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) message?: string;
+  @ApiPropertyOptional() @IsOptional() @IsObject() socialLinks?: Record<string, string>;
+  @ApiPropertyOptional() @IsOptional() @IsObject() additionalData?: Record<string, unknown>;
+  @ApiProperty() @IsBoolean() @Equals(true) acceptedTerms!: boolean;
+  @ApiPropertyOptional({ description: 'Honeypot; must remain empty' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  companyWebsite?: string;
 }

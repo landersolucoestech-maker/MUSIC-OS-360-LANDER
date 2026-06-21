@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { WS_URL } from "@/shared/lib/env";
+import { WS_URL, WS_ENABLED } from "@/shared/lib/env";
 
 /**
  * Singleton Socket.IO client.
@@ -21,7 +21,12 @@ let _currentToken: string | null = null;
  * new socket instance while the old one is mid-reconnect causes churn and
  * duplicate connection attempts from concurrent component mounts.
  */
-export function getWsSocket(token: string): Socket {
+export function getWsSocket(token: string): Socket | null {
+  // P0-07: WS disabled via env flag — no connection attempted, no churn.
+  if (!WS_ENABLED) {
+    return null;
+  }
+
   if (_socket && _currentToken === token) {
     return _socket;
   }

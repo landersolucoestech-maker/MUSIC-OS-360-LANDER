@@ -33,3 +33,4 @@ export type EventoUpdate = Partial<EventoInsert>;
 export interface EventoWithRelations extends Evento {
   artistas?: ArtistaRef | null;
 }
+

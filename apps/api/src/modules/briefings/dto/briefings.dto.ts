@@ -1,5 +1,6 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsDate, MaxLength } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 const STATUSES = ['draft', 'review', 'approved', 'rejected', 'archived'] as const;
@@ -9,7 +10,8 @@ export class CreateBriefingDto {
   @ApiPropertyOptional() @IsOptional() @IsString() campaignId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() content?: string;
   @ApiPropertyOptional() @IsOptional() objectives?: unknown[];
-  @ApiPropertyOptional() @IsOptional() dueAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() dueAt?: Date;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }
 

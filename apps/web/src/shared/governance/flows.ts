@@ -15,7 +15,7 @@
  *   F02 — Lançamento Musical
  *   F03 — Ciclo de Contrato
  *   F04 — Ciclo Financeiro (Transação → P&L)
- *   F05 — Pipeline de Lead → Cliente → Contrato
+ *   F05 — Fluxo Comercial de Lead → Cliente → Contrato
  *   F06 — Campanha de Marketing de Lançamento
  *   F07 — Takedown de Conteúdo
  *   F08 — Conciliação ECAD
@@ -69,7 +69,7 @@ export const FLOW_ARTISTA_ONBOARDING: OperationalFlow = {
       module:           "crm",
       entitiesAffected: ["Lead"],
       integrations:     [],
-      uiElement:        "LeadFormModal / Kanban CRM",
+      uiElement:        "LeadFormModal / CRM Comercial",
       notes:            "Lead vinculado ao artista alvo; temperatura 'quente'.",
     },
     {
@@ -79,7 +79,7 @@ export const FLOW_ARTISTA_ONBOARDING: OperationalFlow = {
       module:           "crm",
       entitiesAffected: ["Lead"],
       integrations:     [],
-      uiElement:        "Kanban de Leads",
+      uiElement:        "Tabela de Leads",
     },
     {
       step:             3,
@@ -348,24 +348,24 @@ export const FLOW_FINANCEIRO: OperationalFlow = {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// F05 — PIPELINE DE LEAD → CLIENTE → CONTRATO
+// F05 — Fluxo Comercial de Lead → CLIENTE → CONTRATO
 // ═══════════════════════════════════════════════════════════════════════════════
 
 export const FLOW_LEAD_CONTRATO: OperationalFlow = {
   id:          "F05",
-  name:        "Pipeline Lead → Cliente → Contrato",
+  name:        "Fluxo Lead → Cliente → Contrato",
   description:
     "Fluxo comercial desde a identificação de uma oportunidade " +
     "até à formalização contratual.",
   actors:      ["Gestor Comercial"],
   modules:     ["crm", "contracts"],
   steps: [
-    { step: 1, actor: "Gestor Comercial", action: "Criar Lead no Kanban",
+    { step: 1, actor: "Gestor Comercial", action: "Criar Lead na tabela comercial",
       module: "crm", entitiesAffected: ["Lead"], integrations: [],
-      uiElement: "LeadKanban" },
+      uiElement: "LeadsTable" },
     { step: 2, actor: "Gestor Comercial", action: "Mover Lead por pipeline até 'fechado'",
       module: "crm", entitiesAffected: ["Lead"], integrations: [],
-      uiElement: "KanbanBoard" },
+      uiElement: "LeadsTable" },
     { step: 3, actor: "Gestor Comercial", action: "Converter Lead em Cliente",
       module: "crm", entitiesAffected: ["Lead", "Cliente"], integrations: [],
       notes: "Dados do Lead pré-populam o formulário de Cliente." },
@@ -636,3 +636,4 @@ export function getFlowsByIntegration(integrationId: string): OperationalFlow[] 
     f.steps.some(s => s.integrations.includes(integrationId))
   );
 }
+

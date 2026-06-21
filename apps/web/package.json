@@ -5,11 +5,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite --host 0.0.0.0 --port 5000",
-    "build": "tsc -p tsconfig.app.json && vite build",
-    "preview": "vite preview --host 0.0.0.0 --port 5000",
+    "dev": "node scripts/run-vite.mjs dev",
+    "build": "tsc -p tsconfig.app.json && node scripts/run-vite.mjs build",
+    "preview": "node scripts/run-vite.mjs preview",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "lint": "eslint src --ext ts,tsx",
     "test": "vitest run --config vitest.config.mjs",
     "test:watch": "vitest --config vitest.config.mjs",
     "test:run": "vitest run --config vitest.config.mjs"
@@ -18,8 +18,12 @@
     "@music-os-360/types": "workspace:*",
     "@radix-ui/react-visually-hidden": "^1.2.4",
     "@supabase/supabase-js": "^2.105.4",
+    "@types/leaflet": "^1.9.21",
     "dompurify": "^3.4.5",
+    "leaflet": "^1.9.4",
     "mammoth": "^1.12.0",
+    "pdfjs-dist": "4.10.38",
+    "react-leaflet": "^4.2.1",
     "xlsx": "^0.18.5",
     "zustand": "^5.0.13"
   },

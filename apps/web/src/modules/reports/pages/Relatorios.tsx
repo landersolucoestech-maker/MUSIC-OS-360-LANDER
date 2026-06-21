@@ -1,135 +1,115 @@
-import { useState } from "react";
+/**
+ * modules/reports/pages/Relatorios.tsx  ·  FASE 2.5
+ *
+ * Central de Relatórios — consome EXCLUSIVAMENTE a API (GET /reports/entities,
+ * GET /reports/definitions). Sem lista fixa, sem mock, sem registry/contrato/
+ * label no frontend. O backend é a única fonte da verdade.
+ */
+import { useMemo, useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
-import {
-  Upload, Download, Activity,
-  CheckCircle2, AlertTriangle, Users,
-  Music, FileText, Radio, Scale, Trash2, Truck, Share, FileSignature,
-  ArrowLeftRight, Receipt, Calendar, Package,
-  Contact, UserPlus, Briefcase, Megaphone,
-} from "lucide-react";
-import { cn } from "@/shared/lib/utils";
-import { ImportEngine } from "../components/ImportEngine";
-import { ExportEngine } from "../components/ExportEngine";
-import { REPORT_OVERVIEW_KPIS } from "../services/mock-data";
+import { Upload, Download, AlertTriangle, Loader2, Database } from "lucide-react";
+import { useReportEntities, useReportDefinitions } from "../hooks/useReports";
+import { ExportDialog } from "../components/ExportDialog";
+import { ImportDialog } from "../components/ImportDialog";
+import type { ReportEntityDefinition } from "../services/reports-api";
 
-// ─── Module list ───────────────────────────────────────────────────────────────
-interface ModuleEntry {
-  id: string;
-  label: string;
-  sub: string;
-  icon: React.ComponentType<{ className?: string }>;
-}
-
-const MODULE_LIST: ModuleEntry[] = [
-  { id: "artistas",       label: "Artistas",               sub: "Perfis, contratos, histórico",                             icon: Users          },
-  { id: "projetos",       label: "Projetos",               sub: "Álbuns, EPs, singles, timelines",                          icon: FileText       },
-  { id: "obras",          label: "Registro de Obras",      sub: "Obras musicais, compositores, ISWC",                       icon: Music          },
-  { id: "fonogramas",     label: "Registro de Fonogramas", sub: "Fonogramas, ISRC, masters",                                icon: Radio          },
-  { id: "monitoramento",  label: "Monitoramento",          sub: "ECAD, execuções, relatórios",                              icon: Activity       },
-  { id: "licenciamento",  label: "Licenciamento",          sub: "Licenças, sincronias, autorizações",                       icon: Scale          },
-  { id: "takedowns",      label: "Takedowns",              sub: "Solicitações, plataformas, status",                        icon: Trash2         },
-  { id: "distribuicao",   label: "Distribuição",           sub: "Plataformas digitais, DSPs, releases",                     icon: Truck          },
-  { id: "gestao-shares",  label: "Gestão de Shares",       sub: "Participações, splits, percentuais",                       icon: Share          },
-  { id: "contratos",      label: "Contratos",              sub: "Templates, assinaturas, vencimentos",                      icon: FileSignature  },
-  { id: "transacoes",     label: "Transações",             sub: "Receitas, despesas, OFX, conciliação",                     icon: ArrowLeftRight },
-  { id: "nota-fiscal",    label: "Nota Fiscal",            sub: "Emissão, NFS-e, NF-e, histórico",                         icon: Receipt        },
-  { id: "agenda",         label: "Agenda",                 sub: "Shows, eventos, compromissos",                             icon: Calendar       },
-  { id: "inventario",     label: "Inventário",             sub: "Equipamentos, patrimônio, controle",                       icon: Package        },
-  { id: "crm",            label: "CRM",                    sub: "Contatos, clientes, relacionamento",                       icon: Contact        },
-  { id: "leads",          label: "Leads",                  sub: "Pipeline, Kanban, oportunidades",                          icon: UserPlus       },
-  { id: "rh",             label: "Recursos Humanos",       sub: "Funcionários, folha, férias, docs",                        icon: Briefcase      },
-  { id: "marketing",      label: "Marketing",              sub: "Campanhas · Calendário · Briefings · Tarefas · IA Criativa", icon: Megaphone   },
-];
-
-// ─── Page ──────────────────────────────────────────────────────────────────────
 export default function Relatorios() {
-  const [importOpen, setImportOpen] = useState(false);
+  const entitiesQ = useReportEntities();
+  const definitionsQ = useReportDefinitions();
+  const [selected, setSelected] = useState<string | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
 
-  const kpis = [
-    { label: "Importações",          value: String(REPORT_OVERVIEW_KPIS.totalImports),         icon: Upload,        color: "text-primary",     bg: "bg-primary/10" },
-    { label: "Exportações",          value: String(REPORT_OVERVIEW_KPIS.totalExports),         icon: Download,      color: "text-success",     bg: "bg-success/10" },
-    { label: "Erros de importação",  value: String(REPORT_OVERVIEW_KPIS.importErrors),         icon: AlertTriangle, color: "text-destructive", bg: "bg-destructive/10" },
-    { label: "Taxa de sucesso",      value: `${REPORT_OVERVIEW_KPIS.successRate}%`,            icon: CheckCircle2,  color: "text-success",     bg: "bg-success/10" },
-    { label: "Registros importados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsImported), icon: Upload,        color: "text-primary",     bg: "bg-primary/10" },
-    { label: "Registros exportados", value: String(REPORT_OVERVIEW_KPIS.totalRecordsExported), icon: Download,      color: "text-success",     bg: "bg-success/10" },
-  ];
+  const defByTable = useMemo(() => {
+    const m = new Map<string, ReportEntityDefinition>();
+    for (const d of definitionsQ.data ?? []) m.set(d.tableName, d);
+    return m;
+  }, [definitionsQ.data]);
+
+  const reportable = useMemo(
+    () => (entitiesQ.data?.entities ?? []).filter((e) => e.reportable),
+    [entitiesQ.data],
+  );
+
+  const selectedDef = selected ? defByTable.get(selected) ?? null : null;
+  const labelOf = useMemo(() => {
+    const ent = entitiesQ.data?.entities.find((e) => e.tableName === selected);
+    const map = new Map(ent?.columns.map((c) => [c.name, c.label]) ?? []);
+    return (col: string) => map.get(col) ?? col;
+  }, [entitiesQ.data, selected]);
+
+  const loading = entitiesQ.isLoading || definitionsQ.isLoading;
+  const error = entitiesQ.isError || definitionsQ.isError;
 
   return (
-    <MainLayout
-      title="Relatórios"
-      description="Central de importações e exportações por módulo"
-    >
-      <div className="space-y-4">
-        {/* KPI cards */}
-        <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-6">
-          {kpis.map(k => {
-            const Icon = k.icon;
-            return (
-              <Card key={k.label} className="border-border">
-                <CardContent className="p-4 flex items-start gap-3">
-                  <div className={cn("p-2 rounded-lg shrink-0", k.bg)}>
-                    <Icon className={cn("h-4 w-4", k.color)} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] text-muted-foreground uppercase tracking-wider">{k.label}</p>
-                    <p className="text-xl font-bold font-mono text-foreground">{k.value}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        {/* Module list */}
-        <div className="rounded-lg border border-border overflow-hidden">
-          <div className="divide-y divide-border/50">
-            {MODULE_LIST.map(mod => {
-              const Icon = mod.icon;
-              return (
-                <div
-                  key={mod.id}
-                  className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20 transition-colors"
-                  data-testid={`module-row-${mod.id}`}
-                >
-                  <div className="p-1.5 rounded-md bg-muted shrink-0">
-                    <Icon className="h-3.5 w-3.5 text-muted-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium text-foreground">{mod.label}</p>
-                    <p className="text-[10px] text-muted-foreground truncate">{mod.sub}</p>
-                  </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => setImportOpen(true)}
-                      data-testid={`btn-import-${mod.id}`}
-                    >
-                      <Upload className="h-3 w-3" /> Importar
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => setExportOpen(true)}
-                      data-testid={`btn-export-${mod.id}`}
-                    >
-                      <Download className="h-3 w-3" /> Exportar
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
+    <MainLayout title="Relatórios" description="Exportação e importação por entidade — dirigido pelo backend">
+      <div className="space-y-6">
+        {loading && (
+          <div className="flex items-center gap-2 p-8 text-sm text-muted-foreground" data-testid="reports-loading">
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando entidades…
           </div>
-        </div>
+        )}
+
+        {error && !loading && (
+          <div className="flex items-start gap-3 rounded-lg border border-destructive/30 bg-destructive/10 p-4" data-testid="reports-error">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-destructive" />
+            <p className="text-sm text-destructive">Não foi possível carregar as entidades da API.</p>
+          </div>
+        )}
+
+        {!loading && !error && reportable.length === 0 && (
+          <div className="rounded-lg border border-dashed border-border p-8 text-center text-sm text-muted-foreground" data-testid="reports-empty">
+            Nenhuma entidade reportável disponível.
+          </div>
+        )}
+
+        {!loading && !error && reportable.length > 0 && (
+          <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="divide-y divide-border/50">
+              {reportable.map((e) => {
+                const def = defByTable.get(e.tableName);
+                return (
+                  <div key={e.tableName} className="flex items-center gap-4 px-4 py-3 hover:bg-muted/20" data-testid={`entity-row-${e.tableName}`}>
+                    <div className="p-1.5 rounded-md bg-muted shrink-0">
+                      <Database className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-medium text-foreground">{e.tableName}</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        {e.category}
+                        {e.risks.length > 0 && <span className="ml-2 text-warning">· {e.risks.join(", ")}</span>}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button
+                        size="sm" variant="outline" className="h-7 text-xs gap-1"
+                        disabled={!def?.supportsImport}
+                        onClick={() => { setSelected(e.tableName); setImportOpen(true); }}
+                        data-testid={`btn-import-${e.tableName}`}
+                      >
+                        <Upload className="h-3 w-3" /> Importar
+                      </Button>
+                      <Button
+                        size="sm" variant="outline" className="h-7 text-xs gap-1"
+                        disabled={!def?.supportsExport}
+                        onClick={() => { setSelected(e.tableName); setExportOpen(true); }}
+                        data-testid={`btn-export-${e.tableName}`}
+                      >
+                        <Download className="h-3 w-3" /> Exportar
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </div>
 
-      <ImportEngine open={importOpen} onClose={() => setImportOpen(false)} />
-      <ExportEngine open={exportOpen} onClose={() => setExportOpen(false)} />
+      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} definition={selectedDef} labelOf={labelOf} />
+      <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} definition={selectedDef} />
     </MainLayout>
   );
 }

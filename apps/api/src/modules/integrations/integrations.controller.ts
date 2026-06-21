@@ -160,6 +160,60 @@ export class IntegrationsController {
         return { access_token: json['access_token'] as string, platform };
       }
 
+      if (platform === 'docusign') {
+        const integrationKey = this.config.get<string>('DOCUSIGN_INTEGRATION_KEY') ?? '';
+        const clientSecret = this.config.get<string>('DOCUSIGN_CLIENT_SECRET') ?? '';
+        const authBaseUrl = this.config.get<string>('DOCUSIGN_AUTH_BASE_URL') ?? 'https://account-d.docusign.com';
+        if (!integrationKey || !clientSecret) {
+          throw new BadRequestException('DOCUSIGN_INTEGRATION_KEY / DOCUSIGN_CLIENT_SECRET não configurados');
+        }
+
+        const basic = Buffer.from(`${integrationKey}:${clientSecret}`).toString('base64');
+        const res = await fetch(`${authBaseUrl}/oauth/token`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${basic}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+        });
+        const json = await res.json() as Record<string, unknown>;
+        if (!res.ok || json['error']) {
+          throw new BadRequestException(
+            (json['error_description'] as string | undefined) ??
+            (json['error'] as string | undefined) ??
+            'DocuSign OAuth error',
+          );
+        }
+        return { access_token: json['access_token'] as string, platform };
+      }
+
+      if (platform === 'stripe_connect') {
+        const clientSecret = this.config.get<string>('STRIPE_SECRET_KEY') ?? '';
+        const clientId = this.config.get<string>('STRIPE_CONNECT_CLIENT_ID') ?? '';
+        if (!clientSecret || !clientId) {
+          throw new BadRequestException('STRIPE_SECRET_KEY / STRIPE_CONNECT_CLIENT_ID não configurados');
+        }
+
+        const res = await fetch('https://connect.stripe.com/oauth/token', {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${clientSecret}:`).toString('base64')}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({ code, grant_type: 'authorization_code' }),
+        });
+        const json = await res.json() as Record<string, unknown>;
+        if (!res.ok || json['error']) {
+          throw new BadRequestException(
+            (json['error_description'] as string | undefined) ??
+            (json['error'] as string | undefined) ??
+            'Stripe Connect OAuth error',
+          );
+        }
+        return { access_token: json['access_token'] as string, platform };
+      }
+
       throw new BadRequestException(`Plataforma não suportada para troca OAuth: ${platform}`);
     } catch (err) {
       if (err instanceof BadRequestException) throw err;

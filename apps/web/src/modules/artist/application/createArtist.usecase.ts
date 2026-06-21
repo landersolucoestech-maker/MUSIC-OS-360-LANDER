@@ -151,3 +151,4 @@ export async function createArtistUseCase(
 
   return { id, nome_artistico };
 }
+

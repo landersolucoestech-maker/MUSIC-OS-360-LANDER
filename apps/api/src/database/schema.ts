@@ -145,6 +145,7 @@ export const createPhonogramSchema = z.object({
   duracao:      z.string().max(20).nullable().optional(),
   tipo:         z.string().min(1).max(100),
   status:       z.nativeEnum(PhonogramStatus).default(PhonogramStatus.PENDENTE),
+  genero_musical: z.string().max(100).nullable().optional(),
   compositores: optText,
   interpretes:  optText,
   produtores:   optText,
@@ -257,7 +258,6 @@ export const createLeadSchema = z.object({
   status:             z.nativeEnum(LeadStatus).default(LeadStatus.NOVO),
   score:              z.number().int().min(0).max(100).default(0),
   fonte:              z.string().max(100).nullable().optional(),
-  pipeline_stage:     z.string().max(100).nullable().optional(),
   metadata:           jsonb,
   created_by:         z.string().max(255).nullable().optional(),
 });

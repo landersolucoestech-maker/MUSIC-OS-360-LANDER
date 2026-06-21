@@ -122,7 +122,7 @@ export function PaymentSection({
             {rules.valorParcela && (
               <div className="space-y-2">
                 <p className="text-sm">Valor por Parcela</p>
-                <div className="h-10 px-3 py-2 border border-border rounded-md bg-muted/50 flex items-center">
+                <div className="h-8 px-3 py-1 border border-border rounded-md bg-muted/50 flex items-center">
                   <span className="text-sm font-medium">R$ {rules.valorParcela}</span>
                 </div>
               </div>

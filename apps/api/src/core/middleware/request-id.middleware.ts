@@ -26,7 +26,8 @@ export class RequestIdMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
     const incoming = req.headers['x-request-id'];
     const requestId =
-      typeof incoming === 'string' && incoming.trim()
+      typeof incoming === 'string' &&
+      /^[A-Za-z0-9._:-]{1,128}$/.test(incoming.trim())
         ? incoming.trim()
         : uuidv4();
 

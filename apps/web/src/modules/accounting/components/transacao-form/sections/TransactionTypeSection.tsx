@@ -1,72 +1,126 @@
+import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
-import {
-  tiposTransacao,
-  tiposCliente,
-  tiposClienteReceita,
-} from "@/modules/accounting/lib/transacao-constants";
 import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
 import type { FinancialRulesResult } from "@/modules/accounting/components/transacao-form/hooks/useFinancialRules";
 import type { ValidationErrors } from "@/modules/accounting/components/transacao-form/validation/financial-form-validation";
 import { FormSelectField } from "@/modules/accounting/components/transacao-form/components/FormSelectField";
+import { FormInputField } from "@/modules/accounting/components/transacao-form/components/FormInputField";
+import type { FinancialCategoryRuleEntity } from "@/modules/accounting/types/financial-category-rules.types";
+import {
+  getCategoriesByCounterparty,
+  getCounterpartiesByType,
+  getFinalRule,
+  getLinkOptions,
+  getSubcategoriesByCategory,
+  getTransactionTypes,
+  toRuleLink,
+} from "@/modules/accounting/utils/financialRules.utils";
+
+interface Artista { id: string; nome_artistico: string }
+interface Projeto { id: string; titulo: string }
+interface Evento { id: string; titulo: string; data_inicio?: string | null }
+interface Cliente { id: string; nome: string }
 
 interface TransactionTypeSectionProps {
-  formData:   TransacaoFormData;
-  rules:      FinancialRulesResult;
-  errors:     ValidationErrors;
-  disabled:   boolean;
+  formData: TransacaoFormData;
+  rules: FinancialRulesResult;
+  categoryRules: FinancialCategoryRuleEntity[];
+  errors: ValidationErrors;
+  disabled: boolean;
   updateField: (field: keyof TransacaoFormData, value: string) => void;
+  artistas: Artista[];
+  clientes: Cliente[];
+  projetos: Projeto[];
+  projetosFiltrados: Projeto[];
+  eventosFiltrados: Evento[];
 }
 
 export function TransactionTypeSection({
   formData,
   rules,
+  categoryRules,
   errors,
   disabled,
   updateField,
+  artistas,
+  clientes,
+  projetos,
+  projetosFiltrados,
+  eventosFiltrados,
 }: TransactionTypeSectionProps) {
-  const isReceita = formData.tipoTransacao === "receita";
-  const isInvestimentoOrImpostoOrTransferencia =
-    formData.tipoTransacao === "investimento" ||
-    formData.tipoTransacao === "imposto" ||
-    formData.tipoTransacao === "transferencia";
+  const transactionTypeOptions = useMemo(() => getTransactionTypes(categoryRules), [categoryRules]);
+  const counterpartyOptions = useMemo(
+    () => getCounterpartiesByType(categoryRules, formData.tipoTransacao),
+    [categoryRules, formData.tipoTransacao],
+  );
+  const categoryOptions = useMemo(
+    () => getCategoriesByCounterparty(categoryRules, formData.tipoTransacao, formData.tipoCliente),
+    [categoryRules, formData.tipoCliente, formData.tipoTransacao],
+  );
+  const subcategoryOptions = useMemo(
+    () => getSubcategoriesByCategory(categoryRules, formData.tipoTransacao, formData.tipoCliente, formData.categoria),
+    [categoryRules, formData.categoria, formData.tipoCliente, formData.tipoTransacao],
+  );
+  const finalRule = useMemo(
+    () => getFinalRule(
+      categoryRules,
+      formData.tipoTransacao,
+      formData.tipoCliente,
+      formData.categoria,
+      formData.subcategoria,
+    ),
+    [categoryRules, formData.categoria, formData.subcategoria, formData.tipoCliente, formData.tipoTransacao],
+  );
+  const linkOptions = useMemo(() => getLinkOptions(finalRule), [finalRule]);
+  const selectedLink = toRuleLink(formData.tipoVinculacao ?? "");
+
+  const showCounterparty = Boolean(formData.tipoTransacao) && counterpartyOptions.length > 0;
+  const showCategory = Boolean(formData.tipoCliente) && categoryOptions.length > 0;
+  const showSubcategory = Boolean(formData.categoria) && subcategoryOptions.length > 0;
+  const hasFinalRule = Boolean(finalRule);
+  const showLinks = hasFinalRule && linkOptions.length > 0;
+
+  const handleLinkChange = (value: string) => {
+    updateField("tipoVinculacao", value);
+  };
 
   return (
     <Card className="bg-muted/30 border-border">
       <CardHeader className="pb-3">
-        <CardTitle className="text-base font-medium">Tipo de Transação</CardTitle>
+        <CardTitle className="text-base font-medium">Classificação</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           <FormSelectField
             label="Tipo de Transação"
             value={formData.tipoTransacao}
-            onChange={(v) => updateField("tipoTransacao", v)}
-            options={tiposTransacao}
+            onChange={(value) => updateField("tipoTransacao", value)}
+            options={transactionTypeOptions}
             placeholder="Ex: Receita, Despesa, Imposto..."
             error={errors.tipoTransacao}
             disabled={disabled}
             required
           />
 
-          {rules.exibirTipoCliente && (
+          {showCounterparty && (
             <FormSelectField
-              label={rules.labelTipoCliente}
+              label={formData.tipoTransacao === "receita" ? "Receber de" : "Pagar para"}
               value={formData.tipoCliente}
-              onChange={(v) => updateField("tipoCliente", v)}
-              options={isReceita ? tiposClienteReceita : tiposCliente}
-              placeholder="Ex: Empresa, Artista, Pessoa..."
+              onChange={(value) => updateField("tipoCliente", value)}
+              options={counterpartyOptions}
+              placeholder="Selecione"
               error={errors.tipoCliente}
               disabled={disabled}
               required
             />
           )}
 
-          {isInvestimentoOrImpostoOrTransferencia && rules.exibirCategoria && (
+          {showCategory && (
             <FormSelectField
               label="Categoria"
               value={formData.categoria}
-              onChange={(v) => updateField("categoria", v)}
-              options={rules.categorias}
+              onChange={(value) => updateField("categoria", value)}
+              options={categoryOptions}
               placeholder="Selecione a categoria"
               error={errors.categoria}
               disabled={disabled}
@@ -74,16 +128,144 @@ export function TransactionTypeSection({
             />
           )}
 
-          {rules.exibirItemInvestimento && (
+          {showSubcategory && (
             <FormSelectField
-              label="Item"
-              value={formData.itemInvestimento}
-              onChange={(v) => updateField("itemInvestimento", v)}
-              options={rules.itensInvestimento}
-              placeholder="Selecione o item"
-              error={errors.itemInvestimento}
+              label="Subcategoria"
+              value={formData.subcategoria}
+              onChange={(value) => updateField("subcategoria", value)}
+              options={subcategoryOptions}
+              placeholder="Selecione a subcategoria"
+              error={errors.subcategoria}
               disabled={disabled}
               required
+            />
+          )}
+
+          {showLinks && (
+            <FormSelectField
+              label="Vinculações"
+              value={formData.tipoVinculacao ?? ""}
+              onChange={handleLinkChange}
+              options={linkOptions}
+              placeholder="Selecione o vínculo"
+              disabled={disabled}
+              required
+            />
+          )}
+
+          {selectedLink === "Artista" && (
+            <FormSelectField
+              label="Artista Vinculado"
+              value={formData.artistaVinculado}
+              onChange={(value) => updateField("artistaVinculado", value)}
+              options={artistas.map((artista) => ({ value: artista.id, label: artista.nome_artistico }))}
+              placeholder="Selecione o artista"
+              error={errors.artistaVinculado}
+              disabled={disabled}
+              required
+            />
+          )}
+
+          {selectedLink === "Projeto" && (
+            <FormSelectField
+              label="Projeto Vinculado"
+              value={formData.projetoVinculado}
+              onChange={(value) => updateField("projetoVinculado", value)}
+              options={projetos.map((projeto) => ({ value: projeto.id, label: projeto.titulo }))}
+              placeholder={projetos.length === 0 ? "Nenhum projeto encontrado" : "Selecione o projeto"}
+              error={errors.projetoVinculado}
+              disabled={disabled || projetos.length === 0}
+              required
+            />
+          )}
+
+          {selectedLink === "Contrato" && (
+            <FormInputField
+              label="Contrato Vinculado"
+              value={formData.contratoVinculado}
+              onChange={(event) => updateField("contratoVinculado", event.target.value)}
+              disabled={disabled}
+              placeholder="Informe o contrato"
+            />
+          )}
+
+          {selectedLink === "Evento" && (
+            <FormSelectField
+              label="Show / Evento"
+              value={formData.eventoVinculado}
+              onChange={(value) => updateField("eventoVinculado", value)}
+              options={(formData.artistaVinculado ? eventosFiltrados : eventosFiltrados).map((evento) => ({
+                value: evento.id,
+                label: evento.data_inicio ? `${evento.titulo} (${evento.data_inicio})` : evento.titulo,
+              }))}
+              placeholder={eventosFiltrados.length === 0 ? "Nenhum evento encontrado" : "Selecione o evento"}
+              error={errors.eventoVinculado}
+              disabled={disabled || eventosFiltrados.length === 0}
+              required
+            />
+          )}
+
+          {selectedLink === "Centro de custo" && (
+            <FormInputField
+              label="Centro de custo"
+              value={formData.centroCusto ?? ""}
+              onChange={(event) => updateField("centroCusto", event.target.value)}
+              disabled={disabled}
+              placeholder="Informe o centro de custo"
+            />
+          )}
+
+          {selectedLink === "Competência" && (
+            <FormInputField
+              label="Competência"
+              value={formData.competencia ?? ""}
+              onChange={(event) => updateField("competencia", event.target.value)}
+              disabled={disabled}
+              placeholder="Ex: 05/2026"
+            />
+          )}
+
+          {selectedLink === "Conta Origem" && (
+            <FormInputField
+              label="Conta Origem"
+              value={formData.contaOrigem ?? ""}
+              onChange={(event) => updateField("contaOrigem", event.target.value)}
+              disabled={disabled}
+              placeholder="Informe a conta de origem"
+            />
+          )}
+
+          {selectedLink === "Conta Destino" && (
+            <FormInputField
+              label="Conta Destino"
+              value={formData.contaDestino ?? ""}
+              onChange={(event) => updateField("contaDestino", event.target.value)}
+              disabled={disabled}
+              placeholder="Informe a conta de destino"
+            />
+          )}
+
+          {selectedLink === null && rules.exibirOrgaoArrecadador && formData.categoria && (
+            <FormInputField
+              label="Órgão Arrecadador"
+              value={formData.orgaoArrecadador}
+              onChange={(event) => updateField("orgaoArrecadador", event.target.value)}
+              disabled={disabled}
+              placeholder="Informe o órgão arrecadador"
+              error={errors.orgaoArrecadador}
+            />
+          )}
+
+          {selectedLink === "Projeto" && rules.exibirProjeto && formData.artistaVinculado && (
+            <FormSelectField
+              label={`Projeto / Música${rules.projetoObrigatorio ? "" : " (opcional)"}`}
+              value={formData.projetoVinculado}
+              onChange={(value) => updateField("projetoVinculado", value)}
+              options={projetosFiltrados.map((projeto) => ({ value: projeto.id, label: projeto.titulo }))}
+              placeholder={projetosFiltrados.length === 0 ? "Nenhum projeto encontrado" : "Selecione o projeto"}
+              error={errors.projetoVinculado}
+              disabled={disabled || projetosFiltrados.length === 0}
+              required={rules.projetoObrigatorio}
             />
           )}
         </div>
@@ -91,3 +273,4 @@ export function TransactionTypeSection({
     </Card>
   );
 }
+

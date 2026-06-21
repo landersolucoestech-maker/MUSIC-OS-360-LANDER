@@ -20,6 +20,7 @@ import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { Badge } from "@/shared/ui/badge";
 import { CheckCircle, XCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { SiApplemusic } from "react-icons/si";
 import {
   useAppleMusicStatus,
   useAppleMusicSaveCredentials,
@@ -70,7 +71,7 @@ export function AppleMusicConfigDialog({ open, onOpenChange }: AppleMusicConfigD
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-pink-500/10">
-              <span className="text-xl">🍎</span>
+               <SiApplemusic className="h-5 w-5 text-[#FA243C]" />
             </div>
             <div>
               <DialogTitle className="text-base">Apple Music for Artists</DialogTitle>
@@ -104,7 +105,7 @@ export function AppleMusicConfigDialog({ open, onOpenChange }: AppleMusicConfigD
                 )}
               </div>
               {isConnected && (
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs">
+                <Badge variant="success">
                   Ativo
                 </Badge>
               )}
@@ -152,7 +153,7 @@ export function AppleMusicConfigDialog({ open, onOpenChange }: AppleMusicConfigD
                     onChange={(e) => setForm((p) => ({ ...p, private_key: e.target.value }))}
                     placeholder={"-----BEGIN PRIVATE KEY-----\n…\n-----END PRIVATE KEY-----"}
                     rows={4}
-                    className="font-mono text-xs resize-none"
+                    className="font-sans text-xs resize-none"
                     autoComplete="off"
                     disabled={saveMutation.isPending}
                     data-testid="input-apple-private-key"

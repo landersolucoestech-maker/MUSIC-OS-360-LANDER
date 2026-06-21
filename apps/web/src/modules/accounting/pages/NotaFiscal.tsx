@@ -2,11 +2,13 @@ import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { ToggleGroup, ToggleGroupItem } from "@/shared/ui/toggle-group";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -31,12 +33,37 @@ import { NotaFiscalViewModal } from "@/modules/accounting/components/NotaFiscalV
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { Badge } from "@/shared/ui/badge";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseTipoOperacao, type TipoOperacaoNF } from "@/modules/accounting/lib/nota-fiscal-tipo";
+import { formatCurrency, getCurrencyToneClass, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 
 type TipoFilter = "all" | TipoOperacaoNF;
+
+function numberValue(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function getNotaPartyName(nota: any): string {
+  return (
+    nota.clientes?.nome ||
+    nota.tomador_razao_social ||
+    nota.tomador_nome ||
+    "-"
+  );
+}
+
+function getNotaDisplayValue(nota: any): number | null {
+  return numberValue(nota.valor_liquido, nota.valor_servicos, nota.valor, nota.valor_total);
+}
 
 export default function NotaFiscal() {
   const { notasFiscais, isLoading, deleteNotaFiscal } = useNotasFiscais();
@@ -47,6 +74,8 @@ export default function NotaFiscal() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [tipoFilter, setTipoFilter] = useState<TipoFilter>("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [createTipo, setCreateTipo] = useState<TipoOperacaoNF>("saida");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
@@ -102,27 +131,40 @@ export default function NotaFiscal() {
     setSelectedIds([]);
   };
 
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredNotas.length && filteredNotas.length > 0) {
+      setSelectedIds([]);
+      return;
+    }
+    setSelectedIds(filteredNotas.map((nota: any) => nota.id));
+  };
+
   // Filtros
   const filteredNotas = notasFiscaisComTipo.filter((nota: any) => {
+    const partyName = getNotaPartyName(nota).toLowerCase();
+    const rawSearch = searchTerm.toLowerCase();
     const matchesSearch =
-      nota.numero.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      nota.clientes?.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (nota.tomador_razao_social || "").toLowerCase().includes(searchTerm.toLowerCase());
+      (nota.numero || "").toLowerCase().includes(rawSearch) ||
+      partyName.includes(rawSearch) ||
+      (nota.tomador_cnpj || "").toLowerCase().includes(rawSearch) ||
+      (nota.tomador_email || "").toLowerCase().includes(rawSearch);
     const matchesStatus = statusFilter === "all" || nota.status === statusFilter;
     const matchesTipo = tipoFilter === "all" || nota._tipoOperacao === tipoFilter;
-    return matchesSearch && matchesStatus && matchesTipo;
+    const emissao = String(nota.data_emissao ?? "").slice(0, 10);
+    const matchesStart = !startDate || (emissao && emissao >= startDate);
+    const matchesEnd = !endDate || (emissao && emissao <= endDate);
+    return matchesSearch && matchesStatus && matchesTipo && matchesStart && matchesEnd;
   });
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredNotas, 10);
 
   // Métricas
   const totalRegistradas = notasFiscaisComTipo.length;
   const saidas = notasFiscaisComTipo.filter((n: any) => n._tipoOperacao === "saida");
   const entradas = notasFiscaisComTipo.filter((n: any) => n._tipoOperacao === "entrada");
-  const valorSaidas = saidas.reduce((acc: number, n: any) => acc + (n.valor || 0), 0);
-  const valorEntradas = entradas.reduce((acc: number, n: any) => acc + (n.valor || 0), 0);
+  const valorSaidas = saidas.reduce((acc: number, n: any) => acc + (getNotaDisplayValue(n) ?? 0), 0);
+  const valorEntradas = entradas.reduce((acc: number, n: any) => acc + (getNotaDisplayValue(n) ?? 0), 0);
   const saldo = valorSaidas - valorEntradas;
-
-  const fmtCurrency = (v: number) =>
-    `R$ ${v.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
@@ -173,88 +215,97 @@ export default function NotaFiscal() {
   return (
     <MainLayout title="Notas Fiscais" description="Registro e controle de notas fiscais de entrada e saída" actions={headerActions}>
       <div className="space-y-6">
-        {/* Metrics */}
+        {/* Metrics — padrão do sistema */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-          <Card className="border-t-2 border-t-primary">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</span>
-                <div className="w-7 h-7 rounded-md bg-primary/10 border border-primary/20 flex items-center justify-center">
-                  <FileText className="h-3.5 w-3.5 text-primary" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-lg"><FileText className="h-5 w-5 text-primary" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Total</p>
+                  <p className="text-xl font-bold text-foreground" data-testid="metric-total-registradas">{totalRegistradas}</p>
                 </div>
               </div>
-              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-total-registradas">{totalRegistradas}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">registradas</p>
             </CardContent>
           </Card>
-
-          <Card className="border-t-2 border-t-success">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Saídas</span>
-                <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
-                  <ArrowUpRight className="h-3.5 w-3.5 text-success" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/10 rounded-lg"><ArrowUpRight className="h-5 w-5 text-green-500" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Saídas</p>
+                  <p className="text-xl font-bold text-foreground" data-testid="metric-saidas-qtd">{saidas.length}</p>
                 </div>
               </div>
-              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-saidas-qtd">{saidas.length}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">notas emitidas</p>
             </CardContent>
           </Card>
-
-          <Card className="border-t-2 border-t-warning">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Entradas</span>
-                <div className="w-7 h-7 rounded-md bg-warning/10 border border-warning/20 flex items-center justify-center">
-                  <ArrowDownLeft className="h-3.5 w-3.5 text-warning" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-500/10 rounded-lg"><ArrowDownLeft className="h-5 w-5 text-yellow-500" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Entradas</p>
+                  <p className="text-xl font-bold text-foreground" data-testid="metric-entradas-qtd">{entradas.length}</p>
                 </div>
               </div>
-              <p className="text-lg font-mono font-semibold text-foreground" data-testid="metric-entradas-qtd">{entradas.length}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">notas recebidas</p>
             </CardContent>
           </Card>
-
-          <Card className="border-t-2 border-t-success">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valor Saídas</span>
-                <div className="w-7 h-7 rounded-md bg-success/10 border border-success/20 flex items-center justify-center">
-                  <ArrowUpRight className="h-3.5 w-3.5 text-success" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-500/10 rounded-lg"><ArrowUpRight className="h-5 w-5 text-green-500" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Valor Saídas</p>
+                  <p className={`text-base font-bold leading-tight ${getMonetarySemanticClass("positive")}`} data-testid="metric-valor-saidas">{formatCurrency(valorSaidas)}</p>
                 </div>
               </div>
-              <p className="text-sm font-mono font-semibold text-foreground leading-tight" data-testid="metric-valor-saidas">{fmtCurrency(valorSaidas)}</p>
             </CardContent>
           </Card>
-
-          <Card className="border-t-2 border-t-warning">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Valor Entradas</span>
-                <div className="w-7 h-7 rounded-md bg-warning/10 border border-warning/20 flex items-center justify-center">
-                  <ArrowDownLeft className="h-3.5 w-3.5 text-warning" />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-500/10 rounded-lg"><ArrowDownLeft className="h-5 w-5 text-yellow-500" /></div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Valor Entradas</p>
+                  <p className={`text-base font-bold leading-tight ${getMonetarySemanticClass("negative")}`} data-testid="metric-valor-entradas">{formatCurrency(-valorEntradas)}</p>
                 </div>
               </div>
-              <p className="text-sm font-mono font-semibold text-foreground leading-tight" data-testid="metric-valor-entradas">{fmtCurrency(valorEntradas)}</p>
             </CardContent>
           </Card>
-
-          <Card className={`border-t-2 ${saldo >= 0 ? "border-t-success" : "border-t-destructive"}`}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Saldo</span>
-                <div className={`w-7 h-7 rounded-md flex items-center justify-center ${saldo >= 0 ? "bg-success/10 border border-success/20" : "bg-destructive/10 border border-destructive/20"}`}>
-                  <Scale className={`h-3.5 w-3.5 ${saldo >= 0 ? "text-success" : "text-destructive"}`} />
+          <Card>
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${saldo >= 0 ? "bg-green-500/10" : "bg-red-500/10"}`}>
+                  <Scale className={`h-5 w-5 ${saldo >= 0 ? "text-green-500" : "text-red-500"}`} />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm text-muted-foreground">Saldo</p>
+                  <p className={`text-base font-bold leading-tight ${getCurrencyToneClass(saldo)}`} data-testid="metric-saldo">
+                    {saldo >= 0 ? "+" : ""}{formatCurrency(saldo)}
+                  </p>
                 </div>
               </div>
-              <p className={`text-sm font-mono font-semibold leading-tight ${saldo >= 0 ? "text-success" : "text-destructive"}`} data-testid="metric-saldo">
-                {saldo >= 0 ? "+" : ""}{fmtCurrency(saldo)}
-              </p>
             </CardContent>
           </Card>
         </div>
 
         {/* Search and Filters */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/30 p-3">
+          {/* Seletor de datas — sempre imediatamente à esquerda da busca */}
+          <DatePickerField
+            value={startDate}
+            onChange={setStartDate}
+            placeholder="Data início"
+            className="h-8 text-xs w-[150px] shrink-0"
+            data-testid="datepicker-start-date"
+          />
+          <DatePickerField
+            value={endDate}
+            onChange={setEndDate}
+            placeholder="Data fim"
+            className="h-8 text-xs w-[150px] shrink-0"
+            data-testid="datepicker-end-date"
+          />
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -265,26 +316,18 @@ export default function NotaFiscal() {
               data-testid="input-busca-nf"
             />
           </div>
-          <ToggleGroup
-            type="single"
-            value={tipoFilter}
-            onValueChange={(v) => v && setTipoFilter(v as TipoFilter)}
-            variant="outline"
-            size="sm"
-            data-testid="toggle-tipo-filter"
-          >
-            <ToggleGroupItem value="all" data-testid="filter-tipo-all">Todas</ToggleGroupItem>
-            <ToggleGroupItem value="saida" data-testid="filter-tipo-saida">
-              <ArrowUpRight className="h-3.5 w-3.5 mr-1" />
-              Saída
-            </ToggleGroupItem>
-            <ToggleGroupItem value="entrada" data-testid="filter-tipo-entrada">
-              <ArrowDownLeft className="h-3.5 w-3.5 mr-1" />
-              Entrada
-            </ToggleGroupItem>
-          </ToggleGroup>
+          <Select value={tipoFilter} onValueChange={(value) => setTipoFilter(value as TipoFilter)}>
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0" data-testid="select-tipo-filter">
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all" data-testid="filter-tipo-all">Todas</SelectItem>
+              <SelectItem value="saida" data-testid="filter-tipo-saida">Saída</SelectItem>
+              <SelectItem value="entrada" data-testid="filter-tipo-entrada">Entrada</SelectItem>
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status-filter">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border" data-testid="select-status-filter">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -300,23 +343,31 @@ export default function NotaFiscal() {
         {/* Table or Empty State */}
         {filteredNotas.length > 0 ? (
           <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-semibold">
-                Lista de Notas Fiscais
-                <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredNotas.length})</span>
-              </CardTitle>
-              <CardDescription className="text-xs mt-0.5">Registro de notas de entrada e saída</CardDescription>
-            </CardHeader>
             <CardContent>
-              {selectedIds.length > 0 && (
-                <div className="flex items-center gap-2 mb-3 pb-3 border-b border-border">
-                  <span className="text-sm text-muted-foreground flex-1">{selectedIds.length} nota(s) selecionada(s)</span>
-                  <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete-notas">
-                    <Trash2 className="h-3.5 w-3.5" />
-                    Excluir ({selectedIds.length})
-                  </Button>
-                </div>
-              )}
+              <ListSectionHeader
+                title="Lista de Notas Fiscais"
+                count={filteredNotas.length}
+                description="Registro de notas de entrada e saída"
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Checkbox
+                      checked={selectedIds.length === filteredNotas.length && filteredNotas.length > 0}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Selecionar todas as notas fiscais"
+                      data-testid="checkbox-select-all-notas"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedIds.length > 0 ? `${selectedIds.length} nota(s) selecionada(s)` : "Selecionar todos"}
+                    </span>
+                    {selectedIds.length > 0 && (
+                      <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete-notas">
+                        <Trash2 className="h-3.5 w-3.5" />
+                        Excluir ({selectedIds.length})
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
@@ -333,25 +384,26 @@ export default function NotaFiscal() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredNotas.map((nota: any) => (
+                    {pageItems.map((nota: any) => {
+                      const displayValue = getNotaDisplayValue(nota);
+                      return (
                       <TableRow key={nota.id} data-testid={`row-nota-${nota.id}`}>
                         <TableCell className="py-3">
-                          <div
-                            className={`w-5 h-5 rounded border-2 border-primary flex items-center justify-center cursor-pointer ${selectedIds.includes(nota.id) ? "bg-primary border-primary" : ""}`}
-                            onClick={() => setSelectedIds(prev => prev.includes(nota.id) ? prev.filter(x => x !== nota.id) : [...prev, nota.id])}
+                          <Checkbox
+                            checked={selectedIds.includes(nota.id)}
+                            onCheckedChange={() => setSelectedIds(prev => prev.includes(nota.id) ? prev.filter(x => x !== nota.id) : [...prev, nota.id])}
+                            aria-label="Selecionar nota fiscal"
                             data-testid={`checkbox-nota-${nota.id}`}
-                          >
-                            {selectedIds.includes(nota.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                          </div>
+                          />
                         </TableCell>
                         <TableCell className="py-3">
                           <span className="font-medium">{nota.numero}</span>
                           {nota.serie && <span className="text-muted-foreground text-xs ml-1">/{nota.serie}</span>}
                         </TableCell>
                         <TableCell className="py-3">{getTipoBadge(nota._tipoOperacao)}</TableCell>
-                        <TableCell className="py-3 text-sm">{nota.clientes?.nome || nota.tomador_razao_social || "-"}</TableCell>
-                        <TableCell className="py-3 text-sm font-mono">
-                          {nota.valor ? `R$ ${nota.valor.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "-"}
+                        <TableCell className="py-3 text-sm">{getNotaPartyName(nota)}</TableCell>
+                        <TableCell className={`py-3 text-sm ${getMonetarySemanticClass("neutral")}`}>
+                          {displayValue !== null ? formatCurrency(displayValue) : "-"}
                         </TableCell>
                         <TableCell className="py-3 text-sm">
                           {nota.data_emissao ? format(new Date(nota.data_emissao), "dd/MM/yyyy", { locale: ptBR }) : "-"}
@@ -390,10 +442,19 @@ export default function NotaFiscal() {
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                    );
+                    })}
                   </TableBody>
                 </Table>
               </div>
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="notas fiscais"
+              />
             </CardContent>
           </Card>
         ) : (

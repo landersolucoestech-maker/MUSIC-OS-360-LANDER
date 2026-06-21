@@ -24,6 +24,8 @@ export type IntegrationId =
   | "stripe"
   // Assinatura digital
   | "autentique"
+  | "clicksign"
+  | "docusign"
   // Monitoramento de produto / erros
   | "posthog"
   | "sentry"
@@ -33,6 +35,10 @@ export type IntegrationId =
   | "tiktok"
   | "instagram"
   | "google-ads"
+  | "meta_business"
+  | "tiktok_business"
+  | "google_business"
+  | "spotify_ads"
   | "deezer"
   | "apple-music"
   | "soundcloud"
@@ -40,6 +46,15 @@ export type IntegrationId =
   | "ecad"
   | "ubc"
   | "abramus"
+  // Distribuição digital
+  | "onerpm"
+  | "distrokid"
+  | "symphonic"
+  | "soundon"
+  | "somvibe"
+  | "musicpro"
+  // Fiscal
+  | "nfe"
   // Monitoramento musical (fingerprint)
   | "acrcloud"
   // Comunicação interna
@@ -55,6 +70,9 @@ export type IntegrationCategory =
   | "signing"
   | "monitoring"
   | "streaming"
+  | "marketing"
+  | "distribution"
+  | "fiscal"
   | "rights"
   | "music-monitoring"
   | "chat";
@@ -83,6 +101,8 @@ export interface IntegrationMeta {
   category: IntegrationCategory;
   /** Descrição curta para UI */
   description: string;
+  /** Identidade visual canônica usada por cards, diálogos e popups. */
+  logoId?: import("./logos").IntegrationLogoId;
   /** URL da documentação oficial */
   docsUrl?: string;
   /**

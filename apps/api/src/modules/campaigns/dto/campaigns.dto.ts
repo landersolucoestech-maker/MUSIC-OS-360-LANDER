@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsDate, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { CampaignStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -13,8 +13,10 @@ export class CreateCampaignDto {
   @ApiPropertyOptional() @IsOptional() @IsString()  artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(()=>Number) budget?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3) currency?: string;
-  @ApiPropertyOptional() @IsOptional() startsAt?: Date;
-  @ApiPropertyOptional() @IsOptional() endsAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() startsAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() endsAt?: Date;
   @ApiPropertyOptional() @IsOptional() platforms?: unknown[];
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }

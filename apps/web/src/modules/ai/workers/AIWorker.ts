@@ -168,3 +168,4 @@ export function getAIWorker(): AIWorker {
   }
   return _workerInstance;
 }
+

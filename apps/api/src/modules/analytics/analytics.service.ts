@@ -89,6 +89,10 @@ export class AnalyticsService {
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
+    const [operationalTasksRelation] = await this.ds.query<Array<{ relation_name: string | null }>>(
+      `SELECT to_regclass('public.operational_tasks')::text AS relation_name`,
+    );
+    const hasOperationalTasks = Boolean(operationalTasksRelation?.relation_name);
 
     const [
       artistCount,
@@ -100,7 +104,6 @@ export class AnalyticsService {
       leadCount,
       openTickets,
       campaignCount,
-      pipelineOppCount,
       // Financial
       financialCurrentMonth,
       pendingReceivables,
@@ -114,8 +117,6 @@ export class AnalyticsService {
       pendingTasksCount,
       overdueTasksCount,
       onboardingInProgressCount,
-      overduePipelineCount,
-      stalledPipelineCount,
       pendingDistributionSetups,
       externalDataStats,
     ] = await Promise.all([
@@ -143,10 +144,6 @@ export class AnalyticsService {
         [tenantId],
       ),
       this.countTable('campaigns', tenantId),
-      this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND status = 'open' AND deleted_at IS NULL`,
-        [tenantId],
-      ),
       // Revenue and expenses this calendar month
       this.ds.query<[{ receitas: string; despesas: string }]>(`
         SELECT
@@ -191,29 +188,21 @@ export class AnalyticsService {
         `SELECT tipo, COUNT(*)::int AS cnt FROM transactions WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY tipo`,
         [tenantId],
       ),
-      // Pending CRM tasks
-      this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM crm_tasks WHERE tenant_id = $1 AND status = 'pending'`,
-        [tenantId],
-      ),
-      // Overdue CRM tasks (past due_date, not done)
-      this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM crm_tasks WHERE tenant_id = $1 AND status != 'done' AND due_date < NOW()`,
-        [tenantId],
-      ),
+      hasOperationalTasks
+        ? this.ds.query<[{ cnt: string }]>(
+            `SELECT COUNT(*)::int AS cnt FROM operational_tasks WHERE tenant_id = $1 AND status = 'pending'`,
+            [tenantId],
+          )
+        : Promise.resolve([] as Array<{ cnt: string }>),
+      hasOperationalTasks
+        ? this.ds.query<[{ cnt: string }]>(
+            `SELECT COUNT(*)::int AS cnt FROM operational_tasks WHERE tenant_id = $1 AND status != 'done' AND due_date < NOW()`,
+            [tenantId],
+          )
+        : Promise.resolve([] as Array<{ cnt: string }>),
       // Artists currently in onboarding (status = contratado)
       this.ds.query<[{ cnt: string }]>(
         `SELECT COUNT(*)::int AS cnt FROM artists WHERE tenant_id = $1 AND status = 'contratado' AND deleted_at IS NULL`,
-        [tenantId],
-      ),
-      // Pipeline opportunities with SLA breached
-      this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND sla_breached = true AND status = 'open' AND deleted_at IS NULL`,
-        [tenantId],
-      ),
-      // Stalled pipeline opportunities (sla_due_at past, still open)
-      this.ds.query<[{ cnt: string }]>(
-        `SELECT COUNT(*)::int AS cnt FROM pipeline_opportunities WHERE tenant_id = $1 AND sla_due_at < NOW() AND status = 'open' AND deleted_at IS NULL`,
         [tenantId],
       ),
       // Artists with distribution setup requested but not completed
@@ -243,7 +232,6 @@ export class AnalyticsService {
       leads:                         leadCount,
       open_tickets:                  parseInt(openTickets[0]?.cnt ?? '0'),
       campaigns:                     campaignCount,
-      open_opportunities:            parseInt(pipelineOppCount[0]?.cnt ?? '0'),
       // Financial
       revenue_current_month:         receitas,
       expenses_current_month:        despesas,
@@ -259,8 +247,6 @@ export class AnalyticsService {
       pending_tasks_count:           parseInt(pendingTasksCount[0]?.cnt ?? '0'),
       overdue_tasks_count:           parseInt(overdueTasksCount[0]?.cnt ?? '0'),
       onboarding_in_progress_count:  parseInt(onboardingInProgressCount[0]?.cnt ?? '0'),
-      overdue_followups_count:       parseInt(overduePipelineCount[0]?.cnt ?? '0'),
-      stalled_pipelines_count:       parseInt(stalledPipelineCount[0]?.cnt ?? '0'),
       pending_distribution_setups:   parseInt(pendingDistributionSetups[0]?.cnt ?? '0'),
       pending_external_syncs:        externalDataStats.pending_external_syncs,
       failed_external_syncs:         externalDataStats.failed_external_syncs,

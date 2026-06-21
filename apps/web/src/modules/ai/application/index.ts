@@ -24,3 +24,21 @@ export type {
   GenerateLaunchStrategyInput,
   GenerateLaunchStrategyResult,
 } from "./GenerateLaunchStrategy.usecase";
+
+// Fiação read-only das 12 Skills novas (usecase genérico + proveniência)
+export {
+  RunSkillUseCase,
+  getRunSkillUseCase,
+} from "./RunSkill.usecase";
+export type {
+  RunSkillInput,
+  RunSkillResult,
+  RunnableSkillName,
+  SkillParsedOutput,
+} from "./RunSkill.usecase";
+export { buildSkillProvenance } from "./skill-provenance";
+export type {
+  SkillProvenance,
+  SkillProvenanceSource,
+  BuildSkillProvenanceParams,
+} from "./skill-provenance";

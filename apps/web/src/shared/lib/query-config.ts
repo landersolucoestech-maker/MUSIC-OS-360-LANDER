@@ -12,7 +12,7 @@ export const CACHE_TIMES = {
     staleTime: 10 * 60 * 1000, // 10 minutes
     gcTime: 30 * 60 * 1000, // 30 minutes
   },
-  // Dynamic data that changes frequently (transações, vendas, eventos)
+  // Dynamic data that changes frequently (transações, comercial, eventos)
   DYNAMIC: {
     staleTime: 2 * 60 * 1000, // 2 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
@@ -35,7 +35,6 @@ export const QUERY_KEYS = {
   
   // Financial
   TRANSACOES: ["transacoes"] as const,
-  VENDAS: ["vendas"] as const,
   NOTAS_FISCAIS: ["notas-fiscais"] as const,
   REGRAS: ["regras"] as const,
   REGRAS_TRANSACAO: ["regras_transacao"] as const,
@@ -81,6 +80,10 @@ export const QUERY_KEYS = {
   // Leads
   LEADS: ["leads"] as const,
   LEAD_INTERACTIONS: ["lead-interactions"] as const,
+  PROPOSALS: ["proposals"] as const,
+  PROPOSAL_ITEMS: ["proposal-items"] as const,
+  FOLLOWUPS: ["followups"] as const,
+  FINANCIAL_CATEGORIES: ["financial-categories"] as const,
   
   // RH (Recursos Humanos)
   FUNCIONARIOS: ["funcionarios"] as const,
@@ -110,7 +113,6 @@ export const QUERY_CACHE_CONFIG: Record<string, typeof CACHE_TIMES[keyof typeof 
   clientes: CACHE_TIMES.DYNAMIC,
   contatos: CACHE_TIMES.DYNAMIC,
   transacoes: CACHE_TIMES.DYNAMIC,
-  vendas: CACHE_TIMES.DYNAMIC,
   "notas-fiscais": CACHE_TIMES.DYNAMIC,
   "relatorios-ecad": CACHE_TIMES.DYNAMIC,
   obras: CACHE_TIMES.DYNAMIC,
@@ -129,6 +131,10 @@ export const QUERY_CACHE_CONFIG: Record<string, typeof CACHE_TIMES[keyof typeof 
   
   leads: CACHE_TIMES.DYNAMIC,
   "lead-interactions": CACHE_TIMES.DYNAMIC,
+  proposals: CACHE_TIMES.DYNAMIC,
+  "proposal-items": CACHE_TIMES.DYNAMIC,
+  followups: CACHE_TIMES.DYNAMIC,
+  "financial-categories": CACHE_TIMES.DYNAMIC,
   funcionarios: CACHE_TIMES.DYNAMIC,
   "folha-pagamento": CACHE_TIMES.DYNAMIC,
   "ferias-ausencias": CACHE_TIMES.DYNAMIC,

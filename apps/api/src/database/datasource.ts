@@ -18,7 +18,7 @@ import { ALL_ENTITIES } from './entities';
 
 // ─── Carregar variáveis de ambiente se dotenv estiver disponível ───────────────
 try {
-  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
   const dotenv = require('dotenv');
   // Try apps/api/.env first (2 levels up from src/database/), then root .env
   dotenv.config({ path: path.resolve(__dirname, '../../.env') });
@@ -36,6 +36,7 @@ if (!DATABASE_URL) {
 }
 
 const isProduction = process.env['NODE_ENV'] === 'production';
+const dbSslDisabled = process.env['DB_SSL'] === 'false';
 
 export const AppDataSource = new DataSource({
   type:        'postgres',
@@ -43,7 +44,7 @@ export const AppDataSource = new DataSource({
   entities:     ALL_ENTITIES,
   synchronize:  false,  // NUNCA true — só migrations versionadas
   logging:      !isProduction,
-  ssl:          { rejectUnauthorized: false },  // Supabase requires SSL for all connections
+  ssl:          dbSslDisabled ? false : { rejectUnauthorized: false },
 
   migrations: [
     path.join(__dirname, 'migrations', '*.{ts,js}'),

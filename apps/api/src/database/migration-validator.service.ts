@@ -34,7 +34,7 @@ export class MigrationValidatorService implements OnApplicationBootstrap {
         this.logger.error('DB unavailable in production - migration validation cannot run');
         process.exit(1);
       }
-      this.logger.warn('DB desactivado — validação de migrations ignorada');
+      this.logger.warn('DB desativado — validação de migrations ignorada');
       return;
     }
 

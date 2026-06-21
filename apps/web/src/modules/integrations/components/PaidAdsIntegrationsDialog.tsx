@@ -37,6 +37,10 @@ import {
 } from "react-icons/si";
 import { toast } from "sonner";
 import { usePaidAdsOAuth, type PaidAdsPlatform } from "../hooks/usePaidAdsOAuth";
+import {
+  IntegrationLogo,
+  type IntegrationLogoId,
+} from "@/shared/integrations";
 
 // ─── Configuração por plataforma ──────────────────────────────────────────────
 
@@ -49,6 +53,7 @@ interface PlatformConfig {
   borderColor: string;
   textColor:   string;
   Icon:        React.ComponentType<{ className?: string }>;
+  logoId:      IntegrationLogoId;
   scopes:      { key: string; label: string }[];
 }
 
@@ -58,10 +63,11 @@ const PLATFORM_CONFIGS: Record<PaidAdsPlatform, PlatformConfig> = {
     label:       "Meta Ads",
     description: "Conecte o seu Meta Business Suite para gerir campanhas do Facebook e Instagram Ads diretamente no MUSIC OS 360.",
     color:       "#1877F2",
-    bgColor:     "bg-[#1877F2]/10",
+    bgColor:     "bg-primary/10",
     borderColor: "border-[#1877F2]/30",
     textColor:   "text-[#1877F2]",
     Icon:        SiFacebook,
+    logoId:      "meta_business",
     scopes: [
       { key: "ads_management",       label: "Gerir campanhas e anúncios" },
       { key: "ads_read",             label: "Ler métricas de campanhas" },
@@ -75,13 +81,14 @@ const PLATFORM_CONFIGS: Record<PaidAdsPlatform, PlatformConfig> = {
     label:       "Google Ads",
     description: "Autentique a sua conta Google Ads para sincronizar campanhas Search, Display e YouTube com o painel de marketing.",
     color:       "#4285F4",
-    bgColor:     "bg-[#4285F4]/10",
+    bgColor:     "bg-primary/10",
     borderColor: "border-[#4285F4]/30",
     textColor:   "text-[#4285F4]",
     Icon:        SiGoogleads,
+    logoId:      "google_business",
     scopes: [
       { key: "adwords",              label: "Gerir campanhas do Google Ads" },
-      { key: "analytics.readonly",   label: "Leitura de métricas Analytics" },
+      { key: "analytics.readonly",   label: "Leitura de métricas Métricas" },
       { key: "display_video360",     label: "Campanhas Display & YouTube" },
       { key: "userinfo.email",       label: "Identificação da conta Google" },
     ],
@@ -93,8 +100,9 @@ const PLATFORM_CONFIGS: Record<PaidAdsPlatform, PlatformConfig> = {
     color:       "#010101",
     bgColor:     "bg-neutral-950/10",
     borderColor: "border-neutral-800/40",
-    textColor:   "text-neutral-900 dark:text-neutral-100",
+    textColor:   "text-neutral-900",
     Icon:        SiTiktok,
+    logoId:      "tiktok_business",
     scopes: [
       { key: "campaign.read",        label: "Ler campanhas ativas" },
       { key: "campaign.update",      label: "Atualizar configurações de campanha" },
@@ -150,11 +158,11 @@ function OAuthCard({
 
         <div className="space-y-1">
           <div className="flex items-center gap-2">
-            <Icon className={`h-3.5 w-3.5 ${cfg.textColor}`} />
+            <IntegrationLogo id={cfg.logoId} className="h-7 w-7" imageClassName="h-5 w-5" />
             <span className="text-sm font-medium">{accountName}</span>
           </div>
           {accountId && (
-            <p className="text-[11px] text-muted-foreground font-mono ml-5">
+            <p className="text-[11px] text-muted-foreground font-sans ml-5">
               ID: {accountId}
             </p>
           )}
@@ -202,9 +210,7 @@ function OAuthCard({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${cfg.bgColor} ${cfg.borderColor} border`}>
-            <Icon className={`h-3.5 w-3.5 ${cfg.textColor}`} />
-          </div>
+          <IntegrationLogo id={cfg.logoId} className="h-8 w-8" imageClassName="h-6 w-6" />
           <div>
             <p className="text-sm font-medium">{cfg.label}</p>
             <p className="text-[11px] text-muted-foreground">Não conectado</p>
@@ -264,9 +270,7 @@ function AdsOAuthDialog({ open, onOpenChange, platform, onSuccess }: AdsOAuthDia
       <DialogContent className="max-w-md" data-testid={`dialog-ads-oauth-${platform}`}>
         <DialogHeader>
           <div className="flex items-center gap-3 mb-1">
-            <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${cfg.bgColor} ${cfg.borderColor} border`}>
-              <Icon className={`h-5 w-5 ${cfg.textColor}`} />
-            </div>
+            <IntegrationLogo id={cfg.logoId} className="h-10 w-10 rounded-xl" imageClassName="h-8 w-8" />
             <div>
               <DialogTitle className="text-base leading-tight">
                 Entrar com {cfg.label}
@@ -475,3 +479,6 @@ export function PaidAdsIntegrationsDialog({
     </>
   );
 }
+
+
+

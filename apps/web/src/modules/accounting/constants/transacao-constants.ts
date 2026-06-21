@@ -1,7 +1,11 @@
 
+import type { TransactionEntityLink } from "@/modules/accounting/types/accounting.types";
+
 // ==================== TIPOS ====================
 
 export interface TransacaoFormData {
+  /** Vínculos gerenciais (P&L) — obrigatório ≥1. Múltiplos com rateio. */
+  entityLinks: TransactionEntityLink[];
   // Dados gerais
   tipoTransacao: string;
   tipoCliente: string;
@@ -20,6 +24,11 @@ export interface TransacaoFormData {
   eventoVinculado: string;
   fornecedorCliente: string;
   orgaoArrecadador: string;
+  tipoVinculacao?: string;
+  centroCusto?: string;
+  competencia?: string;
+  contaOrigem?: string;
+  contaDestino?: string;
   
   // Campos específicos
   itemInvestimento: string;
@@ -39,6 +48,7 @@ export interface TransacaoFormData {
 }
 
 export const initialFormData: TransacaoFormData = {
+  entityLinks: [],
   tipoTransacao: "",
   tipoCliente: "",
   categoria: "",
@@ -55,6 +65,11 @@ export const initialFormData: TransacaoFormData = {
   eventoVinculado: "",
   fornecedorCliente: "",
   orgaoArrecadador: "",
+  tipoVinculacao: "",
+  centroCusto: "",
+  competencia: "",
+  contaOrigem: "",
+  contaDestino: "",
   
   itemInvestimento: "",
   motivoViagem: "",
@@ -90,6 +105,7 @@ export const tiposCliente = [
 
 export const tiposClienteReceita = [
   { value: "empresa", label: "Empresa" },
+  { value: "artista", label: "Artista" },
   { value: "pessoa", label: "Pessoa" },
 ];
 
@@ -618,3 +634,4 @@ export const isServicoReceitaComArtistaEProjeto = (subcategoria: string): boolea
 export const isServicoReceitaComArtista = (subcategoria: string): boolean => {
   return servicosReceitaComArtista.includes(subcategoria);
 };
+

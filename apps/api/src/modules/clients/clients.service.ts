@@ -19,6 +19,10 @@ export class ClientsService {
   private mapClient(c: ClientEntity) {
     return {
       ...c,
+      name:               c.nome,
+      type:               c.tipo_pessoa,
+      category:           c.segmento,
+      address:            c.endereco,
       email:              this.enc.decryptNullable(c.email_encrypted),
       phone:              this.enc.decryptNullable(c.telefone_encrypted),
       document:           this.enc.decryptNullable(c.cpf_cnpj_encrypted),
@@ -36,8 +40,8 @@ export class ClientsService {
       .andWhere('c.deleted_at IS NULL');
 
     if (q['status'])   qb.andWhere('c.status = :status',     { status:   q['status'] });
-    if (q['type'])     qb.andWhere('c.type = :type',         { type:     q['type'] });
-    if (q['category']) qb.andWhere('c.category = :category', { category: q['category'] });
+    if (q['type'])     qb.andWhere('c.tipo_pessoa = :type',  { type:     q['type'] });
+    if (q['category']) qb.andWhere('c.segmento = :category', { category: q['category'] });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -61,9 +65,10 @@ export class ClientsService {
 
   async create(tenantId: string, userId: string, dto: CreateClientDto) {
     const { email, phone, document, ...rest } = dto as unknown as Record<string, unknown>;
+    const client = this.normalizeClientPayload(rest);
     const entity = this.repo!.create({
       tenant_id:          tenantId,
-      ...(rest as Partial<ClientEntity>),
+      ...(client as Partial<ClientEntity>),
       email_encrypted:    this.enc.encryptNullable(email as string | undefined),
       telefone_encrypted: this.enc.encryptNullable(phone as string | undefined),
       cpf_cnpj_encrypted: this.enc.encryptNullable(document as string | undefined),
@@ -77,7 +82,11 @@ export class ClientsService {
   async update(tenantId: string, userId: string, id: string, dto: UpdateClientDto) {
     await this.findById(tenantId, id);
     const { email, phone, document, ...rest } = dto as Record<string, unknown>;
-    const updates: Record<string, unknown> = { ...rest, updated_at: new Date(), updated_by: userId };
+    const updates: Record<string, unknown> = {
+      ...this.normalizeClientPayload(rest),
+      updated_at: new Date(),
+      updated_by: userId,
+    };
     if (email    !== undefined) updates['email_encrypted']    = this.enc.encryptNullable(email as string | null);
     if (phone    !== undefined) updates['telefone_encrypted']  = this.enc.encryptNullable(phone as string | null);
     if (document !== undefined) updates['cpf_cnpj_encrypted'] = this.enc.encryptNullable(document as string | null);
@@ -89,5 +98,16 @@ export class ClientsService {
     await this.findById(tenantId, id);
     await this.repo!.update({ id, tenant_id: tenantId } as any, { deleted_at: new Date() } as any);
     return { deleted: true };
+  }
+
+  private normalizeClientPayload(input: Record<string, unknown>) {
+    const { name, type, category, address, avatarUrl: _avatarUrl, ...rest } = input;
+    void _avatarUrl;
+    const mapped: Record<string, unknown> = { ...rest };
+    if (name !== undefined) mapped['nome'] = name;
+    if (type !== undefined) mapped['tipo_pessoa'] = type === 'company' ? 'pessoa_juridica' : type === 'person' ? 'pessoa_fisica' : type;
+    if (category !== undefined) mapped['segmento'] = category;
+    if (address !== undefined) mapped['endereco'] = typeof address === 'string' ? address : JSON.stringify(address);
+    return mapped;
   }
 }

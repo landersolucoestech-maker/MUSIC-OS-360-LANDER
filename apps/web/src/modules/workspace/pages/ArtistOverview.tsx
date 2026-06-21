@@ -11,20 +11,20 @@ export default function ArtistOverview() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Artist</CardTitle>
+            <CardTitle>Artista</CardTitle>
             <CardDescription>Informações principais</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             <div>
-              <p className="text-xs uppercase text-muted-foreground">Nome</p>
+              <p className="text-xs  text-muted-foreground">Nome</p>
               <p className="font-semibold">{entity?.name ?? 'Carregando...'}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-muted-foreground">Entity ID</p>
+              <p className="text-xs  text-muted-foreground">Entity ID</p>
               <p className="font-semibold break-all">{entity?.id ?? '...'}</p>
             </div>
             <div>
-              <p className="text-xs uppercase text-muted-foreground">Descrição</p>
+              <p className="text-xs  text-muted-foreground">Descrição</p>
               <p className="text-sm text-muted-foreground">{entity?.description ?? 'Sem descrição adicional.'}</p>
             </div>
           </CardContent>
@@ -32,7 +32,7 @@ export default function ArtistOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Actions</CardTitle>
+            <CardTitle>Ações</CardTitle>
             <CardDescription>Atalhos rápidos</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-2">
@@ -43,7 +43,7 @@ export default function ArtistOverview() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Overview Metrics</CardTitle>
+            <CardTitle>Métricas</CardTitle>
             <CardDescription>Resumo inicial</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -67,3 +67,5 @@ export default function ArtistOverview() {
     </div>
   );
 }
+
+

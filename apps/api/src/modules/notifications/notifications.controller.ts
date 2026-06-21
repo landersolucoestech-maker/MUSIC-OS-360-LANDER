@@ -8,24 +8,29 @@ import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator'
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { NotificationsService } from './notifications.service';
+import { NotificationSettingsService } from './notification-settings.service';
 import { CreateNotificationDto } from './dto/create-notification.dto';
+import { UpdateNotificationSettingsDto } from './dto/update-notification-settings.dto';
 import { PaginationDto }         from '../../common/dto/pagination.dto';
 
 @ApiTags('Notifications')
 @ApiBearerAuth()
 @Controller('notifications')
 export class NotificationsController {
-  constructor(private readonly service: NotificationsService) {}
+  constructor(
+    private readonly service: NotificationsService,
+    private readonly settings: NotificationSettingsService,
+  ) {}
 
   @Get()
   @RequireRole('viewer')
   @ApiOperation({ summary: 'Listar notificações do utilizador autenticado' })
   list(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null; orgRole?: string | null },
     @Query()         query:  PaginationDto,
   ) {
-    return this.service.list(tenant.id, user.userId, query);
+    return this.service.list(tenant.id, user.userId, query, { orgId: user.orgId, role: user.orgRole });
   }
 
   @Get('unread-count')
@@ -33,9 +38,9 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Contar notificações não lidas' })
   async countUnread(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null; orgRole?: string | null },
   ) {
-    const count = await this.service.countUnread(tenant.id, user.userId);
+    const count = await this.service.countUnread(tenant.id, user.userId, { orgId: user.orgId, role: user.orgRole });
     return { count };
   }
 
@@ -54,9 +59,10 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Marcar notificação como lida' })
   markRead(
     @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null; orgRole?: string | null },
     @Param('id', ParseUUIDPipe) id: string,
   ) {
-    return this.service.markRead(tenant.id, id);
+    return this.service.markRead(tenant.id, id, { orgId: user.orgId, role: user.orgRole });
   }
 
   @Patch('read-all')
@@ -64,8 +70,31 @@ export class NotificationsController {
   @ApiOperation({ summary: 'Marcar todas as notificações como lidas' })
   markAllRead(
     @CurrentTenant() tenant: { id: string },
-    @CurrentUser()   user:   { userId: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null; orgRole?: string | null },
   ) {
-    return this.service.markAllRead(tenant.id, user.userId);
+    return this.service.markAllRead(tenant.id, user.userId, { orgId: user.orgId, role: user.orgRole });
+  }
+
+  // ─── Settings (per-tenant notification configuration) ─────────────────────────
+
+  @Get('settings')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Listar configurações de notificação do tenant (com defaults)' })
+  listSettings(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { orgId?: string | null; orgRole?: string | null },
+  ) {
+    return this.settings.list(tenant.id, { orgId: user.orgId, role: user.orgRole });
+  }
+
+  @Patch('settings')
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Atualizar configurações de notificação do tenant (admin+)' })
+  updateSettings(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser()   user:   { userId: string; orgId?: string | null; orgRole?: string | null },
+    @Body()          dto:    UpdateNotificationSettingsDto,
+  ) {
+    return this.settings.update(tenant.id, user.userId, dto.settings, { orgId: user.orgId, role: user.orgRole });
   }
 }

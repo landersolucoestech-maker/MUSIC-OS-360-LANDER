@@ -26,11 +26,11 @@ export function SchedulerDayView({ day, events, onSlotClick, onView, onEdit, onD
   const allDayEvents = dayEvents.filter((event) => event.allDay || format(event.startDate, "HH:mm") === "00:00");
 
   return (
-    <div className="overflow-x-auto rounded-[32px] border border-border/20 bg-background/90 shadow-sm">
+    <div className="overflow-x-auto rounded-[32px] border border-border/20 bg-background/90">
       <div className="min-w-[720px]">
         {allDayEvents.length > 0 && (
           <div className="grid grid-cols-[120px_1fr] border-b border-border/20 bg-background/95">
-            <div className="flex items-center justify-end pr-4 text-[10px] font-semibold uppercase tracking-[0.26em] text-muted-foreground">Dia inteiro</div>
+            <div className="flex items-center justify-end pr-4 text-[10px] font-semibold  tracking-[0.26em] text-muted-foreground">Dia inteiro</div>
             <div className="p-3 space-y-2">
               {allDayEvents.map((event) => (
                 <SchedulerEventCard key={event.id} event={event} compact onClick={onEdit} />
@@ -42,7 +42,7 @@ export function SchedulerDayView({ day, events, onSlotClick, onView, onEdit, onD
         <div className="overflow-y-auto" style={{ minHeight: 520 }}>
           {DEFAULT_HOURS.map((hour) => (
             <div key={hour} className="grid grid-cols-[120px_1fr] border-b border-border/15">
-              <div className="flex items-start justify-end pr-4 pt-3 text-[11px] font-mono text-muted-foreground/70">{hour}</div>
+              <div className="flex items-start justify-end pr-4 pt-3 text-[11px] font-sans text-muted-foreground/70">{hour}</div>
               <div className="min-h-[80px] border-l border-border/15 p-3 transition-colors hover:bg-muted/10" onClick={() => onSlotClick?.(addHours(dayStart, parseInt(hour.slice(0, 2), 10)), hour)}>
                 {eventsByHour[hour]?.length ? (
                   <div className="space-y-2">

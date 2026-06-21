@@ -1,5 +1,6 @@
 import { useState, useMemo, ReactNode } from "react";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { Card, CardContent, CardHeader } from "@/shared/ui/card";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
@@ -23,6 +24,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
+import { sortTableRows, type TableSortState } from "@/shared/lib/table-sort";
 
 export type Column<T> = {
   key: keyof T | string;
@@ -88,7 +90,7 @@ export function DataTable<T extends Record<string, unknown>>({
   const [filterValues, setFilterValues] = useState<Record<string, string>>({});
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(0);
-  const [sortConfig, setSortConfig] = useState<{ key: string; direction: "asc" | "desc" } | null>(null);
+  const [sortConfig, setSortConfig] = useState<TableSortState>(null);
 
   // Filter and search
   const filteredData = useMemo(() => {
@@ -112,20 +114,7 @@ export function DataTable<T extends Record<string, unknown>>({
       }
     });
 
-    // Apply sorting
-    if (sortConfig) {
-      result.sort((a, b) => {
-        const aVal = a[sortConfig.key as keyof T];
-        const bVal = b[sortConfig.key as keyof T];
-        
-        if (aVal === bVal) return 0;
-        if (aVal === null || aVal === undefined) return 1;
-        if (bVal === null || bVal === undefined) return -1;
-        
-        const comparison = aVal < bVal ? -1 : 1;
-        return sortConfig.direction === "asc" ? comparison : -comparison;
-      });
-    }
+    result = sortTableRows(result, sortConfig, (item, key) => item[key as keyof T]);
 
     return result;
   }, [data, searchTerm, filterValues, columns, sortConfig]);
@@ -208,18 +197,37 @@ export function DataTable<T extends Record<string, unknown>>({
       {(title || description) && (
         <CardHeader className="pb-4">
           <div className="flex items-center justify-between">
-            <div>
-              {title && <CardTitle className="text-lg">{title}</CardTitle>}
-              {description && (
-                <CardDescription>
-                  {filteredData.length} {description}
-                </CardDescription>
-              )}
-            </div>
-            {onRefresh && (
-              <Button variant="ghost" size="icon" onClick={onRefresh}>
-                <RefreshCw className="h-4 w-4" />
-              </Button>
+            {title && description ? (
+              <ListSectionHeader
+                title={title}
+                count={filteredData.length}
+                description={description}
+                className="mb-0"
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    {selectable && paginatedData.length > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Checkbox
+                          checked={selectedIds.length === paginatedData.length && paginatedData.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <span>
+                          {selectedIds.length > 0
+                            ? `${selectedIds.length} selecionado(s)`
+                            : "Selecionar todos"}
+                        </span>
+                      </div>
+                    )}
+                    {onRefresh && (
+                      <Button variant="ghost" size="icon" onClick={onRefresh}>
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                }
+              />
+            ) : (
+              <div />
             )}
           </div>
         </CardHeader>
@@ -271,8 +279,8 @@ export function DataTable<T extends Record<string, unknown>>({
           </div>
         )}
 
-        {/* Select All (when selectable) */}
-        {selectable && paginatedData.length > 0 && (
+        {/* Select All (when selectable and no section header is available) */}
+        {selectable && paginatedData.length > 0 && !(title && description) && (
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Checkbox
               checked={selectedIds.length === paginatedData.length && paginatedData.length > 0}
@@ -298,10 +306,11 @@ export function DataTable<T extends Record<string, unknown>>({
             {paginatedData.map((item) => (
               <div
                 key={getId(item)}
-                className="flex items-center gap-4 p-4 bg-muted/30 rounded-lg border border-transparent hover:border-primary/20 transition-all duration-200"
+                className="flex items-center gap-4 px-4 py-4 bg-muted/30 rounded-lg border border-transparent hover:border-primary/20 transition-all duration-200"
               >
                 {selectable && (
                   <Checkbox
+                    className="shrink-0"
                     checked={selectedIds.includes(getId(item))}
                     onCheckedChange={() => handleSelectItem(getId(item))}
                   />
@@ -318,7 +327,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 {actions.length > 0 && (
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
+                      <Button variant="ghost" size="icon" className="ml-auto shrink-0">
                         <MoreHorizontal className="h-4 w-4" />
                       </Button>
                     </DropdownMenuTrigger>

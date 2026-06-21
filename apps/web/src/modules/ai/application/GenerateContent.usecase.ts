@@ -176,3 +176,4 @@ export function getGenerateContentUseCase(): GenerateContentUseCase {
   if (!_instance) _instance = new GenerateContentUseCase();
   return _instance;
 }
+

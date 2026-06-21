@@ -156,7 +156,8 @@ export function computeFinancialRules(f: TransacaoFormData): FinancialFormRules 
     ),
   ) as Record<BooleanRuleKey, boolean>;
 
-  const labelTipoCliente = ctx.isDespesa ? "Para quem pagar" : ctx.isReceita ? "Receber de" : "Tipo de Cliente";
+  const labelTipoCliente = ctx.isDespesa ? "Pagar quem" : ctx.isReceita ? "Receber de" : "Tipo de Cliente";
 
   return { ...booleans, labelTipoCliente };
 }
+

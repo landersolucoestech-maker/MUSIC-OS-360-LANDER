@@ -27,7 +27,7 @@ export function HighlightedPreview({ text }: { text: string }) {
       /^\{\{[^}]+\}\}$/.test(part) ? (
         <span
           key={`${baseKey}-${i}`}
-          className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-mono"
+          className="text-primary bg-primary/10 rounded px-0.5 font-semibold font-sans"
         >
           {part}
         </span>
@@ -88,7 +88,7 @@ export function A4Preview({ headerImage, content, footerImage }: A4PreviewProps)
   return (
     <div className="bg-muted/30 py-8 px-4 flex justify-center min-h-full">
       <div
-        className="bg-white text-gray-900 rounded shadow-xl flex flex-col w-full overflow-hidden"
+        className="bg-white text-gray-900 rounded flex flex-col w-full overflow-hidden"
         style={{ maxWidth: "794px", minHeight: "1123px" }}
       >
         {/* ── Header image — full page width ── */}
@@ -101,7 +101,7 @@ export function A4Preview({ headerImage, content, footerImage }: A4PreviewProps)
         ) : (
           <div className="px-[72px] pt-[48px]">
             <div className="border-b border-gray-200 pb-3 flex items-center justify-center">
-              <span className="text-gray-400 text-xs italic">
+              <span className="text-muted-foreground text-xs italic">
                 Sem imagem de cabeçalho
               </span>
             </div>
@@ -113,7 +113,7 @@ export function A4Preview({ headerImage, content, footerImage }: A4PreviewProps)
           {content.trim() ? (
             <HighlightedPreview text={content} />
           ) : (
-            <p className="text-gray-400 text-sm italic text-center pt-8">
+            <p className="text-muted-foreground text-sm italic text-center pt-8">
               Sem conteúdo ainda…
             </p>
           )}
@@ -129,7 +129,7 @@ export function A4Preview({ headerImage, content, footerImage }: A4PreviewProps)
         ) : (
           <div className="px-[72px] pb-[48px]">
             <div className="border-t border-gray-200 pt-3 flex items-center justify-center">
-              <span className="text-gray-400 text-xs italic">
+              <span className="text-muted-foreground text-xs italic">
                 Sem imagem de rodapé
               </span>
             </div>

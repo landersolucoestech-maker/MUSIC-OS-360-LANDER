@@ -1,6 +1,8 @@
 import { useCallback, useState, useMemo, useRef } from "react";
+import { Link } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -8,36 +10,62 @@ import { Checkbox } from "@/shared/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import {
   DollarSign, TrendingUp, TrendingDown, FileText,
-  Link as LinkIcon, Plus, Search,
-  MoreHorizontal, Eye, Pencil, Trash2, X,
+  Plus, Search, Upload, Tags,
+  Eye, Pencil, Trash2, X, MoreHorizontal,
 } from "lucide-react";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
-import { useMetrics } from "@/modules/dashboard/hooks/useMetrics";
 import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { TransacaoFormModal } from "@/modules/accounting/components/TransacaoFormModal";
 import { TransacaoViewModal } from "@/modules/accounting/components/TransacaoViewModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { MetricCard } from "@/shared/components/MetricCard";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
-import { FinanceiroSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 import { FeatureGate } from '@/shared/components/FeatureGate';
 
 type Transacao = Record<string, any>;
 
 export default function Financeiro() {
-  const { transacoes, isLoading: transacoesLoading, deleteTransacao, addTransacao } = useTransacoes();
-  const { financeiroMetrics, isLoading: metricsLoading } = useMetrics();
+  const { transacoes, deleteTransacao, addTransacao } = useTransacoes();
   const ofxInputRef = useRef<HTMLInputElement>(null);
 
-  const isLoading = transacoesLoading || metricsLoading;
-  const metricas = financeiroMetrics;
+  const safeTransacoes = useMemo(() => Array.isArray(transacoes) ? transacoes : [], [transacoes]);
+  const metricas = useMemo(() => {
+    const receitasPagas = safeTransacoes
+      .filter((t) => t.tipo === "receita" && t.status === "pago")
+      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
+    const despesasPagas = safeTransacoes
+      .filter((t) => t.tipo === "despesa" && t.status === "pago")
+      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
+    const contasReceber = safeTransacoes
+      .filter((t) => t.tipo === "receita" && t.status === "pendente")
+      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
+    const contasPagar = safeTransacoes
+      .filter((t) => t.tipo === "despesa" && t.status === "pendente")
+      .reduce((acc, t) => acc + Number(t.valor ?? 0), 0);
+    const lucroLiquido = receitasPagas - despesasPagas;
+    const margem = receitasPagas > 0 ? Math.round((lucroLiquido / receitasPagas) * 100) : 0;
+
+    return {
+      receitasPagas,
+      despesasPagas,
+      lucroLiquido,
+      contasReceber,
+      contasPagar,
+      margem,
+      receitasPendentes: safeTransacoes.filter((t) => t.tipo === "receita" && t.status === "pendente").length,
+      despesasPendentes: safeTransacoes.filter((t) => t.tipo === "despesa" && t.status === "pendente").length,
+    };
+  }, [safeTransacoes]);
 
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [formModal, setFormModal] = useState<{ open: boolean; mode: "create" | "edit"; transacao?: Transacao }>({ open: false, mode: "create" });
@@ -130,25 +158,31 @@ export default function Financeiro() {
   };
 
   const filteredTransacoes = useMemo(() => {
-    return transacoes.filter((transacao) => {
+    return safeTransacoes.filter((transacao) => {
+      const descricao = String(transacao.descricao ?? "");
+      const categoria = String(transacao.categoria ?? "");
+      const status = String(transacao.status ?? "");
+      const data = String(transacao.data ?? "");
       const matchesSearch =
-        transacao.descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (transacao.categoria ?? "").toLowerCase().includes(searchTerm.toLowerCase());
+        descricao.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        categoria.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType =
         typeFilter === "all-type" ||
         (typeFilter === "receita" && transacao.tipo === "receita") ||
         (typeFilter === "despesa" && transacao.tipo === "despesa");
-      const matchesStatus = statusFilter === "all-status" || (transacao.status ?? "").toLowerCase() === statusFilter.toLowerCase();
-      const matchesCategory = categoryFilter === "all-category" || (transacao.categoria ?? "").toLowerCase() === categoryFilter.toLowerCase();
-      const matchesStartDate = !startDate || transacao.data >= startDate;
-      const matchesEndDate = !endDate || transacao.data <= endDate;
+      const matchesStatus = statusFilter === "all-status" || status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesCategory = categoryFilter === "all-category" || categoria.toLowerCase() === categoryFilter.toLowerCase();
+      const matchesStartDate = !startDate || data >= startDate;
+      const matchesEndDate = !endDate || data <= endDate;
       return matchesSearch && matchesType && matchesStatus && matchesCategory && matchesStartDate && matchesEndDate;
     });
-  }, [transacoes, searchTerm, typeFilter, statusFilter, categoryFilter, startDate, endDate]);
+  }, [safeTransacoes, searchTerm, typeFilter, statusFilter, categoryFilter, startDate, endDate]);
 
   const hasActiveFilters =
     searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" ||
     categoryFilter !== "all-category" || startDate !== "" || endDate !== "";
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredTransacoes, 10);
 
   const handleClearFilters = () => {
     setSearchTerm(""); setStartDate(""); setEndDate("");
@@ -178,18 +212,26 @@ export default function Financeiro() {
     }
   };
 
-  if (isLoading) return <FinanceiroSkeleton />;
-
   return (
     <FeatureGate feature="moduleAccounting" featureName="Financeiro">
     <MainLayout
-      title="Accounting"
+      title="Financeiro"
       description="Controle financeiro e fluxo de caixa"
       actions={
         <>
           <input type="file" ref={ofxInputRef} accept=".ofx" className="hidden" onChange={handleOFXUpload} />
-          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5">
-            <LinkIcon className="h-3.5 w-3.5" /> Integração Bancária
+          <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={() => ofxInputRef.current?.click()}>
+            <Upload className="h-3.5 w-3.5" /> Importar OFX
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <Link to="/accounting/rules">
+              <FileText className="h-3.5 w-3.5" /> Regras
+            </Link>
+          </Button>
+          <Button asChild variant="outline" size="sm" className="h-8 text-xs gap-1.5">
+            <Link to="/accounting/categorias">
+              <Tags className="h-3.5 w-3.5" /> Categorias Financeiras
+            </Link>
           </Button>
           <RequirePermission module="accounting" action="write">
             <Button size="sm" className="h-8 text-xs gap-1.5" onClick={() => setFormModal({ open: true, mode: "create" })}>
@@ -211,7 +253,7 @@ export default function Financeiro() {
           />
           <MetricCard
             title="Despesas Mensais"
-            value={formatCurrency(metricas.despesasPagas)}
+            value={formatCurrency(-metricas.despesasPagas)}
             description="despesas pagas"
             icon={TrendingDown}
             accent="destructive"
@@ -232,7 +274,7 @@ export default function Financeiro() {
           />
           <MetricCard
             title="Contas a Pagar"
-            value={formatCurrency(metricas.contasPagar)}
+            value={formatCurrency(-metricas.contasPagar)}
             description={`${metricas.despesasPendentes} pendentes`}
             icon={FileText}
             accent="warning"
@@ -240,17 +282,8 @@ export default function Financeiro() {
         </div>
 
         {/* ── Filter Bar ── */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input
-              placeholder="Buscar transações…"
-              className="pl-9 h-8 text-sm bg-card border-border"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          {/* Date pickers */}
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/30 p-3">
+          {/* Seletor de datas — sempre imediatamente à esquerda da busca */}
           <DatePickerField
             value={startDate}
             onChange={setStartDate}
@@ -265,8 +298,17 @@ export default function Financeiro() {
             className="h-8 text-xs w-[150px]"
             data-testid="datepicker-end-date"
           />
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input
+              placeholder="Buscar transações…"
+              className="pl-9 h-8 text-sm bg-card border-border"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[130px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -276,7 +318,7 @@ export default function Financeiro() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[130px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -286,7 +328,7 @@ export default function Financeiro() {
             </SelectContent>
           </Select>
           <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-            <SelectTrigger className="w-[140px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[140px] max-w-[200px] h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Categoria" />
             </SelectTrigger>
             <SelectContent>
@@ -306,34 +348,38 @@ export default function Financeiro() {
           )}
           {hasActiveFilters && (
             <span className="text-xs text-muted-foreground ml-auto">
-              {filteredTransacoes.length} de {transacoes.length} transações
+              {filteredTransacoes.length} de {safeTransacoes.length} transações
             </span>
           )}
         </div>
 
         {/* ── Transactions Card ── */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">
-                  Transações
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredTransacoes.length})</span>
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">Fluxo de receitas e despesas</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
           <CardContent className="pt-0">
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <span className="text-xs text-muted-foreground flex-1">{selectedIds.length} selecionada(s)</span>
-                <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                  <Trash2 className="h-3.5 w-3.5" />
-                  Excluir ({selectedIds.length})
-                </Button>
-              </div>
-            )}
+            <ListSectionHeader
+              title="Transações"
+              count={filteredTransacoes.length}
+              description="Fluxo de receitas e despesas"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Checkbox
+                    checked={selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    data-testid="checkbox-select-all"
+                    aria-label="Selecionar todos"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.length > 0 ? `${selectedIds.length} selecionada(s)` : "Selecionar todos"}
+                  </span>
+                  {selectedIds.length > 0 && (
+                    <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir ({selectedIds.length})
+                    </Button>
+                  )}
+                </div>
+              }
+            />
 
             {filteredTransacoes.length === 0 ? (
               <EmptyState
@@ -348,16 +394,11 @@ export default function Financeiro() {
                 onAction={hasActiveFilters ? undefined : () => setFormModal({ open: true, mode: "create" })}
               />
             ) : (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[36px]">
-                      <Checkbox
-                        checked={selectedIds.length === filteredTransacoes.length && filteredTransacoes.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        data-testid="checkbox-select-all"
-                      />
-                    </TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Descrição</TableHead>
                     <TableHead>Categoria</TableHead>
@@ -368,7 +409,14 @@ export default function Financeiro() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredTransacoes.map((transacao) => (
+                  {pageItems.map((transacao) => {
+                    const tipo = transacao.tipo === "receita" ? "receita" : "despesa";
+                    const descricao = String(transacao.descricao ?? "Transação sem descrição");
+                    const categoria = String(transacao.categoria ?? "sem_categoria");
+                    const data = String(transacao.data ?? "");
+                    const valor = Number(transacao.valor ?? 0);
+
+                    return (
                     <TableRow key={transacao.id} data-testid={`row-transacao-${transacao.id}`} className={selectedIds.includes(transacao.id) ? "bg-muted/20" : ""}>
                       <TableCell>
                         <Checkbox
@@ -380,58 +428,71 @@ export default function Financeiro() {
                       <TableCell>
                         <div className={cn(
                           "w-7 h-7 rounded-lg flex items-center justify-center",
-                          transacao.tipo === "receita"
+                          tipo === "receita"
                             ? "bg-success/10 border border-success/20"
                             : "bg-destructive/10 border border-destructive/20"
                         )}>
-                          {transacao.tipo === "receita"
+                          {tipo === "receita"
                             ? <TrendingUp className="h-3.5 w-3.5 text-success" />
                             : <TrendingDown className="h-3.5 w-3.5 text-destructive" />
                           }
                         </div>
                       </TableCell>
-                      <TableCell className="font-medium max-w-[200px] truncate">{transacao.descricao}</TableCell>
-                      <TableCell>
-                        <span className="text-[10px] text-muted-foreground border border-border px-1.5 py-0.5 rounded-sm font-mono">
-                          {transacao.categoria}
-                        </span>
-                      </TableCell>
+                      <TableCell className="font-medium max-w-[200px] truncate">{descricao}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formatCategoryLabel(categoria)}</TableCell>
                       <TableCell><StatusBadge status={transacao.status ?? "pendente"} /></TableCell>
-                      <TableCell className="text-xs font-mono text-muted-foreground">{formatDate(transacao.data)}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{data ? formatDate(data) : "—"}</TableCell>
                       <TableCell className={cn(
-                        "text-right font-semibold font-mono text-sm",
-                        transacao.tipo === "receita" ? "text-success" : "text-destructive"
+                        "text-right text-sm",
+                        valor === 0 ? "text-muted-foreground" : tipo === "receita" ? "text-success" : "text-destructive"
                       )}>
-                        {transacao.tipo === "receita" ? "+" : "−"}{formatCurrency(transacao.valor)}
+                        {valor === 0 ? "" : tipo === "receita" ? "+" : "−"}{formatCurrency(valor)}
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 w-7 p-0"
+                              aria-label="Ações da transação"
+                            >
+                              <MoreHorizontal className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem onClick={() => setViewModal({ open: true, transactionId: transacao.id })}>
-                              <Eye className="h-3.5 w-3.5 mr-2" /> Ver
+                              <Eye className="mr-2 h-3.5 w-3.5" />
+                              Ver
                             </DropdownMenuItem>
-                            <RequirePermission module="accounting" action="write">
-                              <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
-                                <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                              </DropdownMenuItem>
-                            </RequirePermission>
-                            <RequirePermission module="accounting" action="delete">
-                              <DropdownMenuItem onClick={() => setDeleteModal({ open: true, transacao })} className="text-destructive focus:text-destructive">
-                                <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                              </DropdownMenuItem>
-                            </RequirePermission>
+                            <DropdownMenuItem onClick={() => setFormModal({ open: true, mode: "edit", transacao })}>
+                              <Pencil className="mr-2 h-3.5 w-3.5" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="text-destructive focus:text-destructive"
+                              onClick={() => setDeleteModal({ open: true, transacao })}
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" />
+                              Excluir
+                            </DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ))}
+                    );
+                  })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="transações"
+              />
+              </>
             )}
           </CardContent>
         </Card>

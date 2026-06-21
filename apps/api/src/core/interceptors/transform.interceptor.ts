@@ -4,6 +4,7 @@ import {
   ExecutionContext,
   CallHandler,
 } from '@nestjs/common';
+import type { Request } from 'express';
 import { Observable } from 'rxjs';
 import { map } from 'rxjs/operators';
 
@@ -13,14 +14,23 @@ export interface ApiResponse<T> {
   timestamp: string;
 }
 
+// Routes that produce raw bodies (text/plain Prometheus, etc.) and must NOT be
+// wrapped in the standard {data, timestamp} envelope.
+const RAW_BODY_PATHS = new Set<string>(['/metrics']);
+
 @Injectable()
 export class TransformInterceptor<T>
-  implements NestInterceptor<T, ApiResponse<T>>
+  implements NestInterceptor<T, ApiResponse<T> | T>
 {
   intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Observable<ApiResponse<T>> {
+  ): Observable<ApiResponse<T> | T> {
+    const req = context.switchToHttp().getRequest<Request>();
+    if (RAW_BODY_PATHS.has(req.path)) {
+      return next.handle();
+    }
+
     return next.handle().pipe(
       map((value) => {
         // Se o valor já tem formato { data, meta }, preservar
@@ -38,7 +48,7 @@ export class TransformInterceptor<T>
 
         // Caso contrário, envolver em { data }
         return {
-          data: value,
+          data: value as T,
           timestamp: new Date().toISOString(),
         };
       }),

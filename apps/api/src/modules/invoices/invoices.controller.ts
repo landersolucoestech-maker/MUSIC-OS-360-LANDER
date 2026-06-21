@@ -2,6 +2,7 @@ import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseUUIDPipe
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
 import type { JwtAuth }  from '../../core/guards/auth.guard';
@@ -16,6 +17,7 @@ export class InvoicesController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('invoice:read')
   @ApiOperation({ summary: 'Listar notas fiscais' })
   list(@CurrentTenant() t: { id: string }, @Query() q: QueryInvoiceDto) {
     return this.svc.list(t.id, q);
@@ -23,6 +25,7 @@ export class InvoicesController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('invoice:read')
   @ApiOperation({ summary: 'Obter nota fiscal' })
   findById(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.findById(t.id, id);
@@ -30,6 +33,7 @@ export class InvoicesController {
 
   @Post()
   @RequireRole('financial')
+  @RequirePermission('invoice:create')
   @Audit('invoice.created')
   @ApiOperation({ summary: 'Criar nota fiscal (financial+)' })
   create(
@@ -42,6 +46,7 @@ export class InvoicesController {
 
   @Patch(':id')
   @RequireRole('financial')
+  @RequirePermission('invoice:update')
   @Audit('invoice.updated')
   @ApiOperation({ summary: 'Actualizar nota fiscal (financial+)' })
   update(
@@ -55,6 +60,7 @@ export class InvoicesController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('invoice:cancel')
   @Audit('invoice.deleted')
   @ApiOperation({ summary: 'Cancelar nota fiscal (manager+)' })
   remove(

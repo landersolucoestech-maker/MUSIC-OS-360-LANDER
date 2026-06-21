@@ -39,6 +39,18 @@ const SKILL_ROUTING: Record<AISkillName, { provider: AIProviderName; model: AIMo
   "paid-ads":           { provider: "openai",      model: "gpt-4o" },
   "analytics-tracking": { provider: "openai",      model: "gpt-4o-mini" },
   "onboarding-cro":     { provider: "claude",      model: "claude-3-5-haiku" },
+  "project-planning":   { provider: "claude",      model: "claude-3-5-sonnet" },
+  "release-checklist":  { provider: "claude",      model: "claude-3-5-sonnet" },
+  "contract-analysis":  { provider: "claude",      model: "claude-3-5-sonnet" },
+  "catalog-metadata-validator": { provider: "claude", model: "claude-3-5-sonnet" },
+  "financial-classification":   { provider: "claude", model: "claude-3-5-sonnet" },
+  "crm-followup":               { provider: "claude", model: "claude-3-5-sonnet" },
+  "audiovisual-briefing":       { provider: "claude", model: "claude-3-5-sonnet" },
+  "marketing-calendar-builder": { provider: "claude", model: "claude-3-5-sonnet" },
+  "artist-profile-analysis":    { provider: "claude", model: "claude-3-5-sonnet" },
+  "licensing-opportunity-analysis": { provider: "claude", model: "claude-3-5-sonnet" },
+  "rights-monitoring-analysis":     { provider: "claude", model: "claude-3-5-sonnet" },
+  "support-triage":                 { provider: "claude", model: "claude-3-5-sonnet" },
 };
 
 const DEFAULT_CONFIG: AIOrchestatorConfig = {
@@ -246,3 +258,4 @@ export function getAIOrchestrator(config?: Partial<AIOrchestatorConfig>): AIOrch
   }
   return _orchestratorInstance;
 }
+

@@ -2039,7 +2039,7 @@ CREATE TABLE IF NOT EXISTS pipelines (
         id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
         tenant_id   UUID NOT NULL,
         name        VARCHAR(255) NOT NULL,
-        type        VARCHAR(100) NOT NULL DEFAULT 'sales',
+        type        VARCHAR(100) NOT NULL DEFAULT 'commercial',
         description TEXT,
         is_active   BOOLEAN NOT NULL DEFAULT TRUE,
         created_by  VARCHAR(255),

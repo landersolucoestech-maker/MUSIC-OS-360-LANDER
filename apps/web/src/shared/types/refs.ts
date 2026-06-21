@@ -73,3 +73,4 @@ export interface FuncionarioRef {
   nome_completo: string;
   cargo?: string | null;
 }
+

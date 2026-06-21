@@ -36,3 +36,4 @@ export const useArtistStore = create<ArtistState>((set) => ({
   openVisao360: (id) => set({ selectedArtistId: id, visao360Open: true }),
   closeVisao360: () => set({ visao360Open: false }),
 }));
+

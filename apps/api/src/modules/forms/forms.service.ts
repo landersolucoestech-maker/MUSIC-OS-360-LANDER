@@ -101,7 +101,7 @@ export class FormsService {
     const form = await this.findById(tenantId, formId);
 
     if (form.status !== 'active') {
-      throw new BadRequestException('Formulário não está activo');
+      throw new BadRequestException('Formulário não está ativo');
     }
 
     // ── CRM sync: find or create lead from email ─────────────────────────────

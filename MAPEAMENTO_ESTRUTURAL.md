@@ -299,7 +299,7 @@ org_slug    // preenchido pelo formulário público
 ```typescript
 id, descricao, tipo (receita|despesa), categoria, valor, data
 status, artista_id → artistas, cliente_id → clientes
-venda_id → vendas, origem, observacoes
+proposal_id -> proposals, origem, observacoes
 conciliado, anexo_url, forma_pagamento
 ```
 Categorias (receita): recebimentos externos de direitos, cachê, licenciamento, distribuicao, patrocinio
@@ -472,7 +472,7 @@ ecad_reports, funcionarios, folha_pagamento, afastamentos, documentos_funcionari
 
 ### Tabelas sem isolamento de tenant
 templates_contratos, regras, roles, permissions, role_permissions, usuarios,
-vendas, catalogo, company_settings, profiles, user_settings, team_members, team_invites
+proposals, proposal_items, followups, catalogo, company_settings, profiles, user_settings, team_members, team_invites
 
 ### Cache (TanStack Query)
 | Tipo | staleTime | gcTime | Entidades |

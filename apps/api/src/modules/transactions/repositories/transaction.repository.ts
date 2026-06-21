@@ -11,23 +11,23 @@ export class TransactionRepository {
   ) {}
 
   findAll(tenantId: string) {
-    return this.repo.find({ where: { /* tenant_id: tenantId */ } as never });
+    return this.repo.createQueryBuilder('t').where('t.tenant_id = :tenantId', { tenantId }).getMany();
   }
 
-  findById(id: string) {
-    return this.repo.findOneBy({ id });
+  findById(tenantId: string, id: string) {
+    return this.repo.createQueryBuilder('t').where('t.id = :id AND t.tenant_id = :tenantId', { id, tenantId }).getOne();
   }
 
-  create(data: Partial<TransactionEntity>) {
-    const entity = this.repo.create(data);
+  create(tenantId: string, data: Partial<TransactionEntity>) {
+    const entity = this.repo.create({ ...data, tenant_id: tenantId } as Partial<TransactionEntity> & { tenant_id: string });
     return this.repo.save(entity);
   }
 
-  update(id: string, data: Partial<TransactionEntity>) {
-    return this.repo.update(id, data);
+  update(tenantId: string, id: string, data: Partial<TransactionEntity>) {
+    return this.repo.update({ id, tenant_id: tenantId } as { id: string; tenant_id: string }, data);
   }
 
-  remove(id: string) {
-    return this.repo.delete(id);
+  remove(tenantId: string, id: string) {
+    return this.repo.delete({ id, tenant_id: tenantId } as { id: string; tenant_id: string });
   }
 }

@@ -183,13 +183,9 @@ export function useAuditTrail(filters: AuditTrailFilters = {}) {
       params.set("ascending",  "false");
 
       const qs = params.toString();
-      const response = await api.get<{ data: AuditLogEntry[] } | AuditLogEntry[]>(
+      return api.get<AuditLogEntry[]>(
         `/audit-logs${qs ? `?${qs}` : ""}`,
       );
-
-      if (Array.isArray(response)) return response;
-      if (response && "data" in response && Array.isArray(response.data)) return response.data;
-      return [];
     },
     staleTime: 30_000,
   });

@@ -339,7 +339,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
         cardinality: "N:1",
         via:         "projeto_id",
         required:    false,
-        description: "Projecto vinculado (P&L por projecto, recoupment)",
+        description: "Projeto vinculado (P&L por projeto, recoupment)",
       },
       {
         target:      "NotaFiscal",
@@ -391,7 +391,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
   Cliente: {
     name:         "Cliente",
     ownerModule:  "crm",
-    typesFile:    "modules/crm/types/cliente.types.ts",
+    typesFile:    "modules/crm-relationships/types/index.ts",
     primaryKey:   "id",
     externalIds:  ["cnpj", "cpf"],
     requiredFields: ["id", "nome"],
@@ -427,7 +427,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
   Lead: {
     name:         "Lead",
     ownerModule:  "crm",
-    typesFile:    "modules/crm/types/lead.types.ts",
+    typesFile:    "modules/leads/types/index.ts",
     primaryKey:   "id",
     externalIds:  [],
     requiredFields: ["id", "nome", "status"],
@@ -448,7 +448,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
       },
     ],
     description:
-      "Oportunidade de negócio em pipeline Kanban. " +
+      "Oportunidade de negócio em captacao comercial. " +
       "Status: novo → em contacto → proposta → negociação → fechado/perdido. " +
       "Temperatura: quente, morno, frio.",
   },
@@ -477,7 +477,7 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
         cardinality: "N:1",
         via:         "projeto_id",
         required:    false,
-        description: "Projecto ao qual o evento pertence",
+        description: "Projeto ao qual o evento pertence",
       },
     ],
     description:
@@ -689,3 +689,4 @@ export function getRelatedEntities(name: string): string[] {
     .map(e => e.name);
   return [...new Set([...direct, ...reverse])];
 }
+

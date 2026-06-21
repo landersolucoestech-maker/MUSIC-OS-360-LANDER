@@ -32,4 +32,13 @@ export {
   credentialsStorageKey,
 } from "./registry";
 
+export {
+  INTEGRATION_LOGOS,
+  getIntegrationLogo,
+  type IntegrationLogoId,
+  type IntegrationLogoMeta,
+} from "./logos";
+export { IntegrationLogo } from "./IntegrationLogo";
+export { IntegrationDialogHeader } from "./IntegrationDialogHeader";
+
 export * from "./contracts";

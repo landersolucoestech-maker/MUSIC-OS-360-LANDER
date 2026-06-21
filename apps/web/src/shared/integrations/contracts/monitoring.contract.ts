@@ -148,3 +148,4 @@ export interface IErrorMonitorProvider {
   /** Define contexto extra para todas as ocorrências */
   setContext(key: string, context: Record<string, unknown>): void;
 }
+

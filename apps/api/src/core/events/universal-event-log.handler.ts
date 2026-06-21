@@ -11,8 +11,9 @@
  * Wildcard '**' requires EventEmitterModule.forRoot({ wildcard: true }).
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
+import { DatabaseContextService } from '../../database/database-context.service';
 import { DomainEventLogService } from './domain-event-log.service';
 import type { DomainEvent } from './events.service';
 
@@ -20,13 +21,31 @@ import type { DomainEvent } from './events.service';
 export class UniversalEventLogHandler {
   private readonly logger = new Logger(UniversalEventLogHandler.name);
 
-  constructor(private readonly eventLog: DomainEventLogService) {}
+  constructor(
+    private readonly eventLog: DomainEventLogService,
+    @Optional() private readonly dbContext?: DatabaseContextService,
+  ) {}
 
   @OnEvent('**')
   async onAnyEvent(event: DomainEvent<unknown>): Promise<void> {
     if (!event?.type) return;
+    if (!event.tenantId) {
+      this.logger.warn(
+        `UniversalEventLogHandler: event "${event.type}" sem tenantId - abortado (fail-closed)`,
+      );
+      return;
+    }
+
     try {
-      await this.eventLog.persist(event, { processedAt: new Date() });
+      const persist = () => this.eventLog.persist(event, { processedAt: new Date() });
+      if (this.dbContext) {
+        await this.dbContext.runInTenantContext(
+          { tenantId: event.tenantId, orgId: null, role: null },
+          persist,
+        );
+        return;
+      }
+      await persist();
     } catch (err) {
       this.logger.error(
         `UniversalEventLogHandler: failed to log event "${event?.type}" — ${String(err)}`,

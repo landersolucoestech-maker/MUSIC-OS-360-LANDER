@@ -9,6 +9,7 @@ import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.inte
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import type { JwtAuth }    from '../../core/guards/auth.guard';
 import { ContractsService }        from './contracts.service';
@@ -24,6 +25,7 @@ export class ContractsController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('contract:read')
   @ApiOperation({ summary: 'Listar contratos do tenant' })
   list(@CurrentTenant() tenant: { id: string }, @Query() query: QueryContractDto) {
     return this.service.list(tenant.id, query);
@@ -31,6 +33,7 @@ export class ContractsController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('contract:read')
   @ApiOperation({ summary: 'Obter contrato por ID' })
   findById(
     @CurrentTenant() tenant: { id: string },
@@ -42,20 +45,22 @@ export class ContractsController {
 
   @Post()
   @RequireRole('editor')
+  @RequirePermission('contract:create')
   @Audit('contract.created')
   @UseInterceptors(IdempotencyInterceptor)
   @ApiOperation({ summary: 'Criar contrato' })
   @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne criação de contratos duplicados', required: false })
   create(
-    @CurrentTenant() tenant: { id: string },
+    @CurrentTenant() tenant: { id: string; org_id?: string },
     @CurrentUser()   user:   JwtAuth,
     @Body()          dto:    CreateContractDto,
   ) {
-    return this.service.create(tenant.id, user.userId, dto);
+    return this.service.create(tenant.id, user.userId, dto, tenant.org_id ?? user.orgId ?? undefined);
   }
 
   @Patch(':id')
   @RequireRole('editor')
+  @RequirePermission('contract:update')
   @Audit('contract.updated')
   @ApiOperation({ summary: 'Actualizar contrato' })
   update(
@@ -69,6 +74,7 @@ export class ContractsController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('contract:cancel')
   @Audit('contract.cancelled')
   @ApiOperation({ summary: 'Cancelar contrato (soft delete auditável)' })
   remove(

@@ -1,8 +1,9 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsEmail, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsEmail, Matches, MaxLength } from 'class-validator';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-const ROLES    = ['owner', 'manager', 'editor', 'viewer', 'accountant', 'artist'] as const;
+// PASSO 12-G.1: 'accounting' é o slug canônico (roles seed / ROLE_PERMISSIONS / FunctionalRole.ACCOUNTING).
+// 'accountant' era divergente (sem role/alias correspondente) → corrigido para o canônico.
 const STATUSES = ['active', 'inactive', 'suspended', 'invited'] as const;
 
 export class CreateUserDto {
@@ -16,7 +17,10 @@ export class CreateUserDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) fullName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
 
-  @ApiProperty({ enum: ROLES }) @IsIn(ROLES) role!: string;
+  @ApiProperty({ description: 'Slug de papel global ou customizado do tenant' })
+  @IsString()
+  @Matches(/^[a-z0-9_-]+$/)
+  role!: string;
 
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }
@@ -26,9 +30,15 @@ export class UpdateUserDto extends PartialType(CreateUserDto) {
 }
 
 export class AssignRoleDto {
-  @ApiProperty({ enum: ROLES, description: 'Novo role a atribuir ao utilizador' })
-  @IsIn(ROLES)
+  @ApiProperty({ description: 'Slug do novo papel a atribuir ao utilizador' })
+  @IsString()
+  @Matches(/^[a-z0-9_-]+$/)
   role!: string;
+}
+
+export class InviteUserDto {
+  @ApiProperty() @IsEmail() email!: string;
+  @ApiProperty() @IsString() roleId!: string;
 }
 
 export class QueryUserDto extends PaginationDto {

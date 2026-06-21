@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { MOCK_COMPANY_SETTINGS } from "@/shared/data/mockData";
-import { useParams } from "react-router-dom";
+import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
+import { useNavigate, useParams } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
+import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { Separator } from "@/shared/ui/separator";
@@ -16,11 +17,8 @@ import {
   User, Link2, FileText, CreditCard, Globe, Building, Users, Camera, Trash2,
 } from "lucide-react";
 import { SiSpotify, SiTiktok, SiApplemusic, SiSoundcloud } from "react-icons/si";
-import { useArtistas } from "@/modules/artist/hooks/useArtistas";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
 import {
   ESPECIALIDADES_LABELS,
-  formToArtistaPayload,
   validateSpotifyUrl,
   validateYoutubeUrl,
   validateInstagramUrl,
@@ -28,18 +26,15 @@ import {
   validateSoundcloudUrl,
   validateDeezerUrl,
   validateAppleMusicUrl,
-  type FormToArtistaInput,
   type UrlValidationState,
 } from "@/modules/artist/mappers";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
+import { publicApi } from "@/shared/lib/api-client";
 
 // ─── Same constants as ArtistaFormModal ───────────────────────────────────────
 
-const GENEROS_MUSICAIS = [
-  "Funk", "Forró", "Sertanejo", "Pop", "Rock", "MPB", "Eletrônica",
-  "Hip Hop", "R&B", "Axé", "Pagode", "Gospel", "Reggae", "Jazz", "Outro",
-];
+const GENEROS_MUSICAIS = MUSICAL_GENRE_LABELS;
 
 const BANCOS = [
   "Banco do Brasil", "Bradesco", "Caixa Econômica", "Itaú", "Santander",
@@ -118,35 +113,6 @@ type StepNum = (typeof STEPS)[number]["num"];
 interface OrgInfo { name: string; slug: string; }
 type SlugState = "checking" | "valid" | "invalid";
 
-const DEMO_SLUGS = new Set(["minha-gravadora", "gravadora-exemplo", "demo", "musicos360", "teste"]);
-
-function resolveOrg(slug: string): { valid: boolean; info: OrgInfo } {
-  const defaultInfo: OrgInfo = { name: "MUSIC OS 360", slug };
-  try {
-    const rawData = localStorage.getItem("musicos360_mock_data");
-    const seedName =
-      MOCK_COMPANY_SETTINGS.fantasy_name || MOCK_COMPANY_SETTINGS.company_name || "MUSIC OS 360";
-    let orgName = seedName;
-    if (rawData) {
-      const data = JSON.parse(rawData) as Record<string, unknown>;
-      const cs = data.company_settings;
-      const settings = Array.isArray(cs)
-        ? (cs as Record<string, unknown>[])[0]
-        : (cs as Record<string, unknown>);
-      if (settings) {
-        orgName = (settings.fantasy_name as string) || (settings.company_name as string) || seedName;
-      }
-    }
-    const slugKeys = Object.keys(localStorage).filter((k) => k.startsWith("musicos360_org_slug:"));
-    const slugMatch = slugKeys.some((k) => localStorage.getItem(k) === slug);
-    if (slugMatch) return { valid: true, info: { name: orgName, slug } };
-    if (DEMO_SLUGS.has(slug.toLowerCase())) return { valid: true, info: { name: orgName, slug } };
-    return { valid: false, info: defaultInfo };
-  } catch {
-    return { valid: true, info: defaultInfo };
-  }
-}
-
 // ─── URL icon helper (same as ArtistaFormModal) ───────────────────────────────
 
 function UrlIcon({ state }: { state: UrlValidationState }) {
@@ -159,8 +125,7 @@ function UrlIcon({ state }: { state: UrlValidationState }) {
 
 export default function ArtistaSignupPublic() {
   const { orgSlug } = useParams<{ orgSlug?: string }>();
-  const { addArtista } = useArtistas();
-  const { addCliente }  = useClientes();
+  const navigate = useNavigate();
 
   const [slugState, setSlugState] = useState<SlugState>("checking");
   const [orgInfo, setOrgInfo]     = useState<OrgInfo>({ name: "MUSIC OS 360", slug: orgSlug ?? "" });
@@ -169,6 +134,9 @@ export default function ArtistaSignupPublic() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [success, setSuccess]     = useState(false);
   const [protocol, setProtocol]   = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [companyWebsite, setCompanyWebsite] = useState("");
+  const [workspaceSlug, setWorkspaceSlug] = useState("");
 
   // ── Form state — mirrors ArtistaFormModal fields ───────────────────────────
   // Step 1: Informações Básicas
@@ -219,9 +187,18 @@ export default function ArtistaSignupPublic() {
   // ── Slug validation ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) { setSlugState("invalid"); return; }
-    const result = resolveOrg(orgSlug);
-    setOrgInfo(result.info);
-    setSlugState(result.valid ? "valid" : "invalid");
+    let cancelled = false;
+    publicApi
+      .get<OrgInfo>(`/leads/public/artist-applications/${encodeURIComponent(orgSlug)}/tenant`)
+      .then((info) => {
+        if (cancelled) return;
+        setOrgInfo(info);
+        setSlugState("valid");
+      })
+      .catch(() => {
+        if (!cancelled) setSlugState("invalid");
+      });
+    return () => { cancelled = true; };
   }, [orgSlug]);
 
   // ── Ensure at least one empty equipe card when perfil changes ─────────────
@@ -376,106 +353,45 @@ export default function ArtistaSignupPublic() {
     if (!validateStep(step)) return;
     if (!nomeArtistico.trim()) { toast.error("Nome artístico é obrigatório"); return; }
     if (!nome.trim())          { toast.error("Nome completo é obrigatório");  return; }
+    if (!acceptedTerms)        { toast.error("Aceite os termos para enviar o cadastro"); return; }
+    if (!orgSlug) return;
 
     setIsSubmitting(true);
     try {
-      const formInput: FormToArtistaInput = {
-        nomeArtistico,
-        slugArtistico: "",
-        tagsMusicais: [],
-        faseCarreira: "",
-        generoMusical,
-        tipoArtista: "artista_solo",
-        statusArtista: "onboarding",
-        especialidades,
-        biografia,
-        notasInternas,
-        nome,
-        dataNascimento,
-        cpfCnpj,
-        rg,
-        endereco,
-        telefone,
-        email,
-        banco,
-        agencia,
-        conta,
-        chavePix,
-        titularConta,
-        spotify,
-        spotifyOuvintes: "",
-        instagram,
-        instagramSeguidores: "",
-        youtube,
-        youtubeInscritos: "",
-        tiktok,
-        tiktokSeguidores: "",
-        soundcloud,
-        soundcloudSeguidores: "",
-        deezer,
-        deezerFas: "",
-        appleMusic,
-        appleMusicAlbuns: "",
-        relacionamentos: [],
-        tipoPerfil: tipoPerfil as FormToArtistaInput["tipoPerfil"],
-        empresarioId: "",
-        empresarioNome: "",
-        empresarioTelefone: "",
-        empresarioEmail: "",
-        gravadoraId: "",
-        gravadoraNome: "",
-        gravadoraTelefone: "",
-        gravadoraEmail: "",
-        gravadoraResponsavelId: "",
-        gravadoraResponsavelNome: "",
-        gravadoraResponsavelTelefone: "",
-        gravadoraResponsavelEmail: "",
-        distribuidorasSelecionadas: {},
-        distribuidorasEmails: {},
-        distribuidorasEmpresaSelecionadas: {},
-        distribuidorasEmpresaEmails: {},
-        fotoUrl,
-        documentosPessoaisUrl,
-        presskitUrl,
-        contratoId: "",
-      };
-
-      const payload = formToArtistaPayload(formInput);
-
-      const extraFields = {
-        genero:                 genero || null,
-        banner_url:             null,
-        galeria_urls:           null,
-        video_apresentacao_url: null,
-        manager_nome:           null,
-        manager_contato:        null,
-        produtor_executivo:     null,
-        agencia_booking:        null,
-        label_parceira:         null,
-        documentos:             null,
-        contatos_equipe:        contatosEquipe.filter((c) => c.nome || c.email).length > 0
-                                  ? contatosEquipe.filter((c) => c.nome || c.email)
-                                  : null,
-        distribuidoras_gerais:  distribuidorasGerais.length > 0 ? distribuidorasGerais : null,
-      };
-
-      await addCliente.mutateAsync({
-        tipo_pessoa: "pessoa_fisica" as const,
-        nome:        nomeArtistico.trim(),
-        cpf_cnpj:    cpfCnpj.trim() || null,
-        responsavel: nome.trim() || null,
-        email:       email.trim() || null,
-        telefone:    telefone.trim() || null,
-        endereco:    endereco.trim() || null,
-        cidade:      null as string | null,
-        estado:      null as string | null,
-        observacoes: biografia.trim() || null,
-        status:      "ativo",
-      });
-
-      const result = await addArtista.mutateAsync({ ...payload, ...extraFields });
-      const alphanumeric = (result?.id ?? Date.now().toString()).replace(/[^a-zA-Z0-9]/g, "");
-      setProtocol(alphanumeric.slice(-8).toUpperCase());
+      const result = await publicApi.post<{ protocol: string }>(
+        `/leads/public/artist-applications/${encodeURIComponent(orgSlug)}`,
+        {
+          artisticName: nomeArtistico.trim(),
+          fullName: nome.trim(),
+          email: email.trim(),
+          phone: telefone.trim(),
+          musicalGenre: generoMusical,
+          objective: tipoPerfil,
+          message: notasInternas || biografia,
+          socialLinks: { spotify, instagram, youtube, tiktok, soundcloud, deezer, appleMusic },
+          additionalData: {
+            especialidades,
+            dataNascimento,
+            cpfCnpj,
+            rg,
+            genero,
+            endereco,
+            banco,
+            agencia,
+            conta,
+            chavePix,
+            titularConta,
+            fotoUrl,
+            documentosPessoaisUrl,
+            presskitUrl,
+            distribuidorasGerais,
+            contatosEquipe,
+          },
+          acceptedTerms,
+          companyWebsite,
+        },
+      );
+      setProtocol(result.protocol);
       setSuccess(true);
     } catch (err: unknown) {
       toast.error("Erro ao enviar cadastro. Tente novamente.");
@@ -499,6 +415,36 @@ export default function ArtistaSignupPublic() {
 
   // ── Invalid slug ───────────────────────────────────────────────────────────
   if (slugState === "invalid") {
+    if (!orgSlug) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <form
+            className="w-full max-w-sm space-y-4 border border-border bg-card p-6"
+            onSubmit={(event) => {
+              event.preventDefault();
+              const slug = workspaceSlug.trim();
+              if (slug) navigate(`/artistas/cadastro/${encodeURIComponent(slug)}`);
+            }}
+          >
+            <div>
+              <h1 className="text-xl font-bold">Cadastro de artista</h1>
+              <p className="mt-2 text-sm text-muted-foreground">
+                Informe o identificador do workspace que recebeu da gravadora.
+              </p>
+            </div>
+            <Input
+              value={workspaceSlug}
+              onChange={(event) => setWorkspaceSlug(event.target.value)}
+              placeholder="nome-do-workspace"
+              autoComplete="organization"
+            />
+            <Button type="submit" className="w-full" disabled={!workspaceSlug.trim()}>
+              Continuar
+            </Button>
+          </form>
+        </div>
+      );
+    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-sm w-full text-center space-y-5">
@@ -512,7 +458,7 @@ export default function ArtistaSignupPublic() {
             </p>
           </div>
           {orgSlug && (
-            <p className="text-xs text-muted-foreground font-mono bg-muted/40 rounded px-3 py-1.5 inline-block">
+            <p className="text-xs text-muted-foreground font-sans bg-muted/40 rounded px-3 py-1.5 inline-block">
               /{orgSlug}
             </p>
           )}
@@ -536,8 +482,8 @@ export default function ArtistaSignupPublic() {
             </p>
           </div>
           <div className="rounded-lg border border-border bg-muted/30 px-6 py-4 space-y-1">
-            <p className="text-xs text-muted-foreground uppercase tracking-widest font-mono">Protocolo</p>
-            <p className="text-2xl font-bold font-mono tracking-widest text-primary">{protocol}</p>
+            <p className="text-xs text-muted-foreground  tracking-widest font-sans">Protocolo</p>
+            <p className="text-2xl font-bold font-sans tracking-widest text-primary">{protocol}</p>
             <p className="text-xs text-muted-foreground">Guarde este número para acompanhamento</p>
           </div>
           <p className="text-sm text-muted-foreground">
@@ -646,7 +592,7 @@ export default function ArtistaSignupPublic() {
                   )}
                   <label
                     htmlFor="foto-upload"
-                    className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors shadow"
+                    className="absolute bottom-0 right-0 h-7 w-7 rounded-full bg-primary flex items-center justify-center cursor-pointer hover:bg-primary/90 transition-colors"
                     title="Alterar foto"
                   >
                     <Camera className="h-3.5 w-3.5 text-primary-foreground" />
@@ -698,7 +644,7 @@ export default function ArtistaSignupPublic() {
             </div>
 
             <div>
-              <h2 className="font-semibold text-base">1. Informações Básicas</h2>
+              <h2 className="font-semibold text-base">Informações Básicas</h2>
               <p className="text-sm text-muted-foreground">Nome artístico, género musical e especialidades</p>
             </div>
 
@@ -789,7 +735,7 @@ export default function ArtistaSignupPublic() {
         {step === 2 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">2. Dados Pessoais</h2>
+              <h2 className="font-semibold text-base">Dados Pessoais</h2>
               <p className="text-sm text-muted-foreground">Informações pessoais e de contacto</p>
             </div>
 
@@ -807,10 +753,9 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5 col-span-2 sm:col-span-1">
                 <Label className="text-sm">Data de Nascimento</Label>
-                <Input
-                  type="date"
+                <DatePickerField
                   value={dataNascimento}
-                  onChange={(e) => setDataNascimento(e.target.value)}
+                  onChange={setDataNascimento}
                   data-testid="input-data-nascimento"
                   className="block"
                 />
@@ -895,7 +840,7 @@ export default function ArtistaSignupPublic() {
         {step === 3 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">3. Dados Bancários</h2>
+              <h2 className="font-semibold text-base">Dados Bancários</h2>
               <p className="text-sm text-muted-foreground">Conta para recebimentos e chave Pix</p>
             </div>
 
@@ -964,7 +909,7 @@ export default function ArtistaSignupPublic() {
         {step === 4 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">4. Perfis e Redes Sociais</h2>
+              <h2 className="font-semibold text-base">Perfis e Redes Sociais</h2>
               <p className="text-sm text-muted-foreground">Todos os campos são opcionais — preencha o que tiver</p>
             </div>
 
@@ -1055,7 +1000,7 @@ export default function ArtistaSignupPublic() {
               </div>
               <div className="space-y-1.5">
                 <Label className="text-sm flex items-center gap-1.5">
-                  <span className="h-3.5 w-3.5 text-purple-500 text-xs font-bold">Dz</span> Deezer
+                  <span className="h-3.5 w-3.5 text-primary text-xs font-bold">Dz</span> Deezer
                 </Label>
                 <div className="flex items-center gap-2">
                   <Input
@@ -1103,7 +1048,7 @@ export default function ArtistaSignupPublic() {
         {step === 5 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">5. Distribuidoras / Agregadoras</h2>
+              <h2 className="font-semibold text-base">Distribuidoras / Agregadoras</h2>
               <p className="text-sm text-muted-foreground">
                 Selecione as plataformas que distribuem ou agregam a sua música
               </p>
@@ -1181,7 +1126,7 @@ export default function ArtistaSignupPublic() {
         {step === 6 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">6. Tipo de Perfil</h2>
+              <h2 className="font-semibold text-base">Tipo de Perfil</h2>
               <p className="text-sm text-muted-foreground">Vínculo profissional e equipa</p>
             </div>
 
@@ -1398,13 +1343,13 @@ export default function ArtistaSignupPublic() {
         {step === 7 && (
           <div className="space-y-5">
             <div>
-              <h2 className="font-semibold text-base">7. Observações</h2>
+              <h2 className="font-semibold text-base">Observações</h2>
               <p className="text-sm text-muted-foreground">Notas para a equipa e revisão final</p>
             </div>
 
             {/* Resumo do cadastro */}
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 space-y-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-primary">Resumo do Cadastro</p>
+              <p className="text-xs font-semibold  tracking-widest text-primary">Resumo do Cadastro</p>
               <div className="text-sm space-y-1.5">
                 {[
                   { label: "Nome Artístico",  value: nomeArtistico },
@@ -1447,6 +1392,24 @@ export default function ArtistaSignupPublic() {
                 data-testid="textarea-observacoes"
               />
             </div>
+            <label className="flex items-start gap-3 text-sm">
+              <Checkbox
+                checked={acceptedTerms}
+                onCheckedChange={(checked) => setAcceptedTerms(checked === true)}
+              />
+              <span>
+                Aceito os termos de uso e o tratamento dos dados enviados para análise desta candidatura.
+              </span>
+            </label>
+            <input
+              type="text"
+              value={companyWebsite}
+              onChange={(event) => setCompanyWebsite(event.target.value)}
+              tabIndex={-1}
+              autoComplete="off"
+              aria-hidden="true"
+              className="absolute h-px w-px overflow-hidden opacity-0"
+            />
           </div>
         )}
 

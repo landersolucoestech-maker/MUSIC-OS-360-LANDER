@@ -1,5 +1,5 @@
 import { useState, forwardRef } from "react";
-import { Navigate, Link, useNavigate } from "react-router-dom";
+import { Navigate, Link, useLocation, useNavigate } from "react-router-dom";
 import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -48,104 +48,19 @@ export default function Auth() {
 }
 
 // ── Particle nebula (bottom-left cluster matching reference) ───────────────────
-const NEBULA_DOTS = [
-  // bright core cluster — dense, bottom-left
-  { x: 2, y: 92, s: 3.0, o: 0.95, c: "#93c5fd" },
-  { x: 5, y: 88, s: 2.5, o: 0.9, c: "#60a5fa" },
-  { x: 8, y: 95, s: 3.5, o: 1.0, c: "#bfdbfe" },
-  { x: 4, y: 97, s: 2.0, o: 0.85, c: "#93c5fd" },
-  { x: 11, y: 91, s: 2.8, o: 0.9, c: "#60a5fa" },
-  { x: 7, y: 85, s: 2.2, o: 0.8, c: "#3b82f6" },
-  { x: 14, y: 96, s: 2.0, o: 0.8, c: "#60a5fa" },
-  { x: 1, y: 84, s: 1.8, o: 0.7, c: "#93c5fd" },
-  { x: 16, y: 89, s: 2.4, o: 0.75, c: "#60a5fa" },
-  { x: 3, y: 80, s: 1.6, o: 0.6, c: "#3b82f6" },
-  { x: 19, y: 94, s: 1.8, o: 0.7, c: "#93c5fd" },
-  { x: 9, y: 99, s: 2.5, o: 0.85, c: "#bfdbfe" },
-  { x: 22, y: 87, s: 1.5, o: 0.6, c: "#60a5fa" },
-  { x: 12, y: 82, s: 1.4, o: 0.55, c: "#3b82f6" },
-  { x: 25, y: 98, s: 1.6, o: 0.6, c: "#60a5fa" },
-  { x: 6, y: 77, s: 1.2, o: 0.45, c: "#2563eb" },
-  { x: 28, y: 92, s: 1.4, o: 0.5, c: "#60a5fa" },
-  { x: 18, y: 79, s: 1.3, o: 0.45, c: "#3b82f6" },
-  { x: 31, y: 86, s: 1.2, o: 0.4, c: "#93c5fd" },
-  { x: 21, y: 74, s: 1.0, o: 0.35, c: "#2563eb" },
-  { x: 34, y: 95, s: 1.3, o: 0.45, c: "#60a5fa" },
-  { x: 15, y: 71, s: 1.0, o: 0.3, c: "#3b82f6" },
-  { x: 37, y: 88, s: 1.1, o: 0.35, c: "#60a5fa" },
-  { x: 26, y: 69, s: 0.8, o: 0.25, c: "#2563eb" },
-  { x: 40, y: 93, s: 1.0, o: 0.3, c: "#93c5fd" },
-  { x: 10, y: 67, s: 0.8, o: 0.2, c: "#3b82f6" },
-  { x: 43, y: 82, s: 0.8, o: 0.25, c: "#60a5fa" },
-  { x: 33, y: 72, s: 0.7, o: 0.2, c: "#2563eb" },
-  { x: 0, y: 90, s: 2.8, o: 0.9, c: "#93c5fd" },
-  { x: 13, y: 86, s: 2.0, o: 0.7, c: "#60a5fa" },
-];
-
 function Particles() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div
-        className="absolute"
-        style={{
-          bottom: "-120px",
-          left: "-120px",
-          width: "500px",
-          height: "500px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(29,78,216,0.30) 0%, rgba(37,99,235,0.12) 40%, transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          bottom: "-60px",
-          left: "-60px",
-          width: "300px",
-          height: "300px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(59,130,246,0.35) 0%, rgba(37,99,235,0.18) 45%, transparent 70%)",
-        }}
-      />
-      <div
-        className="absolute"
-        style={{
-          bottom: "-20px",
-          left: "-20px",
-          width: "160px",
-          height: "160px",
-          borderRadius: "50%",
-          background:
-            "radial-gradient(circle, rgba(96,165,250,0.28) 0%, transparent 70%)",
-        }}
-      />
-      {NEBULA_DOTS.map((d, i) => (
-        <div
-          key={i}
-          className="absolute rounded-full"
-          style={{
-            left: `${d.x}%`,
-            top: `${d.y}%`,
-            width: `${d.s}px`,
-            height: `${d.s}px`,
-            background: d.c,
-            opacity: d.o,
-            boxShadow: `0 0 ${d.s * 4}px ${d.s * 2}px ${d.c}88`,
-          }}
-        />
-      ))}
-    </div>
-  );
+  return null;
 }
 
 // ── Main Page ─────────────────────────────────────────────────────────────────
 function AuthPage() {
-  const [mode, setMode] = useState<Mode>("login");
+  const location = useLocation();
+  const [mode, setMode] = useState<Mode>(
+    location.pathname === "/forgot-password" ? "forgot" : "login",
+  );
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#07101f" }}>
+    <div style={{ minHeight: "100vh", display: "flex", background: "#F5F6F8" }}>
       {/* ══ LEFT PANEL ══ */}
       <div
         className="w-full lg:w-[44%]"
@@ -154,36 +69,9 @@ function AuthPage() {
           flexDirection: "column",
           position: "relative",
           overflow: "hidden",
-          background: "#07101f",
+          background: "#FFFFFF",
         }}
       >
-        <div
-          style={{
-            position: "absolute",
-            bottom: "-60px",
-            left: "-60px",
-            width: "380px",
-            height: "380px",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(37,99,235,0.22) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            top: "-40px",
-            right: "-40px",
-            width: "220px",
-            height: "220px",
-            borderRadius: "50%",
-            background:
-              "radial-gradient(circle, rgba(59,130,246,0.08) 0%, transparent 70%)",
-            pointerEvents: "none",
-          }}
-        />
-
         <Particles />
 
         <div
@@ -229,8 +117,7 @@ function AuthPage() {
                       width: "5px",
                       height: `${h}px`,
                       borderRadius: "3px",
-                      background: "linear-gradient(to top, #1d4ed8, #3b82f6)",
-                      boxShadow: "0 0 10px rgba(59,130,246,0.8)",
+                      background: "#0F4C81",
                     }}
                   />
                 ))}
@@ -238,7 +125,7 @@ function AuthPage() {
               <div style={{ lineHeight: 1.05 }}>
                 <div
                   style={{
-                    color: "#fff",
+                    color: "#1F2937",
                     fontWeight: 900,
                     fontSize: "32px",
                     letterSpacing: "2px",
@@ -248,7 +135,7 @@ function AuthPage() {
                 </div>
                 <div
                   style={{
-                    color: "#3b82f6",
+                    color: "#0F4C81",
                     fontWeight: 900,
                     fontSize: "32px",
                     letterSpacing: "2px",
@@ -262,7 +149,7 @@ function AuthPage() {
             <div style={{ textAlign: "center", marginBottom: "28px" }}>
               <p
                 style={{
-                  color: "#fff",
+                  color: "#1F2937",
                   fontWeight: 700,
                   fontSize: "15px",
                   marginBottom: "6px",
@@ -304,7 +191,7 @@ function AuthPage() {
                   href="#"
                   style={{ color: "#4b5563", transition: "color .2s" }}
                   onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#3b82f6")
+                    (e.currentTarget.style.color = "#0F4C81")
                   }
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.color = "#4b5563")
@@ -333,7 +220,7 @@ function AuthPage() {
         style={{
           position: "relative",
           overflow: "hidden",
-          background: "#040b16",
+          background: "#F5F6F8",
         }}
       >
         <img
@@ -360,8 +247,7 @@ function AuthPage() {
             left: 0,
             right: 0,
             height: "68%",
-            background:
-              "linear-gradient(to bottom, transparent 0%, rgba(4,11,22,0.85) 30%, #040b16 52%)",
+            background: "rgba(245,246,248,0.82)",
             zIndex: 1,
           }}
         />

@@ -2,7 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
-import { ContractEntity } from '../../database/entities';
+import { ContractEntity, ArtistEntity, ClientEntity } from '../../database/entities';
 import type { CreateContractDto } from './dto/create-contract.dto';
 import type { UpdateContractDto } from './dto/update-contract.dto';
 import type { QueryContractDto }  from './dto/query-contract.dto';
@@ -33,6 +33,18 @@ export class ContractsService {
     const q = query as Record<string, unknown>;
     const qb = this.repo!
       .createQueryBuilder('c')
+      .leftJoinAndMapOne(
+        'c.artistas',
+        ArtistEntity,
+        'artistas',
+        'artistas.id = c.artista_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
+      )
+      .leftJoinAndMapOne(
+        'c.clientes',
+        ClientEntity,
+        'clientes',
+        'clientes.id = c.cliente_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
+      )
       .where('c.tenant_id = :tenantId', { tenantId })
       .andWhere('c.deleted_at IS NULL');
 
@@ -63,6 +75,18 @@ export class ContractsService {
   ): Promise<ContractEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const result = await this.repo!
       .createQueryBuilder('c')
+      .leftJoinAndMapOne(
+        'c.artistas',
+        ArtistEntity,
+        'artistas',
+        'artistas.id = c.artista_id AND artistas.tenant_id = c.tenant_id AND artistas.deleted_at IS NULL',
+      )
+      .leftJoinAndMapOne(
+        'c.clientes',
+        ClientEntity,
+        'clientes',
+        'clientes.id = c.cliente_id AND clientes.tenant_id = c.tenant_id AND clientes.deleted_at IS NULL',
+      )
       .where('c.id = :id AND c.tenant_id = :tenantId AND c.deleted_at IS NULL', { id, tenantId })
       .getOne();
     if (!result) throw new NotFoundException('Contrato não encontrado');
@@ -70,13 +94,58 @@ export class ContractsService {
     return { ...result, allowed_transitions };
   }
 
+  /**
+   * Normaliza DTO: aceita tanto camelCase EN quanto snake_case pt-BR.
+   * Mapeia tudo para o formato pt-BR esperado pela ContractEntity.
+   * Strip de campos auxiliares do frontend que não pertencem à entity
+   * (ex: `signers` vai para metadata).
+   */
+  private normalizeContractDto(dto: Record<string, unknown>): Record<string, unknown> {
+    const out: Record<string, unknown> = {};
+
+    // pt-BR vence sobre EN se ambos estiverem presentes
+    out.titulo        = dto['titulo']        ?? dto['title']      ?? null;
+    out.tipo          = dto['tipo']          ?? dto['type']       ?? null;
+    out.artista_id    = dto['artista_id']    ?? dto['artistId']   ?? null;
+    out.cliente_id    = dto['cliente_id']    ?? null;
+    out.lancamento_id = dto['lancamento_id'] ?? null;
+    out.data_inicio   = dto['data_inicio']   ?? dto['startsAt']   ?? null;
+    out.data_fim      = dto['data_fim']      ?? dto['expiresAt']  ?? null;
+    out.exclusivo     = dto['exclusivo']     ?? false;
+    out.observacoes   = dto['observacoes']   ?? null;
+    out.arquivo_url   = dto['arquivo_url']   ?? dto['fileUrl']    ?? null;
+    out.autentique_doc_id = dto['autentique_doc_id'] ?? null;
+    out.signing_platform  = dto['signing_platform']  ?? null;
+    out.versoes       = (dto['versoes'] as unknown[] | undefined) ?? [];
+
+    // valor: aceita number ou IsNumberString
+    const valorRaw = dto['valor'] ?? dto['value'];
+    if (valorRaw != null) {
+      const n = typeof valorRaw === 'number' ? valorRaw : Number(valorRaw);
+      out.valor = Number.isFinite(n) ? String(n) : null;
+    }
+
+    // signers + parties + extras → metadata
+    const metaIn = (dto['metadata'] as Record<string, unknown> | undefined) ?? {};
+    const meta: Record<string, unknown> = { ...metaIn };
+    if (Array.isArray(dto['signers']))  meta['signers']  = dto['signers'];
+    if (Array.isArray(dto['parties']))  meta['parties']  = dto['parties'];
+    if (dto['currency'])                meta['currency'] = dto['currency'];
+    if (dto['signedAt'])                meta['signed_at'] = dto['signedAt'];
+    if (Object.keys(meta).length > 0)   out.metadata = meta;
+
+    // Remove nulls/empties para não sobrescrever defaults da entity sem necessidade
+    return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== null && v !== undefined));
+  }
+
   async create(tenantId: string, userId: string, dto: CreateContractDto, orgId?: string): Promise<ContractEntity> {
     await this.planLimit.enforce(tenantId, orgId ?? tenantId, 'contracts');
-    const { status: _ignoredStatus, ...dtoRest } = dto as unknown as Record<string, unknown>;
+    const { status: _ignoredStatus, ...rest } = dto as unknown as Record<string, unknown>;
     void _ignoredStatus;
+    const normalized = this.normalizeContractDto(rest);
     const entity = this.repo!.create({
       tenant_id:  tenantId,
-      ...dtoRest,
+      ...normalized,
       status:     ContractStatus.RASCUNHO,
       created_by: userId,
       updated_by: userId,
@@ -91,8 +160,8 @@ export class ContractsService {
       payload: {
         contractId: saved.id,
         tenantId,
-        titulo:     saved.titulo ?? (dtoRest['titulo'] as string) ?? '',
-        tipo:       saved.tipo   ?? (dtoRest['tipo']   as string) ?? '',
+        titulo:     saved.titulo ?? (normalized['titulo'] as string) ?? '',
+        tipo:       saved.tipo   ?? (normalized['tipo']   as string) ?? '',
         artistId:   saved.artista_id ?? null,
         createdBy:  userId,
       },
@@ -114,11 +183,12 @@ export class ContractsService {
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
+    const normalized = this.normalizeContractDto(restFields);
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),
       updated_by: userId,
-      ...restFields,
+      ...normalized,
     };
 
     if (statusChanging) {

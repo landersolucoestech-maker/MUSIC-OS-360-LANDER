@@ -14,3 +14,4 @@ export const licensingService = {
   },
   async listFinancialRules() { return storage.list("regras_financeiras"); },
 };
+

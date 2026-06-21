@@ -7,7 +7,7 @@
  * Format: base64(iv[12] + tag[16] + ciphertext)
  */
 
-import { Injectable } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as crypto from 'crypto';
 
@@ -20,9 +20,12 @@ const PREFIX       = 'enc:v1:';
 export class EncryptionService {
   private readonly key: Buffer;
 
-  constructor(private config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     const hexKey = this.config.get<string>('ENCRYPTION_KEY') ??
       '0000000000000000000000000000000000000000000000000000000000000000';
+    if (!/^[0-9a-fA-F]{64}$/.test(hexKey)) {
+      throw new Error('ENCRYPTION_KEY must contain exactly 64 hexadecimal characters');
+    }
     this.key = Buffer.from(hexKey, 'hex');
   }
 

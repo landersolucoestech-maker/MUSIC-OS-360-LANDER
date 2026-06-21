@@ -12,7 +12,8 @@
 //   * Plataformas sem ID configurado → cards mostram missing-config label
 //   * artistaId null → mensagem de erro
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "./_helpers/render-with-providers";
 type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
 // Estabiliza o ResponsiveContainer dentro dos cards.
@@ -26,9 +27,25 @@ vi.mock("recharts", async () => {
   };
 });
 
-const spotifyMock = vi.fn();
-const youtubeMock = vi.fn();
-const deezerMock = vi.fn();
+const { spotifyMock, youtubeMock, deezerMock } = vi.hoisted(() => ({
+  spotifyMock: vi.fn(),
+  youtubeMock: vi.fn(),
+  deezerMock: vi.fn(),
+}));
+
+vi.mock("@tanstack/react-query", async () => {
+  const actual: any = await vi.importActual("@tanstack/react-query");
+  return {
+    ...actual,
+    useQuery: (options: any) => {
+      const key = Array.isArray(options?.queryKey) ? options.queryKey[0] : "";
+      if (key === "spotify") return spotifyMock();
+      if (key === "youtube") return youtubeMock();
+      if (key === "deezer") return deezerMock();
+      return { data: [], isLoading: false, error: null };
+    },
+  };
+});
 
 vi.mock("@/modules/integrations/hooks/useSpotify", () => ({
   useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
@@ -78,7 +95,7 @@ describe("<ArtistaEvolucaoSection />", () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(emptyQuery());
     deezerMock.mockReturnValue(emptyQuery());
-    render(<ArtistaEvolucaoSection artista={{ id: null }} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={{ id: null }} />);
     expect(
       screen.getByText(/não foi possível carregar a evolução/i),
     ).toBeInTheDocument();
@@ -88,7 +105,7 @@ describe("<ArtistaEvolucaoSection />", () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(emptyQuery());
     deezerMock.mockReturnValue(emptyQuery());
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("section-evolucao")).toBeInTheDocument();
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
@@ -116,7 +133,7 @@ describe("<ArtistaEvolucaoSection />", () => {
       dataQuery([point("2026-04-30T06:20:00Z", 300)]),
     );
 
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
       /estável/i,
@@ -160,14 +177,14 @@ describe("<ArtistaEvolucaoSection />", () => {
       ]),
     );
 
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
       /estável/i,
     );
     // 3 plataformas acompanhadas, todas com variação zero
     expect(screen.getByTestId("text-evolucao-plataformas")).toHaveTextContent(
-      /3 de 3/,
+      /3 de 7/,
     );
     // Saldo total absoluto = 0; o componente formata como "+0"
     expect(screen.getByTestId("text-evolucao-saldo")).toHaveTextContent(
@@ -201,14 +218,14 @@ describe("<ArtistaEvolucaoSection />", () => {
     );
     deezerMock.mockReturnValue(emptyQuery());
 
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
       /em crescimento/i,
     );
     // 2 plataformas com histórico, 1 sem histórico (deezer)
     expect(screen.getByTestId("text-evolucao-plataformas")).toHaveTextContent(
-      /2 de 3/,
+      /2 de 7/,
     );
     // saldo absoluto: +200 (spotify) + +200 (youtube) = +400
     expect(screen.getByTestId("text-evolucao-saldo")).toHaveTextContent(/400/);
@@ -242,13 +259,13 @@ describe("<ArtistaEvolucaoSection />", () => {
       ]),
     );
 
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
       /em queda/i,
     );
     expect(screen.getByTestId("text-evolucao-plataformas")).toHaveTextContent(
-      /3 de 3/,
+      /3 de 7/,
     );
     expect(screen.getByTestId("text-evolucao-saldo")).toHaveTextContent(/350/);
   });
@@ -257,7 +274,7 @@ describe("<ArtistaEvolucaoSection />", () => {
     spotifyMock.mockReturnValue(emptyQuery());
     youtubeMock.mockReturnValue(emptyQuery());
     deezerMock.mockReturnValue(emptyQuery());
-    render(
+      renderWithProviders(
       <ArtistaEvolucaoSection
         artista={{
           id: "art-1",
@@ -288,7 +305,7 @@ describe("<ArtistaEvolucaoSection />", () => {
     youtubeMock.mockReturnValue(loadingQuery());
     deezerMock.mockReturnValue(loadingQuery());
 
-    render(<ArtistaEvolucaoSection artista={fullArtista} />);
+    renderWithProviders(<ArtistaEvolucaoSection artista={fullArtista} />);
 
     expect(screen.getByTestId("text-evolucao-status")).toHaveTextContent(
       /em crescimento/i,
@@ -304,3 +321,4 @@ describe("<ArtistaEvolucaoSection />", () => {
     ).not.toBeInTheDocument();
   });
 });
+

@@ -91,3 +91,4 @@ export function useGoogleAdsCampaigns() {
     staleTime: 60_000,
   });
 }
+

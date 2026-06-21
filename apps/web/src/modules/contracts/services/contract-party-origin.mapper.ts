@@ -26,3 +26,4 @@ export const getContractPartyOrigin = (
 
   return "NONE";
 };
+

@@ -22,7 +22,7 @@ import { SupabaseAuthColumnNames20260520000004 }   from '../src/database/migrati
 import { RLSPolicies20260520000020 }               from '../src/database/migrations/20260520000020_RLSPolicies';
 import { PerformanceIndexes20260521000030 }        from '../src/database/migrations/20260521000030_PerformanceIndexes';
 import { ConversationsAndForms20260521000040 }     from '../src/database/migrations/20260521000040_ConversationsAndForms';
-import { CrmPipelinesAnalytics20260521000050 }     from '../src/database/migrations/20260521000050_CrmPipelinesAnalytics';
+import { LeadsContactsOperationalRefactor20260528000002 } from '../src/database/migrations/20260528000002_LeadsContactsOperationalRefactor';
 
 const migrations: { name: string; instance: MigrationInterface }[] = [
   { name: 'InitialSchema20240101000000',             instance: new InitialSchema20240101000000() },
@@ -34,7 +34,7 @@ const migrations: { name: string; instance: MigrationInterface }[] = [
   { name: 'RLSPolicies20260520000020',               instance: new RLSPolicies20260520000020() },
   { name: 'PerformanceIndexes20260521000030',        instance: new PerformanceIndexes20260521000030() },
   { name: 'ConversationsAndForms20260521000040',     instance: new ConversationsAndForms20260521000040() },
-  { name: 'CrmPipelinesAnalytics20260521000050',     instance: new CrmPipelinesAnalytics20260521000050() },
+  { name: 'LeadsContactsOperationalRefactor20260528000002', instance: new LeadsContactsOperationalRefactor20260528000002() },
 ];
 
 // Mock QueryRunner that captures SQL instead of executing it

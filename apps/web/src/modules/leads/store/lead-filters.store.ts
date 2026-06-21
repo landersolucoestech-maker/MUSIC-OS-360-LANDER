@@ -1,0 +1,23 @@
+import { create } from "zustand";
+import type { LeadFiltersState } from "../types";
+
+export const defaultLeadFilters: LeadFiltersState = {
+  search: "",
+  tipoServico: "all",
+  statusLead: "all",
+  responsavel: "all",
+  origemLead: "all",
+  temperatura: "all",
+};
+
+type LeadFiltersStore = {
+  filters: LeadFiltersState;
+  setFilters: (filters: Partial<LeadFiltersState>) => void;
+  resetFilters: () => void;
+};
+
+export const useLeadFiltersStore = create<LeadFiltersStore>((set) => ({
+  filters: defaultLeadFilters,
+  setFilters: (filters) => set((state) => ({ filters: { ...state.filters, ...filters } })),
+  resetFilters: () => set({ filters: defaultLeadFilters }),
+}));

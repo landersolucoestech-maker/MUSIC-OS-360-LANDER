@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { AppSidebar } from "./layout/AppSidebar";
 import { cn } from "@/shared/lib/utils";
+import { compareTableValues, isActionsColumn } from "@/shared/lib/table-sort";
 import { useAuth } from "@/app/providers/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Button } from "@/shared/ui/button";
@@ -25,10 +26,7 @@ import {
   Settings,
   LogOut,
   CheckCheck,
-  Sun,
-  Moon,
 } from "lucide-react";
-import { useTheme } from "@/app/providers/ThemeContext";
 import { useSyncTenantFromJWT } from "@/app/providers/TenantContext";
 import { TrialBanner } from "@/shared/components/TrialBanner";
 
@@ -55,6 +53,55 @@ const MOCK_NOTIFICATIONS = [
   { id: 3, title: "Pagamento recebido", body: "R$ 12.400,00 creditado", time: "6h atrás", read: false },
 ];
 
+function normalizeNativeTableSortIndicators(table: HTMLTableElement, activeTh: HTMLTableCellElement, direction: "asc" | "desc") {
+  table.querySelectorAll("th[data-native-sortable='true']").forEach((header) => {
+    const th = header as HTMLTableCellElement;
+    const indicator = th.querySelector<HTMLElement>("[data-sort-indicator='true']");
+    if (th === activeTh) {
+      th.dataset.sortDirection = direction;
+      if (indicator) indicator.textContent = direction === "asc" ? "↑" : "↓";
+      return;
+    }
+    delete th.dataset.sortDirection;
+    if (indicator) indicator.textContent = "↕";
+  });
+}
+
+function prepareNativeTableHead(th: HTMLTableCellElement) {
+  if (th.dataset.nativeSortable === "true") return;
+  const label = th.textContent?.trim() ?? "";
+  if (!label || isActionsColumn(label) || th.querySelector('[role="checkbox"], input, button, [data-no-sort="true"]')) return;
+
+  th.dataset.nativeSortable = "true";
+  th.classList.add("cursor-pointer", "select-none");
+  if (!th.querySelector("[data-sort-indicator='true']")) {
+    const indicator = document.createElement("span");
+    indicator.dataset.sortIndicator = "true";
+    indicator.textContent = "↕";
+    indicator.className = "ml-1.5 inline-block text-[11px] opacity-55";
+    th.appendChild(indicator);
+  }
+}
+
+function sortNativeTable(table: HTMLTableElement, th: HTMLTableCellElement) {
+  const tbody = table.tBodies[0];
+  if (!tbody) return;
+
+  const index = th.cellIndex;
+  const current = th.dataset.sortDirection;
+  const direction: "asc" | "desc" = current === "asc" ? "desc" : "asc";
+  const rows = Array.from(tbody.rows);
+
+  rows.sort((a, b) => {
+    const aValue = a.cells[index]?.textContent?.trim() ?? "";
+    const bValue = b.cells[index]?.textContent?.trim() ?? "";
+    return compareTableValues(aValue, bValue) * (direction === "asc" ? 1 : -1);
+  });
+
+  rows.forEach((row) => tbody.appendChild(row));
+  normalizeNativeTableSortIndicators(table, th, direction);
+}
+
 function TopbarUserMenu() {
   const { user, signOut } = useAuth();
 
@@ -78,7 +125,7 @@ function TopbarUserMenu() {
           className={cn(
             "flex items-center gap-2 rounded-md px-2 py-1.5",
             "text-foreground/80 transition-colors duration-100",
-            "hover:bg-accent hover:text-foreground",
+            "hover:bg-muted hover:text-foreground",
             "border border-transparent hover:border-border/50",
             "focus:outline-none",
           )}
@@ -90,10 +137,10 @@ function TopbarUserMenu() {
             </AvatarFallback>
           </Avatar>
           <div className="text-left hidden sm:block">
-            <p className="text-[12.5px] font-semibold leading-none text-foreground">
+            <p className="text-[12px] font-semibold leading-none text-foreground">
               {userFullName}
             </p>
-            <p className="text-[10.5px] text-muted-foreground leading-none mt-[3px]">
+            <p className="text-[10px] text-muted-foreground leading-none mt-[3px]">
               {roleLabel}
             </p>
           </div>
@@ -102,7 +149,7 @@ function TopbarUserMenu() {
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56">
         <div className="px-2 py-2">
-          <p className="text-[12.5px] font-semibold">{userFullName}</p>
+          <p className="text-[12px] font-semibold">{userFullName}</p>
           <p className="text-[11px] text-muted-foreground truncate">{userEmail}</p>
         </div>
         <DropdownMenuSeparator />
@@ -128,22 +175,6 @@ function TopbarUserMenu() {
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
-  );
-}
-
-function ThemeToggleButton() {
-  const { theme, toggleTheme } = useTheme();
-  return (
-    <Button
-      variant="ghost"
-      size="icon"
-      data-testid="button-topbar-theme-toggle"
-      className="h-8 w-8 text-muted-foreground hover:text-foreground"
-      title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
-      onClick={toggleTheme}
-    >
-      {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-    </Button>
   );
 }
 
@@ -198,9 +229,9 @@ function NotificationsPopover() {
               )}
               {n.read && <span className="mt-1.5 h-1.5 w-1.5 shrink-0" />}
               <div className="flex-1 min-w-0">
-                <p className="text-[12.5px] font-medium leading-none">{n.title}</p>
-                <p className="text-[11.5px] text-muted-foreground mt-0.5 truncate">{n.body}</p>
-                <p className="text-[10.5px] text-muted-foreground/60 mt-1">{n.time}</p>
+                <p className="text-[12px] font-medium leading-none">{n.title}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 truncate">{n.body}</p>
+                <p className="text-[10px] text-muted-foreground/60 mt-1">{n.time}</p>
               </div>
             </div>
           ))}
@@ -226,6 +257,26 @@ export function MainLayout({
   const userEmail = user?.email ?? "";
   useSyncTenantFromJWT(userEmail || undefined);
 
+  useEffect(() => {
+    if (window.location.pathname.includes("/artistas")) return;
+
+    const tables = Array.from(document.querySelectorAll<HTMLTableElement>("table:not([data-shared-table='true'])"));
+    tables.forEach((table) => {
+      Array.from(table.tHead?.rows[0]?.cells ?? []).forEach(prepareNativeTableHead);
+    });
+
+    const handleClick = (event: MouseEvent) => {
+      const th = (event.target as HTMLElement | null)?.closest("th[data-native-sortable='true']");
+      if (!th) return;
+      const table = th.closest("table");
+      if (!table || table.dataset.sharedTable === "true") return;
+      sortNativeTable(table, th as HTMLTableCellElement);
+    };
+
+    document.addEventListener("click", handleClick);
+    return () => document.removeEventListener("click", handleClick);
+  }, [children]);
+
   return (
     <div className="flex min-h-screen w-full bg-background">
       <AppSidebar />
@@ -235,7 +286,7 @@ export function MainLayout({
         <header className={cn(
           "flex h-[52px] items-center gap-3 shrink-0 px-4",
           "border-b border-border/70",
-          "bg-background/95 backdrop-blur-sm",
+          "bg-background/95 ",
           "sticky top-0 z-[200]",
         )}>
           {/* Left: page title/description */}
@@ -243,12 +294,12 @@ export function MainLayout({
             {(title || description) ? (
               <div className="min-w-0 flex flex-col justify-center">
                 {title && (
-                  <h1 className="text-[13.5px] font-semibold tracking-tight text-foreground leading-none">
+                  <h1 className="text-[13px] font-semibold tracking-tight text-foreground leading-none">
                     {title}
                   </h1>
                 )}
                 {description && (
-                  <p className="text-[11.5px] text-muted-foreground leading-none mt-1 truncate">
+                  <p className="text-[11px] text-muted-foreground leading-none mt-1 truncate">
                     {description}
                   </p>
                 )}
@@ -264,8 +315,6 @@ export function MainLayout({
                 <div className="w-px h-5 bg-border/60 mx-1" />
               </>
             )}
-
-            <ThemeToggleButton />
 
             <NotificationsPopover />
 
@@ -291,7 +340,7 @@ export function MainLayout({
 
         {/* ── Content ────────────────────────────────────────────────────── */}
         <main className={cn(
-          "flex-1 overflow-y-auto",
+          "flex-1 overflow-y-auto bg-muted/30",
           !noPadding && "px-5 py-5 md:px-6 md:py-6",
         )}>
           {children}

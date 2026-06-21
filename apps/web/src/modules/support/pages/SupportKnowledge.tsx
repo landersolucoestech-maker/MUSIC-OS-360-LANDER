@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import DOMPurify from "dompurify";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Button } from "@/shared/ui/button";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
@@ -10,7 +9,7 @@ import {
   CommandInput, CommandItem, CommandList,
 } from "@/shared/ui/command";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_KNOWLEDGE_CATEGORIES } from "../data/mockSupport";
+import { SUPPORT_KNOWLEDGE_CATEGORIES as MOCK_KNOWLEDGE_CATEGORIES } from "../data/support-source";
 import { useKnowledgeArticles } from "../hooks/useSupport";
 import type { KnowledgeArticle } from "../types";
 import {
@@ -36,7 +35,7 @@ function ArticleCard({ article, onClick }: { article: KnowledgeArticle; onClick:
         {article.title}
       </p>
       <p className="text-[12px] text-muted-foreground line-clamp-2 mb-3">{article.summary}</p>
-      <div className="flex items-center gap-3 text-[10.5px] text-muted-foreground/60">
+      <div className="flex items-center gap-3 text-[10px] text-muted-foreground/60">
         <span className="flex items-center gap-1"><Eye className="h-3 w-3" />{article.views}</span>
         <span className="flex items-center gap-1"><ThumbsUp className="h-3 w-3" />{article.helpful_count}</span>
         <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{article.read_time} min</span>
@@ -53,12 +52,12 @@ function renderMarkdown(md: string): string {
     .replace(/^# (.+)$/gm, '<h1 class="text-[15px] font-bold text-foreground mt-5 mb-2">$1</h1>')
     .replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold text-foreground">$1</strong>')
     .replace(/\*(.+?)\*/g, '<em class="italic">$1</em>')
-    .replace(/`(.+?)`/g, '<code class="font-mono text-[11.5px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">$1</code>')
-    .replace(/^- (.+)$/gm, '<li class="flex gap-2 text-[12.5px] text-foreground/80 leading-relaxed"><span class="text-primary mt-1">•</span><span>$1</span></li>')
-    .replace(/^(\d+)\. (.+)$/gm, '<li class="flex gap-2 text-[12.5px] text-foreground/80 leading-relaxed"><span class="text-primary font-mono text-[11px] mt-0.5">$1.</span><span>$2</span></li>')
-    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-primary/40 pl-3 text-[12.5px] text-muted-foreground italic my-2">$1</blockquote>')
+    .replace(/`(.+?)`/g, '<code class="font-sans text-[11px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">$1</code>')
+    .replace(/^- (.+)$/gm, '<li class="flex gap-2 text-[12px] text-foreground/80 leading-relaxed"><span class="text-primary mt-1">•</span><span>$1</span></li>')
+    .replace(/^(\d+)\. (.+)$/gm, '<li class="flex gap-2 text-[12px] text-foreground/80 leading-relaxed"><span class="text-primary font-sans text-[11px] mt-0.5">$1.</span><span>$2</span></li>')
+    .replace(/^> (.+)$/gm, '<blockquote class="border-l-2 border-primary/40 pl-3 text-[12px] text-muted-foreground italic my-2">$1</blockquote>')
     .replace(/^---$/gm, '<hr class="border-border/60 my-3" />')
-    .replace(/\n\n/g, '</p><p class="text-[12.5px] text-foreground/80 leading-relaxed">')
+    .replace(/\n\n/g, '</p><p class="text-[12px] text-foreground/80 leading-relaxed">')
     .replace(/\n/g, '<br />');
 }
 
@@ -80,7 +79,7 @@ function ArticleModal({ article, onClose }: { article: KnowledgeArticle; onClose
             className="rounded-xl border border-border/60 bg-muted/30 p-4 space-y-1"
             dangerouslySetInnerHTML={{
               __html: DOMPurify.sanitize(
-                `<p class="text-[12.5px] text-foreground/80 leading-relaxed">${renderMarkdown(article.content)}</p>`,
+                `<p class="text-[12px] text-foreground/80 leading-relaxed">${renderMarkdown(article.content)}</p>`,
                 { USE_PROFILES: { html: true } }
               ),
             }}
@@ -124,6 +123,7 @@ export default function SupportKnowledge() {
   }, [incrementViews]);
 
   const filtered = articles.filter((a) => {
+    if (a.published === false) return false; // ocultar conteúdos despublicados
     if (selectedCategory !== "all" && a.category_id !== selectedCategory) return false;
     return true;
   });
@@ -135,28 +135,12 @@ export default function SupportKnowledge() {
     <MainLayout
       title="Base de Conhecimento"
       description="Artigos, tutoriais e guias"
-      actions={
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs gap-2 text-muted-foreground border-border/60 min-w-[160px] justify-start"
-          onClick={() => setCommandOpen(true)}
-          data-testid="button-open-command"
-        >
-          <Search className="h-3.5 w-3.5" />
-          Busca rápida...
-          <kbd className="ml-auto text-[9px] font-mono bg-muted px-1 py-0.5 rounded border border-border/60">
-            ⌘K
-          </kbd>
-        </Button>
-      }
     >
       <div className="space-y-6 animate-fade-in">
 
         {/* Hero banner */}
         <div className={cn(
-          "relative overflow-hidden rounded-2xl border border-primary/20",
-          "bg-gradient-to-br from-primary/10 via-primary/5 to-transparent p-7",
+          "relative overflow-hidden rounded-lg border border-border bg-card p-7",
         )}>
           <div className="relative max-w-xl mx-auto text-center">
             <BookOpen className="h-8 w-8 text-primary mx-auto mb-3" />
@@ -175,7 +159,7 @@ export default function SupportKnowledge() {
             >
               <Search className="h-4 w-4 shrink-0" />
               <span className="flex-1 text-left">Buscar artigos, guias, tutoriais...</span>
-              <kbd className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded border border-border/60 shrink-0">
+              <kbd className="text-[10px] font-sans bg-muted px-1.5 py-0.5 rounded border border-border/60 shrink-0">
                 Ctrl+K
               </kbd>
             </button>
@@ -225,7 +209,7 @@ export default function SupportKnowledge() {
               <h3 className="text-[13px] font-semibold text-foreground">Em destaque</h3>
             </div>
             <div className="grid sm:grid-cols-2 gap-3">
-              {articles.filter((a) => a.featured).map((article) => (
+              {articles.filter((a) => a.featured && a.published !== false).map((article) => (
                 <ArticleCard key={article.id} article={article} onClick={() => openArticle(article)} />
               ))}
             </div>
@@ -286,7 +270,7 @@ export default function SupportKnowledge() {
                       <p className="text-[13px] font-medium truncate">{a.title}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{a.summary}</p>
                     </div>
-                    <span className="text-[10.5px] text-muted-foreground ml-2 shrink-0">
+                    <span className="text-[10px] text-muted-foreground ml-2 shrink-0">
                       {a.read_time} min
                     </span>
                   </CommandItem>

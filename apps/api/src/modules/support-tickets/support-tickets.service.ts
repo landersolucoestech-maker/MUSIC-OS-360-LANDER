@@ -75,7 +75,25 @@ export class SupportTicketsService {
       ticket_number: ticketNumber,
       created_by:    userId,
     } as Partial<SupportTicketEntity>);
-    return this.repo!.save(entity as SupportTicketEntity);
+    const saved = await this.repo!.save(entity as SupportTicketEntity);
+
+    // Dispara automações nativas internas (ex.: support-triage). Os handlers são
+    // assíncronos e à prova de falha — nunca revertem a criação do ticket.
+    this.events.emitTyped(DOMAIN_EVENTS.SUPPORT_TICKET_CREATED, {
+      tenantId,
+      userId,
+      aggregateType: 'support_ticket',
+      aggregateId:   saved.id,
+      payload: {
+        tenantId,
+        ticketId:  saved.id,
+        createdBy: userId,
+        category:  saved.category,
+        priority:  saved.priority,
+      },
+    });
+
+    return saved;
   }
 
   async update(

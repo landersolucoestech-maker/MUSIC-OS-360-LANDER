@@ -1,13 +1,17 @@
 import { useState, useMemo } from "react";
 import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { MetricCard } from "@/shared/components/MetricCard";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Package, Wrench, CheckCircle, Upload, Download, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { Package, Wrench, CheckCircle, Upload, Download, Plus, Search, Monitor, Loader2, MoreHorizontal, Eye, Pencil, Trash2, MapPin, User, DollarSign } from "lucide-react";
+import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -104,6 +108,8 @@ export default function Inventario() {
 
   const hasActiveFilters = searchTerm !== "" || categoryFilter !== "all-category" || statusFilter !== "all-status" || localFilter !== "all-local";
 
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredEquipamentos, 10);
+
   const handleClearFilters = () => {
     setSearchTerm("");
     setCategoryFilter("all-category");
@@ -123,6 +129,7 @@ export default function Inventario() {
     emUso: inventario.filter(e => e.status === "em_uso").length,
     disponiveis: inventario.filter(e => e.status === "disponivel").length,
     emManutencao: inventario.filter(e => e.status === "manutencao").length,
+    valorTotal: inventario.reduce((sum, item) => sum + (Number(item.valor_unitario) || 0) * (Number(item.quantidade) || 1), 0),
   }), [inventario]);
 
   if (isLoading) {
@@ -138,7 +145,7 @@ export default function Inventario() {
   const headerActions = (
     <>
       <RequirePermission module="inventory" action="write">
-        <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Item</Button>
+        <Button size="sm" className="h-8 gap-1.5 text-xs" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-3.5 w-3.5" />Novo Item</Button>
       </RequirePermission>
     </>
   );
@@ -147,61 +154,69 @@ export default function Inventario() {
     <FeatureGate feature="moduleInventory" featureName="Estoque & Inventário">
     <MainLayout title="Inventário" description="Controle de equipamentos e patrimônio" actions={headerActions}>
       <div className="space-y-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Total de Itens</span><Package className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.total}</span></div><p className="text-xs text-muted-foreground mt-1">equipamentos cadastrados</p></CardContent></Card>
-          <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Em Uso</span><Package className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.emUso}</span></div><p className="text-xs text-muted-foreground mt-1">em operação</p></CardContent></Card>
-          <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Em Manutenção</span><Wrench className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.emManutencao}</span></div><p className="text-xs text-muted-foreground mt-1">equipamentos</p></CardContent></Card>
-          <Card className="bg-card border-border"><CardContent className="p-4"><div className="flex items-center justify-between"><span className="text-sm text-muted-foreground">Disponíveis</span><CheckCircle className="h-4 w-4 text-muted-foreground" /></div><div className="mt-2 flex items-baseline justify-between"><span className="text-2xl font-bold text-foreground">{metricas.disponiveis}</span></div><p className="text-xs text-muted-foreground mt-1">prontos para uso</p></CardContent></Card>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+          <MetricCard title="Total de Itens" value={metricas.total} description="equipamentos cadastrados" icon={Package} accent="primary" />
+          <MetricCard title="Em Uso" value={metricas.emUso} description="em operação" icon={Package} accent="primary" />
+          <MetricCard title="Em Manutenção" value={metricas.emManutencao} description="equipamentos" icon={Wrench} accent="warning" />
+          <MetricCard title="Disponíveis" value={metricas.disponiveis} description="prontos para uso" icon={CheckCircle} accent="success" />
+          <MetricCard title="Valor Total" value={formatCurrency(metricas.valorTotal)} description="patrimônio total" icon={DollarSign} accent="primary" />
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar equipamentos por nome, categoria ou local..." className="pl-10 bg-card border-border" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
-          <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="w-[170px] bg-card border-border"><SelectValue placeholder="Todos Categoria" /></SelectTrigger><SelectContent><SelectItem value="all-category">Todos Categoria</SelectItem><SelectItem value="áudio">Áudio</SelectItem><SelectItem value="vídeo">Vídeo</SelectItem><SelectItem value="computador">Computador</SelectItem><SelectItem value="iluminação">Iluminação</SelectItem><SelectItem value="estrutura">Estrutura</SelectItem></SelectContent></Select>
-          <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-[140px] bg-card border-border"><SelectValue placeholder="Todos Status" /></SelectTrigger><SelectContent><SelectItem value="all-status">Todos Status</SelectItem><SelectItem value="em-uso">Em Uso</SelectItem><SelectItem value="disponivel">Disponível</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem></SelectContent></Select>
-          <Select value={localFilter} onValueChange={setLocalFilter}><SelectTrigger className="w-[140px] bg-card border-border"><SelectValue placeholder="Todos Local" /></SelectTrigger><SelectContent><SelectItem value="all-local">Todos Local</SelectItem><SelectItem value="estudio1">Estúdio 1</SelectItem><SelectItem value="estudio2">Estúdio 2</SelectItem><SelectItem value="escritorio">Escritório</SelectItem><SelectItem value="estoque">Estoque</SelectItem></SelectContent></Select>
+        <div className="flex items-center gap-4 rounded-lg bg-muted/30 p-3">
+          <div className="relative flex-1"><Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" /><Input placeholder="Buscar equipamentos por nome, categoria ou local..." className="pl-10 h-8 text-sm bg-card border-border" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} /></div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}><SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border"><SelectValue placeholder="Todos Categoria" /></SelectTrigger><SelectContent><SelectItem value="all-category">Todos Categoria</SelectItem><SelectItem value="áudio">Áudio</SelectItem><SelectItem value="vídeo">Vídeo</SelectItem><SelectItem value="computador">Computador</SelectItem><SelectItem value="iluminação">Iluminação</SelectItem><SelectItem value="estrutura">Estrutura</SelectItem></SelectContent></Select>
+          <Select value={statusFilter} onValueChange={setStatusFilter}><SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border"><SelectValue placeholder="Todos Status" /></SelectTrigger><SelectContent><SelectItem value="all-status">Todos Status</SelectItem><SelectItem value="em-uso">Em Uso</SelectItem><SelectItem value="disponivel">Disponível</SelectItem><SelectItem value="manutencao">Manutenção</SelectItem></SelectContent></Select>
+          <Select value={localFilter} onValueChange={setLocalFilter}><SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border"><SelectValue placeholder="Todos Local" /></SelectTrigger><SelectContent><SelectItem value="all-local">Todos Local</SelectItem><SelectItem value="estudio1">Estúdio 1</SelectItem><SelectItem value="estudio2">Estúdio 2</SelectItem><SelectItem value="escritorio">Escritório</SelectItem><SelectItem value="estoque">Estoque</SelectItem></SelectContent></Select>
           {hasActiveFilters && <Button variant="outline" onClick={handleClearFilters}>Limpar</Button>}
         </div>
 
         <Card className="bg-card border-border">
-          <CardHeader className="flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-lg">Lista de Equipamentos</CardTitle>
-              <CardDescription>Inventário completo de equipamentos e instrumentos</CardDescription>
-            </div>
-            {selectedIds.length > 0 && (
-              <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                <Trash2 className="h-3.5 w-3.5" />
-                Excluir ({selectedIds.length})
-              </Button>
-            )}
-          </CardHeader>
           <CardContent className="pt-0">
+            <ListSectionHeader
+              title="Lista de Equipamentos"
+              count={filteredEquipamentos.length}
+              description="Inventário completo de equipamentos e instrumentos"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Checkbox
+                    checked={selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    data-testid="checkbox-select-all"
+                    aria-label="Selecionar todos"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.length > 0 ? `${selectedIds.length} item(ns) selecionado(s)` : "Selecionar todos"}
+                  </span>
+                  {selectedIds.length > 0 && (
+                    <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                      <Trash2 className="h-3.5 w-3.5" />
+                      Excluir ({selectedIds.length})
+                    </Button>
+                  )}
+                </div>
+              }
+            />
             {filteredEquipamentos.length > 0 ? (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[36px]">
-                      <Checkbox
-                        checked={selectedIds.length === filteredEquipamentos.length && filteredEquipamentos.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        data-testid="checkbox-select-all"
-                        aria-label="Selecionar todos"
-                      />
-                    </TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Categoria</TableHead>
                     <TableHead>Setor</TableHead>
-                    <TableHead className="text-center">Qtd.</TableHead>
                     <TableHead>Localização</TableHead>
                     <TableHead>Responsável</TableHead>
-                    <TableHead className="text-right">Valor Unit.</TableHead>
-                    <TableHead>Entrada</TableHead>
                     <TableHead>Status</TableHead>
+                    <TableHead className="text-center">Qtd.</TableHead>
+                    <TableHead className="text-right">Valor Unit.</TableHead>
+                    <TableHead className="text-right">Valor Total</TableHead>
+                    <TableHead>Entrada</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEquipamentos.map((item: any) => (
+                  {pageItems.map((item: any) => (
                     <TableRow key={item.id} data-testid={`card-inventario-${item.id}`} className={selectedIds.includes(item.id) ? "bg-muted/20" : ""}>
                       <TableCell>
                         <Checkbox
@@ -218,12 +233,15 @@ export default function Inventario() {
                       <TableCell>
                         {item.setor ? <Badge variant="secondary" className="text-xs">{item.setor}</Badge> : "—"}
                       </TableCell>
-                      <TableCell className="text-center">{item.quantidade || 1}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{item.localizacao || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{item.responsavel || "—"}</TableCell>
-                      <TableCell className="text-right text-success font-medium">{item.valor_unitario ? formatCurrency(item.valor_unitario) : "—"}</TableCell>
-                      <TableCell className="text-muted-foreground text-sm">{item.dataEntrada ? formatDate(item.dataEntrada) : "—"}</TableCell>
                       <TableCell><StatusBadge status={item.status} /></TableCell>
+                      <TableCell className="text-center">{item.quantidade || 1}</TableCell>
+                      <TableCell className={`text-right font-medium ${getMonetarySemanticClass("neutral")}`}>{item.valor_unitario ? formatCurrency(item.valor_unitario) : "—"}</TableCell>
+                      <TableCell className={`text-right font-medium ${getMonetarySemanticClass("neutral")}`}>
+                        {item.valor_unitario ? formatCurrency((Number(item.valor_unitario) || 0) * (Number(item.quantidade) || 1)) : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">{item.dataEntrada ? formatDate(item.dataEntrada) : "—"}</TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -248,6 +266,15 @@ export default function Inventario() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="equipamentos"
+              />
+              </>
             ) : (
               <EmptyState
                 icon={Package}

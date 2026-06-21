@@ -117,3 +117,4 @@ export function useDeezerArtistMetrics() {
 export function useDeezerTrackMetrics() {
   return { data: null, isLoading: false, fetch: (_isrc: string) => disabledIntegration("Deezer") };
 }
+

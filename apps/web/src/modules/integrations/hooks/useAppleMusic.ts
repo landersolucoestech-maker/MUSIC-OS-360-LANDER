@@ -86,3 +86,4 @@ export function useAppleMusicArtistMetrics(artistId?: string, storefront = "br")
 export function useAppleMusicShazamMetrics() {
   return { data: null, isLoading: false, fetch: (_isrc: string) => {} };
 }
+

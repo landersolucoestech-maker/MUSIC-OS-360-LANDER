@@ -17,10 +17,17 @@ node_modules/
 .agents/
 .config/
 
-# Environment variables
+# Environment files and secret backups
 .env
-.env.local
-.env.*.local
+.env.*
+!.env.example
+!.env.*.example
+.env.backup*
+.env.*.backup
+*.env.bak
+*.env.backup
+*.env.secret
+*.env.secrets
 
 # Logs
 *.log

@@ -8,16 +8,25 @@ import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent } from "@/shared/ui/card";
 import {
   Share2, User, Percent, ExternalLink, FileText,
-  Clock, History, ArrowDownLeft, ArrowUpRight,
+  Clock, History, Building, Calendar, Disc3,
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
-import type { ShareHistoricoEntry } from "../types";
+import type { Share, ShareHistoricoEntry } from "../types";
 import { formatDate } from "@/shared/lib/format-utils";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
+import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+import {
+  resolveShareType,
+  shareTypeLabel,
+  shareStatusBadge,
+  funcaoLabel,
+} from "@/modules/releases/lib/share-format";
 
 interface ShareViewModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  share?: any | null;
+  share?: Share | null;
 }
 
 function Field({
@@ -42,30 +51,47 @@ function Field({
   );
 }
 
-const FUNCAO_LABELS: Record<string, string> = {
-  compositor: "Compositor / Autor",
-  interprete: "Intérprete",
-  produtor: "Produtor",
-  editora: "Editora",
-  gravadora: "Gravadora",
-  empresario: "Empresário",
-  outro: "Outro",
-};
-
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "outline" | "destructive" }> = {
-  pendente:  { label: "Pendente",  variant: "outline" },
-  parcial:   { label: "Parcial",   variant: "secondary" },
-  recebido:  { label: "Recebido",  variant: "default" },
-  enviado:   { label: "Enviado",   variant: "default" },
-  cancelado: { label: "Cancelado", variant: "destructive" },
-};
-
 export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProps) {
+  const { artistas } = useArtistas();
+  const { lancamentos } = useLancamentos();
+  const { obras } = useObras();
+
   if (!share) return null;
 
-  const historico: ShareHistoricoEntry[] = (share.historico as ShareHistoricoEntry[]) ?? [];
-  const statusConf = STATUS_CONFIG[share.status] ?? { label: share.status ?? "—", variant: "outline" as const };
-  const isAEnviar = share.direcao === "a_enviar";
+  const s = share as Share & Record<string, unknown>;
+  const str = (k: string): string => (typeof s[k] === "string" ? (s[k] as string) : "");
+  const historico: ShareHistoricoEntry[] = Array.isArray(share.historico) ? share.historico : [];
+  const shareType = resolveShareType(s);
+  const isInternal = shareType === "internal_release";
+
+  /**
+   * Título da obra/lançamento/música — replica EXATAMENTE a origem da tabela
+   * (obra_id → lançamento_id → nome_musica), com fallbacks seguros adicionais.
+   */
+  const pickShareTitle = (): string | null => {
+    const obraTitulo = obras.find((o) => o.id === str("obra_id"))?.titulo;
+    const lancTitulo = lancamentos.find((l) => l.id === str("lancamento_id"))?.titulo;
+    return (
+      obraTitulo ||
+      lancTitulo ||
+      str("nome_musica") ||
+      str("titulo_obra") ||
+      str("trackTitle") ||
+      str("musicTitle") ||
+      str("songTitle") ||
+      str("title") ||
+      null
+    );
+  };
+  const releaseTitulo = pickShareTitle();
+
+  // Participante: artista vinculado (artista_id) → detentor (igual à coluna Detentor da tabela)
+  const participanteNome = artistas.find((a) => a.id === (share.artista_id ?? ""))?.nome_artistico ?? str("detentor") ?? null;
+  const artistaNome = artistas.find((a) => a.id === (share.artista_id ?? ""))?.nome_artistico ?? null;
+  const vinculoNome = artistas.find((a) => a.id === str("artista_projeto_id") || a.id === (share.artista_id ?? ""))?.nome_artistico ?? null;
+
+  const direcaoLabel = str("direcao") === "a_receber" ? "A Receber" : str("direcao") === "a_enviar" ? "A Enviar" : null;
+  const registradoEm = str("created_at") ? formatDate(str("created_at")) : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -75,73 +101,66 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
             <Share2 className="h-5 w-5 text-primary" />
             Detalhe do Share
             {share.versao && (
-              <Badge variant="outline" className="text-[10px] font-mono ml-1">v{share.versao}</Badge>
+              <Badge variant="outline" className="text-[10px] font-sans ml-1">v{share.versao}</Badge>
             )}
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-5">
 
+          {/* ── Tipo ─────────────────────────────────────────────────────────── */}
+          <div>
+            <Badge variant={isInternal ? "info" : "success"}>{shareTypeLabel(shareType)}</Badge>
+          </div>
+
           {/* ── Dados principais ────────────────────────────────────────────── */}
           <Card className="bg-muted/30">
             <CardContent className="p-4 grid grid-cols-2 gap-4 sm:grid-cols-3">
-
-              <Field
-                label="Nome da Música"
-                value={share.nome_musica ?? share.titulo_obra ?? null}
-                icon={FileText}
-              />
-
-              <Field
-                label="Detentor / Beneficiário"
-                value={share.detentor}
-                icon={User}
-              />
-
-              <Field
-                label="Direção"
-                value={
-                  share.direcao === "a_receber" ? (
-                    <span className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 font-medium">
-                      <ArrowDownLeft className="h-3.5 w-3.5" /> A Receber
-                    </span>
-                  ) : share.direcao === "a_enviar" ? (
-                    <span className="inline-flex items-center gap-1 text-orange-600 dark:text-orange-400 font-medium">
-                      <ArrowUpRight className="h-3.5 w-3.5" /> A Enviar
-                    </span>
-                  ) : null
-                }
-              />
-
-              {isAEnviar && (
-                <Field
-                  label="Função"
-                  value={share.tipo ? (FUNCAO_LABELS[share.tipo] ?? share.tipo) : null}
-                  icon={Share2}
-                />
+              {isInternal ? (
+                <>
+                  <Field label="Lançamento / Música" value={releaseTitulo} icon={Disc3} />
+                  {artistaNome && <Field label="Artista" value={artistaNome} icon={User} />}
+                  <Field label="Participante" value={participanteNome} icon={User} />
+                  <Field label="Destinatário" value={str("destinatario") || null} icon={User} />
+                  <Field label="Função" value={s["tipo"] ? funcaoLabel(String(s["tipo"])) : null} icon={Share2} />
+                  <Field label="Direção" value={direcaoLabel} />
+                </>
+              ) : (
+                <>
+                  <Field label="Música externa" value={str("nome_musica") || null} icon={FileText} />
+                  <Field label="Artista externo" value={str("artista_externo") || null} icon={User} />
+                  <Field label="Vínculo (empresa)" value={vinculoNome} icon={Building} />
+                  <Field label="Pagador" value={str("pagador") || null} icon={User} />
+                  <Field label="Contato do pagador" value={str("pagador_contato") || null} />
+                  <Field label="Origem do acordo" value={str("origem_acordo") || null} />
+                  <Field label="Data prevista" value={str("data_prevista") ? formatDate(str("data_prevista")) : null} icon={Calendar} />
+                  {str("documentos") && (
+                    <Field
+                      label="Documentos"
+                      value={
+                        <a href={str("documentos")} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-primary hover:underline">
+                          Abrir <ExternalLink className="h-3 w-3" />
+                        </a>
+                      }
+                    />
+                  )}
+                </>
               )}
 
               <Field
                 label="% Share"
                 value={
                   share.percentual != null ? (
-                    <span className="font-mono text-primary font-semibold flex items-center gap-1">
+                    <span className="font-sans text-primary font-semibold flex items-center gap-1">
                       <Percent className="h-3 w-3" />
                       {share.percentual}%
                     </span>
                   ) : null
                 }
               />
-
-              <Field
-                label="Status"
-                value={
-                  <Badge variant={statusConf.variant} className="text-xs">
-                    {statusConf.label}
-                  </Badge>
-                }
-              />
-
+              <Field label="Status" value={shareStatusBadge(share.status)} />
+              <Field label="Tipo" value={shareTypeLabel(shareType)} />
+              {registradoEm && <Field label="Registrado em" value={registradoEm} icon={Calendar} />}
             </CardContent>
           </Card>
 
@@ -149,7 +168,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
           {(share.acordo_notas || share.acordo_url) && (
             <Card className="bg-muted/30">
               <CardContent className="p-4 space-y-3">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold  tracking-wider text-muted-foreground">
                   Notas do Acordo
                 </p>
                 {share.acordo_notas && (
@@ -177,7 +196,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
           {share.observacoes && (
             <Card className="bg-muted/30">
               <CardContent className="p-4 space-y-2">
-                <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <p className="text-xs font-semibold  tracking-wider text-muted-foreground">
                   Observações adicionais
                 </p>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
@@ -190,7 +209,7 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
           {/* ── Histórico de versões ─────────────────────────────────────────── */}
           {historico.length > 0 && (
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
+              <p className="text-xs font-semibold  tracking-wider text-muted-foreground mb-2 flex items-center gap-1.5">
                 <History className="h-3.5 w-3.5" /> Histórico de Versões
               </p>
               <div className="space-y-2">
@@ -201,12 +220,12 @@ export function ShareViewModal({ open, onOpenChange, share }: ShareViewModalProp
                     data-testid={`historico-v${h.versao}`}
                   >
                     <div className="shrink-0">
-                      <Badge variant="outline" className="font-mono text-[10px]">v{h.versao}</Badge>
+                      <Badge variant="outline" className="font-sans text-[10px]">v{h.versao}</Badge>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {h.percentual != null && (
-                          <span className="text-sm font-mono font-semibold text-primary">{h.percentual}%</span>
+                          <span className="text-sm font-sans font-semibold text-primary">{h.percentual}%</span>
                         )}
                         {h.descricao && (
                           <span className="text-xs text-muted-foreground">{h.descricao}</span>

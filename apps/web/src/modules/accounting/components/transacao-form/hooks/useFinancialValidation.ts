@@ -11,6 +11,7 @@ export interface UseFinancialValidationReturn {
   setErrors:       React.Dispatch<React.SetStateAction<ValidationErrors>>;
   validate:        (formData: TransacaoFormData, rules: FinancialFormRules) => boolean;
   clearFieldError: (field: keyof TransacaoFormData) => void;
+  clearFieldErrors: (fields: (keyof TransacaoFormData)[]) => void;
   clearAllErrors:  () => void;
 }
 
@@ -35,7 +36,25 @@ export function useFinancialValidation(): UseFinancialValidationReturn {
     });
   }, []);
 
+  const clearFieldErrors = useCallback((fields: (keyof TransacaoFormData)[]) => {
+    if (fields.length === 0) return;
+
+    setErrors(prev => {
+      let changed = false;
+      const next = { ...prev };
+
+      for (const field of fields) {
+        if (next[field]) {
+          delete next[field];
+          changed = true;
+        }
+      }
+
+      return changed ? next : prev;
+    });
+  }, []);
+
   const clearAllErrors = useCallback(() => setErrors({}), []);
 
-  return { errors, setErrors, validate, clearFieldError, clearAllErrors };
+  return { errors, setErrors, validate, clearFieldError, clearFieldErrors, clearAllErrors };
 }

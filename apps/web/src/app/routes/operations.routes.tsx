@@ -3,7 +3,7 @@
  * Covers: Projects, Events, Inventory, RH, MusicChat
  */
 import { lazy } from "react";
-import { Route } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import type { SuspenseRouteComponent } from "./types";
 
 const Projetos  = lazy(() => import("@/modules/projects/pages/Projetos"));
@@ -16,7 +16,9 @@ export function operationsRoutes(P: SuspenseRouteComponent) {
   return (
     <>
       <Route path="/projetos"   element={<P><Projetos /></P>} />
+      <Route path="/briefings"  element={<Navigate to="/marketing/briefing" replace />} />
       <Route path="/agenda"     element={<P><Agenda /></P>} />
+      <Route path="/agenda/configuracoes" element={<Navigate to="/configuracoes?aba=operacional&modulo=agenda" replace />} />
       <Route path="/inventario" element={<P><Inventario /></P>} />
       <Route path="/rh"         element={<P><RH /></P>} />
       <Route path="/chat"       element={<P><MusicChat /></P>} />

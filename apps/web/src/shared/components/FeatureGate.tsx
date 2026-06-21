@@ -31,7 +31,7 @@ export function FeatureGate({
 
   return (
     <div className="flex min-h-[60vh] items-center justify-center p-8">
-      <Card className="max-w-md w-full text-center shadow-lg">
+      <Card className="max-w-md w-full text-center">
         <CardHeader className="space-y-3">
           <div className="mx-auto w-14 h-14 rounded-full bg-muted flex items-center justify-center">
             <Lock className="h-7 w-7 text-muted-foreground" />

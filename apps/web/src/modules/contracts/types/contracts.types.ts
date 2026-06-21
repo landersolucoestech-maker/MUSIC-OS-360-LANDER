@@ -253,3 +253,4 @@ export type ContractTemplateSubset = Pick<
   ContractTemplate,
   "id" | "name" | "slug" | "description" | "category" | "active" | "participants" | "variables"
 >;
+

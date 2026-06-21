@@ -3,21 +3,45 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }   from '../../core/decorators/current-user.decorator';
 import { RequireRole }   from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit }         from '../../core/interceptors/audit.interceptor';
+import { Public }        from '../../core/decorators/public.decorator';
 import type { JwtAuth }  from '../../core/guards/auth.guard';
 import { LeadsService } from './leads.service';
-import { CreateLeadDto, UpdateLeadDto, QueryLeadDto } from './dto/leads.dto';
+import {
+  CreateLeadDto,
+  UpdateLeadDto,
+  QueryLeadDto,
+  PublicArtistApplicationDto,
+} from './dto/leads.dto';
 
 @ApiTags('Leads') @ApiBearerAuth() @Controller('leads')
 export class LeadsController {
   constructor(private readonly svc: LeadsService) {}
 
-  @Get() @RequireRole('viewer') @ApiOperation({ summary: 'Listar leads' })
+  @Public()
+  @Get('public/artist-applications/:slug/tenant')
+  @ApiOperation({ summary: 'Resolver tenant ativo para o cadastro público de artistas' })
+  resolvePublicTenant(@Param('slug') slug: string) {
+    return this.svc.resolvePublicTenant(slug);
+  }
+
+  @Public()
+  @Post('public/artist-applications/:slug')
+  @ApiOperation({ summary: 'Registrar candidatura pública de artista como lead' })
+  submitPublicArtistApplication(
+    @Param('slug') slug: string,
+    @Body() dto: PublicArtistApplicationDto,
+  ) {
+    return this.svc.submitPublicArtistApplication(slug, dto);
+  }
+
+  @Get() @RequireRole('viewer') @RequirePermission('lead:read') @ApiOperation({ summary: 'Listar leads' })
   list(@CurrentTenant() t: { id: string }, @Query() q: QueryLeadDto) {
     return this.svc.list(t.id, q);
   }
 
-  @Get(':id') @RequireRole('viewer') @ApiOperation({ summary: 'Obter lead' })
+  @Get(':id') @RequireRole('viewer') @RequirePermission('lead:read') @ApiOperation({ summary: 'Obter lead' })
   findById(
     @CurrentTenant() t: { id: string },
     @CurrentUser()   u: JwtAuth,
@@ -26,7 +50,7 @@ export class LeadsController {
     return this.svc.findById(t.id, id, u?.orgRole ?? undefined);
   }
 
-  @Post() @RequireRole('editor') @Audit('lead.created') @ApiOperation({ summary: 'Criar lead' })
+  @Post() @RequireRole('editor') @RequirePermission('lead:create') @Audit('lead.created') @ApiOperation({ summary: 'Criar lead' })
   create(
     @CurrentTenant() t: { id: string },
     @CurrentUser()   u: JwtAuth,
@@ -35,7 +59,7 @@ export class LeadsController {
     return this.svc.create(t.id, u?.userId ?? '', dto);
   }
 
-  @Patch(':id') @RequireRole('editor') @Audit('lead.updated') @ApiOperation({ summary: 'Actualizar lead' })
+  @Patch(':id') @RequireRole('editor') @RequirePermission('lead:update') @Audit('lead.updated') @ApiOperation({ summary: 'Actualizar lead' })
   update(
     @CurrentTenant() t: { id: string },
     @CurrentUser()   u: JwtAuth,
@@ -45,7 +69,7 @@ export class LeadsController {
     return this.svc.update(t.id, u?.userId ?? '', id, dto, u?.orgRole ?? undefined);
   }
 
-  @Delete(':id') @RequireRole('manager') @Audit('lead.deleted') @ApiOperation({ summary: 'Fechar lead' })
+  @Delete(':id') @RequireRole('manager') @RequirePermission('lead:delete') @Audit('lead.deleted') @ApiOperation({ summary: 'Fechar lead' })
   remove(@CurrentTenant() t: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.svc.remove(t.id, id);
   }

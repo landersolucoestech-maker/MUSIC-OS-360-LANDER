@@ -156,7 +156,7 @@ vi.mock("@/shared/data/mockData", () => ({
   },
 }));
 
-import RightsMonitoring from "@/modules/rights-monitoring/pages/RightsMonitoring";
+import RightsMonitoring from "@/modules/monitoring/rights/pages/RightsMonitoring";
 
 function renderPage() {
   return render(
@@ -203,6 +203,10 @@ describe("RightsMonitoring page — detail modal for orphan execution", () => {
   it("clicking orphan row detail button shows 'Obra não encontrada no catálogo' warning with ISRC", async () => {
     renderPage();
 
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: /pr[oó]xima p[aá]gina/i }));
+    });
+
     await waitFor(() => {
       // re-011 = "Track Desconhecida" — orphan (ISRC BRMSC2599998 not in catalog)
       expect(screen.getByTestId("row-exec-re-011")).toBeInTheDocument();
@@ -247,10 +251,10 @@ describe("RightsMonitoring page — Divergências tab badge", () => {
 
     // Wait for the tab bar to render
     await waitFor(() => {
-      expect(getDivergenciasTabButton()).toBeDefined();
+      expect(screen.getByTestId("tab-divergencias")).toBeDefined();
     });
 
-    const divTab = getDivergenciasTabButton();
+    const divTab = screen.getByTestId("tab-divergencias");
 
     // Expected badge count = 6, derived from:
     //   Static MOCK_DIVERGENCIAS (div-005 removed as superseded) = div-001, div-002,
@@ -266,11 +270,15 @@ describe("RightsMonitoring page — Divergências tab badge", () => {
     renderPage();
 
     await waitFor(() => {
-      expect(getDivergenciasTabButton()).toBeDefined();
+      expect(screen.getByTestId("tab-divergencias")).toBeDefined();
     });
 
-    const divTab = getDivergenciasTabButton();
-    await act(async () => { fireEvent.click(divTab); });
+    const divTab = screen.getByTestId("tab-divergencias");
+    await act(async () => {
+      fireEvent.pointerDown(divTab, { button: 0, ctrlKey: false });
+      fireEvent.mouseDown(divTab, { button: 0 });
+      fireEvent.click(divTab);
+    });
 
     // The panel should show at least one entry with "Execução sem obra cadastrada"
     await waitFor(() => {

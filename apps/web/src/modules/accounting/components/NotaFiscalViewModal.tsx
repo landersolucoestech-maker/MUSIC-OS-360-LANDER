@@ -1,9 +1,11 @@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Button } from "@/shared/ui/button";
 import { FileText, Calendar, Building2, MapPin, Mail, ExternalLink, Pencil, Receipt, CreditCard, Calculator, ArrowUpRight, ArrowDownLeft } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDate, getCurrencyToneClass } from "@/shared/lib/format-utils";
 import { formatCpfCnpj } from "@/shared/lib/br-validators";
 import { parseTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-tipo";
 
@@ -32,13 +34,26 @@ const formaPagamentoLabels: Record<string, string> = {
 
 const getStatusBadge = (status: string) => {
   switch (status?.toLowerCase()) {
-    case "paga": case "pago": return <Badge className="bg-success text-success-foreground">Paga</Badge>;
-    case "emitida": return <Badge className="bg-blue-600 text-white">Emitida</Badge>;
-    case "pendente": return <Badge className="bg-warning text-warning-foreground">Pendente</Badge>;
-    case "cancelada": return <Badge className="bg-destructive text-destructive-foreground">Cancelada</Badge>;
-    default: return <Badge variant="secondary">{status || "—"}</Badge>;
+    case "paga": case "pago": return <Badge variant="success">Paga</Badge>;
+    case "emitida": return <Badge variant="info">Emitida</Badge>;
+    case "pendente": return <Badge variant="warning">Pendente</Badge>;
+    case "cancelada": return <Badge variant="neutral">Cancelada</Badge>;
+    default: return <Badge variant="neutral">{status || "—"}</Badge>;
   }
 };
+
+function numberValue(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
+}
+
+function getNotaPartyName(notaFiscal: any): string | null {
+  return notaFiscal.tomador_razao_social || notaFiscal.tomador_nome || notaFiscal.clientes?.nome || null;
+}
 
 function Field({ label, value }: { label: string; value: React.ReactNode }) {
   return (
@@ -54,6 +69,7 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
   const { tipo: tipoOperacao, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
   const isEntrada = tipoOperacao === "entrada";
   const itens: any[] = Array.isArray(notaFiscal.itens) ? notaFiscal.itens : [];
+  const valorServicos = numberValue(notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
   const totalRetencoes =
     (notaFiscal.iss_retido ? Number(notaFiscal.valor_iss || 0) : 0) +
     Number(notaFiscal.valor_pis || 0) +
@@ -61,6 +77,11 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
     Number(notaFiscal.valor_ir || 0) +
     Number(notaFiscal.valor_csll || 0) +
     Number(notaFiscal.valor_inss || 0);
+  const valorLiquido =
+    numberValue(notaFiscal.valor_liquido, notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ??
+    Math.max(valorServicos - totalRetencoes, 0);
+  const signedNotaValue = isEntrada ? -valorLiquido : valorLiquido;
+  const signedServicesValue = isEntrada ? -valorServicos : valorServicos;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -98,7 +119,7 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
           <Card>
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Building2 className="h-4 w-4" />{isEntrada ? "Fornecedor / Emitente" : "Tomador do Serviço"}</CardTitle></CardHeader>
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Field label="Razão Social / Nome" value={notaFiscal.tomador_razao_social} />
+              <Field label="Razão Social / Nome" value={getNotaPartyName(notaFiscal)} />
               <Field label="CNPJ / CPF" value={notaFiscal.tomador_cnpj && formatCpfCnpj(notaFiscal.tomador_cnpj)} />
               <Field label="Inscrição Estadual" value={notaFiscal.tomador_inscricao_estadual} />
               <Field label="Inscrição Municipal" value={notaFiscal.tomador_inscricao_municipal} />
@@ -127,30 +148,35 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
                 )}
                 {itens.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-xs text-muted-foreground">Itens ({itens.length})</p>
                     <div className="border border-border rounded-lg overflow-hidden">
-                      <table className="w-full text-sm">
-                        <thead className="bg-muted/50 text-xs">
-                          <tr>
-                            <th className="text-left px-3 py-2">Descrição</th>
-                            <th className="text-left px-3 py-2 w-20">Cód.</th>
-                            <th className="text-right px-3 py-2 w-16">Qtd</th>
-                            <th className="text-right px-3 py-2 w-28">Vlr Unit.</th>
-                            <th className="text-right px-3 py-2 w-28">Total</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <ListSectionHeader
+                        title="Itens da Nota"
+                        count={itens.length}
+                        description="Acompanhe descrições, códigos, quantidades e valores dos itens fiscais"
+                        className="px-3 pt-3"
+                      />
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead data-no-sort="true">Descrição</TableHead>
+                            <TableHead data-no-sort="true" className="w-20">Cód.</TableHead>
+                            <TableHead data-no-sort="true" className="text-right w-16">Qtd</TableHead>
+                            <TableHead data-no-sort="true" className="text-right w-28">Vlr Unit.</TableHead>
+                            <TableHead data-no-sort="true" className="text-right w-28">Total</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {itens.map((it, i) => (
-                            <tr key={i} className="border-t border-border">
-                              <td className="px-3 py-2">{it.descricao}</td>
-                              <td className="px-3 py-2">{it.codigo_servico}</td>
-                              <td className="px-3 py-2 text-right">{it.quantidade}</td>
-                              <td className="px-3 py-2 text-right">{formatCurrency(it.valor_unitario || 0)}</td>
-                              <td className="px-3 py-2 text-right font-medium">{formatCurrency(it.valor_total || 0)}</td>
-                            </tr>
+                            <TableRow key={i}>
+                              <TableCell>{it.descricao}</TableCell>
+                              <TableCell>{it.codigo_servico}</TableCell>
+                              <TableCell className="text-right">{it.quantidade}</TableCell>
+                              <TableCell className={`text-right ${getCurrencyToneClass(isEntrada ? -Number(it.valor_unitario || 0) : Number(it.valor_unitario || 0))}`}>{formatCurrency(isEntrada ? -Number(it.valor_unitario || 0) : Number(it.valor_unitario || 0))}</TableCell>
+                              <TableCell className={`text-right font-medium ${getCurrencyToneClass(isEntrada ? -Number(it.valor_total || 0) : Number(it.valor_total || 0))}`}>{formatCurrency(isEntrada ? -Number(it.valor_total || 0) : Number(it.valor_total || 0))}</TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
                 )}
@@ -163,27 +189,27 @@ export function NotaFiscalViewModal({ open, onOpenChange, notaFiscal, onEdit }: 
             <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><Calculator className="h-4 w-4" />Tributos</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Field label="Vlr Serviços" value={formatCurrency(notaFiscal.valor_servicos || 0)} />
-                <Field label="Deduções" value={formatCurrency(notaFiscal.valor_deducoes || 0)} />
-                <Field label="Base Cálculo" value={formatCurrency(notaFiscal.base_calculo || 0)} />
+                <Field label="Vlr Serviços" value={<span className={getCurrencyToneClass(signedServicesValue)}>{formatCurrency(signedServicesValue)}</span>} />
+                <Field label="Deduções" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_deducoes || 0))}>{formatCurrency(-Number(notaFiscal.valor_deducoes || 0))}</span>} />
+                <Field label="Base Cálculo" value={<span className={getCurrencyToneClass(signedServicesValue)}>{formatCurrency(signedServicesValue)}</span>} />
                 <Field label="Alíq. ISS" value={`${notaFiscal.aliquota_iss || 0}%`} />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
-                <Field label={notaFiscal.iss_retido ? "ISS (retido)" : "ISS"} value={formatCurrency(notaFiscal.valor_iss || 0)} />
-                <Field label="PIS" value={formatCurrency(notaFiscal.valor_pis || 0)} />
-                <Field label="COFINS" value={formatCurrency(notaFiscal.valor_cofins || 0)} />
-                <Field label="IRRF" value={formatCurrency(notaFiscal.valor_ir || 0)} />
-                <Field label="CSLL" value={formatCurrency(notaFiscal.valor_csll || 0)} />
-                <Field label="INSS" value={formatCurrency(notaFiscal.valor_inss || 0)} />
+                <Field label={notaFiscal.iss_retido ? "ISS (retido)" : "ISS"} value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_iss || 0))}>{formatCurrency(-Number(notaFiscal.valor_iss || 0))}</span>} />
+                <Field label="PIS" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_pis || 0))}>{formatCurrency(-Number(notaFiscal.valor_pis || 0))}</span>} />
+                <Field label="COFINS" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_cofins || 0))}>{formatCurrency(-Number(notaFiscal.valor_cofins || 0))}</span>} />
+                <Field label="IRRF" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_ir || 0))}>{formatCurrency(-Number(notaFiscal.valor_ir || 0))}</span>} />
+                <Field label="CSLL" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_csll || 0))}>{formatCurrency(-Number(notaFiscal.valor_csll || 0))}</span>} />
+                <Field label="INSS" value={<span className={getCurrencyToneClass(-Number(notaFiscal.valor_inss || 0))}>{formatCurrency(-Number(notaFiscal.valor_inss || 0))}</span>} />
               </div>
               <div className="flex items-center justify-between pt-3 border-t border-border">
                 <div>
                   <p className="text-xs text-muted-foreground">Total Retenções</p>
-                  <p className="text-sm font-semibold text-destructive">{formatCurrency(totalRetencoes)}</p>
+                  <p className="text-sm font-semibold text-destructive">{formatCurrency(-totalRetencoes)}</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-muted-foreground">{isEntrada ? "Valor Líquido a Pagar" : "Valor Líquido a Receber"}</p>
-                  <p className="text-2xl font-bold text-primary" data-testid="text-nf-valor-liquido">{formatCurrency(notaFiscal.valor_liquido || (notaFiscal.valor_servicos - totalRetencoes))}</p>
+                  <p className={`text-2xl font-bold ${getCurrencyToneClass(signedNotaValue)}`} data-testid="text-nf-valor-liquido">{formatCurrency(signedNotaValue)}</p>
                 </div>
               </div>
             </CardContent>

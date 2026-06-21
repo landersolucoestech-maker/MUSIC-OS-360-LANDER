@@ -38,8 +38,14 @@ export class LoggingInterceptor implements NestInterceptor {
     const req       = request as unknown as Record<string, unknown>;
     const requestId = req['requestId'] as string | undefined;
     const correlationId = req['correlationId'] as string | undefined;
-    const tenantId      = req['tenantId']      as string | undefined;
-    const userId        = req['userId']        as string | undefined;
+    const traceId = req['traceId'] as string | undefined;
+    const tenantId =
+      (req['tenantId'] as string | undefined) ??
+      ((req['tenant'] as Record<string, unknown> | undefined)?.['id'] as string | undefined) ??
+      ((req['currentMember'] as Record<string, unknown> | undefined)?.['tenant_id'] as string | undefined);
+    const userId =
+      (req['userId'] as string | undefined) ??
+      ((req['auth'] as Record<string, unknown> | undefined)?.['userId'] as string | undefined);
 
     return next.handle().pipe(
       tap({
@@ -54,6 +60,7 @@ export class LoggingInterceptor implements NestInterceptor {
             ...SERVICE_META,
             requestId:     requestId ?? 'n/a',
             correlationId: correlationId ?? requestId ?? 'n/a',
+            traceId: traceId ?? correlationId ?? requestId ?? 'n/a',
             method,
             url,
             statusCode,
@@ -85,6 +92,7 @@ export class LoggingInterceptor implements NestInterceptor {
             ...SERVICE_META,
             requestId:     requestId ?? 'n/a',
             correlationId: correlationId ?? requestId ?? 'n/a',
+            traceId: traceId ?? correlationId ?? requestId ?? 'n/a',
             method,
             url,
             statusCode,

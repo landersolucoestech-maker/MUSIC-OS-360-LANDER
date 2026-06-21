@@ -60,7 +60,7 @@ export const LAUNCH_TEMPLATES: LaunchTemplate[] = [
     },
     kpis: [
       "Streams na primeira semana",
-      "Vendas digitais e físicas",
+      "Canais digitais e físicos",
       "Saves no Spotify",
       "Cobertura de imprensa (número de features)",
       "Crescimento de email list",

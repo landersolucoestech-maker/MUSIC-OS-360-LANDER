@@ -81,3 +81,4 @@ export function useTikTokAdsCampaigns() {
     staleTime: 60_000,
   });
 }
+

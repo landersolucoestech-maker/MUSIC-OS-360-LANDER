@@ -1,0 +1,151 @@
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import type {
+  ArtistPlatformProvider,
+  ArtistPlatformProviderInput,
+  SocialPlatformProfileSnapshot,
+} from '../social-platform-sync.types';
+
+const YOUTUBE_API = 'https://www.googleapis.com/youtube/v3';
+
+@Injectable()
+export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
+  readonly platform = 'youtube' as const;
+
+  constructor(private readonly config: ConfigService) {}
+
+  async isConfigured(_tenantId?: string): Promise<boolean> {
+    return !!this.config.get<string>('YOUTUBE_API_KEY');
+  }
+
+  async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
+    if (!(await this.isConfigured(input.tenantId))) {
+      throw new ServiceUnavailableException('YouTube não configurado');
+    }
+
+    const apiKey = this.config.get<string>('YOUTUBE_API_KEY') ?? '';
+    const ref = this.parseRef(input.externalId ?? input.externalUrl ?? '');
+    if (!ref) throw new Error('YouTube channel ref ausente ou inválido');
+    const channelId = await this.resolveChannelId(ref, apiKey);
+    if (!channelId) throw new Error('Canal do YouTube não encontrado para o link informado');
+
+    const res = await fetch(
+      `${YOUTUBE_API}/channels?part=statistics,snippet&id=${encodeURIComponent(channelId)}&key=${apiKey}`,
+    );
+    if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+
+    const data = await res.json() as {
+      items?: Array<{
+        id?: string;
+        snippet?: {
+          title?: string;
+          customUrl?: string;
+          thumbnails?: { default?: { url?: string }; high?: { url?: string } };
+        };
+        statistics?: {
+          subscriberCount?: string;
+          viewCount?: string;
+          videoCount?: string;
+          hiddenSubscriberCount?: boolean;
+        };
+      }>;
+    };
+    const item = data.items?.[0];
+    if (!item) throw new Error('Canal do YouTube não encontrado');
+
+    const statistics = item.statistics ?? {};
+    const snippet = item.snippet ?? {};
+    const hiddenSubscribers = Boolean(statistics.hiddenSubscriberCount);
+
+    return {
+      tenant_id: input.tenantId,
+      artist_id: input.artistId,
+      platform: 'youtube',
+      external_id: item.id ?? channelId,
+      external_url: input.externalUrl ?? `https://www.youtube.com/channel/${item.id ?? channelId}`,
+      display_name: snippet.title ?? null,
+      username: snippet.customUrl ?? null,
+      profile_url: `https://www.youtube.com/channel/${item.id ?? channelId}`,
+      image_url: snippet.thumbnails?.high?.url ?? snippet.thumbnails?.default?.url ?? null,
+      followers: null,
+      subscribers: hiddenSubscribers ? null : this.toNumber(statistics.subscriberCount),
+      monthly_listeners: null,
+      popularity: null,
+      total_views: statistics.viewCount ?? null,
+      total_videos: this.toNumber(statistics.videoCount),
+      total_tracks: null,
+      total_albums: null,
+      raw_payload: item as Record<string, unknown>,
+      sync_status: 'success',
+      last_synced_at: new Date(),
+      last_error: null,
+    };
+  }
+
+  /**
+   * Parses any YouTube identifier/URL into a typed channel reference.
+   * Supports: bare `UC…` id, `@handle`, and URLs `/channel/UC…`, `/@handle`,
+   * `/user/NAME` (legacy), `/c/NAME` (custom) and bare `/NAME` (legacy custom).
+   */
+  parseRef(raw: string): { kind: 'id' | 'handle' | 'username' | 'custom'; value: string } | null {
+    const value = (raw ?? '').trim();
+    if (!value) return null;
+
+    if (/^UC[A-Za-z0-9_-]{20,}$/.test(value)) return { kind: 'id', value };
+    if (/^@[A-Za-z0-9._-]+$/.test(value)) return { kind: 'handle', value: value.slice(1) };
+
+    let path = value;
+    try {
+      if (/^https?:\/\//i.test(value)) path = new URL(value).pathname;
+    } catch { /* treat as raw path */ }
+    path = path.replace(/^\/+|\/+$/g, '');
+
+    const channel = path.match(/^channel\/(UC[A-Za-z0-9_-]{20,})/);
+    if (channel) return { kind: 'id', value: channel[1] };
+    const handle = path.match(/^@([A-Za-z0-9._-]+)/);
+    if (handle) return { kind: 'handle', value: handle[1] };
+    const user = path.match(/^user\/([A-Za-z0-9._-]+)/i);
+    if (user) return { kind: 'username', value: user[1] };
+    const custom = path.match(/^c\/([A-Za-z0-9._-]+)/i);
+    if (custom) return { kind: 'custom', value: custom[1] };
+    const bare = path.match(/^([A-Za-z0-9._-]+)$/);
+    if (bare) return { kind: 'custom', value: bare[1] };
+    return null;
+  }
+
+  /** Resolves a typed reference to a concrete `UC…` channel id via the YouTube Data API. */
+  private async resolveChannelId(
+    ref: { kind: 'id' | 'handle' | 'username' | 'custom'; value: string },
+    apiKey: string,
+  ): Promise<string | null> {
+    if (ref.kind === 'id') return ref.value;
+
+    if (ref.kind === 'handle' || ref.kind === 'username') {
+      const param =
+        ref.kind === 'handle'
+          ? `forHandle=@${encodeURIComponent(ref.value)}`
+          : `forUsername=${encodeURIComponent(ref.value)}`;
+      const res = await fetch(`${YOUTUBE_API}/channels?part=id&${param}&key=${apiKey}`);
+      if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+      const data = (await res.json()) as { items?: Array<{ id?: string }> };
+      const id = data.items?.[0]?.id;
+      if (id) return id;
+      if (ref.kind === 'username') return null;
+      // handle not resolvable via forHandle → fall through to search
+    }
+
+    // custom (/c/NAME) or unresolved handle → search the channel by name
+    const res = await fetch(
+      `${YOUTUBE_API}/search?part=id&type=channel&maxResults=1&q=${encodeURIComponent(ref.value)}&key=${apiKey}`,
+    );
+    if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+    const data = (await res.json()) as { items?: Array<{ id?: { channelId?: string } }> };
+    return data.items?.[0]?.id?.channelId ?? null;
+  }
+
+  private toNumber(value: string | number | null | undefined): number | null {
+    if (value === null || value === undefined) return null;
+    const num = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(num) ? num : null;
+  }
+}

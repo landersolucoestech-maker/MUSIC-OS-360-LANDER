@@ -20,20 +20,51 @@ declare global {
   namespace Express {
     interface Request {
       correlationId?: string;
+      traceId?: string;
     }
   }
+}
+
+function traceIdFromTraceparent(value: string | undefined): string | null {
+  if (!value) return null;
+  const match = value
+    .trim()
+    .match(/^[\da-f]{2}-([\da-f]{32})-([\da-f]{16})-[\da-f]{2}$/i);
+  if (!match || /^0{32}$/.test(match[1])) return null;
+  return match[1].toLowerCase();
+}
+
+function validExternalId(value: string | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  return /^[A-Za-z0-9._:-]{1,128}$/.test(trimmed) ? trimmed : null;
 }
 
 @Injectable()
 export class CorrelationMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction): void {
-    const existing = req.headers['x-correlation-id'];
-    const correlationId =
-      (Array.isArray(existing) ? existing[0] : existing) ?? randomUUID();
+    const traceparent = Array.isArray(req.headers['traceparent'])
+      ? req.headers['traceparent'][0]
+      : req.headers['traceparent'];
+    const incomingTrace = Array.isArray(req.headers['x-trace-id'])
+      ? req.headers['x-trace-id'][0]
+      : req.headers['x-trace-id'];
+    const incomingCorrelation = Array.isArray(
+      req.headers['x-correlation-id'],
+    )
+      ? req.headers['x-correlation-id'][0]
+      : req.headers['x-correlation-id'];
+    const traceId =
+      traceIdFromTraceparent(traceparent) ??
+      validExternalId(incomingTrace) ??
+      validExternalId(incomingCorrelation) ??
+      randomUUID().replace(/-/g, '');
 
-    req.correlationId = correlationId;
-    res.setHeader('x-correlation-id', correlationId);
+    req.traceId = traceId;
+    req.correlationId = traceId;
+    res.setHeader('X-Trace-ID', traceId);
+    res.setHeader('X-Correlation-ID', traceId);
 
-    CorrelationContext.run(correlationId, () => next());
+    CorrelationContext.run(traceId, () => next());
   }
 }

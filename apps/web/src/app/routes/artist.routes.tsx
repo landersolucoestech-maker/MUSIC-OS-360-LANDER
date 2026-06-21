@@ -17,3 +17,4 @@ export function artistRoutes(P: SuspenseRouteComponent) {
     </>
   );
 }
+

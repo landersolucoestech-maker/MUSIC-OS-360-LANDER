@@ -83,7 +83,7 @@ export function GoogleAdsConfigDialog({
       <DialogContent className="max-w-lg" data-testid="dialog-google-ads-config">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-[#4285F4]/10 border border-[#4285F4]/20 flex items-center justify-center">
+            <div className="w-9 h-9 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center">
               <SiGoogleads className="h-4.5 w-4.5 text-[#4285F4]" />
             </div>
             <div>
@@ -230,3 +230,4 @@ export function GoogleAdsConfigDialog({
     </Dialog>
   );
 }
+

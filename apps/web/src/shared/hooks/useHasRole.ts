@@ -45,7 +45,7 @@ export const ROLE_LABELS: Record<AppRole, string> = {
   artista:           "Artista",
   produtor:          "Produtor Musical",
   marketing_manager: "Marketing",
-  comercial:         "Comercial / Vendas",
+  comercial:         "Comercial",
   colaborador:       "Colaborador",
   rh_manager:        "Recursos Humanos",
   viewer:            "Visualizador",
@@ -83,3 +83,4 @@ export function useIsExactRole(role: AppRole): boolean {
   const current = useCurrentRole();
   return current === role;
 }
+

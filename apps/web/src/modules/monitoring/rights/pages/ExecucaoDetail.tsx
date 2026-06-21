@@ -1,6 +1,7 @@
 import { useParams, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -12,8 +13,13 @@ import {
   Zap, ShieldCheck, DollarSign, BookOpen,
   Info
 } from "lucide-react";
-import { MOCK_EXECUCOES_PUBLICAS, MOCK_TIMELINE_BY_ISRC, MOCK_ECAD_HISTORICO_ISRC } from "../services/mock-data";
+import {
+  RIGHTS_EXECUCOES as MOCK_EXECUCOES_PUBLICAS,
+  RIGHTS_TIMELINE_BY_ISRC as MOCK_TIMELINE_BY_ISRC,
+  RIGHTS_ECAD_HISTORICO_ISRC as MOCK_ECAD_HISTORICO_ISRC,
+} from "../services/rights-source";
 import type { ExecutionType, ExecutionStatus, TimelineEventType } from "../types";
+import { formatRightsDateTime } from "../utils/date-format";
 
 const TIPO_LABEL: Record<ExecutionType, { label: string; icon: React.ReactNode }> = {
   radio_fm:          { label: "Rádio FM",       icon: <Radio className="h-4 w-4" /> },
@@ -42,7 +48,7 @@ const TIMELINE_CONFIG: Record<TimelineEventType, { label: string; icon: React.Re
   divergencia_resolvida:{ label: "Divergência Resolvida", icon: <CheckCircle className="h-3.5 w-3.5" />, dotClass: "bg-success border-success/40",       lineClass: "bg-success/20" },
   envio_ecad:           { label: "Envio ao ECAD",         icon: <Send className="h-3.5 w-3.5" />,       dotClass: "bg-blue-500 border-blue-400/40",      lineClass: "bg-blue-500/20" },
   arrecadacao:          { label: "Arrecadação",           icon: <DollarSign className="h-3.5 w-3.5" />, dotClass: "bg-emerald-500 border-emerald-400/40",lineClass: "bg-emerald-500/20" },
-  vinculo_catalogo:     { label: "Vínculo Catálogo",      icon: <Link2 className="h-3.5 w-3.5" />,      dotClass: "bg-violet-500 border-violet-400/40",  lineClass: "bg-violet-500/20" },
+  vinculo_catalogo:     { label: "Vínculo Catálogo",      icon: <Link2 className="h-3.5 w-3.5" />,      dotClass: "bg-primary border-primary/30",  lineClass: "bg-primary/20" },
 };
 
 const ECAD_STATUS_CONFIG = {
@@ -55,15 +61,6 @@ const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
 const fmtNum = (n: number) => new Intl.NumberFormat("pt-BR").format(n);
-
-const fmtDateTime = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    date: d.toLocaleDateString("pt-BR"),
-    time: d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-    full: d.toLocaleDateString("pt-BR") + " " + d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-  };
-};
 
 type ActionModal = "resolver" | "enviar" | "exportar" | "vincular" | null;
 
@@ -81,7 +78,7 @@ export default function ExecucaoDetail() {
         <div className="flex flex-col items-center justify-center py-24 gap-4 text-muted-foreground">
           <Info className="h-12 w-12 opacity-30" />
           <p className="text-base font-medium">Execução não encontrada</p>
-          <p className="text-sm">O ID <code className="font-mono bg-muted px-1 py-0.5 rounded">{id}</code> não corresponde a nenhuma execução.</p>
+          <p className="text-sm">O ID <code className="font-sans bg-muted px-1 py-0.5 rounded">{id}</code> não corresponde a nenhuma execução.</p>
           <Button variant="outline" onClick={() => navigate("/rights-monitoring")} className="mt-2 gap-2">
             <ArrowLeft className="h-4 w-4" />Voltar ao Rights Monitoring
           </Button>
@@ -148,7 +145,7 @@ export default function ExecucaoDetail() {
                 <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <span className="text-sm text-muted-foreground">{exec.artista}</span>
                   <span className="text-muted-foreground/40 text-xs">·</span>
-                  <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{exec.isrc}</code>
+                  <code className="text-xs font-sans text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{exec.isrc}</code>
                   <span className="text-muted-foreground/40 text-xs">·</span>
                   <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
                     {tipoCfg.icon}{tipoCfg.label}
@@ -253,13 +250,13 @@ export default function ExecucaoDetail() {
         )}
 
         {activeAction === "vincular" && (
-          <div className="rounded-lg border border-violet-500/40 bg-violet-500/5 p-4 flex items-start gap-3">
-            <Link2 className="h-4 w-4 text-violet-500 mt-0.5 flex-shrink-0" />
+          <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 flex items-start gap-3">
+            <Link2 className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-sm font-medium">Vincular ao catálogo interno</p>
               <p className="text-xs text-muted-foreground mt-0.5">Associar esta execução a uma obra cadastrada no catálogo do MUSIC OS 360. Pesquise pelo ISRC ou título.</p>
               <div className="flex items-center gap-2 mt-3">
-                <Button size="sm" className="h-7 bg-violet-600 hover:bg-violet-700 text-white gap-1.5" onClick={() => setActiveAction(null)} data-testid="btn-confirmar-vincular">
+                <Button size="sm" className="h-7 bg-primary hover:bg-primary text-foreground gap-1.5" onClick={() => setActiveAction(null)} data-testid="btn-confirmar-vincular">
                   <Link2 className="h-3.5 w-3.5" />Vincular
                 </Button>
                 <Button size="sm" variant="ghost" className="h-7" onClick={() => setActiveAction(null)}>Cancelar</Button>
@@ -272,31 +269,31 @@ export default function ExecucaoDetail() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="border-border/60">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Detecções Totais</p>
+              <p className="text-xs text-muted-foreground font-medium  tracking-wide mb-1">Detecções Totais</p>
               <p className="text-2xl font-bold tabular-nums">{fmtNum(allDetections.length)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">para este ISRC</p>
             </CardContent>
           </Card>
           <Card className="border-border/60">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Valor Estimado</p>
+              <p className="text-xs text-muted-foreground font-medium  tracking-wide mb-1">Valor Estimado</p>
               <p className="text-2xl font-bold tabular-nums">{fmtBRL(exec.valor_estimado)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">esta execução</p>
             </CardContent>
           </Card>
           <Card className="border-border/60">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Total Arrecadado ECAD</p>
+              <p className="text-xs text-muted-foreground font-medium  tracking-wide mb-1">Total Arrecadado ECAD</p>
               <p className="text-2xl font-bold tabular-nums text-success">{fmtBRL(totalArrecadado)}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{fmtNum(totalExecucoesEcad)} execuções confirmadas</p>
             </CardContent>
           </Card>
           <Card className="border-border/60">
             <CardContent className="p-4">
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-1">Primeira Detecção</p>
+              <p className="text-xs text-muted-foreground font-medium  tracking-wide mb-1">Primeira Detecção</p>
               <p className="text-base font-bold">
                 {timeline.length > 0
-                  ? fmtDateTime([...timeline].sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0].data_hora).date
+                  ? formatRightsDateTime([...timeline].sort((a, b) => new Date(a.data_hora).getTime() - new Date(b.data_hora).getTime())[0].data_hora).date
                   : "—"}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">{exec.origem}</p>
@@ -329,13 +326,13 @@ export default function ExecucaoDetail() {
                     <div className="relative">
                       {timeline.map((event, idx) => {
                         const cfg = TIMELINE_CONFIG[event.tipo];
-                        const { date, time } = fmtDateTime(event.data_hora);
+                        const { date, time } = formatRightsDateTime(event.data_hora);
                         const isLast = idx === timeline.length - 1;
                         return (
                           <div key={event.id} className="flex gap-3 pb-0" data-testid={`timeline-event-${event.id}`}>
                             {/* Connector column */}
                             <div className="flex flex-col items-center flex-shrink-0" style={{ width: 28 }}>
-                              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-white flex-shrink-0 z-10 ${cfg.dotClass}`}>
+                              <div className={`w-7 h-7 rounded-full border-2 flex items-center justify-center text-foreground flex-shrink-0 z-10 ${cfg.dotClass}`}>
                                 {cfg.icon}
                               </div>
                               {!isLast && <div className={`w-0.5 flex-1 min-h-[28px] ${cfg.lineClass} mt-1`} />}
@@ -346,7 +343,7 @@ export default function ExecucaoDetail() {
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
                                     <span className="text-xs font-semibold text-foreground">{event.descricao}</span>
-                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${cfg.dotClass} text-white`}>
+                                    <span className={`text-xs px-1.5 py-0.5 rounded font-medium ${cfg.dotClass} text-foreground`}>
                                       {cfg.label}
                                     </span>
                                   </div>
@@ -383,11 +380,13 @@ export default function ExecucaoDetail() {
             {/* Other detections of same ISRC */}
             {allDetections.length > 1 && (
               <Card className="border-border/60">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-semibold">Outras Detecções do Mesmo ISRC</CardTitle>
-                  <CardDescription className="text-xs">Todas as execuções monitoradas com ISRC {exec.isrc}</CardDescription>
-                </CardHeader>
                 <CardContent className="p-0">
+                  <ListSectionHeader
+                    title="Outras Detecções do Mesmo ISRC"
+                    count={allDetections.length}
+                    description={`Todas as execuções monitoradas com ISRC ${exec.isrc}`}
+                    className="px-6 pt-6"
+                  />
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -402,7 +401,7 @@ export default function ExecucaoDetail() {
                       {allDetections.map(det => {
                         const sCfg = STATUS_CONFIG[det.status];
                         const tCfg = TIPO_LABEL[det.tipo_execucao];
-                        const dt = fmtDateTime(det.data_hora);
+                        const dt = formatRightsDateTime(det.data_hora);
                         return (
                           <TableRow
                             key={det.id}
@@ -464,7 +463,7 @@ export default function ExecucaoDetail() {
                             <div className="min-w-0">
                               <p className="text-sm font-semibold">{hist.periodo}</p>
                               <p className="text-xs text-muted-foreground mt-0.5">
-                                {new Date(hist.data_referencia).toLocaleDateString("pt-BR")}
+                                {formatRightsDateTime(hist.data_referencia).date}
                               </p>
                               {hist.total_execucoes > 0 && (
                                 <p className="text-xs text-muted-foreground">{fmtNum(hist.total_execucoes)} execuções</p>
@@ -498,35 +497,35 @@ export default function ExecucaoDetail() {
               <CardContent className="p-4 pt-0 space-y-3">
                 <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">ID</p>
-                    <code className="font-mono text-foreground">{exec.id}</code>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">ID</p>
+                    <code className="font-sans text-foreground">{exec.id}</code>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">ISRC</p>
-                    <code className="font-mono text-foreground">{exec.isrc}</code>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">ISRC</p>
+                    <code className="font-sans text-foreground">{exec.isrc}</code>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Artista</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Artista</p>
                     <p className="text-foreground">{exec.artista}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Origem</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Origem</p>
                     <p className="text-foreground">{exec.origem}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Tipo</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Tipo</p>
                     <p className="text-foreground">{TIPO_LABEL[exec.tipo_execucao].label}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Data / Hora</p>
-                    <p className="text-foreground">{fmtDateTime(exec.data_hora).full}</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Data / Hora</p>
+                    <p className="text-foreground">{formatRightsDateTime(exec.data_hora).full}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Valor Estimado</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Valor Estimado</p>
                     <p className="text-foreground font-semibold">{fmtBRL(exec.valor_estimado)}</p>
                   </div>
                   <div>
-                    <p className="text-muted-foreground font-medium uppercase tracking-wide text-[10px]">Match ECAD</p>
+                    <p className="text-muted-foreground font-medium  tracking-wide text-[10px]">Match ECAD</p>
                     <p className={`font-semibold ${exec.match_ecad ? "text-success" : "text-destructive"}`}>
                       {exec.match_ecad ? "✓ Sim" : "✗ Não"}
                     </p>
@@ -540,3 +539,5 @@ export default function ExecucaoDetail() {
     </MainLayout>
   );
 }
+
+

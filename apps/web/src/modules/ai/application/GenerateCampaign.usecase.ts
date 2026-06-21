@@ -188,3 +188,4 @@ export function getGenerateCampaignUseCase(): GenerateCampaignUseCase {
   if (!_instance) _instance = new GenerateCampaignUseCase();
   return _instance;
 }
+

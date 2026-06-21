@@ -22,4 +22,14 @@ export class QueryPhonogramDto extends PaginationDto {
   @IsOptional()
   @IsString()
   isrc?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  genero_musical?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  genre?: string;
 }

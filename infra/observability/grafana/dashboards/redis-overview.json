@@ -1,0 +1,23 @@
+{
+  "title": "MUSIC OS 360 - Redis",
+  "uid": "musicos-redis",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "type": "stat",
+      "title": "Redis Up",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "expr": "musicos_redis_up", "refId": "A" }],
+      "gridPos": { "h": 8, "w": 8, "x": 0, "y": 0 }
+    },
+    {
+      "type": "timeseries",
+      "title": "Queue Jobs",
+      "datasource": { "type": "prometheus", "uid": "${DS_PROMETHEUS}" },
+      "targets": [{ "expr": "sum(musicos_queue_jobs) by (queue, state)", "refId": "A" }],
+      "gridPos": { "h": 8, "w": 16, "x": 8, "y": 0 }
+    }
+  ]
+}

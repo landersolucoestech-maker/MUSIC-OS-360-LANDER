@@ -7,7 +7,8 @@
 // suficiente. Garante também que `showSparkline={false}` esconde a
 // sparkline quando só queremos o badge no dashboard 360.
 import { describe, it, expect } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { screen } from "@testing-library/react";
+import { renderWithProviders } from "./_helpers/render-with-providers";
 
 import { PlatformMiniTrend } from "@/modules/artist/components/PlatformMiniTrend";
 type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
@@ -18,7 +19,7 @@ function point(date: string, followers: number | null): MetricEvolutionPoint {
 
 describe("<PlatformMiniTrend />", () => {
   it("não renderiza nada quando não há histórico e showEmptyState é false (padrão)", () => {
-    const { container } = render(
+    const { container } = renderWithProviders(
       <PlatformMiniTrend points={[]} testIdPrefix="mini-spotify" />,
     );
     expect(container.firstChild).toBeNull();
@@ -31,7 +32,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza placeholder '— sem histórico' quando showEmptyState=true e não há pontos", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[]}
         showEmptyState
@@ -48,7 +49,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza placeholder também com apenas 1 snapshot (trend ainda indeterminado)", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[point("2026-04-30T06:20:00Z", 1234)]}
         showEmptyState
@@ -61,7 +62,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza badge 'em crescimento' com percentual positivo quando há crescimento", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[
           point("2026-04-01T06:20:00Z", 1000),
@@ -84,7 +85,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza badge 'em queda' quando o snapshot mais recente é menor", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[
           point("2026-04-01T06:20:00Z", 1000),
@@ -102,7 +103,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza badge 'estável' quando os snapshots são iguais", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[
           point("2026-04-01T06:20:00Z", 500),
@@ -119,7 +120,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("oculta a sparkline quando showSparkline=false (modo chip puro do 360)", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[
           point("2026-04-01T06:20:00Z", 1000),
@@ -139,7 +140,7 @@ describe("<PlatformMiniTrend />", () => {
   });
 
   it("renderiza sparkline por padrão quando há histórico suficiente", () => {
-    render(
+    renderWithProviders(
       <PlatformMiniTrend
         points={[
           point("2026-04-01T06:20:00Z", 1000),

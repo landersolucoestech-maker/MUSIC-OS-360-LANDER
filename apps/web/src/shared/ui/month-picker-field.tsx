@@ -52,7 +52,7 @@ export function MonthPickerField({
           disabled={disabled}
           data-testid={testId}
           className={cn(
-            "flex h-10 w-full items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-2",
+            "flex h-8 w-full items-center justify-start gap-2 rounded-md border border-input bg-background px-3 py-1",
             "text-sm font-normal",
             "transition-colors duration-150",
             "hover:border-border",

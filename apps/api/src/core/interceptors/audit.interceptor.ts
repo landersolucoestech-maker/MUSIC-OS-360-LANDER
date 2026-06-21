@@ -36,6 +36,50 @@ export const AUDIT_KEY = 'audit_action';
 /** Decorator para marcar uma rota para auditoria. */
 export const Audit = (action: string) => SetMetadata(AUDIT_KEY, action);
 
+// ── Sanitization for audit storage ───────────────────────────────────────────
+// Audit rows are queryable by support/admins; never persist secrets or signed
+// URL query strings (X-Amz-Credential leaks R2_ACCESS_KEY plaintext, etc.).
+
+const REDACT_KEYS = new Set([
+  'presignedurl', 'signedurl', 'downloadurl', 'uploadurl',
+  'token', 'access_token', 'refresh_token', 'jwt',
+  'password', 'secret', 'apikey', 'api_key',
+  'x-amz-credential', 'x-amz-signature',
+]);
+
+const SIGNED_URL_HOSTS = /\bX-Amz-(Signature|Credential|Algorithm|Date|Expires|SignedHeaders)=/i;
+
+function stripSignedQuery(url: string): string {
+  if (typeof url !== 'string') return url;
+  const qIdx = url.indexOf('?');
+  if (qIdx < 0) return url;
+  if (!SIGNED_URL_HOSTS.test(url)) return url;
+  return url.slice(0, qIdx) + '?[REDACTED]';
+}
+
+export function sanitizeForAudit(value: unknown): unknown {
+  if (value === null || value === undefined) return value;
+  if (Array.isArray(value)) return value.map(sanitizeForAudit);
+  if (typeof value === 'string') return stripSignedQuery(value);
+  if (typeof value !== 'object') return value;
+
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+    const lower = k.toLowerCase();
+    if (REDACT_KEYS.has(lower)) {
+      out[k] = '[REDACTED]';
+      continue;
+    }
+    // Keep `url` only if it doesn't carry signed-URL fingerprint
+    if (lower === 'url' && typeof v === 'string' && SIGNED_URL_HOSTS.test(v)) {
+      out[k] = stripSignedQuery(v);
+      continue;
+    }
+    out[k] = sanitizeForAudit(v);
+  }
+  return out;
+}
+
 // ── Entity table map ─────────────────────────────────────────────────────────
 /**
  * Maps the entity prefix of an action (e.g. "contract" from "contract.updated")
@@ -55,6 +99,7 @@ const ENTITY_TABLE_MAP: Record<string, string> = {
   lead:        'leads',
   client:      'clients',
   ticket:      'support_tickets',
+  role:        'roles',
 };
 
 /** Request shape expected inside the interceptor */
@@ -148,8 +193,8 @@ export class AuditInterceptor implements NestInterceptor {
               action,
               entity:         entityName,
               entityId:       afterEntityId,
-              before:         beforeSnapshot,
-              after:          result,
+              before:         sanitizeForAudit(beforeSnapshot),
+              after:          sanitizeForAudit(result),
               ip:             request.ip         ?? null,
               userAgent:      request.headers?.['user-agent'] ?? null,
               requestId,

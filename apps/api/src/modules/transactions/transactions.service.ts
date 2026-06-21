@@ -56,9 +56,13 @@ function buildPersistencePayload(
   if (!existing) {
     payload.tenant_id = tenantId;
     payload.created_by = userId;
+    // categoria é NOT NULL no DB; o validator não exige para `transferencia`,
+    // então aplicamos default defensivo na criação para evitar 23502 → 500.
+    payload.categoria = (dto.categoria && String(dto.categoria).trim()) || 'outros';
+  } else if (dto.categoria !== undefined) {
+    payload.categoria = dto.categoria || 'outros';
   }
   if (dto.tipoTransacao !== undefined) payload.tipo = dto.tipoTransacao;
-  if (dto.categoria !== undefined) payload.categoria = dto.categoria || 'outros';
   if (dto.descricao !== undefined) payload.descricao = dto.descricao;
   if (dto.valor !== undefined) payload.valor = String(dto.valor);
   if (dto.dataTransacao !== undefined) payload.data = dto.dataTransacao;
@@ -195,7 +199,7 @@ export class TransactionsService {
       .createQueryBuilder('t')
       .where('t.id = :id AND t.tenant_id = :tenantId AND t.deleted_at IS NULL', { id, tenantId })
       .getOne();
-    if (!result) throw new NotFoundException('Transacao nao encontrada');
+    if (!result) throw new NotFoundException('Transação não encontrada');
     return result;
   }
 

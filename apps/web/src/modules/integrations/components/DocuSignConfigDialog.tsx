@@ -2,11 +2,9 @@ import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
-  DialogHeader,
-  DialogTitle,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -64,13 +62,11 @@ export function DocuSignConfigDialog({ open, onOpenChange }: DocuSignConfigDialo
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg" data-testid="dialog-docusign-config">
-        <DialogHeader>
-          <DialogTitle>Integração DocuSign</DialogTitle>
-          <DialogDescription>
-            Conecte sua conta DocuSign para enviar e gerenciar envelopes de
-            assinatura digital direto do MUSIC OS 360.
-          </DialogDescription>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="docusign"
+          title="Integração DocuSign"
+          description="Conecte sua conta DocuSign para enviar e gerenciar envelopes de assinatura digital direto do MUSIC OS 360."
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">

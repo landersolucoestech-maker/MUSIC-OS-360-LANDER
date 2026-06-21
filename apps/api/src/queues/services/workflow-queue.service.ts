@@ -128,13 +128,4 @@ export class WorkflowQueueService {
     this.logger.log(`[integrations-sync] enqueued ${WORKFLOW_JOB_NAMES.WORKFLOW_FOLLOWUP} jobId=${job.id} ${payload.entityType}=${payload.entityId}`);
   }
 
-  async enqueuePipelineMonitor(payload: {
-    tenantId:    string;
-    pipelineId?: string;
-    correlationId?: string | null;
-  }, opts?: Partial<JobsOptions>): Promise<void> {
-    if (!this.integrationsAvailable) return;
-    const job = await this.integrationsQueue!.add(WORKFLOW_JOB_NAMES.PIPELINE_MONITOR, payload, { attempts: 1, ...opts });
-    this.logger.log(`[integrations-sync] enqueued ${WORKFLOW_JOB_NAMES.PIPELINE_MONITOR} jobId=${job.id} tenantId=${payload.tenantId}`);
-  }
 }

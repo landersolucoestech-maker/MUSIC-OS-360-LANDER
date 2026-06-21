@@ -18,7 +18,7 @@ export function useTransacoes() {
   const result = useDataQuery<TransacaoWithRelations>({
     queryKey: [...QUERY_KEYS.TRANSACOES],
     table: "transacoes",
-    select: "*, clientes(*), artistas(*), vendas(*)",
+    select: "*, clientes(*), artistas(*)",
     orderBy: { column: "data", ascending: false },
     onMutationSuccess: {
       onCreate: (t) =>

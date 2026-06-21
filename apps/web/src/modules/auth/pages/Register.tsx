@@ -1,9 +1,10 @@
 import { useState, useCallback } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { z } from "zod";
-import { useForm } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import {
@@ -12,6 +13,7 @@ import {
   BarChart3, FileText, Music, DollarSign, Calendar, Globe,
   ShieldCheck, Zap,
 } from "lucide-react";
+import { useAuth } from "@/app/providers/AuthContext";
 
 /* ── helpers ── */
 function slugify(val: string) {
@@ -103,7 +105,7 @@ type Step4 = z.infer<typeof step4Schema>;
 const STEPS = [
   { id: 1, label: "Empresa",     icon: Building2 },
   { id: 2, label: "Administrador", icon: User },
-  { id: 3, label: "Workspace",   icon: Settings },
+  { id: 3, label: "Ambiente",   icon: Settings },
   { id: 4, label: "Ativação",    icon: Rocket },
 ] as const;
 
@@ -120,19 +122,20 @@ const SEGMENTS  = [
 function Field({ label, error, children }: { label: string; error?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider">{label}</label>
+      <label className="text-[11px] font-semibold text-muted-foreground  tracking-wider">{label}</label>
       {children}
-      {error && <p className="text-[11.5px] text-red-400">{error}</p>}
+      {error && <p className="text-[11px] text-red-400">{error}</p>}
     </div>
   );
 }
 
-const inputCls = "flex h-11 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors";
+const inputCls = "flex h-11 w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/60 focus:border-primary/60 transition-colors";
 const selectCls = inputCls + " appearance-none cursor-pointer";
 
 /* ─────────── MAIN COMPONENT ─────────── */
 export default function Register() {
   const navigate              = useNavigate();
+  const { signUp }            = useAuth();
   const [step, setStep]       = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [showPw, setShowPw]   = useState(false);
@@ -165,46 +168,31 @@ export default function Register() {
   const onStep3 = (d: Step3) => { setData((p) => ({ ...p, ...d })); setStep(4); };
 
   /* ── Monta objeto tenant sem persistir ainda ── */
-  const buildTenant = (all: Partial<Step1 & Step2 & Step3 & Step4>) => {
-    const tenantId = `tenant-${Date.now()}`;
-    return {
-      id:            tenantId,
-      name:          all.companyName,
-      tradeName:     all.tradeName,
-      cnpj:          all.cnpj,
-      segment:       all.segment,
-      address:       all.address,
-      city:          all.city,
-      state:         all.state,
-      phone:         all.phone,
-      email:         all.corporateEmail,
-      slug:          all.slug,
-      workspaceName: all.workspaceName,
-      adminName:     all.fullName,
-      adminEmail:    all.email,
-      adminRole:     all.role,
-      plan:          all.plan,
-      createdAt:     new Date().toISOString(),
-      status:        "trial",
-    };
-  };
-
   /* ── Persiste tenant no localStorage ── */
-  const persistTenant = (tenant: Record<string, unknown>) => {
-    localStorage.setItem(`musicos360_tenant_${tenant.id}`, JSON.stringify(tenant));
-    localStorage.setItem("musicos360_current_tenant", JSON.stringify(tenant));
-  };
-
   /* ── Handler step 4 ── */
   const onStep4 = async (d: Step4) => {
     setIsLoading(true);
-    const all = { ...data, ...d };
-    const tenant = buildTenant(all);
+    const all = { ...data, ...d } as Step1 & Step2 & Step3 & Step4;
 
     try {
-      persistTenant(tenant);
-      toast.success(`Empresa "${tenant.name}" criada com sucesso!`);
-      navigate("/");
+      const { error } = await signUp(all.email, all.password, all.fullName, {
+        org_name: all.companyName,
+        trade_name: all.tradeName,
+        workspace_name: all.workspaceName,
+        workspace_slug: all.slug,
+        segment: all.segment,
+        corporate_email: all.corporateEmail,
+        phone: all.phone,
+        address: all.address,
+        city: all.city,
+        state: all.state,
+        requested_plan: all.plan,
+        accepted_terms: all.acceptTerms,
+        accepted_lgpd: all.acceptLgpd,
+      });
+      if (error) throw new Error(error.message);
+      toast.success("Cadastro enviado. Confirme seu email para ativar a conta.");
+      navigate("/login", { replace: true });
     } catch (err: unknown) {
       toast.error((err as { message?: string })?.message ?? "Erro ao criar conta. Tente novamente.");
     } finally {
@@ -216,7 +204,7 @@ export default function Register() {
 
   /* ─ benefits for right panel ─ */
   const benefits = [
-    { icon: BarChart3,  title: "Analytics Avançado",   desc: "Dashboards em tempo real de streaming e social media" },
+    { icon: BarChart3,  title: "Métricas Avançado",   desc: "Painéis em tempo real de streaming e social media" },
     { icon: DollarSign, title: "Gestão Financeira",     desc: "Fluxo de caixa, conciliação OFX e nota fiscal" },
     { icon: Music,      title: "Catálogo Musical",      desc: "ISRC, ISWC, fonogramas e gestão de shares" },
     { icon: FileText,   title: "Contratos Digitais",    desc: "Templates, assinatura eletrônica e alertas de vencimento" },
@@ -225,15 +213,15 @@ export default function Register() {
   ];
 
   return (
-    <div className="min-h-screen flex bg-black">
+    <div className="min-h-screen flex bg-background">
 
       {/* ── LEFT — form ── */}
-      <div className="w-full lg:w-1/2 flex flex-col bg-black overflow-y-auto">
+      <div className="w-full lg:w-1/2 flex flex-col bg-background overflow-y-auto">
         <div className="flex-1 flex flex-col px-8 py-8 max-w-xl mx-auto w-full">
 
           {/* Top bar */}
           <div className="flex items-center justify-between mb-6">
-            <Link to="/auth" className="flex items-center gap-1.5 text-gray-400 hover:text-white transition-colors text-sm">
+            <Link to="/auth" className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors text-sm">
               <ArrowLeft className="h-4 w-4" />
               Voltar ao login
             </Link>
@@ -246,14 +234,14 @@ export default function Register() {
 
           {/* Title */}
           <div className="mb-6">
-            <h1 className="text-xl font-bold text-white tracking-wider">CRIAR EMPRESA</h1>
-            <p className="text-sm text-gray-400 mt-1">Configure seu workspace profissional em minutos</p>
+            <h1 className="text-xl font-bold text-foreground tracking-wider">CRIAR EMPRESA</h1>
+            <p className="text-sm text-muted-foreground mt-1">Configure seu workspace profissional em minutos</p>
           </div>
 
           {/* Step indicator */}
           <div className="mb-8">
             {/* Progress bar */}
-            <div className="h-1.5 bg-white/10 rounded-full mb-5 overflow-hidden">
+            <div className="h-1.5 bg-muted rounded-full mb-5 overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all duration-500"
                 style={{ width: `${progress}%` }}
@@ -271,16 +259,16 @@ export default function Register() {
                       "h-8 w-8 rounded-full flex items-center justify-center border transition-all duration-300",
                       done   ? "bg-primary border-primary"            : "",
                       active ? "bg-primary/20 border-primary"         : "",
-                      !done && !active ? "bg-white/5 border-white/10" : "",
+                      !done && !active ? "bg-muted border-border" : "",
                     )}>
                       {done
-                        ? <Check className="h-4 w-4 text-white" />
-                        : <Icon className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-gray-500")} />
+                        ? <Check className="h-4 w-4 text-foreground" />
+                        : <Icon className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-muted-foreground")} />
                       }
                     </div>
                     <span className={cn(
                       "text-[10px] font-medium text-center leading-tight",
-                      active ? "text-primary" : done ? "text-gray-400" : "text-gray-600",
+                      active ? "text-primary" : done ? "text-muted-foreground" : "text-muted-foreground",
                     )}>
                       {s.label}
                     </span>
@@ -295,7 +283,7 @@ export default function Register() {
             <form onSubmit={form1.handleSubmit(onStep1)} className="space-y-4 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Building2 className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-semibold text-white">Dados da Empresa</h2>
+                <h2 className="text-base font-semibold text-foreground">Dados da Empresa</h2>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
@@ -365,9 +353,9 @@ export default function Register() {
             <form onSubmit={form2.handleSubmit(onStep2)} className="space-y-4 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <User className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-semibold text-white">Dados do Administrador</h2>
+                <h2 className="text-base font-semibold text-foreground">Dados do Administrador</h2>
               </div>
-              <p className="text-[12px] text-gray-500 -mt-2">Este usuário será o owner e admin master da organização.</p>
+              <p className="text-[12px] text-muted-foreground -mt-2">Este usuário será o owner e admin master da organização.</p>
 
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Nome Completo" error={form2.formState.errors.fullName?.message}>
@@ -393,7 +381,7 @@ export default function Register() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowPw((v) => !v)}
                   >
                     {showPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -407,7 +395,7 @@ export default function Register() {
                           key={i}
                           className={cn(
                             "h-1 flex-1 rounded-full transition-colors",
-                            i <= pwStrength.score ? pwStrength.color : "bg-white/10",
+                            i <= pwStrength.score ? pwStrength.color : "bg-muted",
                           )}
                         />
                       ))}
@@ -430,7 +418,7 @@ export default function Register() {
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     onClick={() => setShowCpw((v) => !v)}
                   >
                     {showCpw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -447,13 +435,13 @@ export default function Register() {
             <form onSubmit={form3.handleSubmit(onStep3)} className="space-y-4 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Settings className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-semibold text-white">Configuração do Workspace</h2>
+                <h2 className="text-base font-semibold text-foreground">Configuração do Ambiente</h2>
               </div>
 
-              <Field label="Nome do Workspace" error={form3.formState.errors.workspaceName?.message}>
+              <Field label="Nome do Ambiente" error={form3.formState.errors.workspaceName?.message}>
                 <input
                   className={inputCls}
-                  placeholder="Lander Records Workspace"
+                  placeholder="Ex.: Lander Records"
                   {...form3.register("workspaceName")}
                   onBlur={handleSlugSuggest}
                   data-testid="input-workspace-name"
@@ -462,7 +450,7 @@ export default function Register() {
 
               <Field label="Slug (URL)" error={form3.formState.errors.slug?.message}>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-gray-500">musicos360.com/</span>
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">musicos360.com/</span>
                   <input
                     className={inputCls + " pl-[108px]"}
                     placeholder="lander-records"
@@ -481,7 +469,7 @@ export default function Register() {
             <form onSubmit={form4.handleSubmit(onStep4)} className="space-y-5 flex-1">
               <div className="flex items-center gap-2 mb-2">
                 <Rocket className="h-5 w-5 text-primary" />
-                <h2 className="text-base font-semibold text-white">Plano & Ativação</h2>
+                <h2 className="text-base font-semibold text-foreground">Plano & Ativação</h2>
               </div>
 
               {/* Plan selector */}
@@ -501,12 +489,12 @@ export default function Register() {
                         "flex flex-col items-start gap-1 p-4 rounded-lg border text-left transition-all",
                         isSelected
                           ? "border-primary bg-primary/10"
-                          : "border-white/10 bg-white/5 hover:border-white/20",
+                          : "border-border bg-muted hover:border-border",
                       )}
                     >
-                      <Icon className={cn("h-5 w-5 mb-1", isSelected ? "text-primary" : "text-gray-400")} />
-                      <span className="text-sm font-semibold text-white">{plan.label}</span>
-                      <span className="text-[11px] text-gray-400">{plan.desc}</span>
+                      <Icon className={cn("h-5 w-5 mb-1", isSelected ? "text-primary" : "text-muted-foreground")} />
+                      <span className="text-sm font-semibold text-foreground">{plan.label}</span>
+                      <span className="text-[11px] text-muted-foreground">{plan.desc}</span>
                     </button>
                   );
                 })}
@@ -519,17 +507,23 @@ export default function Register() {
                   { field: "acceptLgpd" as const,  label: "Aceito o tratamento de dados conforme a LGPD" },
                 ].map(({ field, label }) => (
                   <label key={field} className="flex items-start gap-3 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      className="mt-0.5 h-4 w-4 rounded border-white/20 bg-white/5 accent-primary"
-                      {...form4.register(field)}
-                      data-testid={`checkbox-${field}`}
+                    <Controller
+                      control={form4.control}
+                      name={field}
+                      render={({ field: f }) => (
+                        <Checkbox
+                          className="mt-0.5"
+                          checked={!!f.value}
+                          onCheckedChange={(checked) => f.onChange(checked === true)}
+                          data-testid={`checkbox-${field}`}
+                        />
+                      )}
                     />
-                    <span className="text-[12px] text-gray-400">{label}</span>
+                    <span className="text-[12px] text-muted-foreground">{label}</span>
                   </label>
                 ))}
                 {(form4.formState.errors.acceptTerms || form4.formState.errors.acceptLgpd) && (
-                  <p className="text-[11.5px] text-red-400">
+                  <p className="text-[11px] text-red-400">
                     {form4.formState.errors.acceptTerms?.message ?? form4.formState.errors.acceptLgpd?.message}
                   </p>
                 )}
@@ -543,10 +537,10 @@ export default function Register() {
       </div>
 
       {/* ── RIGHT — marketing panel ── */}
-      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center bg-gradient-to-br from-gray-950 to-black border-l border-white/5 px-12 py-16">
+      <div className="hidden lg:flex lg:w-1/2 flex-col justify-center border-l border-border bg-card px-12 py-16">
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-white mb-2">Tudo para sua música crescer</h2>
-          <p className="text-sm text-gray-400">Um sistema completo para gravadoras, editoras e distribuidoras.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Tudo para sua música crescer</h2>
+          <p className="text-sm text-muted-foreground">Um sistema completo para gravadoras, editoras e distribuidoras.</p>
         </div>
         <div className="grid grid-cols-2 gap-5">
           {benefits.map(({ icon: Icon, title, desc }) => (
@@ -555,8 +549,8 @@ export default function Register() {
                 <Icon className="h-4.5 w-4.5 text-primary" />
               </div>
               <div>
-                <p className="text-sm font-semibold text-white">{title}</p>
-                <p className="text-[11.5px] text-gray-500 mt-0.5 leading-snug">{desc}</p>
+                <p className="text-sm font-semibold text-foreground">{title}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{desc}</p>
               </div>
             </div>
           ))}
@@ -582,7 +576,7 @@ function StepActions({
         <Button
           type="button"
           variant="outline"
-          className="flex-1 border-white/10 text-gray-400 hover:text-white hover:border-white/20"
+          className="flex-1 border-border text-muted-foreground hover:text-foreground hover:border-border"
           onClick={() => setStep(step - 1)}
           disabled={isLoading}
         >
@@ -595,9 +589,9 @@ function StepActions({
         disabled={isLoading}
       >
         {isLoading ? (
-          <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Criando...</>
+          <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Criando</>
         ) : isLastStep ? (
-          <><Rocket className="h-4 w-4 mr-1" /> Ativar Workspace</>
+          <><Rocket className="h-4 w-4 mr-1" /> Ativar Ambiente</>
         ) : (
           <>Próximo <ArrowRight className="h-4 w-4 ml-1" /></>
         )}

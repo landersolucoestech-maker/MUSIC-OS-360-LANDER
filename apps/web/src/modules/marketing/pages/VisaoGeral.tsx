@@ -1,242 +1,159 @@
-import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
-import { Button } from "@/shared/ui/button";
-import {
-  Users, DollarSign, TrendingUp, Percent, Target, FileEdit,
-  CheckSquare, Sparkles, AlertTriangle, ChevronRight, Loader2,
-} from "lucide-react";
+/**
+ * Marketing — Visão Geral (operational dashboard).
+ * KPIs, operational alerts, upcoming deliveries, pending approvals,
+ * recent activity and quick actions.
+ */
+
 import { Link } from "react-router-dom";
-import { useCampanhas } from "@/modules/marketing/hooks/useCampanhas";
-import { useBriefings } from "@/modules/marketing/hooks/useBriefings";
-import { useTarefasMarketing } from "@/modules/marketing/hooks/useTarefasMarketing";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
-import { MetricCard } from "@/shared/components/MetricCard";
-import { FeatureGate } from '@/shared/components/FeatureGate';
+import {
+  CalendarClock,
+  CheckCircle2,
+  ClipboardList,
+  FileEdit,
+  Folder,
+  Gauge,
+  ListChecks,
+  Megaphone,
+  Plus,
+  Sparkles,
+  Truck,
+} from "lucide-react";
+import { MainLayout } from "@/shared/components/MainLayout";
+import { FeatureGate } from "@/shared/components/FeatureGate";
+import { Button } from "@/shared/ui/button";
+import { Skeleton } from "@/shared/ui/skeleton";
+import { MarketingKpiCard } from "../components/MarketingKpiCard";
+import { MarketingSectionCard } from "../components/MarketingSectionCard";
+import { MarketingActivityFeed } from "../components/MarketingActivityFeed";
+import { ContentStatusBadge, ApprovalBadge } from "../components/MarketingStatusBadge";
+import { useMarketingDashboard } from "../hooks/useMarketingDashboard";
+import { CONTENT_CHANNEL_LABEL } from "../constants/marketing.constants";
+import { formatDate } from "../utils/marketing-format";
 
-export default function MarketingVisaoGeral() {
-  const { campanhas, isLoading: loadingCampanhas } = useCampanhas();
-  const { briefings, isLoading: loadingBriefings } = useBriefings();
-  const { tarefas, isLoading: loadingTarefas } = useTarefasMarketing();
-  const { clientes, isLoading: loadingClientes } = useClientes();
+const QUICK_LINKS = [
+  { href: "/marketing/campanhas", icon: Megaphone, label: "Nova Campanha" },
+  { href: "/marketing/calendario", icon: CalendarClock, label: "Novo Conteúdo" },
+  { href: "/marketing/tarefas", icon: ListChecks, label: "Nova Tarefa" },
+  { href: "/marketing/ia-criativa", icon: Sparkles, label: "IA Criativa" },
+];
 
-  const isLoading = loadingCampanhas || loadingBriefings || loadingTarefas || loadingClientes;
-
-  const leads = clientes.filter((c: any) => c.status === "lead").length;
-  const campanhasAtivas = campanhas.filter((c: any) => c.status === "ativa").length;
-  const tarefasPendentes = tarefas.filter((t: any) => t.status === "pendente").length;
-
-  if (isLoading) {
-    return (
-      <MainLayout>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </MainLayout>
-    );
-  }
-
-  const channels = [
-    { name: "Instagram", followers: "0 seguidores", growth: "+0,0%" },
-    { name: "YouTube",   followers: "0 seguidores", growth: "+0,0%" },
-    { name: "TikTok",    followers: "0 seguidores", growth: "+0,0%" },
-    { name: "Spotify",   followers: "0 ouvintes",   growth: "+0,0%" },
-  ];
-
-  const funnelStages = [
-    { stage: "Awareness",     value: "0 impressões", pct: "100%" },
-    { stage: "Interesse",     value: "0 cliques",    pct: "75%"  },
-    { stage: "Consideração",  value: "0 alcance",    pct: "50%"  },
-    { stage: "Conversão",     value: `${leads} leads`, pct: "25%" },
-  ];
-
-  const quickLinks = [
-    { href: "/marketing/campanhas", icon: Target,      label: "Criar Campanha" },
-    { href: "/marketing/briefing",  icon: FileEdit,    label: "Novo Briefing"  },
-    { href: "/marketing/tarefas",   icon: CheckSquare, label: "Nova Tarefa"    },
-    { href: "/marketing/ia-criativa", icon: Sparkles,  label: "IA Criativa"    },
-  ];
+export default function VisaoGeral() {
+  const { data, isLoading } = useMarketingDashboard();
 
   return (
-    <FeatureGate feature="moduleMarketing" featureName="Marketing & Campanhas">
-    <MainLayout title="Visão Geral" description="Cockpit estratégico de marketing">
-      <div className="space-y-6">
-        {/* ── KPI Stats ── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <MetricCard
-            title="Leads"
-            value={leads}
-            description="+12% vs mês anterior"
-            icon={Users}
-            accent="primary"
-          />
-          <MetricCard
-            title="CPL"
-            value="R$ 0,00"
-            description="custo por lead"
-            icon={DollarSign}
-            accent="success"
-          />
-          <MetricCard
-            title="ROI"
-            value="0,0x"
-            description="+15% retorno"
-            icon={TrendingUp}
-            accent="success"
-          />
-          <MetricCard
-            title="Conversão"
-            value="0,0%"
-            description="taxa média"
-            icon={Percent}
-            accent="primary"
-          />
-        </div>
+    <FeatureGate feature="moduleMarketing" featureName="Marketing">
+      <MainLayout
+        title="Visão Geral"
+        description="Cockpit operacional do setor de marketing"
+      >
+        <div className="space-y-6">
+          {/* KPIs */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {isLoading || !data
+              ? Array.from({ length: 8 }).map((_, i) => <Skeleton key={i} className="h-[104px]" />)
+              : (
+                <>
+                  <MarketingKpiCard title="Campanhas ativas" value={data.kpis.activeCampaigns} icon={Megaphone} accent="primary" to="/marketing/campanhas" />
+                  <MarketingKpiCard title="Projetos musicais em divulgação" value={data.kpis.activeProjects} icon={Folder} accent="primary" to="/projetos" />
+                  <MarketingKpiCard title="Conteúdos programados" value={data.kpis.scheduledContents} icon={CalendarClock} accent="warning" to="/marketing/calendario" />
+                  <MarketingKpiCard title="Tarefas pendentes" value={data.kpis.pendingTasks} icon={ListChecks} accent="warning" to="/marketing/tarefas" />
+                  <MarketingKpiCard title="Conteúdos publicados" value={data.kpis.openBriefings} icon={FileEdit} accent="primary" to="/marketing/calendario" />
+                  <MarketingKpiCard title="Aprovações pendentes" value={data.kpis.pendingApprovals} icon={CheckCircle2} accent="destructive" />
+                  <MarketingKpiCard title="Entregas próximas" value={data.kpis.upcomingDeliveries} icon={Truck} accent="primary" />
+                  <MarketingKpiCard title="Performance do setor" value={`${data.kpis.sectorPerformance}%`} icon={Gauge} accent="success" to="/marketing/metricas" />
+                </>
+              )}
+          </div>
 
-        {/* ── Main Grid ── */}
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left — Performance + Funil + Campanhas */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Performance por Canal */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">Performance por Canal</CardTitle>
-                <CardDescription className="text-xs mt-0.5">Engajamento e alcance por plataforma</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <div className="divide-y divide-border/60">
-                  {channels.map((ch) => (
-                    <div key={ch.name} className="flex items-center justify-between py-3 first:pt-0 last:pb-0">
-                      <span className="text-sm font-medium">{ch.name}</span>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs text-muted-foreground font-mono">{ch.followers}</span>
-                        <span className="text-xs font-mono text-success">{ch.growth}</span>
-                      </div>
-                    </div>
+          <div className="grid gap-6 lg:grid-cols-3">
+            {/* Left column */}
+            <div className="lg:col-span-2 space-y-6">
+
+              <MarketingSectionCard
+                title="Entregas próximas"
+                icon={CalendarClock}
+                description="Conteúdos a publicar"
+                action={
+                  <Link to="/marketing/calendario">
+                    <Button variant="ghost" size="sm" className="h-7 text-xs">Ver calendário</Button>
+                  </Link>
+                }
+              >
+                {isLoading || !data ? (
+                  <Skeleton className="h-24 w-full" />
+                ) : data.upcomingContents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">Nada agendado.</p>
+                ) : (
+                  <ul className="divide-y divide-border/60">
+                    {data.upcomingContents.map((content) => (
+                      <li key={content.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{content.title}</p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {CONTENT_CHANNEL_LABEL[content.channel]} · {formatDate(content.publishDate)} {content.publishTime}
+                          </p>
+                        </div>
+                        <ContentStatusBadge status={content.status} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </MarketingSectionCard>
+
+              <MarketingSectionCard
+                title="Aprovações pendentes"
+                icon={CheckCircle2}
+                description="Conteúdos aguardando aprovação"
+              >
+                {isLoading || !data ? (
+                  <Skeleton className="h-20 w-full" />
+                ) : data.pendingApprovals.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">Nenhuma aprovação pendente.</p>
+                ) : (
+                  <ul className="divide-y divide-border/60">
+                    {data.pendingApprovals.map((content) => (
+                      <li key={content.id} className="flex items-center justify-between gap-3 py-2.5 first:pt-0 last:pb-0">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium truncate">{content.title}</p>
+                          <p className="text-[11px] text-muted-foreground">{content.owner}</p>
+                        </div>
+                        <ApprovalBadge status={content.approval} />
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </MarketingSectionCard>
+            </div>
+
+            {/* Right column */}
+            <div className="space-y-6">
+              <MarketingSectionCard title="Atalhos rápidos" icon={Sparkles}>
+                <div className="space-y-2">
+                  {QUICK_LINKS.map(({ href, icon: Icon, label }) => (
+                    <Link to={href} key={href}>
+                      <Button variant="outline" size="sm" className="w-full justify-start gap-2 h-9 text-xs">
+                        <Plus className="h-3 w-3" />
+                        <Icon className="h-3.5 w-3.5" />
+                        {label}
+                      </Button>
+                    </Link>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </MarketingSectionCard>
 
-            {/* Funil de Marketing */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">Funil de Marketing</CardTitle>
-                <CardDescription className="text-xs mt-0.5">Jornada do lead até conversão</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-3">
-                {funnelStages.map((s) => (
-                  <div key={s.stage}>
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-xs text-muted-foreground">{s.stage}</span>
-                      <span className="text-xs font-mono text-muted-foreground">{s.value}</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-muted overflow-hidden">
-                      <div
-                        className="h-full bg-primary/60 rounded-full"
-                        style={{ width: s.pct }}
-                      />
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Campanhas Ativas */}
-            <Card>
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-sm font-semibold">Campanhas Ativas</CardTitle>
-                    <CardDescription className="text-xs mt-0.5">{campanhasAtivas} campanhas em execução</CardDescription>
-                  </div>
-                  <Link to="/marketing/campanhas">
-                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-muted-foreground hover:text-foreground">
-                      Ver todas <ChevronRight className="h-3 w-3" />
-                    </Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              {campanhasAtivas === 0 && (
-                <CardContent className="pt-0">
-                  <p className="text-sm text-muted-foreground text-center py-4">Nenhuma campanha ativa</p>
-                </CardContent>
-              )}
-            </Card>
-          </div>
-
-          {/* Right — Alerts + Performance + Quick Actions */}
-          <div className="space-y-6">
-            {/* Alertas */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <AlertTriangle className="h-3.5 w-3.5 text-warning" />
-                  Alertas
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                {tarefasPendentes > 0 ? (
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="font-mono font-semibold text-warning">{tarefasPendentes}</span>
-                    <span className="text-muted-foreground">tarefas pendentes</span>
-                  </div>
+              <MarketingSectionCard title="Atividades recentes" icon={ClipboardList}>
+                {isLoading || !data ? (
+                  <Skeleton className="h-32 w-full" />
                 ) : (
-                  <p className="text-sm text-muted-foreground">Nenhum alerta no momento</p>
+                  <MarketingActivityFeed events={data.recentActivity} />
                 )}
-              </CardContent>
-            </Card>
+              </MarketingSectionCard>
 
-            {/* Melhor Performance */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">Melhor Performance</CardTitle>
-                <CardDescription className="text-xs mt-0.5">Campanhas com maior ROI</CardDescription>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">Sem dados de performance ainda</p>
-              </CardContent>
-            </Card>
-
-            {/* Atalhos Rápidos */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                  <Sparkles className="h-3.5 w-3.5 text-primary" />
-                  Atalhos Rápidos
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0 space-y-2">
-                {quickLinks.map(({ href, icon: Icon, label }) => (
-                  <Link to={href} key={href}>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="w-full justify-start gap-2 h-8 text-xs"
-                    >
-                      <Icon className="h-3.5 w-3.5" />
-                      {label}
-                    </Button>
-                  </Link>
-                ))}
-              </CardContent>
-            </Card>
-
-            {/* Atividades */}
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm font-semibold">Atividades</CardTitle>
-              </CardHeader>
-              <CardContent className="pt-0">
-                <p className="text-sm text-muted-foreground">
-                  <span className="font-mono font-semibold text-foreground">{briefings.length}</span>
-                  {" "}briefings cadastrados
-                </p>
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </div>
-      </div>
-    </MainLayout>
+      </MainLayout>
     </FeatureGate>
   );
 }
+

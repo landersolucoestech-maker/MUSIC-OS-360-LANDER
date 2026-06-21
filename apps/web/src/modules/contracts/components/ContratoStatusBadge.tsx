@@ -1,5 +1,4 @@
-import { Badge } from "@/shared/ui/badge";
-import { cn } from "@/shared/lib/utils";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { differenceInDays, parseISO } from "date-fns";
 import type { MockRow } from "@/shared/types/database";
 
@@ -89,33 +88,34 @@ export function ContratoStatusBadge({
   const resolved = situacao ?? getContratoSituacao(contratos);
 
   let label: string;
-  let badgeClass: string;
+  let variant: BadgeVariant;
 
   switch (resolved) {
     case "ativo":
       label = "Contrato ativo";
-      badgeClass = "bg-success hover:bg-success text-success-foreground";
+      variant = "success";
       break;
     case "vencendo": {
       const dias = contratos ? getDiasVencendo(contratos) : null;
       label = dias !== null ? `Contrato vencendo em ${dias} dia${dias === 1 ? "" : "s"}` : "Contrato vencendo";
-      badgeClass = "bg-orange-500 hover:bg-orange-500 text-white";
+      variant = "warning";
       break;
     }
     case "em_negociacao":
       label = "Em negociação";
-      badgeClass = "bg-yellow-600 hover:bg-yellow-600 text-white";
+      variant = "warning";
       break;
     case "sem_contrato":
     default:
       label = "Sem contrato ativo";
-      badgeClass = "bg-primary hover:bg-primary text-primary-foreground";
+      variant = "neutral";
       break;
   }
 
   return (
     <Badge
-      className={cn(badgeClass, "text-[10px] py-0 px-2", className)}
+      variant={variant}
+      className={className}
       data-testid={rest["data-testid"]}
     >
       {label}

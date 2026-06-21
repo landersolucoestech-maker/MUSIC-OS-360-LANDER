@@ -171,3 +171,4 @@ export function resolveAllowedTransitions(
   }
   return getWorkflowAllowedTransitions(entityType, currentStatus);
 }
+

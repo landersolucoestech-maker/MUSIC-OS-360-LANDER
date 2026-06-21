@@ -1,13 +1,30 @@
-import { Entity, Column, PrimaryGeneratedColumn, CreateDateColumn, UpdateDateColumn } from 'typeorm';
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  PrimaryColumn,
+  UpdateDateColumn,
+} from 'typeorm';
 
-@Entity('users')
+@Entity({ schema: 'public', name: 'users' })
+@Index('uq_users_auth_user_id', ['auth_user_id'], { unique: true })
 export class UserEntity {
-  @PrimaryGeneratedColumn('uuid')
+  @PrimaryColumn({ type: 'uuid' })
   id: string;
 
-  @CreateDateColumn()
+  @Column({ type: 'text' })
+  auth_user_id: string;
+
+  @Column({ type: 'text', nullable: true })
+  email: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  display_name: string | null;
+
+  @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
 
-  @UpdateDateColumn()
+  @UpdateDateColumn({ type: 'timestamptz' })
   updated_at: Date;
 }

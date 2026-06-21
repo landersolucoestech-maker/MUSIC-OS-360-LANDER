@@ -13,7 +13,8 @@ import { useLancamentos } from "@/modules/releases/hooks/useLancamentos";
 import type { LancamentoWithRelations } from "@/modules/releases/hooks/useLancamentos";
 import type { ContratoWithRelations, ContratoVersao } from "@/modules/contracts/hooks/useContratos";
 import { StatusBadge } from "@/shared/components/StatusBadge";
-import { formatDate, formatCurrency } from "@/shared/lib/format-utils";
+import { formatDateDashes, formatDateTimeDashes, formatCurrency, getMonetarySemanticClass } from "@/shared/lib/format-utils";
+import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { useDocuments } from "@/modules/contracts/hooks/useDocuments";
 import { DocumentStatusBadge, SignerStatusBadge } from "@/modules/contracts/components/DocumentStatusBadge";
 import { DocumentTimeline } from "@/modules/contracts/components/DocumentTimeline";
@@ -97,7 +98,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   <StatusBadge status={contrato.status ?? ""} />
                   <SigningPlatformBadge platform={contrato.signing_platform} />
                   {expirando && (
-                    <Badge className="bg-warning/10 text-warning border-warning/20 text-[11px] border gap-1">
+                    <Badge variant="warning" className="gap-1">
                       <AlertCircle className="h-3 w-3" />
                       Expira em {diasRestantes}d
                     </Badge>
@@ -149,11 +150,11 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                 <div className="grid grid-cols-2 gap-x-6 gap-y-4">
                   {[
                     { label: "Artista / Cliente", value: contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—" },
-                    { label: "Tipo", value: contrato.tipo || "—" },
-                    { label: "Início", value: formatDate(contrato.data_inicio) || "—" },
-                    { label: "Término", value: formatDate(contrato.data_fim) || "Indeterminado" },
-                    { label: "Valor", value: contrato.valor != null ? formatCurrency(contrato.valor) : "—" },
-                    { label: "Assinado em", value: formatDate(contrato.assinado_em) || "—" },
+                    { label: "Tipo", value: contrato.tipo ? formatCategoryLabel(contrato.tipo) : "—" },
+                    { label: "Início", value: formatDateDashes(contrato.data_inicio) },
+                    { label: "Término", value: contrato.data_fim ? formatDateDashes(contrato.data_fim) : "Indeterminado" },
+                    { label: "Valor", value: contrato.valor != null ? <span className={getMonetarySemanticClass("neutral")}>{formatCurrency(contrato.valor)}</span> : "—" },
+                    { label: "Assinado em", value: formatDateDashes(contrato.assinado_em) },
                   ].map(({ label, value }) => (
                     <div key={label}>
                       <p className="text-xs text-muted-foreground mb-0.5">{label}</p>
@@ -176,7 +177,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                       <span>Assinado digitalmente via </span>
                       <SigningPlatformBadge platform={contrato.signing_platform} className="inline-flex align-middle" />
                       {contrato.autentique_doc_id && (
-                        <span className="ml-1">— ID: <span className="font-mono">{contrato.autentique_doc_id}</span></span>
+                        <span className="ml-1">— ID: <span className="font-sans">{contrato.autentique_doc_id}</span></span>
                       )}
                     </div>
                   </div>
@@ -188,7 +189,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                 {/* Signatários do contrato (inline, do formulário) */}
                 {contratoSigners.length > 0 ? (
                   <div>
-                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                    <p className="text-xs font-medium text-muted-foreground  tracking-wide mb-3">
                       Signatários ({contratoSigners.length})
                     </p>
                     <div className="space-y-2">
@@ -265,7 +266,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                   <>
                     <div className="border-t border-border pt-5">
                       <div className="flex items-center justify-between mb-3">
-                        <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <p className="text-xs font-medium text-muted-foreground  tracking-wide">
                           Processo de Assinatura Digital
                         </p>
                         <SigningPlatformBadge platform={vinculadoDoc.signing_provider} />
@@ -280,7 +281,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                             <DocumentStatusBadge status={vinculadoDoc.status} />
                             {vinculadoDoc.signed_at && (
                               <span className="text-xs text-muted-foreground">
-                                Assinado em {new Date(vinculadoDoc.signed_at).toLocaleDateString("pt-BR")}
+                                Assinado em {formatDateDashes(vinculadoDoc.signed_at)}
                               </span>
                             )}
                           </div>
@@ -321,7 +322,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                                 </p>
                                 {signer.status === "signed" && signer.signed_at && (
                                   <p className="text-xs text-green-600 mt-0.5">
-                                    Assinado em {new Date(signer.signed_at).toLocaleDateString("pt-BR", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}
+                                    Assinado em {formatDateTimeDashes(signer.signed_at)}
                                   </p>
                                 )}
                               </div>
@@ -338,7 +339,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
 
                       {vinculadoDoc.logs.length > 0 && (
                         <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide mb-3">
+                          <p className="text-xs font-medium text-muted-foreground  tracking-wide mb-3">
                             Histórico de eventos
                           </p>
                           <DocumentTimeline logs={vinculadoDoc.logs} />
@@ -359,7 +360,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                       </div>
                       <div>
                         <p className="font-semibold text-sm mb-1">{contrato.titulo}</p>
-                        <p className="text-xs text-muted-foreground font-mono break-all max-w-sm mx-auto">
+                        <p className="text-xs text-muted-foreground font-sans break-all max-w-sm mx-auto">
                           {contrato.arquivo_url}
                         </p>
                       </div>
@@ -397,14 +398,14 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                           <div className="flex items-center gap-2 mb-0.5">
                             <span className="font-medium text-sm">{v.versao}</span>
                             {index === versoes.length - 1 && (
-                              <Badge className="bg-success/10 text-success border border-success/20 text-[9px] h-4 px-1">
+                              <Badge variant="success" className="text-[9px] h-4 px-1">
                                 Atual
                               </Badge>
                             )}
                           </div>
                           <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
                             <Clock className="h-3 w-3" />
-                            {v.criado_em ? new Date(v.criado_em).toLocaleDateString("pt-BR") : "—"}
+                            {formatDateDashes(v.criado_em)}
                           </p>
                           {v.autor && (
                             <p className="text-xs text-muted-foreground mb-0.5 flex items-center gap-1">
@@ -461,7 +462,7 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
                             <p className="text-[10px] text-muted-foreground">Data de lançamento</p>
                             <p className="text-xs font-medium">
                               {lancamentoVinculado.data_lancamento
-                                ? new Date(lancamentoVinculado.data_lancamento).toLocaleDateString("pt-BR")
+                                ? formatDateDashes(lancamentoVinculado.data_lancamento)
                                 : "—"}
                             </p>
                           </div>
@@ -522,3 +523,4 @@ export function ContratoViewModal({ open, onOpenChange, contrato, onEdit }: Cont
     </>
   );
 }
+

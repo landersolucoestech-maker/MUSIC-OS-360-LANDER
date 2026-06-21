@@ -20,12 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/shared/ui/table";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Braces, Copy, Pencil, Trash2, Plus, Variable, X, Upload, Download } from "lucide-react";
 import { toast } from "sonner";
 import { useVariableRegistry } from "@/modules/contracts/hooks/useVariableRegistry";
 import type { RegistryVariable } from "@/modules/contracts/hooks/useVariableRegistry";
 import { PageHeader } from "@/shared/components/PageHeader";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 
 // ── Validation helpers ─────────────────────────────────────────────────────
 
@@ -247,12 +250,12 @@ function VariableFormModal({
           <div className="rounded-md border bg-muted/40 px-4 py-3 flex items-center gap-3">
             <Braces className="h-4 w-4 text-primary shrink-0" />
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-mono text-primary font-medium">
+              <span className="text-sm font-sans text-primary font-medium">
                 {preview}
               </span>
               {internalGroup.trim() && (
                 <span className="ml-3 text-xs text-muted-foreground">
-                  → grupo interno: <span className="font-mono">{internalGroup.trim()}</span>
+                  → grupo interno: <span className="font-sans">{internalGroup.trim()}</span>
                 </span>
               )}
             </div>
@@ -378,6 +381,8 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
       (v.internalGroup?.toLowerCase().includes(q) ?? false)
     );
   });
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filtered, 10);
 
   // ── Export ───────────────────────────────────────────────────────────────
 
@@ -614,12 +619,12 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
           <EmptyState onNew={() => setCreateOpen(true)} />
         ) : (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 rounded-lg bg-muted/30 p-3">
               <Input
                 placeholder="Pesquisar variáveis..."
                 value={search}
                 onChange={(e) => { setSearch(e.target.value); setSelected(new Set()); }}
-                className="max-w-sm"
+                className="h-8 text-sm max-w-sm"
                 data-testid="input-search-variables"
               />
               {selectedCount > 0 && (
@@ -649,18 +654,30 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
             </div>
 
             <div className="rounded-md border">
+              <ListSectionHeader
+                title="Lista de Variáveis"
+                count={filtered.length}
+                description="Acompanhe placeholders, aliases, nomenclatura interna e campos reutilizáveis"
+                className="px-4 pt-4"
+                action={
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Checkbox
+                      checked={allSelected}
+                      data-state={someSelected && !allSelected ? "indeterminate" : undefined}
+                      onCheckedChange={toggleSelectAll}
+                      aria-label="Seleccionar todas"
+                      data-testid="checkbox-select-all"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedCount > 0 ? `${selectedCount} selecionada(s)` : "Selecionar todos"}
+                    </span>
+                  </div>
+                }
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={allSelected}
-                        data-state={someSelected && !allSelected ? "indeterminate" : undefined}
-                        onCheckedChange={toggleSelectAll}
-                        aria-label="Seleccionar todas"
-                        data-testid="checkbox-select-all"
-                      />
-                    </TableHead>
+                    <TableHead className="w-10"></TableHead>
                     <TableHead>Nome</TableHead>
                     <TableHead>Alias</TableHead>
                     <TableHead>Nomenclatura Interna</TableHead>
@@ -680,7 +697,7 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((v) => (
+                    pageItems.map((v) => (
                       <TableRow
                         key={v.id}
                         data-testid={`row-variable-${v.id}`}
@@ -699,14 +716,14 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
                         <TableCell>
                           <Badge variant="secondary">{v.group}</Badge>
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
+                        <TableCell className="font-sans text-xs text-muted-foreground">
                           {v.internalGroup ?? <span className="opacity-30">—</span>}
                         </TableCell>
-                        <TableCell className="font-mono text-xs text-muted-foreground">
+                        <TableCell className="font-sans text-xs text-muted-foreground">
                           {v.field}
                         </TableCell>
                         <TableCell>
-                          <span className="font-mono text-xs text-primary bg-primary/5 border border-primary/15 rounded px-2 py-0.5">
+                          <span className="font-sans text-xs text-primary bg-primary/5 border border-primary/15 rounded px-2 py-0.5">
                             {v.placeholder}
                           </span>
                         </TableCell>
@@ -750,6 +767,14 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
                 </TableBody>
               </Table>
             </div>
+            <TablePagination
+              total={total}
+              page={page}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+              itemLabel="variáveis"
+            />
           </div>
         )}
       </div>
@@ -815,3 +840,4 @@ export default function VariableRegistry({ asModal = false, onClose }: VariableR
     </div>
   );
 }
+

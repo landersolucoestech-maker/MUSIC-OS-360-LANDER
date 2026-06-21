@@ -13,6 +13,7 @@ import { MigrationInterface, QueryRunner } from 'typeorm';
  */
 export class PerformanceIndexes20260521000030 implements MigrationInterface {
   name = 'PerformanceIndexes20260521000030';
+  transaction = false as const;
 
   // Tables that follow the (tenant_id, deleted_at, created_at) pattern
   private readonly SOFT_DELETE_TABLES = [

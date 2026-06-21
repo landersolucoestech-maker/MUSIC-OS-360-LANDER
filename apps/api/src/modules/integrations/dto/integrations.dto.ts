@@ -9,6 +9,7 @@ export class OAuthInitDto {
     'corp_tiktok', 'tiktok_business', 'tiktok_ads',
     'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',
     'spotify_ads', 'corp_spotify',
+    'docusign', 'stripe_connect',
   ])
   platform!: string;
 }
@@ -24,6 +25,7 @@ export class OAuthExchangeDto {
     'corp_instagram', 'meta_business', 'meta_ads',
     'corp_tiktok', 'tiktok_business', 'tiktok_ads',
     'corp_youtube', 'youtube_business', 'google_business', 'google_ads', 'youtube_ads',
+    'docusign', 'stripe_connect',
   ])
   platform!: string;
 

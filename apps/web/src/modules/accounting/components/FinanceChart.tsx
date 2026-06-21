@@ -19,7 +19,7 @@ function safeParseDate(val: unknown): Date | null {
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+      <div className="bg-popover border border-border rounded-lg p-3">
         <p className="font-medium text-foreground mb-2">{label}</p>
         {payload.map((entry: any) => (
           <p key={entry.name} className="text-sm" style={{ color: entry.color }}>
@@ -87,20 +87,6 @@ export function FinanceChart() {
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-              <defs>
-                <linearGradient id="colorReceitas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(142, 76%, 36%)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorDespesas" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(0, 84%, 60%)" stopOpacity={0} />
-                </linearGradient>
-                <linearGradient id="colorLucro" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
-                </linearGradient>
-              </defs>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis
                 dataKey="name"
@@ -152,3 +138,4 @@ export function FinanceChart() {
     </Card>
   );
 }
+

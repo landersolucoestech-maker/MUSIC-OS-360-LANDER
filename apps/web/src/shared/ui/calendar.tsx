@@ -30,7 +30,7 @@ function Calendar({ className, classNames, showOutsideDays = true, ...props }: C
         head_row: "flex mb-1",
         head_cell: cn(
           "w-9 text-center",
-          "text-[10px] font-semibold uppercase tracking-widest",
+          "text-[10px] font-semibold  tracking-widest",
           "text-muted-foreground/60",
           "py-1",
         ),

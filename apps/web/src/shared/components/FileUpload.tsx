@@ -20,6 +20,19 @@ function getPublicUrl(path: string): string {
   return path;
 }
 
+/**
+ * Lê o arquivo como data URL base64 — usado para imagens em modo standalone
+ * (sem storage real), garantindo um `url` renderável e persistível.
+ */
+function readAsDataURL(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(file);
+  });
+}
+
 export interface UploadedFile {
   name: string;
   size: number;
@@ -191,9 +204,10 @@ export function FileUpload({
               url: getPublicUrl(result.path),
             };
 
-            // Generate preview for images
+            // Generate preview for images and persist a renderable data URL.
             if (file.type.startsWith("image/")) {
               uploadedFile.preview = URL.createObjectURL(file);
+              uploadedFile.url = await readAsDataURL(file);
             }
 
             if (!multiple) {

@@ -1,0 +1,307 @@
+import 'reflect-metadata';
+import { ReleaseChecklistAutomation } from './release-checklist.automation';
+import { passThroughTenantContext } from '../../../test/helpers/tenant-context.mock';
+
+// ─── Mocks de fronteira (DB / SkillRunService / AIService) ────────────────────
+
+function makeSkillRun() {
+  return {
+    start: jest.fn(async () => 'run-1'),
+    succeed: jest.fn(async () => undefined),
+    fail: jest.fn(async () => undefined),
+    log: jest.fn(async () => undefined),
+  };
+}
+
+function makeAi(content: string) {
+  return {
+    complete: jest.fn(async () => ({
+      content,
+      provider: 'openai',
+      model: 'gpt-4o-mini',
+      inputTokens: 1,
+      outputTokens: 1,
+      costUsd: 0,
+      latencyMs: 1,
+    })),
+  };
+}
+
+function makeFailingAi() {
+  return { complete: jest.fn(async () => { throw new Error('Nenhum provider de AI configurado'); }) };
+}
+
+/**
+ * Mock de DataSource que roteia por SQL:
+ *  - SELECT ... FROM releases   → releaseRows
+ *  - SELECT ... FROM skill_runs → skillRunRows (guarda de idempotência)
+ *  - UPDATE                     → undefined
+ */
+function makeDs(releaseRows: unknown[], skillRunRows: unknown[] = []) {
+  const query = jest.fn(async (sql: string) => {
+    if (/FROM\s+skill_runs/i.test(sql)) return skillRunRows;
+    if (/FROM\s+releases/i.test(sql)) return releaseRows;
+    return undefined;
+  });
+  return { ds: { query }, query };
+}
+
+/** Janela de stale do runner (mantida em sincronia com STALE_RUNNING_MINUTES). */
+const STALE_RUNNING_MINUTES = 15;
+
+/**
+ * Mock status-aware (M1): emula a guarda do runner sobre os runs fornecidos —
+ * 'success' bloqueia sempre; 'running' bloqueia só se RECENTE (ageMinutes dentro da
+ * janela); 'running' stale e 'failed'/'cancelled' não bloqueiam.
+ */
+function makeDsWithRuns(
+  releaseRows: unknown[],
+  runs: Array<{ status: string; ageMinutes?: number }>,
+) {
+  const query = jest.fn(async (sql: string) => {
+    if (/FROM\s+skill_runs/i.test(sql)) {
+      const blocking = runs.filter(
+        (r) =>
+          r.status === 'success' ||
+          (r.status === 'running' && (r.ageMinutes ?? 0) < STALE_RUNNING_MINUTES),
+      );
+      return blocking.length ? [{ '1': 1 }] : [];
+    }
+    if (/FROM\s+releases/i.test(sql)) return releaseRows;
+    return undefined;
+  });
+  return { ds: { query }, query };
+}
+
+function makeEvent(overrides: Record<string, unknown> = {}) {
+  return {
+    tenantId: 't1',
+    payload: {
+      releaseId: 'r1',
+      tenantId: 't1',
+      titulo: 'Aurora',
+      tipo: 'single',
+      artistId: 'a1',
+      createdBy: 'u1',
+      createdAt: new Date().toISOString(),
+      ...overrides,
+    },
+  };
+}
+
+const RELEASE_ROW = {
+  titulo: 'Aurora',
+  tipo: 'single',
+  data_lancamento: null,
+  upc: null,
+  capa_url: null,
+  artista_id: 'a1',
+  artist_name: 'Banda Aurora',
+  metadata: {},
+};
+
+const VALID_CHECKLIST_JSON = JSON.stringify({
+  readinessScore: 42,
+  status: 'needs-attention',
+  missingItems: [{ item: 'ISRC', area: 'metadata', severity: 'high', reason: 'não emitido' }],
+  criticalIssues: [],
+  warnings: [],
+  checklist: [{ item: 'Capa', completed: false, area: 'artwork', required: true }],
+  recommendedActions: [{ action: 'Emitir ISRC', priority: 'high', ownerArea: 'A&R' }],
+  metadataReview: { hasMinimumMetadata: false, missingMetadata: ['ISRC'], notes: [] },
+});
+
+const IDEMPOTENCY_KEY = 'release.created:t1:r1';
+
+describe('ReleaseChecklistAutomation (release.created → release-checklist)', () => {
+  it('Fluxo: executa, registra skill_run e grava releases.metadata.aiChecklist no sucesso', async () => {
+    const { ds, query } = makeDs([RELEASE_ROW]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    expect(skillRun.start).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tenantId: 't1',
+        skillName: 'release-checklist',
+        entityType: 'release',
+        entityId: 'r1',
+        input: { idempotencyKey: IDEMPOTENCY_KEY },
+      }),
+    );
+    expect(skillRun.succeed).toHaveBeenCalledWith(
+      'run-1', 't1', 'release-checklist',
+      expect.objectContaining({ idempotencyKey: IDEMPOTENCY_KEY, status: 'generated' }),
+    );
+    expect(skillRun.fail).not.toHaveBeenCalled();
+
+    // input montado a partir do release: artistName via join, hasUPC=false (upc null)
+    const aiCalls = ai.complete.mock.calls as unknown as Array<[{ prompt: string; jsonMode: boolean }]>;
+    const aiArg = aiCalls[0][0];
+    expect(aiArg.jsonMode).toBe(true);
+    expect(aiArg.prompt).toContain('Banda Aurora');
+
+    // aiChecklist gravado via UPDATE
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeDefined();
+    const params = (updateCall as unknown as [string, string[]])[1];
+    const meta = JSON.parse(params[0]);
+    expect(meta.aiChecklist).toBeDefined();
+    expect(meta.aiChecklist.source).toBe('native-automation');
+    expect(meta.aiChecklist.skill).toBe('release-checklist');
+    expect(meta.aiChecklist.event).toBe('release.created');
+    expect(meta.aiChecklist.idempotencyKey).toBe(IDEMPOTENCY_KEY);
+    expect(meta.aiChecklist.status).toBe('generated');
+    expect(meta.aiChecklist.parsed.readinessScore).toBe(42);
+  });
+
+  it('Idempotência (metadata): não reprocessa se aiChecklist com a mesma chave já existe', async () => {
+    const rowWithChecklist = {
+      ...RELEASE_ROW,
+      metadata: { aiChecklist: { idempotencyKey: IDEMPOTENCY_KEY, status: 'generated' } },
+    };
+    const { ds, query } = makeDs([rowWithChecklist]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeUndefined();
+  });
+
+  it('Idempotência (skill_runs): não reprocessa se já houver run de sucesso com a mesma chave', async () => {
+    const { ds, query } = makeDs([RELEASE_ROW], [{ '1': 1 }]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeUndefined();
+  });
+
+  it('M1: run EM ANDAMENTO RECENTE (running) com a mesma chave bloqueia a execução', async () => {
+    const { ds, query } = makeDsWithRuns([RELEASE_ROW], [{ status: 'running', ageMinutes: 1 }]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    // A guarda SQL deve bloquear 'success' sempre e 'running' só dentro da janela (M1).
+    const guardCall = query.mock.calls.find((c: unknown[]) => /FROM\s+skill_runs/i.test(c[0] as string));
+    expect(guardCall).toBeDefined();
+    const guardSql = guardCall ? (guardCall[0] as string) : '';
+    expect(guardSql).toMatch(/status = 'success'/);
+    expect(guardSql).toMatch(/status = 'running' AND started_at >= NOW\(\) -/);
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeUndefined();
+  });
+
+  it('M1: run EM ANDAMENTO ANTIGO/STALE (running) NÃO bloqueia (retry seguro)', async () => {
+    const { ds, query } = makeDsWithRuns([RELEASE_ROW], [{ status: 'running', ageMinutes: 60 }]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    // 'running' órfão (> janela) não conta → reexecuta normalmente.
+    expect(skillRun.start).toHaveBeenCalled();
+    expect(ai.complete).toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeDefined();
+  });
+
+  it('M1: run de SUCESSO (success) com a mesma chave bloqueia sempre', async () => {
+    const { ds } = makeDsWithRuns([RELEASE_ROW], [{ status: 'success' }]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+  });
+
+  it('M1: run FALHO (failed) com a mesma chave NÃO bloqueia (retry seguro)', async () => {
+    const { ds, query } = makeDsWithRuns([RELEASE_ROW], [{ status: 'failed' }]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated(makeEvent() as never);
+
+    // 'failed' não conta → reexecuta normalmente.
+    expect(skillRun.start).toHaveBeenCalled();
+    expect(ai.complete).toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeDefined();
+  });
+
+  it('B1: erro ANTES do start (load lança) não propaga e registra fail best-effort', async () => {
+    const boom = new Error('db indisponível no load');
+    const query = jest.fn(async (sql: string) => {
+      if (/FROM\s+skill_runs/i.test(sql)) return [];
+      if (/FROM\s+releases/i.test(sql)) throw boom; // load() lança
+      return undefined;
+    });
+    const ds = { query };
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    // Não deve lançar (release.created não é revertido).
+    await expect(handler.onReleaseCreated(makeEvent() as never)).resolves.toBeUndefined();
+
+    // B1: registrou o fail best-effort do skill_run pré-start.
+    expect(skillRun.start).toHaveBeenCalledWith(
+      expect.objectContaining({ skillName: 'release-checklist', entityId: 'r1' }),
+    );
+    expect(skillRun.fail).toHaveBeenCalledWith('run-1', 't1', 'release-checklist', boom);
+    expect(skillRun.succeed).not.toHaveBeenCalled();
+    expect(ai.complete).not.toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeUndefined();
+  });
+
+  it('Falha da IA registra fail, não relança e não grava aiChecklist', async () => {
+    const { ds, query } = makeDs([RELEASE_ROW]);
+    const skillRun = makeSkillRun();
+    const ai = makeFailingAi();
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    // Não deve lançar (release.created não é revertido)
+    await expect(handler.onReleaseCreated(makeEvent() as never)).resolves.toBeUndefined();
+
+    expect(skillRun.start).toHaveBeenCalled();
+    expect(skillRun.fail).toHaveBeenCalledWith('run-1', 't1', 'release-checklist', expect.any(Error));
+    expect(skillRun.succeed).not.toHaveBeenCalled();
+    const updateCall = query.mock.calls.find((c: unknown[]) => /UPDATE/i.test(c[0] as string));
+    expect(updateCall).toBeUndefined();
+  });
+
+  it('Guarda: tenantId/releaseId ausente é ignorado (sem run, sem query)', async () => {
+    const { ds, query } = makeDs([RELEASE_ROW]);
+    const skillRun = makeSkillRun();
+    const ai = makeAi(VALID_CHECKLIST_JSON);
+    const handler = new ReleaseChecklistAutomation(ds as never, skillRun as never, ai as never, passThroughTenantContext(ds) as never);
+
+    await handler.onReleaseCreated({ tenantId: 't1', payload: { releaseId: '' } } as never);
+
+    expect(skillRun.start).not.toHaveBeenCalled();
+    expect(query).not.toHaveBeenCalled();
+  });
+});

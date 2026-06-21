@@ -15,6 +15,7 @@
 
 import { Global, Module }            from '@nestjs/common';
 import { EncryptionService }          from './security/encryption.service';
+import { TokenVerifierService }       from './security/token-verifier.service';
 import { SecurityStartupService }     from './security/security-startup.service';
 import { AuditService }               from './audit/audit.service';
 import { AuditInterceptor }           from './interceptors/audit.interceptor';
@@ -33,6 +34,7 @@ import { ExternalDataExchangeService }  from './external-data/external-data-exch
 @Module({
   providers: [
     EncryptionService,
+    TokenVerifierService,
     SecurityStartupService,
     AuditService,
     AuditInterceptor,
@@ -49,6 +51,7 @@ import { ExternalDataExchangeService }  from './external-data/external-data-exch
   ],
   exports: [
     EncryptionService,
+    TokenVerifierService,
     SecurityStartupService,
     AuditService,
     AuditInterceptor,

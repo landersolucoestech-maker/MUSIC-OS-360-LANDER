@@ -46,7 +46,19 @@ export type AISkillName =
   | "launch-strategy"
   | "paid-ads"
   | "analytics-tracking"
-  | "onboarding-cro";
+  | "onboarding-cro"
+  | "project-planning"
+  | "release-checklist"
+  | "contract-analysis"
+  | "catalog-metadata-validator"
+  | "financial-classification"
+  | "crm-followup"
+  | "audiovisual-briefing"
+  | "marketing-calendar-builder"
+  | "artist-profile-analysis"
+  | "licensing-opportunity-analysis"
+  | "rights-monitoring-analysis"
+  | "support-triage";
 
 export interface AISkillMetadata {
   name: AISkillName;
@@ -57,6 +69,21 @@ export interface AISkillMetadata {
   fallbackModel: AIModelId;
   maxTokens: number;
   temperature: number;
+}
+
+// ─── Skill shared primitives ──────────────────────────────────────────────────
+// Tipos compartilhados pelas AI Skills para reduzir duplicação e evitar colisões
+// de nome no barrel (skills/index.ts). Skills devem aliasar estes tipos.
+
+export type SkillLanguage = "pt-BR" | "en-US";
+
+export type SkillSeverity = "low" | "medium" | "high" | "critical";
+
+export type SkillPriority = "low" | "medium" | "high" | "critical";
+
+export interface SkillValidationResult {
+  valid: boolean;
+  errors: string[];
 }
 
 // ─── Request / Response ───────────────────────────────────────────────────────
@@ -242,3 +269,4 @@ export interface GenerateContentOutput {
   costUsd: number;
   generatedAt: string;
 }
+

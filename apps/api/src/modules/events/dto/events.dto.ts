@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsDate, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -13,8 +13,16 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) venue?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) city?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) country?: string;
-  @ApiPropertyOptional() @IsOptional() startsAt?: Date;
-  @ApiPropertyOptional() @IsOptional() endsAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  startsAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  endsAt?: Date;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(()=>Number) capacity?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() ticketUrl?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;

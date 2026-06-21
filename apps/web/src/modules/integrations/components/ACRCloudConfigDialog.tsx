@@ -57,8 +57,8 @@ export function ACRCloudConfigDialog({ open, onOpenChange }: ACRCloudConfigDialo
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-violet-500/10">
-              <Radio className="h-5 w-5 text-violet-500" />
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+              <Radio className="h-5 w-5 text-primary" />
             </div>
             <div>
               <DialogTitle className="text-base">ACRCloud — Monitoramento Musical</DialogTitle>
@@ -87,7 +87,7 @@ export function ACRCloudConfigDialog({ open, onOpenChange }: ACRCloudConfigDialo
             )}
           </div>
           {isConnected && (
-            <Badge variant="outline" className="border-violet-500/30 bg-violet-500/10 text-violet-600 text-xs">
+            <Badge variant="info">
               Activo
             </Badge>
           )}
@@ -142,10 +142,10 @@ export function ACRCloudConfigDialog({ open, onOpenChange }: ACRCloudConfigDialo
               <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3">
                 <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
                 <div>
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  <p className="text-sm font-medium text-amber-700">
                     {unacknowledgedAlerts} alerta{unacknowledgedAlerts > 1 ? "s" : ""} por rever
                   </p>
-                  <p className="text-xs text-amber-600/80 dark:text-amber-500/80">
+                  <p className="text-xs text-amber-600/80">
                     Aceda ao módulo Monitoramento para ver os detalhes.
                   </p>
                 </div>
@@ -166,3 +166,4 @@ export function ACRCloudConfigDialog({ open, onOpenChange }: ACRCloudConfigDialo
     </Dialog>
   );
 }
+

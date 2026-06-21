@@ -3,6 +3,7 @@ import { computeFinancialRules } from "../financial-form-rules";
 import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-constants";
 
 const base: TransacaoFormData = {
+  entityLinks: [],
   tipoTransacao: "",
   tipoCliente: "",
   categoria: "",
@@ -602,9 +603,9 @@ describe("exibirParcelamento", () => {
 
 // ── labelTipoCliente ───────────────────────────────────────────────────────
 describe("labelTipoCliente", () => {
-  it("returns 'Para quem pagar' for despesa", () => {
+  it("returns 'Pagar quem' for despesa", () => {
     const rules = computeFinancialRules(form({ tipoTransacao: "despesa" }));
-    expect(rules.labelTipoCliente).toBe("Para quem pagar");
+    expect(rules.labelTipoCliente).toBe("Pagar quem");
   });
 
   it("returns 'Receber de' for receita", () => {
@@ -627,3 +628,4 @@ describe("labelTipoCliente", () => {
     expect(rules.labelTipoCliente).toBe("Tipo de Cliente");
   });
 });
+

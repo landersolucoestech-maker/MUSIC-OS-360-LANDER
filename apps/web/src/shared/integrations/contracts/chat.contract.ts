@@ -172,3 +172,4 @@ export interface IChatProvider {
   /** Subscreve a novos eventos num canal. Devolve função de unsubscribe. */
   subscribe(channelId: string, handler: (message: ChatMessage) => void): () => void;
 }
+

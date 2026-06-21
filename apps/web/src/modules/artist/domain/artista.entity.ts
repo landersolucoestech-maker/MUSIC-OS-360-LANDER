@@ -131,3 +131,4 @@ export function getDisplayName(artista: ArtistaData): string {
 export function isArtistaActive(artista: ArtistaData): boolean {
   return artista.status === "contratado" || artista.status === "ativo";
 }
+

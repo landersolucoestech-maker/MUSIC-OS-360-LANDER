@@ -4,6 +4,7 @@ import type { TransacaoFormData } from "@/modules/accounting/lib/transacao-const
 import type { FinancialFormRules } from "@/modules/accounting/components/transacao-form/rules/financial-form-rules";
 
 const baseForm: TransacaoFormData = {
+  entityLinks: [],
   tipoTransacao: "despesa",
   tipoCliente: "empresa",
   categoria: "servicos",
@@ -449,6 +450,7 @@ describe("parcelamento validation", () => {
 describe("multiple simultaneous errors", () => {
   it("collects all missing required fields at once", () => {
     const emptyForm: TransacaoFormData = {
+      entityLinks: [],
       tipoTransacao: "",
       tipoCliente: "",
       categoria: "",
@@ -483,3 +485,4 @@ describe("multiple simultaneous errors", () => {
     expect(errors.formaPagamento).toBeDefined();
   });
 });
+

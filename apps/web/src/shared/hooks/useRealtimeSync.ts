@@ -43,3 +43,4 @@ export function useRealtimeSync(): void {
   // ── Audit (no query to invalidate — feed handles via ActivityFeed) ────────
   useWsEvent('audit.entry.created', () => {});
 }
+

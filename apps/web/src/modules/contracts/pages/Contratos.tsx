@@ -3,7 +3,8 @@ import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { useEditQueryParam } from "@/shared/hooks/useEditQueryParam";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Checkbox } from "@/shared/ui/checkbox";
@@ -21,10 +22,13 @@ import { ContratoViewModal } from "@/modules/contracts/components/ContratoViewMo
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { exportToCSV, importCSV, CSVColumn } from "@/shared/lib/csv";
 import { useContratos } from "@/modules/contracts/hooks/useContratos";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDateDashes, getMonetarySemanticClass } from "@/shared/lib/format-utils";
+import { formatCategoryLabel } from "@/shared/lib/category-labels";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { StatusBadge } from "@/shared/components/StatusBadge";
 import { MetricCard } from "@/shared/components/MetricCard";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
 import { cn } from "@/shared/lib/utils";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 
@@ -77,6 +81,8 @@ export default function Contratos() {
   });
 
   const hasActiveFilters = searchTerm !== "" || typeFilter !== "all-type" || statusFilter !== "all-status" || platformFilter !== "all-platform";
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredContratos, 10);
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredContratos.length && filteredContratos.length > 0) {
@@ -227,12 +233,12 @@ export default function Contratos() {
             value={formatCurrency(valorTotal)}
             description="contratos vigentes"
             icon={DollarSign}
-            accent="success"
+            accent="primary"
           />
         </div>
 
         {/* ── Filter Bar ── */}
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-muted/30 p-3">
           <div className="relative flex-1 min-w-[220px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -243,7 +249,7 @@ export default function Contratos() {
             />
           </div>
           <Select value={typeFilter} onValueChange={setTypeFilter}>
-            <SelectTrigger className="w-[150px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0">
               <SelectValue placeholder="Tipo" />
             </SelectTrigger>
             <SelectContent>
@@ -255,7 +261,7 @@ export default function Contratos() {
             </SelectContent>
           </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -272,7 +278,7 @@ export default function Contratos() {
             </SelectContent>
           </Select>
           <Select value={platformFilter} onValueChange={setPlatformFilter}>
-            <SelectTrigger className="w-[160px] h-8 text-sm bg-card border-border" data-testid="select-platform-filter">
+            <SelectTrigger className="w-auto min-w-[140px] h-8 text-sm bg-card border-border shrink-0" data-testid="select-platform-filter">
               <SelectValue placeholder="Plataforma" />
             </SelectTrigger>
             <SelectContent>
@@ -298,37 +304,36 @@ export default function Contratos() {
 
         {/* ── Table Card ── */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-sm font-semibold">
-                  Lista de Contratos
-                  <span className="ml-2 text-xs font-normal text-muted-foreground">({filteredContratos.length})</span>
-                </CardTitle>
-                <CardDescription className="text-xs mt-0.5">Acompanhe todos os contratos e seus vencimentos</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
           <CardContent className="pt-0">
-            {selectedIds.length > 0 && (
-              <div className="flex items-center gap-3 mb-3 pb-3 border-b border-border">
-                <span className="text-xs text-muted-foreground flex-1">{selectedIds.length} selecionado(s)</span>
-                <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
-                  <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
-                </Button>
-              </div>
-            )}
+            <ListSectionHeader
+              title="Lista de Contratos"
+              count={filteredContratos.length}
+              description="Acompanhe todos os contratos e seus vencimentos"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Checkbox
+                    checked={selectedIds.length === filteredContratos.length && filteredContratos.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    aria-label="Selecionar todos"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.length > 0 ? `${selectedIds.length} selecionado(s)` : "Selecionar todos"}
+                  </span>
+                  {selectedIds.length > 0 && (
+                    <Button variant="destructive" size="sm" className="h-7 text-xs gap-1.5" onClick={handleBulkDelete} data-testid="button-bulk-delete">
+                      <Trash2 className="h-3.5 w-3.5" /> Excluir ({selectedIds.length})
+                    </Button>
+                  )}
+                </div>
+              }
+            />
 
             {filteredContratos.length > 0 ? (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[36px]">
-                      <Checkbox
-                        checked={selectedIds.length === filteredContratos.length && filteredContratos.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Título</TableHead>
                     <TableHead>Artista / Cliente</TableHead>
                     <TableHead>Tipo</TableHead>
@@ -340,7 +345,7 @@ export default function Contratos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredContratos.map((contrato) => {
+                  {pageItems.map((contrato) => {
                     const end = contrato.data_fim ? new Date(contrato.data_fim) : null;
                     const diff = end ? Math.ceil((end.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) : null;
                     const nearExpiry = diff !== null && diff >= 0 && diff <= 30;
@@ -356,7 +361,7 @@ export default function Contratos() {
                         <TableCell className="text-muted-foreground text-sm">
                           {contrato.artistas?.nome_artistico || contrato.clientes?.nome || "—"}
                         </TableCell>
-                        <TableCell className="capitalize text-sm">{contrato.tipo || "—"}</TableCell>
+                        <TableCell className="text-sm">{contrato.tipo ? formatCategoryLabel(contrato.tipo) : "—"}</TableCell>
                         <TableCell><SigningPlatformBadge platform={contrato.signing_platform} /></TableCell>
                         <TableCell>
                           <div className="flex items-center gap-1.5">
@@ -368,10 +373,10 @@ export default function Contratos() {
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="font-mono text-xs">
-                          {formatDate(contrato.data_inicio)} – {formatDate(contrato.data_fim)}
+                        <TableCell className="text-muted-foreground text-sm whitespace-nowrap">
+                          {formatDateDashes(contrato.data_inicio)} – {formatDateDashes(contrato.data_fim)}
                         </TableCell>
-                        <TableCell className="font-mono text-sm">
+                        <TableCell className={`text-sm ${getMonetarySemanticClass("neutral")}`}>
                           {contrato.valor ? formatCurrency(contrato.valor) : "—"}
                         </TableCell>
                         <TableCell className="text-right">
@@ -406,6 +411,15 @@ export default function Contratos() {
                   })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="contratos"
+              />
+              </>
             ) : (
               <EmptyState
                 icon={FileText}
@@ -448,3 +462,4 @@ export default function Contratos() {
     </MainLayout>
   );
 }
+

@@ -9,10 +9,8 @@ import { useState } from "react";
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
 } from "@/shared/ui/dialog";
+import { IntegrationDialogHeader } from "@/shared/integrations";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
@@ -30,7 +28,6 @@ import {
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog";
 import {
-  BarChart3,
   Shield,
   RefreshCw,
   Loader2,
@@ -97,19 +94,11 @@ export function EcadConfigDialog({ open, onOpenChange }: EcadConfigDialogProps) 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-              <BarChart3 className="h-5 w-5 text-blue-500" />
-            </div>
-            <div>
-              <DialogTitle className="text-base">ECAD — Escritório Central de Arrecadação</DialogTitle>
-              <DialogDescription className="text-xs">
-                Arrecadação de execução pública · Conciliação com catálogo · Relatórios
-              </DialogDescription>
-            </div>
-          </div>
-        </DialogHeader>
+        <IntegrationDialogHeader
+          logoId="ecad"
+          title="ECAD — Escritório Central de Arrecadação"
+          description="Arrecadação de execução pública · Conciliação com catálogo · Relatórios"
+        />
 
         {/* Status badge */}
         <div className="flex items-center justify-between rounded-lg border bg-muted/30 px-4 py-3">
@@ -131,7 +120,7 @@ export function EcadConfigDialog({ open, onOpenChange }: EcadConfigDialogProps) 
             )}
           </div>
           {isConnected && (
-            <Badge variant="outline" className="border-blue-500/30 bg-blue-500/10 text-blue-600 text-xs">
+            <Badge variant="info">
               Activo
             </Badge>
           )}
@@ -140,7 +129,7 @@ export function EcadConfigDialog({ open, onOpenChange }: EcadConfigDialogProps) 
         {/* Aviso institucional (sempre visível) */}
         <div className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/8 px-4 py-3">
           <Info className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-          <p className="text-xs text-amber-700 dark:text-amber-400">
+          <p className="text-xs text-amber-700">
             O acesso ao ECAD requer contrato institucional com uma associação filiada (ABRAMUS, UBC, AMAR, SICAM, etc.).
             As credenciais são fornecidas pela sua associação.
           </p>
@@ -238,11 +227,11 @@ export function EcadConfigDialog({ open, onOpenChange }: EcadConfigDialogProps) 
               {conciliacao.data && (
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div className="rounded bg-emerald-500/10 border border-emerald-500/20 py-2">
-                    <p className="text-base font-semibold text-emerald-600 dark:text-emerald-400">{conciliacao.data.conciliados}</p>
+                    <p className="text-base font-semibold text-emerald-600">{conciliacao.data.conciliados}</p>
                     <p className="text-[11px] text-muted-foreground">Conciliados</p>
                   </div>
                   <div className="rounded bg-amber-500/10 border border-amber-500/20 py-2">
-                    <p className="text-base font-semibold text-amber-600 dark:text-amber-400">{conciliacao.data.discrepancias}</p>
+                    <p className="text-base font-semibold text-amber-600">{conciliacao.data.discrepancias}</p>
                     <p className="text-[11px] text-muted-foreground">Discrepâncias</p>
                   </div>
                   <div className="rounded bg-muted/40 border py-2">

@@ -100,3 +100,4 @@ export function resetConsistencyHooks(): void {
   _initialized = false;
   initConsistencyHooks();
 }
+

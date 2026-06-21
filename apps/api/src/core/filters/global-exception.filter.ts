@@ -22,6 +22,10 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     const requestId = request.requestId ?? (request.headers['x-request-id'] as string) ?? uuidv4();
     const correlationId =
       request.correlationId ?? (request.headers['x-correlation-id'] as string) ?? requestId;
+    const traceId =
+      request.traceId ??
+      (request.headers['x-trace-id'] as string) ??
+      correlationId;
 
     let statusCode = HttpStatus.INTERNAL_SERVER_ERROR;
     let message: string | string[] = 'Erro interno do servidor';
@@ -43,10 +47,20 @@ export class GlobalExceptionFilter implements ExceptionFilter {
 
       // Não reportar 4xx ao Sentry (erros de cliente, não de sistema)
     } else if (exception instanceof Error) {
-      this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
-
-      // Reportar ao Sentry apenas erros não-HTTP (bugs reais do sistema)
-      this.reportToSentry(exception, request, requestId);
+      const errObj = exception as Error & { type?: string; status?: number };
+      // express body-parser → entity.too.large (PayloadTooLargeError) → 413
+      if (errObj.type === 'entity.too.large' || errObj.status === 413 || /entity too large|request entity too large/i.test(errObj.message)) {
+        statusCode = HttpStatus.PAYLOAD_TOO_LARGE;
+        error = 'PayloadTooLargeException';
+        message = 'Request body excede o limite permitido (1MB)';
+      } else if (/^CORS:/.test(errObj.message)) {
+        statusCode = HttpStatus.FORBIDDEN;
+        error = 'CorsException';
+        message = 'Origem não autorizada';
+      } else {
+        this.logger.error(`Unhandled error: ${exception.message}`, exception.stack);
+        this.reportToSentry(exception, request, requestId);
+      }
     }
 
     const errorBody = {
@@ -57,6 +71,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       path:      request.url,
       requestId,
       correlationId,
+      traceId,
     };
 
     this.logger.error(`${request.method} ${request.url} → ${statusCode} [${requestId}]`);
@@ -65,6 +80,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       .status(statusCode)
       .header('X-Request-ID', requestId)
       .header('X-Correlation-ID', correlationId)
+      .header('X-Trace-ID', traceId)
       .json(errorBody);
   }
 
@@ -74,6 +90,7 @@ export class GlobalExceptionFilter implements ExceptionFilter {
       Sentry.withScope(scope => {
         scope.setTag('requestId', requestId);
         if (request.correlationId) scope.setTag('correlationId', request.correlationId);
+        if (request.traceId) scope.setTag('traceId', request.traceId);
         scope.setTag('method',    request.method);
         scope.setTag('path',      request.url);
 

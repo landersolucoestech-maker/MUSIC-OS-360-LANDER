@@ -1,5 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from "react";
-import { Dialog, DialogContent, DialogTitle } from "@/shared/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/shared/ui/tabs";
 import VariableRegistry from "@/modules/contracts/pages/VariableRegistry";
 import CategoryRegistry from "@/modules/contracts/pages/CategoryRegistry";
@@ -14,12 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-} from "@/shared/ui/sheet";
 import {
   Loader2,
   Sparkles,
@@ -75,7 +69,7 @@ function RegistryVarGroup({ label, vars, onInsert, initialOpen = true }: Registr
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground uppercase tracking-wider hover:text-foreground transition-colors"
+        className="flex items-center gap-1 w-full text-left px-1 py-1 text-[11px] font-semibold text-muted-foreground  tracking-wider hover:text-foreground transition-colors"
         data-testid={`button-vargroup-${label}`}
       >
         {open ? (
@@ -93,7 +87,7 @@ function RegistryVarGroup({ label, vars, onInsert, initialOpen = true }: Registr
               className="flex items-center justify-between group rounded px-1.5 py-1 hover:bg-muted/60 transition-colors"
             >
               <div className="min-w-0">
-                <span className="font-mono text-[11px] text-foreground/80 truncate block">
+                <span className="font-sans text-[11px] text-foreground/80 truncate block">
                   {v.placeholder}
                 </span>
                 {v.name && (
@@ -153,7 +147,7 @@ function ImageUploadZone({
             alt={label}
             className="w-full h-36 object-contain p-2"
           />
-          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/55 opacity-0 group-hover:opacity-100 transition-opacity">
+          <div className="absolute inset-0 flex items-center justify-center gap-2 bg-background/55 opacity-0 group-hover:opacity-100 transition-opacity">
             <label
               className="flex items-center gap-1.5 cursor-pointer rounded-md bg-background/90 border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-muted transition-colors"
               data-testid={`label-replace-${testIdPrefix}`}
@@ -255,17 +249,17 @@ function AiSuggestionsSheet({
   const accepted = suggestions.filter((s) => s.accepted === true);
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="right" className="w-96 flex flex-col">
-        <SheetHeader className="shrink-0">
-          <SheetTitle className="flex items-center gap-2">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="flex max-h-[85vh] w-full max-w-md flex-col">
+        <DialogHeader className="shrink-0">
+          <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
             Sugestões da IA
-          </SheetTitle>
+          </DialogTitle>
           <p className="text-xs text-muted-foreground">
             Aceite individualmente as substituições que quiser aplicar ao texto.
           </p>
-        </SheetHeader>
+        </DialogHeader>
 
         <ScrollArea className="flex-1 mt-4">
           {suggestions.length === 0 ? (
@@ -276,7 +270,7 @@ function AiSuggestionsSheet({
             <div className="space-y-3 pr-2">
               {pending.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                  <p className="text-[11px] font-semibold  text-muted-foreground mb-2">
                     Pendentes ({pending.length})
                   </p>
                   {pending.map((s) => (
@@ -290,7 +284,7 @@ function AiSuggestionsSheet({
                       </p>
                       <div className="flex items-center gap-1">
                         <span className="text-muted-foreground">→</span>
-                        <span className="font-mono text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
+                        <span className="font-sans text-xs text-primary bg-primary/5 border border-primary/15 rounded px-1.5 py-0.5">
                           {s.placeholder}
                         </span>
                       </div>
@@ -322,7 +316,7 @@ function AiSuggestionsSheet({
 
               {accepted.length > 0 && (
                 <div>
-                  <p className="text-[11px] font-semibold uppercase text-muted-foreground mb-2">
+                  <p className="text-[11px] font-semibold  text-muted-foreground mb-2">
                     Aceites ({accepted.length})
                   </p>
                   {accepted.map((s) => (
@@ -331,7 +325,7 @@ function AiSuggestionsSheet({
                       className="rounded-lg border border-border/40 bg-muted/20 p-2.5 flex items-center gap-2 opacity-60"
                     >
                       <Check className="h-3.5 w-3.5 text-emerald-600 shrink-0" />
-                      <span className="font-mono text-xs text-primary">
+                      <span className="font-sans text-xs text-primary">
                         {s.placeholder}
                       </span>
                     </div>
@@ -341,8 +335,8 @@ function AiSuggestionsSheet({
             </div>
           )}
         </ScrollArea>
-      </SheetContent>
-    </Sheet>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -611,7 +605,7 @@ export function ContractImportWorkspace({
                     <TabsTrigger
                       key={tab.value}
                       value={tab.value}
-                      className="rounded-full px-5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm"
+                      className="rounded-full px-5 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-all data-[state=active]:bg-background data-[state=active]:text-foreground"
                       data-testid={`tab-${tab.value}`}
                     >
                       {tab.label}
@@ -632,7 +626,7 @@ export function ContractImportWorkspace({
                 <div className="shrink-0 border-b flex">
                   {/* Informações Básicas */}
                   <div className="flex-1 px-6 py-4">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    <p className="text-[11px] font-semibold text-muted-foreground  tracking-wider mb-3">
                       Informações Básicas
                     </p>
                     <div className="flex flex-col gap-3">
@@ -678,7 +672,7 @@ export function ContractImportWorkspace({
 
                   {/* Identidade Visual */}
                   <div className="flex-1 px-6 py-4">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider mb-3">
+                    <p className="text-[11px] font-semibold text-muted-foreground  tracking-wider mb-3">
                       Identidade Visual do Documento
                     </p>
                     <div className="flex gap-4">
@@ -701,7 +695,7 @@ export function ContractImportWorkspace({
                 {/* Editor */}
                 <div className="flex-1 flex flex-col overflow-hidden p-4 gap-2.5">
                   <div className="flex items-center gap-2 shrink-0">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider flex-1">
+                    <p className="text-[11px] font-semibold text-muted-foreground  tracking-wider flex-1">
                       Conteúdo do Contrato
                     </p>
                     <Button
@@ -739,7 +733,7 @@ export function ContractImportWorkspace({
               <div className="w-72 shrink-0 flex flex-col overflow-hidden border-l bg-background/40">
                 <div className="px-3 pt-3 pb-2 shrink-0 border-b">
                   <div className="flex items-center justify-between mb-2">
-                    <p className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+                    <p className="text-[11px] font-semibold text-muted-foreground  tracking-wider">
                       Variáveis do Registo
                     </p>
                     <button
@@ -865,3 +859,5 @@ export function ContractImportWorkspace({
     </>
   );
 }
+
+

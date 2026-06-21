@@ -7,6 +7,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { PhonogramsService }       from './phonograms.service';
 import { CreatePhonogramDto }      from './dto/create-phonogram.dto';
@@ -21,6 +22,7 @@ export class PhonogramsController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('phonogram:read')
   @ApiOperation({ summary: 'Listar fonogramas do tenant' })
   list(@CurrentTenant() tenant: { id: string }, @Query() query: QueryPhonogramDto) {
     return this.service.list(tenant.id, query);
@@ -28,6 +30,7 @@ export class PhonogramsController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('phonogram:read')
   @ApiOperation({ summary: 'Obter fonograma por ID' })
   findById(@CurrentTenant() tenant: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.findById(tenant.id, id);
@@ -35,6 +38,7 @@ export class PhonogramsController {
 
   @Post()
   @RequireRole('editor')
+  @RequirePermission('phonogram:create')
   @Audit('phonogram.created')
   @ApiOperation({ summary: 'Criar fonograma' })
   create(
@@ -47,6 +51,7 @@ export class PhonogramsController {
 
   @Patch(':id')
   @RequireRole('editor')
+  @RequirePermission('phonogram:update')
   @Audit('phonogram.updated')
   @ApiOperation({ summary: 'Actualizar fonograma' })
   update(
@@ -60,6 +65,7 @@ export class PhonogramsController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('phonogram:delete')
   @Audit('phonogram.deleted')
   @ApiOperation({ summary: 'Remover fonograma (soft delete)' })
   remove(@CurrentTenant() tenant: { id: string }, @Param('id', ParseUUIDPipe) id: string) {

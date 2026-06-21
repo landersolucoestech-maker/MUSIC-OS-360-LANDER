@@ -31,7 +31,7 @@ export function TemplateContratoViewModal({
           <style>
             body { font-family: 'Times New Roman', Times, serif; padding: 40px; max-width: 800px; margin: 0 auto; line-height: 1.8; }
             h1 { text-align: center; margin-bottom: 30px; }
-            .variable { background-color: #fff3cd; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+            .variable { background-color: #fff3cd; padding: 2px 6px; border-radius: 4px; font-family: Inter, system-ui, sans-serif; }
             pre { white-space: pre-wrap; word-wrap: break-word; font-family: 'Times New Roman', Times, serif; }
           </style>
         </head>
@@ -65,7 +65,7 @@ export function TemplateContratoViewModal({
   };
 
   const fmtDate = (iso?: string | null) =>
-    iso ? new Date(iso).toLocaleDateString("pt-BR") : "—";
+    iso ? new Date(iso).toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" }) : "—";
 
   const fmtSlug = (slug: string) =>
     slug.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());

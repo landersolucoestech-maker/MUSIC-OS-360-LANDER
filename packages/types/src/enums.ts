@@ -403,3 +403,218 @@ export enum NotificationType {
   ERROR   = "error",
   SUCCESS = "success",
 }
+
+// ─── Pricing / Quotes ─────────────────────────────────────────────────────────
+
+export enum QuoteStatus {
+  DRAFT             = "draft",
+  SIMULATED         = "simulated",
+  PENDING_APPROVAL  = "pending_approval",
+  APPROVED          = "approved",
+  SENT              = "sent",
+  ACCEPTED          = "accepted",
+  REJECTED          = "rejected",
+  EXPIRED           = "expired",
+}
+
+export enum PricingVariableType {
+  NUMBER     = "number",
+  CURRENCY   = "currency",
+  PERCENTAGE = "percentage",
+  BOOLEAN    = "boolean",
+  SELECT     = "select",
+}
+
+export enum PricingRuleCategory {
+  CUSTO     = "custo",
+  IMPOSTO   = "imposto",
+  COMISSAO  = "comissao",
+  DESCONTO  = "desconto",
+  MARGEM    = "margem",
+  ADICIONAL = "adicional",
+  CUSTOM    = "custom",
+}
+
+export enum QuoteApprovalAction {
+  SUBMIT  = "submit",
+  APPROVE = "approve",
+  REJECT  = "reject",
+  REVOKE  = "revoke",
+}
+
+// ─── Registro Musical / Society Integration (ABRAMUS / ECAD) ──────────────────
+//
+// Registry status is intentionally SEPARATE from the editorial WorkStatus /
+// PhonogramStatus. Values are UPPER_SNAKE to map cleanly onto society payloads.
+
+export enum RegistryStatus {
+  DRAFT                = "DRAFT",
+  READY_FOR_VALIDATION = "READY_FOR_VALIDATION",
+  VALIDATED            = "VALIDATED",
+  READY_TO_SUBMIT      = "READY_TO_SUBMIT",
+  SUBMITTED            = "SUBMITTED",
+  PROCESSING           = "PROCESSING",
+  APPROVED             = "APPROVED",
+  REJECTED             = "REJECTED",
+  REQUIRES_CORRECTION  = "REQUIRES_CORRECTION",
+  FAILED               = "FAILED",
+  ARCHIVED             = "ARCHIVED",
+}
+
+/** Entities that can be registered / identified / submitted. */
+export enum RegistrableEntityType {
+  WORK          = "WORK",
+  RECORDING     = "RECORDING",
+  RIGHTS_HOLDER = "RIGHTS_HOLDER",
+  RELEASE       = "RELEASE",
+  SUBMISSION    = "SUBMISSION",
+}
+
+export enum HolderType {
+  AUTHOR                = "AUTHOR",
+  COMPOSER              = "COMPOSER",
+  PUBLISHER             = "PUBLISHER",
+  INTERPRETER           = "INTERPRETER",
+  MUSICIAN              = "MUSICIAN",
+  PHONOGRAPHIC_PRODUCER = "PHONOGRAPHIC_PRODUCER",
+  LABEL                 = "LABEL",
+  ARRANGER              = "ARRANGER",
+  ADAPTER               = "ADAPTER",
+  TRANSLATOR            = "TRANSLATOR",
+  OTHER                 = "OTHER",
+}
+
+export enum HolderDocumentType {
+  CPF      = "CPF",
+  CNPJ     = "CNPJ",
+  PASSPORT = "PASSPORT",
+  OTHER    = "OTHER",
+  NONE     = "NONE",
+}
+
+/** Authorship split roles (work side). */
+export enum SplitRole {
+  COMPOSER      = "COMPOSER",
+  AUTHOR        = "AUTHOR",
+  LYRICIST      = "LYRICIST",
+  ARRANGER      = "ARRANGER",
+  ADAPTER       = "ADAPTER",
+  TRANSLATOR    = "TRANSLATOR",
+  PUBLISHER     = "PUBLISHER",
+  SUB_PUBLISHER = "SUB_PUBLISHER",
+}
+
+/** Recording participant roles (phonogram side). */
+export enum RecordingContributorRole {
+  MAIN_ARTIST           = "MAIN_ARTIST",
+  FEATURED_ARTIST       = "FEATURED_ARTIST",
+  INTERPRETER           = "INTERPRETER",
+  MUSICIAN              = "MUSICIAN",
+  PRODUCER              = "PRODUCER",
+  PHONOGRAPHIC_PRODUCER = "PHONOGRAPHIC_PRODUCER",
+  ARRANGER              = "ARRANGER",
+  MIXING_ENGINEER       = "MIXING_ENGINEER",
+  MASTERING_ENGINEER    = "MASTERING_ENGINEER",
+  SESSION_MUSICIAN      = "SESSION_MUSICIAN",
+  BACKING_VOCAL         = "BACKING_VOCAL",
+  OTHER                 = "OTHER",
+}
+
+export enum IdentifierProvider {
+  ABRAMUS    = "ABRAMUS",
+  ECAD       = "ECAD",
+  CISAC      = "CISAC",
+  IFPI       = "IFPI",
+  PRO_MUSICA = "PRO_MUSICA",
+  ISRC       = "ISRC",
+  INTERNAL   = "INTERNAL",
+  OTHER      = "OTHER",
+}
+
+export enum IdentifierType {
+  ISWC                = "ISWC",
+  ISRC                = "ISRC",
+  IPI_CAE             = "IPI_CAE",
+  ECAD_WORK_CODE      = "ECAD_WORK_CODE",
+  ABRAMUS_PROTOCOL    = "ABRAMUS_PROTOCOL",
+  SOCIETY_MEMBER_CODE = "SOCIETY_MEMBER_CODE",
+  CATALOG_NUMBER      = "CATALOG_NUMBER",
+  UPC                 = "UPC",
+  EAN                 = "EAN",
+  OTHER               = "OTHER",
+}
+
+export enum SocietyName {
+  ABRAMUS  = "ABRAMUS",
+  ECAD     = "ECAD",
+  UBC      = "UBC",
+  SBACEM   = "SBACEM",
+  AMAR     = "AMAR",
+  SICAM    = "SICAM",
+  SOCINPRO = "SOCINPRO",
+  ASSIM    = "ASSIM",
+  OTHER    = "OTHER",
+}
+
+/**
+ * How a submission reaches the society. Only MANUAL_EXPORT is functional;
+ * PARTNER_API and PORTAL_RPA are stubs, disabled by default (env-gated).
+ */
+export enum SocietyDriver {
+  MANUAL_EXPORT = "MANUAL_EXPORT",
+  PARTNER_API   = "PARTNER_API",
+  PORTAL_RPA    = "PORTAL_RPA",
+}
+
+export enum SocietyAccountStatus {
+  ACTIVE   = "ACTIVE",
+  INACTIVE = "INACTIVE",
+  PENDING  = "PENDING",
+  ERROR    = "ERROR",
+}
+
+export enum SocietySubmissionStatus {
+  DRAFT               = "DRAFT",
+  VALIDATING          = "VALIDATING",
+  VALID               = "VALID",
+  INVALID             = "INVALID",
+  READY               = "READY",
+  EXPORTED            = "EXPORTED",
+  SUBMITTED           = "SUBMITTED",
+  PROCESSING          = "PROCESSING",
+  APPROVED            = "APPROVED",
+  REJECTED            = "REJECTED",
+  REQUIRES_CORRECTION = "REQUIRES_CORRECTION",
+  FAILED              = "FAILED",
+  CANCELLED           = "CANCELLED",
+}
+
+export enum SocietySubmissionEventType {
+  CREATED              = "CREATED",
+  VALIDATED            = "VALIDATED",
+  PAYLOAD_GENERATED    = "PAYLOAD_GENERATED",
+  EXPORTED             = "EXPORTED",
+  SUBMITTED            = "SUBMITTED",
+  STATUS_CHANGED       = "STATUS_CHANGED",
+  PROTOCOL_ASSIGNED    = "PROTOCOL_ASSIGNED",
+  APPROVED             = "APPROVED",
+  REJECTED             = "REJECTED",
+  CORRECTION_REQUESTED = "CORRECTION_REQUESTED",
+  FAILED               = "FAILED",
+  RESYNCED             = "RESYNCED",
+  NOTE                 = "NOTE",
+}
+
+export enum SocietyValidationSeverity {
+  ERROR   = "ERROR",
+  WARNING = "WARNING",
+  INFO    = "INFO",
+}
+
+export enum SocietySyncJobStatus {
+  PENDING   = "PENDING",
+  RUNNING   = "RUNNING",
+  SUCCESS   = "SUCCESS",
+  FAILED    = "FAILED",
+  CANCELLED = "CANCELLED",
+}

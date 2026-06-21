@@ -2,6 +2,7 @@ import { Test }              from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
 import { WorksService }      from './works.service';
 import { DATA_SOURCE }       from '../../database/database.module';
+import { EventsService }     from '../../core/events/events.service';
 
 const TENANT  = 'tenant-test';
 const WORK_ID = 'work-test';
@@ -57,6 +58,7 @@ describe('WorksService', () => {
       providers: [
         WorksService,
         { provide: DATA_SOURCE, useValue: mockDs },
+        { provide: EventsService, useValue: { emitTyped: jest.fn() } },
       ],
     }).compile();
     service = module.get<WorksService>(WorksService);

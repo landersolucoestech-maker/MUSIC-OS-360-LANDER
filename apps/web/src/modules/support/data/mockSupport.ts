@@ -179,11 +179,11 @@ export const MOCK_CHAT_MESSAGES: Record<string, ChatMessage[]> = {
 
 export const MOCK_KNOWLEDGE_CATEGORIES: KnowledgeCategory[] = [
   { id: "cat-fin", name: "Financeiro", description: "Transações, OFX, fluxo de caixa, conciliação e nota fiscal", icon: "DollarSign", article_count: 12, color: "emerald" },
-  { id: "cat-ana", name: "Analytics", description: "Streaming, redes sociais, métricas e relatórios", icon: "BarChart", article_count: 8, color: "blue" },
+  { id: "cat-ana", name: "Métricas", description: "Streaming, redes sociais, métricas e relatórios", icon: "BarChart", article_count: 8, color: "blue" },
   { id: "cat-dis", name: "Distribuição", description: "Lançamentos musicais, distribuidoras e plataformas", icon: "Radio", article_count: 10, color: "purple" },
   { id: "cat-con", name: "Contratos", description: "Templates, assinaturas digitais e gestão de contratos", icon: "FileText", article_count: 7, color: "orange" },
   { id: "cat-art", name: "Artistas", description: "Cadastro, perfis, métricas e visão 360", icon: "Users", article_count: 9, color: "pink" },
-  { id: "cat-pro", name: "Projetos", description: "Gestão de projetos e equipes", icon: "FolderKanban", article_count: 5, color: "cyan" },
+  { id: "cat-pro", name: "Projetos", description: "Gestão de projetos e equipes", icon: "Folder", article_count: 5, color: "cyan" },
   { id: "cat-usu", name: "Usuários", description: "Contas, convites e gestão de acesso", icon: "User", article_count: 6, color: "indigo" },
   { id: "cat-per", name: "Permissões", description: "RBAC, roles e configurações de acesso", icon: "Shield", article_count: 4, color: "red" },
   { id: "cat-int", name: "Integrações", description: "APIs, webhooks e conectores externos", icon: "Plug", article_count: 11, color: "yellow" },
@@ -227,7 +227,7 @@ Itaú, Bradesco, Santander, Nubank, Inter, C6 Bank, Banco do Brasil, Caixa.
     created_at: "2026-01-15T00:00:00Z", updated_at: "2026-04-20T00:00:00Z", read_time: 4,
   },
   {
-    id: "art-002", tenant_id: TENANT_ID, category_id: "cat-ana", category_name: "Analytics",
+    id: "art-002", tenant_id: TENANT_ID, category_id: "cat-ana", category_name: "Métricas",
     title: "Entendendo os gráficos de streaming do artista",
     summary: "Aprenda a interpretar os dados de Spotify, YouTube e outras plataformas no painel do artista.",
     content: `## Entendendo os gráficos de streaming
@@ -450,3 +450,5 @@ export const MOCK_REQUESTS: SupportRequest[] = [
     created_at: "2026-05-03T11:00:00Z", updated_at: "2026-05-04T09:00:00Z", votes: 5,
   },
 ];
+
+

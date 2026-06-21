@@ -13,3 +13,4 @@ export const projectsService = {
     return storage.list("projetos", { filters: { artista_id: artistId } });
   },
 };
+

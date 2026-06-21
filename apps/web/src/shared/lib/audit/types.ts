@@ -26,14 +26,39 @@ export interface AuditIssue {
   fix_path: string;
 }
 
+export interface AuditRecord {
+  id: string;
+  module: AuditModuleId;
+  entity_type: string;
+  entity_label: string;
+  missing_fields: string[];
+  recommended_missing_fields: string[];
+  fix_path: string;
+  completeness: number;
+  is_complete: boolean;
+}
+
+export interface AuditModuleSummary {
+  module: AuditModuleId;
+  total_records: number;
+  complete_records: number;
+  incomplete_records: number;
+}
+
 export interface AuditSummary {
   total_issues: number;
   obrigatorio: number;
   recomendado: number;
+  total_records: number;
+  complete_records: number;
+  incomplete_records: number;
+  completion_rate: number;
 }
 
 export interface AuditResult {
   issues: AuditIssue[];
+  records: AuditRecord[];
+  modules: AuditModuleSummary[];
   summary: AuditSummary;
   generated_at: string;
 }
@@ -54,3 +79,4 @@ export const AUDIT_MODULES: { id: AuditModuleId; label: string }[] = [
   { id: "lancamentos", label: "Lançamentos" },
   { id: "rh", label: "RH" },
 ];
+

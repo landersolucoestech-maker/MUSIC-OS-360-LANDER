@@ -1,15 +1,21 @@
 import { useEffect, useMemo, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { MetricCard } from "@/shared/components/MetricCard";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { Checkbox } from "@/shared/ui/checkbox";
 import { Input } from "@/shared/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Music, FileText, Clock, CheckCircle, Upload, Download, Plus, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, LinkIcon, Link2, Hash, FolderKanban } from "lucide-react";
+import { Music, FileText, Clock, CheckCircle, Upload, Download, PlusCircle, Search, Disc, Loader2, MoreHorizontal, Eye, Pencil, Trash2, LinkIcon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
+import { SortableTableHead } from "@/shared/components/SortableTableHead";
+import { nextTableSortState, sortTableRows, type TableSortState } from "@/shared/lib/table-sort";
 import { ObraFormModal, ObraTipoBadge } from "@/modules/catalog/components/ObraFormModal";
 import { ObraViewModal } from "@/modules/catalog/components/ObraViewModal";
 import { ObraTipoSelectorModal, type TipoObra } from "@/modules/catalog/components/ObraTipoSelectorModal";
@@ -61,10 +67,36 @@ const statusObraLabel = (s: string): string => {
   return "Pendente";
 };
 
+const getFonogramaGenero = (fonograma: Pick<Fonograma, "genero_musical">): string =>
+  (fonograma.genero_musical ?? "").toString().trim();
+
+const getFonogramaGeneroDisplay = (fonograma: Pick<Fonograma, "genero_musical">): string =>
+  getFonogramaGenero(fonograma) || "Não informado";
+
+const getObraGeneroDisplay = (obra: Pick<Obra, "genero">): string =>
+  (obra.genero ?? "").toString().trim() || "Não informado";
+
+const getSortText = (value: unknown): string => {
+  if (Array.isArray(value)) return value.filter(Boolean).join(", ");
+  return (value ?? "").toString();
+};
+
+const getFonogramaSortValue = (fonograma: Fonograma, key: string): unknown => {
+  if (key === "genero_musical") return getFonogramaGeneroDisplay(fonograma);
+  if (key === "titulo") return fonograma.titulo ?? "";
+  return getSortText((fonograma as Record<string, unknown>)[key]);
+};
+
+const getObraSortValue = (obra: Obra, key: string): unknown => {
+  if (key === "genero") return getObraGeneroDisplay(obra);
+  if (key === "titulo") return obra.titulo ?? "";
+  return getSortText((obra as Record<string, unknown>)[key]);
+};
+
 export default function RegistroMusicas() {
   const navigate = useNavigate();
-  const { obras, isLoading: loadingObras, deleteObra, addObra, bulkUpdateEcad } = useObras();
-  const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, addFonograma, bulkUpdateObraId } = useFonogramas();
+  const { obras, isLoading: loadingObras, deleteObra, addObra } = useObras();
+  const { fonogramas, isLoading: loadingFonogramas, deleteFonograma, addFonograma } = useFonogramas();
   const { projetos: allProjetos } = useProjetos();
   const { artistas: artistasAssinados } = useArtistasAssinados();
   const [activeTab, setActiveTab] = useState("obras");
@@ -102,36 +134,13 @@ export default function RegistroMusicas() {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all-status");
   const [genreFilter, setGenreFilter] = useState("all-genre");
+  const [fonogramaSort, setFonogramaSort] = useState<TableSortState>(null);
+  const [obraSort, setObraSort] = useState<TableSortState>(null);
+  const [tipoObraFilter, setTipoObraFilter] = useState("all-tipos");
   const [projetoFilter, setProjetoFilter] = useState("all-projetos");
   const [obraVinculadaFilter, setObraVinculadaFilter] = useState("all-obras");
   const [ecadFilter, setEcadFilter] = useState("all-ecad");
   const [fonogramaEcadFilter, setFonogramaEcadFilter] = useState("all-ecad");
-  const [bulkObraModal, setBulkObraModal] = useState(false);
-  const [selectedObraIdForBulk, setSelectedObraIdForBulk] = useState<string>("");
-  const [bulkEcadModal, setBulkEcadModal] = useState(false);
-  const [bulkEcadCode, setBulkEcadCode] = useState("");
-  const [bulkEcadLoading, setBulkEcadLoading] = useState(false);
-  const handleBulkFillEcad = async () => {
-    if (!bulkEcadCode.trim() || selectedObraIds.length === 0) return;
-    setBulkEcadLoading(true);
-    try {
-      const { succeeded, failed } = await bulkUpdateEcad(selectedObraIds, bulkEcadCode.trim());
-      setBulkEcadModal(false);
-      setBulkEcadCode("");
-      if (failed === 0) {
-        toast.success(`Código ECAD preenchido em ${succeeded} obra(s) com sucesso`);
-      } else if (succeeded === 0) {
-        toast.error(`Falha ao atualizar o código ECAD nas obras selecionadas`);
-      } else {
-        toast.warning(`${succeeded} obra(s) atualizadas, ${failed} falha(s)`);
-      }
-      setSelectedObraIds([]);
-    } catch {
-      toast.error("Erro inesperado ao preencher o código ECAD");
-    } finally {
-      setBulkEcadLoading(false);
-    }
-  };
   const [obraModal, setObraModal] = useState<{ open: boolean; mode: "create" | "edit"; obra?: Obra; tipoObra?: TipoObra }>({
     open: false,
     mode: "create",
@@ -309,54 +318,43 @@ export default function RegistroMusicas() {
   const collator = useMemo(() => new Intl.Collator("pt-BR", { sensitivity: "base" }), []);
 
   // Filter fonogramas + sort alphabetically
-  const filteredFonogramas = useMemo(() => fonogramas
-    .filter((fonograma) => {
+  const filteredFonogramas = useMemo(() => {
+    const filtered = fonogramas.filter((fonograma) => {
       const matchesSearch = searchTerm === "" ||
         fonograma.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         fonograma.compositores?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all-status" ||
         fonograma.status?.toLowerCase().includes(statusFilter);
-      const obraVinculada = fonograma.obra_id ? obrasPorId.get(fonograma.obra_id) : undefined;
+      const fonogramaGenero = getFonogramaGenero(fonograma);
       const matchesGenre = genreFilter === "all-genre" ||
-        obraVinculada?.genero?.toLowerCase() === genreFilter.toLowerCase();
+        fonogramaGenero.toLowerCase() === genreFilter.toLowerCase();
       const matchesObraVinculada = obraVinculadaFilter === "all-obras" ||
         (obraVinculadaFilter === "sem-obra" ? !fonograma.obra_id : !!fonograma.obra_id);
       const fonogramaEcadCode = (fonograma.cod_ecad ?? "").toString().trim();
       const matchesFonogramaEcad = fonogramaEcadFilter === "all-ecad" ||
         (fonogramaEcadFilter === "com-ecad" ? fonogramaEcadCode !== "" : fonogramaEcadCode === "");
       return matchesSearch && matchesStatus && matchesGenre && matchesObraVinculada && matchesFonogramaEcad;
-    })
-    .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
-  [fonogramas, searchTerm, statusFilter, genreFilter, obraVinculadaFilter, fonogramaEcadFilter, obrasPorId, collator]);
+    });
 
-  const [bulkLinking, setBulkLinking] = useState(false);
-  const handleBulkVincularObra = async () => {
-    if (!selectedObraIdForBulk || selectedFonogramaIds.length === 0) return;
-    setBulkLinking(true);
-    try {
-      const { succeeded, failed } = await bulkUpdateObraId(selectedFonogramaIds, selectedObraIdForBulk);
-      if (failed === 0) {
-        toast.success(`${succeeded} fonograma(s) vinculado(s) com sucesso`);
-      } else {
-        toast.warning(`${succeeded} vinculado(s) com sucesso, ${failed} falharam`);
-      }
-    } finally {
-      setBulkLinking(false);
-    }
-    setSelectedFonogramaIds([]);
-    setSelectedObraIdForBulk("");
-    setBulkObraModal(false);
+    return fonogramaSort
+      ? sortTableRows(filtered, fonogramaSort, getFonogramaSortValue)
+      : filtered.sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""));
+  }, [fonogramas, searchTerm, statusFilter, genreFilter, obraVinculadaFilter, fonogramaEcadFilter, fonogramaSort, collator]);
+
+  const toggleFonogramaSort = (key: string) => {
+    setFonogramaSort((current) => nextTableSortState(current, key));
   };
 
   // Filter obras + sort alphabetically
-  const filteredObras = useMemo(() => obras
-    .filter((obra) => {
+  const filteredObras = useMemo(() => {
+    const filtered = obras.filter((obra) => {
       const matchesSearch = searchTerm === "" ||
         obra.titulo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (Array.isArray(obra.compositores) ? obra.compositores.join(" ") : (obra.compositores ?? "")).toLowerCase().includes(searchTerm.toLowerCase()) ||
         obra.projetos?.titulo?.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesStatus = statusFilter === "all-status" ||
         obra.status?.toLowerCase().includes(statusFilter);
+      const matchesTipo = tipoObraFilter === "all-tipos" || (obra.tipo_obra ?? "").toString() === tipoObraFilter;
       const matchesGenre = genreFilter === "all-genre" ||
         obra.genero?.toLowerCase() === genreFilter.toLowerCase();
       const matchesProjeto = projetoFilter === "all-projetos" ||
@@ -364,10 +362,20 @@ export default function RegistroMusicas() {
       const ecadCode = (obra.cod_ecad ?? "").toString().trim();
       const matchesEcad = ecadFilter === "all-ecad" ||
         (ecadFilter === "com-ecad" ? ecadCode !== "" : ecadCode === "");
-      return matchesSearch && matchesStatus && matchesGenre && matchesProjeto && matchesEcad;
-    })
-    .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? "")),
-  [obras, searchTerm, statusFilter, genreFilter, projetoFilter, ecadFilter, collator]);
+      return matchesSearch && matchesStatus && matchesTipo && matchesGenre && matchesProjeto && matchesEcad;
+    });
+
+    return obraSort
+      ? sortTableRows(filtered, obraSort, getObraSortValue)
+      : filtered.sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""));
+  }, [obras, searchTerm, statusFilter, tipoObraFilter, genreFilter, projetoFilter, ecadFilter, obraSort, collator]);
+
+  const toggleObraSort = (key: string) => {
+    setObraSort((current) => nextTableSortState(current, key));
+  };
+
+  const obrasPg = usePagination(filteredObras, 10);
+  const fonogramasPg = usePagination(filteredFonogramas, 10);
 
   // Distinct projetos available for the project filter:
   // include every project (even those without obras yet) plus any project ids
@@ -375,17 +383,17 @@ export default function RegistroMusicas() {
   const generosUnicos = useMemo(() => {
     const seen = new Set<string>();
     const unique: string[] = [];
-    const src = activeTab === "fonogramas"
-      ? fonogramas.map(f => obrasPorId.get(f.obra_id ?? "")).filter((o): o is Obra => o != null)
-      : obras;
-    for (const o of src) {
-      const g: string | undefined = o.genero ?? undefined;
+    const src = activeTab === "fonogramas" ? fonogramas : obras;
+    for (const item of src) {
+      const g = activeTab === "fonogramas"
+        ? getFonogramaGenero(item as Fonograma)
+        : ((item as Obra).genero ?? "").toString().trim();
       if (!g) continue;
       const key = g.toLowerCase();
       if (!seen.has(key)) { seen.add(key); unique.push(g.charAt(0).toUpperCase() + g.slice(1)); }
     }
     return unique.sort((a, b) => a.localeCompare(b, "pt-BR"));
-  }, [obras, fonogramas, obrasPorId, activeTab]);
+  }, [obras, fonogramas, activeTab]);
 
   const projetosDisponiveis = useMemo(() => {
     const map = new Map<string, string>();
@@ -619,16 +627,16 @@ export default function RegistroMusicas() {
   const headerActions = (
     <>
       <RequirePermission module="catalog" action="write">
-        <Button 
-          size="sm" 
-          className="gap-2 bg-primary hover:bg-primary/90 text-white"
-          onClick={() => activeTab === "fonogramas" 
-            ? setFonogramaModal({ open: true, mode: "create" }) 
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => activeTab === "fonogramas"
+            ? setFonogramaModal({ open: true, mode: "create" })
             : setObraTipoSelectorOpen(true)
           }
           data-testid="button-nova-obra"
         >
-          <Plus className="h-4 w-4" />
+          <PlusCircle className="h-3.5 w-3.5" />
           {activeTab === "fonogramas" ? "Novo Fonograma" : "Nova Obra"}
         </Button>
       </RequirePermission>
@@ -641,78 +649,17 @@ export default function RegistroMusicas() {
 
         {/* Metrics */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">
-                  {activeTab === "fonogramas" ? "Total de Fonogramas" : "Total de Obras"}
-                </span>
-                {activeTab === "fonogramas" ? (
-                  <Disc className="h-4 w-4 text-muted-foreground" />
-                ) : (
-                  <Music className="h-4 w-4 text-muted-foreground" />
-                )}
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground">{total}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">registrados no sistema</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Pendentes de Registro</span>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground">{pendentes}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">aguardando análise</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Em Análise</span>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground">{emAnalise}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">aguardando aprovação</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Registro Aceito</span>
-                <CheckCircle className="h-4 w-4 text-success" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground">{registrados}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">aprovados</p>
-            </CardContent>
-          </Card>
-
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Taxa de Aprovação</span>
-                <CheckCircle className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold text-foreground">{taxaAprovacao}%</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">
-                {activeTab === "fonogramas" ? "fonogramas aprovados" : "obras aprovadas"}
-              </p>
-            </CardContent>
-          </Card>
+          <MetricCard
+            title={activeTab === "fonogramas" ? "Total de Fonogramas" : "Total de Obras"}
+            value={total}
+            description="registrados no sistema"
+            icon={activeTab === "fonogramas" ? Disc : Music}
+            accent="primary"
+          />
+          <MetricCard title="Pendentes de Registro" value={pendentes} description="aguardando análise" icon={FileText} accent="warning" />
+          <MetricCard title="Em Análise" value={emAnalise} description="aguardando aprovação" icon={Clock} accent="warning" />
+          <MetricCard title="Registro Aceito" value={registrados} description="aprovados" icon={CheckCircle} accent="success" />
+          <MetricCard title="Taxa de Aprovação" value={`${taxaAprovacao}%`} description={activeTab === "fonogramas" ? "fonogramas aprovados" : "obras aprovadas"} icon={CheckCircle} accent="primary" />
         </div>
 
 
@@ -739,19 +686,19 @@ export default function RegistroMusicas() {
         </div>
 
         {/* Search and Filters */}
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 rounded-lg bg-muted/30 p-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
+            <Input
               placeholder={activeTab === "fonogramas" ? "Buscar por título, compositor, intérprete, ISRC..." : "Buscar por título, compositor, ISWC, gênero..."}
-              className="pl-10 bg-card border-border"
+              className="pl-10 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           {activeTab === "obras" && projetosDisponiveis.length > 0 && (
             <Select value={projetoFilter} onValueChange={setProjetoFilter}>
-              <SelectTrigger className="w-[180px] bg-card border-border" data-testid="select-filter-projeto">
+              <SelectTrigger className="w-auto min-w-[150px] shrink-0 h-8 text-sm bg-card border-border" data-testid="select-filter-projeto">
                 <SelectValue placeholder="Todos Projetos" />
               </SelectTrigger>
               <SelectContent>
@@ -765,7 +712,7 @@ export default function RegistroMusicas() {
           )}
           {activeTab === "obras" && (
             <Select value={ecadFilter} onValueChange={setEcadFilter} data-testid="select-filter-ecad">
-              <SelectTrigger className="w-[160px] bg-card border-border" data-testid="trigger-filter-ecad">
+              <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-ecad">
                 <SelectValue placeholder="Todos ECAD" />
               </SelectTrigger>
               <SelectContent>
@@ -775,13 +722,25 @@ export default function RegistroMusicas() {
               </SelectContent>
             </Select>
           )}
-          {activeTab === "fonogramas" && (
-            <Select value={obraVinculadaFilter} onValueChange={setObraVinculadaFilter} data-testid="select-filter-obra-vinculada">
-              <SelectTrigger className="w-[200px] bg-card border-border" data-testid="trigger-filter-obra-vinculada">
-                <SelectValue placeholder="Todas as Obras" />
+          {activeTab === "obras" && (
+            <Select value={tipoObraFilter} onValueChange={setTipoObraFilter} data-testid="select-filter-tipo-obra">
+              <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-tipo-obra">
+                <SelectValue placeholder="Todos Tipos" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all-obras">Todas as Obras</SelectItem>
+                <SelectItem value="all-tipos">Todos Tipos</SelectItem>
+                <SelectItem value="autoral">Autoral</SelectItem>
+                <SelectItem value="referencia">Referência</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
+          {activeTab === "fonogramas" && (
+            <Select value={obraVinculadaFilter} onValueChange={setObraVinculadaFilter} data-testid="select-filter-obra-vinculada">
+              <SelectTrigger className="w-auto min-w-[160px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-obra-vinculada">
+                <SelectValue placeholder="Todos os Fonogramas" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all-obras">Todos os Fonogramas</SelectItem>
                 <SelectItem value="sem-obra">Sem obra vinculada</SelectItem>
                 <SelectItem value="com-obra">Com obra vinculada</SelectItem>
               </SelectContent>
@@ -789,7 +748,7 @@ export default function RegistroMusicas() {
           )}
           {activeTab === "fonogramas" && (
             <Select value={fonogramaEcadFilter} onValueChange={setFonogramaEcadFilter} data-testid="select-filter-fonograma-ecad">
-              <SelectTrigger className="w-[160px] bg-card border-border" data-testid="trigger-filter-fonograma-ecad">
+              <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border" data-testid="trigger-filter-fonograma-ecad">
                 <SelectValue placeholder="Todos ECAD" />
               </SelectTrigger>
               <SelectContent>
@@ -800,7 +759,7 @@ export default function RegistroMusicas() {
             </Select>
           )}
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Status" />
             </SelectTrigger>
             <SelectContent>
@@ -811,7 +770,7 @@ export default function RegistroMusicas() {
             </SelectContent>
           </Select>
           <Select value={genreFilter} onValueChange={setGenreFilter}>
-            <SelectTrigger className="w-[160px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[132px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Gêneros" />
             </SelectTrigger>
             <SelectContent>
@@ -823,8 +782,8 @@ export default function RegistroMusicas() {
               ))}
             </SelectContent>
           </Select>
-          {(searchTerm !== "" || statusFilter !== "all-status" || genreFilter !== "all-genre" || projetoFilter !== "all-projetos" || obraVinculadaFilter !== "all-obras" || ecadFilter !== "all-ecad" || fonogramaEcadFilter !== "all-ecad") && (
-            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all-status"); setGenreFilter("all-genre"); setProjetoFilter("all-projetos"); setObraVinculadaFilter("all-obras"); setEcadFilter("all-ecad"); setFonogramaEcadFilter("all-ecad"); }} data-testid="button-limpar-filtros">
+          {(searchTerm !== "" || statusFilter !== "all-status" || genreFilter !== "all-genre" || tipoObraFilter !== "all-tipos" || projetoFilter !== "all-projetos" || obraVinculadaFilter !== "all-obras" || ecadFilter !== "all-ecad" || fonogramaEcadFilter !== "all-ecad") && (
+            <Button variant="outline" onClick={() => { setSearchTerm(""); setStatusFilter("all-status"); setGenreFilter("all-genre"); setTipoObraFilter("all-tipos"); setProjetoFilter("all-projetos"); setObraVinculadaFilter("all-obras"); setEcadFilter("all-ecad"); setFonogramaEcadFilter("all-ecad"); }} data-testid="button-limpar-filtros">
               Limpar
             </Button>
           )}
@@ -833,42 +792,31 @@ export default function RegistroMusicas() {
         {/* Content - Fonogramas */}
         {activeTab === "fonogramas" && (
           <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Fonogramas Registrados</CardTitle>
-              <CardDescription>Catálogo completo de gravações registradas</CardDescription>
-            </CardHeader>
             <CardContent>
-              {fonogramas.length > 0 && (
-                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
-                  <button 
-                    onClick={toggleSelectAllFonogramas}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0 ? 'bg-primary border-primary' : 'border-primary'
-                    }`}
-                  >
-                    {selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0 && <div className="w-2 h-2 bg-white rounded-sm" />}
-                  </button>
-                  <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
-                  {selectedFonogramaIds.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="gap-1 h-7 text-xs border-success text-success hover:bg-success/10 dark:hover:bg-success/20"
-                        onClick={() => { setSelectedObraIdForBulk(""); setBulkObraModal(true); }}
-                        data-testid="button-bulk-vincular-obra"
-                      >
-                        <Link2 className="h-3.5 w-3.5" />
-                        Vincular à Obra ({selectedFonogramaIds.length})
-                      </Button>
+              <ListSectionHeader
+                title="Fonogramas Registrados"
+                count={filteredFonogramas.length}
+                description="Catálogo completo de gravações registradas"
+                action={fonogramas.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Checkbox
+                      checked={selectedFonogramaIds.length === filteredFonogramas.length && filteredFonogramas.length > 0}
+                      onCheckedChange={() => toggleSelectAllFonogramas()}
+                      aria-label="Selecionar todos"
+                      data-testid="checkbox-select-all-fonogramas"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedFonogramaIds.length > 0 ? `${selectedFonogramaIds.length} fonograma(s) selecionado(s)` : "Selecionar todos"}
+                    </span>
+                    {selectedFonogramaIds.length > 0 && (
                       <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteFonogramas} data-testid="button-bulk-delete-fonogramas">
                         <Trash2 className="h-3.5 w-3.5" />
                         Excluir ({selectedFonogramaIds.length})
                       </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                ) : undefined}
+              />
 
               {filteredFonogramas.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -876,69 +824,62 @@ export default function RegistroMusicas() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8"></TableHead>
-                        <TableHead>Título / Status</TableHead>
-                        <TableHead>Cód. ABRAMUS</TableHead>
-                        <TableHead>Cód. ECAD</TableHead>
-                        <TableHead>ISRC</TableHead>
-                        <TableHead>Compositores</TableHead>
-                        <TableHead>Intérpretes</TableHead>
-                        <TableHead>Produtor</TableHead>
+                        <SortableTableHead sortKey="titulo" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[180px]">Título</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[112px]">Status</SortableTableHead>
+                        <SortableTableHead sortKey="cod_abramus" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. Sociedade</SortableTableHead>
+                        <SortableTableHead sortKey="cod_ecad" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. ECAD</SortableTableHead>
+                        <SortableTableHead sortKey="isrc" sortState={fonogramaSort} onSort={toggleFonogramaSort}>ISRC</SortableTableHead>
+                        <SortableTableHead sortKey="compositores" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[130px]">Compositores</SortableTableHead>
+                        <SortableTableHead sortKey="interpretes" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Intérpretes</SortableTableHead>
+                        <SortableTableHead sortKey="produtores" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Produtor</SortableTableHead>
+                        <SortableTableHead sortKey="genero_musical" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Gênero</SortableTableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredFonogramas.map((fonograma) => (
+                      {fonogramasPg.pageItems.map((fonograma) => (
                         <TableRow key={fonograma.id}>
                           <TableCell className="py-3">
-                            <button
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedFonogramaIds.includes(fonograma.id) ? "bg-primary border-primary" : ""}`}
-                              onClick={(e) => { e.stopPropagation(); toggleSelectFonograma(fonograma.id); }}
+                            <Checkbox
+                              checked={selectedFonogramaIds.includes(fonograma.id)}
+                              onCheckedChange={() => toggleSelectFonograma(fonograma.id)}
                               data-testid={`checkbox-fonograma-${fonograma.id}`}
-                            >
-                              {selectedFonogramaIds.includes(fonograma.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                            </button>
+                            />
                           </TableCell>
                           <TableCell className="py-3">
                             <span className="font-medium block truncate" data-testid={`text-fonograma-titulo-${fonograma.id}`}>{fonograma.titulo}</span>
-                            <div className="mt-1 flex flex-wrap gap-1 items-center">
+                            {!fonograma.obra_id && (
                               <Badge
-                                className={`text-xs ${
-                                  fonograma.status === "registrado"
-                                    ? "bg-success hover:bg-success/90 text-success-foreground"
-                                    : fonograma.status === "analise"
-                                    ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                    : "bg-primary hover:bg-primary text-white"
-                                }`}
+                                variant="warning"
+                                className="mt-1 text-xs gap-1"
+                                data-testid={`badge-sem-obra-${fonograma.id}`}
                               >
-                                {fonograma.status === "registrado" ? "Registrado" : fonograma.status === "analise" ? "Em Análise" : "Pendente"}
-                              </Badge>
-                              {!fonograma.obra_id && (
-                                <Badge
-                                  className="text-xs bg-yellow-500/15 text-yellow-600 dark:text-yellow-400 border border-yellow-500/40 hover:bg-yellow-500/20 gap-1"
-                                  data-testid={`badge-sem-obra-${fonograma.id}`}
-                                >
-                                  <LinkIcon className="h-3 w-3" />
-                                  Sem obra vinculada
-                                </Badge>
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="py-3 text-sm">{fonograma.cod_abramus || "-"}</TableCell>
-                          <TableCell className="py-3">
-                            {fonograma.cod_ecad ? (
-                              <Badge className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono" data-testid={`badge-ecad-registrado-${fonograma.id}`}>
-                                {fonograma.cod_ecad}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-muted-foreground border-border" data-testid={`badge-ecad-missing-${fonograma.id}`}>
-                                Sem ECAD
+                                <LinkIcon className="h-3 w-3" />
+                                Sem obra vinculada
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="py-3 text-sm font-mono">{fonograma.isrc || "-"}</TableCell>
-                          <TableCell className="py-3 text-sm max-w-[140px] truncate">{fonograma.compositores || "-"}</TableCell>
-                          <TableCell className="py-3 text-sm max-w-[120px] truncate">{fonograma.interpretes || "-"}</TableCell>
-                          <TableCell className="py-3 text-sm max-w-[120px] truncate">{fonograma.produtores || "-"}</TableCell>
+                          <TableCell className="py-3">
+                            <Badge
+                              variant={fonograma.status === "registrado" ? "success" : "warning"}
+                              className="text-xs"
+                            >
+                              {fonograma.status === "registrado" ? "Registrado" : fonograma.status === "analise" ? "Em Análise" : "Pendente"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3 text-sm">{fonograma.cod_abramus || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{fonograma.cod_ecad || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{fonograma.isrc || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[140px] truncate" title={fonograma.compositores || undefined}>{fonograma.compositores || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate" title={fonograma.interpretes || undefined}>{fonograma.interpretes || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate" title={fonograma.produtores || undefined}>{fonograma.produtores || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm max-w-[120px] truncate" title={getFonogramaGeneroDisplay(fonograma)}>
+                            {getFonogramaGenero(fonograma) ? (
+                              getFonogramaGenero(fonograma)
+                            ) : (
+                              <span className="text-muted-foreground">Não informado</span>
+                            )}
+                          </TableCell>
                           <TableCell className="py-3 text-right">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -977,6 +918,14 @@ export default function RegistroMusicas() {
                       ))}
                     </TableBody>
                   </Table>
+                  <TablePagination
+                    total={fonogramasPg.total}
+                    page={fonogramasPg.page}
+                    pageSize={fonogramasPg.pageSize}
+                    onPageChange={fonogramasPg.setPage}
+                    onPageSizeChange={fonogramasPg.setPageSize}
+                    itemLabel="fonogramas"
+                  />
                 </div>
               ) : (
                 <EmptyState
@@ -994,36 +943,31 @@ export default function RegistroMusicas() {
         {/* Content - Obras */}
         {activeTab === "obras" && (
           <Card className="bg-card border-border">
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Obras Registradas</CardTitle>
-              <CardDescription>Catálogo completo de obras musicais registradas</CardDescription>
-            </CardHeader>
             <CardContent>
-              {obras.length > 0 && (
-                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border">
-                  <button 
-                    onClick={toggleSelectAllObras}
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
-                      selectedObraIds.length === filteredObras.length && filteredObras.length > 0 ? 'bg-primary border-primary' : 'border-primary'
-                    }`}
-                  >
-                    {selectedObraIds.length === filteredObras.length && filteredObras.length > 0 && <div className="w-2 h-2 bg-white rounded-sm" />}
-                  </button>
-                  <span className="text-sm text-muted-foreground flex-1">Selecionar todos</span>
-                  {selectedObraIds.length > 0 && (
-                    <div className="flex items-center gap-2">
-                      <Button size="sm" className="gap-1 h-7 text-xs bg-primary hover:bg-primary/90 text-white" onClick={() => setBulkEcadModal(true)} data-testid="button-bulk-preencher-ecad">
-                        <Hash className="h-3.5 w-3.5" />
-                        Preencher ECAD ({selectedObraIds.length})
-                      </Button>
+              <ListSectionHeader
+                title="Obras Registradas"
+                count={filteredObras.length}
+                description="Catálogo completo de obras musicais registradas"
+                action={obras.length > 0 ? (
+                  <div className="flex flex-wrap items-center justify-end gap-3">
+                    <Checkbox
+                      checked={selectedObraIds.length === filteredObras.length && filteredObras.length > 0}
+                      onCheckedChange={() => toggleSelectAllObras()}
+                      aria-label="Selecionar todos"
+                      data-testid="checkbox-select-all-obras"
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {selectedObraIds.length > 0 ? `${selectedObraIds.length} obra(s) selecionada(s)` : "Selecionar todos"}
+                    </span>
+                    {selectedObraIds.length > 0 && (
                       <Button variant="destructive" size="sm" className="gap-1 h-7 text-xs" onClick={handleBulkDeleteObras} data-testid="button-bulk-delete-obras">
                         <Trash2 className="h-3.5 w-3.5" />
                         Excluir ({selectedObraIds.length})
                       </Button>
-                    </div>
-                  )}
-                </div>
-              )}
+                    )}
+                  </div>
+                ) : undefined}
+              />
 
               {filteredObras.length > 0 ? (
                 <div className="overflow-x-auto">
@@ -1031,58 +975,45 @@ export default function RegistroMusicas() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="w-8"></TableHead>
-                        <TableHead>Título / Status / Tipo</TableHead>
-                        <TableHead>Cód. ABRAMUS</TableHead>
-                        <TableHead>Cód. ECAD</TableHead>
-                        <TableHead>ISWC</TableHead>
-                        <TableHead>Compositores</TableHead>
-                        <TableHead>Editora</TableHead>
-                        <TableHead>Gênero</TableHead>
+                        <SortableTableHead sortKey="titulo" sortState={obraSort} onSort={toggleObraSort}>Título</SortableTableHead>
+                        <SortableTableHead sortKey="status" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Status</SortableTableHead>
+                        <SortableTableHead sortKey="tipo_obra" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Tipo</SortableTableHead>
+                        <SortableTableHead sortKey="cod_abramus" sortState={obraSort} onSort={toggleObraSort}>Cód. Sociedade</SortableTableHead>
+                        <SortableTableHead sortKey="cod_ecad" sortState={obraSort} onSort={toggleObraSort}>Cód. ECAD</SortableTableHead>
+                        <SortableTableHead sortKey="iswc" sortState={obraSort} onSort={toggleObraSort}>ISWC</SortableTableHead>
+                        <SortableTableHead sortKey="compositores" sortState={obraSort} onSort={toggleObraSort}>Compositores</SortableTableHead>
+                        <SortableTableHead sortKey="editora" sortState={obraSort} onSort={toggleObraSort}>Editora</SortableTableHead>
+                        <SortableTableHead sortKey="genero" sortState={obraSort} onSort={toggleObraSort}>Gênero</SortableTableHead>
                         <TableHead className="text-right">Ações</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredObras.map((obra) => (
+                      {obrasPg.pageItems.map((obra) => (
                         <TableRow key={obra.id}>
                           <TableCell className="py-3">
-                            <button
-                              className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors border-primary ${selectedObraIds.includes(obra.id) ? "bg-primary border-primary" : ""}`}
-                              onClick={(e) => { e.stopPropagation(); toggleSelectObra(obra.id); }}
+                            <Checkbox
+                              checked={selectedObraIds.includes(obra.id)}
+                              onCheckedChange={() => toggleSelectObra(obra.id)}
                               data-testid={`checkbox-obra-${obra.id}`}
-                            >
-                              {selectedObraIds.includes(obra.id) && <div className="w-2 h-2 bg-white rounded-sm" />}
-                            </button>
+                            />
                           </TableCell>
                           <TableCell className="py-3">
                             <span className="font-medium block truncate" data-testid={`text-obra-titulo-${obra.id}`}>{obra.titulo}</span>
-                            <div className="mt-1 flex flex-wrap gap-1 items-center">
-                              <Badge
-                                className={`text-xs ${
-                                  obra.status === "registrado"
-                                    ? "bg-success hover:bg-success/90 text-success-foreground"
-                                    : obra.status === "analise"
-                                    ? "bg-amber-500 hover:bg-amber-600 text-white"
-                                    : "bg-primary hover:bg-primary text-white"
-                                }`}
-                              >
-                                {obra.status === "registrado" ? "Registrado" : obra.status === "analise" ? "Em Análise" : "Pendente"}
-                              </Badge>
-                              <ObraTipoBadge tipo={obra.tipo_obra as string | null | undefined} />
-                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <Badge
+                              variant={obra.status === "registrado" ? "success" : "warning"}
+                              className="text-xs"
+                            >
+                              {obra.status === "registrado" ? "Registrado" : obra.status === "analise" ? "Em Análise" : "Pendente"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <ObraTipoBadge tipo={obra.tipo_obra as string | null | undefined} />
                           </TableCell>
                           <TableCell className="py-3 text-sm">{obra.cod_abramus || "-"}</TableCell>
-                          <TableCell className="py-3">
-                            {obra.cod_ecad ? (
-                              <Badge className="bg-success hover:bg-success/90 text-success-foreground text-xs font-mono" data-testid={`badge-ecad-registrado-${obra.id}`}>
-                                {obra.cod_ecad}
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="text-xs text-muted-foreground border-border" data-testid={`badge-ecad-missing-${obra.id}`}>
-                                Sem ECAD
-                              </Badge>
-                            )}
-                          </TableCell>
-                          <TableCell className="py-3 text-sm font-mono">{obra.iswc || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{obra.cod_ecad || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{obra.iswc || "-"}</TableCell>
                           <TableCell className="py-3 text-sm max-w-[140px] truncate">{obra.compositores || "-"}</TableCell>
                           <TableCell className="py-3 text-sm max-w-[120px] truncate">{obra.editora || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{obra.genero || "-"}</TableCell>
@@ -1127,6 +1058,14 @@ export default function RegistroMusicas() {
                       ))}
                     </TableBody>
                   </Table>
+                  <TablePagination
+                    total={obrasPg.total}
+                    page={obrasPg.page}
+                    pageSize={obrasPg.pageSize}
+                    onPageChange={obrasPg.setPage}
+                    onPageSizeChange={obrasPg.setPageSize}
+                    itemLabel="obras"
+                  />
                 </div>
               ) : (
                 <EmptyState
@@ -1201,82 +1140,6 @@ export default function RegistroMusicas() {
         prefill={contratoModal.prefill}
       />
 
-      <Dialog open={bulkEcadModal} onOpenChange={(open) => { setBulkEcadModal(open); if (!open) setBulkEcadCode(""); }}>
-        <DialogContent className="sm:max-w-sm" data-testid="dialog-bulk-preencher-ecad">
-          <DialogHeader>
-            <DialogTitle>Preencher código ECAD</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              O código informado será aplicado a todas as <span className="font-medium text-foreground">{selectedObraIds.length} obra(s)</span> selecionadas.
-            </p>
-            <Input
-              placeholder="Ex: 1234567"
-              value={bulkEcadCode}
-              onChange={(e) => setBulkEcadCode(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleBulkFillEcad(); }}
-              className="font-mono"
-              data-testid="input-bulk-ecad-code"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setBulkEcadModal(false); setBulkEcadCode(""); }} data-testid="button-cancelar-ecad">
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleBulkFillEcad}
-              disabled={!bulkEcadCode.trim() || bulkEcadLoading}
-              className="gap-2"
-              data-testid="button-confirmar-ecad"
-            >
-              {bulkEcadLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Hash className="h-4 w-4" />}
-              Aplicar
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={bulkObraModal} onOpenChange={(open) => { setBulkObraModal(open); if (!open) setSelectedObraIdForBulk(""); }}>
-        <DialogContent className="sm:max-w-md" data-testid="dialog-bulk-vincular-obra">
-          <DialogHeader>
-            <DialogTitle>Vincular {selectedFonogramaIds.length} fonograma(s) a uma obra</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm text-muted-foreground">
-              Selecione a obra à qual deseja vincular os fonogramas selecionados.
-            </p>
-            <Select value={selectedObraIdForBulk} onValueChange={setSelectedObraIdForBulk} data-testid="select-obra-para-vincular">
-              <SelectTrigger className="w-full bg-card border-border" data-testid="trigger-obra-para-vincular">
-                <SelectValue placeholder="Escolha uma obra..." />
-              </SelectTrigger>
-              <SelectContent>
-                {obras
-                  .slice()
-                  .sort((a, b) => collator.compare(a.titulo ?? "", b.titulo ?? ""))
-                  .map((obra) => (
-                    <SelectItem key={obra.id} value={obra.id} data-testid={`option-obra-${obra.id}`}>
-                      {obra.titulo}
-                    </SelectItem>
-                  ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setBulkObraModal(false); setSelectedObraIdForBulk(""); }} data-testid="button-cancelar-vincular-obra">
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleBulkVincularObra}
-              disabled={!selectedObraIdForBulk || bulkLinking}
-              className="gap-2 bg-success hover:bg-success/90 text-success-foreground"
-              data-testid="button-confirmar-vincular-obra"
-            >
-              {bulkLinking ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-              Vincular
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </MainLayout>
   );
 }

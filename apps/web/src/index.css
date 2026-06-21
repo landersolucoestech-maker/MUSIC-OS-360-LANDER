@@ -2,202 +2,90 @@
 @tailwind components;
 @tailwind utilities;
 
-/* MUSIC OS 360 Design System — Enterprise Premium */
-
 @layer base {
   :root {
-    /* ── Backgrounds ─────────────────────────────────────────────────────── */
-    --background: 0 0% 99.2%;
-    --foreground: 222 25% 10%;
+    --background: 200 17% 97%;
+    --foreground: 215 28% 17%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222 25% 10%;
+    --card-foreground: 215 28% 17%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222 25% 10%;
+    --popover-foreground: 215 28% 17%;
 
-    /* ── Brand ───────────────────────────────────────────────────────────── */
-    --primary: 217 91% 60%;
+    --primary: 205 79% 28%;
     --primary-foreground: 0 0% 100%;
+    --primary-hover: 205 81% 22%;
 
-    /* ── Secondary / Muted ───────────────────────────────────────────────── */
-    --secondary: 220 16% 96%;
-    --secondary-foreground: 222 25% 22%;
+    --secondary: 214 20% 94%;
+    --secondary-foreground: 215 28% 17%;
 
-    --muted: 220 16% 95.5%;
-    --muted-foreground: 220 9% 48%;
+    --muted: 214 20% 94%;
+    --muted-foreground: 220 9% 46%;
 
-    --accent: 217 26% 93%;
-    --accent-foreground: 222 25% 18%;
+    --accent: 22 90% 48%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 20 89% 41%;
 
-    /* ── Semantic ────────────────────────────────────────────────────────── */
-    --destructive: 0 84% 60%;
+    --destructive: 0 74% 42%;
     --destructive-foreground: 0 0% 100%;
 
-    /* ── Borders / Inputs ────────────────────────────────────────────────── */
-    --border: 215 16% 88%;
-    --input: 215 16% 88%;
-    --ring: 217 91% 60%;
+    --border: 214 21% 87%;
+    --input: 214 21% 87%;
+    --ring: 205 79% 28%;
 
-    /* ── Radius ── tight & consistent across modes ───────────────────────── */
-    --radius: 0.375rem;
+    --radius: 10px;
 
-    /* ── Sidebar ─────────────────────────────────────────────────────────── */
-    --sidebar-background: 0 0% 99.8%;
-    --sidebar-foreground: 222 25% 12%;
-    --sidebar-primary: 217 91% 58%;
+    --sidebar-background: 210 65% 16%;
+    --sidebar-foreground: 210 20% 96%;
+    --sidebar-primary: 0 0% 100%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 22% 93%;
-    --sidebar-accent-foreground: 222 25% 16%;
-    --sidebar-border: 215 16% 91%;
-    --sidebar-ring: 217 91% 60%;
+    --sidebar-accent: 210 45% 24%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 210 35% 26%;
+    --sidebar-ring: 20 79% 38%;
 
-    /* ── Semantic color tokens ────────────────────────────────────────────── */
-    --success: 142 71% 34%;
+    --success: 142 72% 29%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 48%;
+    --warning: 32 95% 44%;
     --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;
+    --info: 205 79% 28%;
     --info-foreground: 0 0% 100%;
 
-    /* ── Status ──────────────────────────────────────────────────────────── */
-    --status-active: 142 71% 34%;
-    --status-pending: 38 92% 48%;
-    --status-confirmed: 217 91% 60%;
-    --status-cancelled: 0 84% 60%;
-    --status-executed: 142 71% 34%;
-    --status-registered: 142 71% 34%;
-    --status-analysis: 38 92% 48%;
-    --status-rejected: 0 84% 60%;
-    --status-expired: 0 84% 60%;
-    --status-negotiation: 38 92% 48%;
-    --status-proposal: 217 91% 60%;
+    --status-active: 142 72% 29%;
+    --status-pending: 32 95% 44%;
+    --status-confirmed: 205 79% 28%;
+    --status-cancelled: 0 74% 42%;
+    --status-executed: 142 72% 29%;
+    --status-registered: 142 72% 29%;
+    --status-analysis: 32 95% 44%;
+    --status-rejected: 0 74% 42%;
+    --status-expired: 0 74% 42%;
+    --status-negotiation: 32 95% 44%;
+    --status-proposal: 205 79% 28%;
 
-    /* ── Priority ────────────────────────────────────────────────────────── */
-    --priority-high: 0 84% 60%;
-    --priority-medium: 38 92% 48%;
-    --priority-low: 142 71% 34%;
+    --priority-high: 0 74% 42%;
+    --priority-medium: 32 95% 44%;
+    --priority-low: 142 72% 29%;
 
-    /* ── Category ────────────────────────────────────────────────────────── */
-    --category-show: 271 91% 65%;
-    --category-product: 25 95% 53%;
-    --category-service: 217 91% 60%;
-    --category-audio: 217 91% 60%;
-    --category-video: 271 91% 65%;
+    --category-show: 205 79% 28%;
+    --category-product: 22 90% 48%;
+    --category-service: 205 79% 28%;
+    --category-audio: 205 79% 28%;
+    --category-video: 205 79% 28%;
 
-    /* ── Surface hierarchy ───────────────────────────────────────────────── */
     --surface-1: 0 0% 100%;
-    --surface-2: 0 0% 99%;
-    --surface-3: 220 16% 97%;
+    --surface-2: 220 17% 97%;
+    --surface-3: 214 20% 94%;
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: none;
+    --shadow-xl: none;
+    --ring-inset: inset 0 0 0 1px hsl(var(--border));
 
-    /* ── Shadow scale — precise, directional, no color contamination ─────── */
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.04);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.06), 0 1px 2px -1px rgb(0 0 0 / 0.04);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.07), 0 4px 6px -4px rgb(0 0 0 / 0.04);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.08), 0 8px 10px -6px rgb(0 0 0 / 0.04);
-
-    /* ── Ring glow for modals/dropdowns ─────────────────────────────────── */
-    --ring-inset: inset 0 0 0 1px rgb(0 0 0 / 0.08);
   }
 
-  .dark {
-    /* ── Backgrounds ─────────────────────────────────────────────────────── */
-    --background: 222 47% 3.5%;
-    --foreground: 0 0% 95%;
-
-    --card: 222 44% 6%;
-    --card-foreground: 0 0% 95%;
-
-    --popover: 222 44% 6.5%;
-    --popover-foreground: 0 0% 95%;
-
-    /* ── Brand ───────────────────────────────────────────────────────────── */
-    --primary: 217 91% 60%;
-    --primary-foreground: 0 0% 100%;
-
-    /* ── Secondary / Muted ───────────────────────────────────────────────── */
-    --secondary: 222 40% 11%;
-    --secondary-foreground: 0 0% 90%;
-
-    --muted: 222 40% 11%;
-    --muted-foreground: 220 10% 56%;
-
-    --accent: 222 40% 14%;
-    --accent-foreground: 0 0% 92%;
-
-    /* ── Semantic ────────────────────────────────────────────────────────── */
-    --destructive: 0 62% 48%;
-    --destructive-foreground: 0 0% 98%;
-
-    /* ── Borders / Inputs ────────────────────────────────────────────────── */
-    --border: 222 38% 13%;
-    --input: 222 38% 13%;
-    --ring: 217 91% 60%;
-
-    /* ── Radius — same as light ──────────────────────────────────────────── */
-    --radius: 0.375rem;
-
-    /* ── Sidebar ─────────────────────────────────────────────────────────── */
-    --sidebar-background: 222 47% 4%;
-    --sidebar-foreground: 0 0% 88%;
-    --sidebar-primary: 217 91% 60%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 217 30% 12%;
-    --sidebar-accent-foreground: 0 0% 92%;
-    --sidebar-border: 222 38% 10%;
-    --sidebar-ring: 217 91% 60%;
-
-    /* ── Semantic ────────────────────────────────────────────────────────── */
-    --success: 142 71% 38%;
-    --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
-    --info: 217 91% 60%;
-    --info-foreground: 0 0% 100%;
-
-    /* ── Status ──────────────────────────────────────────────────────────── */
-    --status-active: 142 71% 38%;
-    --status-pending: 38 92% 50%;
-    --status-confirmed: 217 91% 60%;
-    --status-cancelled: 0 62% 48%;
-    --status-executed: 142 71% 38%;
-    --status-registered: 142 71% 38%;
-    --status-analysis: 38 92% 50%;
-    --status-rejected: 0 62% 48%;
-    --status-expired: 0 62% 48%;
-    --status-negotiation: 38 92% 50%;
-    --status-proposal: 217 91% 60%;
-
-    /* ── Priority ────────────────────────────────────────────────────────── */
-    --priority-high: 0 62% 48%;
-    --priority-medium: 38 92% 50%;
-    --priority-low: 142 71% 38%;
-
-    /* ── Category ────────────────────────────────────────────────────────── */
-    --category-show: 271 91% 65%;
-    --category-product: 25 95% 53%;
-    --category-service: 217 91% 60%;
-    --category-audio: 217 91% 60%;
-    --category-video: 271 91% 65%;
-
-    /* ── Surface hierarchy ───────────────────────────────────────────────── */
-    --surface-1: 222 44% 6%;
-    --surface-2: 222 44% 8%;
-    --surface-3: 222 44% 11%;
-
-    /* ── Shadow scale — dark: richer blacks ─────────────────────────────── */
-    --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.28);
-    --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.38), 0 1px 2px -1px rgb(0 0 0 / 0.28);
-    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.42), 0 2px 4px -2px rgb(0 0 0 / 0.32);
-    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.48), 0 4px 6px -4px rgb(0 0 0 / 0.32);
-    --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.54), 0 8px 10px -6px rgb(0 0 0 / 0.38);
-
-    --ring-inset: inset 0 0 0 1px rgb(255 255 255 / 0.06);
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
@@ -216,223 +104,105 @@
     line-height: 1.5;
   }
 
-  /* Precise focus ring — not intrusive */
   *:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-1 ring-offset-background;
   }
 
-  /* Heading defaults */
-  h1, h2, h3, h4, h5, h6 {
-    letter-spacing: -0.01em;
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    letter-spacing: 0;
   }
 }
 
-/* ── Scrollbar — minimal, invisible until needed ─────────────────────────── */
 ::-webkit-scrollbar {
   width: 5px;
   height: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: transparent;
 }
+
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--border));
   border-radius: 99px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--muted-foreground) / 0.4);
+  background: hsl(var(--muted-foreground) / 0.45);
 }
 
-/* ── Utility classes ─────────────────────────────────────────────────────── */
 @layer utilities {
-  /* Transitions */
+  table {
+    border-spacing: 0;
+    font-family: Inter, system-ui, sans-serif;
+  }
+
+  table th,
+  table td {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+    vertical-align: middle;
+  }
+
+  table thead th {
+    height: 2.25rem !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    font-family: Inter, system-ui, sans-serif !important;
+    font-size: 0.75rem !important;
+    font-weight: 500 !important;
+    line-height: 1rem !important;
+    letter-spacing: 0 !important;
+    color: hsl(var(--muted-foreground)) !important;
+    text-transform: none !important;
+    white-space: nowrap;
+  }
+
+  table tbody td,
+  table tfoot td {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+    font-family: Inter, system-ui, sans-serif !important;
+    font-size: 0.875rem !important;
+    font-weight: 400;
+    line-height: 1.25rem !important;
+    letter-spacing: 0 !important;
+  }
+
+  table th > *,
+  table td > * {
+    vertical-align: middle;
+  }
+
+  table tbody td > :where(span, p, a):not(.inline-flex),
+  table tfoot td > :where(span, p, a):not(.inline-flex) {
+    font-size: inherit !important;
+    line-height: inherit !important;
+    letter-spacing: 0 !important;
+  }
+
   .transition-smooth { @apply transition-all duration-150 ease-out; }
   .transition-colors-smooth { @apply transition-colors duration-150 ease-out; }
-
-  /* Elevation interactions */
-  .hover-lift { @apply transition-all duration-200 hover:-translate-y-px hover:shadow-md; }
-  .hover-scale { @apply transition-transform duration-150 hover:scale-[1.01]; }
-
-  /* Enterprise card hover — border brightens + micro-shadow lift */
-  .card-interactive {
-    @apply transition-[border-color,box-shadow] duration-200
-           hover:border-border hover:shadow-md cursor-pointer;
-  }
-
-  /* Gradient text */
-  .text-gradient {
-    @apply bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent;
-  }
-
-  /* Glass surface */
-  .glass {
-    @apply bg-background/80 backdrop-blur-md border border-border/60;
-  }
-
-  /* Shimmer skeleton */
-  .shimmer {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--muted-foreground) / 0.08) 50%,
-      hsl(var(--muted)) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.8s linear infinite;
-  }
-
-  /* Stagger delays */
+  .hover-lift { @apply transition-colors duration-150; }
+  .hover-scale { @apply transition-colors duration-150; }
+  .card-interactive { @apply cursor-pointer transition-colors duration-150 hover:border-primary/40; }
   .stagger-1 { animation-delay: 40ms; }
   .stagger-2 { animation-delay: 80ms; }
   .stagger-3 { animation-delay: 120ms; }
   .stagger-4 { animation-delay: 160ms; }
   .stagger-5 { animation-delay: 200ms; }
-
-  /* Shadow utilities — use CSS vars directly */
-  .shadow-xs  { box-shadow: var(--shadow-xs); }
-  .shadow-sm  { box-shadow: var(--shadow-sm); }
-  .shadow-md  { box-shadow: var(--shadow-md); }
-  .shadow-lg  { box-shadow: var(--shadow-lg); }
-  .shadow-xl  { box-shadow: var(--shadow-xl); }
-
-  /* Surface utilities */
+  .shadow-xs,
+  .shadow-sm,
+  .shadow-md,
+  .shadow-lg,
+  .shadow-xl { box-shadow: none; }
   .bg-surface-1 { background-color: hsl(var(--surface-1)); }
   .bg-surface-2 { background-color: hsl(var(--surface-2)); }
   .bg-surface-3 { background-color: hsl(var(--surface-3)); }
-
-  /* Row hover — tables, lists */
   .row-interactive { @apply transition-colors duration-100 hover:bg-muted/60; }
-
-  /* Icon button */
-  .icon-button {
-    @apply rounded-md transition-colors duration-100
-           hover:bg-muted/70 active:bg-muted;
-  }
-
-  /* Numeric / tabular data */
-  .tabular { @apply font-mono tabular-nums; }
-
-  /* Label + value pairs */
-  .label-sm {
-    @apply text-[11px] font-semibold uppercase tracking-widest text-muted-foreground;
-  }
-
-  /* ── Typography scale ───────────────────────────────────────────────── */
-  .text-display   { @apply text-3xl font-bold tracking-tight leading-none; }
-  .text-headline  { @apply text-xl font-semibold tracking-tight leading-snug; }
-  .text-title     { @apply text-base font-semibold leading-snug tracking-tight; }
-  .text-body      { @apply text-sm leading-relaxed; }
-  .text-caption   { @apply text-xs text-muted-foreground leading-snug; }
-  .text-overline  {
-    @apply text-[10.5px] font-semibold uppercase tracking-[0.1em] text-muted-foreground;
-  }
-  .text-mono-num  { @apply font-mono tabular-nums text-sm; }
-
-  /* ── Page header pattern ────────────────────────────────────────────── */
-  .page-header    { @apply flex flex-col gap-0.5 mb-6; }
-  .page-title     { @apply text-xl font-semibold tracking-tight; }
-  .page-desc      { @apply text-sm text-muted-foreground leading-relaxed; }
-
-  /* ── Stat / KPI card — label above, value below ─────────────────────── */
-  .stat-label     { @apply text-xs text-muted-foreground leading-none mb-1.5; }
-  .stat-value     { @apply text-2xl font-bold leading-none tabular-nums; }
-  .stat-delta     { @apply text-xs font-medium mt-1; }
-
-  /* ── Info-grid row — label above, value below (TV/Rádio, ECAD) ──────── */
-  .info-label     {
-    @apply text-[10.5px] font-semibold uppercase tracking-[0.07em]
-           text-muted-foreground leading-none mb-1;
-  }
-  .info-value     { @apply text-sm font-medium text-foreground leading-snug; }
-  .info-value-lg  { @apply text-base font-semibold text-foreground leading-snug; }
-
-  /* ── Form section panel ─────────────────────────────────────────────── */
-  .form-section   {
-    @apply rounded-lg border border-border bg-card p-4 space-y-4;
-  }
-  .form-section-title { @apply text-sm font-semibold text-foreground; }
-
-  /* ── Detection / activity row ───────────────────────────────────────── */
-  .detect-row {
-    @apply flex items-start gap-4 rounded-lg border border-border/70
-           bg-muted/20 p-4 transition-colors duration-150
-           hover:bg-muted/40 hover:border-border;
-  }
-  .detect-icon {
-    @apply flex-shrink-0 h-10 w-10 rounded-lg bg-primary/10
-           flex items-center justify-center;
-  }
-
-  /* ── Empty / Error / Loading states ────────────────────────────────── */
-  .state-container {
-    @apply flex flex-col items-center justify-center gap-3
-           py-16 px-6 text-center;
-  }
-  .state-icon-wrap {
-    @apply h-14 w-14 rounded-2xl bg-muted flex items-center justify-center mb-1;
-  }
-  .state-title  { @apply text-base font-semibold text-foreground; }
-  .state-desc   { @apply text-sm text-muted-foreground max-w-xs leading-relaxed; }
-
-  /* ── Data table container ───────────────────────────────────────────── */
-  .data-table-wrap {
-    @apply rounded-lg border border-border overflow-hidden;
-  }
-}
-
-/* ── Component layer ─────────────────────────────────────────────────────── */
-@layer components {
-  /* Focus ring helper */
-  .focus-ring {
-    @apply focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1;
-  }
-
-  /* Status badge classes */
-  .badge-success     { @apply bg-success/10 text-success border-success/20; }
-  .badge-warning     { @apply bg-warning/10 text-warning border-warning/20; }
-  .badge-destructive { @apply bg-destructive/10 text-destructive border-destructive/20; }
-  .badge-info        { @apply bg-info/10 text-info border-info/20; }
-
-  /* Inset divider */
-  .divider { @apply border-t border-border/70 my-4; }
-
-  /* Muted section label */
-  .section-label {
-    @apply text-[10.5px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70;
-  }
-
-  /* ── Form control base — shared by Input, Select, Textarea ───────────── */
-  .form-control-base {
-    @apply flex w-full rounded-md border border-input bg-background
-           text-sm text-foreground
-           placeholder:text-muted-foreground/70
-           transition-colors duration-150
-           hover:border-border
-           focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-ring focus-visible:ring-offset-1
-           disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-muted/40;
-  }
-
-  /* ── Date picker trigger — matches Input height & style exactly ───────── */
-  .date-trigger {
-    @apply flex h-10 w-full items-center justify-start gap-2
-           rounded-md border border-input bg-background
-           px-3 py-2 text-sm font-normal
-           transition-colors duration-150
-           hover:border-border
-           focus-visible:outline-none focus-visible:ring-2
-           focus-visible:ring-ring focus-visible:ring-offset-1
-           disabled:cursor-not-allowed disabled:opacity-50;
-  }
-
-  /* ── Calendar premium wrapper ────────────────────────────────────────── */
-  .calendar-premium {
-    @apply p-3 rounded-lg;
-  }
-
-  /* ── Table premium header ────────────────────────────────────────────── */
-  .table-head-premium {
-    @apply text-[10.5px] font-semibold uppercase tracking-[0.07em]
-           text-muted-foreground/80 h-9 px-3 text-left align-middle;
-  }
 }

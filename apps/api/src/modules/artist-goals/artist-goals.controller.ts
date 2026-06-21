@@ -6,6 +6,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }     from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }       from '../../core/decorators/current-user.decorator';
 import { RequireRole }       from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { ArtistGoalsService }   from './artist-goals.service';
 import { CreateArtistGoalDto }  from './dto/create-artist-goal.dto';
 import { UpdateArtistGoalDto }  from './dto/update-artist-goal.dto';
@@ -18,6 +19,7 @@ export class ArtistGoalsController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('artist_goal:read')
   @ApiOperation({ summary: 'Listar metas de artistas do tenant' })
   list(
     @CurrentTenant() tenant: { id: string },
@@ -36,6 +38,7 @@ export class ArtistGoalsController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('artist_goal:read')
   @ApiOperation({ summary: 'Obter meta de artista por ID' })
   findOne(
     @CurrentTenant() tenant: { id: string },
@@ -46,6 +49,7 @@ export class ArtistGoalsController {
 
   @Post()
   @RequireRole('editor')
+  @RequirePermission('artist_goal:create')
   @ApiOperation({ summary: 'Criar meta de artista' })
   create(
     @CurrentTenant() tenant: { id: string },
@@ -57,6 +61,7 @@ export class ArtistGoalsController {
 
   @Patch(':id')
   @RequireRole('editor')
+  @RequirePermission('artist_goal:update')
   @ApiOperation({ summary: 'Actualizar meta de artista' })
   update(
     @CurrentTenant() tenant: { id: string },
@@ -69,6 +74,7 @@ export class ArtistGoalsController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('artist_goal:delete')
   @ApiOperation({ summary: 'Remover meta de artista (soft delete)' })
   remove(
     @CurrentTenant() tenant: { id: string },

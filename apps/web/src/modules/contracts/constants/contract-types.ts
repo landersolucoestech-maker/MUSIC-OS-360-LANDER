@@ -98,3 +98,4 @@ export const CONTRACT_TYPES = {
     "Termo de Quitação",
   ],
 } as const;
+

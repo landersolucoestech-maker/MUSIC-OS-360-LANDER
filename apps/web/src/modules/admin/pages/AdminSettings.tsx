@@ -1,28 +1,31 @@
 import { useState } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_INTEGRATIONS } from "../data/mockAdmin";
+import { ADMIN_INTEGRATIONS as MOCK_INTEGRATIONS, ADMIN_USERS as MOCK_ADMIN_USERS } from "../data/admin-source";
 import type { IntegrationStatus } from "../types";
-import { MOCK_ADMIN_USERS } from "../data/mockAdmin";
 import type { AdminRole } from "../types";
 import {
-  Settings, Mail, Shield, Bell, Palette, Webhook, KeyRound, Zap,
+  IntegrationLogo,
+  type IntegrationLogoId,
+} from "@/shared/integrations";
+import {
+  Settings, Mail, Shield, Bell, Webhook, KeyRound, Zap,
   CheckCircle2, AlertCircle, Clock, XCircle,
   Eye, EyeOff, RefreshCw, Plus, Trash2, Copy,
-  ToggleLeft, ToggleRight, Upload, Users, ShieldOff, Search,
+  ToggleLeft, ToggleRight, Users, ShieldOff, Search,
 } from "lucide-react";
 
 /* ── types ── */
-type TabKey = "usuarios" | "geral" | "email" | "seguranca" | "notificacoes" | "aparencia" | "webhooks" | "chaves-api" | "integracoes";
+type TabKey = "usuarios" | "geral" | "email" | "seguranca" | "notificacoes" | "webhooks" | "chaves-api" | "integracoes";
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
   { key: "geral",        label: "Geral",       icon: Settings  },
   { key: "email",        label: "Email",        icon: Mail      },
   { key: "seguranca",    label: "Segurança",    icon: Shield    },
   { key: "notificacoes", label: "Notificações", icon: Bell      },
-  { key: "aparencia",    label: "Aparência",    icon: Palette   },
   { key: "webhooks",     label: "Webhooks",     icon: Webhook   },
   { key: "chaves-api",   label: "Chaves API",   icon: KeyRound  },
   { key: "integracoes",  label: "Integrações",  icon: Zap       },
@@ -32,13 +35,13 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 /* ── integration helpers ── */
 const STATUS_CFG: Record<IntegrationStatus, { label: string; color: string; bg: string; icon: React.ComponentType<{ className?: string }> }> = {
   active:   { label: "Ativo",      color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/20", icon: CheckCircle2 },
-  inactive: { label: "Inativo",    color: "text-white/30",    bg: "bg-white/5 border-white/10",             icon: XCircle      },
-  disabled: { label: "Desabilitado",color: "text-white/20",   bg: "bg-white/5 border-white/5",              icon: XCircle      },
+  inactive: { label: "Inativo",    color: "text-muted-foreground",    bg: "bg-muted border-border",             icon: XCircle      },
+  disabled: { label: "Desabilitado",color: "text-muted-foreground",   bg: "bg-muted border-border",              icon: XCircle      },
   error:    { label: "Erro",       color: "text-red-400",     bg: "bg-red-500/10 border-red-500/20",        icon: AlertCircle  },
   pending:  { label: "Pendente",   color: "text-yellow-400",  bg: "bg-yellow-500/10 border-yellow-500/20",  icon: Clock        },
 };
 const CAT_LABEL: Record<string, string> = {
-  payment: "Pagamento", communication: "Comunicação", analytics: "Analytics",
+  payment: "Pagamento", communication: "Comunicação", analytics: "Métricas",
   storage: "Storage", music: "Música", accounting: "Accounting",
 };
 function fmtDate(iso?: string) {
@@ -50,9 +53,9 @@ function fmtDate(iso?: string) {
 function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1.5">
-      <label className="text-[12px] font-medium text-white/60 uppercase tracking-wide">{label}</label>
+      <label className="text-[12px] font-medium text-muted-foreground  tracking-wide">{label}</label>
       {children}
-      {hint && <p className="text-[11px] text-white/30">{hint}</p>}
+      {hint && <p className="text-[11px] text-muted-foreground">{hint}</p>}
     </div>
   );
 }
@@ -62,7 +65,7 @@ function Inp({ placeholder, defaultValue, type = "text" }: { placeholder?: strin
       type={type}
       defaultValue={defaultValue}
       placeholder={placeholder}
-      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white placeholder:text-white/25 focus:outline-none focus:border-primary/40"
+      className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
     />
   );
 }
@@ -70,30 +73,30 @@ function Sel({ options, defaultValue }: { options: string[]; defaultValue?: stri
   return (
     <select
       defaultValue={defaultValue}
-      className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:outline-none focus:border-primary/40"
+      className="w-full rounded-xl border border-border bg-muted px-3 py-2 text-[13px] text-foreground focus:outline-none focus:border-primary/40"
     >
-      {options.map(o => <option key={o} value={o} className="bg-[hsl(222_47%_6%)]">{o}</option>)}
+      {options.map(o => <option key={o} value={o} className="bg-card">{o}</option>)}
     </select>
   );
 }
 function Toggle({ label, desc, defaultOn = false }: { label: string; desc?: string; defaultOn?: boolean }) {
   const [on, setOn] = useState(defaultOn);
   return (
-    <div className="flex items-center justify-between gap-4 py-3 border-b border-white/[0.05] last:border-0">
+    <div className="flex items-center justify-between gap-4 py-3 border-b border-border last:border-0">
       <div>
-        <p className="text-[13px] font-medium text-white/80">{label}</p>
-        {desc && <p className="text-[11.5px] text-white/35 mt-0.5">{desc}</p>}
+        <p className="text-[13px] font-medium text-muted-foreground">{label}</p>
+        {desc && <p className="text-[11px] text-muted-foreground mt-0.5">{desc}</p>}
       </div>
       <button onClick={() => setOn(!on)} className="shrink-0" data-testid={`toggle-${label}`}>
-        {on ? <ToggleRight className="h-6 w-6 text-primary" /> : <ToggleLeft className="h-6 w-6 text-white/25" />}
+        {on ? <ToggleRight className="h-6 w-6 text-primary" /> : <ToggleLeft className="h-6 w-6 text-muted-foreground" />}
       </button>
     </div>
   );
 }
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-4">
-      <h3 className="text-[12.5px] font-semibold text-white/50 uppercase tracking-wider">{title}</h3>
+    <div className="rounded-2xl border border-border bg-card p-5 space-y-4">
+      <h3 className="text-[12px] font-semibold text-muted-foreground  tracking-wider">{title}</h3>
       {children}
     </div>
   );
@@ -101,7 +104,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SaveBar() {
   return (
     <div className="flex justify-end pt-2">
-      <button className="rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-white hover:bg-primary/90 transition-colors" data-testid="button-save-settings">
+      <button className="rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-save-settings">
         Salvar Alterações
       </button>
     </div>
@@ -170,10 +173,10 @@ function TabEmail() {
               <input
                 type={showPass ? "text" : "password"}
                 placeholder="••••••••••••"
-                className="w-full rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 pr-9 text-[13px] text-white placeholder:text-white/25 focus:outline-none focus:border-primary/40"
+                className="w-full rounded-xl border border-border bg-muted px-3 py-2 pr-9 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
               />
               <button className="absolute right-3 top-1/2 -translate-y-1/2" onClick={() => setShowPass(!showPass)}>
-                {showPass ? <EyeOff className="h-3.5 w-3.5 text-white/30" /> : <Eye className="h-3.5 w-3.5 text-white/30" />}
+                {showPass ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
               </button>
             </div>
           </Field>
@@ -290,62 +293,6 @@ function TabNotificacoes() {
   );
 }
 
-function TabAparencia() {
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
-  return (
-    <div className="space-y-4">
-      <Section title="Tema da Interface">
-        <div className="grid grid-cols-2 gap-3">
-          {(["dark", "light"] as const).map(t => (
-            <button
-              key={t}
-              onClick={() => setTheme(t)}
-              className={cn(
-                "rounded-xl border p-4 flex items-center gap-3 transition-all",
-                theme === t ? "border-primary bg-primary/10" : "border-white/[0.07] bg-white/[0.02] hover:border-white/20",
-              )}
-              data-testid={`theme-${t}`}
-            >
-              <div className={cn("h-8 w-8 rounded-lg border", t === "dark" ? "bg-[#0d1117] border-white/20" : "bg-white border-gray-200")} />
-              <span className="text-[13px] font-medium text-white/80">{t === "dark" ? "Dark (padrão)" : "Light"}</span>
-              {theme === t && <CheckCircle2 className="h-4 w-4 text-primary ml-auto" />}
-            </button>
-          ))}
-        </div>
-      </Section>
-      <Section title="Identidade Visual">
-        <div className="grid grid-cols-2 gap-4">
-          <Field label="Nome da Plataforma (sidebar)"><Inp defaultValue="MUSIC OS 360" /></Field>
-          <Field label="Slogan (sidebar)"><Inp defaultValue="ERP OPERACIONAL MUSICAL" /></Field>
-          <Field label="Cor Primária" hint="Utilizada em botões, links e destaques">
-            <div className="flex items-center gap-2">
-              <input type="color" defaultValue="#3b82f6" className="h-9 w-12 rounded-lg border border-white/[0.08] bg-transparent cursor-pointer" />
-              <Inp defaultValue="#3b82f6" />
-            </div>
-          </Field>
-          <Field label="Cor de Fundo (navbar)">
-            <div className="flex items-center gap-2">
-              <input type="color" defaultValue="#060d1a" className="h-9 w-12 rounded-lg border border-white/[0.08] bg-transparent cursor-pointer" />
-              <Inp defaultValue="#060d1a" />
-            </div>
-          </Field>
-        </div>
-        <Field label="Logo da Plataforma" hint="PNG ou SVG, máximo 2MB, fundo transparente recomendado">
-          <button className="flex items-center gap-2 rounded-xl border border-dashed border-white/20 px-4 py-3 text-[13px] text-white/40 hover:border-primary/40 hover:text-white/60 transition-colors w-full justify-center">
-            <Upload className="h-4 w-4" /> Fazer upload do logo
-          </button>
-        </Field>
-        <Field label="Favicon" hint="ICO ou PNG 32×32">
-          <button className="flex items-center gap-2 rounded-xl border border-dashed border-white/20 px-4 py-3 text-[13px] text-white/40 hover:border-primary/40 hover:text-white/60 transition-colors w-full justify-center">
-            <Upload className="h-4 w-4" /> Fazer upload do favicon
-          </button>
-        </Field>
-      </Section>
-      <SaveBar />
-    </div>
-  );
-}
-
 const MOCK_WEBHOOKS = [
   { id: "wh-1", url: "https://api.exemplo.com/hooks/musicos360", events: ["ticket.created", "ticket.resolved"], status: "active", last_called: "2026-05-08T08:10:00Z" },
   { id: "wh-2", url: "https://slack.com/services/T00/B00/xxx", events: ["user.invited", "tenant.created"], status: "active", last_called: "2026-05-07T15:30:00Z" },
@@ -356,30 +303,30 @@ function TabWebhooks() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-primary/90 transition-colors" data-testid="button-add-webhook">
+        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-add-webhook">
           <Plus className="h-3.5 w-3.5" /> Novo Webhook
         </button>
       </div>
       <Section title="Endpoints Configurados">
         <div className="space-y-3">
           {MOCK_WEBHOOKS.map(wh => (
-            <div key={wh.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-2" data-testid={`webhook-${wh.id}`}>
+            <div key={wh.id} className="rounded-xl border border-border bg-muted p-4 space-y-2" data-testid={`webhook-${wh.id}`}>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-[12.5px] font-mono text-white/70 truncate">{wh.url}</span>
+                <span className="text-[12px] font-sans text-muted-foreground truncate">{wh.url}</span>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge variant="outline" className={cn("text-[10px] border", wh.status === "active" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" : "bg-red-500/10 text-red-400 border-red-500/20")}>
                     {wh.status === "active" ? "Ativo" : "Erro"}
                   </Badge>
-                  <button className="text-white/20 hover:text-white/50 transition-colors"><RefreshCw className="h-3.5 w-3.5" /></button>
-                  <button className="text-white/20 hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button className="text-muted-foreground hover:text-muted-foreground transition-colors"><RefreshCw className="h-3.5 w-3.5" /></button>
+                  <button className="text-muted-foreground hover:text-red-400 transition-colors"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-wrap">
                 {wh.events.map(e => (
-                  <span key={e} className="text-[10.5px] px-2 py-0.5 rounded-md bg-primary/10 text-primary/80 font-mono">{e}</span>
+                  <span key={e} className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary/80 font-sans">{e}</span>
                 ))}
               </div>
-              <p className="text-[11px] text-white/25">Último disparo: {fmtDate(wh.last_called)}</p>
+              <p className="text-[11px] text-muted-foreground">Último disparo: {fmtDate(wh.last_called)}</p>
             </div>
           ))}
         </div>
@@ -390,9 +337,9 @@ function TabWebhooks() {
             <input
               type="password"
               defaultValue="whsec_abcdefghijklmnop1234567890"
-              className="flex-1 rounded-xl border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-[13px] text-white focus:outline-none focus:border-primary/40"
+              className="flex-1 rounded-xl border border-border bg-muted px-3 py-2 text-[13px] text-foreground focus:outline-none focus:border-primary/40"
             />
-            <button className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-3 py-2 text-[12px] text-white/50 hover:text-white/80 transition-colors">
+            <button className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-[12px] text-muted-foreground hover:text-muted-foreground transition-colors">
               <RefreshCw className="h-3.5 w-3.5" /> Rotacionar
             </button>
           </div>
@@ -412,28 +359,28 @@ function TabChavesApi() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-white/35">{MOCK_KEYS.length} chaves ativas</p>
-        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12.5px] font-semibold text-white hover:bg-primary/90 transition-colors" data-testid="button-create-key">
+        <p className="text-[12px] text-muted-foreground">{MOCK_KEYS.length} chaves ativas</p>
+        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-create-key">
           <Plus className="h-3.5 w-3.5" /> Nova Chave API
         </button>
       </div>
       <Section title="Chaves Ativas">
         <div className="space-y-3">
           {MOCK_KEYS.map(k => (
-            <div key={k.id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4 space-y-3" data-testid={`apikey-${k.id}`}>
+            <div key={k.id} className="rounded-xl border border-border bg-muted p-4 space-y-3" data-testid={`apikey-${k.id}`}>
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-[13px] font-semibold text-white/80">{k.name}</p>
-                  <p className="text-[11px] text-white/30 mt-0.5">
+                  <p className="text-[13px] font-semibold text-muted-foreground">{k.name}</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
                     Criada em {new Date(k.created).toLocaleDateString("pt-BR")} · Último uso: {fmtDate(k.last_used)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
-                  <button className="text-white/20 hover:text-white/50 transition-colors" title="Copiar"><Copy className="h-3.5 w-3.5" /></button>
-                  <button className="text-white/20 hover:text-red-400 transition-colors" title="Revogar"><Trash2 className="h-3.5 w-3.5" /></button>
+                  <button className="text-muted-foreground hover:text-muted-foreground transition-colors" title="Copiar"><Copy className="h-3.5 w-3.5" /></button>
+                  <button className="text-muted-foreground hover:text-red-400 transition-colors" title="Revogar"><Trash2 className="h-3.5 w-3.5" /></button>
                 </div>
               </div>
-              <span className="text-[12px] font-mono text-white/40 bg-white/[0.04] px-3 py-1.5 rounded-lg block truncate">{k.key}</span>
+              <span className="text-[12px] font-sans text-muted-foreground bg-muted px-3 py-1.5 rounded-lg block truncate">{k.key}</span>
               <div className="flex items-center gap-1.5 flex-wrap">
                 {k.scopes.map(s => (
                   <span key={s} className="text-[10px] px-2 py-0.5 rounded-md bg-primary/10 text-primary/70 font-medium capitalize">{s}</span>
@@ -444,8 +391,8 @@ function TabChavesApi() {
         </div>
       </Section>
       <Section title="Documentação">
-        <p className="text-[12.5px] text-white/40 leading-relaxed">
-          Inclua o header <span className="font-mono text-primary/70">Authorization: Bearer sk_live_...</span> em todas as requisições REST.
+        <p className="text-[12px] text-muted-foreground leading-relaxed">
+          Inclua o header <span className="font-sans text-primary/70">Authorization: Bearer sk_live_...</span> em todas as requisições REST.
         </p>
         <button className="mt-1 text-[12px] text-primary hover:underline">Ver documentação completa →</button>
       </Section>
@@ -466,46 +413,60 @@ function TabIntegracoes() {
     <div className="space-y-5">
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "Total",     value: MOCK_INTEGRATIONS.length, icon: Zap,          color: "text-white/50",    bg: "bg-white/5" },
+          { label: "Total",     value: MOCK_INTEGRATIONS.length, icon: Zap,          color: "text-muted-foreground",    bg: "bg-muted" },
           { label: "Ativos",    value: active,                   icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
           { label: "Com Erro",  value: error,                    icon: AlertCircle,  color: "text-red-400",     bg: "bg-red-500/10" },
           { label: "Pendentes", value: pending,                  icon: Clock,        color: "text-yellow-400",  bg: "bg-yellow-500/10" },
         ].map(({ label, value, icon: Icon, color, bg }) => (
-          <div key={label} className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-4">
+          <div key={label} className="rounded-2xl border border-border bg-card p-4">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
               <Icon className={cn("h-4 w-4", color)} />
             </div>
-            <p className="text-xl font-bold text-white">{value}</p>
-            <p className="text-[11px] text-white/35 mt-0.5">{label}</p>
+            <p className="text-xl font-bold text-foreground">{value}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
       </div>
       {Object.entries(byCategory).map(([cat, items]) => (
         <div key={cat}>
-          <h2 className="text-[12px] font-semibold text-white/40 uppercase tracking-wider mb-3">
+          <h2 className="text-[12px] font-semibold text-muted-foreground  tracking-wider mb-3">
             {CAT_LABEL[cat] ?? cat}
           </h2>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {items.map((integration) => {
               const cfg = STATUS_CFG[integration.status];
               const SIcon = cfg.icon;
+              const logoByProvider: Partial<Record<string, IntegrationLogoId>> = {
+                stripe: "stripe",
+                abramus: "abramus",
+                twilio: "twilio",
+                google: "google_analytics",
+                aws: "aws_s3",
+                meta: "meta_business",
+                spotify: "spotify_ads",
+              };
+              const logoId = logoByProvider[integration.provider];
               return (
-                <div key={integration.id} className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-3" data-testid={`integration-${integration.id}`}>
+                <div key={integration.id} className="rounded-2xl border border-border bg-card p-5 space-y-3" data-testid={`integration-${integration.id}`}>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2.5">
-                      <div className="h-9 w-9 rounded-xl bg-white/[0.05] border border-white/[0.07] flex items-center justify-center">
-                        <Zap className="h-4 w-4 text-white/30" />
-                      </div>
-                      <span className="text-[13px] font-semibold text-white">{integration.name}</span>
+                      {logoId ? (
+                        <IntegrationLogo id={logoId} className="h-9 w-9 rounded-xl" imageClassName="h-7 w-7" />
+                      ) : (
+                        <div className="h-9 w-9 rounded-xl bg-muted border border-border flex items-center justify-center">
+                          <Zap className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      )}
+                      <span className="text-[13px] font-semibold text-foreground">{integration.name}</span>
                     </div>
-                    <Badge variant="outline" className={cn("text-[10.5px] border gap-1", cfg.bg, cfg.color)}>
+                    <Badge variant="outline" className={cn("text-[10px] border gap-1", cfg.bg, cfg.color)}>
                       <SIcon className="h-3 w-3" />{cfg.label}
                     </Badge>
                   </div>
-                  <p className="text-[12px] text-white/40 leading-relaxed">{integration.description}</p>
-                  <div className="flex items-center justify-between pt-1 border-t border-white/[0.05]">
-                    <span className="text-[11px] text-white/30">{integration.tenants_using} tenants usando</span>
-                    <span className="text-[10.5px] text-white/20">Sync: {fmtDate(integration.last_sync_at)}</span>
+                  <p className="text-[12px] text-muted-foreground leading-relaxed">{integration.description}</p>
+                  <div className="flex items-center justify-between pt-1 border-t border-border">
+                    <span className="text-[11px] text-muted-foreground">{integration.tenants_using} tenants usando</span>
+                    <span className="text-[10px] text-muted-foreground">Sync: {fmtDate(integration.last_sync_at)}</span>
                   </div>
                 </div>
               );
@@ -521,9 +482,9 @@ const ROLE_STYLE: Record<AdminRole, string> = {
   super_admin: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   admin:       "text-blue-400 bg-blue-500/10 border-blue-500/20",
   operator:    "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
-  support:     "text-purple-400 bg-purple-500/10 border-purple-500/20",
+  support:     "text-primary bg-primary/10 border-primary/30",
   finance:     "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  viewer:      "text-white/40 bg-white/5 border-white/10",
+  viewer:      "text-muted-foreground bg-muted border-border",
 };
 const ROLE_LABEL: Record<AdminRole, string> = {
   super_admin: "Super Admin", admin: "Admin",
@@ -549,66 +510,72 @@ function TabUsuarios() {
           { label: "Usuários Ativos", value: active,                  color: "text-emerald-400", bg: "bg-emerald-500/10", icon: Users     },
           { label: "Bloqueados",      value: blocked,                 color: "text-red-400",     bg: "bg-red-500/10",     icon: ShieldOff },
           { label: "Com MFA",         value: mfa,                     color: "text-blue-400",    bg: "bg-blue-500/10",    icon: Shield    },
-          { label: "Total",           value: MOCK_ADMIN_USERS.length, color: "text-white/50",    bg: "bg-white/5",        icon: Users     },
+          { label: "Total",           value: MOCK_ADMIN_USERS.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
         ].map(({ label, value, color, bg, icon: Icon }) => (
-          <div key={label} className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-4">
+          <div key={label} className="rounded-2xl border border-border bg-card p-4">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
               <Icon className={cn("h-4 w-4", color)} />
             </div>
-            <p className="text-xl font-bold text-white">{value}</p>
-            <p className="text-[11px] text-white/35 mt-0.5">{label}</p>
+            <p className="text-xl font-bold text-foreground">{value}</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
           </div>
         ))}
       </div>
 
       <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
         <input
           placeholder="Buscar usuários..."
-          className="w-full pl-9 rounded-xl border border-white/[0.08] bg-white/[0.04] py-2 text-[13px] text-white placeholder:text-white/25 focus:outline-none focus:border-primary/40"
+          className="w-full pl-9 rounded-xl border border-border bg-muted py-2 text-[13px] text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-primary/40"
           value={search}
           onChange={e => setSearch(e.target.value)}
           data-testid="input-search-users"
         />
       </div>
 
-      <div className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] overflow-hidden">
+      <div className="rounded-2xl border border-border bg-card overflow-hidden">
+        <ListSectionHeader
+          title="Usuários Administrativos"
+          count={filtered.length}
+          description="Acompanhe usuários, tenants, papéis, MFA e sessões ativas"
+          className="px-4 pt-4"
+        />
         <Table>
           <TableHeader>
-            <TableRow className="border-white/[0.06] hover:bg-transparent">
+            <TableRow className="border-border hover:bg-transparent">
               {["Usuário", "Tenant", "Role", "MFA", "Status", "Sessões", "Último Login"].map(h => (
-                <TableHead key={h} className="text-[11px] font-semibold text-white/30 uppercase tracking-wider">{h}</TableHead>
+                <TableHead key={h} className="text-[11px] font-semibold text-muted-foreground  tracking-wider">{h}</TableHead>
               ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filtered.map((u) => {
-              const statusColor = u.status === "active" ? "text-emerald-400" : u.status === "blocked" ? "text-red-400" : "text-white/40";
+              const statusColor = u.status === "active" ? "text-emerald-400" : u.status === "blocked" ? "text-red-400" : "text-muted-foreground";
               return (
-                <TableRow key={u.id} className="border-white/[0.04] hover:bg-white/[0.02] transition-colors" data-testid={`user-${u.id}`}>
+                <TableRow key={u.id} className="border-border hover:bg-muted transition-colors" data-testid={`user-${u.id}`}>
                   <TableCell className="py-3.5">
-                    <p className="text-[13px] font-medium text-white">{u.name}</p>
-                    <p className="text-[11px] text-white/35">{u.email}</p>
+                    <p className="text-[13px] font-medium text-foreground">{u.name}</p>
+                    <p className="text-[11px] text-muted-foreground">{u.email}</p>
                   </TableCell>
-                  <TableCell className="py-3.5 text-[12px] text-white/50">{u.tenant_name}</TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-muted-foreground">{u.tenant_name}</TableCell>
                   <TableCell className="py-3.5">
-                    <Badge variant="outline" className={cn("text-[10.5px] border", ROLE_STYLE[u.role])}>
+                    <Badge variant="outline" className={cn("text-[10px] border", ROLE_STYLE[u.role])}>
                       {ROLE_LABEL[u.role]}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-3.5">
                     {u.mfa_enabled
                       ? <Shield className="h-3.5 w-3.5 text-emerald-400" />
-                      : <ShieldOff className="h-3.5 w-3.5 text-white/20" />}
+                      : <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />}
                   </TableCell>
                   <TableCell className="py-3.5">
                     <span className={cn("text-[12px] font-medium capitalize", statusColor)}>
                       {u.status === "active" ? "Ativo" : u.status === "blocked" ? "Bloqueado" : "Inativo"}
                     </span>
                   </TableCell>
-                  <TableCell className="py-3.5 text-[12px] text-white/40">{u.sessions_count}</TableCell>
+                  <TableCell className="py-3.5 text-[12px] text-muted-foreground">{u.sessions_count}</TableCell>
                   <TableCell className="py-3.5">
-                    <div className="flex items-center gap-1 text-[11.5px] text-white/35">
+                    <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
                       <Clock className="h-3 w-3" />
                       {new Date(u.last_login).toLocaleDateString("pt-BR", { day: "2-digit", month: "short" })}
                     </div>
@@ -629,7 +596,6 @@ const TAB_PANELS: Record<TabKey, React.ComponentType> = {
   email:        TabEmail,
   seguranca:    TabSeguranca,
   notificacoes: TabNotificacoes,
-  aparencia:    TabAparencia,
   webhooks:     TabWebhooks,
   "chaves-api": TabChavesApi,
   integracoes:  TabIntegracoes,
@@ -641,14 +607,14 @@ export default function AdminSettings() {
 
   return (
     <AdminLayout>
-      <div className="p-6 space-y-6 animate-fade-in bg-[hsl(222_47%_4%)] min-h-full">
+      <div className="p-6 space-y-6 animate-fade-in bg-card min-h-full">
         <div>
-          <h1 className="text-xl font-bold text-white">Configurações</h1>
-          <p className="text-[12.5px] text-white/40 mt-0.5">Gerencie todas as configurações da plataforma</p>
+          <h1 className="text-xl font-bold text-foreground">Configurações</h1>
+          <p className="text-[12px] text-muted-foreground mt-0.5">Gerencie todas as configurações da plataforma</p>
         </div>
 
         {/* Tab bar */}
-        <div className="flex items-center gap-0.5 border-b border-white/[0.07] overflow-x-auto pb-0 flex-nowrap">
+        <div className="flex items-center gap-0.5 border-b border-border overflow-x-auto pb-0 flex-nowrap">
           {TABS.map(tab => {
             const Icon = tab.icon;
             const active = activeTab === tab.key;
@@ -657,10 +623,10 @@ export default function AdminSettings() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-medium whitespace-nowrap border-b-2 transition-all -mb-px",
+                  "flex items-center gap-1.5 px-4 py-2.5 text-[12px] font-medium whitespace-nowrap border-b-2 transition-all -mb-px",
                   active
                     ? "border-primary text-primary"
-                    : "border-transparent text-white/40 hover:text-white/70 hover:border-white/20",
+                    : "border-transparent text-muted-foreground hover:text-muted-foreground hover:border-border",
                 )}
                 data-testid={`tab-settings-${tab.key}`}
               >
@@ -677,3 +643,6 @@ export default function AdminSettings() {
     </AdminLayout>
   );
 }
+
+
+

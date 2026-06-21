@@ -1,0 +1,62 @@
+# PASSO 12-J.7 — Overlay de observability + WEB para staging.
+# Uso (com o compose base que já tem postgres/redis/api):
+#   docker compose -f docker-compose.yml -f docker-compose.observability.yml up -d
+#
+# Fornece: WEB (Vite preview), Prometheus (scrape /metrics da API) e Grafana
+# (datasources Prometheus + Postgres já provisionados + dashboard RBAC shadow).
+services:
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:3001/api/v1}
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-}
+    container_name: musicos360_web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '5000:5000'
+
+  prometheus:
+    image: prom/prometheus:v2.54.1
+    container_name: musicos360_prometheus
+    restart: unless-stopped
+    depends_on:
+      - api
+    volumes:
+      - ./infra/observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - '9090:9090'
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    container_name: musicos360_grafana
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - postgres
+    environment:
+      GF_SECURITY_ADMIN_USER: ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_USERS_ALLOW_SIGN_UP: 'false'
+      # injetado nos datasources (ver provisioning):
+      MUSICOS_DB_HOST: postgres
+      MUSICOS_DB_NAME: ${POSTGRES_DB:-musicos360}
+      MUSICOS_DB_USER: ${POSTGRES_USER:-musicos360}
+      MUSICOS_DB_PASSWORD: ${POSTGRES_PASSWORD:-musicos360_dev}
+    volumes:
+      - ./infra/observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./infra/observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - '3000:3000'
+
+volumes:
+  prometheus_data:
+    name: musicos360_prometheus_data
+  grafana_data:
+    name: musicos360_grafana_data

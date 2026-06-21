@@ -145,3 +145,34 @@ export function resolveFlagsForPlan(
 ): FeatureFlags {
   return { ...DEFAULT_FEATURE_FLAGS, ...PLAN_FLAGS[plan] };
 }
+
+// ─── Backend completeness map ─────────────────────────────────────────────────
+
+/**
+ * Módulos cuja UI existe mas cujo backend ainda é parcial.
+ * Em produção, esses módulos exibem empty state real (não dados fictícios).
+ * Em dev, exibem mocks com indicação clara via banner.
+ *
+ * Cada entrada é o nome do módulo + razão da incompletude.
+ * As páginas correspondentes já têm gates implementados em:
+ *   - admin: `modules/admin/data/admin-source.ts`
+ *   - reports: `modules/reports/services/reports-source.ts`
+ *   - monitoring/rights: `modules/monitoring/rights/services/rights-source.ts`
+ *   - support (parcial): `modules/support/hooks/useSupport.ts` (apenas tickets têm endpoint real)
+ *
+ * Quando o backend correspondente for implementado, remover da lista.
+ */
+export const MODULES_WITH_INCOMPLETE_BACKEND: Record<string, string> = {
+  adminKpis:           "Admin KPIs (MRR/ARR/tenants) — endpoint /admin/* ainda não existe",
+  reportsHistory:      "Relatórios — backend não persiste import/export jobs ainda",
+  marketingAnalytics:  "Marketing Métricas — métricas de campanhas vêm de mock",
+  rightsMonitoring:    "Rights Monitoring — endpoints reais para execuções/cue sheets ainda não existem",
+  supportChat:         "Suporte Chat/Knowledge/Requests — apenas /support-tickets implementado",
+  externalDataExchange: "External Data Exchange — providers reais aguardando integração",
+};
+
+/** Helper para uso em components: retorna a razão se módulo é incompleto, null caso contrário. */
+export function getIncompleteBackendReason(moduleKey: string): string | null {
+  return MODULES_WITH_INCOMPLETE_BACKEND[moduleKey] ?? null;
+}
+

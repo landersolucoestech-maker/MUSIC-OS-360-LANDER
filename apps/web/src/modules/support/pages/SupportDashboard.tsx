@@ -1,21 +1,21 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
-import { useTickets } from "../hooks/useSupport";
+import { useKnowledgeArticles, useTickets } from "../hooks/useSupport";
 import {
   Plus, BookOpen, Ticket, Search, ChevronDown, ChevronRight,
 } from "lucide-react";
 import type { TicketStatus, TicketPriority } from "../types";
 
 /* ── status helpers ── */
-const STATUS_COLOR: Record<TicketStatus, string> = {
-  open:             "bg-blue-500/15 text-blue-400 border-blue-500/30",
-  in_progress:      "bg-yellow-500/15 text-yellow-400 border-yellow-500/30",
-  waiting_customer: "bg-orange-500/15 text-orange-400 border-orange-500/30",
-  resolved:         "bg-green-500/15 text-green-400 border-green-500/30",
-  closed:           "bg-muted text-muted-foreground border-border",
+const STATUS_VARIANT: Record<TicketStatus, BadgeVariant> = {
+  open:             "info",
+  in_progress:      "warning",
+  waiting_customer: "warning",
+  resolved:         "success",
+  closed:           "neutral",
 };
 const STATUS_LABEL: Record<TicketStatus, string> = {
   open: "Aberto", in_progress: "Em Andamento",
@@ -28,51 +28,12 @@ const PRIORITY_COLOR: Record<TicketPriority, string> = {
   critical: "text-red-500", high: "text-red-400", medium: "text-yellow-400", low: "text-green-400",
 };
 
-/* ── static FAQ data ── */
-const FAQ_ITEMS = [
-  {
-    id: "faq-1",
-    question: "Como fazer login no sistema?",
-    category: "Acesso",
-    answer: "Vá até a tela de login e informe seu e-mail e senha cadastrados. Caso tenha esquecido a senha, clique em 'Esqueci minha senha' para receber o link de redefinição no seu e-mail.",
-  },
-  {
-    id: "faq-2",
-    question: "Como criar um novo artista?",
-    category: "Artistas",
-    answer: "Acesse o menu 'Artistas' e clique no botão 'Novo Artista'. Preencha todos os campos obrigatórios e clique em 'Salvar'.",
-  },
-  {
-    id: "faq-3",
-    question: "Como gerar relatórios?",
-    category: "Relatórios",
-    answer: "No módulo Financeiro, acesse 'Relatórios'. Selecione o período e os filtros desejados, depois clique em 'Gerar Relatório' para exportar em PDF ou Excel.",
-  },
-  {
-    id: "faq-4",
-    question: "Como registrar uma nova música?",
-    category: "Músicas",
-    answer: "Acesse o Catálogo → 'Obras & Fonogramas' e clique em 'Novo Registro'. Preencha título, artistas, ISRC e demais metadados e salve.",
-  },
-  {
-    id: "faq-5",
-    question: "Como importar arquivo OFX?",
-    category: "Financeiro",
-    answer: "No módulo Financeiro → Conciliação, clique em 'Importar OFX', selecione o arquivo do seu banco (máximo 5MB) e aguarde o processamento automático.",
-  },
-  {
-    id: "faq-6",
-    question: "Como adicionar um novo usuário?",
-    category: "Usuários",
-    answer: "Acesse Configurações → Usuários e clique em 'Convidar Usuário'. Informe o e-mail e o perfil de acesso desejado. O convite será enviado automaticamente.",
-  },
-];
-
 /* ── tab type ── */
 type TabKey = "all" | "open" | "waiting" | "closed";
 
 export default function SupportDashboard() {
   const { tickets } = useTickets();
+  const { articles } = useKnowledgeArticles();
   const [faqOpen, setFaqOpen] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [tab, setTab] = useState<TabKey>("all");
@@ -90,10 +51,11 @@ export default function SupportDashboard() {
     return true;
   }).slice(0, 6);
 
-  /* filter FAQ */
-  const filteredFaq = FAQ_ITEMS.filter(f =>
-    f.question.toLowerCase().includes(search.toLowerCase()) ||
-    f.category.toLowerCase().includes(search.toLowerCase())
+  /* filter managed knowledge articles */
+  const filteredArticles = articles.filter(article =>
+    article.title.toLowerCase().includes(search.toLowerCase()) ||
+    article.summary.toLowerCase().includes(search.toLowerCase()) ||
+    article.category_name.toLowerCase().includes(search.toLowerCase())
   );
 
   const TABS: { key: TabKey; label: string; count: number }[] = [
@@ -182,32 +144,40 @@ export default function SupportDashboard() {
               </div>
             </div>
 
-            {/* FAQ accordion */}
+            {/* Managed knowledge articles */}
             <div className="px-5 pb-4 space-y-2">
-              {filteredFaq.length === 0 && (
-                <p className="text-[12px] text-muted-foreground text-center py-6">Nenhum resultado encontrado.</p>
+              {filteredArticles.length === 0 && (
+                <div className="py-6 text-center">
+                  <p className="text-[12px] text-muted-foreground">Nenhum artigo encontrado.</p>
+                  <Link to="/support/knowledge" className="mt-2 inline-flex text-[12px] text-primary hover:underline">
+                    Ver Base de Conhecimento
+                  </Link>
+                </div>
               )}
-              {filteredFaq.map(faq => (
-                <div key={faq.id} className="rounded-xl border border-border/60 overflow-hidden">
+              {filteredArticles.slice(0, 6).map(article => (
+                <div key={article.id} className="rounded-xl border border-border/60 overflow-hidden">
                   <button
                     className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-muted/30 transition-colors"
-                    onClick={() => setFaqOpen(faqOpen === faq.id ? null : faq.id)}
-                    data-testid={`faq-toggle-${faq.id}`}
+                    onClick={() => setFaqOpen(faqOpen === article.id ? null : article.id)}
+                    data-testid={`faq-toggle-${article.id}`}
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <span className="text-[11px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground shrink-0">
-                        {faq.category}
+                        {article.category_name}
                       </span>
-                      <span className="text-[13px] font-medium text-foreground truncate">{faq.question}</span>
+                      <span className="text-[13px] font-medium text-foreground truncate">{article.title}</span>
                     </div>
-                    {faqOpen === faq.id
+                    {faqOpen === article.id
                       ? <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                       : <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                     }
                   </button>
-                  {faqOpen === faq.id && (
-                    <div className="px-4 pb-4 pt-1 text-[12.5px] text-muted-foreground leading-relaxed border-t border-border/60 bg-muted/10">
-                      {faq.answer}
+                  {faqOpen === article.id && (
+                    <div className="px-4 pb-4 pt-1 text-[12px] text-muted-foreground leading-relaxed border-t border-border/60 bg-muted/10">
+                      <p>{article.summary}</p>
+                      <Link to="/support/knowledge" className="mt-2 inline-flex text-[12px] text-primary hover:underline">
+                        Abrir artigo completo
+                      </Link>
                     </div>
                   )}
                 </div>
@@ -270,8 +240,8 @@ export default function SupportDashboard() {
                 >
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-[10.5px] font-mono text-muted-foreground/60 shrink-0">{ticket.ticket_number}</span>
-                      <Badge variant="outline" className={cn("text-[9.5px] h-4 px-1.5 border shrink-0", STATUS_COLOR[ticket.status])}>
+                      <span className="text-[10px] font-sans text-muted-foreground/60 shrink-0">{ticket.ticket_number}</span>
+                      <Badge variant={STATUS_VARIANT[ticket.status]} className="text-[9px] h-4 px-1.5 shrink-0">
                         {STATUS_LABEL[ticket.status]}
                       </Badge>
                     </div>
@@ -279,7 +249,7 @@ export default function SupportDashboard() {
                       {PRIORITY_LABEL[ticket.priority]}
                     </span>
                   </div>
-                  <p className="text-[12.5px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
+                  <p className="text-[12px] font-medium text-foreground group-hover:text-primary transition-colors truncate">
                     {ticket.subject}
                   </p>
                   <p className="text-[11px] text-muted-foreground truncate">{ticket.description}</p>
@@ -301,3 +271,4 @@ export default function SupportDashboard() {
     </MainLayout>
   );
 }
+

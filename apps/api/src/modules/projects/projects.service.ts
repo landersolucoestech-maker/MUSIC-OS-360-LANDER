@@ -6,6 +6,7 @@ import { ProjectEntity } from '../../database/entities';
 import type { CreateProjectDto, UpdateProjectDto, QueryProjectDto } from './dto/projects.dto';
 import { ProjectStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 
 @Injectable()
 export class ProjectsService {
@@ -15,6 +16,7 @@ export class ProjectsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
+    private readonly events: EventsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -114,6 +116,8 @@ export class ProjectsService {
           status: dtoMap['status'] as ProjectStatus,
         });
       });
+
+      this.emitStatusEvents(tenantId, userId, current, dtoMap['status'] as string);
     } else {
       await this.repo!.update(
         { id, tenant_id: tenantId } as FindOptionsWhere<ProjectEntity>,
@@ -122,6 +126,31 @@ export class ProjectsService {
     }
 
     return this.findById(tenantId, id, actorRole);
+  }
+
+  private emitStatusEvents(
+    tenantId: string,
+    userId: string,
+    project: ProjectEntity,
+    toStatus: string,
+  ): void {
+    if (toStatus !== ProjectStatus.CONCLUIDO) return;
+    const completedAt = new Date().toISOString();
+    this.events.emitTyped(DOMAIN_EVENTS.PROJECT_COMPLETED, {
+      tenantId,
+      userId,
+      aggregateType: 'project',
+      aggregateId:   project.id,
+      payload: {
+        projectId:   project.id,
+        tenantId,
+        title:       project.nome,
+        type:        project.tipo,
+        artistId:    project.artista_id,
+        completedBy: userId,
+        completedAt,
+      },
+    });
   }
 
   async softDelete(tenantId: string, id: string) {

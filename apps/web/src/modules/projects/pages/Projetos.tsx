@@ -2,12 +2,17 @@ import { useState, useMemo, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { MetricCard } from "@/shared/components/MetricCard";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { TablePagination } from "@/shared/ui/table-pagination";
+import { usePagination } from "@/shared/hooks/usePagination";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Badge } from "@/shared/ui/badge";
+import { StatusBadge } from "@/shared/components/StatusBadge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
-import { Clock, TrendingUp, FileText, LayoutGrid, Search, Play, FolderKanban, Loader2, Upload, Download, Plus, MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
+import { Clock, TrendingUp, FileText, LayoutGrid, Search, Play, Folder, Loader2, Upload, Download, PlusCircle, MoreHorizontal, Eye, Pencil, Trash2, Music } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -118,6 +123,8 @@ export default function Projetos() {
       return matchesSearch && matchesStatus && matchesArtista && matchesTipo && matchesGenero;
     }).sort((a, b) => (a.titulo || "").localeCompare(b.titulo || "", "pt-BR", { sensitivity: "base" }));
   }, [projetos, searchTerm, statusFilter, artistaFilter, tipoFilter, generoFilter]);
+
+  const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filteredProjects, 10);
 
   const generos = useMemo(() => {
     const set = new Set<string>();
@@ -314,18 +321,8 @@ export default function Projetos() {
   };
 
   const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "em_andamento":
-        return <Badge className="bg-yellow-500 hover:bg-yellow-600 text-white text-xs">Em Andamento</Badge>;
-      case "concluido":
-        return <Badge className="bg-success hover:bg-success/90 text-success-foreground text-xs">Concluído</Badge>;
-      case "planejamento":
-        return <Badge className="bg-orange-500 hover:bg-orange-600 text-white text-xs">Planejamento</Badge>;
-      case "cancelado":
-        return <Badge className="bg-destructive hover:bg-destructive text-destructive-foreground text-xs">Cancelado</Badge>;
-      default:
-        return <Badge className="bg-zinc-500 hover:bg-zinc-600 text-white text-xs">{status || "—"}</Badge>;
-    }
+    if (!status) return <Badge variant="neutral">—</Badge>;
+    return <StatusBadge status={status} />;
   };
 
   if (isLoading) {
@@ -341,7 +338,15 @@ export default function Projetos() {
   const headerActions = (
     <>
       <RequirePermission module="projects" action="write">
-        <Button size="sm" className="gap-2 bg-primary hover:bg-primary/90 text-white" onClick={() => setFormModal({ open: true, mode: "create" })}><Plus className="h-4 w-4" />Novo Projeto</Button>
+        <Button
+          size="sm"
+          className="h-8 text-xs gap-1.5"
+          onClick={() => setFormModal({ open: true, mode: "create" })}
+          data-testid="button-novo-projeto"
+        >
+          <PlusCircle className="h-3.5 w-3.5" />
+          Novo Projeto
+        </Button>
       </RequirePermission>
     </>
   );
@@ -357,68 +362,24 @@ export default function Projetos() {
     <MainLayout title="Projetos" description="Gestão completa de projetos musicais" actions={headerActions}>
       <div className="space-y-6">
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Projetos Ativos</span>
-                <Clock className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{metricas.ativos}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">em desenvolvimento</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Concluídos</span>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{metricas.concluidos}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">projetos finalizados</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Rascunhos</span>
-                <FileText className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{metricas.rascunhos}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">em planejamento</p>
-            </CardContent>
-          </Card>
-          <Card className="bg-card border-border">
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-muted-foreground">Total de Projetos</span>
-                <LayoutGrid className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="mt-2">
-                <span className="text-2xl font-bold">{metricas.total}</span>
-              </div>
-              <p className="text-xs text-muted-foreground mt-1">cadastrados no sistema</p>
-            </CardContent>
-          </Card>
+          <MetricCard title="Projetos Ativos" value={metricas.ativos} description="em desenvolvimento" icon={Clock} accent="primary" />
+          <MetricCard title="Concluídos" value={metricas.concluidos} description="projetos finalizados" icon={TrendingUp} accent="success" />
+          <MetricCard title="Rascunhos" value={metricas.rascunhos} description="em planejamento" icon={FileText} accent="warning" />
+          <MetricCard title="Total de Projetos" value={metricas.total} description="cadastrados no sistema" icon={LayoutGrid} accent="primary" />
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap rounded-lg bg-muted/30 p-3">
           <div className="relative flex-1 min-w-[300px]">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por música, artista, compositor, intérprete, produtor, gênero..." 
-              className="pl-10 bg-card border-border"
+            <Input
+              placeholder="Buscar por música, artista, compositor, intérprete, produtor, gênero..."
+              className="pl-10 h-8 text-sm bg-card border-border"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Status" />
             </SelectTrigger>
             <SelectContent>
@@ -430,7 +391,7 @@ export default function Projetos() {
             </SelectContent>
           </Select>
           <Select value={artistaFilter} onValueChange={setArtistaFilter}>
-            <SelectTrigger className="w-[140px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[130px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Artista" />
             </SelectTrigger>
             <SelectContent>
@@ -441,7 +402,7 @@ export default function Projetos() {
             </SelectContent>
           </Select>
           <Select value={tipoFilter} onValueChange={setTipoFilter}>
-            <SelectTrigger className="w-[140px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Tipo de..." />
             </SelectTrigger>
             <SelectContent>
@@ -453,7 +414,7 @@ export default function Projetos() {
             </SelectContent>
           </Select>
           <Select value={generoFilter} onValueChange={setGeneroFilter}>
-            <SelectTrigger className="w-[140px] bg-card border-border">
+            <SelectTrigger className="w-auto min-w-[126px] shrink-0 h-8 text-sm bg-card border-border">
               <SelectValue placeholder="Todos Gênero" />
             </SelectTrigger>
             <SelectContent>
@@ -466,40 +427,44 @@ export default function Projetos() {
         </div>
 
         <Card className="bg-card border-border">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-lg">Lista de Projetos</CardTitle>
-                <CardDescription>Acompanhe o desenvolvimento de todos os projetos musicais</CardDescription>
-              </div>
-              {selectedIds.length > 0 && (
-                <Button
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2"
-                  onClick={handleBulkDelete}
-                  data-testid="button-bulk-delete"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Excluir selecionados ({selectedIds.length})
-                </Button>
-              )}
-            </div>
-          </CardHeader>
           <CardContent>
+            <ListSectionHeader
+              title="Lista de Projetos"
+              count={filteredProjects.length}
+              description="Acompanhe o desenvolvimento de todos os projetos musicais"
+              action={
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <Checkbox
+                    checked={selectedIds.length === filteredProjects.length && filteredProjects.length > 0}
+                    onCheckedChange={toggleSelectAll}
+                    data-testid="checkbox-select-all"
+                    aria-label="Selecionar todos"
+                  />
+                  <span className="text-xs text-muted-foreground">
+                    {selectedIds.length > 0 ? `${selectedIds.length} projeto(s) selecionado(s)` : "Selecionar todos"}
+                  </span>
+                  {selectedIds.length > 0 && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="gap-2"
+                      onClick={handleBulkDelete}
+                      data-testid="button-bulk-delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                      Excluir selecionados ({selectedIds.length})
+                    </Button>
+                  )}
+                </div>
+              }
+            />
 
             {filteredProjects.length > 0 ? (
+              <>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[36px]">
-                      <Checkbox
-                        checked={selectedIds.length === filteredProjects.length && filteredProjects.length > 0}
-                        onCheckedChange={toggleSelectAll}
-                        data-testid="checkbox-select-all"
-                        aria-label="Selecionar todos"
-                      />
-                    </TableHead>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Título da Música</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Compositores</TableHead>
@@ -511,7 +476,7 @@ export default function Projetos() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredProjects.map((project) => {
+                  {pageItems.map((project) => {
                     const info = getFirstMusicaInfo(project);
                     return (
                       <TableRow key={project.id} data-testid={`row-projeto-${project.id}`} className={selectedIds.includes(project.id) ? "bg-muted/20" : ""}>
@@ -523,7 +488,28 @@ export default function Projetos() {
                             aria-label={`Selecionar ${project.titulo}`}
                           />
                         </TableCell>
-                        <TableCell className="font-medium" data-testid={`text-titulo-${project.id}`}>{project.titulo}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            {(() => {
+                              const capa = (project.capa_url ?? project.foto_url ?? project.cover_url) as string | undefined;
+                              return (
+                                <div className="h-10 w-10 shrink-0 overflow-hidden rounded-md bg-muted flex items-center justify-center">
+                                  {capa ? (
+                                    <img src={capa} alt={project.titulo} className="h-full w-full object-cover" />
+                                  ) : (
+                                    <Music className="h-4 w-4 text-muted-foreground" />
+                                  )}
+                                </div>
+                              );
+                            })()}
+                            <div className="min-w-0">
+                              <p className="font-medium truncate" data-testid={`text-titulo-${project.id}`}>{project.titulo}</p>
+                              {project.artistas?.nome_artistico && (
+                                <p className="text-xs text-muted-foreground truncate">{project.artistas.nome_artistico}</p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
                         <TableCell className="capitalize text-sm">{project.tipo || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-compositores-${project.id}`}>{info.compositores || "—"}</TableCell>
                         <TableCell className="text-sm max-w-[140px] truncate" data-testid={`text-interpretes-${project.id}`}>{info.interpretes || "—"}</TableCell>
@@ -555,9 +541,18 @@ export default function Projetos() {
                   })}
                 </TableBody>
               </Table>
+              <TablePagination
+                total={total}
+                page={page}
+                pageSize={pageSize}
+                onPageChange={setPage}
+                onPageSizeChange={setPageSize}
+                itemLabel="projetos"
+              />
+              </>
             ) : (
               <EmptyState
-                icon={FolderKanban}
+                icon={Folder}
                 title="Nenhum projeto cadastrado"
                 description="Comece criando seu primeiro projeto musical"
                 actionLabel="Novo Projeto"

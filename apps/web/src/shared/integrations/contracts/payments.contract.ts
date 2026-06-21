@@ -166,3 +166,4 @@ export const PLAN_FEATURES: Record<SubscriptionPlan, SubscriptionFeatures> = {
     hasPrioritySupport: true,
   },
 };
+

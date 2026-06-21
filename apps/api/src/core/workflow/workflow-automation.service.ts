@@ -22,13 +22,14 @@ import { DATA_SOURCE }              from '../../database/database.module';
 import { EventsService, DOMAIN_EVENTS } from '../events/events.service';
 import type { DomainEvent }             from '../events/events.service';
 import { WorkflowService }              from './workflow.service';
+import { WorkflowExecutionService }     from './workflow-execution.service';
 import { DomainEventLogEntity }         from '../../database/entities';
+import { DatabaseContextService }       from '../../database/database-context.service';
 
 // ── Trigger Rule types ────────────────────────────────────────────────────────
 
 export type TriggerAction =
   | { type: 'notify';     template: string; dataPath?: string }
-  | { type: 'tag';        tag: string }
   | { type: 'transition'; entityType: string; toStatus: string; reason?: string }
   | { type: 'webhook';    url: string; method?: string };
 
@@ -95,7 +96,9 @@ export class WorkflowAutomationService implements OnModuleInit {
     @Optional() @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly events:   EventsService,
     private readonly workflow: WorkflowService,
+    private readonly execution: WorkflowExecutionService,
     @Optional() @InjectQueue('notifications') private readonly notifQueue: Queue | null,
+    @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) {
       this.logRepo = ds.getRepository(DomainEventLogEntity);
@@ -135,10 +138,27 @@ export class WorkflowAutomationService implements OnModuleInit {
     const rules = this.rules.get(eventType);
     if (!rules || rules.length === 0) return;
 
-    for (const rule of rules) {
-      if (!this.matchesConditions(rule, payload)) continue;
-      await this.executeRule(rule, payload);
+    const tenantId = payload.tenantId;
+    if (!tenantId) {
+      this.logger.warn(`WorkflowAutomation ignorou evento sem tenantId [${eventType}]`);
+      return;
     }
+    if (!this.dbContext) {
+      this.logger.warn(
+        `WorkflowAutomation ignorou evento sem DatabaseContextService [${eventType}]`,
+      );
+      return;
+    }
+
+    await this.dbContext.runInTenantContext(
+      { tenantId, orgId: null, role: null },
+      async () => {
+        for (const rule of rules) {
+          if (!this.matchesConditions(rule, payload)) continue;
+          await this.executeRule(rule, payload);
+        }
+      },
+    );
   }
 
   private matchesConditions(rule: TriggerRule, payload: DomainEvent): boolean {
@@ -157,20 +177,40 @@ export class WorkflowAutomationService implements OnModuleInit {
   }
 
   private async executeRule(rule: TriggerRule, event: DomainEvent): Promise<void> {
+    const tenantId = event.tenantId;
+    const executionId = await this.execution.start({
+      tenantId,
+      ruleId: rule.id,
+      ruleName: rule.name,
+      eventType: event.type,
+      actionsTotal: rule.actions.length,
+    });
+
+    let succeeded = 0;
+    let failed = 0;
+    let firstError: string | null = null;
+
     for (const action of rule.actions) {
       try {
         await this.executeAction(action, event);
+        succeeded++;
+        await this.execution.logAction(executionId, tenantId, action.type, 'success');
         this.logger.debug(
           `Trigger [${rule.id}] → action [${action.type}] executado para tenant=${event.tenantId}`,
         );
       } catch (err) {
+        failed++;
+        const msg = String(err);
+        if (!firstError) firstError = msg;
+        await this.execution.logAction(executionId, tenantId, action.type, 'failed', msg);
         this.logger.warn(
-          `Trigger [${rule.id}] → action [${action.type}] falhou: ${String(err)}. ` +
-          `Enfileirando para retry.`,
+          `Trigger [${rule.id}] → action [${action.type}] falhou: ${msg}. Enfileirando para retry.`,
         );
-        await this.enqueueDlq(rule, action, event, String(err));
+        await this.enqueueDlq(rule, action, event, msg);
       }
     }
+
+    await this.execution.finish(executionId, { tenantId, ruleId: rule.id, succeeded, failed, error: firstError });
   }
 
   private async executeAction(action: TriggerAction, event: DomainEvent): Promise<void> {
@@ -187,11 +227,6 @@ export class WorkflowAutomationService implements OnModuleInit {
           `Transition action [${action.entityType} → ${action.toStatus}] skipped: ` +
           'fromStatus must be provided by custom tenant rule payload',
         );
-        break;
-
-      case 'tag':
-        // Tag application is a domain-specific operation; log intent for now
-        this.logger.debug(`Tag action [${action.tag}] registada para futura implementação`);
         break;
 
       case 'webhook':

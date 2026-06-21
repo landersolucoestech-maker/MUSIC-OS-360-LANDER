@@ -338,3 +338,4 @@ export class MockRightsProvider implements IRightsProvider {
 export const mockEcadProvider    = new MockRightsProvider("ecad");
 export const mockUbcProvider     = new MockRightsProvider("ubc");
 export const mockAbramusProvider = new MockRightsProvider("abramus");
+

@@ -42,3 +42,5 @@ export interface WorkspaceContextValue {
   activities: ActivityLogItem[];
   isLoadingActivities: boolean;
 }
+
+

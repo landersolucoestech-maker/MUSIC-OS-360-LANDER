@@ -95,3 +95,4 @@ export function useSoundCloudTrackMetrics(trackId?: string) {
 export function useSoundCloudArtistMetrics() {
   return { data: null, isLoading: false, fetch: (_permalink: string) => {} };
 }
+

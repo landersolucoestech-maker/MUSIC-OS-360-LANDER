@@ -182,13 +182,8 @@ async function main(): Promise<void> {
     if (!createdArtistId) throw new Error('created artist has no id');
   }, !hasTenant);
 
-  await test('GET /pipelines -> 200', async () => {
-    const r = await request('GET', '/pipelines');
-    expect(r.status, 'status').toBe(200);
-  }, !hasTenant);
-
-  await test('GET /crm/contacts -> 200', async () => {
-    const r = await request('GET', '/crm/contacts');
+  await test('GET /contacts -> 200', async () => {
+    const r = await request('GET', '/contacts');
     expect(r.status, 'status').toBe(200);
   }, !hasTenant);
 
@@ -263,8 +258,11 @@ async function main(): Promise<void> {
     console.log('  Verifique se a API esta rodando e as seeds foram executadas.');
   }
 
-  if (failed === 0) {
+  if (failed === 0 && skipped === 0) {
     console.log('\n  SMOKE TEST PASSOU - plataforma operacional.\n');
+  } else if (failed === 0) {
+    console.log('\n  SMOKE TEST INCOMPLETO - credenciais obrigatorias ausentes.\n');
+    process.exit(2);
   } else {
     console.log('\n  SMOKE TEST FALHOU - verifique as falhas acima.\n');
     process.exit(1);

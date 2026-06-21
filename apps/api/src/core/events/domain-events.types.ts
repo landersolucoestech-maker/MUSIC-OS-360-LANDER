@@ -123,6 +123,16 @@ export interface DistributionSetupRequestedPayload {
   providerHint: string | null;
 }
 
+export interface ProjectCompletedPayload {
+  projectId:   string;
+  tenantId:    string;
+  title:       string;
+  type:        string;
+  artistId:    string | null;
+  completedBy: string;
+  completedAt: string;
+}
+
 export interface ExternalDataSyncRequestedPayload {
   artistId:    string;
   tenantId:    string;
@@ -336,6 +346,16 @@ export interface FinancialRuleTriggeredPayload {
 
 // ─── Releases ─────────────────────────────────────────────────────────────────
 
+export interface ReleaseCreatedPayload {
+  releaseId:  string;
+  tenantId:   string;
+  titulo:     string;
+  tipo:       string;
+  artistId:   string | null;
+  createdBy:  string;
+  createdAt:  string;
+}
+
 export interface ReleasePublishedPayload {
   releaseId:  string;
   tenantId:   string;
@@ -391,6 +411,44 @@ export interface CampaignEndedPayload {
   endedAt:    string;
 }
 
+export interface MarketingProjectCreatedPayload {
+  marketingProjectId: string;
+  tenantId:           string;
+  type:               string;
+  title:              string;
+  sourceProjectId:    string | null;
+  artistId:           string | null;
+  campaignId:         string | null;
+  createdBy:          string;
+  createdAt:          string;
+}
+
+export interface CoverArtTaskCreatedPayload {
+  taskId:             string;
+  tenantId:           string;
+  marketingProjectId: string;
+  sourceProjectId:    string | null;
+  title:              string;
+  createdBy:          string;
+  createdAt:          string;
+}
+
+export interface MarketingPlanCompletedPayload {
+  marketingProjectId: string;
+  tenantId:           string;
+  completedBy:        string;
+  completedAt:        string;
+}
+
+export interface MarketingTasksGeneratedPayload {
+  marketingProjectId: string;
+  tenantId:           string;
+  generatedTaskIds:   string[];
+  skippedActionIds:   string[];
+  generatedBy:        string;
+  generatedAt:        string;
+}
+
 // ─── Leads ────────────────────────────────────────────────────────────────────
 
 export interface LeadConvertedPayload {
@@ -415,7 +473,113 @@ export interface AssetUploadedPayload {
   uploadedAt: string;
 }
 
+export interface AssetAvailableForContentPayload {
+  assetId:            string;
+  versionId:          string;
+  tenantId:           string;
+  marketingProjectId: string | null;
+  assetType:          string;
+  approvedBy:         string;
+  approvedAt:         string;
+}
+
+// ─── Skills runtime + Asset Linking (Fatia 1) ────────────────────────────────
+
+export interface SkillStartedPayload {
+  skillRunId: string;
+  tenantId:   string;
+  skillName:  string;
+  entityType: string | null;
+  entityId:   string | null;
+  startedAt:  string;
+}
+
+export interface SkillCompletedPayload {
+  skillRunId: string;
+  tenantId:   string;
+  skillName:  string;
+  durationMs: number;
+  finishedAt: string;
+}
+
+export interface SkillFailedPayload {
+  skillRunId:   string;
+  tenantId:     string;
+  skillName:    string;
+  errorMessage: string;
+  finishedAt:   string;
+}
+
+export interface AssetLinkedToProjectPayload {
+  assetId:     string;
+  projectId:   string;
+  tenantId:    string;
+  role:        string;
+  sourceEvent: string;
+  linkedBy:    string | null;
+  linkedAt:    string;
+}
+
+export interface AssetLinkedToTaskPayload {
+  assetId:     string;
+  taskId:      string;
+  tenantId:    string;
+  role:        string;
+  sourceEvent: string;
+  linkedBy:    string | null;
+  linkedAt:    string;
+}
+
+export interface WorkflowExecutionStartedPayload {
+  executionId: string;
+  tenantId:    string | null;
+  ruleId:      string;
+  eventType:   string;
+  startedAt:   string;
+}
+
+export interface WorkflowExecutionCompletedPayload {
+  executionId:      string;
+  tenantId:         string | null;
+  ruleId:           string;
+  status:           'success' | 'partial';
+  actionsSucceeded: number;
+  actionsFailed:    number;
+  durationMs:       number;
+  finishedAt:       string;
+}
+
+export interface WorkflowExecutionFailedPayload {
+  executionId:  string;
+  tenantId:     string | null;
+  ruleId:       string;
+  errorMessage: string;
+  finishedAt:   string;
+}
+
+// ─── Catalog (Works / Recordings) ─────────────────────────────────────────────
+
+export interface CatalogWorkCreatedPayload {
+  tenantId:  string;
+  workId:    string;
+  createdBy: string;
+}
+
+export interface CatalogRecordingCreatedPayload {
+  tenantId:     string;
+  recordingId:  string;
+  createdBy:    string;
+}
+
 // ─── Support Tickets ──────────────────────────────────────────────────────────
+
+export interface SupportTicketCreatedPayload {
+  tenantId:  string;
+  ticketId:  string;
+  createdBy: string;
+  category:  string | null;
+  priority:  string;
+}
 
 export interface TicketResolvedPayload {
   ticketId:   string;
@@ -495,18 +659,36 @@ export type AnyDomainEventPayload =
   | FinancialRuleTriggeredPayload
   | ArtistOnboardingStartedPayload
   | DistributionSetupRequestedPayload
+  | ProjectCompletedPayload
   | ExternalDataSyncRequestedPayload
   | ContractIntegrationReadyPayload
+  | ReleaseCreatedPayload
   | ReleasePublishedPayload
   | ReleaseApprovedPayload
   | ReleaseDistributedPayload
   | TakedownRequestedPayload
   | CampaignStartedPayload
   | CampaignEndedPayload
+  | MarketingProjectCreatedPayload
+  | CoverArtTaskCreatedPayload
+  | MarketingPlanCompletedPayload
+  | MarketingTasksGeneratedPayload
   | LeadCreatedPayload
   | LeadUpdatedPayload
   | LeadConvertedPayload
   | AssetUploadedPayload
+  | AssetAvailableForContentPayload
+  | SkillStartedPayload
+  | SkillCompletedPayload
+  | SkillFailedPayload
+  | AssetLinkedToProjectPayload
+  | AssetLinkedToTaskPayload
+  | WorkflowExecutionStartedPayload
+  | WorkflowExecutionCompletedPayload
+  | WorkflowExecutionFailedPayload
+  | CatalogWorkCreatedPayload
+  | CatalogRecordingCreatedPayload
+  | SupportTicketCreatedPayload
   | TicketResolvedPayload
   | WorkflowTransitionedPayload
   | TenantCreatedPayload

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
-import { useForm, useFieldArray, Controller } from "react-hook-form";
+import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { artistaSchema } from "@/modules/artist/lib/artista-schema";
+import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import {
   Dialog,
@@ -23,10 +24,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/shared/ui/select";
-import { Loader2, Save, Plus, X, CheckCircle2, XCircle } from "lucide-react";
+import { Loader2, Save, CheckCircle2, XCircle } from "lucide-react";
 import { FileUpload, type UploadedFile } from "@/shared/components/FileUpload";
 import { useArtistas, type Artista } from "@/modules/artist/hooks/useArtistas";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import { EquipeContatosCRM, type ContatoVinculadoForm } from "@/modules/artist/components/EquipeContatosCRM";
 import { toast } from "sonner";
 import {
   artistaToFormFields,
@@ -45,10 +47,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────
 
-const GENEROS_MUSICAIS = [
-  "Funk", "Forró", "Sertanejo", "Pop", "Rock", "MPB", "Eletrônica",
-  "Hip Hop", "R&B", "Axé", "Pagode", "Gospel", "Reggae", "Jazz", "Outro",
-];
+const GENEROS_MUSICAIS = MUSICAL_GENRE_LABELS;
 
 const BANCOS = [
   "Banco do Brasil", "Bradesco", "Caixa Econômica", "Itaú", "Santander",
@@ -58,23 +57,12 @@ const BANCOS = [
 const TIPO_PERFIL_OPTIONS = [
   { value: "independente",   label: "Independente" },
   { value: "com_empresario", label: "Com empresário" },
-  { value: "gravadora",      label: "Gravadora" },
+  { value: "gravadora",      label: "Com gravadora" },
+  { value: "editora",        label: "Com editora" },
 ];
 
-const CATEGORIAS_EQUIPE = [
-  { value: "booker",          label: "Booker" },
-  { value: "assessoria",      label: "Assessoria de Imprensa" },
-  { value: "juridico",        label: "Jurídico" },
-  { value: "financeiro",      label: "Financeiro" },
-  { value: "contador",        label: "Contador" },
-  { value: "editora_musical", label: "Editora Musical" },
-  { value: "roadie",          label: "Roadie" },
-];
-
-const CATEGORIAS_GRAVADORA_EXTRA = [
-  { value: "gestor",     label: "Gestor" },
-  { value: "empresario", label: "Empresário" },
-];
+// Perfis que exigem distribuidoras/agregadoras vinculadas
+const PERFIS_COM_DISTRIBUIDORA = ["com_empresario", "gravadora", "editora"];
 
 const DISTRIBUIDORAS_OPTIONS = [
   { id: "onerpm",    label: "ONErpm" },
@@ -94,14 +82,6 @@ interface DistribuidoraEntry {
   id: string;
   email: string;
   nomeCustom?: string;
-}
-
-interface ContatoEquipe {
-  nome: string;
-  categoria: string;
-  telefone: string;
-  email: string;
-  distribuidoras: DistribuidoraEntry[];
 }
 
 interface ArtistaFormValues {
@@ -132,12 +112,8 @@ interface ArtistaFormValues {
   appleMusic: string;
   distribuidorasGerais: DistribuidoraEntry[];
   tipoPerfil: string;
-  contatosEquipe: ContatoEquipe[];
+  contatosVinculados: ContatoVinculadoForm[];
 }
-
-const EMPTY_CONTATO: ContatoEquipe = {
-  nome: "", categoria: "", telefone: "", email: "", distribuidoras: [],
-};
 
 const DEFAULT_VALUES: ArtistaFormValues = {
   nomeArtistico: "",
@@ -167,7 +143,7 @@ const DEFAULT_VALUES: ArtistaFormValues = {
   appleMusic: "",
   distribuidorasGerais: [],
   tipoPerfil: "independente",
-  contatosEquipe: [],
+  contatosVinculados: [],
 };
 
 // ─── Helper: URL validation icon ─────────────────────────────────
@@ -244,6 +220,8 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     tagsMusicais: string[];
     faseCarreira: string;
     contratoId: string;
+    // Legado: contatos de equipe embutidos (round-trip intacto; o painel usa contatos_vinculados)
+    contatosEquipe: unknown[];
   }>({
     tipoArtista: "artista_solo", statusArtista: "contratado",
     spotifyOuvintes: "", instagramSeguidores: "", youtubeInscritos: "",
@@ -254,6 +232,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     distribuidorasSelecionadas: {}, distribuidorasEmails: {},
     distribuidorasEmpresaSelecionadas: {}, distribuidorasEmpresaEmails: {},
     relacionamentos: [], slugArtistico: "", tagsMusicais: [], faseCarreira: "", contratoId: "",
+    contatosEquipe: [],
   });
 
   // ── react-hook-form ─────────────────────────────────────────────
@@ -263,23 +242,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
   });
   const { register, control, watch: wf, setValue, reset, handleSubmit: rhfSubmit } = form;
 
-  const { fields: contatoFields, append: appendContato, remove: removeContato } = useFieldArray({
-    control,
-    name: "contatosEquipe",
-  });
-
   // ── Reactive watches ────────────────────────────────────────────
   const especialidadesVal = wf("especialidades");
   const tipoPerfilVal     = wf("tipoPerfil");
-
-  // Auto-adicionar um card vazio quando o modal abre ou quando o perfil muda e a lista está vazia
-  useEffect(() => {
-    if (!open) return;
-    const PERFIS_COM_EQUIPA = ["independente", "com_empresario", "gravadora"];
-    if (PERFIS_COM_EQUIPA.includes(tipoPerfilVal) && contatoFields.length === 0) {
-      appendContato({ ...EMPTY_CONTATO });
-    }
-  }, [tipoPerfilVal, open]);
   const spotifyVal        = wf("spotify");
   const instagramVal      = wf("instagram");
   const youtubeVal        = wf("youtube");
@@ -293,13 +258,13 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     if (!open) return;
     const f = artistaToFormFields(artista ?? null);
 
-    const rawContatos = (artista as Artista & { contatos_equipe?: unknown })?.contatos_equipe;
-    const contatosEquipe: ContatoEquipe[] = Array.isArray(rawContatos)
-      ? (rawContatos as ContatoEquipe[])
+    // Vínculos de contatos do CRM (novo modelo — apenas referências).
+    const rawVinculos = (artista as Artista & { contatos_vinculados?: unknown })?.contatos_vinculados;
+    const contatosVinculados: ContatoVinculadoForm[] = Array.isArray(rawVinculos)
+      ? (rawVinculos as Array<{ contactId?: string; distribuidoras?: DistribuidoraEntry[] }>)
+          .filter((v) => typeof v?.contactId === "string" && v.contactId)
+          .map((v) => ({ contactId: v.contactId as string, distribuidoras: Array.isArray(v.distribuidoras) ? v.distribuidoras : [] }))
       : [];
-
-    // Se não houver contactos, iniciar já com um card vazio (dentro do reset para evitar scroll automático)
-    const initialContatos = contatosEquipe.length > 0 ? contatosEquipe : [{ ...EMPTY_CONTATO }];
 
     reset({
       nomeArtistico: f.nomeArtistico,
@@ -331,7 +296,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         ? ((artista as Artista & { distribuidoras_gerais?: DistribuidoraEntry[] }).distribuidoras_gerais as DistribuidoraEntry[])
         : [],
       tipoPerfil:    f.tipoPerfil || "independente",
-      contatosEquipe: initialContatos,
+      contatosVinculados,
     });
 
     setPreservedData({
@@ -365,6 +330,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       tagsMusicais: f.tagsMusicais,
       faseCarreira: f.faseCarreira,
       contratoId: f.contratoId,
+      contatosEquipe: Array.isArray((artista as Artista & { contatos_equipe?: unknown })?.contatos_equipe)
+        ? ((artista as Artista & { contatos_equipe?: unknown }).contatos_equipe as unknown[])
+        : [],
     });
 
     setImagemArtista(
@@ -440,39 +408,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
       "distribuidorasGerais",
       getDistsGerais().map((d) => (d.id === "outros" ? { ...d, nomeCustom } : d))
     );
-  };
-
-  // Distribuidoras helpers — work with DistribuidoraEntry[]
-  const getDists = (idx: number): DistribuidoraEntry[] =>
-    (wf(`contatosEquipe.${idx}.distribuidoras`) as DistribuidoraEntry[] | undefined) ?? [];
-
-  const toggleDistribuidora = (contatoIdx: number, distId: string, checked: boolean) => {
-    const current = getDists(contatoIdx);
-    if (checked) {
-      setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, [
-        ...current,
-        { id: distId, email: "", nomeCustom: distId === "outros" ? "" : undefined },
-      ]);
-    } else {
-      setValue(
-        `contatosEquipe.${contatoIdx}.distribuidoras`,
-        current.filter((d) => d.id !== distId)
-      );
-    }
-  };
-
-  const updateDistEmail = (contatoIdx: number, distId: string, email: string) => {
-    const updated = getDists(contatoIdx).map((d) =>
-      d.id === distId ? { ...d, email } : d
-    );
-    setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, updated);
-  };
-
-  const updateDistNomeCustom = (contatoIdx: number, nomeCustom: string) => {
-    const updated = getDists(contatoIdx).map((d) =>
-      d.id === "outros" ? { ...d, nomeCustom } : d
-    );
-    setValue(`contatosEquipe.${contatoIdx}.distribuidoras`, updated);
   };
 
   // ── Submit ──────────────────────────────────────────────────────
@@ -555,7 +490,12 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
         agencia_booking:        agenciaBooking.trim() || null,
         label_parceira:         labelParceira.trim() || null,
         documentos:             documentosList.length > 0 ? documentosList : null,
-        contatos_equipe:        values.contatosEquipe.length > 0 ? values.contatosEquipe : null,
+        // Novo modelo: apenas referências a contatos do CRM (sem duplicação de dados)
+        contatos_vinculados:    values.contatosVinculados.length > 0 ? values.contatosVinculados : null,
+        // Legado preservado intacto (dados antigos / auto-cadastro público) — não editável aqui
+        contatos_equipe:        preservedData.contatosEquipe.length > 0
+                                  ? (preservedData.contatosEquipe as Artista["contatos_equipe"])
+                                  : null,
         distribuidoras_gerais:  values.distribuidorasGerais.length > 0 ? values.distribuidorasGerais : null,
       };
 
@@ -616,7 +556,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
             {/* ═══ 1. Informações Básicas ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">1.</span>
                 <h3 className="text-lg font-semibold">Informações Básicas</h3>
               </div>
               <Separator />
@@ -715,7 +654,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
             {/* ═══ 2. Dados Pessoais ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">2.</span>
                 <h3 className="text-lg font-semibold">Dados Pessoais</h3>
               </div>
               <Separator />
@@ -805,7 +743,6 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
             {/* ═══ 3. Dados Bancários ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">3.</span>
                 <h3 className="text-lg font-semibold">Dados Bancários</h3>
               </div>
               <Separator />
@@ -847,16 +784,17 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Titular da Conta</Label>
-                <Input {...register("titularConta")} placeholder="Nome completo do titular" />
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Titular da Conta</Label>
+                  <Input {...register("titularConta")} placeholder="Nome completo do titular" className="w-full" />
+                </div>
               </div>
             </div>
 
             {/* ═══ 4. Perfis e Redes Sociais ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">4.</span>
                 <h3 className="text-lg font-semibold">Perfis e Redes Sociais</h3>
               </div>
               <Separator />
@@ -904,24 +842,21 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                   </div>
                 </div>
                 <div className="space-y-2">
+                  <Label>Apple Music</Label>
+                  <div className="flex items-center gap-2">
+                    <Input {...register("appleMusic")} placeholder="https://music.apple.com/artist/…" data-testid="input-apple-music-url" />
+                    <UrlIcon state={urlStates.appleMusic} />
+                  </div>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
                   <Label>Deezer</Label>
                   <div className="flex items-center gap-2">
                     <Input {...register("deezer")} placeholder="https://deezer.com/artist/…" data-testid="input-deezer-url" />
                     <UrlIcon state={urlStates.deezer} />
                   </div>
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Apple Music</Label>
-                <div className="flex items-center gap-2">
-                  <Input
-                    {...register("appleMusic")}
-                    placeholder="https://music.apple.com/artist/…"
-                    data-testid="input-apple-music-url"
-                    className="flex-1"
-                  />
-                  <UrlIcon state={urlStates.appleMusic} />
                 </div>
               </div>
 
@@ -932,88 +867,9 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
               </p>
             </div>
 
-            {/* ═══ 5. Distribuidoras / Agregadoras ═══ */}
+            {/* ═══ Tipo de Perfil ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">5.</span>
-                <h3 className="text-lg font-semibold">Distribuidoras / Agregadoras</h3>
-              </div>
-              <Separator />
-
-              {(() => {
-                const distsGerais = getDistsGerais();
-                return (
-                  <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                    {DISTRIBUIDORAS_OPTIONS.map((dist) => {
-                      const entry = distsGerais.find((d) => d.id === dist.id);
-                      const isChecked = !!entry;
-                      return (
-                        <div key={dist.id} className="space-y-1.5">
-                          <div className="flex items-center gap-2">
-                            <Checkbox
-                              id={`geral-dist-${dist.id}`}
-                              checked={isChecked}
-                              onCheckedChange={(checked) => toggleDistGeral(dist.id, !!checked)}
-                              data-testid={`checkbox-geral-dist-${dist.id}`}
-                            />
-                            <Label htmlFor={`geral-dist-${dist.id}`} className="text-sm cursor-pointer font-medium">
-                              {dist.label}
-                            </Label>
-                          </div>
-
-                          {isChecked && dist.id === "outros" && (
-                            <div className="ml-6 space-y-1.5">
-                              <Input
-                                value={entry?.nomeCustom ?? ""}
-                                onChange={(e) => updateDistNomeCustomGeral(e.target.value)}
-                                placeholder="Nome da distribuidora…"
-                                className="h-8 text-sm"
-                                data-testid="input-geral-dist-nome-custom"
-                              />
-                              {(entry?.nomeCustom ?? "").trim().length > 0 && (
-                                <Input
-                                  value={entry?.email ?? ""}
-                                  onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
-                                  type="email"
-                                  placeholder="Email de share…"
-                                  className="h-8 text-sm"
-                                  data-testid="input-geral-dist-email-outros"
-                                />
-                              )}
-                            </div>
-                          )}
-
-                          {isChecked && dist.id !== "outros" && (
-                            <div className="ml-6">
-                              <Input
-                                value={entry?.email ?? ""}
-                                onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
-                                type="email"
-                                placeholder={`Email de share — ${dist.label}`}
-                                className="h-8 text-sm"
-                                data-testid={`input-geral-dist-email-${dist.id}`}
-                              />
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })()}
-
-              {/* Hint para "Outros" sem nome ainda */}
-              {getDistsGerais().some((d) => d.id === "outros" && !(d.nomeCustom ?? "").trim()) && (
-                <p className="text-xs text-muted-foreground ml-6">
-                  Preencha o nome da distribuidora para activar o email de share.
-                </p>
-              )}
-            </div>
-
-            {/* ═══ 6. Tipo de Perfil ═══ */}
-            <div className="space-y-4">
-              <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">6.</span>
                 <h3 className="text-lg font-semibold">Tipo de Perfil</h3>
               </div>
               <Separator />
@@ -1038,209 +894,103 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
                 />
               </div>
 
-              {/* ── Equipa dinâmica (Independente, Com empresário e Gravadora) ── */}
-              {["independente", "com_empresario", "gravadora"].includes(tipoPerfilVal) && (
-                <div className="space-y-3 pt-2">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-sm text-muted-foreground">Equipa / Contactos</Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="h-7 text-xs gap-1"
-                      onClick={() => appendContato({ ...EMPTY_CONTATO })}
-                      data-testid="button-add-contato"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Adicionar
-                    </Button>
-                  </div>
-
-                  {contatoFields.length === 0 && (
-                    <p className="text-xs text-muted-foreground text-center py-4 border border-dashed rounded-lg">
-                      Nenhum contacto adicionado. Clique em "Adicionar" para incluir membros da equipa.
-                    </p>
+              {/* ── Equipe / Contatos — vínculos com o CRM (fonte única) ── */}
+              {["independente", "com_empresario", "gravadora", "editora"].includes(tipoPerfilVal) && (
+                <Controller
+                  control={control}
+                  name="contatosVinculados"
+                  render={({ field }) => (
+                    <EquipeContatosCRM
+                      value={field.value ?? []}
+                      onChange={field.onChange}
+                    />
                   )}
-
-                  {contatoFields.map((field, idx) => {
-                    const categoriaVal = wf(`contatosEquipe.${idx}.categoria`);
-                    const distsVal     = getDists(idx);
-                    const isEditora    = categoriaVal === "editora_musical" || categoriaVal === "empresario" || categoriaVal === "gestor" || tipoPerfilVal === "com_empresario";
-                    const outrosEntry  = distsVal.find((d) => d.id === "outros");
-
-                    return (
-                      <div
-                        key={field.id}
-                        className="p-3 border rounded-lg space-y-3 bg-muted/20"
-                        data-testid={`card-contato-${idx}`}
-                      >
-                        {/* Header */}
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground font-medium">
-                            Contacto {idx + 1}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                            onClick={() => removeContato(idx)}
-                            data-testid={`button-remove-contato-${idx}`}
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </Button>
-                        </div>
-
-                        {/* Nome + Categoria */}
-                        <div className={tipoPerfilVal === "com_empresario" ? "space-y-1.5" : "grid grid-cols-2 gap-3"}>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Nome</Label>
-                            <Input
-                              {...register(`contatosEquipe.${idx}.nome`)}
-                              placeholder="Nome completo"
-                              className="h-8 text-sm"
-                              data-testid={`input-contato-nome-${idx}`}
-                            />
-                          </div>
-                          {tipoPerfilVal !== "com_empresario" && (
-                            <div className="space-y-1.5">
-                              <Label className="text-xs">Categoria</Label>
-                              <Controller
-                                control={control}
-                                name={`contatosEquipe.${idx}.categoria`}
-                                render={({ field: f }) => (
-                                  <Select value={f.value} onValueChange={f.onChange}>
-                                    <SelectTrigger className="h-8 text-sm" data-testid={`select-contato-categoria-${idx}`}>
-                                      <SelectValue placeholder="Selecione…" />
-                                    </SelectTrigger>
-                                    <SelectContent className="bg-background border border-border z-50">
-                                      {CATEGORIAS_EQUIPE.map((c) => (
-                                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                      ))}
-                                      {tipoPerfilVal === "gravadora" && CATEGORIAS_GRAVADORA_EXTRA.map((c) => (
-                                        <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                      ))}
-                                    </SelectContent>
-                                  </Select>
-                                )}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Telefone + Email */}
-                        <div className="grid grid-cols-2 gap-3">
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Telefone</Label>
-                            <Input
-                              {...register(`contatosEquipe.${idx}.telefone`)}
-                              placeholder="(00) 00000-0000"
-                              className="h-8 text-sm"
-                              data-testid={`input-contato-telefone-${idx}`}
-                            />
-                          </div>
-                          <div className="space-y-1.5">
-                            <Label className="text-xs">Email</Label>
-                            <Input
-                              {...register(`contatosEquipe.${idx}.email`)}
-                              type="email"
-                              placeholder="email@exemplo.com"
-                              className="h-8 text-sm"
-                              data-testid={`input-contato-email-${idx}`}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Distribuidoras — só quando Editora Musical */}
-                        {isEditora && (
-                          <div className="space-y-3 pt-2 border-t border-border/40">
-                            <Label className="text-xs text-muted-foreground">Distribuidoras</Label>
-
-                            <div className="grid grid-cols-2 gap-x-6 gap-y-3">
-                              {DISTRIBUIDORAS_OPTIONS.map((dist) => {
-                                const entry = distsVal.find((d) => d.id === dist.id);
-                                const isChecked = !!entry;
-
-                                return (
-                                  <div key={dist.id} className="space-y-1.5">
-                                    {/* Checkbox row */}
-                                    <div className="flex items-center gap-2">
-                                      <Checkbox
-                                        id={`dist-${idx}-${dist.id}`}
-                                        checked={isChecked}
-                                        onCheckedChange={(checked) =>
-                                          toggleDistribuidora(idx, dist.id, !!checked)
-                                        }
-                                        data-testid={`checkbox-dist-${idx}-${dist.id}`}
-                                      />
-                                      <Label
-                                        htmlFor={`dist-${idx}-${dist.id}`}
-                                        className="text-xs cursor-pointer font-medium"
-                                      >
-                                        {dist.label}
-                                      </Label>
-                                    </div>
-
-                                    {/* Quando selecionada: campo nome (só "outros") + email de share */}
-                                    {isChecked && dist.id === "outros" && (
-                                      <div className="ml-6 space-y-1.5">
-                                        <Input
-                                          value={entry?.nomeCustom ?? ""}
-                                          onChange={(e) => updateDistNomeCustom(idx, e.target.value)}
-                                          placeholder="Nome da distribuidora…"
-                                          className="h-7 text-xs"
-                                          data-testid={`input-dist-nome-custom-${idx}`}
-                                        />
-                                        {(entry?.nomeCustom ?? "").trim().length > 0 && (
-                                          <Input
-                                            value={entry?.email ?? ""}
-                                            onChange={(e) => updateDistEmail(idx, dist.id, e.target.value)}
-                                            type="email"
-                                            placeholder="Email de share…"
-                                            className="h-7 text-xs"
-                                            data-testid={`input-dist-email-share-${idx}-${dist.id}`}
-                                          />
-                                        )}
-                                      </div>
-                                    )}
-
-                                    {/* Email de share para distribuidoras normais */}
-                                    {isChecked && dist.id !== "outros" && (
-                                      <div className="ml-6">
-                                        <Input
-                                          value={entry?.email ?? ""}
-                                          onChange={(e) => updateDistEmail(idx, dist.id, e.target.value)}
-                                          type="email"
-                                          placeholder={`Email de share — ${dist.label}`}
-                                          className="h-7 text-xs"
-                                          data-testid={`input-dist-email-share-${idx}-${dist.id}`}
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-
-                            {/* Campo nome para "outros" mesmo sem o trigger do nome */}
-                            {outrosEntry && !outrosEntry.nomeCustom && (
-                              <p className="text-xs text-muted-foreground ml-6">
-                                Preencha o nome da distribuidora para activar o email de share.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                />
               )}
             </div>
 
-            {/* ═══ 7. Observações ═══ */}
+            {/* ═══ Distribuidoras / Agregadoras (exibida ao escolher Com Empresário / Gravadora / Editora) ═══ */}
+            {PERFIS_COM_DISTRIBUIDORA.includes(tipoPerfilVal) && (
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Distribuidoras / Agregadoras</h3>
+                </div>
+                <Separator />
+
+                {(() => {
+                  const distsGerais = getDistsGerais();
+                  return (
+                    <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+                      {DISTRIBUIDORAS_OPTIONS.map((dist) => {
+                        const entry = distsGerais.find((d) => d.id === dist.id);
+                        const isChecked = !!entry;
+                        return (
+                          <div key={dist.id} className="space-y-1.5">
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                id={`geral-dist-${dist.id}`}
+                                checked={isChecked}
+                                onCheckedChange={(checked) => toggleDistGeral(dist.id, !!checked)}
+                                data-testid={`checkbox-geral-dist-${dist.id}`}
+                              />
+                              <Label htmlFor={`geral-dist-${dist.id}`} className="text-sm cursor-pointer font-medium">
+                                {dist.label}
+                              </Label>
+                            </div>
+
+                            {isChecked && dist.id === "outros" && (
+                              <div className="ml-6 space-y-1.5">
+                                <Input
+                                  value={entry?.nomeCustom ?? ""}
+                                  onChange={(e) => updateDistNomeCustomGeral(e.target.value)}
+                                  placeholder="Nome da distribuidora…"
+                                  className="h-8 text-sm"
+                                  data-testid="input-geral-dist-nome-custom"
+                                />
+                                {(entry?.nomeCustom ?? "").trim().length > 0 && (
+                                  <Input
+                                    value={entry?.email ?? ""}
+                                    onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                                    type="email"
+                                    placeholder="Email de share…"
+                                    className="h-8 text-sm"
+                                    data-testid="input-geral-dist-email-outros"
+                                  />
+                                )}
+                              </div>
+                            )}
+
+                            {isChecked && dist.id !== "outros" && (
+                              <div className="ml-6">
+                                <Input
+                                  value={entry?.email ?? ""}
+                                  onChange={(e) => updateDistEmailGeral(dist.id, e.target.value)}
+                                  type="email"
+                                  placeholder={`Email de share — ${dist.label}`}
+                                  className="h-8 text-sm"
+                                  data-testid={`input-geral-dist-email-${dist.id}`}
+                                />
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+
+                {/* Hint para "Outros" sem nome ainda */}
+                {getDistsGerais().some((d) => d.id === "outros" && !(d.nomeCustom ?? "").trim()) && (
+                  <p className="text-xs text-muted-foreground ml-6">
+                    Preencha o nome da distribuidora para activar o email de share.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* ═══ Observações ═══ */}
             <div className="space-y-4">
               <div className="flex items-center gap-2">
-                <span className="text-xl font-bold text-primary">7.</span>
                 <h3 className="text-lg font-semibold">Observações</h3>
               </div>
               <Separator />
@@ -1275,7 +1025,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
             data-testid="button-salvar-modal"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {isEditing ? "Salvar Alterações" : "Cadastrar Artista"}
+            {isEditing ? "Salvar Alterações" : "Criar Artista"}
           </Button>
         </div>
       </DialogContent>

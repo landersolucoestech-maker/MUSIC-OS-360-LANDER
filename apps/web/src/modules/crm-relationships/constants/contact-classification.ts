@@ -1,0 +1,156 @@
+// ============================================================================
+// Classificação hierárquica de Contato (config-driven, fonte única).
+// Tipo de Contato → Categoria → Perfil do Contato.
+//
+// - Tipo de Contato: natureza jurídica (PF/PJ) → persiste em tipo_pessoa.
+// - Categoria: relacionamento → persiste em Contact.contactType (slugs do enum
+//   ContactType, mantendo filtros/coluna "Segmento" existentes).
+// - Perfil do Contato: identidade específica → persiste em payloadOperacional.perfil.
+//
+// Toda a relação fica centralizada aqui — sem ifs/switches espalhados.
+// ============================================================================
+
+export type ContatoTipoPessoa = "pessoa_fisica" | "pessoa_juridica";
+
+export interface ClassificationOption {
+  value: string;
+  label: string;
+}
+
+export const CONTACT_TYPE_OPTIONS: ClassificationOption[] = [
+  { value: "pessoa_fisica", label: "Pessoa Física" },
+  { value: "pessoa_juridica", label: "Pessoa Jurídica" },
+];
+
+// value = slug do enum ContactType (mantém compatibilidade com tabela/filtros).
+export const CONTACT_CATEGORY_OPTIONS: ClassificationOption[] = [
+  { value: "CORPORATE_CLIENT", label: "Cliente" },
+  { value: "PARTNER", label: "Parceiro" },
+  { value: "SUPPLIER", label: "Fornecedor" },
+  { value: "SERVICE_PROVIDER", label: "Prestador de Serviços" },
+  { value: "INVESTOR", label: "Investidor" },
+  { value: "COLLECTIVE_MANAGEMENT_ORGANIZATION", label: "Órgão" },
+];
+
+const opt = (value: string, label: string): ClassificationOption => ({ value, label });
+const OUTROS = opt("outros", "Outros");
+
+// Perfis por Tipo de Contato + Categoria.
+// Chaves de categoria = slugs de CONTACT_CATEGORY_OPTIONS.
+export const CONTACT_PROFILES: Record<ContatoTipoPessoa, Record<string, ClassificationOption[]>> = {
+  pessoa_fisica: {
+    CORPORATE_CLIENT: [
+      opt("artista_banda", "Artista/Banda"),
+      opt("empresario_artistico", "Empresário Artístico"),
+      opt("influenciador", "Influenciador"),
+      opt("contratante_show", "Contratante de Show"),
+      opt("parceiros", "Parceiros"),
+      OUTROS,
+    ],
+    PARTNER: [
+      opt("empresario_artistico", "Empresário Artístico"),
+      opt("parceiro_comercial", "Parceiro Comercial"),
+      opt("influenciador", "Influenciador"),
+      OUTROS,
+    ],
+    SUPPLIER: [OUTROS],
+    SERVICE_PROVIDER: [
+      opt("advogado", "Advogado"),
+      opt("a_e_r", "A&R"),
+      opt("beatmaker", "Beatmaker"),
+      opt("compositor", "Compositor"),
+      opt("coach_vocal", "Coach Vocal"),
+      opt("contador", "Contador"),
+      opt("curador_musical", "Curador Musical"),
+      opt("designer", "Designer"),
+      opt("diretor", "Diretor"),
+      opt("diretor_de_video", "Diretor de Vídeo"),
+      opt("editor_de_video", "Editor de Vídeo"),
+      opt("engenheiro_de_som", "Engenheiro de Som"),
+      opt("fotografo", "Fotógrafo"),
+      opt("jornalista", "Jornalista"),
+      opt("manager", "Manager"),
+      opt("masterizador", "Masterizador"),
+      opt("mix_engineer", "Mix Engineer"),
+      opt("motion_designer", "Motion Designer"),
+      opt("operador_de_camera", "Operador de Câmera"),
+      opt("produtor_executivo", "Produtor Executivo"),
+      opt("produtor_musical", "Produtor Musical"),
+      opt("programador", "Programador"),
+      opt("psicologo", "Psicólogo"),
+      OUTROS,
+    ],
+    INVESTOR: [opt("investidor", "Investidor"), opt("fundo_de_investimento", "Fundo de Investimento"), OUTROS],
+    COLLECTIVE_MANAGEMENT_ORGANIZATION: [OUTROS],
+  },
+  pessoa_juridica: {
+    CORPORATE_CLIENT: [
+      opt("empresa", "Empresa"),
+      opt("marca", "Marca"),
+      opt("contratante_show", "Contratante de Show"),
+      opt("produtora_de_eventos", "Produtora de Eventos"),
+      OUTROS,
+    ],
+    PARTNER: [
+      opt("agencia", "Agência"),
+      opt("agencia_de_booking", "Agência de Booking"),
+      opt("agencia_de_modelos", "Agência de Modelos"),
+      opt("agencia_de_publicidade", "Agência de Publicidade"),
+      opt("distribuidora_digital", "Distribuidora Digital"),
+      opt("empresa", "Empresa"),
+      opt("gravadora_selo", "Gravadora/Selo"),
+      opt("parceiro_comercial", "Parceiro Comercial"),
+      opt("patrocinador", "Patrocinador"),
+      opt("plataforma_digital", "Plataforma Digital"),
+      opt("produtora_audiovisual", "Produtora Audiovisual"),
+      opt("produtora_de_eventos", "Produtora de Eventos"),
+      OUTROS,
+    ],
+    SUPPLIER: [
+      opt("banco", "Banco"),
+      opt("cartorio", "Cartório"),
+      opt("cloud_provider", "Cloud Provider"),
+      opt("construtora", "Construtora"),
+      opt("empresa_de_ia", "Empresa de IA"),
+      opt("empresa_de_internet", "Empresa de Internet"),
+      opt("empresa_de_som", "Empresa de Som"),
+      opt("estudio", "Estúdio"),
+      opt("gateway_de_pagamento", "Gateway de Pagamento"),
+      opt("hosting", "Hosting"),
+      opt("oficina_mecanica", "Oficina Mecânica"),
+      opt("sala_de_ensaio", "Sala de Ensaio"),
+      OUTROS,
+    ],
+    SERVICE_PROVIDER: [
+      opt("produtora_audiovisual", "Produtora Audiovisual"),
+      opt("estudio", "Estúdio"),
+      opt("agencia", "Agência"),
+      OUTROS,
+    ],
+    INVESTOR: [opt("fundo_de_investimento", "Fundo de Investimento"), opt("investidor", "Investidor"), OUTROS],
+    COLLECTIVE_MANAGEMENT_ORGANIZATION: [
+      opt("abramus", "ABRAMUS"),
+      opt("ecad", "ECAD"),
+      opt("inpi", "INPI"),
+      opt("prefeitura", "Prefeitura"),
+      OUTROS,
+    ],
+  },
+};
+
+/** Perfis válidos para uma combinação Tipo + Categoria. */
+export function getPerfis(tipo: ContatoTipoPessoa, categoriaSlug: string): ClassificationOption[] {
+  return CONTACT_PROFILES[tipo]?.[categoriaSlug] ?? [];
+}
+
+/**
+ * Garante que um perfil salvo (possivelmente legado) apareça na lista de opções
+ * para não perder o dado na edição.
+ */
+export function ensurePerfilOption(
+  list: ClassificationOption[],
+  value: string,
+): ClassificationOption[] {
+  if (!value || list.some((o) => o.value === value)) return list;
+  return [...list, opt(value, value)];
+}

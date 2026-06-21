@@ -13,6 +13,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { AuditInterceptor } from './core/interceptors/audit.interceptor';
+import { RequestTenantContextInterceptor } from './core/interceptors/request-tenant-context.interceptor';
 import { RequestIdMiddleware }  from './core/middleware/request-id.middleware';
 import { CorrelationMiddleware } from './core/middleware/correlation.middleware';
 import { ConfigModule } from '@nestjs/config';
@@ -25,6 +26,9 @@ import { HealthModule }         from './modules/health/health.module';
 import { QueueModule }          from './queues/queue.module';
 import { AuthModule }           from './modules/auth/auth.module';
 import { CoreModule }           from './core/core.module';
+import { AutomationModule }     from './core/automation/automation.module';
+import { MetricsModule }        from './core/metrics/metrics.module';
+import { AdminQueuesModule }    from './core/admin/admin-queues.module';
 import { PlanLimitModule }      from './core/billing/plan-limit.module';
 import { ArtistsModule }        from './modules/artists/artists.module';
 import { WorksModule }          from './modules/works/works.module';
@@ -39,7 +43,12 @@ import { InvoicesModule }          from './modules/invoices/invoices.module';
 import { ClientsModule }           from './modules/clients/clients.module';
 import { LeadsModule }             from './modules/leads/leads.module';
 import { LeadInteractionsModule }  from './modules/lead-interactions/lead-interactions.module';
+import { ContactsModule }          from './modules/contacts/contacts.module';
+import { ContactTimelineModule }   from './modules/contact-timeline/contact-timeline.module';
+import { ContactAttachmentsModule } from './modules/contact-attachments/contact-attachments.module';
+import { ContactContractsModule }  from './modules/contact-contracts/contact-contracts.module';
 import { CampaignsModule }         from './modules/campaigns/campaigns.module';
+import { MarketingModule }         from './modules/marketing/marketing.module';
 import { BriefingsModule }         from './modules/briefings/briefings.module';
 import { EventsModule }            from './modules/events/events.module';
 import { ProjectsModule }          from './modules/projects/projects.module';
@@ -58,18 +67,23 @@ import { ContentDetectionsModule } from './modules/content-detections/content-de
 import { EcadReportsModule }       from './modules/ecad-reports/ecad-reports.module';
 import { HrModule }                from './modules/hr/hr.module';
 import { DomainEventsModule }     from './core/events/events.module';
+import { SkillsModule }           from './core/skills/skills.module';
+import { AssetsModule }           from './modules/assets/assets.module';
 import { WorkflowModule }         from './core/workflow/workflow.module';
 import { ConversationsModule }    from './modules/conversations/conversations.module';
 import { FormsModule }            from './modules/forms/forms.module';
-import { CrmModule }              from './modules/crm/crm.module';
-import { PipelinesModule }        from './modules/pipelines/pipelines.module';
 import { AnalyticsModule }        from './modules/analytics/analytics.module';
 import { InventoryModule }        from './modules/inventory/inventory.module';
 import { LicensingModule }        from './modules/licensing/licensing.module';
 import { FinancialRulesModule }   from './modules/financial-rules/financial-rules.module';
+import { FinancialCategoriesModule } from './modules/financial-categories/financial-categories.module';
+import { AudiovisualModule }      from './modules/audiovisual/audiovisual.module';
+import { RegistryModule }         from './modules/registry/registry.module';
+import { ReportsModule }          from './modules/reports/reports.module';
 import { JwtAuthGuard }    from './core/guards/auth.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
+import { PermissionsGuard } from './core/guards/permissions.guard';
 import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
 @Module({
@@ -95,6 +109,9 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     // ── Core (EncryptionService, AuditService, RateLimitService) ─────────────
     CoreModule,
 
+    // ── Metrics (Prometheus /metrics + HTTP interceptor) ──────────────────────
+    MetricsModule,
+
     // ── Plan Limit Enforcement (global — quota checks before create) ──────────
     PlanLimitModule,
 
@@ -103,6 +120,9 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Filas (BullMQ) — só quando Redis ioredis está disponível ─────────────
     QueueModule.register(),
+
+    // ── BullBoard admin dashboard (/admin/queues, basic-auth) ─────────────────
+    AdminQueuesModule.register(),
 
     // ── WebSocket Gateway ─────────────────────────────────────────────────────
     WsModule,
@@ -123,7 +143,12 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ClientsModule,
     LeadsModule,
     LeadInteractionsModule,
+    ContactsModule,
+    ContactTimelineModule,
+    ContactAttachmentsModule,
+    ContactContractsModule,
     CampaignsModule,
+    MarketingModule,
     BriefingsModule,
     EventsModule,
     ProjectsModule,
@@ -150,6 +175,13 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     EcadReportsModule,
     HrModule,
 
+    // ── Skills runtime + Modelo central de assets (Fatia 1) ───────────────────
+    SkillsModule,
+    AssetsModule,
+
+    // ── Automações nativas event-driven (project.completed → project-planning) ─
+    AutomationModule,
+
     // ── Workflow Engine (state machine global) ────────────────────────────────
     WorkflowModule,
 
@@ -159,12 +191,6 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     // ── Phase 12 — Forms & Submissions ────────────────────────────────────────
     FormsModule,
 
-    // ── Phase 7 — CRM Canonical (contacts, companies, tags, tasks, timeline) ──
-    CrmModule,
-
-    // ── Phase 8 — Music Pipelines (kanban, stages, opportunities, SLA) ─────────
-    PipelinesModule,
-
     // ── Phase 13 — Analytics & AI Governance ──────────────────────────────────
     AnalyticsModule,
 
@@ -172,15 +198,32 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     InventoryModule,
     LicensingModule,
     FinancialRulesModule,
+    FinancialCategoriesModule,
+
+    // ── Audiovisual / Video Production
+    AudiovisualModule,
+
+    // ── Registry (ABRAMUS/ECAD) — rights holders & external identifiers
+    RegistryModule,
+
+    // ── Reports — inventário entity-driven (FASE 1: metadata)
+    ReportsModule,
   ],
   providers: [
+    // FASE 3J — Interceptor global OUTERMOST: estabelece app.current_tenant_id por
+    // request (transparente). Deve vir ANTES do AuditInterceptor para que as
+    // leituras de auditoria também rodem dentro do contexto de tenant.
+    {
+      provide:  APP_INTERCEPTOR,
+      useClass: RequestTenantContextInterceptor,
+    },
     // Interceptor global — processa @Audit() em todas as rotas com DI completo
     {
       provide:  APP_INTERCEPTOR,
       useClass: AuditInterceptor,
     },
     // Guards globais aplicados a TODAS as rotas
-    // Ordem: RateLimitGuard → JwtAuthGuard → TenantGuard → RolesGuard
+    // Ordem: RateLimitGuard → JwtAuthGuard → TenantGuard → RolesGuard → PermissionsGuard
     Reflector,
     {
       provide:  APP_GUARD,
@@ -197,6 +240,13 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     {
       provide:  APP_GUARD,
       useClass: RolesGuard,
+    },
+    // FASE 6 — autorização por permissão (resource:action), após o RolesGuard.
+    // Não substitui o RolesGuard; só atua em rotas com @RequirePermission e respeita a
+    // flag RBAC_PERMISSION_ENFORCEMENT (default OFF = modo observação).
+    {
+      provide:  APP_GUARD,
+      useClass: PermissionsGuard,
     },
   ],
 })

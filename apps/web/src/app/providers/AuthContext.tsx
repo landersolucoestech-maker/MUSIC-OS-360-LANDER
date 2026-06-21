@@ -22,8 +22,13 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase/supabase-js";
 import type { AuthError, Session, User } from "@/shared/types/auth";
 import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
-import { setAccessToken, setTenantId } from "@/shared/lib/api-client";
-import { MOCK_MODE, IS_DEV } from "@/shared/lib/env";
+import {
+  api,
+  clearAuthBackoff,
+  setAccessToken,
+  setTenantId,
+} from "@/shared/lib/api-client";
+import { AUTH_DISABLED, MOCK_MODE, IS_DEV } from "@/shared/lib/env";
 import { getSupabaseClient } from "@/lib/supabase";
 
 function devLog(label: string, data?: unknown): void {
@@ -60,7 +65,12 @@ interface AuthContextType {
   session: Session | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
-  signUp: (email: string, password: string, fullName?: string) => Promise<{ error: AuthError | null }>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName?: string,
+    metadata?: Record<string, unknown>,
+  ) => Promise<{ error: AuthError | null }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
@@ -104,7 +114,61 @@ function clearApiSessionState(): void {
   setTenantId(null);
 }
 
+function needsWorkspaceProvisioning(session: SupabaseSession): boolean {
+  const metadata = session.user.user_metadata as Record<string, unknown> | undefined;
+  return !mapSupabaseSession(session).user.org_id
+    && typeof metadata?.["workspace_slug"] === "string";
+}
+
+async function provisionWorkspaceForSession(
+  session: SupabaseSession,
+): Promise<SupabaseSession> {
+  if (!needsWorkspaceProvisioning(session)) return session;
+  const metadata = session.user.user_metadata as Record<string, unknown>;
+  setAccessToken(session.access_token);
+  setTenantId(null);
+  clearAuthBackoff();
+  await api.patch("/auth/provision-workspace", {
+    organizationName: metadata["org_name"],
+    workspaceName: metadata["workspace_name"],
+    workspaceSlug: metadata["workspace_slug"],
+    segment: metadata["segment"],
+    tradeName: metadata["trade_name"],
+    corporateEmail: metadata["corporate_email"],
+    phone: metadata["phone"],
+    address: metadata["address"],
+    city: metadata["city"],
+    state: metadata["state"],
+    requestedPlan: metadata["requested_plan"],
+    acceptedTerms: metadata["accepted_terms"],
+    acceptedLgpd: metadata["accepted_lgpd"],
+  });
+  const { data, error } = await getSupabaseClient().auth.refreshSession();
+  if (error || !data.session) {
+    throw new Error(error?.message ?? "Não foi possível atualizar a sessão.");
+  }
+  return data.session;
+}
+
+let activeProvisioning: Promise<SupabaseSession> | null = null;
+
+function ensureWorkspaceProvisioned(
+  session: SupabaseSession,
+): Promise<SupabaseSession> {
+  if (!needsWorkspaceProvisioning(session)) return Promise.resolve(session);
+  if (!activeProvisioning) {
+    activeProvisioning = provisionWorkspaceForSession(session)
+      .finally(() => { activeProvisioning = null; });
+  }
+  return activeProvisioning;
+}
+
 function MockAuthProvider({ children }: { children: React.ReactNode }) {
+  useEffect(() => {
+    setAccessToken(null);
+    setTenantId((MOCK_USER as User).org_id ?? null);
+  }, []);
+
   const value: AuthContextType = {
     user: MOCK_USER as User,
     session: MOCK_SESSION as Session,
@@ -131,19 +195,41 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 
     const sb = getSupabaseClient();
 
-    sb.auth.getSession().then(({ data }) => {
+    sb.auth.getSession().then(async ({ data }) => {
       if (data.session) {
-        const s = applyApiSessionState(data.session);
+        const readySession = await ensureWorkspaceProvisioned(data.session);
+        const s = applyApiSessionState(readySession);
         setSession(s);
         setUser(s.user);
       } else {
         clearApiSessionState();
       }
       setLoading(false);
+    }).catch((error: unknown) => {
+      clearApiSessionState();
+      devLog("Falha no bootstrap da sessão", error);
+      setLoading(false);
     });
 
     const { data: { subscription } } = sb.auth.onAuthStateChange((event, sbSession) => {
       if (sbSession) {
+        if (needsWorkspaceProvisioning(sbSession)) {
+          setLoading(true);
+          window.setTimeout(() => {
+            void ensureWorkspaceProvisioned(sbSession)
+              .then((readySession) => {
+                const ready = applyApiSessionState(readySession);
+                setSession(ready);
+                setUser(ready.user);
+                setLoading(false);
+              })
+              .catch((error: unknown) => {
+                devLog("Falha ao provisionar workspace", error);
+                setLoading(false);
+              });
+          }, 0);
+          return;
+        }
         const s = applyApiSessionState(sbSession);
         setSession(s);
         setUser(s.user);
@@ -171,9 +257,15 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
-    const { error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+    const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
     if (error) {
       return { error: { message: error.message, status: error.status } };
+    }
+    if (data.session) {
+      const readySession = await ensureWorkspaceProvisioned(data.session);
+      const mapped = applyApiSessionState(readySession);
+      setSession(mapped);
+      setUser(mapped.user);
     }
     return { error: null };
   };
@@ -182,18 +274,26 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     email: string,
     password: string,
     fullName?: string,
+    metadata?: Record<string, unknown>,
   ): Promise<{ error: AuthError | null }> => {
-    const { error } = await getSupabaseClient().auth.signUp({
+    const { data, error } = await getSupabaseClient().auth.signUp({
       email,
       password,
       options: {
         data: {
           full_name: fullName ?? "",
           org_name: fullName?.trim() || email.split("@")[0],
+          ...metadata,
         },
       },
     });
     if (error) return { error: { message: error.message, status: error.status } };
+    if (data.session) {
+      const readySession = await ensureWorkspaceProvisioned(data.session);
+      const mapped = applyApiSessionState(readySession);
+      setSession(mapped);
+      setUser(mapped.user);
+    }
     return { error: null };
   };
 
@@ -206,7 +306,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
-    const redirectTo = `${window.location.origin}/auth?mode=reset`;
+    const redirectTo = `${window.location.origin}/reset-password`;
     const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo });
     if (error) return { error: { message: error.message, status: error.status } };
     return { error: null };
@@ -226,7 +326,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (MOCK_MODE) return <MockAuthProvider>{children}</MockAuthProvider>;
+  if (AUTH_DISABLED || MOCK_MODE) return <MockAuthProvider>{children}</MockAuthProvider>;
   return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
 

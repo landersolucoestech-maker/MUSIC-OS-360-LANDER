@@ -9,6 +9,26 @@ import type {
 
 export type { TransacaoTipo, TransacaoStatus, TransacaoFormaPagamento, NotaFiscalStatus, NotaFiscalTipo };
 
+/** Entidades gerenciais elegíveis para vínculo de um lançamento (rastreabilidade P&L). */
+export type TransactionEntityType =
+  | "projeto"
+  | "artista"
+  | "empresa"
+  | "campanha"
+  | "evento";
+
+/**
+ * Vínculo gerencial de um lançamento financeiro a uma entidade do sistema.
+ * Suporta múltiplos vínculos por lançamento, com rateio percentual opcional.
+ */
+export interface TransactionEntityLink {
+  entityType: TransactionEntityType;
+  entityId: string;
+  entityName: string;
+  /** Percentual de rateio (0–100). Quando há múltiplos vínculos, a soma deve ser 100. */
+  allocationPercent?: number;
+}
+
 export interface Transacao {
   id: string;
   user_id?: string;
@@ -21,6 +41,8 @@ export interface Transacao {
   artista_id?: string | null;
   cliente_id?: string | null;
   venda_id?: string | null;
+  /** Vínculos gerenciais obrigatórios para consolidação no P&L (≥1). */
+  entityLinks?: TransactionEntityLink[];
   origem?: string | null;
   observacoes?: string | null;
   conciliado?: boolean | null;
@@ -37,7 +59,6 @@ export type TransacaoUpdate = Partial<TransacaoInsert>;
 export interface TransacaoWithRelations extends Transacao {
   artistas?: ArtistaRef | null;
   clientes?: ClienteRef | null;
-  vendas?: { id: string } | null;
 }
 
 export interface NotaFiscal {
@@ -67,5 +88,5 @@ export type NotaFiscalUpdate = Partial<NotaFiscalInsert>;
 
 export interface NotaFiscalWithRelations extends NotaFiscal {
   clientes?: ClienteRef | null;
-  vendas?: { id: string } | null;
 }
+

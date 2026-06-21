@@ -19,6 +19,9 @@ if (process.env['NODE_ENV'] !== 'production') {
     if (
       first.includes('[ioredis]') ||
       first.includes('ENOTFOUND') ||
+      first.includes('ECONNRESET') ||
+      first.includes('ECONNREFUSED 127.0.0.1') ||
+      first.includes("Stream isn't writeable") ||
       first.includes('redis.railway.internal') ||
       first.includes('Connection is closed')
     ) {
@@ -32,7 +35,13 @@ import * as Sentry from '@sentry/node';
 
 const SENTRY_DSN = process.env['SENTRY_DSN'];
 
-if (SENTRY_DSN) {
+/** Returns true if the value looks like a placeholder (YOUR_DSN, PROJECT_ID, etc.). */
+function isPlaceholder(value: string | undefined): boolean {
+  if (!value) return true;
+  return /YOUR_|PLACEHOLDER|PROJECT_ID|example\.|test-placeholder/i.test(value);
+}
+
+if (SENTRY_DSN && !isPlaceholder(SENTRY_DSN)) {
   Sentry.init({
     dsn: SENTRY_DSN,
 
@@ -50,10 +59,12 @@ if (SENTRY_DSN) {
     // Never send request bodies — they may contain PII or encrypted data.
     sendDefaultPii: false,
 
-    integrations: [
-      Sentry.httpIntegration(),
-      Sentry.expressIntegration(),
-    ],
+    // Disable default integrations entirely — Sentry's auto-patching of Express
+    // layers (via @sentry/core/integrations/express/patch-layer) consumes request
+    // bodies before NestJS body-parser, breaking ALL POST/PATCH with "stream is
+    // not readable". GlobalExceptionFilter still reports manually via captureException.
+    defaultIntegrations: false,
+    integrations: [],
 
     // Suppress client errors (4xx) — only capture system errors.
     ignoreErrors: [
@@ -73,8 +84,11 @@ if (SENTRY_DSN) {
   });
 
   console.info(`[Sentry] Initialized — env: ${process.env['NODE_ENV'] ?? 'development'}`);
+} else if (SENTRY_DSN && isPlaceholder(SENTRY_DSN)) {
+  console.info('[Sentry] monitoring disabled — placeholder detected (SENTRY_DSN looks unconfigured)');
 } else {
   console.info('[Sentry] SENTRY_DSN not set — monitoring disabled');
 }
 
 export { Sentry };
+// fase10b retrigger 1779633082

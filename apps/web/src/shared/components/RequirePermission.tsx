@@ -1,20 +1,18 @@
 /**
  * shared/components/RequirePermission.tsx
  *
- * HOC / wrapper de RBAC.  Renderiza `children` apenas se o utilizador tiver
- * a permissão requerida no módulo indicado.  Caso contrário, renderiza
- * `fallback` (por omissão: null — o elemento é invisível e não interactivo).
+ * Gate de RBAC sobre a FONTE ÚNICA de permissões (membership.permissions, via usePermissions).
+ * Renderiza `children` apenas se o utilizador tiver a permissão; caso contrário `fallback`.
+ *
+ * Durante o carregamento das permissões em produção (permissionKeys ainda null), renderiza
+ * `loadingFallback` (por omissão null = nada visível e não-interactivo) — NUNCA abre por ausência.
  *
  * Uso:
  *   <RequirePermission module="accounting" action="write">
  *     <Button>Nova Transação</Button>
  *   </RequirePermission>
- *
- *   <RequirePermission module="contracts" action="delete" fallback={<span>Sem permissão</span>}>
- *     <Button variant="destructive">Eliminar</Button>
- *   </RequirePermission>
  */
-import { useTenant } from "@/app/providers/TenantContext";
+import { usePermissions } from "@/shared/hooks/usePermissions";
 import type { TenantModuleKey, TenantModulePermission } from "@/app/providers/TenantContext";
 
 interface RequirePermissionProps {
@@ -22,6 +20,7 @@ interface RequirePermissionProps {
   action:   keyof TenantModulePermission;
   children: React.ReactNode;
   fallback?: React.ReactNode;
+  loadingFallback?: React.ReactNode;
 }
 
 export function RequirePermission({
@@ -29,21 +28,24 @@ export function RequirePermission({
   action,
   children,
   fallback = null,
+  loadingFallback = null,
 }: RequirePermissionProps) {
-  const { hasPermission } = useTenant();
-  return hasPermission(module, action) ? <>{children}</> : <>{fallback}</>;
+  const { canModule, isLoadingPermissions } = usePermissions();
+  if (isLoadingPermissions) return <>{loadingFallback}</>;
+  return canModule(module, action) ? <>{children}</> : <>{fallback}</>;
 }
 
+/** Alias semântico — gate por permissão. */
+export const PermissionGate = RequirePermission;
+
 /**
- * Hook companion — retorna true/false sem precisar de wrapper JSX.
- *
- * Uso:
+ * Hook companion — retorna true/false sem wrapper JSX.
  *   const canWrite = useHasPermission("accounting", "write");
  */
 export function useHasPermission(
   module: TenantModuleKey,
   action: keyof TenantModulePermission,
 ): boolean {
-  const { hasPermission } = useTenant();
-  return hasPermission(module, action);
+  const { canModule } = usePermissions();
+  return canModule(module, action);
 }

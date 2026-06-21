@@ -2,6 +2,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { FileText, Music, Building, DollarSign, Calendar, MapPin, Tv } from "lucide-react";
+import { useObras } from "@/modules/catalog/hooks/useObras";
+import { useDataQuery } from "@/shared/hooks/useDataQuery";
+import { QUERY_KEYS } from "@/shared/lib/query-config";
+import { formatLicensingDate, formatRemuneration, obraArtistaLabel, midiaLabel, tipoLabel } from "@/modules/licensing/lib/licenca-format";
+import type { Obra } from "@/modules/catalog/types/catalog.types";
 
 interface LicencaViewModalProps {
   open: boolean;
@@ -9,18 +14,39 @@ interface LicencaViewModalProps {
   licenca?: any;
 }
 
+const getStatusBadge = (status?: string) => {
+  switch (status) {
+    case "ativa": return <Badge variant="success">Ativa</Badge>;
+    case "negociacao": return <Badge variant="warning">Em Negociação</Badge>;
+    case "proposta": return <Badge variant="info">Proposta Enviada</Badge>;
+    case "expirada": return <Badge variant="danger">Expirada</Badge>;
+    default: return <Badge variant="neutral">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()) || "—"}</Badge>;
+  }
+};
+
+function Field({ label, value, icon, valueClassName }: { label: React.ReactNode; value: React.ReactNode; icon?: React.ReactNode; valueClassName?: string }) {
+  return (
+    <div>
+      <span className="text-sm text-muted-foreground flex items-center gap-1">{icon}{label}</span>
+      <p className={`font-medium ${valueClassName ?? ""}`}>{value || "—"}</p>
+    </div>
+  );
+}
+
 export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewModalProps) {
+  const { obras } = useObras();
+  const { data: clientes } = useDataQuery<{ id: string; nome: string }>({ queryKey: [...QUERY_KEYS.CLIENTES], table: "clientes" });
+
   if (!licenca) return null;
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case "Ativa": return <Badge className="bg-success text-[#000000]">{status}</Badge>;
-      case "Em Negociação": return <Badge className="bg-warning text-warning-foreground">{status}</Badge>;
-      case "Proposta Enviada": return <Badge className="bg-blue-500">{status}</Badge>;
-      case "Expirada": return <Badge className="bg-destructive">{status}</Badge>;
-      default: return <Badge variant="secondary">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
-    }
-  };
+  const obra = (obras as Obra[]).find((o) => o.id === licenca.obra_id);
+  const obraTitulo = obra?.titulo ?? null;
+  const artista = obraArtistaLabel(obra) || null;
+  const clienteNome = clientes.find((c) => c.id === licenca.cliente_id)?.nome ?? null;
+
+  const inicio = formatLicensingDate(licenca.data_inicio);
+  const fim = formatLicensingDate(licenca.data_fim);
+  const vigencia = inicio || fim ? `${inicio ?? "—"} até ${fim ?? "—"}` : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -39,22 +65,14 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
               <Music className="h-4 w-4" /> Informações da Licença
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Título</span>
-                <p className="font-medium">{licenca.titulo || "—"}</p>
-              </div>
+              <Field label="Título" value={licenca.titulo} />
               <div>
                 <span className="text-sm text-muted-foreground">Status</span>
                 <div className="mt-1">{getStatusBadge(licenca.status)}</div>
               </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Obra Musical</span>
-                <p className="font-medium">{licenca.obra || "—"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Artista</span>
-                <p className="font-medium">{licenca.artista || "—"}</p>
-              </div>
+              <Field label="Tipo de Licença" value={tipoLabel(licenca.tipo)} />
+              <Field label="Obra Musical" value={obraTitulo} />
+              <Field label="Artista" value={artista} />
             </div>
           </div>
 
@@ -64,39 +82,21 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
               <Building className="h-4 w-4" /> Cliente e Projeto
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground">Cliente</span>
-                <p className="font-medium">{licenca.cliente || "—"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Projeto</span>
-                <p className="font-medium">{licenca.projeto || "—"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground flex items-center gap-1"><Tv className="h-3 w-3" /> Mídia de Destino</span>
-                <p className="font-medium">{licenca.midia || "—"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" /> Território</span>
-                <p className="font-medium">{licenca.territorio || "Brasil"}</p>
-              </div>
+              <Field label="Cliente" value={clienteNome} />
+              <Field label="Projeto" value={licenca.projeto} />
+              <Field label="Mídia de Destino" icon={<Tv className="h-3 w-3" />} value={midiaLabel(licenca.midia_destino)} />
+              <Field label="Território" icon={<MapPin className="h-3 w-3" />} value={tipoLabel(licenca.territorio)} />
             </div>
           </div>
 
-          {/* Período e Valor */}
+          {/* Período e Remuneração */}
           <div className="space-y-4">
             <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
-              <DollarSign className="h-4 w-4" /> Período e Valor
+              <DollarSign className="h-4 w-4" /> Período e Remuneração
             </h3>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <span className="text-sm text-muted-foreground flex items-center gap-1"><Calendar className="h-3 w-3" /> Vigência</span>
-                <p className="font-medium">{licenca.vigencia || "—"}</p>
-              </div>
-              <div>
-                <span className="text-sm text-muted-foreground">Valor</span>
-                <p className="font-medium text-success">{licenca.valor || "—"}</p>
-              </div>
+              <Field label="Vigência" icon={<Calendar className="h-3 w-3" />} value={vigencia} />
+              <Field label="Remuneração" value={formatRemuneration(licenca)} valueClassName="text-success" />
             </div>
           </div>
 
@@ -105,6 +105,14 @@ export function LicencaViewModal({ open, onOpenChange, licenca }: LicencaViewMod
             <div className="space-y-2">
               <span className="text-sm text-muted-foreground">Observações</span>
               <p className="text-sm bg-muted/30 p-3 rounded-lg">{licenca.observacoes}</p>
+            </div>
+          )}
+
+          {/* Metadados */}
+          {(licenca.created_at || licenca.updated_at) && (
+            <div className="grid grid-cols-2 gap-4 border-t border-border/40 pt-3 text-xs text-muted-foreground">
+              {licenca.created_at && <div>Criada em: {formatLicensingDate(licenca.created_at)}</div>}
+              {licenca.updated_at && <div>Atualizada em: {formatLicensingDate(licenca.updated_at)}</div>}
             </div>
           )}
         </div>

@@ -17,6 +17,10 @@ import {
   QueryConversationDto,
   CreateMessageDto,
   CreateNoteDto,
+  AssignConversationDto,
+  CloseConversationDto,
+  ReopenConversationDto,
+  TransferConversationDto,
 } from './dto/conversations.dto';
 
 @ApiTags('Conversations')
@@ -91,9 +95,48 @@ export class ConversationsController {
   assign(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
-    @Body('assignee_id') assigneeId: string | null,
+    @Body() dto: AssignConversationDto,
   ) {
-    return this.service.assign(tenant.id, id, assigneeId);
+    return this.service.assign(tenant.id, id, dto.assignee_id ?? null);
+  }
+
+  @Patch(':id/transfer')
+  @RequireRole('editor')
+  @Audit('conversation.transferred')
+  @ApiOperation({ summary: 'Transferir conversa entre filas, setores ou responsaveis' })
+  transfer(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser() user: JwtAuth,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: TransferConversationDto,
+  ) {
+    return this.service.transfer(tenant.id, user.userId, id, dto);
+  }
+
+  @Patch(':id/close')
+  @RequireRole('editor')
+  @Audit('conversation.closed')
+  @ApiOperation({ summary: 'Finalizar atendimento com motivo e acoes de CRM' })
+  close(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser() user: JwtAuth,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: CloseConversationDto,
+  ) {
+    return this.service.close(tenant.id, user.userId, id, dto);
+  }
+
+  @Patch(':id/reopen')
+  @RequireRole('editor')
+  @Audit('conversation.reopened')
+  @ApiOperation({ summary: 'Reabrir atendimento finalizado' })
+  reopen(
+    @CurrentTenant() tenant: { id: string },
+    @CurrentUser() user: JwtAuth,
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReopenConversationDto,
+  ) {
+    return this.service.reopen(tenant.id, user.userId, id, dto);
   }
 
   // ── Messages ──────────────────────────────────────────────────────────────

@@ -27,7 +27,7 @@ export function ErrorFallback({ error, onRetry, onGoHome }: ErrorFallbackProps) 
 
       {isDev && error && (
         <div className="bg-muted/50 border border-border rounded-lg p-4 mb-6 max-w-lg text-left">
-          <p className="text-sm font-mono text-destructive break-all">
+          <p className="text-sm font-sans text-destructive break-all">
             {error.message}
           </p>
           {error.stack && (

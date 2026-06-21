@@ -1,0 +1,11 @@
+# PASSO 12-J.7 — Provider de dashboards do Grafana.
+apiVersion: 1
+providers:
+  - name: 'MusicOS RBAC'
+    orgId: 1
+    folder: 'RBAC'
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

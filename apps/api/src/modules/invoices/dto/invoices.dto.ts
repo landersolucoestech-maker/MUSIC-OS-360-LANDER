@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, IsPositive, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsPositive, IsDate, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -17,8 +17,10 @@ export class CreateInvoiceDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50)   recipientDoc?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() transactionId?: string;
-  @ApiPropertyOptional() @IsOptional() issuedAt?: Date;
-  @ApiPropertyOptional() @IsOptional() dueAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() issuedAt?: Date;
+  @ApiPropertyOptional({ type: String, format: 'date-time' })
+  @IsOptional() @Type(() => Date) @IsDate() dueAt?: Date;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
 }
 

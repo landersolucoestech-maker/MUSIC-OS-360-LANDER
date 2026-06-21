@@ -150,10 +150,25 @@ export type ShareTipo =
   | "sincronia"
   | "outro";
 
-/** Derivado de ShareStatus — fonte de verdade: @music-os-360/types */
-export type ShareStatus = `${PkgShareStatus}`;
+/**
+ * Status de um share. Inclui os valores do pacote (`@music-os-360/types`) e os
+ * valores realmente usados pela UI/mock (fluxo interno e externo de recebimento).
+ */
+export type ShareStatus =
+  | `${PkgShareStatus}`
+  | "parcial"
+  | "recebido"
+  | "enviado"
+  | "aceito"
+  | "recusado"
+  | "erro"
+  | "cancelado";
 
-export type ShareDirecao = "entrada" | "saida";
+/** Direção do fluxo de caixa do share (mantém aliases legados). */
+export type ShareDirecao = "entrada" | "saida" | "a_receber" | "a_enviar" | "a_pagar";
+
+/** Discriminador de tipo de share: lançamento interno vs recebível externo. */
+export type ShareType = "internal_release" | "external_receivable";
 
 // ── CRM / Lead ────────────────────────────────────────────────────────────────
 
@@ -292,3 +307,4 @@ export type LicencaStatus =
 
 /** Derivado de TakedownStatus — fonte de verdade: @music-os-360/types */
 export type TakedownStatus = `${PkgTakedownStatus}`;
+

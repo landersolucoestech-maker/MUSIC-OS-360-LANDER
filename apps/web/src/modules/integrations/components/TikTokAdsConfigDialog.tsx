@@ -75,8 +75,8 @@ export function TikTokAdsConfigDialog({
       <DialogContent className="max-w-lg" data-testid="dialog-tiktok-ads-config">
         <DialogHeader>
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-neutral-950/10 border border-neutral-300 dark:border-neutral-700 flex items-center justify-center">
-              <SiTiktok className="h-4.5 w-4.5 text-neutral-900 dark:text-neutral-100" />
+            <div className="w-9 h-9 rounded-lg bg-neutral-950/10 border border-neutral-300 flex items-center justify-center">
+              <SiTiktok className="h-4.5 w-4.5 text-neutral-900" />
             </div>
             <div>
               <DialogTitle>TikTok Ads Manager</DialogTitle>

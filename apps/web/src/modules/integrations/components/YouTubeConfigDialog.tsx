@@ -19,6 +19,7 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Badge } from "@/shared/ui/badge";
 import { CheckCircle, XCircle, Loader2, Trash2, ExternalLink } from "lucide-react";
+import { SiYoutube } from "react-icons/si";
 import {
   useYouTubeStatus,
   useYouTubeSaveCredentials,
@@ -64,7 +65,7 @@ export function YouTubeConfigDialog({ open, onOpenChange }: YouTubeConfigDialogP
         <DialogHeader>
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
-              <span className="text-xl">▶️</span>
+               <SiYoutube className="h-5 w-5 text-[#FF0000]" />
             </div>
             <div>
               <DialogTitle className="text-base">YouTube Music / Analytics</DialogTitle>
@@ -95,7 +96,7 @@ export function YouTubeConfigDialog({ open, onOpenChange }: YouTubeConfigDialogP
                 )}
               </div>
               {isConnected && (
-                <Badge variant="outline" className="border-emerald-500/30 bg-emerald-500/10 text-emerald-600 text-xs">
+                <Badge variant="success">
                   Ativo
                 </Badge>
               )}

@@ -1,0 +1,99 @@
+import type { ArtistProfileContext, IntelligenceEntity, IntelligenceSources } from "./types";
+import { estimateReleaseFrequency, inferCareerStage, mostCommon, score, stringifyValue, uniqueStrings } from "./utils";
+
+export function loadArtistContext(artist: IntelligenceEntity, sources: IntelligenceSources): ArtistProfileContext {
+  const artistRecord = sources.artists.find((item) => item.id === artist.id);
+  const obras = sources.obras.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
+  const fonogramas = sources.fonogramas.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
+  const releases = sources.releases.filter((item) => item.artista_id === artist.id || item.artistas?.id === artist.id);
+  const projects = sources.projects.filter((item) => item.artistId === artist.id);
+  const campaigns = sources.campaigns.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
+  const contents = sources.contents.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
+  const tasks = sources.tasks.filter((item) => item.targetType === "artista" && item.targetId === artist.id);
+  const pitchings = sources.suggestions.filter((item) => item.targetId === artist.id || item.targetName === artist.label);
+  const genreCandidates = [
+    artistRecord?.genero_musical,
+    ...obras.map((item) => item.genero),
+    ...fonogramas.map((item) => item.genero_musical),
+    ...releases.map((item) => item.genero),
+  ].filter(Boolean).map(String);
+  const publicSignals = [
+    artistRecord?.instagram ? `Instagram: ${artistRecord.instagram}` : "",
+    artistRecord?.instagram_seguidores ? `Instagram seguidores: ${artistRecord.instagram_seguidores}` : "",
+    artistRecord?.tiktok ? `TikTok: ${artistRecord.tiktok}` : "",
+    artistRecord?.tiktok_seguidores ? `TikTok seguidores: ${artistRecord.tiktok_seguidores}` : "",
+    artistRecord?.spotify_ouvintes ? `Spotify ouvintes: ${artistRecord.spotify_ouvintes}` : "",
+    artistRecord?.youtube_inscritos ? `YouTube inscritos: ${artistRecord.youtube_inscritos}` : "",
+  ].filter(Boolean);
+  const releaseDates = releases.map((item) => item.data_lancamento).filter(Boolean).map(String).sort();
+  const completedTasks = tasks.filter((item) => item.status === "concluida").length;
+  const frequency = estimateReleaseFrequency(releaseDates);
+
+  return {
+    artist,
+    artistRecord,
+    predominantGenre: mostCommon(genreCandidates),
+    subgenres: uniqueStrings([
+      ...fonogramas.map((item) => stringifyValue(item.classificacao)),
+      ...releases.map((item) => stringifyValue(item["subgenero"])),
+    ]),
+    moods: uniqueStrings([
+      ...releases.map((item) => stringifyValue(item["mood"])),
+      ...fonogramas.map((item) => stringifyValue(item["mood"])),
+    ]),
+    references: uniqueStrings([
+      ...obras.map((item) => stringifyValue(item.compositor || item.compositores)),
+      ...fonogramas.map((item) => stringifyValue(item.produtores || item.gravadora || item.agregadora)),
+      ...releases.map((item) => stringifyValue(item.distribuidora || item.gravadora)),
+    ]),
+    publicSignals,
+    careerStage: inferCareerStage(artistRecord?.spotify_ouvintes, artistRecord?.instagram_seguidores, releases.length),
+    growthRhythm: inferGrowthRhythm(releaseDates, publicSignals),
+    catalog: {
+      totalReleases: releases.length,
+      totalTracks: fonogramas.length || obras.length,
+      releaseDates,
+      frequency,
+      isrcs: uniqueStrings([...obras.map((item) => item.isrc), ...fonogramas.map((item) => item.isrc), ...releases.map((item) => item.isrc_global)]),
+    },
+    operations: {
+      projects,
+      campaigns,
+      contents,
+      tasks,
+      pitchings,
+      completedTasks,
+      openTasks: tasks.length - completedTasks,
+    },
+    scores: {
+      geral: score(releases.length + campaigns.length + publicSignals.length + completedTasks, 24),
+      branding: score(publicSignals.length + contents.length, 16),
+      catalogo: score(releases.length + fonogramas.length, 20),
+      engajamento: score(publicSignals.length + campaigns.length, 12),
+      consistencia: releaseDates.length >= 2 ? score(releaseDates.length, 10) : 20,
+      crescimento: score((artistRecord?.spotify_ouvintes ?? 0) / 1000 + releases.length, 120),
+    },
+    bottleneck: inferBottleneck({ releases: releases.length, campaigns: campaigns.length, publicSignals: publicSignals.length, tasks: tasks.length }),
+    actionPlan: {
+      d30: ["Atualizar perfil, press kit e narrativa central.", "Selecionar 3 conteudos de maior potencial para Reels/TikTok/Shorts.", "Preparar uma campanha curta de descoberta."],
+      d60: ["Organizar proximo ciclo de lancamento ou colaboracao.", "Testar pitch para curadores e imprensa segmentada.", "Revisar canais com baixa consistencia."],
+      d90: ["Consolidar territorio artistico e calendario trimestral.", "Criar ativo audiovisual principal.", "Transformar aprendizados em playbook de marketing."],
+    },
+  };
+}
+
+function inferGrowthRhythm(dates: string[], socialSignals: string[]) {
+  if (dates.length >= 6 && socialSignals.length >= 3) return "crescimento com base de catalogo e canais ativos";
+  if (dates.length >= 3) return "crescimento em validacao por consistencia de lancamentos";
+  if (socialSignals.length >= 2) return "crescimento dependente de presenca digital";
+  return "ritmo ainda pouco mensuravel";
+}
+
+function inferBottleneck(input: { releases: number; campaigns: number; publicSignals: number; tasks: number }) {
+  if (input.releases < 2) return "catalogo ainda pequeno para leitura de consistencia";
+  if (input.publicSignals < 2) return "poucos sinais de publico e canais ativos";
+  if (input.campaigns < 1) return "marketing ainda sem campanhas estruturadas";
+  if (input.tasks < 3) return "execução operacional pouco documentada";
+  return "priorização estratégica e repetição do que performa melhor";
+}
+

@@ -12,7 +12,7 @@ interface PlatformMiniTrendProps {
   metric?: "followers" | "views" | "popularity";
   /** Cor do traço da sparkline (CSS). Default: branco translúcido. */
   strokeColor?: string;
-  /** Aparência do texto: tiles coloridos usam "white", neutros podem usar "muted". */
+  /** Contraste do texto: tiles coloridos usam "white", neutros podem usar "muted". */
   variant?: "white" | "muted";
   /** Prefixo de data-testid para o badge/sparkline. */
   testIdPrefix: string;
@@ -70,7 +70,7 @@ export function PlatformMiniTrend({
           className={cn(
             "inline-flex items-center gap-0.5 rounded-full px-1.5 py-0.5 text-[10px] font-medium italic",
             onColored
-              ? "bg-white/20 text-white/90"
+              ? "bg-muted text-muted-foreground"
               : "bg-muted text-muted-foreground",
           )}
           aria-label="sem histórico ainda"
@@ -89,7 +89,7 @@ export function PlatformMiniTrend({
   // Cores: em tiles coloridos preferimos contraste em branco/translúcido;
   // em tiles neutros usamos verde/vermelho/cinza padrão.
   const badgeClass = onColored
-    ? "bg-white/20 text-white"
+    ? "bg-muted text-foreground"
     : direction === "up"
     ? "bg-success/15 text-success"
     : direction === "down"
@@ -187,3 +187,4 @@ function Sparkline({ data, width, height, stroke, testId }: SparklineProps) {
     </svg>
   );
 }
+

@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { AlertTriangle, Link2, FileText } from "lucide-react";
 import { takedownSchema, type TakedownFormData } from "@/modules/monitoring/lib/takedown-schema";
 import { useTakedowns } from "@/modules/monitoring/hooks/useTakedowns";
+import { normalizeTakedown } from "@/modules/monitoring/lib/takedown-format";
 
 interface TakedownFormModalProps {
   open: boolean;
@@ -47,6 +48,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
       motivo: "",
       descricao: "",
       prioridade: "media",
+      status: "pendente",
       dataIdentificacao: new Date().toISOString().split("T")[0],
       evidencias: "",
       observacoes: "",
@@ -56,19 +58,21 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
   useEffect(() => {
     if (!open) return;
     if (takedown) {
+      const n = normalizeTakedown(takedown);
       reset({
-        titulo: takedown.titulo || "",
-        tipo: takedown.tipo || "enviado",
-        obraAfetada: takedown.obraAfetada || "",
-        artista: takedown.artista || "",
-        plataforma: takedown.plataforma || "",
-        urlInfratora: takedown.urlInfratora || "",
-        motivo: takedown.motivo || "",
-        descricao: takedown.descricao || "",
-        prioridade: takedown.prioridade || "media",
-        dataIdentificacao: takedown.dataIdentificacao || new Date().toISOString().split("T")[0],
-        evidencias: takedown.evidencias || "",
-        observacoes: takedown.observacoes || "",
+        titulo: n.titulo,
+        tipo: n.tipo || "enviado",
+        obraAfetada: n.obra_afetada,
+        artista: n.artista,
+        plataforma: n.plataforma,
+        urlInfratora: n.url_infracao,
+        motivo: n.motivo,
+        descricao: n.descricao,
+        prioridade: (n.prioridade || "media") as TakedownFormData["prioridade"],
+        status: (n.status || "pendente") as TakedownFormData["status"],
+        dataIdentificacao: n.data || new Date().toISOString().split("T")[0],
+        evidencias: n.evidencias,
+        observacoes: n.observacoes,
       });
     } else {
       reset({
@@ -81,6 +85,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
         motivo: "",
         descricao: "",
         prioridade: "media",
+        status: "pendente",
         dataIdentificacao: new Date().toISOString().split("T")[0],
         evidencias: "",
         observacoes: "",
@@ -88,13 +93,31 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
     }
   }, [open, takedown, reset]);
 
+  /** Converte os campos do formulário no shape canônico snake_case persistido. */
+  const buildPayload = (data: TakedownFormData) => ({
+    titulo: data.titulo,
+    tipo: data.tipo || null,
+    obra_afetada: data.obraAfetada || null,
+    artista: data.artista || null,
+    plataforma: data.plataforma,
+    prioridade: data.prioridade,
+    url_infracao: data.urlInfratora || null,
+    motivo: data.motivo,
+    descricao: data.descricao || null,
+    evidencias: data.evidencias || null,
+    data_identificacao: data.dataIdentificacao || null,
+    status: data.status,
+    observacoes: data.observacoes || null,
+  });
+
   const onSubmit = async (data: TakedownFormData) => {
     if (isViewMode) return;
     try {
+      const payload = buildPayload(data);
       if (mode === "edit" && takedown?.id) {
-        await updateTakedown.mutateAsync({ id: takedown.id as string, data: data as never });
+        await updateTakedown.mutateAsync({ id: takedown.id as string, data: payload as never });
       } else {
-        await addTakedown.mutateAsync(data as never);
+        await addTakedown.mutateAsync(payload as never);
       }
       onOpenChange(false);
     } catch {
@@ -173,34 +196,27 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
                 <FieldError error={errors.artista?.message} />
               </div>
             </div>
-          </div>
-
-          {/* Plataforma e URL */}
-          <div className="space-y-4">
-            <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
-              <Link2 className="h-4 w-4" /> Plataforma e Localização
-            </h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>Plataforma *</Label>
+                <Label>Status</Label>
                 <Controller
-                  name="plataforma"
+                  name="status"
                   control={control}
                   render={({ field }) => (
-                    <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
-                      <SelectTrigger className={errors.plataforma ? "border-destructive" : ""} data-testid="select-plataforma">
-                        <SelectValue placeholder="Selecione a plataforma" />
+                    <Select value={field.value ?? "pendente"} onValueChange={field.onChange} disabled={isViewMode}>
+                      <SelectTrigger data-testid="select-status">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {plataformas.map(p => (
-                          <SelectItem key={p} value={p.toLowerCase().replace(/ /g, "_")}>{p}</SelectItem>
-                        ))}
+                        <SelectItem value="pendente">Pendente</SelectItem>
+                        <SelectItem value="em_andamento">Em Andamento</SelectItem>
+                        <SelectItem value="concluido">Concluído</SelectItem>
+                        <SelectItem value="rejeitado">Rejeitado</SelectItem>
                       </SelectContent>
                     </Select>
                   )}
                 />
-                <FieldError error={errors.plataforma?.message} />
               </div>
               <div className="space-y-2">
                 <Label>Prioridade</Label>
@@ -221,6 +237,34 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
                   )}
                 />
               </div>
+            </div>
+          </div>
+
+          {/* Plataforma e URL */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-sm text-muted-foreground flex items-center gap-2">
+              <Link2 className="h-4 w-4" /> Plataforma e Localização
+            </h3>
+
+            <div className="space-y-2">
+              <Label>Plataforma *</Label>
+              <Controller
+                name="plataforma"
+                control={control}
+                render={({ field }) => (
+                  <Select value={field.value ?? ""} onValueChange={field.onChange} disabled={isViewMode}>
+                    <SelectTrigger className={errors.plataforma ? "border-destructive" : ""} data-testid="select-plataforma">
+                      <SelectValue placeholder="Selecione a plataforma" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {plataformas.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              <FieldError error={errors.plataforma?.message} />
             </div>
 
             <div className="space-y-2">
@@ -254,7 +298,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
                       </SelectTrigger>
                       <SelectContent>
                         {motivos.map(m => (
-                          <SelectItem key={m} value={m.toLowerCase().replace(/ /g, "_")}>{m}</SelectItem>
+                          <SelectItem key={m} value={m}>{m}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -273,6 +317,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
                       onChange={field.onChange}
                       disabled={isViewMode}
                       placeholder="Selecione a data"
+                      displayFormat="dd/MM/yyyy"
                       data-testid="datepicker-data-identificacao"
                     />
                   )}
@@ -322,7 +367,7 @@ export function TakedownFormModal({ open, onOpenChange, takedown, mode }: Takedo
               {isViewMode ? "Fechar" : "Cancelar"}
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={isSubmitting} data-testid="button-submit">
+              <Button type="submit" size="sm" className="h-8 text-xs gap-1.5" disabled={isSubmitting} data-testid="button-submit">
                 {mode === "create" ? "Registrar Takedown" : "Salvar Alterações"}
               </Button>
             )}

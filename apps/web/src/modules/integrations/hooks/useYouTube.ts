@@ -127,3 +127,4 @@ export function useYouTubeVideoMetrics(videoId?: string) {
 export function useYouTubeContentIdClaims() {
   return { data: null, isLoading: false, fetch: () => {} };
 }
+

@@ -31,7 +31,7 @@ const PLANS = [
       "Contratos e CRM",
       "Suporte por e-mail",
     ],
-    color: "border-blue-200 dark:border-blue-800",
+    color: "border-blue-200",
   },
   {
     id:          "professional" as const,
@@ -48,7 +48,7 @@ const PLANS = [
       "RH, Eventos e Estoque",
       "Suporte prioritário",
     ],
-    color:     "border-purple-200 dark:border-purple-800",
+    color:     "border-primary/30",
     highlight: true,
   },
   {
@@ -66,7 +66,7 @@ const PLANS = [
       "Analytics avançado",
       "SLA dedicado",
     ],
-    color: "border-gold-200 dark:border-yellow-800",
+    color: "border-gold-200",
   },
 ];
 
@@ -210,7 +210,7 @@ export default function Billing() {
 
       {/* Planos disponíveis */}
       <div>
-        <h2 className="text-sm font-medium text-muted-foreground mb-4 uppercase tracking-wide">
+        <h2 className="text-sm font-medium text-muted-foreground mb-4  tracking-wide">
           Planos disponíveis
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -223,7 +223,7 @@ export default function Billing() {
                 key={plan.id}
                 className={`relative border-2 transition-colors ${plan.color} ${
                   isCurrentPlan ? "bg-accent/20" : ""
-                } ${plan.highlight ? "shadow-md" : ""}`}
+                }`}
               >
                 {plan.highlight && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
@@ -262,9 +262,9 @@ export default function Billing() {
                     <Button
                       variant="outline"
                       className="w-full"
-                      onClick={() => window.open("mailto:vendas@musicos360.com?subject=Enterprise", "_blank")}
+                      onClick={() => window.open("mailto:comercial@musicos360.com?subject=Enterprise", "_blank")}
                     >
-                      Falar com vendas
+                      Falar com comercial
                       <ArrowRight className="ml-2 h-3.5 w-3.5" />
                     </Button>
                   ) : (
@@ -290,3 +290,5 @@ export default function Billing() {
     </div>
   );
 }
+
+

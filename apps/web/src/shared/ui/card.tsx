@@ -7,7 +7,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "rounded-lg border border-border/80 bg-card text-card-foreground shadow-xs",
+        "rounded-lg border border-border bg-card text-card-foreground",
         className,
       )}
       {...props}
@@ -43,7 +43,15 @@ CardDescription.displayName = "CardDescription";
 
 const CardContent = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElement>>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("p-5 pt-0", className)} {...props} />
+    <div
+      ref={ref}
+      className={cn(
+        "p-5 pt-0",
+        className,
+        "[&:has([data-list-section-header='true'])]:p-5",
+      )}
+      {...props}
+    />
   ),
 );
 CardContent.displayName = "CardContent";

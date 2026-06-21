@@ -228,8 +228,8 @@ export function artistaToExportRow(a: Artista): Record<string, string> {
     "Chave PIX":                 str(a.chave_pix),
     "Titular da Conta":          str(a.titular_conta),
     // 4. Plataformas (URLs completas para re-importação)
-    "Spotify URL":  a.spotify_artist_id  ? `https://open.spotify.com/artist/${a.spotify_artist_id}`  : "",
-    "YouTube URL":  a.youtube_channel_id ? `https://www.youtube.com/channel/${a.youtube_channel_id}` : "",
+    "Spotify URL":  str(a.spotify_artist_url),
+    "YouTube URL":  str(a.youtube_channel_url),
     "Deezer URL":   str(a.deezer_url),
     "Apple Music URL": str(a.apple_music_url),
     "SoundCloud URL":  str(a.soundcloud_url),
@@ -309,7 +309,7 @@ export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, 
     data_nascimento: strOrNull(p("Data de Nascimento", "data_nascimento")),
     cpf_cnpj:        strOrNull(p("CPF", "CPF/CNPJ", "cpf_cnpj")),
     rg:              strOrNull(p("RG", "rg")),
-    endereco:        strOrNull(p("Endereço completo", "Endereco completo", "Endereço", "Endereco", "endereco")),
+    endereco:        strOrNull(p("Endereço completo", "Endereço completo", "Endereço", "Endereco", "endereco")),
     telefone:        strOrNull(p("Telefone", "telefone")),
     email:           strOrNull(p("Email", "email")),
     // 3. Bancário
@@ -319,8 +319,8 @@ export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, 
     chave_pix:       strOrNull(p("Chave PIX", "chave_pix")),
     titular_conta:   strOrNull(p("Titular da Conta", "titular_conta")),
     // 4. Plataformas
-    spotify_artist_id:  extractSpotifyId(strOrNull(p("Spotify URL", "spotify_artist_id"))),
-    youtube_channel_id: extractYoutubeId(strOrNull(p("YouTube URL", "youtube_channel_id"))),
+    spotify_artist_url:  strOrNull(p("Spotify URL", "spotify_artist_url")),
+    youtube_channel_url: strOrNull(p("YouTube URL", "youtube_channel_url")),
     deezer_url:         strOrNull(p("Deezer URL", "deezer_url")),
     apple_music_url:    strOrNull(p("Apple Music URL", "apple_music_url")),
     soundcloud_url:     strOrNull(p("SoundCloud URL", "soundcloud_url")),
@@ -618,15 +618,11 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     chavePix: str(artista.chave_pix),
     titularConta: str(artista.titular_conta),
     // Plataformas — reconstrói URLs públicas a partir dos IDs salvos
-    spotify: artista.spotify_artist_id
-      ? `https://open.spotify.com/artist/${artista.spotify_artist_id}`
-      : "",
+    spotify: str(artista.spotify_artist_url),
     spotifyOuvintes: artista.spotify_ouvintes != null ? String(artista.spotify_ouvintes) : "",
     instagram: str(artista.instagram),
     instagramSeguidores: artista.instagram_seguidores != null ? String(artista.instagram_seguidores) : "",
-    youtube: artista.youtube_channel_id
-      ? `https://www.youtube.com/channel/${artista.youtube_channel_id}`
-      : "",
+    youtube: str(artista.youtube_channel_url),
     youtubeInscritos: artista.youtube_inscritos != null ? String(artista.youtube_inscritos) : "",
     tiktok: str(artista.tiktok),
     tiktokSeguidores: artista.tiktok_seguidores != null ? String(artista.tiktok_seguidores) : "",
@@ -755,9 +751,9 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     chave_pix: strOrNull(f.chavePix),
     titular_conta: strOrNull(f.titularConta),
     // Plataformas
-    spotify_artist_id: extractSpotifyId(f.spotify),
+    spotify_artist_url: extractSpotifyId(f.spotify),
     spotify_ouvintes: numOrNull(f.spotifyOuvintes),
-    youtube_channel_id: extractYoutubeId(f.youtube),
+    youtube_channel_url: extractYoutubeId(f.youtube),
     youtube_inscritos: numOrNull(f.youtubeInscritos),
     deezer_url: strOrNull(f.deezer),
     deezer_fas: numOrNull(f.deezerFas),
@@ -800,3 +796,4 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
 
 // Re-export emptyRelacionamento for use in the form component
 export { emptyRelacionamento };
+

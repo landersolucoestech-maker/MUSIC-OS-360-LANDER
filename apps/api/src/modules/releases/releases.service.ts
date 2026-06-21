@@ -1,12 +1,13 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Optional } from '@nestjs/common';
 import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
-import { ReleaseEntity } from '../../database/entities';
+import { ReleaseEntity, ArtistEntity } from '../../database/entities';
 import type { CreateReleaseDto, UpdateReleaseDto, QueryReleaseDto } from './dto/releases.dto';
 import { ReleaseStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 
 @Injectable()
 export class ReleasesService {
@@ -17,6 +18,7 @@ export class ReleasesService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly workflowService: WorkflowService,
     private readonly events: EventsService,
+    @Optional() private readonly activityLogs?: ActivityLogsService,
   ) {
     if (ds) {
       this.ds   = ds;
@@ -27,6 +29,12 @@ export class ReleasesService {
   async list(tenantId: string, q: QueryReleaseDto) {
     const qb = this.repo!
       .createQueryBuilder('r')
+      .leftJoinAndMapOne(
+        'r.artistas',
+        ArtistEntity,
+        'artistas',
+        'artistas.id = r.artista_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
+      )
       .where('r.tenant_id = :tenantId', { tenantId })
       .andWhere('r.deleted_at IS NULL');
 
@@ -51,6 +59,12 @@ export class ReleasesService {
   ): Promise<ReleaseEntity & { allowed_transitions: { to: string; label?: string }[] }> {
     const result = await this.repo!
       .createQueryBuilder('r')
+      .leftJoinAndMapOne(
+        'r.artistas',
+        ArtistEntity,
+        'artistas',
+        'artistas.id = r.artista_id AND artistas.tenant_id = r.tenant_id AND artistas.deleted_at IS NULL',
+      )
       .where('r.id = :id AND r.tenant_id = :tenantId AND r.deleted_at IS NULL', { id, tenantId })
       .getOne();
     if (!result) throw new NotFoundException('Lançamento não encontrado');
@@ -74,7 +88,32 @@ export class ReleasesService {
       created_by:      userId,
       updated_by:      userId,
     });
-    return this.repo!.save(entity);
+    const saved = await this.repo!.save(entity);
+    await this.recordActivity(tenantId, userId, saved.id, 'created', `Lancamento "${saved.titulo}" criado`, {
+      titulo: saved.titulo,
+      tipo: saved.tipo,
+      artistId: saved.artista_id,
+    });
+
+    // Dispara automações nativas internas (ex.: release-checklist). Os handlers são
+    // assíncronos e à prova de falha — nunca revertem a criação do lançamento.
+    this.events.emitTyped(DOMAIN_EVENTS.RELEASE_CREATED, {
+      tenantId,
+      userId,
+      aggregateType: 'release',
+      aggregateId:   saved.id,
+      payload: {
+        releaseId: saved.id,
+        tenantId,
+        titulo:    saved.titulo,
+        tipo:      saved.tipo,
+        artistId:  saved.artista_id,
+        createdBy: userId,
+        createdAt: (saved.created_at ?? new Date()).toISOString(),
+      },
+    });
+
+    return saved;
   }
 
   async update(
@@ -201,5 +240,27 @@ export class ReleasesService {
       { deleted_at: new Date() } as QueryDeepPartialEntity<ReleaseEntity>,
     );
     return { deleted: true };
+  }
+
+  private async recordActivity(
+    tenantId: string,
+    userId: string,
+    entityId: string,
+    action: string,
+    description: string,
+    metadata: Record<string, unknown>,
+  ) {
+    if (!this.activityLogs) return;
+    try {
+      await this.activityLogs.create(tenantId, userId || 'system', {
+        entity_type: 'release',
+        entity_id:   entityId,
+        action,
+        description,
+        metadata,
+      });
+    } catch {
+      // Activity feed must not break the CRUD response; failures still surface via audit/runtime checks.
+    }
   }
 }

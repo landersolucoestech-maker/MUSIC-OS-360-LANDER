@@ -12,6 +12,7 @@ import { Job }                        from 'bullmq';
 import { DataSource, Repository }     from 'typeorm';
 import { QUEUE_NAMES, NOTIFICATION_JOB_NAMES } from '../queue.constants';
 import { DATA_SOURCE }                from '../../database/database.module';
+import { DatabaseContextService }     from '../../database/database-context.service';
 import { NotificationEntity }         from '../../database/entities';
 import { WsGateway }                  from '../../core/websocket/ws.gateway';
 
@@ -36,6 +37,7 @@ export class NotificationsProcessor extends WorkerHost {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly wsGateway: WsGateway,
+    private readonly dbContext: DatabaseContextService,
   ) {
     super();
     if (ds) this.repo = ds.getRepository(NotificationEntity);
@@ -56,18 +58,29 @@ export class NotificationsProcessor extends WorkerHost {
   private async handleSend(job: Job<NotificationPayload>): Promise<unknown> {
     const d = job.data;
     if (!this.repo) { this.logger.warn('[notifications/send] DB não configurado — pulando persistência'); return null; }
+    // Fail-closed: an async job without a tenant must NOT touch tenant-scoped data.
+    if (!d.tenantId) { this.logger.warn(`[notifications/send] job ${job.id} sem tenantId — abortado (fail-closed)`); return null; }
 
-    const entity = this.repo.create({
-      tenant_id: d.tenantId,
-      user_id:   d.userId ?? '',
-      title:     d.title,
-      body:      d.body     ?? null,
-      type:      d.type,
-      entity:    d.entity   ?? null,
-      entity_id: d.entityId ?? null,
-      metadata:  d.metadata ?? {},
-    });
-    const saved = (await this.repo.save(entity)) as NotificationEntity;
+    // P2-5: run the write inside the tenant DB context so RLS applies once the
+    // app connects via the NOBYPASSRLS role + DATABASE_SESSION_CONTEXT_ENABLED=true.
+    // Flag OFF → passthrough (default manager), identical to current behaviour.
+    const saved = await this.dbContext.runInTenantContext(
+      { tenantId: d.tenantId, orgId: null, role: null },
+      async (manager) => {
+        const repo = manager ? manager.getRepository(NotificationEntity) : this.repo!;
+        const entity = repo.create({
+          tenant_id: d.tenantId,
+          user_id:   d.userId ?? '',
+          title:     d.title,
+          body:      d.body     ?? null,
+          type:      d.type,
+          entity:    d.entity   ?? null,
+          entity_id: d.entityId ?? null,
+          metadata:  d.metadata ?? {},
+        });
+        return (await repo.save(entity)) as NotificationEntity;
+      },
+    );
 
     this.logger.log(`[notifications/send] persistida id=${saved.id}`);
 

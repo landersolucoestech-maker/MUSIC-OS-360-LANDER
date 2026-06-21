@@ -41,7 +41,7 @@ export function SchedulerToolbar({
   extraFilters,
 }: SchedulerToolbarProps) {
   return (
-    <div className="sticky top-0 z-30 rounded-[28px] border border-border/40 bg-background/95 px-4 py-3 shadow-sm backdrop-blur-sm">
+    <div className="sticky top-0 z-30 rounded-[28px] border border-border/40 bg-background/95 px-4 py-3 ">
       <div className="flex flex-wrap items-center gap-3">
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" className="h-10" onClick={onToday}>

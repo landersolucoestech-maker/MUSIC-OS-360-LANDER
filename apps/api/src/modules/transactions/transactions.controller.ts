@@ -7,6 +7,7 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiHeader } from '@nestjs/swagger';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser } from '../../core/decorators/current-user.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { RequireRole } from '../../core/decorators/roles.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { IdempotencyInterceptor } from '../../core/interceptors/idempotency.interceptor';
@@ -28,14 +29,16 @@ export class TransactionsController {
 
   @Get()
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Listar transacções do tenant' })
+  @RequirePermission('transaction:read')
+  @ApiOperation({ summary: 'Listar transações do tenant' })
   list(@CurrentTenant() tenant: { id: string }, @Query() query: QueryTransactionDto) {
     return this.service.list(tenant.id, query);
   }
 
   @Get(':id')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Obter transacção por ID' })
+  @RequirePermission('transaction:read')
+  @ApiOperation({ summary: 'Obter transação por ID' })
   findById(
     @CurrentTenant() tenant: { id: string },
     @Param('id', ParseUUIDPipe) id: string,
@@ -45,10 +48,11 @@ export class TransactionsController {
 
   @Post()
   @RequireRole('financial')
+  @RequirePermission('transaction:create')
   @Audit('transaction.created')
   @UseInterceptors(IdempotencyInterceptor)
-  @ApiOperation({ summary: 'Criar transacção (financial+)' })
-  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne duplicação de transacções', required: false })
+  @ApiOperation({ summary: 'Criar transação (financial+)' })
+  @ApiHeader({ name: 'X-Idempotency-Key', description: 'UUID único por operação — previne duplicação de transações', required: false })
   create(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
@@ -59,8 +63,9 @@ export class TransactionsController {
 
   @Put(':id')
   @RequireRole('financial')
+  @RequirePermission('transaction:update')
   @Audit('transaction.updated')
-  @ApiOperation({ summary: 'Actualizar transacção (financial+)' })
+  @ApiOperation({ summary: 'Actualizar transação (financial+)' })
   replace(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
@@ -72,8 +77,9 @@ export class TransactionsController {
 
   @Patch(':id')
   @RequireRole('financial')
+  @RequirePermission('transaction:update')
   @Audit('transaction.updated')
-  @ApiOperation({ summary: 'Actualizar transacção parcial (financial+)' })
+  @ApiOperation({ summary: 'Actualizar transação parcial (financial+)' })
   update(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
@@ -85,8 +91,9 @@ export class TransactionsController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('transaction:cancel')
   @Audit('transaction.cancelled')
-  @ApiOperation({ summary: 'Cancelar transacção (manager+)' })
+  @ApiOperation({ summary: 'Cancelar transação (manager+)' })
   remove(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },

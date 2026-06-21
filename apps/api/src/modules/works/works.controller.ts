@@ -7,6 +7,7 @@ import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { CurrentTenant }   from '../../core/decorators/current-tenant.decorator';
 import { CurrentUser }     from '../../core/decorators/current-user.decorator';
 import { RequireRole }     from '../../core/decorators/roles.decorator';
+import { RequirePermission } from '../../core/decorators/permissions.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { WorksService }    from './works.service';
 import { CreateWorkDto }   from './dto/create-work.dto';
@@ -21,6 +22,7 @@ export class WorksController {
 
   @Get()
   @RequireRole('viewer')
+  @RequirePermission('work:read')
   @ApiOperation({ summary: 'Listar obras do tenant' })
   list(@CurrentTenant() tenant: { id: string }, @Query() query: QueryWorkDto) {
     return this.service.list(tenant.id, query);
@@ -28,6 +30,7 @@ export class WorksController {
 
   @Get(':id')
   @RequireRole('viewer')
+  @RequirePermission('work:read')
   @ApiOperation({ summary: 'Obter obra por ID' })
   findById(@CurrentTenant() tenant: { id: string }, @Param('id', ParseUUIDPipe) id: string) {
     return this.service.findById(tenant.id, id);
@@ -35,6 +38,7 @@ export class WorksController {
 
   @Post()
   @RequireRole('editor')
+  @RequirePermission('work:create')
   @Audit('work.created')
   @ApiOperation({ summary: 'Criar obra musical' })
   create(
@@ -47,6 +51,7 @@ export class WorksController {
 
   @Patch(':id')
   @RequireRole('editor')
+  @RequirePermission('work:update')
   @Audit('work.updated')
   @ApiOperation({ summary: 'Actualizar obra' })
   update(
@@ -60,6 +65,7 @@ export class WorksController {
 
   @Delete(':id')
   @RequireRole('manager')
+  @RequirePermission('work:delete')
   @Audit('work.deleted')
   @ApiOperation({ summary: 'Remover obra (soft delete)' })
   remove(@CurrentTenant() tenant: { id: string }, @Param('id', ParseUUIDPipe) id: string) {

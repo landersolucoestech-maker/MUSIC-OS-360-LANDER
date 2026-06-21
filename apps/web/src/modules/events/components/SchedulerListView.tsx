@@ -1,9 +1,10 @@
 import { format } from "date-fns";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { MoreHorizontal, Eye, Pencil, Trash2 } from "lucide-react";
-import { formatCurrency, formatDate } from "@/shared/lib/format-utils";
+import { formatCurrency, formatDate, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import type { AgendaEvent } from "@/modules/events/components/types";
 
 interface SchedulerListViewProps {
@@ -28,8 +29,13 @@ export function SchedulerListView({ events, selectedIds = [], onSelect, onSelect
   return (
     <div className="space-y-4">
       {onSelectAll ? (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-3xl border border-border/60 bg-muted/60 p-4 text-sm text-foreground">
-          <div className="flex items-center gap-3">
+        <div className="rounded-3xl border border-border/60 bg-card p-4">
+          <ListSectionHeader
+            title="Lista de Eventos"
+            count={events.length}
+            description="Acompanhe eventos, participantes, datas, locais, cachês e status"
+            action={
+              <div className="flex flex-wrap items-center justify-end gap-3 text-sm text-foreground">
             <button
               type="button"
               className="flex h-9 w-9 items-center justify-center rounded-lg border border-border/70 bg-background text-sm transition hover:border-primary/70"
@@ -37,14 +43,15 @@ export function SchedulerListView({ events, selectedIds = [], onSelect, onSelect
             >
               {selectedIds.length === events.length ? "✓" : "☐"}
             </button>
-            <span>{selectedIds.length === events.length ? "Todos selecionados" : "Selecionar todos"}</span>
-          </div>
-          <span className="text-muted-foreground">{events.length} evento(s)</span>
+                <span>{selectedIds.length === events.length ? "Todos selecionados" : "Selecionar todos"}</span>
+              </div>
+            }
+          />
         </div>
       ) : null}
 
       {events.map((event) => (
-        <div key={event.id} className="rounded-3xl border border-border/60 bg-card p-4 shadow-sm transition hover:border-primary/60 hover:shadow-lg">
+        <div key={event.id} className="rounded-3xl border border-border/60 bg-card p-4 transition hover:border-primary/60">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="flex items-start gap-3">
               {onSelect ? (
@@ -57,7 +64,7 @@ export function SchedulerListView({ events, selectedIds = [], onSelect, onSelect
                 </button>
               ) : null}
               <div className="min-w-0 space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-2 text-xs  tracking-[0.2em] text-muted-foreground">
                   <span>{formatDate(event.startDate)}</span>
                   <span>•</span>
                   <span>{event.allDay ? "Dia inteiro" : format(event.startDate, "HH:mm")}</span>
@@ -70,12 +77,12 @@ export function SchedulerListView({ events, selectedIds = [], onSelect, onSelect
                 </Badge>
               </div>
               <p className="text-sm text-muted-foreground">
-                {event.artist ?? "Artista não informado"} · {event.location ?? "Local não informado"}
+                {event.artist ?? "Participantes não informados"} · {event.location ?? "Local não informado"}
               </p>
             </div>
 
             <div className="flex flex-col items-start gap-3 sm:items-end">
-              <div className="text-sm font-semibold text-foreground">{event.cache != null ? formatCurrency(event.cache) : "-"}</div>
+              <div className={`text-sm font-semibold ${event.cache != null ? getMonetarySemanticClass("neutral") : "text-foreground"}`}>{event.cache != null ? formatCurrency(event.cache) : "-"}</div>
               <Badge className="rounded-full px-2 py-1 text-xs font-semibold bg-muted/70 text-foreground">
                 {event.status}
               </Badge>
@@ -110,3 +117,4 @@ export function SchedulerListView({ events, selectedIds = [], onSelect, onSelect
     </div>
   );
 }
+

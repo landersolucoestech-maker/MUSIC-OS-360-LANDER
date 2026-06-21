@@ -13,8 +13,16 @@
  *
  */
 
-// Production builds always disable mock mode regardless of env vars.
-// VITE_USE_MOCK / VITE_MOCK_MODE are only honoured in local dev.
+// Auth bypass is a LOCAL-DEV-ONLY convenience and must NEVER be active in a
+// production build. Gating on `import.meta.env.DEV` makes production fail closed
+// (real Supabase/JWT auth enforced) regardless of any env var an attacker or a
+// misconfigured deploy might set. In dev it stays enabled by default to preserve
+// the existing mock workflow; set VITE_AUTH_DISABLED=false to exercise real auth
+// locally. There is intentionally no way to enable this in a prod bundle.
+export const AUTH_DISABLED: boolean =
+  import.meta.env.DEV === true &&
+  import.meta.env.VITE_AUTH_DISABLED !== "false";
+
 export const MOCK_MODE: boolean =
   !import.meta.env.PROD &&
   import.meta.env.VITE_USE_MOCK !== "false" &&
@@ -55,6 +63,15 @@ export const IS_PROD: boolean = import.meta.env.PROD === true;
  */
 export const WS_URL: string =
   (import.meta.env.VITE_WS_URL as string | undefined) ?? "";
+
+/**
+ * WS feature flag (P0-07). When false, the app does NOT attempt Socket.IO
+ * connections — components fall back to polling/manual refresh.
+ * Defaults to true; set VITE_WS_ENABLED=false in production env until the
+ * /socket.io/ runtime gap is resolved (see FASE 9.5B / FASE 10).
+ */
+export const WS_ENABLED: boolean =
+  ((import.meta.env.VITE_WS_ENABLED as string | undefined) ?? "true") !== "false";
 
 /**
  * Modo de ambiente Vite: "development" | "production" | "test".

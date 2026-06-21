@@ -65,3 +65,4 @@ export interface WsEventMap {
 
 /** Union of all known WS event names (useful for exhaustive switches). */
 export type WsEventName = keyof WsEventMap;
+

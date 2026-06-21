@@ -2,6 +2,7 @@ import { useState, useMemo, useRef } from "react";
 import { formatDate } from "@/shared/lib/format-utils";
 import { ECADViewModal } from "@/modules/monitoring/components/ECADViewModal";
 import { MainLayout } from "@/shared/components/MainLayout";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -11,6 +12,7 @@ import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, Ref
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { RequirePermission } from "@/shared/components/RequirePermission";
+import { EcadIcon } from "@/shared/ui/brand-icons";
 import { useDeteccoes } from "@/modules/monitoring/hooks/useDeteccoes";
 import { useObras } from "@/modules/catalog/hooks/useObras";
 import { useDataQuery } from "@/shared/hooks/useDataQuery";
@@ -20,12 +22,12 @@ const getStatusBadge = (status: string) => {
   const s = status?.toLowerCase();
   switch (s) {
     case "confirmado":
-    case "recebido":   return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
-    case "pendente":   return <Badge className="bg-warning capitalize text-[#000000]">{status}</Badge>;
+    case "recebido":   return <Badge variant="success" className="capitalize">{status}</Badge>;
+    case "pendente":   return <Badge variant="warning" className="capitalize">{status}</Badge>;
     case "nao_reportado":
-    case "não reportado": return <Badge className="bg-destructive">Não Reportado</Badge>;
-    case "processado": return <Badge className="bg-success capitalize text-[#000000]">{status}</Badge>;
-    default:           return <Badge variant="secondary">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
+    case "não reportado": return <Badge variant="danger">Não Reportado</Badge>;
+    case "processado": return <Badge variant="success" className="capitalize">{status}</Badge>;
+    default:           return <Badge variant="neutral">{status?.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</Badge>;
   }
 };
 
@@ -150,7 +152,7 @@ export default function Monitoramento() {
             onClick={() => setActiveTab("ecad")}
             className={activeTab === "ecad" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
           >
-            <FileText className="h-4 w-4" />ECAD
+            <EcadIcon className="h-4 w-4" />ECAD
           </Button>
           <Button
             variant={activeTab === "divergencias" ? "default" : "outline"}
@@ -170,21 +172,27 @@ export default function Monitoramento() {
                 <CardDescription>Execuções detectadas em plataformas digitais</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <div className="relative min-w-[220px]">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                   <Input
                     placeholder="Buscar..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
-                    className="pl-9 w-64 bg-background"
+                    className="h-8 pl-9 text-sm bg-card border-border"
                   />
                 </div>
-                <Button variant="outline" size="icon"><RefreshCw className="h-4 w-4" /></Button>
+                <Button variant="outline" size="icon" className="h-8 w-8"><RefreshCw className="h-3.5 w-3.5" /></Button>
               </div>
             </CardHeader>
             <CardContent className="pt-0">
               {filteredDeteccoes.length > 0 ? (
                 <FeatureGate feature="moduleMonitoring" featureName="Monitoramento">
+                  <>
+                  <ListSectionHeader
+                    title="Lista de Detecções"
+                    count={filteredDeteccoes.length}
+                    description="Acompanhe execuções detectadas, plataformas, matches e valores estimados"
+                  />
                   <Table>
                     <TableHeader>
                       <TableRow>
@@ -204,14 +212,15 @@ export default function Monitoramento() {
                             <TableCell className="font-medium">{obra?.titulo ?? det.obra_id}</TableCell>
                             <TableCell className="text-muted-foreground">{det.plataforma || "—"}</TableCell>
                             <TableCell className="text-sm">{det.periodo ? formatDate(det.periodo + "-01") : "—"}</TableCell>
-                            <TableCell className="text-right font-mono text-sm">{fmt(det.quantidade ?? 0)}</TableCell>
-                            <TableCell className="text-right font-mono text-sm">{fmtBRL(det.valor ?? 0)}</TableCell>
+                            <TableCell className="text-right font-sans text-sm">{fmt(det.quantidade ?? 0)}</TableCell>
+                            <TableCell className="text-right font-sans text-sm">{fmtBRL(det.valor ?? 0)}</TableCell>
                             <TableCell>{getStatusBadge(det.status ?? "")}</TableCell>
                           </TableRow>
                         );
                       })}
                     </TableBody>
                   </Table>
+                  </>
                 </FeatureGate>
               ) : (
                 <EmptyState
@@ -228,7 +237,10 @@ export default function Monitoramento() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-lg">Conciliação ECAD</CardTitle>
+                <CardTitle className="flex items-center gap-2 text-lg">
+                  <EcadIcon className="h-5 w-5" />
+                  Conciliação ECAD
+                </CardTitle>
                 <CardDescription>Relatórios de recebimentos externos de direitos por período</CardDescription>
               </div>
               <RequirePermission module="monitoring" action="write">
@@ -239,6 +251,12 @@ export default function Monitoramento() {
             </CardHeader>
             <CardContent className="pt-0">
               {ecadPeriodos.length > 0 ? (
+                <>
+                <ListSectionHeader
+                  title="Relatórios ECAD"
+                  count={ecadPeriodos.length}
+                  description="Acompanhe períodos, registros, conciliações e divergências de recebimentos"
+                />
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -254,7 +272,7 @@ export default function Monitoramento() {
                       <TableRow key={periodo.id}>
                         <TableCell className="font-medium">{periodo.periodo}</TableCell>
                         <TableCell className="text-muted-foreground text-sm max-w-[260px] truncate">{periodo.observacoes || "—"}</TableCell>
-                        <TableCell className="text-right font-mono text-sm">{fmtBRL(periodo.valor_total ?? 0)}</TableCell>
+                        <TableCell className="text-right font-sans text-sm">{fmtBRL(periodo.valor_total ?? 0)}</TableCell>
                         <TableCell>{getStatusBadge(periodo.status ?? "")}</TableCell>
                         <TableCell className="text-right">
                           <Button variant="outline" size="sm" onClick={() => { setSelectedPeriodo(periodo); setEcadModalOpen(true); }}>
@@ -265,9 +283,10 @@ export default function Monitoramento() {
                     ))}
                   </TableBody>
                 </Table>
+                </>
               ) : (
                 <EmptyState
-                  icon={FileText}
+                  icon={EcadIcon}
                   title="Nenhum relatório ECAD importado"
                   description="Importe relatórios do ECAD para conciliação"
                 />

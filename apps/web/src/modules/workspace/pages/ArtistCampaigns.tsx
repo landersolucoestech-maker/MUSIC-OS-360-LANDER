@@ -16,13 +16,13 @@ export default function ArtistCampaigns() {
             Use esta tela para planejar e acompanhar as campanhas de audiências, playlists e publicidade.
           </p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-              <p className="text-xs uppercase text-muted-foreground">Marca</p>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs  text-muted-foreground">Marca</p>
               <p className="font-semibold">{entity?.name ?? 'Carregando...'}</p>
               <p className="mt-2 text-sm text-muted-foreground">Nenhuma campanha ativa ainda.</p>
             </div>
-            <div className="rounded-2xl border border-border bg-background p-4 shadow-sm">
-              <p className="text-xs uppercase text-muted-foreground">Engajamento</p>
+            <div className="rounded-2xl border border-border bg-background p-4">
+              <p className="text-xs  text-muted-foreground">Engajamento</p>
               <p className="font-semibold">0%</p>
               <p className="mt-2 text-sm text-muted-foreground">Meta de engajamento ainda não definida.</p>
             </div>
@@ -32,3 +32,5 @@ export default function ArtistCampaigns() {
     </div>
   );
 }
+
+

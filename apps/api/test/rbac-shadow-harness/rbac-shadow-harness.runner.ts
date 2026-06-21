@@ -1,0 +1,142 @@
+/**
+ * PASSO 12-J.5 — Runner do harness E2E de tráfego RBAC SHADOW.
+ *
+ * Faz requests HTTP REAIS contra a API de staging, autenticando usuários reais via
+ * Supabase (password grant). NÃO toca em rbac_decision_logs (a API o popula sozinha
+ * ao processar cada request). NÃO mocka JWT/tenant/guards.
+ *
+ * Uso: STAGING_API_URL=... SUPABASE_URL=... ... npx tsx test/rbac-shadow-harness/rbac-shadow-harness.runner.ts
+ */
+import { randomUUID } from 'crypto';
+import { loadHarnessConfig, ROLE_LEVEL, type HarnessRole, type RoleCredential } from './rbac-shadow-harness.config';
+import { MATRIX, type MatrixController } from './rbac-shadow-harness.matrix';
+import { reportHarness, type RequestRecord } from './rbac-shadow-harness.reporter';
+
+interface Session { role: HarnessRole; token: string; }
+
+async function login(cfg: ReturnType<typeof loadHarnessConfig>, cred: RoleCredential): Promise<Session | null> {
+  const res = await fetch(`${cfg.supabaseUrl}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: cfg.supabaseAnonKey, Authorization: `Bearer ${cfg.supabaseAnonKey}` },
+    body: JSON.stringify({ email: cred.email, password: cred.password }),
+  });
+  if (!res.ok) {
+    console.error(`[harness] login falhou para ${cred.role} (${res.status})`);
+    return null;
+  }
+  const json = (await res.json()) as { access_token?: string };
+  if (!json.access_token) return null;
+  return { role: cred.role, token: json.access_token };
+}
+
+function expectedAllow(role: HarnessRole, minLevel: number): boolean {
+  return ROLE_LEVEL[role] >= minLevel;
+}
+
+async function callApi(
+  cfg: ReturnType<typeof loadHarnessConfig>,
+  session: Session, tenantId: string,
+  method: string, path: string, body?: Record<string, unknown>,
+): Promise<{ status: number; json: any }> {
+  const res = await fetch(`${cfg.apiUrl}${path}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${session.token}`,
+      'X-Tenant-ID': tenantId,
+      'X-Request-ID': randomUUID(),
+      'X-Trace-ID': randomUUID(),
+      'Content-Type': 'application/json',
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let json: any = null;
+  try { json = await res.json(); } catch { /* sem corpo */ }
+  return { status: res.status, json };
+}
+
+async function resolveSampleId(
+  cfg: ReturnType<typeof loadHarnessConfig>, session: Session, tenantId: string, ctrl: MatrixController,
+): Promise<string | null> {
+  try {
+    const { json } = await callApi(cfg, session, tenantId, 'GET', ctrl.basePath);
+    const arr = json?.data ?? json?.items ?? json;
+    if (Array.isArray(arr) && arr[0]?.id) return String(arr[0].id);
+  } catch { /* ignora */ }
+  return null;
+}
+
+async function main() {
+  const runId = randomUUID();
+  process.env['RBAC_HARNESS_RUN_ID'] = runId;
+  const cfg = loadHarnessConfig();
+  console.log(`[harness] runId=${runId} api=${cfg.apiUrl} tenants=${cfg.tenants.length} roles=${cfg.credentials.length} alvo=${cfg.targets.requests} requests`);
+
+  // 1) Autenticação real de cada role
+  const sessions: Session[] = [];
+  for (const cred of cfg.credentials) {
+    const s = await login(cfg, cred);
+    if (s) sessions.push(s);
+  }
+  if (sessions.length === 0) throw new Error('[harness] nenhuma sessão autenticada — abortando');
+
+  const records: RequestRecord[] = [];
+  const created: Array<{ ctrl: MatrixController; tenantId: string; session: Session; id: string }> = [];
+
+  const exec = async (session: Session, tenantId: string, ctrl: MatrixController): Promise<void> => {
+    const sampleId = await resolveSampleId(cfg, session, tenantId, ctrl);
+    for (const a of ctrl.actions) {
+      if (a.needsId && !sampleId && a.kind !== 'create') continue;
+      const path = ctrl.basePath + a.pathSuffix.replace(':id', sampleId ?? 'none');
+      const allow = expectedAllow(session.role, a.minLevel);
+      try {
+        const { status, json } = await callApi(cfg, session, tenantId, a.method, path, a.body?.());
+        // Correção RBAC: deny ⇒ 403; allow ⇒ qualquer coisa != 403/401 (400/422 = passou guard, body inválido).
+        const rbacPass = allow ? status !== 403 && status !== 401 : status === 403;
+        records.push({ role: session.role, tenantId, controller: ctrl.name, resource: ctrl.resource, action: a.kind, method: a.method, path, status, expectedAllow: allow, rbacPass });
+        if (a.kind === 'create' && status >= 200 && status < 300 && json?.id) {
+          created.push({ ctrl, tenantId, session, id: String(json.id) });
+        }
+      } catch (e) {
+        records.push({ role: session.role, tenantId, controller: ctrl.name, resource: ctrl.resource, action: a.kind, method: a.method, path, status: 0, expectedAllow: allow, rbacPass: false, error: (e as Error).message });
+      }
+    }
+  };
+
+  // 2) Passada completa: roles × tenants × controllers × ações
+  for (const session of sessions) {
+    for (const tenantId of cfg.tenants) {
+      for (const ctrl of MATRIX) await exec(session, tenantId, ctrl);
+    }
+  }
+
+  // 3) Repetir READS até atingir o alvo de requests
+  let guard = 0;
+  while (records.length < cfg.targets.requests && guard < 50) {
+    guard++;
+    for (const session of sessions) {
+      for (const tenantId of cfg.tenants) {
+        for (const ctrl of MATRIX) {
+          if (records.length >= cfg.targets.requests) break;
+          const path = ctrl.basePath;
+          try {
+            const { status } = await callApi(cfg, session, tenantId, 'GET', path);
+            records.push({ role: session.role, tenantId, controller: ctrl.name, resource: ctrl.resource, action: 'list', method: 'GET', path, status, expectedAllow: true, rbacPass: status !== 403 && status !== 401 });
+          } catch { /* ignora */ }
+        }
+      }
+    }
+  }
+
+  // 4) Cleanup best-effort (somente o que o harness criou; respeita RBAC)
+  let cleaned = 0, cleanupBlocked = 0;
+  for (const c of created) {
+    try {
+      const { status } = await callApi(cfg, c.session, c.tenantId, 'DELETE', `${c.ctrl.basePath}/${c.id}`);
+      if (status >= 200 && status < 300) cleaned++; else cleanupBlocked++;
+    } catch { cleanupBlocked++; }
+  }
+
+  await reportHarness({ runId, cfg, records, createdCount: created.length, cleaned, cleanupBlocked });
+}
+
+main().catch((e) => { console.error('[harness] ERRO:', e?.message ?? e); process.exit(1); });

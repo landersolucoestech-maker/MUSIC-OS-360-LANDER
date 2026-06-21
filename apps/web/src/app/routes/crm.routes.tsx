@@ -1,17 +1,19 @@
-/**
- * STEP 10 — Routing Modularization: CRM Routes
- */
 import { lazy } from "react";
-import { Route, Navigate } from "react-router-dom";
+import { Navigate, Route } from "react-router-dom";
 import type { SuspenseRouteComponent } from "./types";
 
-const CRM = lazy(() => import("@/modules/crm/pages/CRM"));
+const LeadsPage = lazy(() => import("@/modules/leads/pages/LeadsPage"));
 
 export function crmRoutes(P: SuspenseRouteComponent) {
   return (
     <>
-      <Route path="/crm" element={<P><CRM /></P>} />
-      <Route path="/leads" element={<Navigate to="/crm" replace />} />
+      <Route path="/leads" element={<P><LeadsPage /></P>} />
+      <Route path="/crm/configuracoes" element={<Navigate to="/configuracoes?aba=operacional&modulo=crm" replace />} />
+      <Route path="/crm" element={<Navigate to="/leads" replace />} />
+      <Route path="/crm-relacionamentos" element={<Navigate to="/leads" replace />} />
+      <Route path="/crm/leads/new" element={<Navigate to="/leads?modal=lead" replace />} />
+      <Route path="/crm/contacts/new" element={<Navigate to="/leads" replace />} />
+      <Route path="/crm/proposals/new" element={<Navigate to="/leads" replace />} />
     </>
   );
 }

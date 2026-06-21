@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { useNotasFiscais } from "@/modules/accounting/hooks/useNotasFiscais";
-import { useClientes } from "@/modules/crm/hooks/useClientes";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
 import { useCompanySettings } from "@/modules/settings/hooks/useCompanySettings";
 import { parseTipoOperacao, serializeTipoOperacao } from "@/modules/accounting/lib/nota-fiscal-tipo";
 import { notaFiscalSchema } from "@/modules/accounting/lib/nota-fiscal-schema";
@@ -24,6 +24,15 @@ interface UseNotaFiscalFormOptions {
   notaFiscal?: any;
   defaultTipoOperacao?: TipoOperacaoNF;
   onClose: () => void;
+}
+
+function numberValue(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (value === null || value === undefined || value === "") continue;
+    const parsed = typeof value === "number" ? value : Number(value);
+    if (Number.isFinite(parsed)) return parsed;
+  }
+  return null;
 }
 
 export interface UseNotaFiscalFormReturn {
@@ -72,22 +81,34 @@ export function useNotaFiscalForm({
   useEffect(() => {
     if (notaFiscal && (mode === "edit" || mode === "view")) {
       const { tipo, observacoesLimpas } = parseTipoOperacao(notaFiscal.observacoes);
+      const valorServicos = numberValue(notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
+      const valorLiquido = numberValue(notaFiscal.valor_liquido, notaFiscal.valor_servicos, notaFiscal.valor, notaFiscal.valor_total) ?? 0;
+      const descricaoServicos = notaFiscal.descricao_servicos ?? notaFiscal.descricao_servico ?? "";
+      const tomadorRazaoSocial = notaFiscal.tomador_razao_social ?? notaFiscal.tomador_nome ?? notaFiscal.clientes?.nome ?? "";
       setTipoOperacao(tipo);
       setFormData({
         ...INITIAL_FORM_DATA,
         ...notaFiscal,
         observacoes: observacoesLimpas,
+        tomador_razao_social: tomadorRazaoSocial,
+        descricao_servicos: descricaoServicos,
+        valor_servicos: valorServicos,
+        valor_liquido: valorLiquido,
         data_emissao: notaFiscal.data_emissao ? new Date(notaFiscal.data_emissao) : undefined,
-        vencimento: notaFiscal.vencimento ? new Date(notaFiscal.vencimento) : undefined,
+        vencimento: notaFiscal.vencimento
+          ? new Date(notaFiscal.vencimento)
+          : notaFiscal.data_vencimento
+            ? new Date(notaFiscal.data_vencimento)
+            : undefined,
         itens:
           Array.isArray(notaFiscal.itens) && notaFiscal.itens.length > 0
             ? notaFiscal.itens
             : [
                 {
                   ...INITIAL_ITEM,
-                  descricao: notaFiscal.descricao_servicos || "",
-                  valor_unitario: notaFiscal.valor || 0,
-                  valor_total: notaFiscal.valor || 0,
+                  descricao: descricaoServicos,
+                  valor_unitario: valorServicos,
+                  valor_total: valorServicos,
                 },
               ],
       });
@@ -335,13 +356,16 @@ export function useNotaFiscalForm({
         if (result) pdfUrl = getPublicUrl(result.path);
       }
 
+      const valorServicos = parseFloat(String(formData.valor_servicos)) || 0;
+      const valorLiquido = numberValue(formData.valor_liquido, formData.valor_servicos) ?? 0;
+
       const data: any = {
         numero: formData.numero.trim(),
         serie: formData.serie?.trim() || null,
         tipo_nota: formData.tipo_nota,
         cliente_id: formData.cliente_id || null,
         venda_id: null,
-        valor: parseFloat(String(formData.valor_servicos)) || 0,
+        valor: valorServicos,
         data_emissao: formData.data_emissao ? format(formData.data_emissao, "yyyy-MM-dd") : null,
         vencimento: formData.vencimento ? format(formData.vencimento, "yyyy-MM-dd") : null,
         status: formData.status,
@@ -361,7 +385,7 @@ export function useNotaFiscalForm({
         tomador_cidade: formData.tomador_cidade,
         tomador_uf: formData.tomador_uf,
         tomador_cep: formData.tomador_cep,
-        valor_servicos: parseFloat(String(formData.valor_servicos)) || 0,
+        valor_servicos: valorServicos,
         valor_deducoes: parseFloat(String(formData.valor_deducoes)) || 0,
         base_calculo: parseFloat(String(formData.base_calculo)) || 0,
         aliquota_iss: parseFloat(String(formData.aliquota_iss)) || 0,
@@ -372,7 +396,7 @@ export function useNotaFiscalForm({
         valor_inss: parseFloat(String(formData.valor_inss)) || 0,
         valor_ir: parseFloat(String(formData.valor_ir)) || 0,
         valor_csll: parseFloat(String(formData.valor_csll)) || 0,
-        valor_liquido: parseFloat(String(formData.valor_liquido)) || 0,
+        valor_liquido: valorLiquido,
         forma_pagamento: formData.forma_pagamento,
         condicao_pagamento: formData.condicao_pagamento,
         itens: formData.itens,

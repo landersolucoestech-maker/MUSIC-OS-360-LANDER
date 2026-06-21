@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
@@ -137,28 +138,14 @@ const formatDateBR = (d?: string | null) => {
 function StatusBadge({ status }: { status?: string }) {
   const s = status?.toLowerCase().replace(/\s+/g, "_") ?? "";
   if (s === "registrado" || s === "cadastrado" || s === "ativo")
-    return (
-      <Badge className="bg-success hover:bg-success text-success-foreground">
-        {status}
-      </Badge>
-    );
+    return <Badge variant="success">{status}</Badge>;
   if (s === "em_analise" || s === "analise" || s === "análise")
-    return (
-      <Badge className="bg-warning hover:bg-warning text-warning-foreground">
-        Em Análise
-      </Badge>
-    );
+    return <Badge variant="warning">Em Análise</Badge>;
   if (s === "pendente")
-    return (
-      <Badge className="bg-warning hover:bg-warning text-warning-foreground">
-        Pendente
-      </Badge>
-    );
+    return <Badge variant="warning">Pendente</Badge>;
   if (s === "rejeitado" || s === "inativo")
-    return (
-      <Badge className="bg-destructive hover:bg-destructive text-destructive-foreground">{status}</Badge>
-    );
-  return <Badge variant="secondary">{status ?? "—"}</Badge>;
+    return <Badge variant="danger">{status}</Badge>;
+  return <Badge variant="neutral">{status ?? "—"}</Badge>;
 }
 
 function InfoField({
@@ -186,7 +173,7 @@ function MonoField({
   return (
     <div className="p-3 bg-muted/30 rounded-lg">
       <p className="text-xs text-muted-foreground mb-1">{label}</p>
-      <p className="font-mono text-sm font-medium text-primary">
+      <p className="font-sans text-sm font-medium text-primary">
         {value || "—"}
       </p>
     </div>
@@ -331,6 +318,7 @@ export function FonogramaViewModal({
   );
   const classificacao = pickStr(fonograma.classificacao);
   const status = pickStr(fonograma.status);
+  const createdAt = (fonograma as { created_at?: string }).created_at;
 
   const participacao: Required<ParticipacaoView> = {
     produtorFonografico: fonograma.participacao?.produtorFonografico ?? [],
@@ -400,39 +388,34 @@ export function FonogramaViewModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="max-w-2xl bg-card border-border"
-        data-testid="dialog-fonograma-view"
-      >
-        <DialogHeader>
-          <DialogTitle
-            className="flex items-center gap-2 text-foreground"
-            data-testid="text-fonograma-view-title"
-          >
-            <Music className="h-5 w-5 text-primary" />
-            Detalhes do Fonograma
-          </DialogTitle>
+      <DialogContent className="max-w-2xl max-h-[90vh] p-0" data-testid="dialog-fonograma-view">
+        <DialogHeader className="p-6 pb-4">
+          <DialogTitle data-testid="text-fonograma-view-title">Detalhes do Fonograma</DialogTitle>
+          <DialogDescription>Informações completas do fonograma</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[75vh]">
-          <div className="space-y-5 pr-2">
-            {/* Título + Status */}
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-bold text-foreground">
+        <ScrollArea className="max-h-[calc(90vh-120px)]">
+          <div className="px-6 pb-6 space-y-6">
+            {/* Header do Fonograma */}
+            <div className="flex items-center gap-4">
+              <div className="h-12 w-12 rounded-full bg-primary flex items-center justify-center shrink-0">
+                <Music className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h2 className="text-lg font-bold">
                   {fonogramaTitulo || obraTitulo || "Fonograma sem título"}
                 </h2>
                 {fonogramaTitulo && obraTitulo && fonogramaTitulo !== obraTitulo && (
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    Obra: {obraTitulo}
+                  <p className="text-sm text-muted-foreground mt-0.5">Obra: {obraTitulo}</p>
+                )}
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                  <StatusBadge status={status} />
+                </div>
+                {createdAt && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    📅 Cadastrado em: {new Date(createdAt).toLocaleDateString("pt-BR")}
                   </p>
                 )}
-                <p className="text-sm text-muted-foreground capitalize mt-0.5">
-                  Fonograma
-                </p>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                <StatusBadge status={status} />
               </div>
             </div>
 
@@ -440,13 +423,13 @@ export function FonogramaViewModal({
 
             {/* Obra Vinculada */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                 Obra Vinculada
               </p>
               {obraVinculada ? (
                 <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-lg border border-border">
                   <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center shrink-0">
-                    <Music className="h-5 w-5 text-white" />
+                    <Music className="h-5 w-5 text-primary-foreground" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p
@@ -475,7 +458,7 @@ export function FonogramaViewModal({
 
             {/* Informações Gerais */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                 Informações Gerais
               </p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -492,12 +475,12 @@ export function FonogramaViewModal({
 
             {/* Códigos de Registro */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                 Códigos de Registro
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <MonoField label="ISRC" value={isrcDisplay} />
-                <MonoField label="Código ABRAMUS" value={codAbramus} />
+                <MonoField label="Código de Cadastro da Sociedade" value={codAbramus} />
                 <MonoField label="Código ECAD" value={codEcad} />
               </div>
             </div>
@@ -506,7 +489,7 @@ export function FonogramaViewModal({
 
             {/* Datas */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                 Datas
               </p>
               <div className="grid grid-cols-3 gap-3">
@@ -520,7 +503,7 @@ export function FonogramaViewModal({
 
             {/* Características */}
             <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                 Características
               </p>
               <div className="grid grid-cols-2 gap-x-6 gap-y-3">
@@ -538,7 +521,7 @@ export function FonogramaViewModal({
             {/* Participação */}
             <div>
               <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                <p className="text-xs font-semibold text-muted-foreground  tracking-wide">
                   Participação
                 </p>
                 <span className="text-xs text-muted-foreground">
@@ -575,7 +558,7 @@ export function FonogramaViewModal({
               <>
                 <Separator />
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-3">
+                  <p className="text-xs font-semibold text-muted-foreground  tracking-wide mb-3">
                     Observações
                   </p>
                   <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
@@ -593,7 +576,7 @@ export function FonogramaViewModal({
                 <div>
                   <Collapsible open={uploadOpen} onOpenChange={setUploadOpen}>
                     <CollapsibleTrigger className="flex items-center justify-between w-full mb-3">
-                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      <p className="text-xs font-semibold text-muted-foreground  tracking-wide">
                         Arquivo de Áudio
                       </p>
                       <ChevronDown

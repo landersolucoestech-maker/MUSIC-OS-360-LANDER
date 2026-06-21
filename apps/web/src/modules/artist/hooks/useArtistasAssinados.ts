@@ -25,3 +25,4 @@ export function useArtistasAssinados() {
     refetch: query.refetch,
   };
 }
+

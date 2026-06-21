@@ -1,6 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { NotificationsProcessor } from './notifications.processor';
 import { DATA_SOURCE }             from '../../database/database.module';
+import { DatabaseContextService }  from '../../database/database-context.service';
 import { WsGateway }               from '../../core/websocket/ws.gateway';
 import { NOTIFICATION_JOB_NAMES }   from '../queue.constants';
 
@@ -20,7 +21,12 @@ const buildMockDs = () => {
 describe('NotificationsProcessor', () => {
   let processor: NotificationsProcessor;
   let mockDs: ReturnType<typeof buildMockDs>;
-  const mockWs = { sendToUser: jest.fn() };
+  const mockWs = { sendToUser: jest.fn(), sendToTenant: jest.fn() };
+  // Passthrough DatabaseContextService: invokes the work with no manager →
+  // the processor falls back to the cached repo (flag-OFF behaviour).
+  const mockDbContext = {
+    runInTenantContext: jest.fn((_ctx: unknown, work: (m: unknown) => unknown) => work(undefined)),
+  };
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -30,6 +36,7 @@ describe('NotificationsProcessor', () => {
         NotificationsProcessor,
         { provide: DATA_SOURCE, useValue: mockDs },
         { provide: WsGateway,   useValue: mockWs },
+        { provide: DatabaseContextService, useValue: mockDbContext },
       ],
     }).compile();
     processor = module.get<NotificationsProcessor>(NotificationsProcessor);
@@ -63,5 +70,26 @@ describe('NotificationsProcessor', () => {
     expect(mockDs._repo.create).toHaveBeenCalledWith(
       expect.objectContaining({ entity: 'artists', entity_id: 'a1' }),
     );
+  });
+
+  // ── P2-5: session-context wiring ───────────────────────────────────────────
+  it('persiste dentro de runInTenantContext com o tenant do job', async () => {
+    await processor.process({ name: NOTIFICATION_JOB_NAMES.SEND, data: {
+      tenantId: 't1', userId: 'u1', title: 'Ctx', type: 'info',
+    }} as any);
+    expect(mockDbContext.runInTenantContext).toHaveBeenCalledWith(
+      { tenantId: 't1', orgId: null, role: null },
+      expect.any(Function),
+    );
+    expect(mockDs._repo.save).toHaveBeenCalled();
+  });
+
+  it('aborta (fail-closed) job SEND sem tenantId, sem tocar o banco', async () => {
+    const out = await processor.process({ name: NOTIFICATION_JOB_NAMES.SEND, data: {
+      userId: 'u1', title: 'NoTenant', type: 'info',
+    }} as any);
+    expect(out).toBeNull();
+    expect(mockDbContext.runInTenantContext).not.toHaveBeenCalled();
+    expect(mockDs._repo.save).not.toHaveBeenCalled();
   });
 });

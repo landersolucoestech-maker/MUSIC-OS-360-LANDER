@@ -34,3 +34,4 @@ export const artistaService = {
     await storage.delete("artistas", id);
   },
 };
+

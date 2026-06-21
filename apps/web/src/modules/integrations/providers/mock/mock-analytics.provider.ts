@@ -57,3 +57,4 @@ export class MockAnalyticsProvider implements IAnalyticsProvider {
 }
 
 export const mockAnalyticsProvider = new MockAnalyticsProvider();
+

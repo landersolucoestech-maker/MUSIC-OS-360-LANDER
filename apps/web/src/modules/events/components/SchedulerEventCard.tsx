@@ -1,18 +1,18 @@
 import { format } from "date-fns";
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/shared/ui/dropdown-menu";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
-import { formatCurrency } from "@/shared/lib/format-utils";
+import { formatCurrency, getMonetarySemanticClass } from "@/shared/lib/format-utils";
 import type { AgendaEvent } from "@/modules/events/components/types";
 
-const STATUS_STYLES: Record<string, { label: string; className: string }> = {
-  confirmado: { label: "Confirmado", className: "bg-emerald-500/10 text-emerald-300" },
-  negociacao: { label: "Negociação", className: "bg-amber-500/10 text-amber-300" },
-  pendente:   { label: "Pendente",   className: "bg-amber-500/10 text-amber-300" },
-  agendado:   { label: "Agendado",   className: "bg-amber-500/10 text-amber-300" },
-  cancelado:  { label: "Cancelado",  className: "bg-rose-500/10 text-rose-300" },
-  realizado:  { label: "Realizado",  className: "bg-sky-500/10 text-sky-300" },
+const STATUS_STYLES: Record<string, { label: string; variant: BadgeVariant }> = {
+  confirmado: { label: "Confirmado", variant: "success" },
+  negociacao: { label: "Negociação", variant: "warning" },
+  pendente:   { label: "Pendente",   variant: "warning" },
+  agendado:   { label: "Agendado",   variant: "warning" },
+  cancelado:  { label: "Cancelado",  variant: "danger" },
+  realizado:  { label: "Realizado",  variant: "info" },
 };
 
 interface SchedulerEventCardProps {
@@ -26,7 +26,7 @@ interface SchedulerEventCardProps {
 export function SchedulerEventCard({ event, compact = false, onClick, onEdit, onDelete }: SchedulerEventCardProps) {
   const status = STATUS_STYLES[event.status] ?? {
     label: event.status ? String(event.status).replace(/_/g, " ") : "Sem status",
-    className: "bg-slate-500/10 text-slate-300",
+    variant: "neutral" as BadgeVariant,
   };
 
   const timeLabel = event.allDay
@@ -34,28 +34,29 @@ export function SchedulerEventCard({ event, compact = false, onClick, onEdit, on
     : `${format(event.startDate, "HH:mm")}${event.endDate ? ` — ${format(event.endDate, "HH:mm")}` : ""}`;
 
   const cacheLabel = event.cache != null ? formatCurrency(event.cache) : "-";
+  const cacheClassName = event.cache != null ? getMonetarySemanticClass("neutral") : "text-foreground";
 
   if (compact) {
     return (
       <div
-        className="group flex items-center gap-2 rounded-2xl border border-border/70 bg-muted/70 px-3 py-2 text-sm text-foreground transition hover:border-primary/60 hover:shadow-sm"
+        className="group flex items-center gap-1.5 rounded-md border border-border/70 bg-muted/50 px-1.5 py-0.5 text-[10px] text-foreground transition hover:bg-muted hover:text-foreground"
         onClick={() => onClick?.(event)}
       >
-        <div className="min-w-[52px] text-xs font-medium text-muted-foreground">{timeLabel}</div>
-        <div className="min-w-0 truncate font-semibold">{event.title}</div>
-        <span className={`ml-auto rounded-full px-2 py-1 text-[10px] font-semibold ${status.className}`}>{status.label}</span>
+        <div className="shrink-0 font-medium tabular-nums text-muted-foreground">{timeLabel}</div>
+        <div className="min-w-0 truncate font-medium">{event.title}</div>
+        <Badge variant={status.variant} className="ml-auto h-4 px-1 text-[9px]">{status.label}</Badge>
       </div>
     );
   }
 
   return (
     <div
-      className="group relative overflow-hidden rounded-3xl border border-border/70 bg-card p-4 shadow-sm transition duration-200 ease-out hover:-translate-y-0.5 hover:border-primary/60 hover:shadow-lg"
+      className="group relative overflow-hidden rounded-3xl border border-border/70 bg-card p-4 transition duration-200 ease-out hover:border-primary/60"
       onClick={() => onClick?.(event)}
     >
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.22em] text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-2 text-xs  tracking-[0.22em] text-muted-foreground">
             <span>{timeLabel}</span>
             <span className="inline-flex h-1.5 w-1.5 rounded-full bg-border" />
             <span>{event.type ?? "Evento"}</span>
@@ -67,8 +68,8 @@ export function SchedulerEventCard({ event, compact = false, onClick, onEdit, on
         </div>
 
         <div className="flex items-center gap-2 text-right">
-          <Badge className={`rounded-full px-2 py-1 text-xs font-semibold ${status.className}`}>{status.label}</Badge>
-          <div className="text-sm font-semibold text-foreground">{cacheLabel}</div>
+          <Badge variant={status.variant}>{status.label}</Badge>
+          <div className={`text-sm font-semibold ${cacheClassName}`}>{cacheLabel}</div>
         </div>
       </div>
 

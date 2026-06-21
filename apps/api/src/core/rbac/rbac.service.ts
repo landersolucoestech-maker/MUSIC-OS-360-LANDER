@@ -1,5 +1,8 @@
 import { Injectable, ForbiddenException } from '@nestjs/common';
 import { SystemRole, FunctionalRole } from '@music-os-360/types';
+import { PermissionResolverService, type MemberAuthzContext } from './permission-resolver.service';
+
+export type { MemberAuthzContext };
 
 /**
  * AnyRole — union de roles de sistema e roles funcionais.
@@ -14,8 +17,11 @@ export type AnyRole = SystemRole | FunctionalRole;
  */
 export type Role = AnyRole;
 
-/** Hierarquia numérica dos SystemRoles — quanto maior o número, mais permissões */
-const ROLE_HIERARCHY: Record<string, number> = {
+/**
+ * Hierarquia numérica dos SystemRoles — quanto maior o número, mais permissões.
+ * Exportado (FASE 8) como FONTE para o seed de roles; comportamento inalterado.
+ */
+export const ROLE_HIERARCHY: Record<string, number> = {
   [SystemRole.SUPER_ADMIN]:  100,
   [SystemRole.TENANT_OWNER]: 90,
   [SystemRole.OWNER]:        90,
@@ -58,7 +64,9 @@ export type Resource =
 
 export type Action = 'read' | 'create' | 'update' | 'delete' | 'export' | 'approve';
 
-const ROLE_PERMISSIONS: Record<string, Array<`${Resource}:${Action}`>> = {
+// Exportado (FASE 8) como FONTE de paridade para o seed de permissions/role_permissions.
+// NÃO removido nem alterado — continua sendo a matriz legada do fallback (FASE 5).
+export const ROLE_PERMISSIONS: Record<string, Array<`${Resource}:${Action}`>> = {
   // ── System Roles ────────────────────────────────────────────────────────────
   [SystemRole.SUPER_ADMIN]: [
     'artist:read','artist:create','artist:update','artist:delete',
@@ -210,6 +218,22 @@ const ROLE_PERMISSIONS: Record<string, Array<`${Resource}:${Action}`>> = {
 
 @Injectable()
 export class RbacService {
+  constructor(private readonly resolver: PermissionResolverService) {}
+
+  /**
+   * Permissões efetivas do membro (DUAL-SOURCE — FASE 5).
+   * role_id presente → matriz do banco (roles/role_permissions, com alias canônico e escopo de
+   * tenant). Sem role_id (ou DB indisponível / matriz vazia na transição) → matriz legada deste
+   * serviço, idêntica ao comportamento anterior à FASE 4. Nunca amplia acesso por erro.
+   *
+   * NÃO substitui o RolesGuard (enforcement por hierarquia continua inalterado nesta fase);
+   * é consumido pelo auth-context para expor membership.permissions.
+   */
+  async getEffectivePermissions(member: MemberAuthzContext): Promise<string[]> {
+    const legacyRole = typeof member.role === 'string' && member.role.length > 0 ? member.role : SystemRole.VIEWER;
+    return this.resolver.resolve(member, () => this.getPermissions(legacyRole));
+  }
+
   hasRole(userRole: string, required: string): boolean {
     return (ROLE_HIERARCHY[userRole] ?? 0) >= (ROLE_HIERARCHY[required] ?? 0);
   }

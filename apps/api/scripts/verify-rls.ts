@@ -19,14 +19,32 @@
 
 import 'reflect-metadata';
 import * as path from 'path';
+import * as fs from 'fs';
 
 try {
+  require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });    // apps/api/.env when run from package
   require('dotenv').config({ path: path.resolve(__dirname, '../.env') });    // apps/api/.env (URL-encoded passwords)
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env') }); // apps/.env (fallback)
   require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') }); // root .env (fallback)
 } catch { /* opcional */ }
 
 const FIX_MODE = process.argv.includes('--fix');
+let databaseHost = '';
+try {
+  databaseHost = new URL(process.env['DATABASE_URL'] ?? '').hostname;
+} catch { /* sem URL válida */ }
+const apiEnvText = fs.existsSync(path.resolve(process.cwd(), '.env'))
+  ? fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8')
+  : '';
+const apiEnvDatabaseUrl = apiEnvText.match(/^DATABASE_URL=(.+)$/m)?.[1]?.trim();
+const apiEnvDbSsl = apiEnvText.match(/^DB_SSL=(.+)$/m)?.[1]?.trim();
+const databaseUrl = apiEnvDatabaseUrl || process.env['DATABASE_URL'];
+const dbSslDisabled = apiEnvDbSsl === 'false'
+  || process.env['DB_SSL'] === 'false'
+  || ['localhost', '127.0.0.1', '::1'].includes(databaseHost);
+if (dbSslDisabled) {
+  process.env['PGSSLMODE'] = 'disable';
+}
 
 const MULTITENANT_TABLES = [
   'artists', 'works', 'phonograms', 'contracts', 'contract_templates',
@@ -38,9 +56,8 @@ const MULTITENANT_TABLES = [
   'workflow_transitions', 'domain_event_log', 'activity_logs',
   'conversations', 'conversation_messages', 'conversation_notes',
   'forms', 'form_submissions',
-  'crm_companies', 'crm_contacts', 'crm_tags', 'crm_contact_tags',
-  'crm_tasks', 'crm_timeline_events',
-  'pipelines', 'pipeline_stages', 'pipeline_opportunities',
+  'contacts', 'contact_attachments', 'contact_contracts', 'contact_timeline',
+  'lead_uploads', 'operational_tasks',
   'campaign_tasks', 'campaign_assets', 'ai_usage_logs',
 ];
 
@@ -61,8 +78,8 @@ async function main(): Promise<void> {
 
   const { Client } = await import('pg');
   const client = new Client({
-    connectionString: process.env['DATABASE_URL'],
-    ssl: { rejectUnauthorized: false },
+    connectionString: databaseUrl,
+    ssl: dbSslDisabled ? false : { rejectUnauthorized: false },
   });
 
   try {

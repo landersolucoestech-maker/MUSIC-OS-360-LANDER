@@ -2,6 +2,7 @@ import { Injectable, Inject, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { WorkEntity } from '../../database/entities';
+import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import type { CreateWorkDto }  from './dto/create-work.dto';
 import type { UpdateWorkDto }  from './dto/update-work.dto';
 import type { QueryWorkDto }   from './dto/query-work.dto';
@@ -10,7 +11,10 @@ import type { QueryWorkDto }   from './dto/query-work.dto';
 export class WorksService {
   private readonly repo: Repository<WorkEntity> | null = null;
 
-  constructor(@Inject(DATA_SOURCE) ds: DataSource | null) {
+  constructor(
+    @Inject(DATA_SOURCE) ds: DataSource | null,
+    private readonly events: EventsService,
+  ) {
     if (ds) this.repo = ds.getRepository(WorkEntity);
   }
 
@@ -43,7 +47,19 @@ export class WorksService {
 
   async create(tenantId: string, userId: string, dto: CreateWorkDto): Promise<WorkEntity> {
     const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
-    return this.repo!.save(entity as any) as any;
+    const saved = (await this.repo!.save(entity as any)) as WorkEntity;
+
+    // Dispara automações nativas internas (ex.: catalog-metadata-validator). Os
+    // handlers são assíncronos e à prova de falha — nunca revertem a criação da obra.
+    this.events.emitTyped(DOMAIN_EVENTS.CATALOG_WORK_CREATED, {
+      tenantId,
+      userId,
+      aggregateType: 'work',
+      aggregateId:   saved.id,
+      payload: { tenantId, workId: saved.id, createdBy: userId },
+    });
+
+    return saved;
   }
 
   async update(tenantId: string, userId: string, id: string, dto: UpdateWorkDto): Promise<WorkEntity> {

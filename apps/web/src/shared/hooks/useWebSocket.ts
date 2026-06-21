@@ -24,6 +24,7 @@ export function useWebSocket() {
     if (!token) return;
 
     const s = getWsSocket(token);
+    if (!s) return; // P0-07: WS disabled via VITE_WS_ENABLED=false — components fall back to polling
     setSocket(s);
 
     const onConnect    = () => setConnected(true);

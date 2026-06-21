@@ -131,9 +131,21 @@ describe("applyResets — tipoPagamento", () => {
 
 // ── fields with no reset entries ───────────────────────────────────────────
 describe("applyResets — fields not in RESET_MAP", () => {
-  it("returns empty object for subcategoria (no entry)", () => {
+  it("resets dependent linkage fields for subcategoria", () => {
     const result = applyResets("subcategoria", "design-grafico");
-    expect(result).toEqual({});
+    expect(result).toMatchObject({
+      artistaVinculado: "",
+      projetoVinculado: "",
+      contratoVinculado: "",
+      eventoVinculado: "",
+      fornecedorCliente: "",
+      orgaoArrecadador: "",
+      tipoVinculacao: "",
+      centroCusto: "",
+      competencia: "",
+      contaOrigem: "",
+      contaDestino: "",
+    });
   });
 
   it("returns empty object for descricao (no entry)", () => {

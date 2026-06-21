@@ -8,11 +8,12 @@
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, EntityManager, Repository } from 'typeorm';
 import { WsGateway } from '../websocket/ws.gateway';
 import { DOMAIN_EVENTS } from './events.service';
 import { CorrelationContext } from './correlation.context';
 import { DATA_SOURCE } from '../../database/database.module';
+import { DatabaseContextService } from '../../database/database-context.service';
 import { NotificationEntity } from '../../database/entities';
 import type { DomainEvent } from './events.service';
 
@@ -100,6 +101,7 @@ export class NotificationHandler {
   constructor(
     @Optional() private readonly wsGateway: WsGateway,
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
+    @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) this.notifRepo = ds.getRepository(NotificationEntity);
   }
@@ -123,6 +125,13 @@ export class NotificationHandler {
   }
 
   private async handle<T>(event: DomainEvent<T>): Promise<void> {
+    if (!event.tenantId) {
+      this.logger.warn(
+        `NotificationHandler: event "${event.type}" sem tenantId - abortado (fail-closed)`,
+      );
+      return;
+    }
+
     const corrId = event.correlationId ?? CorrelationContext.get();
     const payload = event.payload as Record<string, unknown>;
     const labelFn = EVENT_LABELS[event.type];
@@ -130,22 +139,27 @@ export class NotificationHandler {
 
     if (this.notifRepo && event.userId) {
       try {
-        const notification = this.notifRepo.create({
-          id: randomUUID(),
-          tenant_id: event.tenantId,
-          user_id: event.userId,
-          title,
-          body: null,
-          type: event.type,
-          entity: event.aggregateType ?? EVENT_AGGREGATE[event.type] ?? null,
-          entity_id: event.aggregateId ?? null,
-          read_at: null,
-          metadata: {
-            correlationId: corrId ?? null,
-            occurredAt: event.occurredAt,
-          },
+        await this.runInTenantContext(event.tenantId, async (manager) => {
+          const notifRepo = manager ? manager.getRepository(NotificationEntity) : this.notifRepo;
+          if (!notifRepo) return;
+
+          const notification = notifRepo.create({
+            id: randomUUID(),
+            tenant_id: event.tenantId,
+            user_id: event.userId,
+            title,
+            body: null,
+            type: event.type,
+            entity: event.aggregateType ?? EVENT_AGGREGATE[event.type] ?? null,
+            entity_id: event.aggregateId ?? null,
+            read_at: null,
+            metadata: {
+              correlationId: corrId ?? null,
+              occurredAt: event.occurredAt,
+            },
+          });
+          await notifRepo.save(notification);
         });
-        await this.notifRepo.save(notification);
       } catch (err) {
         this.logger.error(
           `NotificationHandler: failed to persist notification for "${event.type}" user=${event.userId} - ${String(err)}`,
@@ -172,5 +186,14 @@ export class NotificationHandler {
         `NotificationHandler: WS broadcast failed for "${event.type}" - ${String(err)}`,
       );
     }
+  }
+
+  private runInTenantContext<T>(
+    tenantId: string,
+    work: (manager: EntityManager | undefined) => Promise<T>,
+  ): Promise<T> {
+    return this.dbContext
+      ? this.dbContext.runInTenantContext({ tenantId, orgId: null, role: null }, work)
+      : work(undefined);
   }
 }

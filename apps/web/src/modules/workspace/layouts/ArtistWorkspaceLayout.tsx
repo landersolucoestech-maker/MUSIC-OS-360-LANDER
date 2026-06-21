@@ -6,28 +6,30 @@ import { useWorkspace } from '../hooks/useWorkspace';
 import { WorkspaceProvider } from '../providers/WorkspaceContext';
 
 const tabs = [
-  { id: 'overview', label: 'Overview' },
-  { id: 'releases', label: 'Releases' },
-  { id: 'campaigns', label: 'Campaigns' },
-  { id: 'financial', label: 'Financial' },
-  { id: 'team', label: 'Team' },
-  { id: 'activity', label: 'Activity' },
+  { id: 'overview', label: 'Resumo' },
+  { id: 'releases', label: 'Lançamentos' },
+  { id: 'campaigns', label: 'Campanhas' },
+  { id: 'financial', label: 'Financeiro' },
+  { id: 'team', label: 'Equipe' },
+  { id: 'activity', label: 'Histórico' },
 ] as const;
 
 export default function ArtistWorkspaceLayout() {
   const { artistId } = useParams();
   const location = useLocation();
 
-  if (!artistId) {
-    return <div className="p-6 text-sm text-destructive">Artist workspace requires an ID.</div>;
-  }
-
-  const value = useWorkspace('artist', artistId);
+  // Always call hooks unconditionally (react-hooks/rules-of-hooks). Pass empty
+  // id when the route param is absent — the early-return below renders the error.
+  const value = useWorkspace('artist', artistId ?? '');
 
   const activeTab = useMemo(() => {
     const matched = tabs.find((tab) => location.pathname.endsWith(`/${tab.id}`));
     return matched?.id ?? 'overview';
   }, [location.pathname]);
+
+  if (!artistId) {
+    return <div className="p-6 text-sm text-destructive">O ambiente do artista exige um ID.</div>;
+  }
 
   return (
     <WorkspaceProvider value={value}>
@@ -43,15 +45,15 @@ export default function ArtistWorkspaceLayout() {
               </CardHeader>
               <CardContent className="grid gap-3 sm:grid-cols-3">
                 <div>
-                  <div className="text-xs uppercase text-muted-foreground">ID</div>
+                  <div className="text-xs  text-muted-foreground">ID</div>
                   <div className="font-semibold">{value.workspaceId}</div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase text-muted-foreground">Status</div>
-                  <div className="font-semibold">Active</div>
+                  <div className="text-xs  text-muted-foreground">Status</div>
+                  <div className="font-semibold">Ativo</div>
                 </div>
                 <div>
-                  <div className="text-xs uppercase text-muted-foreground">Activities</div>
+                  <div className="text-xs  text-muted-foreground">Atividades</div>
                   <div className="font-semibold">{value.activities.length}</div>
                 </div>
               </CardContent>
@@ -60,7 +62,7 @@ export default function ArtistWorkspaceLayout() {
 
           <Card className="overflow-hidden">
             <CardHeader>
-              <CardTitle>Workspace Console</CardTitle>
+              <CardTitle>Console do Ambiente</CardTitle>
               <CardDescription>Visão inicial do cliente operacional.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
@@ -74,7 +76,7 @@ export default function ArtistWorkspaceLayout() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Workspace Tabs</CardTitle>
+            <CardTitle>Abas do Ambiente</CardTitle>
             <CardDescription>Conteúdo contextual com navegação interna.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -86,7 +88,7 @@ export default function ArtistWorkspaceLayout() {
                   onClick={() => value.setCurrentTab(tab.id)}
                   className={`rounded-full border px-3 py-2 text-sm transition ${
                     activeTab === tab.id
-                      ? 'bg-primary text-white border-primary'
+                      ? 'bg-primary text-foreground border-primary'
                       : 'bg-background text-muted-foreground border-border hover:bg-muted'
                   }`}
                 >
@@ -102,3 +104,5 @@ export default function ArtistWorkspaceLayout() {
     </WorkspaceProvider>
   );
 }
+
+

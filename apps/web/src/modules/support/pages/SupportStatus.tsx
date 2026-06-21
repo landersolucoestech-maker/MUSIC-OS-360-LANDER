@@ -1,7 +1,10 @@
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
-import { MOCK_SYSTEM_SERVICES, MOCK_INCIDENTS } from "../data/mockSupport";
+import {
+  SUPPORT_SYSTEM_SERVICES as MOCK_SYSTEM_SERVICES,
+  SUPPORT_INCIDENTS as MOCK_INCIDENTS,
+} from "../data/support-source";
 import type { SystemStatusLevel } from "../types";
 import {
   CheckCircle2, AlertTriangle, XCircle, Clock,
@@ -111,29 +114,29 @@ export default function SupportStatus() {
 
   return (
     <MainLayout title="Status do Sistema" description="Monitoramento de serviços em tempo real">
-      <div className="space-y-8 animate-fade-in">
+      <div className="space-y-6 animate-fade-in">
 
         {/* ── Overall status ── */}
         <div className={cn(
-          "relative overflow-hidden rounded-2xl border p-7",
+          "relative overflow-hidden rounded-lg border bg-card p-7",
           allOperational
-            ? "border-green-500/20 bg-gradient-to-br from-green-500/10 to-transparent"
-            : "border-orange-500/20 bg-gradient-to-br from-orange-500/10 to-transparent",
+            ? "border-success/30"
+            : "border-warning/30",
         )}>
           <div className="flex items-center gap-4">
             <div className={cn(
               "flex h-14 w-14 items-center justify-center rounded-2xl",
-              allOperational ? "bg-green-500/20" : "bg-orange-500/20",
+              allOperational ? "bg-success/10" : "bg-warning/10",
             )}>
               {allOperational
-                ? <CheckCircle2 className="h-7 w-7 text-green-400" />
-                : <AlertTriangle className="h-7 w-7 text-orange-400" />
+                ? <CheckCircle2 className="h-7 w-7 text-success" />
+                : <AlertTriangle className="h-7 w-7 text-warning" />
               }
             </div>
             <div>
               <h2 className={cn(
                 "text-xl font-bold",
-                allOperational ? "text-green-400" : "text-orange-400",
+                allOperational ? "text-success" : "text-warning",
               )}>
                 {allOperational
                   ? "Todos os sistemas operacionais"
@@ -197,7 +200,7 @@ export default function SupportStatus() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="text-[11.5px] text-muted-foreground tabular-nums">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
                           {service.uptime}% uptime
                         </span>
                         {service.latency !== undefined && (
@@ -205,7 +208,7 @@ export default function SupportStatus() {
                             {service.latency}ms
                           </span>
                         )}
-                        <Badge variant="outline" className={cn("text-[10.5px] border gap-1", cfg.color)}>
+                        <Badge variant="outline" className={cn("text-[10px] border gap-1", cfg.color)}>
                           <Icon className="h-3 w-3" />
                           {cfg.label}
                         </Badge>
@@ -250,7 +253,7 @@ export default function SupportStatus() {
                         Serviços afetados: {incident.services.join(", ")}
                       </p>
                     </div>
-                    <Badge variant="outline" className={cn("text-[10.5px] border shrink-0", INCIDENT_STATUS_COLOR[incident.status])}>
+                    <Badge variant="outline" className={cn("text-[10px] border shrink-0", INCIDENT_STATUS_COLOR[incident.status])}>
                       {INCIDENT_STATUS_LABEL[incident.status]}
                     </Badge>
                   </div>
@@ -266,7 +269,7 @@ export default function SupportStatus() {
                             )}
                           </div>
                           <div className="pb-2">
-                            <p className="text-[10.5px] text-muted-foreground/60 mb-0.5">
+                            <p className="text-[10px] text-muted-foreground/60 mb-0.5">
                               {formatDate(update.created_at)}
                             </p>
                             <p className="text-[12px] text-muted-foreground">{update.message}</p>
@@ -276,7 +279,7 @@ export default function SupportStatus() {
                     </div>
                   )}
 
-                  <div className="flex items-center gap-1.5 mt-2 text-[10.5px] text-muted-foreground/60">
+                  <div className="flex items-center gap-1.5 mt-2 text-[10px] text-muted-foreground/60">
                     <Clock className="h-3 w-3" />
                     Início: {formatDate(incident.created_at)}
                     {incident.resolved_at && ` · Resolvido: ${formatDate(incident.resolved_at)}`}

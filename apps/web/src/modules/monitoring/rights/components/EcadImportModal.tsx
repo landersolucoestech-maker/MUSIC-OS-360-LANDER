@@ -1,8 +1,11 @@
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
-import { Upload, FileText, CheckCircle, AlertTriangle, X, RefreshCw, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { EcadIcon } from "@/shared/ui/brand-icons";
+import { Upload, FileText, CheckCircle, AlertTriangle, X, RefreshCw, ChevronRight } from "lucide-react";
 
 type ImportStep = "idle" | "uploading" | "parsing" | "normalizing" | "matching" | "done" | "error";
 
@@ -111,7 +114,7 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
       <DialogContent className="max-w-2xl bg-card border-border max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-base font-semibold">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
+            <EcadIcon className="h-5 w-5" />
             Importação ECAD
             <Badge variant="outline" className="text-xs ml-1">Pipeline Automático</Badge>
           </DialogTitle>
@@ -132,7 +135,7 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
               </div>
               <div className="text-center">
                 <p className="text-sm font-semibold">Arraste o arquivo ou clique para selecionar</p>
-                <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: <span className="font-mono">.xlsx  .xls  .csv  .exp</span> — máx. 50 MB</p>
+                <p className="text-xs text-muted-foreground mt-1">Formatos aceitos: <span className="font-sans">.xlsx  .xls  .csv  .exp</span> — máx. 50 MB</p>
               </div>
             </div>
           ) : (
@@ -163,7 +166,7 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
           {/* Pipeline Progress */}
           {(processing || done) && (
             <div className="space-y-2">
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Pipeline de Processamento</p>
+              <p className="text-xs font-semibold text-muted-foreground  tracking-wide">Pipeline de Processamento</p>
               <div className="space-y-1.5">
                 {PIPELINE_STEPS.map((ps, i) => {
                   const isActive  = i === currentPipelineIdx && !done;
@@ -207,30 +210,35 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
               </div>
 
               <div>
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Amostra de Dados</p>
                 <div className="rounded-lg border border-border/60 overflow-hidden">
-                  <table className="w-full text-xs">
-                    <thead className="bg-muted/40">
-                      <tr>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">ISRC</th>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Obra</th>
-                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground hidden sm:table-cell">Intérprete</th>
-                        <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Exec.</th>
-                        <th className="text-right py-2 px-3 font-semibold text-muted-foreground">Valor</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-border/40">
+                  <ListSectionHeader
+                    title="Amostra de Dados"
+                    count={preview.amostra.length}
+                    description="Confira uma prévia das obras, ISRCs, execuções e valores importados"
+                    className="px-3 pt-3"
+                  />
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead data-no-sort="true">ISRC</TableHead>
+                        <TableHead data-no-sort="true">Obra</TableHead>
+                        <TableHead data-no-sort="true" className="hidden sm:table-cell">Intérprete</TableHead>
+                        <TableHead data-no-sort="true" className="text-right">Exec.</TableHead>
+                        <TableHead data-no-sort="true" className="text-right">Valor</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
                       {preview.amostra.map((row, i) => (
-                        <tr key={i} className="hover:bg-muted/20">
-                          <td className="py-2 px-3"><code className="font-mono text-muted-foreground">{row.isrc}</code></td>
-                          <td className="py-2 px-3 font-medium">{row.obra}</td>
-                          <td className="py-2 px-3 text-muted-foreground hidden sm:table-cell">{row.interprete}</td>
-                          <td className="py-2 px-3 text-right tabular-nums">{row.execucoes}</td>
-                          <td className="py-2 px-3 text-right tabular-nums font-medium">{fmtBRL(row.valor)}</td>
-                        </tr>
+                        <TableRow key={i}>
+                          <TableCell><code className="font-sans text-muted-foreground">{row.isrc}</code></TableCell>
+                          <TableCell className="font-medium">{row.obra}</TableCell>
+                          <TableCell className="text-muted-foreground hidden sm:table-cell">{row.interprete}</TableCell>
+                          <TableCell className="text-right tabular-nums">{row.execucoes}</TableCell>
+                          <TableCell className="text-right tabular-nums font-medium">{fmtBRL(row.valor)}</TableCell>
+                        </TableRow>
                       ))}
-                    </tbody>
-                  </table>
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
 

@@ -1,0 +1,20 @@
+# PASSO 12-J.7 — Scrape config do Prometheus para a API MUSIC OS 360.
+# A API expõe métricas em GET /metrics (Prometheus text/plain).
+# Se METRICS_TOKEN estiver definido na API, configure o bearer_token abaixo.
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'musicos360-api'
+    metrics_path: /metrics
+    # bearer_token: '<METRICS_TOKEN>'   # descomente se a API exigir token
+    static_configs:
+      - targets: ['api:3001']
+        labels:
+          service: 'api'
+          env: 'staging'
+
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

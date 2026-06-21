@@ -24,6 +24,9 @@ import type {
   QueryConversationDto,
   CreateMessageDto,
   CreateNoteDto,
+  CloseConversationDto,
+  ReopenConversationDto,
+  TransferConversationDto,
 } from './dto/conversations.dto';
 
 @Injectable()
@@ -57,6 +60,21 @@ export class ConversationsService {
     if (query.status)      qb.andWhere('c.status = :status',           { status:      query.status });
     if (query.channel)     qb.andWhere('c.channel = :channel',         { channel:     query.channel });
     if (query.assigned_to) qb.andWhere('c.assigned_to = :assignedTo',  { assignedTo:  query.assigned_to });
+    if (query.queue_id) {
+      qb.andWhere("c.metadata->>'queue_id' = :queueId", { queueId: query.queue_id });
+    }
+    if (query.sector_id) {
+      qb.andWhere("c.metadata->>'sector_id' = :sectorId", { sectorId: query.sector_id });
+    }
+    if (query.service_status) {
+      qb.andWhere("c.metadata->>'service_status' = :serviceStatus", { serviceStatus: query.service_status });
+    }
+    if (query.sla_state) {
+      qb.andWhere("c.metadata->>'sla_state' = :slaState", { slaState: query.sla_state });
+    }
+    if (query.tag_id) {
+      qb.andWhere("c.metadata->'tag_ids' ? :tagId", { tagId: query.tag_id });
+    }
     if (query.search) {
       qb.andWhere('c.subject ILIKE :search', { search: `%${query.search}%` });
     }
@@ -84,6 +102,14 @@ export class ConversationsService {
     userId:   string,
     dto:      CreateConversationDto,
   ): Promise<ConversationEntity> {
+    const metadata = {
+      ...(dto.metadata ?? {}),
+      ...(dto.queue_id ? { queue_id: dto.queue_id } : {}),
+      ...(dto.sector_id ? { sector_id: dto.sector_id } : {}),
+      ...(dto.service_status ? { service_status: dto.service_status } : { service_status: 'nova' }),
+      ...(dto.tags ? { tags: dto.tags } : {}),
+    };
+
     const conv = this.convRepo!.create({
       tenant_id:   tenantId,
       contact_id:  dto.contact_id  ?? null,
@@ -91,6 +117,7 @@ export class ConversationsService {
       channel:     dto.channel     ?? 'internal',
       assigned_to: dto.assigned_to ?? null,
       status:      'open',
+      metadata,
       created_by:  userId,
     });
     const saved = await this.convRepo!.save(conv);
@@ -117,13 +144,29 @@ export class ConversationsService {
     id:       string,
     dto:      UpdateConversationDto,
   ): Promise<ConversationEntity> {
-    await this.findConversationById(tenantId, id);
+    const current = await this.findConversationById(tenantId, id);
 
     const updates: Partial<ConversationEntity> = { updated_at: new Date() } as any;
     if (dto.status      != null) (updates as any).status      = dto.status;
     if (dto.subject     != null) (updates as any).subject     = dto.subject;
     if (dto.channel     != null) (updates as any).channel     = dto.channel;
     if (dto.assigned_to != null) (updates as any).assigned_to = dto.assigned_to;
+    if (
+      dto.metadata != null ||
+      dto.queue_id != null ||
+      dto.sector_id != null ||
+      dto.service_status != null ||
+      dto.tags != null
+    ) {
+      (updates as any).metadata = {
+        ...(current.metadata ?? {}),
+        ...(dto.metadata ?? {}),
+        ...(dto.queue_id ? { queue_id: dto.queue_id } : {}),
+        ...(dto.sector_id ? { sector_id: dto.sector_id } : {}),
+        ...(dto.service_status ? { service_status: dto.service_status } : {}),
+        ...(dto.tags ? { tags: dto.tags } : {}),
+      };
+    }
 
     await this.convRepo!.update({ id, tenant_id: tenantId } as any, updates as any);
 
@@ -249,5 +292,113 @@ export class ConversationsService {
     });
 
     return result;
+  }
+
+  async transfer(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    dto: TransferConversationDto,
+  ): Promise<ConversationEntity> {
+    const conv = await this.findConversationById(tenantId, conversationId);
+    const transfers = Array.isArray((conv.metadata as any)?.transfers)
+      ? (conv.metadata as any).transfers
+      : [];
+    const metadata = {
+      ...(conv.metadata ?? {}),
+      ...(dto.queue_id ? { queue_id: dto.queue_id } : {}),
+      ...(dto.sector_id ? { sector_id: dto.sector_id } : {}),
+      transfers: [
+        ...transfers,
+        {
+          from_assignee: conv.assigned_to,
+          to_assignee: dto.assignee_id ?? null,
+          queue_id: dto.queue_id ?? null,
+          sector_id: dto.sector_id ?? null,
+          reason: dto.reason ?? null,
+          transferred_by: userId,
+          transferred_at: new Date().toISOString(),
+        },
+      ],
+    };
+
+    await this.convRepo!.update(
+      { id: conversationId, tenant_id: tenantId } as any,
+      {
+        assigned_to: dto.assignee_id ?? conv.assigned_to,
+        metadata,
+        updated_at: new Date(),
+      } as any,
+    );
+
+    this.ws.sendToTenant(tenantId, 'conversation:transferred', {
+      conversationId,
+      assigneeId: dto.assignee_id ?? conv.assigned_to,
+      queueId: dto.queue_id ?? null,
+      sectorId: dto.sector_id ?? null,
+    });
+
+    return this.findConversationById(tenantId, conversationId);
+  }
+
+  async close(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    dto: CloseConversationDto,
+  ): Promise<ConversationEntity> {
+    const conv = await this.findConversationById(tenantId, conversationId);
+    const metadata = {
+      ...(conv.metadata ?? {}),
+      service_status: dto.service_status ?? 'resolvida',
+      closure: {
+        reason: dto.reason,
+        crm_actions: dto.crm_actions ?? {},
+        closed_by: userId,
+        closed_at: new Date().toISOString(),
+      },
+    };
+
+    await this.convRepo!.update(
+      { id: conversationId, tenant_id: tenantId } as any,
+      { status: 'closed', metadata, updated_at: new Date() } as any,
+    );
+
+    this.ws.sendToTenant(tenantId, 'conversation:closed', {
+      conversationId,
+      closedBy: userId,
+    });
+
+    return this.findConversationById(tenantId, conversationId);
+  }
+
+  async reopen(
+    tenantId: string,
+    userId: string,
+    conversationId: string,
+    dto: ReopenConversationDto,
+  ): Promise<ConversationEntity> {
+    const conv = await this.findConversationById(tenantId, conversationId);
+    const metadata = {
+      ...(conv.metadata ?? {}),
+      service_status: 'em_atendimento',
+      reopened: {
+        reason: dto.reason ?? null,
+        reopened_by: userId,
+        reopened_at: new Date().toISOString(),
+      },
+    };
+
+    await this.convRepo!.update(
+      { id: conversationId, tenant_id: tenantId } as any,
+      { status: 'open', metadata, updated_at: new Date() } as any,
+    );
+
+    this.ws.sendToTenant(tenantId, 'conversation:reopened', {
+      conversationId,
+      reopenedBy: userId,
+    });
+
+    return this.findConversationById(tenantId, conversationId);
   }
 }

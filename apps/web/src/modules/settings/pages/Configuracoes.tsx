@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/shared/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
@@ -17,25 +17,28 @@ import { useAuth } from "@/app/providers/AuthContext";
 import { useTenant } from "@/app/providers/TenantContext";
 import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
 import { useUsuarios, Usuario } from "@/modules/settings/hooks/useUsuarios";
-import { useRoles, Role } from "@/modules/settings/hooks/useRoles";
+import { useRoles, Role, RoleDetail } from "@/modules/settings/hooks/useRoles";
 import { UsuarioFormModal } from "@/modules/settings/components/UsuarioFormModal";
 import { UsuarioViewModal } from "@/modules/settings/components/UsuarioViewModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { 
-  User, Building2, Zap, Shield, Palette, Globe, Link, 
+  User, Building2, Zap, Shield, Link,
   Bell, Mail, Calendar, Clock, Key, Smartphone, Eye, EyeOff,
-  Sun, Moon, Monitor, Check, ExternalLink, RefreshCw, Trash2,
+  Monitor, Check, ExternalLink, RefreshCw, Trash2,
   Music, FileText, DollarSign, Users, Loader2, Search, UserCog,
-  Send, X, ChevronRight, Plus, Pencil, Download, CheckCircle, LucideIcon, Settings,
-  CreditCard, Crown, Receipt, Package, TrendingUp, AlertCircle
+  Send, X, ChevronRight, Plus, Pencil, Download, CheckCircle, Settings,
+  CreditCard, Crown, Receipt, Package, TrendingUp, AlertCircle,
+  Globe2, Copy, Archive, RotateCcw
 } from "lucide-react";
 import { Checkbox } from "@/shared/ui/checkbox";
 import { Textarea } from "@/shared/ui/textarea";
 import { Progress } from "@/shared/ui/progress";
 import { useMarketingOAuth, type MarketingPlatformId } from "@/modules/integrations/hooks/useMarketingOAuth";
 import { MarketingOAuthDialog } from "@/modules/integrations/components/MarketingOAuthDialog";
+import { getAccessToken } from "@/shared/lib/api-client";
+import { API_BASE_URL } from "@/shared/lib/env";
 import { AbramusConfigDialog } from "@/modules/integrations/components/AbramusConfigDialog";
 import { useAbramusStatus } from "@/modules/integrations/hooks/useAbramus";
 import { EcadConfigDialog } from "@/modules/integrations/components/EcadConfigDialog";
@@ -44,8 +47,6 @@ import { AutentiqueConfigDialog } from "@/modules/integrations/components/Autent
 import { useAutentiqueStatus } from "@/modules/integrations/hooks/useAutentique";
 import { ClicksignConfigDialog } from "@/modules/integrations/components/ClicksignConfigDialog";
 import { useClicksignStatus } from "@/modules/integrations/hooks/useClicksign";
-import { DocuSignConfigDialog } from "@/modules/integrations/components/DocuSignConfigDialog";
-import { useDocuSignStatus } from "@/modules/integrations/hooks/useDocuSign";
 import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDialog";
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
@@ -67,52 +68,14 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { Database, Sparkles, Unplug } from "lucide-react";
 import { resetMockData } from "@/shared/data/mockData";
+import {
+  IntegrationLogo,
+  type IntegrationLogoId,
+} from "@/shared/integrations";
 
 function formatRoleName(name: string): string {
   return name.replace(/_/g, " ");
 }
-
-const PERMISSION_TYPES: { id: string; label: string; icon?: LucideIcon }[] = [
-  { id: "view", label: "Visualizar", icon: Eye },
-  { id: "create", label: "+ Criar", icon: Plus },
-  { id: "edit", label: "Editar", icon: Pencil },
-  { id: "delete", label: "Excluir", icon: Trash2 },
-  { id: "approve", label: "Aprovar", icon: CheckCircle },
-  { id: "export", label: "Exportar", icon: Download },
-];
-
-const PERMISSION_MODULES = [
-  { id: "artistas", name: "Artistas" },
-  { id: "projetos", name: "Projetos" },
-  { id: "lancamentos", name: "Lançamentos" },
-  { id: "contratos", name: "Contratos" },
-  { id: "accounting", name: "Accounting" },
-  { id: "marketing", name: "Marketing" },
-  { id: "integracoes", name: "Integrações" },
-  { id: "usuarios", name: "Usuários" },
-  { id: "relatorios", name: "Relatórios" },
-  { id: "configuracoes", name: "Configurações" },
-  { id: "registro_musicas", name: "Registro de Músicas" },
-  { id: "crm", name: "CRM" },
-  { id: "agenda", name: "Agenda" },
-  { id: "inventario", name: "Inventário" },
-  { id: "servicos", name: "Serviços" },
-  { id: "nota_fiscal", name: "Nota Fiscal" },
-  { id: "musicchat", name: "MusicChat" },
-];
-
-// E-mails fallback após OAuth de cada distribuidora (constante de módulo — estável entre renders)
-const DIST_MOCK_EMAILS: Record<string, string> = {
-  onerpm:    "musicbusiness@onerpm.com",
-  distrokid: "musicbusiness@distrokid.com",
-  symphonic: "musicbusiness@symphonicms.com",
-  soundon:   "musicbusiness@soundon.global",
-  musicpro:  "musicbusiness@musicpro.com",
-  somvibe:   "musicbusiness@somvibe.com.br",
-};
-
-// IDs canônicos das distribuidoras — usado para filtrar postMessages
-const DISTRIBUTOR_IDS = new Set(Object.keys(DIST_MOCK_EMAILS));
 
 export default function Configuracoes() {
   const { tenant, setTenant } = useTenant();
@@ -128,7 +91,6 @@ export default function Configuracoes() {
     setOrgSlug,
     saveUserSettings, 
     saveCompanySettings,
-    saveOrgSlug,
   } = useUserSettings();
   const [slugError, setSlugError] = useState<string>("");
   const [isEditingCompany, setIsEditingCompany] = useState(false);
@@ -173,10 +135,20 @@ export default function Configuracoes() {
     isLoading: rolesLoading,
     inviteUser,
     cancelInvite,
+    resendInvite,
     assignRoleToUser,
+    assignPermissionToRole,
+    removePermissionFromRole,
     getPermissionsForRole,
     createRole,
+    updateRole,
+    duplicateRole,
+    archiveRole,
+    restoreRole,
+    addRoleInheritance,
+    removeRoleInheritance,
     getPermissionsByCategory,
+    getRoleDetail,
   } = useRoles();
 
   const [showPassword, setShowPassword] = useState(false);
@@ -184,6 +156,8 @@ export default function Configuracoes() {
   const [inviteRoleId, setInviteRoleId] = useState<string>("");
   const [permissionsModalOpen, setPermissionsModalOpen] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role | null>(null);
+  const [selectedRoleDetail, setSelectedRoleDetail] = useState<RoleDetail | null>(null);
+  const [parentRoleId, setParentRoleId] = useState("");
   const [passwords, setPasswords] = useState({
     current: "",
     new: "",
@@ -202,83 +176,22 @@ export default function Configuracoes() {
   const [ecadConfigOpen, setEcadConfigOpen] = useState(false);
   const [autentiqueConfigOpen, setAutentiqueConfigOpen] = useState(false);
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
-  const [docusignConfigOpen, setDocusignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
-
-  const DIST_STORAGE_KEY = "musicos360_distributor_connections";
-  const [distributorConnections, setDistributorConnections] = useState<Record<string, { username: string }>>(() => {
-    try { return JSON.parse(localStorage.getItem(DIST_STORAGE_KEY) || "{}"); } catch { return {}; }
+  const [externalOAuthConnections, setExternalOAuthConnections] = useState<
+    Partial<Record<"docusign", boolean>>
+  >(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("musicos360_external_oauth_connections") ?? "{}");
+    } catch {
+      return {};
+    }
   });
-  const distPopupRef = useRef<Window | null>(null);
-  const nfePopupRef  = useRef<Window | null>(null);
-
-  const handleDistOAuthSuccess = useCallback((distId: string) => {
-    const email = DIST_MOCK_EMAILS[distId] ?? `musicbusiness@${distId}.com`;
-    const updated = { ...distributorConnections, [distId]: { username: email } };
-    setDistributorConnections(updated);
-    try { localStorage.setItem(DIST_STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
-    toast.success("Distribuidora conectada com sucesso.");
-  }, [distributorConnections]);
-
-  // Listener postMessage — popup OAuth envia musicos360_oauth_success
-  useEffect(() => {
-    const handler = (event: MessageEvent) => {
-      if (event.data?.type !== "musicos360_oauth_success") return;
-      const platformId = event.data?.platform as string;
-      // NF-e popup success
-      if (platformId === "nfe") {
-        nfePopupRef.current = null;
-        setNfeConfigOpen(true); // abre dialog de configuração após autenticação
-        toast.success("SEFAZ autenticado. Configure os detalhes da NF-e.");
-        return;
-      }
-      // Distribuidora popup success — ignore messages from non-distributor platforms
-      if (!platformId || !DISTRIBUTOR_IDS.has(platformId)) return;
-      distPopupRef.current = null;
-      handleDistOAuthSuccess(platformId);
-    };
-    window.addEventListener("message", handler);
-    return () => window.removeEventListener("message", handler);
-  }, [handleDistOAuthSuccess]);
-
-  const openDistPopup = (distId: string) => {
-    const w = 480; const h = 600;
-    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
-    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
-    const popup = window.open(
-      `/oauth/${distId}`,
-      `musicos360_oauth_${distId}`,
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-    );
-    if (popup) distPopupRef.current = popup;
-  };
-
-  const openNfePopup = () => {
-    const w = 480; const h = 640;
-    const left = Math.round(window.screenX + (window.outerWidth - w) / 2);
-    const top  = Math.round(window.screenY + (window.outerHeight - h) / 2);
-    const popup = window.open(
-      "/oauth/nfe",
-      "musicos360_oauth_nfe",
-      `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
-    );
-    if (popup) nfePopupRef.current = popup;
-  };
-
-  const handleDistDisconnect = (id: string) => {
-    const updated = { ...distributorConnections };
-    delete updated[id];
-    setDistributorConnections(updated);
-    try { localStorage.setItem(DIST_STORAGE_KEY, JSON.stringify(updated)); } catch { /* ignore */ }
-    toast.success("Distribuidora desconectada.");
-  };
 
   const { data: abramusStatus } = useAbramusStatus();
   const { data: ecadStatus } = useEcadStatus();
   const { data: autentiqueStatus } = useAutentiqueStatus();
   const { data: clicksignStatus } = useClicksignStatus();
-  const { data: docusignStatus } = useDocuSignStatus();
   const { data: ubcStatus } = useUbcStatus();
   const {
     isConnected: isMarketingConnected,
@@ -286,6 +199,57 @@ export default function Configuracoes() {
     disconnect: disconnectMarketing,
   } = useMarketingOAuth();
   const { data: nfeStatus } = useNfeStatus();
+
+  useEffect(() => {
+    const handleExternalOAuth = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (event.data?.type !== "musicos360_oauth_success") return;
+      const platform = event.data?.platform as string;
+      if (platform !== "docusign") return;
+      if (!event.data?.access_token) return;
+
+      setExternalOAuthConnections((current) => {
+        const next = { ...current, [platform]: true };
+        sessionStorage.setItem("musicos360_external_oauth_connections", JSON.stringify(next));
+        return next;
+      });
+      toast.success("DocuSign conectado com sucesso.");
+    };
+
+    window.addEventListener("message", handleExternalOAuth);
+    return () => window.removeEventListener("message", handleExternalOAuth);
+  }, []);
+
+  const openExternalOAuth = async (platform: "docusign") => {
+    const popup = window.open(
+      "about:blank",
+      `musicos360_oauth_${platform}`,
+      "width=520,height=700,toolbar=no,menubar=no,scrollbars=yes,resizable=yes",
+    );
+    if (!popup) {
+      toast.error("Permita popups neste site para iniciar a autorização.");
+      return;
+    }
+
+    try {
+      const accessToken = getAccessToken();
+      const response = await fetch(`${API_BASE_URL}/api/v1/integrations/oauth/init`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
+        body: JSON.stringify({ platform }),
+      });
+      if (!response.ok) throw new Error("Não foi possível iniciar a autorização.");
+      const { exchange_token } = await response.json() as { exchange_token: string };
+      sessionStorage.setItem(`musicos360_oauth_nonce_${platform}`, exchange_token);
+      popup.location.href = `/oauth/${platform}?nonce=${encodeURIComponent(exchange_token)}`;
+    } catch (error) {
+      popup.close();
+      toast.error(error instanceof Error ? error.message : "Falha ao iniciar OAuth.");
+    }
+  };
 
   // Estados para aba de Usuários
   const [usuarioFormModal, setUsuarioFormModal] = useState<{ open: boolean; mode: "create" | "edit"; usuario?: Usuario }>({ open: false, mode: "create" });
@@ -352,9 +316,84 @@ export default function Configuracoes() {
     }
   };
 
-  const handleViewPermissions = (role: Role) => {
+  const handleViewPermissions = async (role: Role) => {
     setSelectedRole(role);
+    setSelectedRoleDetail(null);
     setPermissionsModalOpen(true);
+    try {
+      setSelectedRoleDetail(await getRoleDetail(role.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao carregar detalhes do papel.");
+    }
+  };
+
+  const handleDuplicateRole = async (role: Role) => {
+    try {
+      await duplicateRole.mutateAsync({ id: role.id, name: `${role.name} - cópia` });
+      toast.success("Papel duplicado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao duplicar papel.");
+    }
+  };
+
+  const handleEditRole = async (role: Role) => {
+    const name = window.prompt("Nome do papel", role.name)?.trim();
+    if (!name || name === role.name) return;
+    try {
+      await updateRole.mutateAsync({ id: role.id, name });
+      toast.success("Papel atualizado.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao editar papel.");
+    }
+  };
+
+  const handleArchiveRole = async (role: Role) => {
+    try {
+      if (role.archived_at) {
+        await restoreRole.mutateAsync(role.id);
+        toast.success("Papel reativado.");
+      } else {
+        await archiveRole.mutateAsync(role.id);
+        toast.success("Papel arquivado.");
+      }
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao alterar papel.");
+    }
+  };
+
+  const handleToggleGrant = async (permissionId: string, granted: boolean) => {
+    if (!selectedRole || selectedRole.is_system) return;
+    try {
+      if (granted) {
+        await removePermissionFromRole.mutateAsync({ roleId: selectedRole.id, permissionId });
+      } else {
+        await assignPermissionToRole.mutateAsync({ roleId: selectedRole.id, permissionId });
+      }
+      setSelectedRoleDetail(await getRoleDetail(selectedRole.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao alterar permissão.");
+    }
+  };
+
+  const handleAddInheritance = async () => {
+    if (!selectedRole || !parentRoleId) return;
+    try {
+      await addRoleInheritance.mutateAsync({ roleId: selectedRole.id, parentRoleId });
+      setSelectedRoleDetail(await getRoleDetail(selectedRole.id));
+      setParentRoleId("");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao adicionar herança.");
+    }
+  };
+
+  const handleRemoveInheritance = async (inheritedRoleId: string) => {
+    if (!selectedRole) return;
+    try {
+      await removeRoleInheritance.mutateAsync({ roleId: selectedRole.id, parentRoleId: inheritedRoleId });
+      setSelectedRoleDetail(await getRoleDetail(selectedRole.id));
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erro ao remover herança.");
+    }
   };
 
   const handleCreateRole = async () => {
@@ -368,6 +407,7 @@ export default function Configuracoes() {
         description: newRoleDescription || null,
         is_system: false,
         priority: 50,
+        permissionIds: selectedPermissions,
       });
       toast.success("Papel criado com sucesso!");
       setCreateRoleModalOpen(false);
@@ -390,7 +430,10 @@ export default function Configuracoes() {
   const integracoes: Array<{
     id: string;
     name: string;
-    icon: string;
+    logoId?: IntegrationLogoId;
+    icon?: React.ComponentType<{ className?: string }>;
+    iconClassName?: string;
+    iconBackgroundClassName?: string;
     status: "conectado" | "desconectado";
     description: string;
     category: string;
@@ -401,7 +444,7 @@ export default function Configuracoes() {
     {
       id: "autentique",
       name: "Autentique",
-      icon: "✍️",
+      logoId: "autentique",
       status: autentiqueStatus?.connected ? "conectado" : "desconectado",
       description: "Assinatura eletrônica brasileira — envio e acompanhamento de contratos",
       category: "Assinatura Digital",
@@ -410,7 +453,7 @@ export default function Configuracoes() {
     {
       id: "clicksign",
       name: "Clicksign",
-      icon: "🖊️",
+      logoId: "clicksign",
       status: clicksignStatus?.connected ? "conectado" : "desconectado",
       description: "Plataforma brasileira de assinatura eletrônica com validade jurídica",
       category: "Assinatura Digital",
@@ -419,8 +462,8 @@ export default function Configuracoes() {
     {
       id: "docusign",
       name: "DocuSign",
-      icon: "📝",
-      status: docusignStatus?.connected ? "conectado" : "desconectado",
+      logoId: "docusign",
+      status: externalOAuthConnections.docusign ? "conectado" : "desconectado",
       description: "Líder mundial em assinatura digital e gestão de acordos",
       category: "Assinatura Digital",
       configurable: true,
@@ -429,7 +472,7 @@ export default function Configuracoes() {
     {
       id: "ecad",
       name: "ECAD",
-      icon: "📊",
+      logoId: "ecad",
       status: ecadStatus?.connected ? "conectado" : "desconectado",
       description: "Arrecadação de execução pública · Conciliação com catálogo local",
       category: "Direitos Autorais",
@@ -438,16 +481,16 @@ export default function Configuracoes() {
     {
       id: "abramus",
       name: "ABRAMUS",
-      icon: "🎼",
+      logoId: "abramus",
       status: abramusStatus?.connected ? "conectado" : "desconectado",
-      description: "Buscar e importar obras/fonogramas registrados",
+      description: "Registro e conciliação de obras e fonogramas junto à ABRAMUS.",
       category: "Direitos Autorais",
       configurable: true,
     },
     {
       id: "ubc",
       name: "UBC",
-      icon: "🏛️",
+      logoId: "ubc",
       status: ubcStatus?.connected ? "conectado" : "desconectado",
       description: "União Brasileira de Compositores — registro de obras e ISWC",
       category: "Direitos Autorais",
@@ -460,27 +503,27 @@ export default function Configuracoes() {
     {
       id: "meta_business",
       name: "Meta Business Suite",
-      icon: "🔷",
+      logoId: "meta_business",
       status: isMarketingConnected("meta_business") ? "conectado" : "desconectado",
-      description: "Facebook + Instagram + Meta Ads — métricas, publicações, campanhas e analytics da empresa",
+      description: "Facebook, Instagram e Meta Ads — mensagens, métricas, publicações, campanhas e resultados da empresa",
       category: "Marketing Digital",
       configurable: true,
     },
     {
       id: "tiktok_business",
       name: "TikTok Business",
-      icon: "🎬",
+      logoId: "tiktok_business",
       status: isMarketingConnected("tiktok_business") ? "conectado" : "desconectado",
-      description: "TikTok for Business + TikTok Ads — conta oficial, analytics, seguidores e campanhas",
+      description: "TikTok for Business e TikTok Ads — mensagens, seguidores, conteúdos, métricas e campanhas",
       category: "Marketing Digital",
       configurable: true,
     },
     {
       id: "google_business",
       name: "Google & YouTube",
-      icon: "🔍",
+      logoId: "google_business",
       status: isMarketingConnected("google_business") ? "conectado" : "desconectado",
-      description: "Google Analytics 4 + Search Console + Google Ads + YouTube Studio + YouTube Ads — um único login Google",
+      description: "Google Analytics, Search Console, Google Ads e YouTube — tráfego, anúncios, SEO e desempenho de vídeos",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -488,9 +531,9 @@ export default function Configuracoes() {
     {
       id: "spotify_ads",
       name: "Spotify Ad Studio",
-      icon: "🎧",
+      logoId: "spotify_ads",
       status: isMarketingConnected("spotify_ads") ? "conectado" : "desconectado",
-      description: "Anúncios de áudio e display no Spotify — segmentação por gênero musical",
+      description: "Spotify Ads — ouvintes, streams, seguidores e campanhas",
       category: "Marketing Digital",
       configurable: true,
     },
@@ -498,7 +541,7 @@ export default function Configuracoes() {
     {
       id: "nfe",
       name: "NF-e / Nota Fiscal",
-      icon: "🧾",
+      logoId: "nfe",
       status: nfeStatus?.connected ? "conectado" : "desconectado",
       description: "Emissão de NF-e com certificado digital e credenciais SEFAZ da sua empresa",
       category: "Fiscal",
@@ -509,21 +552,29 @@ export default function Configuracoes() {
     {
       id: "website_leads",
       name: "Website / Captação de Leads",
-      icon: "🌐",
+      icon: Globe2,
+      iconClassName: "text-cyan-600",
+      iconBackgroundClassName: "bg-cyan-500/10",
       status: "desconectado" as const,
-      description: "Pixel JS + webhook + iframe embed para captar leads do seu site directo no CRM",
+      description: "Captação de leads via Pixel, Webhooks e formulários integrados ao CRM",
       category: "Captação de Leads",
       configurable: true,
     },
   ];
 
-  const DISTRIBUTORS = [
-    { id: "onerpm", name: "ONErpm", initials: "1R", color: "bg-orange-500", description: "Distribuição global com analytics avançados e suporte a label" },
-    { id: "distrokid", name: "DistroKid", initials: "DK", color: "bg-blue-500", description: "Distribuição rápida para todas as plataformas de streaming" },
-    { id: "symphonic", name: "Symphonic", initials: "SY", color: "bg-purple-600", description: "Distribuição e marketing para artistas e selos independentes" },
-    { id: "soundon", name: "SoundOn", initials: "SO", color: "bg-black", description: "Distribuidora oficial do TikTok com monetização integrada" },
-    { id: "musicpro", name: "MusicPro", initials: "MP", color: "bg-green-600", description: "Distribuição profissional com suporte dedicado e recebimentos externos de direitos mensais" },
-    { id: "somvibe", name: "SomVibe", initials: "SV", color: "bg-primary", description: "Distribuidora brasileira independente com foco no mercado nacional" },
+  const DISTRIBUTORS: Array<{
+    id: string;
+    name: string;
+    logoId: IntegrationLogoId;
+    description: string;
+    portalUrl: string;
+  }> = [
+    { id: "onerpm", name: "ONErpm", logoId: "onerpm", description: "Distribuição digital, analytics e gestão de lançamentos", portalUrl: "https://app.onerpm.com/" },
+    { id: "distrokid", name: "DistroKid", logoId: "distrokid", description: "Distribuição rápida para plataformas de streaming", portalUrl: "https://distrokid.com/signin/" },
+    { id: "symphonic", name: "Symphonic", logoId: "symphonic", description: "Distribuição, marketing e gestão de catálogo musical", portalUrl: "https://app.symphonicms.com/" },
+    { id: "soundon", name: "SoundOn", logoId: "soundon", description: "Distribuição e monetização integrada ao ecossistema TikTok", portalUrl: "https://soundon.global/" },
+    { id: "musicpro", name: "MusicPro", logoId: "musicpro", description: "Distribuição digital, royalties e gestão de direitos", portalUrl: "https://app.musicpro.com.br/" },
+    { id: "somvibe", name: "SomVibe", logoId: "somvibe", description: "Distribuição digital com foco no mercado brasileiro", portalUrl: "https://somvibe.com.br/" },
   ];
 
   // IDs das plataformas corporativas de Marketing Digital (OAuth inline, sem modal separado)
@@ -540,12 +591,12 @@ export default function Configuracoes() {
   const integrationConfigHandlers: Record<string, () => void> = {
     autentique:    () => setAutentiqueConfigOpen(true),
     clicksign:     () => setClicksignConfigOpen(true),
-    docusign:      () => setDocusignConfigOpen(true),
+    docusign:      () => void openExternalOAuth("docusign"),
     ecad:          () => setEcadConfigOpen(true),
     abramus:       () => setAbramusConfigOpen(true),
     ubc:           () => setUbcConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
-    nfe:           () => openNfePopup(),
+    nfe:           () => setNfeConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -570,19 +621,23 @@ export default function Configuracoes() {
   };
 
   const handleSaveCompany = async () => {
+    let normalizedSlug: string | undefined;
     if (orgSlug) {
-      const normalized = orgSlug.trim().toLowerCase();
+      normalizedSlug = orgSlug.trim().toLowerCase();
       const slugRegex = /^[a-z0-9-]+$/;
-      if (!slugRegex.test(normalized)) {
+      if (!slugRegex.test(normalizedSlug)) {
         setSlugError("Use apenas letras minúsculas, números e hífens.");
         return;
       }
       setSlugError("");
-      if (normalized !== orgSlug) setOrgSlug(normalized);
-      const slugSaved = await saveOrgSlug(normalized);
-      if (!slugSaved) return;
+      if (normalizedSlug !== orgSlug) setOrgSlug(normalizedSlug);
     }
-    await saveCompanySettings(companySettings);
+
+    const saved = await saveCompanySettings(
+      companySettings,
+      normalizedSlug,
+    );
+    if (!saved) return;
 
     // Sincroniza o nome da organização na sidebar e no TenantContext
     const displayName = companySettings.fantasy_name?.trim() || companySettings.company_name?.trim();
@@ -604,33 +659,6 @@ export default function Configuracoes() {
       auto_alerta_financeiro: userSettings.auto_alerta_financeiro,
       auto_backup: userSettings.auto_backup,
       auto_relatorio_semanal: userSettings.auto_relatorio_semanal,
-    });
-  };
-
-  const applyTheme = (theme: "light" | "dark") => {
-    const root = window.document.documentElement;
-    root.classList.remove("light", "dark");
-    root.classList.add(theme);
-    localStorage.setItem("theme", theme);
-    setUserSettings({ ...userSettings, theme });
-  };
-
-  const handleSaveAparencia = () => {
-    saveUserSettings({
-      theme: userSettings.theme,
-      accent_color: userSettings.accent_color,
-      sidebar_compact: userSettings.sidebar_compact,
-      animations_enabled: userSettings.animations_enabled,
-    });
-  };
-
-  const handleSaveIdioma = () => {
-    saveUserSettings({
-      language: userSettings.language,
-      timezone: userSettings.timezone,
-      date_format: userSettings.date_format,
-      time_format: userSettings.time_format,
-      currency: userSettings.currency,
     });
   };
 
@@ -680,14 +708,6 @@ export default function Configuracoes() {
             <TabsTrigger value="seguranca" className="flex items-center gap-2">
               <Shield className="h-4 w-4" />
               Segurança
-            </TabsTrigger>
-            <TabsTrigger value="aparencia" className="flex items-center gap-2">
-              <Palette className="h-4 w-4" />
-              Aparência
-            </TabsTrigger>
-            <TabsTrigger value="idioma" className="flex items-center gap-2">
-              <Globe className="h-4 w-4" />
-              Idioma
             </TabsTrigger>
             <TabsTrigger value="integracoes" className="flex items-center gap-2">
               <Link className="h-4 w-4" />
@@ -820,7 +840,7 @@ export default function Configuracoes() {
                       data-testid="button-save-company"
                     >
                       {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                      Salvar Dados
+                      Salvar Configurações
                     </Button>
                     <Button
                       variant="outline"
@@ -1295,216 +1315,6 @@ export default function Configuracoes() {
             </Card>
           </TabsContent>
 
-          {/* Aparência */}
-          <TabsContent value="aparencia" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Palette className="h-5 w-5" />
-                  Aparência
-                </CardTitle>
-                <CardDescription>Personalize a aparência do sistema</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <h4 className="font-medium">Tema</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => applyTheme("light")}
-                      data-testid="button-theme-light"
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        userSettings.theme === "light" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <Sun className="h-8 w-8" />
-                        <span className="text-sm font-medium">Claro</span>
-                        {userSettings.theme === "light" && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => applyTheme("dark")}
-                      data-testid="button-theme-dark"
-                      className={`p-4 rounded-lg border-2 transition-all ${
-                        userSettings.theme === "dark" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="flex flex-col items-center gap-2">
-                        <Moon className="h-8 w-8" />
-                        <span className="text-sm font-medium">Escuro</span>
-                        {userSettings.theme === "dark" && <Check className="h-4 w-4 text-primary" />}
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="font-medium">Layout</h4>
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">Sidebar compacta</p>
-                      <p className="text-xs text-muted-foreground">Reduzir largura da barra lateral</p>
-                    </div>
-                    <Switch 
-                      checked={userSettings.sidebar_compact}
-                      onCheckedChange={(checked) => setUserSettings({ ...userSettings, sidebar_compact: checked })}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between p-3 bg-muted/30 rounded-lg">
-                    <div>
-                      <p className="text-sm font-medium">Animações</p>
-                      <p className="text-xs text-muted-foreground">Habilitar animações de transição</p>
-                    </div>
-                    <Switch 
-                      checked={userSettings.animations_enabled}
-                      onCheckedChange={(checked) => setUserSettings({ ...userSettings, animations_enabled: checked })}
-                    />
-                  </div>
-                </div>
-
-                <Button 
-                  className="bg-primary hover:bg-primary/90" 
-                  onClick={handleSaveAparencia}
-                  disabled={saving}
-                >
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar Preferências
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
-          {/* Idioma */}
-          <TabsContent value="idioma" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5" />
-                  Idioma e Região
-                </CardTitle>
-                <CardDescription>Configure idioma, formato de data e moeda</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Idioma do Sistema</Label>
-                    <Select 
-                      value={userSettings.language} 
-                      onValueChange={(value) => setUserSettings({ ...userSettings, language: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pt-BR">🇧🇷 Português (Brasil)</SelectItem>
-                        <SelectItem value="en-US">🇺🇸 English (US)</SelectItem>
-                        <SelectItem value="es">🇪🇸 Español</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Fuso Horário</Label>
-                    <Select 
-                      value={userSettings.timezone}
-                      onValueChange={(value) => setUserSettings({ ...userSettings, timezone: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="America/Sao_Paulo">Brasília (GMT-3)</SelectItem>
-                        <SelectItem value="America/New_York">Nova York (GMT-5)</SelectItem>
-                        <SelectItem value="Europe/London">Londres (GMT+0)</SelectItem>
-                        <SelectItem value="Europe/Lisbon">Lisboa (GMT+0)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>Formato de Data</Label>
-                    <Select 
-                      value={userSettings.date_format}
-                      onValueChange={(value) => setUserSettings({ ...userSettings, date_format: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="DD/MM/YYYY">DD/MM/AAAA (27/12/2025)</SelectItem>
-                        <SelectItem value="MM/DD/YYYY">MM/DD/AAAA (12/27/2025)</SelectItem>
-                        <SelectItem value="YYYY-MM-DD">AAAA-MM-DD (2025-12-27)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Moeda</Label>
-                    <Select 
-                      value={userSettings.currency}
-                      onValueChange={(value) => setUserSettings({ ...userSettings, currency: value })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="BRL">R$ Real Brasileiro (BRL)</SelectItem>
-                        <SelectItem value="USD">$ Dólar Americano (USD)</SelectItem>
-                        <SelectItem value="EUR">€ Euro (EUR)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="font-medium flex items-center gap-2">
-                    <Clock className="h-4 w-4" />
-                    Formato de Hora
-                  </h4>
-                  <div className="flex gap-4">
-                    <button 
-                      onClick={() => setUserSettings({ ...userSettings, time_format: "24h" })}
-                      className={`flex-1 p-4 rounded-lg border-2 ${
-                        userSettings.time_format === "24h" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="text-center">
-                        <p className="text-lg font-bold">14:30</p>
-                        <p className="text-sm text-muted-foreground">24 horas</p>
-                      </div>
-                    </button>
-                    <button 
-                      onClick={() => setUserSettings({ ...userSettings, time_format: "12h" })}
-                      className={`flex-1 p-4 rounded-lg border-2 ${
-                        userSettings.time_format === "12h" ? "border-primary bg-muted/30" : "border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      <div className="text-center">
-                        <p className="text-lg font-bold">2:30 PM</p>
-                        <p className="text-sm text-muted-foreground">12 horas</p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
-
-                <Button 
-                  className="bg-primary hover:bg-primary/90" 
-                  onClick={handleSaveIdioma}
-                  disabled={saving}
-                >
-                  {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Salvar Configurações
-                </Button>
-              </CardContent>
-            </Card>
-          </TabsContent>
-
           {/* Integrações */}
           <TabsContent value="integracoes" className="mt-6 space-y-6">
             <Card>
@@ -1538,6 +1348,7 @@ export default function Configuracoes() {
 
                       {/* Linhas — mesmo padrão visual de Distribuidoras */}
                       {items.map((integracao) => {
+                        const FallbackIcon = integracao.icon;
                         const isMarketingPlatform = MARKETING_PLATFORM_IDS.has(integracao.id);
                         const isConnecting = connectingPlatform === integracao.id;
                         const handler = integrationConfigHandlers[integracao.id];
@@ -1550,9 +1361,15 @@ export default function Configuracoes() {
                           >
                             {/* Esquerda: ícone + textos */}
                             <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 bg-muted/80 rounded-lg flex items-center justify-center text-xl shrink-0 select-none">
-                                {integracao.icon}
-                              </div>
+                              {integracao.logoId ? (
+                                <IntegrationLogo id={integracao.logoId} />
+                              ) : FallbackIcon ? (
+                                <div className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border/50 ${integracao.iconBackgroundClassName ?? "bg-muted"}`}>
+                                  <FallbackIcon className={`h-6 w-6 ${integracao.iconClassName ?? ""}`} />
+                                </div>
+                              ) : (
+                                <div className="h-12 w-12 shrink-0 rounded-lg border border-border/50 bg-muted" />
+                              )}
                               <div>
                                 <p className="font-medium">{integracao.name}</p>
                                 <p className="text-sm text-muted-foreground leading-snug">{integracao.description}</p>
@@ -1640,56 +1457,37 @@ export default function Configuracoes() {
                 <CardDescription>Conecte sua conta nas distribuidoras para enviar lançamentos diretamente pela plataforma</CardDescription>
               </CardHeader>
               <CardContent className="space-y-3">
-                {DISTRIBUTORS.map((dist) => {
-                  const conn = distributorConnections[dist.id];
-                  const isConnected = Boolean(conn);
-                  return (
+                {DISTRIBUTORS.map((dist) => (
                     <div
                       key={dist.id}
                       className="flex items-center justify-between p-4 bg-muted/30 rounded-lg"
                       data-testid={`distributor-row-${dist.id}`}
                     >
                       <div className="flex items-center gap-4">
-                        <div className={`w-12 h-12 ${dist.color} rounded-lg flex items-center justify-center text-white font-bold text-sm`}>
-                          {dist.initials}
-                        </div>
+                        <IntegrationLogo id={dist.logoId} imageClassName="h-11 w-11" />
                         <div>
                           <p className="font-medium">{dist.name}</p>
                           <p className="text-sm text-muted-foreground">{dist.description}</p>
-                          {isConnected && (
-                            <p className="text-xs text-success mt-0.5">Conta: {conn.username}</p>
-                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-success/10 text-success border-success/30" : ""}>
-                          {isConnected ? "Conectado" : "Desconectado"}
+                        <Badge variant="secondary">
+                          Acesso externo
                         </Badge>
-                        {isConnected ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleDistDisconnect(dist.id)}
-                            data-testid={`button-dist-disconnect-${dist.id}`}
-                          >
-                            <Unplug className="h-3 w-3 mr-1" />
-                            Desconectar
-                          </Button>
-                        ) : (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => openDistPopup(dist.id)}
-                            data-testid={`button-dist-connect-${dist.id}`}
-                          >
-                            Conectar
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          data-testid={`button-dist-connect-${dist.id}`}
+                        >
+                          <a href={dist.portalUrl} target="_blank" rel="noopener noreferrer">
+                            Abrir portal oficial
                             <ExternalLink className="h-3 w-3 ml-2" />
-                          </Button>
-                        )}
+                          </a>
+                        </Button>
                       </div>
                     </div>
-                  );
-                })}
+                ))}
               </CardContent>
             </Card>
 
@@ -1770,10 +1568,6 @@ export default function Configuracoes() {
             <ClicksignConfigDialog
               open={clicksignConfigOpen}
               onOpenChange={setClicksignConfigOpen}
-            />
-            <DocuSignConfigDialog
-              open={docusignConfigOpen}
-              onOpenChange={setDocusignConfigOpen}
             />
             <UbcConfigDialog
               open={ubcConfigOpen}
@@ -2117,14 +1911,14 @@ export default function Configuracoes() {
                       data-testid="input-invite-email"
                     />
                   </div>
-                  <Select value={usuarioCargoFilter} onValueChange={setUsuarioCargoFilter}>
-                    <SelectTrigger className="w-[120px]" data-testid="select-filter-all">
-                      <SelectValue placeholder="Todos" />
+                  <Select value={inviteRoleId} onValueChange={setInviteRoleId}>
+                    <SelectTrigger className="w-[180px]" data-testid="select-invite-role">
+                      <SelectValue placeholder="Papel" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all-cargo">Todos</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
-                      <SelectItem value="usuario">Usuário</SelectItem>
+                      {roles.filter((role) => !role.archived_at && role.is_assignable !== false).map((role) => (
+                        <SelectItem key={role.id} value={role.id}>{formatRoleName(role.name)}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <Button 
@@ -2166,10 +1960,8 @@ export default function Configuracoes() {
                           <p className="text-sm text-muted-foreground truncate">{usuario.email}</p>
                         </div>
                         <Select 
-                          value={usuario.role === "admin" ? "admin" : "usuario"}
-                          onValueChange={(value) => {
-                            // Update role logic
-                          }}
+                          value={roles.find((role) => role.slug === usuario.role)?.id ?? ""}
+                          onValueChange={(value) => void handleRoleChange(usuario.id, value)}
                         >
                           <SelectTrigger className="w-[140px]" data-testid={`select-role-${usuario.id}`}>
                             <SelectValue />
@@ -2233,6 +2025,15 @@ export default function Configuracoes() {
                         <Badge variant="secondary" className="text-xs">
                           Pendente
                         </Badge>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => resendInvite.mutate(invite.id)}
+                          title="Reenviar convite"
+                          data-testid={`button-resend-invite-${invite.id}`}
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
                         <Button 
                           variant="ghost" 
                           size="icon"
@@ -2296,16 +2097,27 @@ export default function Configuracoes() {
                             )}
                           </div>
                         </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm"
-                          className="gap-2 text-muted-foreground hover:text-foreground"
-                          onClick={() => handleViewPermissions(role)}
-                          data-testid={`button-view-permissions-${role.id}`}
-                        >
-                          Ver Permissões
-                          <ChevronRight className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button variant="ghost" size="icon" title="Editar papel" disabled={role.is_system || !!role.archived_at} onClick={() => void handleEditRole(role)}>
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title="Duplicar papel" disabled={role.is_system} onClick={() => void handleDuplicateRole(role)}>
+                            <Copy className="h-4 w-4" />
+                          </Button>
+                          <Button variant="ghost" size="icon" title={role.archived_at ? "Reativar papel" : "Arquivar papel"} disabled={role.is_system} onClick={() => void handleArchiveRole(role)}>
+                            {role.archived_at ? <RotateCcw className="h-4 w-4" /> : <Archive className="h-4 w-4" />}
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm"
+                            className="gap-2 text-muted-foreground hover:text-foreground"
+                            onClick={() => handleViewPermissions(role)}
+                            data-testid={`button-view-permissions-${role.id}`}
+                          >
+                            Ver Permissões
+                            <ChevronRight className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -2389,7 +2201,7 @@ export default function Configuracoes() {
           
           <div className="space-y-6 py-4">
             {selectedRole && (() => {
-              const rolePerms = getPermissionsForRole(selectedRole.id);
+              const rolePerms = selectedRoleDetail?.permissions ?? getPermissionsForRole(selectedRole.id);
               if (rolePerms.length === 0) {
                 return (
                   <div className="text-center py-8">
@@ -2408,27 +2220,105 @@ export default function Configuracoes() {
                 grouped[p.category].push(p);
               });
 
-              return Object.entries(grouped).map(([category, perms]) => (
-                <div key={category} className="space-y-2">
-                  <h4 className="font-medium text-foreground">{category}</h4>
-                  <div className="grid gap-2">
-                    {perms.map((perm) => (
-                      <div 
-                        key={perm.id}
-                        className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg"
-                      >
-                        <Check className="h-4 w-4 text-success" />
+              return (
+                <div className="space-y-6">
+                  {Object.entries(grouped).map(([category, perms]) => (
+                    <div key={category} className="space-y-2">
+                      <h4 className="font-medium text-foreground">{category}</h4>
+                      <div className="grid gap-2">
+                        {perms.map((perm) => (
+                          <div key={`${perm.id}-${"source_role_id" in perm ? perm.source_role_id : "direct"}`} className="flex items-center gap-3 p-2 bg-muted/30 rounded-lg">
+                            <Check className="h-4 w-4 text-success" />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium">{perm.label}</p>
+                              {perm.description && <p className="text-xs text-muted-foreground">{perm.description}</p>}
+                            </div>
+                            {"source" in perm && (
+                              <Badge variant={perm.source === "direct" ? "default" : "secondary"}>
+                                {perm.source === "direct"
+                                  ? "Direta"
+                                  : `Herdada de ${"source_role_name" in perm ? String(perm.source_role_name) : "papel pai"}`}
+                              </Badge>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                  {selectedRoleDetail && (
+                    <>
+                      <div className="grid gap-4 border-t border-border pt-4 sm:grid-cols-2">
                         <div>
-                          <p className="text-sm font-medium">{perm.label}</p>
-                          {perm.description && (
-                            <p className="text-xs text-muted-foreground">{perm.description}</p>
-                          )}
+                          <p className="text-sm font-medium">Herança</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            {selectedRoleDetail.inheritance.length > 0 ? selectedRoleDetail.inheritance.map((edge) => (
+                              <Badge key={edge.id} variant="secondary" className="gap-1">
+                                {edge.parent_role_name}
+                                {!selectedRole.is_system && (
+                                  <button type="button" title="Remover herança" onClick={() => void handleRemoveInheritance(edge.parent_role_id)}>
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </Badge>
+                            )) : <span className="text-sm text-muted-foreground">Sem papéis herdados</span>}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Usuários impactados</p>
+                          <p className="text-sm text-muted-foreground">{selectedRoleDetail.impactedUsers.length}</p>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                      {!selectedRole.is_system && !selectedRole.archived_at && (
+                        <div className="space-y-3 border-t border-border pt-4">
+                          <div className="flex items-end gap-2">
+                            <div className="flex-1 space-y-2">
+                              <Label>Herdar permissões de</Label>
+                              <Select value={parentRoleId} onValueChange={setParentRoleId}>
+                                <SelectTrigger><SelectValue placeholder="Selecione um papel" /></SelectTrigger>
+                                <SelectContent>
+                                  {roles.filter((role) => role.id !== selectedRole.id && !role.archived_at).map((role) => (
+                                    <SelectItem key={role.id} value={role.id}>{role.name}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <Button variant="outline" onClick={() => void handleAddInheritance()} disabled={!parentRoleId}>
+                              Adicionar
+                            </Button>
+                          </div>
+                          <p className="text-sm font-medium">Gerenciar grants diretos</p>
+                          {Object.entries(getPermissionsByCategory()).map(([category, categoryPermissions]) => (
+                            <div key={category}>
+                              <p className="mb-2 text-xs font-medium text-muted-foreground">{category}</p>
+                              <div className="grid gap-2 sm:grid-cols-2">
+                                {categoryPermissions.map((permission) => {
+                                  const direct = selectedRoleDetail.permissions.some(
+                                    (item) => item.id === permission.id && item.source === "direct",
+                                  );
+                                  const inherited = selectedRoleDetail.permissions.some(
+                                    (item) => item.id === permission.id && item.source === "inherited",
+                                  );
+                                  return (
+                                    <label key={permission.id} className="flex items-center gap-2 text-sm">
+                                      <Checkbox
+                                        checked={direct || inherited}
+                                        disabled={inherited}
+                                        onCheckedChange={() => void handleToggleGrant(permission.id, direct)}
+                                      />
+                                      <span>{permission.label}</span>
+                                      {inherited && <Badge variant="secondary">Herdada</Badge>}
+                                    </label>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
-              ));
+              );
             })()}
           </div>
         </DialogContent>
@@ -2484,36 +2374,35 @@ export default function Configuracoes() {
               </p>
               
               <div className="space-y-1 pt-4">
-                {PERMISSION_MODULES.map((module) => (
+                {Object.entries(getPermissionsByCategory()).map(([category, categoryPermissions]) => (
                   <div 
-                    key={module.id}
+                    key={category}
                     className="flex items-center gap-4 py-2 border-b border-border last:border-0"
                   >
                     <div className="w-40 font-medium text-sm text-foreground">
-                      {module.name}
+                      {category}
                     </div>
                     <div className="flex items-center gap-4 flex-wrap">
-                      {PERMISSION_TYPES.map((type) => (
+                      {categoryPermissions.map((permission) => (
                         <label 
-                          key={`${module.id}-${type.id}`}
+                          key={permission.id}
                           className="flex items-center gap-1.5 cursor-pointer"
                         >
                           <div 
                             className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                              selectedPermissions.includes(`${module.id}:${type.id}`)
+                              selectedPermissions.includes(permission.id)
                                 ? 'border-primary bg-primary'
                                 : 'border-muted-foreground/40'
                             }`}
-                            onClick={() => togglePermission(`${module.id}:${type.id}`)}
-                            data-testid={`radio-permission-${module.id}-${type.id}`}
+                            onClick={() => togglePermission(permission.id)}
+                            data-testid={`permission-${permission.id}`}
                           >
-                            {selectedPermissions.includes(`${module.id}:${type.id}`) && (
+                            {selectedPermissions.includes(permission.id) && (
                               <div className="w-1.5 h-1.5 rounded-full bg-primary-foreground" />
                             )}
                           </div>
                           <span className="text-xs text-muted-foreground flex items-center gap-1">
-                            {type.icon && <type.icon className="h-3 w-3" />}
-                            {type.label}
+                            {permission.label}
                           </span>
                         </label>
                       ))}

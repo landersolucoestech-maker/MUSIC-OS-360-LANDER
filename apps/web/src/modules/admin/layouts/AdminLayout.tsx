@@ -7,21 +7,23 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { MOCK_ADMIN_NOTIFICATIONS } from "../data/mockAdmin";
+import { ADMIN_NOTIFICATIONS as MOCK_ADMIN_NOTIFICATIONS, ADMIN_DATA_IS_MOCK } from "../data/admin-source";
 import {
-  LayoutDashboard, Building2, Tag,
+  LayoutDashboard, Building2, Tag, Receipt,
   ScrollText, Bell, HeadphonesIcon,
   Settings, LogOut, ChevronLeft, ChevronRight,
   AlertCircle, CheckCircle2, Info, AlertTriangle, ExternalLink,
-  Music2,
+  Music2, BookOpen,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { label: "Dashboard",       href: "/admin/dashboard", icon: LayoutDashboard },
+  { label: "Painel",       href: "/admin/dashboard", icon: LayoutDashboard },
   { label: "Clientes",        href: "/admin/clients",   icon: Building2 },
   { label: "Planos",          href: "/admin/plans",     icon: Tag },
+  { label: "Assinaturas",     href: "/admin/subscriptions", icon: Receipt },
   { label: "Logs & Auditoria",href: "/admin/audit",     icon: ScrollText },
   { label: "Suporte",         href: "/admin/support",   icon: HeadphonesIcon },
+  { label: "Base de Conhecimento", href: "/admin/knowledge", icon: BookOpen },
   { label: "Configurações",   href: "/admin/configuracoes", icon: Settings },
 ];
 
@@ -46,19 +48,19 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ── */}
       <aside className={cn(
-        "flex flex-col border-r border-white/[0.06] bg-[hsl(222_47%_4%)] transition-all duration-300 shrink-0",
+        "flex flex-col border-r border-border bg-card transition-all duration-300 shrink-0",
         collapsed ? "w-16" : "w-60",
       )}>
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-white/[0.06]">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
           {!collapsed && (
             <div className="flex items-center gap-2.5">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20 border border-blue-500/30">
                 <Music2 className="h-4 w-4 text-blue-400" />
               </div>
               <div>
-                <p className="text-[11px] font-bold text-white leading-none">MUSIC OS 360</p>
-                <p className="text-[9px] text-blue-400 mt-0.5 font-medium uppercase tracking-wider">Super Admin</p>
+                <p className="text-[11px] font-bold text-foreground leading-none">MUSIC OS 360</p>
+                <p className="text-[9px] text-blue-400 mt-0.5 font-medium  tracking-wider">Super Admin</p>
               </div>
             </div>
           )}
@@ -70,7 +72,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           {!collapsed && (
             <button
               onClick={() => setCollapsed(true)}
-              className="text-white/30 hover:text-white/70 transition-colors"
+              className="text-muted-foreground hover:text-muted-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -87,10 +89,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 to={href}
                 title={collapsed ? label : undefined}
                 className={cn(
-                  "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[12.5px] font-medium transition-all duration-150",
+                  "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[12px] font-medium transition-all duration-150",
                   isActive
                     ? "bg-blue-500/15 text-blue-400 border border-blue-500/20"
-                    : "text-white/40 hover:text-white/80 hover:bg-white/[0.04]",
+                    : "text-muted-foreground hover:text-muted-foreground hover:bg-muted",
                   collapsed && "justify-center px-2",
                 )}
                 data-testid={`admin-nav-${label.toLowerCase().replace(/\s/g, "-")}`}
@@ -106,7 +108,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="p-4 text-white/30 hover:text-white/70 transition-colors flex items-center justify-center"
+            className="p-4 text-muted-foreground hover:text-muted-foreground transition-colors flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -114,10 +116,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
         {/* Back to app */}
         {!collapsed && (
-          <div className="p-3 border-t border-white/[0.06]">
+          <div className="p-3 border-t border-border">
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-[11.5px] text-white/30 hover:text-white/60 hover:bg-white/[0.04] transition-all"
+              className="flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-[11px] text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-all"
               data-testid="admin-back-to-app"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -131,15 +133,15 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
 
         {/* Topbar */}
-        <header className="flex items-center justify-between h-14 px-6 border-b border-white/[0.06] bg-[hsl(222_47%_4%)] shrink-0">
+        <header className="flex items-center justify-between h-14 px-6 border-b border-border bg-card shrink-0">
           <div className="flex items-center gap-3">
             <Badge
               variant="outline"
-              className="text-[9.5px] h-5 px-2 border-blue-500/30 text-blue-400 bg-blue-500/10 font-semibold tracking-wider"
+              className="text-[9px] h-5 px-2 border-blue-500/30 text-blue-400 bg-blue-500/10 font-semibold tracking-wider"
             >
               SUPER ADMIN
             </Badge>
-            <span className="text-[12px] text-white/30">Painel Global</span>
+            <span className="text-[12px] text-muted-foreground">Painel Global</span>
           </div>
 
           <div className="flex items-center gap-2">
@@ -149,12 +151,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="relative h-8 w-8 text-white/40 hover:text-white/80 hover:bg-white/[0.04]"
+                  className="relative h-8 w-8 text-muted-foreground hover:text-muted-foreground hover:bg-muted"
                   data-testid="admin-notifications-btn"
                 >
                   <Bell className="h-4 w-4" />
                   {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-blue-500 text-[8px] text-white flex items-center justify-center font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-blue-500 text-[8px] text-foreground flex items-center justify-center font-bold">
                       {unread}
                     </span>
                   )}
@@ -187,13 +189,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button
-                  className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-white/[0.04] transition-colors"
+                  className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-muted transition-colors"
                   data-testid="admin-profile-btn"
                 >
                   <div className="h-7 w-7 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
                     <span className="text-[11px] font-bold text-blue-400">SA</span>
                   </div>
-                  <span className="text-[12px] text-white/60">Super Admin</span>
+                  <span className="text-[12px] text-muted-foreground">Super Admin</span>
                 </button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -209,6 +211,23 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
         </header>
 
+        {/* Production unavailable banner: nenhum dado real está disponível
+            no Painel Admin ainda — exibe aviso transparente em vez de KPIs falsos. */}
+        {!ADMIN_DATA_IS_MOCK && (
+          <div className="bg-yellow-500/10 border-b border-yellow-500/30 px-6 py-3 flex items-center gap-3">
+            <AlertTriangle className="h-4 w-4 text-yellow-400 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-[12px] font-semibold text-yellow-300">
+                Admin analytics indisponível
+              </p>
+              <p className="text-[11px] text-yellow-200/70 mt-0.5">
+                Endpoints administrativos ainda não foram implementados.
+                Dados de plataforma (MRR, ARR, tenants, planos) não estão sendo exibidos para evitar informação fictícia.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Page content */}
         <main className="flex-1 overflow-y-auto">
           {children}
@@ -217,3 +236,4 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

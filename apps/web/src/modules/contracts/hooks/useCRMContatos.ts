@@ -1,5 +1,5 @@
-import { useClientes } from "@/modules/crm/hooks/useClientes";
-import type { Cliente } from "@/modules/crm/types/crm.types";
+import { useClientes } from "@/modules/crm-relationships/hooks/useContacts";
+import type { Cliente } from "@/modules/crm-relationships/types";
 
 export interface CRMContato {
   id: string;

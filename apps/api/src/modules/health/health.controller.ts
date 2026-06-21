@@ -64,8 +64,9 @@ export class HealthController {
   }
 
   @Get('ready')
+  @Public()
   @HealthCheck()
-  @ApiOperation({ summary: 'Protected readiness probe' })
+  @ApiOperation({ summary: 'Public readiness probe (200 healthy / 503 degraded)' })
   readiness() {
     return this.health.check([
       () => this.db.isHealthy('database'),

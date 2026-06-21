@@ -5,7 +5,7 @@
  * Operações: upload, presigned URL, delete, exists, list.
  */
 
-import { Injectable, Inject, Optional, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Optional, Logger, BadRequestException, ServiceUnavailableException } from '@nestjs/common';
 import {
   S3Client,
   PutObjectCommand,
@@ -42,6 +42,32 @@ const MAX_SIZES_MB: Record<UploadCategory, number> = {
   spreadsheets: 20,
 };
 
+// Allowlist of extensions per MIME type. Validation rejects mismatches even when
+// the MIME is in ALLOWED_MIMES — defends against MIME-spoof (e.g. malware.exe + application/pdf).
+const MIME_TO_EXTENSIONS: Record<string, readonly string[]> = {
+  'application/pdf': ['pdf'],
+  'application/msword': ['doc'],
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['docx'],
+  'image/jpeg': ['jpg', 'jpeg'],
+  'image/png':  ['png'],
+  'image/webp': ['webp'],
+  'image/gif':  ['gif'],
+  'audio/mpeg': ['mp3'],
+  'audio/wav':  ['wav'],
+  'audio/ogg':  ['ogg'],
+  'audio/flac': ['flac'],
+  'audio/mp4':  ['m4a', 'mp4'],
+  'application/vnd.ms-excel': ['xls'],
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['xlsx'],
+  'text/csv':   ['csv'],
+};
+
+function extractExtension(fileName: string): string | null {
+  const idx = fileName.lastIndexOf('.');
+  if (idx < 0 || idx === fileName.length - 1) return null;
+  return fileName.slice(idx + 1).toLowerCase();
+}
+
 export type UploadCategory = keyof typeof ALLOWED_MIMES;
 
 export interface UploadOptions {
@@ -66,11 +92,24 @@ export class StorageService {
     @Optional() @Inject(R2_PUBLIC_URL) private readonly r2PublicUrl: string | null,
   ) {}
 
+  /**
+   * Indica se o R2 está configurado e operacional. UI/serviços podem usar
+   * para evitar oferecer upload quando o backend não tem credenciais.
+   */
+  isConfigured(): boolean {
+    return this.r2Client !== null;
+  }
+
   private getClient(): S3Client {
     if (!this.r2Client) {
-      throw new Error(
-        'R2 não configurado — defina R2_ACCOUNT_ID, R2_ACCESS_KEY e R2_SECRET_KEY',
-      );
+      throw new ServiceUnavailableException({
+        statusCode: 503,
+        error: 'Service Unavailable',
+        code:    'R2_NOT_CONFIGURED',
+        message:
+          'Upload indisponível — armazenamento R2 não configurado no servidor. ' +
+          'Contate o administrador para configurar R2_ACCOUNT_ID, R2_ACCESS_KEY e R2_SECRET_KEY.',
+      });
     }
     return this.r2Client;
   }
@@ -102,13 +141,25 @@ export class StorageService {
     sizeBytes:  number;
     entity?:    string;
     entityId?:  string;
-  }): Promise<{ presignedUrl: string; key: string; fileId: string }> {
+  }): Promise<{ presignedUrl: string; key: string; fileId: string; publicUrl: string }> {
     const client = this.getClient();
 
     // Validação MIME
     const allowedList = ALLOWED_MIMES[params.category] as readonly string[];
     if (!allowedList.includes(params.mimeType)) {
       throw new BadRequestException(`Tipo de arquivo não permitido: ${params.mimeType}`);
+    }
+
+    // Validação extensão vs MIME (defende contra MIME spoofing)
+    const ext = extractExtension(params.fileName);
+    if (!ext) {
+      throw new BadRequestException(`Arquivo sem extensão: ${params.fileName}`);
+    }
+    const expectedExts = MIME_TO_EXTENSIONS[params.mimeType];
+    if (!expectedExts || !expectedExts.includes(ext)) {
+      throw new BadRequestException(
+        `Extensão "${ext}" incompatível com mimeType "${params.mimeType}". Esperado: ${(expectedExts ?? []).join(', ') || 'n/a'}`,
+      );
     }
 
     // Validação tamanho
@@ -139,8 +190,11 @@ export class StorageService {
     });
 
     const presignedUrl = await getSignedUrl(client, command, { expiresIn: 300 });
+    const publicUrl = this.r2PublicUrl
+      ? `${this.r2PublicUrl}/${key}`
+      : `r2://${this.r2Bucket}/${key}`;
     this.logger.log(`Presigned upload gerado: ${key}`);
-    return { presignedUrl, key, fileId };
+    return { presignedUrl, key, fileId, publicUrl };
   }
 
   async createDownloadUrl(key: string, expiresInSeconds = 3600): Promise<string> {

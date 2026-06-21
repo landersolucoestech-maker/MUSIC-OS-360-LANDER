@@ -11,12 +11,12 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { MOCK_PLANS } from "../data/mockAdmin";
+import { ADMIN_PLANS as MOCK_PLANS } from "../data/admin-source";
 import type { AdminPlan } from "../types";
 import {
   Tag, Users, HardDrive, DollarSign, Check,
   Plus, X, Save, MoreHorizontal, Eye, Pencil, Trash2,
-  AlertTriangle,
+  AlertTriangle, Power, PowerOff,
 } from "lucide-react";
 
 function fmtBRL(n: number) {
@@ -35,6 +35,7 @@ const EMPTY_PLAN: Omit<AdminPlan, "id"> = {
   active_subscribers: 0,
   mrr: 0,
   color: "#3B82F6",
+  active: true,
 };
 
 /* ─────────────── Form / Create / Edit Dialog ─────────────── */
@@ -70,9 +71,9 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
+      <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+          <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
             {isNew ? (
               <><Plus className="h-4 w-4 text-blue-400" /> Novo Plano</>
             ) : (
@@ -85,26 +86,26 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           {/* Nome + Cor */}
           <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Nome do Plano *</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Nome do Plano *</Label>
               <Input
                 value={form.name}
                 onChange={e => field("name", e.target.value)}
                 placeholder="Ex: Growth Plus"
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-blue-500/50"
                 data-testid="input-plan-name"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Cor</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Cor</Label>
               <div className="flex items-center gap-2 h-8">
                 <input
                   type="color"
                   value={form.color}
                   onChange={e => field("color", e.target.value)}
-                  className="h-8 w-10 rounded cursor-pointer border border-white/10 bg-transparent"
+                  className="h-8 w-10 rounded cursor-pointer border border-border bg-transparent"
                   data-testid="input-plan-color"
                 />
-                <span className="text-[11px] text-white/30 font-mono">{form.color}</span>
+                <span className="text-[11px] text-muted-foreground font-sans">{form.color}</span>
               </div>
             </div>
           </div>
@@ -112,22 +113,22 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           {/* Preços */}
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Preço Mensal (R$)</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Preço Mensal (R$)</Label>
               <Input
                 type="number"
                 value={form.price_monthly}
                 onChange={e => field("price_monthly", Number(e.target.value))}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
                 data-testid="input-plan-price-monthly"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Preço Anual (R$)</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Preço Anual (R$)</Label>
               <Input
                 type="number"
                 value={form.price_annual}
                 onChange={e => field("price_annual", Number(e.target.value))}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
                 data-testid="input-plan-price-annual"
               />
             </div>
@@ -136,48 +137,72 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           {/* Limites */}
           <div className="grid grid-cols-3 gap-3">
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Máx. Usuários</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Máx. Usuários</Label>
               <Input
                 type="number"
                 value={form.max_users}
                 onChange={e => field("max_users", Number(e.target.value))}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
                 data-testid="input-plan-max-users"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Máx. Artistas</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Máx. Artistas</Label>
               <Input
                 type="number"
                 value={form.max_artists}
                 onChange={e => field("max_artists", Number(e.target.value))}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
                 data-testid="input-plan-max-artists"
               />
             </div>
             <div className="space-y-1.5">
-              <Label className="text-[11px] text-white/40 uppercase tracking-wider">Storage (GB)</Label>
+              <Label className="text-[11px] text-muted-foreground  tracking-wider">Storage (GB)</Label>
               <Input
                 type="number"
                 value={form.max_storage_gb}
                 onChange={e => field("max_storage_gb", Number(e.target.value))}
-                className="h-8 text-sm bg-white/[0.04] border-white/[0.08] text-white focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
                 data-testid="input-plan-storage"
+              />
+            </div>
+          </div>
+
+          {/* Integração Stripe */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground tracking-wider">Stripe Product ID</Label>
+              <Input
+                value={form.stripe_product_id ?? ""}
+                onChange={e => field("stripe_product_id", e.target.value)}
+                placeholder="prod_..."
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                data-testid="input-plan-stripe-product"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[11px] text-muted-foreground tracking-wider">Stripe Price ID</Label>
+              <Input
+                value={form.stripe_price_id ?? ""}
+                onChange={e => field("stripe_price_id", e.target.value)}
+                placeholder="price_..."
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                data-testid="input-plan-stripe-price"
               />
             </div>
           </div>
 
           {/* Features */}
           <div className="space-y-2">
-            <Label className="text-[11px] text-white/40 uppercase tracking-wider">Funcionalidades</Label>
+            <Label className="text-[11px] text-muted-foreground  tracking-wider">Funcionalidades</Label>
             <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1">
               {form.features.length === 0 && (
-                <p className="text-[11.5px] text-white/20 italic">Nenhuma funcionalidade adicionada.</p>
+                <p className="text-[11px] text-muted-foreground italic">Nenhuma funcionalidade adicionada.</p>
               )}
               {form.features.map((f, idx) => (
                 <div key={idx} className="flex items-center gap-2 group/feat">
                   <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ background: form.color }} />
-                  <span className="flex-1 text-[12px] text-white/60">{f}</span>
+                  <span className="flex-1 text-[12px] text-muted-foreground">{f}</span>
                   <button
                     onClick={() => removeFeature(idx)}
                     className="opacity-0 group-hover/feat:opacity-100 transition-opacity p-0.5 rounded hover:bg-red-500/20 text-red-400"
@@ -194,13 +219,13 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 value={newFeature}
                 onChange={e => setNewFeature(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addFeature()}
-                className="h-7 text-xs bg-white/[0.04] border-white/[0.08] text-white placeholder:text-white/20 focus:border-blue-500/50"
+                className="h-7 text-xs bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-blue-500/50"
                 data-testid="input-new-feature"
               />
               <Button
                 size="sm"
                 variant="outline"
-                className="h-7 px-2 border-white/10 text-white/50 hover:text-white"
+                className="h-7 px-2 border-border text-muted-foreground hover:text-foreground"
                 onClick={addFeature}
                 data-testid="btn-add-feature"
               >
@@ -214,7 +239,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           <Button
             variant="outline"
             size="sm"
-            className="border-white/10 text-white/50 hover:text-white text-xs"
+            className="border-border text-muted-foreground hover:text-foreground text-xs"
             onClick={onClose}
           >
             Cancelar
@@ -222,7 +247,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           <Button
             size="sm"
             disabled={!canSave}
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5 disabled:opacity-40"
+            className="bg-blue-600 hover:bg-blue-500 text-foreground text-xs gap-1.5 disabled:opacity-40"
             onClick={() => onSave(form)}
             data-testid="btn-save-plan"
           >
@@ -239,9 +264,9 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
 function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
+      <DialogContent className="sm:max-w-md bg-card border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+          <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
             <div className="h-2.5 w-2.5 rounded-full" style={{ background: plan.color }} />
             {plan.name}
           </DialogTitle>
@@ -249,12 +274,12 @@ function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => voi
 
         <div className="space-y-4 pt-1">
           {/* Preço */}
-          <div className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-4">
-            <p className="text-2xl font-bold text-white">
+          <div className="rounded-xl bg-muted border border-border p-4">
+            <p className="text-2xl font-bold text-foreground">
               {fmtBRL(plan.price_monthly)}
-              <span className="text-[12px] font-normal text-white/30">/mês</span>
+              <span className="text-[12px] font-normal text-muted-foreground">/mês</span>
             </p>
-            <p className="text-[11.5px] text-white/35 mt-0.5">ou {fmtBRL(plan.price_annual)}/ano</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">ou {fmtBRL(plan.price_annual)}/ano</p>
           </div>
 
           {/* KPIs */}
@@ -266,21 +291,21 @@ function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => voi
               { label: "Máx. Artistas", value: plan.max_artists === 999 ? "Ilimitados" : plan.max_artists },
               { label: "Storage", value: plan.max_storage_gb === 1000 ? "1 TB" : `${plan.max_storage_gb} GB` },
             ].map(({ label, value }) => (
-              <div key={label} className="rounded-xl bg-white/[0.03] border border-white/[0.05] p-3">
-                <p className="text-[10.5px] text-white/30 mb-1">{label}</p>
-                <p className="text-[13px] font-semibold text-white/75">{value}</p>
+              <div key={label} className="rounded-xl bg-muted border border-border p-3">
+                <p className="text-[10px] text-muted-foreground mb-1">{label}</p>
+                <p className="text-[13px] font-semibold text-muted-foreground">{value}</p>
               </div>
             ))}
           </div>
 
           {/* Features */}
           <div className="space-y-2">
-            <p className="text-[11px] text-white/30 uppercase tracking-wider">Funcionalidades</p>
+            <p className="text-[11px] text-muted-foreground  tracking-wider">Funcionalidades</p>
             <div className="space-y-1.5">
               {plan.features.map(f => (
                 <div key={f} className="flex items-center gap-2">
                   <Check className="h-3.5 w-3.5 shrink-0" style={{ color: plan.color }} />
-                  <span className="text-[12px] text-white/55">{f}</span>
+                  <span className="text-[12px] text-muted-foreground">{f}</span>
                 </div>
               ))}
             </div>
@@ -291,7 +316,7 @@ function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => voi
           <Button
             variant="outline"
             size="sm"
-            className="border-white/10 text-white/50 hover:text-white text-xs"
+            className="border-border text-muted-foreground hover:text-foreground text-xs"
             onClick={onClose}
           >
             Fechar
@@ -306,23 +331,23 @@ function ViewPlanDialog({ plan, onClose }: { plan: AdminPlan; onClose: () => voi
 function DeletePlanDialog({ plan, onConfirm, onClose }: { plan: AdminPlan; onConfirm: () => void; onClose: () => void }) {
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-sm bg-[hsl(222_47%_6%)] border-white/[0.08] text-white">
+      <DialogContent className="sm:max-w-sm bg-card border-border text-foreground">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-white text-[15px]">
+          <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
             <AlertTriangle className="h-4 w-4 text-red-400" />
             Excluir Plano
           </DialogTitle>
         </DialogHeader>
 
         <div className="py-2 space-y-3">
-          <p className="text-[13px] text-white/60">
+          <p className="text-[13px] text-muted-foreground">
             Tem certeza que deseja excluir o plano{" "}
-            <span className="font-semibold text-white">{plan.name}</span>?
+            <span className="font-semibold text-foreground">{plan.name}</span>?
           </p>
           {plan.active_subscribers > 0 && (
             <div className="flex items-start gap-2 rounded-lg bg-red-500/10 border border-red-500/20 p-3">
               <AlertTriangle className="h-3.5 w-3.5 text-red-400 shrink-0 mt-0.5" />
-              <p className="text-[11.5px] text-red-300">
+              <p className="text-[11px] text-red-300">
                 Este plano possui <strong>{plan.active_subscribers} assinante(s)</strong> ativo(s).
                 Excluí-lo pode afetar esses clientes.
               </p>
@@ -334,14 +359,14 @@ function DeletePlanDialog({ plan, onConfirm, onClose }: { plan: AdminPlan; onCon
           <Button
             variant="outline"
             size="sm"
-            className="border-white/10 text-white/50 hover:text-white text-xs"
+            className="border-border text-muted-foreground hover:text-foreground text-xs"
             onClick={onClose}
           >
             Cancelar
           </Button>
           <Button
             size="sm"
-            className="bg-red-600 hover:bg-red-500 text-white text-xs gap-1.5"
+            className="bg-red-600 hover:bg-red-500 text-foreground text-xs gap-1.5"
             onClick={onConfirm}
             data-testid="btn-confirm-delete"
           >
@@ -359,13 +384,15 @@ interface PlanCardProps {
   plan: AdminPlan;
   onView: () => void;
   onEdit: () => void;
+  onToggleActive: () => void;
   onDelete: () => void;
 }
 
-function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
+function PlanCard({ plan, onView, onEdit, onToggleActive, onDelete }: PlanCardProps) {
+  const isActive = plan.active !== false;
   return (
     <div
-      className="rounded-2xl border border-white/[0.07] bg-[hsl(222_47%_6%)] p-5 space-y-4 group/card relative"
+      className="rounded-2xl border border-border bg-card p-5 space-y-4 group/card relative"
       data-testid={`plan-${plan.id}`}
     >
       {/* Dropdown */}
@@ -373,7 +400,7 @@ function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button
-              className="p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-white/10 text-white/30 hover:text-white"
+              className="p-1.5 rounded-lg opacity-0 group-hover/card:opacity-100 transition-opacity hover:bg-muted text-muted-foreground hover:text-foreground"
               data-testid={`actions-plan-${plan.id}`}
             >
               <MoreHorizontal className="h-4 w-4" />
@@ -381,10 +408,10 @@ function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
           </DropdownMenuTrigger>
           <DropdownMenuContent
             align="end"
-            className="w-40 bg-[hsl(222_47%_6%)] border-white/[0.08] text-white/80"
+            className="w-40 bg-card border-border text-muted-foreground"
           >
             <DropdownMenuItem
-              className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+              className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
               onClick={onView}
               data-testid={`view-plan-${plan.id}`}
             >
@@ -392,14 +419,23 @@ function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
               Ver
             </DropdownMenuItem>
             <DropdownMenuItem
-              className="gap-2 text-xs cursor-pointer hover:bg-white/[0.06] focus:bg-white/[0.06]"
+              className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
               onClick={onEdit}
               data-testid={`edit-plan-${plan.id}`}
             >
-              <Pencil className="h-3.5 w-3.5 text-white/40" />
+              <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
               Editar
             </DropdownMenuItem>
-            <DropdownMenuSeparator className="bg-white/[0.06]" />
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
+              onClick={onToggleActive}
+              data-testid={`toggle-plan-${plan.id}`}
+            >
+              {isActive
+                ? <><PowerOff className="h-3.5 w-3.5 text-amber-400" /> Desativar</>
+                : <><Power className="h-3.5 w-3.5 text-emerald-400" /> Ativar</>}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem
               className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
               onClick={onDelete}
@@ -415,25 +451,31 @@ function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
       {/* Header */}
       <div className="flex items-center gap-2 pr-8">
         <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ background: plan.color }} />
-        <span className="text-[14px] font-bold text-white">{plan.name}</span>
-        <Badge variant="outline" className="ml-auto text-[10px] border-white/10 text-white/40">
-          {plan.active_subscribers} clientes
+        <span className="text-[14px] font-bold text-foreground">{plan.name}</span>
+        <Badge
+          variant={isActive ? "success" : "neutral"}
+          className="ml-auto text-[10px]"
+        >
+          {isActive ? "Ativo" : "Inativo"}
         </Badge>
       </div>
 
+      {/* Assinantes */}
+      <p className="text-[11px] text-muted-foreground -mt-2">{plan.active_subscribers} clientes</p>
+
       {/* Preço */}
       <div>
-        <p className="text-2xl font-bold text-white">
+        <p className="text-2xl font-bold text-foreground">
           {fmtBRL(plan.price_monthly)}
-          <span className="text-[12px] font-normal text-white/30">/mês</span>
+          <span className="text-[12px] font-normal text-muted-foreground">/mês</span>
         </p>
-        <p className="text-[11px] text-white/30 mt-0.5">
+        <p className="text-[11px] text-muted-foreground mt-0.5">
           ou {fmtBRL(plan.price_annual)}/ano
         </p>
       </div>
 
       {/* Limites */}
-      <div className="space-y-2 border-t border-white/[0.06] pt-3">
+      <div className="space-y-2 border-t border-border pt-3">
         {[
           { icon: Users,      label: `${plan.max_users === 999 ? "Ilimitado" : plan.max_users} usuários` },
           { icon: Tag,        label: `${plan.max_artists === 999 ? "Ilimitados" : plan.max_artists} artistas` },
@@ -441,22 +483,22 @@ function PlanCard({ plan, onView, onEdit, onDelete }: PlanCardProps) {
           { icon: DollarSign, label: `MRR: ${fmtBRL(plan.mrr)}` },
         ].map(({ icon: Icon, label }) => (
           <div key={label} className="flex items-center gap-2">
-            <Icon className="h-3 w-3 text-white/20 shrink-0" />
-            <span className="text-[11.5px] text-white/50">{label}</span>
+            <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
+            <span className="text-[11px] text-muted-foreground">{label}</span>
           </div>
         ))}
       </div>
 
       {/* Features */}
-      <div className="space-y-1.5 border-t border-white/[0.06] pt-3">
+      <div className="space-y-1.5 border-t border-border pt-3">
         {plan.features.map((f) => (
           <div key={f} className="flex items-start gap-2">
             <Check className="h-3.5 w-3.5 mt-0.5 shrink-0" style={{ color: plan.color }} />
-            <span className="text-[11.5px] text-white/50">{f}</span>
+            <span className="text-[11px] text-muted-foreground">{f}</span>
           </div>
         ))}
         {plan.features.length === 0 && (
-          <p className="text-[11px] text-white/20 italic">Sem funcionalidades</p>
+          <p className="text-[11px] text-muted-foreground italic">Sem funcionalidades</p>
         )}
       </div>
     </div>
@@ -489,6 +531,12 @@ export default function AdminPlans() {
     close();
   }
 
+  function handleToggleActive(plan: AdminPlan) {
+    setPlans(prev =>
+      prev.map(p => p.id === plan.id ? { ...p, active: p.active === false } : p)
+    );
+  }
+
   return (
     <AdminLayout>
       <div className="p-6 space-y-6 animate-fade-in">
@@ -496,12 +544,12 @@ export default function AdminPlans() {
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-bold text-white">Planos</h1>
-            <p className="text-[12.5px] text-white/40 mt-0.5">Gerenciamento de planos e preços</p>
+            <h1 className="text-xl font-bold text-foreground">Planos</h1>
+            <p className="text-[12px] text-muted-foreground mt-0.5">Gerenciamento de planos e preços</p>
           </div>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-500 text-white text-xs gap-1.5"
+            className="bg-blue-600 hover:bg-blue-500 text-foreground text-xs gap-1.5"
             onClick={() => setMode("create")}
             data-testid="btn-new-plan"
           >
@@ -518,6 +566,7 @@ export default function AdminPlans() {
               plan={plan}
               onView={() => open(plan, "view")}
               onEdit={() => open(plan, "edit")}
+              onToggleActive={() => handleToggleActive(plan)}
               onDelete={() => open(plan, "delete")}
             />
           ))}
@@ -540,3 +589,4 @@ export default function AdminPlans() {
     </AdminLayout>
   );
 }
+

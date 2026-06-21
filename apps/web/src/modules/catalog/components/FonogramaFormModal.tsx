@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
@@ -155,7 +156,7 @@ interface ObraVinculada {
   status: string;
 }
 
-const generosMusicais = ["Funk", "Pop", "Rock", "Sertanejo", "Trap", "Rap/Hip-Hop", "Pagode", "Forró", "MPB", "Eletrônica", "Gospel", "Reggaeton", "R&B", "Outro"];
+const generosMusicais = MUSICAL_GENRE_LABELS;
 const agregadoras = ["CD Baby", "DistroKid", "TuneCore", "Ditto Music", "ONErpm", "iMusics", "Symphonic", "Outro"];
 const classificacoes = ["STUDIO", "LIVE", "REMIX", "DEMO", "OUTRO"];
 const midias = ["TODOS", "DIGITAL", "FÍSICO", "STREAMING"];
@@ -230,12 +231,12 @@ function ArtistNameInput({ value, onChange, onSelect, artistas, placeholder, dis
         autoComplete="off"
       />
       {open && suggestions.length > 0 && !disabled && (
-        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md shadow-md max-h-48 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-popover border border-border rounded-md max-h-48 overflow-y-auto">
           {suggestions.map(a => (
             <button
               key={a.id}
               type="button"
-              className="w-full text-left px-3 py-2 text-sm hover:bg-accent hover:text-accent-foreground flex flex-col gap-0.5"
+              className="w-full text-left px-3 py-2 text-sm hover:bg-muted hover:text-foreground flex flex-col gap-0.5"
               onMouseDown={() => handleSelect(a)}
             >
               <span className="font-medium">{a.nome_civil || a.nome_artistico}</span>
@@ -721,7 +722,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                 data-testid="obra-vinculada-card"
               >
                 <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-                  <Music className="h-5 w-5 text-white" />
+                  <Music className="h-5 w-5 text-primary-foreground" />
                 </div>
                 <div className="flex-1">
                   <p className="font-medium" data-testid="text-obra-vinculada-titulo">
@@ -773,7 +774,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                     <ScrollArea className="max-h-[300px]">
                       <div className="p-2" role="listbox">
                         <p
-                          className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-2 py-1"
+                          className="text-xs font-semibold text-muted-foreground  tracking-wide px-2 py-1"
                           role="presentation"
                           data-testid="local-section-heading"
                         >
@@ -872,7 +873,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                                 data-testid={`option-obra-${obra.id}`}
                               >
                                 <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
-                                  <Music className="h-4 w-4 text-white" />
+                                  <Music className="h-4 w-4 text-primary-foreground" />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm font-medium truncate">
@@ -960,17 +961,17 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
             {/* Linha 1: Código ABRAMUS | Código ECAD | Agregadora | ISRC | Criada por IA */}
             <div className="grid grid-cols-12 gap-3 items-end">
               <div className="col-span-2">
-                <span className="text-xs text-muted-foreground mb-1 block">Código ABRAMUS</span>
-                <Input value={codAbramus} onChange={(e) => setCodAbramus(e.target.value)} disabled={isViewMode} placeholder="Código ABRAMUS" className="h-9 px-2 text-sm min-w-0" />
+                <span className="text-xs text-muted-foreground mb-1 block">Código de Cadastro da Sociedade</span>
+                <Input value={codAbramus} onChange={(e) => setCodAbramus(e.target.value)} disabled={isViewMode} placeholder="Código de Cadastro da Sociedade" className="h-8 text-sm min-w-0" />
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Código ECAD</span>
-                <Input value={codEcad} onChange={(e) => setCodEcad(e.target.value)} disabled={isViewMode} placeholder="Código ECAD" className="h-9 px-2 text-sm min-w-0" data-testid="input-cod-ecad" />
+                <Input value={codEcad} onChange={(e) => setCodEcad(e.target.value)} disabled={isViewMode} placeholder="Código ECAD" className="h-8 text-sm min-w-0" data-testid="input-cod-ecad" />
               </div>
               <div className="col-span-3">
                 <span className="text-xs text-muted-foreground mb-1 block">Agregadora</span>
                 <Select value={agregadora} onValueChange={setAgregadora} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {agregadoras.map(a => <SelectItem key={a} value={a.toLowerCase().replace(/ /g, "_")}>{a}</SelectItem>)}
                   </SelectContent>
@@ -979,18 +980,18 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-3">
                 <span className="text-xs text-muted-foreground mb-1 block">ISRC</span>
                 <div className="flex items-center gap-1">
-                  <Input value={isrcPais} onChange={(e) => setIsrcPais(e.target.value)} disabled={isViewMode} placeholder="BR" className="h-9 px-2 text-sm flex-1 min-w-0 text-center font-mono" maxLength={2} />
+                  <Input value={isrcPais} onChange={(e) => setIsrcPais(e.target.value)} disabled={isViewMode} placeholder="BR" className="h-8 px-2 text-sm flex-1 min-w-0 text-center font-sans" maxLength={2} />
                   <span className="text-muted-foreground font-light shrink-0">–</span>
-                  <Input value={isrcRegistrante} onChange={(e) => setIsrcRegistrante(e.target.value)} disabled={isViewMode} placeholder="XXX" className="h-9 px-2 text-sm flex-1 min-w-0 text-center font-mono" maxLength={3} />
+                  <Input value={isrcRegistrante} onChange={(e) => setIsrcRegistrante(e.target.value)} disabled={isViewMode} placeholder="XXX" className="h-8 px-2 text-sm flex-1 min-w-0 text-center font-sans" maxLength={3} />
                   <span className="text-muted-foreground font-light shrink-0">–</span>
-                  <Input value={isrcAno} onChange={(e) => setIsrcAno(e.target.value)} disabled={isViewMode} placeholder="00" className="h-9 px-2 text-sm flex-1 min-w-0 text-center font-mono" maxLength={2} />
+                  <Input value={isrcAno} onChange={(e) => setIsrcAno(e.target.value)} disabled={isViewMode} placeholder="00" className="h-8 px-2 text-sm flex-1 min-w-0 text-center font-sans" maxLength={2} />
                   <span className="text-muted-foreground font-light shrink-0">–</span>
-                  <Input value={isrcDesignacao} onChange={(e) => setIsrcDesignacao(e.target.value)} disabled={isViewMode} placeholder="00000" className="h-9 px-2 text-sm flex-[1.5] min-w-0 text-center font-mono" maxLength={5} />
+                  <Input value={isrcDesignacao} onChange={(e) => setIsrcDesignacao(e.target.value)} disabled={isViewMode} placeholder="00000" className="h-8 px-2 text-sm flex-[1.5] min-w-0 text-center font-sans" maxLength={5} />
                 </div>
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Criada por IA</span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch checked={criadaPorIA} onCheckedChange={setCriadaPorIA} disabled={isViewMode} />
                 </div>
               </div>
@@ -1000,7 +1001,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
             <div className="grid grid-cols-12 gap-3 items-end">
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Instrumental</span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch checked={instrumental} onCheckedChange={setInstrumental} disabled={isViewMode} />
                 </div>
               </div>
@@ -1021,7 +1022,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                 <div className="flex items-center gap-1">
                   <Input
                     data-testid="input-duracao-minutos"
-                    className={`h-9 w-12 min-w-0 text-center px-2 text-sm ${duracaoMinError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`h-8 w-12 min-w-0 text-center px-2 text-sm ${duracaoMinError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     value={duracaoMin}
                     onChange={(e) => setDuracaoMin(e.target.value)}
                     disabled={isViewMode}
@@ -1030,7 +1031,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
                   <span className="text-xs text-muted-foreground shrink-0">min</span>
                   <Input
                     data-testid="input-duracao-segundos"
-                    className={`h-9 w-12 min-w-0 text-center px-2 text-sm ${duracaoSegError ? "border-destructive focus-visible:ring-destructive" : ""}`}
+                    className={`h-8 w-12 min-w-0 text-center px-2 text-sm ${duracaoSegError ? "border-destructive focus-visible:ring-destructive" : ""}`}
                     value={duracaoSeg}
                     onChange={(e) => setDuracaoSeg(e.target.value)}
                     disabled={isViewMode}
@@ -1049,7 +1050,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Gênero Musical</span>
                 <Select value={generoMusical} onValueChange={setGeneroMusical} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {generosMusicais.map(g => <SelectItem key={g} value={g.toLowerCase()}>{g}</SelectItem>)}
                   </SelectContent>
@@ -1058,7 +1059,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Mídia</span>
                 <Select value={midia} onValueChange={setMidia} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {midias.map(m => <SelectItem key={m} value={m.toLowerCase()}>{m}</SelectItem>)}
                   </SelectContent>
@@ -1066,20 +1067,20 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Nacional</span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch checked={nacional} onCheckedChange={setNacional} disabled={isViewMode} />
                 </div>
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Pub. Simultânea</span>
-                <div className="flex items-center h-9">
+                <div className="flex items-center h-8">
                   <Switch checked={pubSimultanea} onCheckedChange={setPubSimultanea} disabled={isViewMode} />
                 </div>
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">País Origem</span>
                 <Select value={paisOrigem} onValueChange={setPaisOrigem} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {paises.map(p => <SelectItem key={p} value={p.toLowerCase()}>{p}</SelectItem>)}
                   </SelectContent>
@@ -1088,7 +1089,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">País Publicação</span>
                 <Select value={paisPublicacao} onValueChange={setPaisPublicacao} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {paises.map(p => <SelectItem key={p} value={p.toLowerCase()}>{p}</SelectItem>)}
                   </SelectContent>
@@ -1101,7 +1102,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Classificação</span>
                 <Select value={classificacao} onValueChange={setClassificacao} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {classificacoes.map(c => <SelectItem key={c} value={c.toLowerCase()}>{c}</SelectItem>)}
                   </SelectContent>
@@ -1110,7 +1111,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Status</span>
                 <Select value={status} onValueChange={setStatus} disabled={isViewMode}>
-                  <SelectTrigger className="h-9 px-2 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectTrigger className="h-8 text-sm min-w-0"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
                     {statusOptions.map(s => <SelectItem key={s} value={s.toLowerCase().replace(/ /g, "_")}>{s}</SelectItem>)}
                   </SelectContent>
@@ -1203,7 +1204,7 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
               {isViewMode ? "Fechar" : "Cancelar"}
             </Button>
             {!isViewMode && (
-              <Button type="submit" className="bg-primary hover:bg-primary/90" disabled={hasDuracaoError || submitting} data-testid="button-submit-fonograma">
+              <Button type="submit" size="sm" className="h-8 text-xs gap-1.5" disabled={hasDuracaoError || submitting} data-testid="button-submit-fonograma">
                 {submitting
                   ? (mode === "create" ? "Cadastrando..." : "Atualizando...")
                   : (mode === "create" ? "Cadastrar Fonograma" : "Atualizar Fonograma")}
@@ -1220,3 +1221,4 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     </Dialog>
   );
 }
+

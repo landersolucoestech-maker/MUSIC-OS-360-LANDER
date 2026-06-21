@@ -44,7 +44,7 @@ export class IdempotencyInterceptor implements NestInterceptor {
     const idempotencyKey = req.headers[HEADER] as string | undefined;
     if (!idempotencyKey) return next.handle();
 
-    if (!/^[\w\-]{1,128}$/.test(idempotencyKey)) {
+    if (!/^[\w-]{1,128}$/.test(idempotencyKey)) {
       this.logger.warn(`Idempotency key format inválido: ${idempotencyKey}`);
       return next.handle();
     }

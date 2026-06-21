@@ -14,7 +14,7 @@ export const obraSchema = z.object({
   duracaoMin: z.string().optional().or(z.literal("")),
   duracaoSeg: z.string().optional().or(z.literal("")),
   instrumental: z.enum(["sim", "nao"]).default("nao"),
-  criadaPorIA: z.boolean().default(false),
+  criadaPorIA: z.union([z.boolean(), z.enum(["sim", "nao"])]).default(false),
   letraCompleta: z.string().optional().or(z.literal("")),
   aceitaTermos: z.boolean().default(false),
 });

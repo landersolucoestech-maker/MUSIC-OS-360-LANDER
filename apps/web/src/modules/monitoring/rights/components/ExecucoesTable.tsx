@@ -1,8 +1,9 @@
-import { Badge } from "@/shared/ui/badge";
+import { Badge, type BadgeVariant } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { CheckCircle, AlertTriangle, XCircle, Clock, Radio, Tv, Music, Mic2, Globe, Building2, Calendar, ExternalLink } from "lucide-react";
 import type { RightsExecution, ExecutionType, ExecutionStatus } from "../types";
+import { formatRightsDateTime } from "../utils/date-format";
 
 const TIPO_LABEL: Record<ExecutionType, { label: string; icon: React.ReactNode }> = {
   radio_fm:         { label: "Rádio FM",      icon: <Radio className="h-3 w-3" /> },
@@ -17,23 +18,15 @@ const TIPO_LABEL: Record<ExecutionType, { label: string; icon: React.ReactNode }
   streaming_publico:{ label: "Streaming Púb.",icon: <Globe className="h-3 w-3" /> },
 };
 
-const STATUS_CONFIG: Record<ExecutionStatus, { label: string; className: string; icon: React.ReactNode }> = {
-  confirmado:    { label: "Confirmado",    className: "bg-success/15 text-success border-success/30",          icon: <CheckCircle className="h-3 w-3" /> },
-  pendente:      { label: "Pendente",      className: "bg-warning/15 text-warning border-warning/30",          icon: <Clock className="h-3 w-3" /> },
-  divergencia:   { label: "Divergência",   className: "bg-destructive/15 text-destructive border-destructive/30", icon: <AlertTriangle className="h-3 w-3" /> },
-  nao_reportado: { label: "Não Reportado", className: "bg-muted text-muted-foreground border-border",          icon: <XCircle className="h-3 w-3" /> },
+const STATUS_CONFIG: Record<ExecutionStatus, { label: string; variant: BadgeVariant; icon: React.ReactNode }> = {
+  confirmado:    { label: "Confirmado",    variant: "success", icon: <CheckCircle className="h-3 w-3" /> },
+  pendente:      { label: "Pendente",      variant: "warning", icon: <Clock className="h-3 w-3" /> },
+  divergencia:   { label: "Divergência",   variant: "danger",  icon: <AlertTriangle className="h-3 w-3" /> },
+  nao_reportado: { label: "Não Reportado", variant: "neutral", icon: <XCircle className="h-3 w-3" /> },
 };
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
-
-const fmtDateTime = (iso: string) => {
-  const d = new Date(iso);
-  return {
-    date: d.toLocaleDateString("pt-BR"),
-    time: d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" }),
-  };
-};
 
 interface Props {
   execucoes: RightsExecution[];
@@ -56,14 +49,14 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Música / Artista</TableHead>
-            <TableHead className="hidden lg:table-cell">Origem</TableHead>
-            <TableHead className="hidden md:table-cell">Tipo</TableHead>
-            <TableHead className="hidden xl:table-cell">Data / Hora</TableHead>
-            <TableHead className="hidden xl:table-cell">ISRC</TableHead>
-            <TableHead className="hidden lg:table-cell">Match</TableHead>
-            <TableHead className="text-right hidden md:table-cell">Valor Est.</TableHead>
-            <TableHead>Status</TableHead>
+            <TableHead className="min-w-[190px] w-[24%]">Música / Artista</TableHead>
+            <TableHead className="hidden lg:table-cell min-w-[180px] w-[18%]">Origem</TableHead>
+            <TableHead className="hidden md:table-cell w-[96px]">Tipo</TableHead>
+            <TableHead className="hidden xl:table-cell min-w-[128px] w-[128px]">Data / Hora</TableHead>
+            <TableHead className="hidden xl:table-cell min-w-[132px] w-[132px]">ISRC</TableHead>
+            <TableHead className="hidden lg:table-cell w-[80px]">Match</TableHead>
+            <TableHead className="text-right hidden md:table-cell w-[96px]">Valor Est.</TableHead>
+            <TableHead className="min-w-[128px] w-[128px]">Status</TableHead>
             <TableHead className="w-10"></TableHead>
           </TableRow>
         </TableHeader>
@@ -71,17 +64,17 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
           {execucoes.map((exec) => {
             const tipo = TIPO_LABEL[exec.tipo_execucao];
             const status = STATUS_CONFIG[exec.status];
-            const { date, time } = fmtDateTime(exec.data_hora);
+            const { date, time } = formatRightsDateTime(exec.data_hora);
             return (
               <TableRow key={exec.id} data-testid={`row-exec-${exec.id}`}>
                 <TableCell className="py-3">
-                  <div>
-                    <p className="font-semibold text-foreground leading-tight">{exec.obra_titulo}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{exec.artista}</p>
+                  <div className="min-w-0 max-w-[220px]">
+                    <p className="font-semibold text-foreground leading-tight truncate">{exec.obra_titulo}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">{exec.artista}</p>
                   </div>
                 </TableCell>
                 <TableCell className="py-3 hidden lg:table-cell">
-                  <span className="text-sm text-foreground/80">{exec.origem}</span>
+                  <span className="block max-w-[230px] truncate text-sm text-foreground/80">{exec.origem}</span>
                 </TableCell>
                 <TableCell className="py-3 hidden md:table-cell">
                   <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/50 px-2 py-1 rounded-md font-medium">
@@ -90,12 +83,12 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
                 </TableCell>
                 <TableCell className="py-3 hidden xl:table-cell">
                   <div className="text-xs">
-                    <p className="text-foreground/80 font-medium">{date}</p>
-                    <p className="text-muted-foreground">{time}</p>
+                    <p className="whitespace-nowrap text-foreground/80 font-medium">{date}</p>
+                    <p className="whitespace-nowrap text-muted-foreground">{time}</p>
                   </div>
                 </TableCell>
                 <TableCell className="py-3 hidden xl:table-cell">
-                  <code className="text-xs font-mono text-muted-foreground bg-muted/50 px-1.5 py-0.5 rounded">{exec.isrc}</code>
+                  <span className="block max-w-[132px] truncate text-sm text-foreground/80">{exec.isrc}</span>
                 </TableCell>
                 <TableCell className="py-3 hidden lg:table-cell">
                   <span className={`text-xs font-semibold ${exec.match_ecad ? "text-success" : "text-destructive"}`}>
@@ -103,12 +96,10 @@ export function ExecucoesTable({ execucoes, onViewDetail }: Props) {
                   </span>
                 </TableCell>
                 <TableCell className="py-3 text-right hidden md:table-cell">
-                  <span className="text-sm font-medium tabular-nums">{fmtBRL(exec.valor_estimado)}</span>
+                  <span className="text-sm">{fmtBRL(exec.valor_estimado)}</span>
                 </TableCell>
                 <TableCell className="py-3">
-                  <span className={`inline-flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-md border ${status.className}`}>
-                    {status.icon}{status.label}
-                  </span>
+                  <Badge variant={status.variant} className="gap-1 whitespace-nowrap">{status.icon}{status.label}</Badge>
                 </TableCell>
                 <TableCell className="py-3">
                   <Button

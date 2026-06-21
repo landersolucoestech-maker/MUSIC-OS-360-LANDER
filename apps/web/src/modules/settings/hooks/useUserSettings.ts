@@ -30,15 +30,14 @@ export interface UserSettings {
   auto_alerta_financeiro: boolean;
   auto_backup: boolean;
   auto_relatorio_semanal: boolean;
-  theme: string;
-  accent_color: string;
-  sidebar_compact: boolean;
-  animations_enabled: boolean;
-  language: string;
-  timezone: string;
-  date_format: string;
-  time_format: string;
-  currency: string;
+  automation_preferences: Record<string, {
+    email?: boolean;
+    push?: boolean;
+    sms?: boolean;
+    frequency?: "imediato" | "diario" | "semanal" | "evento";
+    preferred_time?: string;
+    message?: string;
+  }>;
 }
 
 export interface CompanySettings {
@@ -79,15 +78,7 @@ const defaultUserSettings: UserSettings = {
   auto_alerta_financeiro: false,
   auto_backup: true,
   auto_relatorio_semanal: false,
-  theme: "dark",
-  accent_color: "red",
-  sidebar_compact: false,
-  animations_enabled: true,
-  language: "pt-BR",
-  timezone: "America/Sao_Paulo",
-  date_format: "DD/MM/YYYY",
-  time_format: "24h",
-  currency: "BRL",
+  automation_preferences: {},
 };
 
 const defaultCompanySettings: CompanySettings = {
@@ -112,11 +103,18 @@ const userKey = (id: string) => `musicos360_user_settings:${id}`;
 const companyKey = (id: string) => `musicos360_company_settings:${id}`;
 const orgSlugKey = (id: string) => `musicos360_org_slug:${id}`;
 
-function readJSON<T>(key: string, fallback: T): T {
+function readJSON<T extends object>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return fallback;
-    return { ...fallback, ...(JSON.parse(raw) as Partial<T>) } as T;
+    const parsed = JSON.parse(raw) as Partial<T>;
+    const sanitized = { ...fallback };
+    for (const settingKey of Object.keys(fallback) as Array<keyof T>) {
+      if (parsed[settingKey] !== undefined) {
+        sanitized[settingKey] = parsed[settingKey] as T[keyof T];
+      }
+    }
+    return sanitized;
   } catch {
     return fallback;
   }
@@ -188,34 +186,33 @@ export function useUserSettings() {
     }
   };
 
-  const saveCompanySettings = async (settings: Partial<CompanySettings>) => {
-    if (!user) return;
-    setSaving(true);
-    try {
-      const updated = { ...companySettings, ...settings, user_id: user.id };
-      writeJSON(companyKey(user.id), updated);
-      setCompanySettings(updated);
-      toast.success("Configurações da empresa salvas com sucesso!");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const saveOrgSlug = async (slug: string): Promise<boolean> => {
+  const saveCompanySettings = async (
+    company: Partial<CompanySettings>,
+    slug?: string,
+  ): Promise<boolean> => {
     if (!user) return false;
-    const slugRegex = /^[a-z0-9-]+$/;
-    if (!slugRegex.test(slug)) {
+
+    if (slug && !/^[a-z0-9-]+$/.test(slug)) {
       toast.error("O slug deve conter apenas letras minúsculas, números e hífens.");
       return false;
     }
+
     setSaving(true);
     try {
-      try {
-        localStorage.setItem(orgSlugKey(user.id), slug);
-      } catch {
-        // ignora falha de quota
+      const updatedCompany = { ...companySettings, ...company, user_id: user.id };
+
+      writeJSON(companyKey(user.id), updatedCompany);
+      if (slug) {
+        try {
+          localStorage.setItem(orgSlugKey(user.id), slug);
+        } catch {
+          // ignora falha de quota
+        }
       }
-      setOrgSlug(slug);
+
+      setCompanySettings(updatedCompany);
+      if (slug) setOrgSlug(slug);
+      toast.success("Configurações da empresa salvas com sucesso!");
       return true;
     } finally {
       setSaving(false);
@@ -233,7 +230,6 @@ export function useUserSettings() {
     setOrgSlug,
     saveUserSettings,
     saveCompanySettings,
-    saveOrgSlug,
     refreshSettings: loadSettings,
   };
 }
