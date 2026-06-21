@@ -1,0 +1,21 @@
+# gitleaks config — extends the default ruleset with project allowlists.
+# Only false positives are allowlisted; no real-secret rule is weakened.
+title = "MUSIC OS 360 gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "False positives: local tooling config, env templates and test fixtures (no real secrets)"
+paths = [
+  # Local Claude Code tooling config — permission allowlists contain shell-command
+  # strings (e.g. `curl .../health/ready`) that the `curl-auth-header` rule misfires on.
+  '''\.claude/.*''',
+  # Env templates only hold placeholders (YOUR_ANON_KEY, etc.).
+  '''.*\.env\.example''',
+  '''\.env\.staging\.example''',
+]
+regexes = [
+  # Intentionally-invalid JWT fixtures used in tests.
+  '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.invalid\.payload''',
+]

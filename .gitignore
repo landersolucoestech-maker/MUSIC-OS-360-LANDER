@@ -64,3 +64,6 @@ coverage/
 # Misc generated
 *.local
 public/mockServiceWorker.js
+
+# Local Claude Code tooling config (not versioned)
+.claude/settings.local.json
