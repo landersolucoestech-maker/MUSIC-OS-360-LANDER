@@ -7,7 +7,7 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { OAuthConnectionEntity } from '../../../database/entities';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import { CircuitBreakerRegistry } from '../../../core/resilience/circuit-breaker.registry';
-import { assertAllowedHost } from '../../../core/resilience/safe-url';
+import { assertAllowedHost, assertSafePathSegment } from '../../../core/resilience/safe-url';
 import { QUEUE_NAMES } from '../../../queues/queue.constants';
 
 const PROVIDER = 'spotify';
@@ -203,7 +203,8 @@ export class SpotifyService {
     }
 
     const token = await this.getClientCredentialsToken();
-    const url = assertAllowedHost(`${SPOTIFY_API}/artists/${encodeURIComponent(artistId)}`, SPOTIFY_HOSTS);
+    const id = assertSafePathSegment(artistId, 'artistId');
+    const url = assertAllowedHost(`${SPOTIFY_API}/artists/${encodeURIComponent(id)}`, SPOTIFY_HOSTS);
     const res = await this.fetch(url, {
       headers: { 'Authorization': `Bearer ${token}` },
     });

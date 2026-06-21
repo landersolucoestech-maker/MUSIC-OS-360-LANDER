@@ -4,10 +4,18 @@ import { DataSource }           from 'typeorm';
 import { DATA_SOURCE }          from '../../../database/database.module';
 import { EncryptionService }    from '../../../core/security/encryption.service';
 import { IntegrationBaseService } from '../integration-base.service';
-import { assertAllowedHost } from '../../../core/resilience/safe-url';
+import {
+  assertAllowedHost,
+  assertSafePathSegment,
+  assertSafeStorefront,
+  assertSafeTypes,
+  assertSafeLimit,
+  assertSafeQueryValue,
+} from '../../../core/resilience/safe-url';
 
 const APPLE_API = 'https://api.music.apple.com/v1';
 const APPLE_HOSTS = ['api.music.apple.com'] as const;
+const APPLE_SEARCH_TYPES = ['artists', 'albums', 'songs', 'playlists', 'music-videos', 'stations'] as const;
 const PROVIDER  = 'apple_music';
 
 interface AppleCreds {
@@ -54,7 +62,9 @@ export class AppleMusicService extends IntegrationBaseService {
   async getArtistFromCatalog(tenantId: string, artistId: string, storefront = 'br') {
     const token = await this.getToken(tenantId);
     if (!token) return { error: 'Apple Music não configurado' };
-    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(storefront)}/artists/${encodeURIComponent(artistId)}`, APPLE_HOSTS);
+    const sf = assertSafeStorefront(storefront);
+    const id = assertSafePathSegment(artistId, 'artistId');
+    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(sf)}/artists/${encodeURIComponent(id)}`, APPLE_HOSTS);
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return { error: `Apple Music API error: ${res.status}` };
     const d    = await res.json() as any;
@@ -70,7 +80,12 @@ export class AppleMusicService extends IntegrationBaseService {
   async searchCatalog(tenantId: string, term: string, types = 'artists,albums', storefront = 'br', limit = 10) {
     const token = await this.getToken(tenantId);
     if (!token) return { error: 'Apple Music não configurado' };
-    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(storefront)}/search?term=${encodeURIComponent(term)}&types=${encodeURIComponent(types)}&limit=${encodeURIComponent(String(limit))}`, APPLE_HOSTS);
+    const sf = assertSafeStorefront(storefront);
+    const safeTerm = assertSafeQueryValue(term, 'term');
+    const safeTypes = assertSafeTypes(types, APPLE_SEARCH_TYPES);
+    const lim = assertSafeLimit(limit);
+    const qs = new URLSearchParams({ term: safeTerm, types: safeTypes, limit: String(lim) }).toString();
+    const url = assertAllowedHost(`${APPLE_API}/catalog/${encodeURIComponent(sf)}/search?${qs}`, APPLE_HOSTS);
     const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
     if (!res.ok) return { error: `Apple Music API error: ${res.status}` };
     return res.json();

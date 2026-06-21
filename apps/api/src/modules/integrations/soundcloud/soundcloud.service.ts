@@ -4,7 +4,7 @@ import { DataSource }         from 'typeorm';
 import { DATA_SOURCE }        from '../../../database/database.module';
 import { EncryptionService }  from '../../../core/security/encryption.service';
 import { IntegrationBaseService } from '../integration-base.service';
-import { assertAllowedHost } from '../../../core/resilience/safe-url';
+import { assertAllowedHost, assertSafePathSegment, assertSafeLimit, assertSafeQueryValue } from '../../../core/resilience/safe-url';
 
 const SC_API = 'https://api.soundcloud.com';
 const SC_HOSTS = ['api.soundcloud.com'] as const;
@@ -34,7 +34,9 @@ export class SoundCloudService extends IntegrationBaseService {
   async resolveUser(url: string) {
     const cid = this.clientId;
     if (!cid) return { error: 'SOUNDCLOUD_CLIENT_ID não configurado' };
-    const safeUrl = assertAllowedHost(`${SC_API}/resolve?url=${encodeURIComponent(url)}&client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const safeResolveUrl = assertSafeQueryValue(url, 'url', 512);
+    const qs = new URLSearchParams({ url: safeResolveUrl, client_id: cid }).toString();
+    const safeUrl = assertAllowedHost(`${SC_API}/resolve?${qs}`, SC_HOSTS);
     const res = await fetch(safeUrl);
     if (!res.ok) return { error: `SoundCloud API error: ${res.status}` };
     const d = await res.json() as any;
@@ -48,7 +50,9 @@ export class SoundCloudService extends IntegrationBaseService {
   async getTrackStats(trackId: string) {
     const cid = this.clientId;
     if (!cid) return { error: 'SOUNDCLOUD_CLIENT_ID não configurado' };
-    const safeUrl = assertAllowedHost(`${SC_API}/tracks/${encodeURIComponent(trackId)}?client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const id = assertSafePathSegment(trackId, 'trackId');
+    const qs = new URLSearchParams({ client_id: cid }).toString();
+    const safeUrl = assertAllowedHost(`${SC_API}/tracks/${encodeURIComponent(id)}?${qs}`, SC_HOSTS);
     const res = await fetch(safeUrl);
     if (!res.ok) return { error: `SoundCloud API error: ${res.status}` };
     const d = await res.json() as any;
@@ -63,7 +67,10 @@ export class SoundCloudService extends IntegrationBaseService {
   async searchTracks(query: string, limit = 10) {
     const cid = this.clientId;
     if (!cid) return [];
-    const safeUrl = assertAllowedHost(`${SC_API}/tracks?q=${encodeURIComponent(query)}&limit=${encodeURIComponent(String(limit))}&client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const safeQuery = assertSafeQueryValue(query, 'query');
+    const lim = assertSafeLimit(limit);
+    const qs = new URLSearchParams({ q: safeQuery, limit: String(lim), client_id: cid }).toString();
+    const safeUrl = assertAllowedHost(`${SC_API}/tracks?${qs}`, SC_HOSTS);
     const res = await fetch(safeUrl);
     if (!res.ok) return [];
     const data = await res.json() as any;

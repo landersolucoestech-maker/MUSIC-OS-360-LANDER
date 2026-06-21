@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { assertAllowedHost } from '../../../core/resilience/safe-url';
+import { assertAllowedHost, assertSafePathSegment, assertSafeLimit } from '../../../core/resilience/safe-url';
 
 const DEEZER_API = 'https://api.deezer.com';
 const DEEZER_HOSTS = ['api.deezer.com'] as const;
@@ -13,7 +13,8 @@ export class DeezerService {
   }
 
   async getArtistStats(artistId: string) {
-    const url = assertAllowedHost(`${DEEZER_API}/artist/${encodeURIComponent(artistId)}`, DEEZER_HOSTS);
+    const id = assertSafePathSegment(artistId, 'artistId');
+    const url = assertAllowedHost(`${DEEZER_API}/artist/${encodeURIComponent(id)}`, DEEZER_HOSTS);
     const res = await fetch(url);
     if (!res.ok) return { error: `Deezer API error: ${res.status}` };
     const d = await res.json() as any;
@@ -29,7 +30,9 @@ export class DeezerService {
   }
 
   async getTopTracks(artistId: string, limit = 10) {
-    const url = assertAllowedHost(`${DEEZER_API}/artist/${encodeURIComponent(artistId)}/top?limit=${encodeURIComponent(String(limit))}`, DEEZER_HOSTS);
+    const id = assertSafePathSegment(artistId, 'artistId');
+    const lim = assertSafeLimit(limit);
+    const url = assertAllowedHost(`${DEEZER_API}/artist/${encodeURIComponent(id)}/top?limit=${lim}`, DEEZER_HOSTS);
     const res = await fetch(url);
     if (!res.ok) return [];
     const data = await res.json() as any;
@@ -45,7 +48,8 @@ export class DeezerService {
   }
 
   async getAlbum(albumId: string) {
-    const url = assertAllowedHost(`${DEEZER_API}/album/${encodeURIComponent(albumId)}`, DEEZER_HOSTS);
+    const id = assertSafePathSegment(albumId, 'albumId');
+    const url = assertAllowedHost(`${DEEZER_API}/album/${encodeURIComponent(id)}`, DEEZER_HOSTS);
     const res = await fetch(url);
     if (!res.ok) return { error: `Deezer API error: ${res.status}` };
     const d = await res.json() as any;
