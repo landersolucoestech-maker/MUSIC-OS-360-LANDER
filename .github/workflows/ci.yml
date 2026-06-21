@@ -67,6 +67,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # Workspace packages (types, ai-skills, …) must be built before app tests
+      # so their dist/ type declarations resolve.
+      - name: Build workspace packages
+        run: pnpm turbo build --filter='./packages/*'
+
       - name: Run API tests with coverage
         run: pnpm --filter @music-os-360/api test:ci
         env:
@@ -76,6 +81,11 @@ jobs:
         run: pnpm --filter @music-os-360/web test:run
         env:
           CI: true
+          # Dummy values: web tests import the Supabase client at load; real keys
+          # are never needed (mock mode), but the client requires the vars present.
+          VITE_SUPABASE_URL: https://dummy.supabase.co
+          VITE_SUPABASE_ANON_KEY: dummy-anon-key-for-ci
+          VITE_MOCK_MODE: "true"
 
       - name: Upload coverage report
         uses: actions/upload-artifact@v4
