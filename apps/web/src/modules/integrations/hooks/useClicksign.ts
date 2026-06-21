@@ -54,8 +54,10 @@ export function useClicksignSaveCredentials() {
   return useMutation({
     mutationFn: async (input: { api_key: string; account_email?: string }) => {
       if (!input.api_key.trim()) throw new Error("API Key é obrigatória.");
+      // The api_key (secret) is NEVER persisted client-side (CWE-312). Only
+      // non-sensitive connection metadata is stored; the real key must be held
+      // by the backend OAuth/credential store.
       writeCreds({
-        api_key: input.api_key.trim(),
         account_email: input.account_email?.trim(),
         saved_at: new Date().toISOString(),
       });
