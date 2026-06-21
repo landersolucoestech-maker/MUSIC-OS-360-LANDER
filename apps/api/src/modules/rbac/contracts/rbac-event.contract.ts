@@ -52,6 +52,7 @@ export interface RbacActiveDecisionState {
 }
 
 declare global {
+  // eslint-disable-next-line @typescript-eslint/no-namespace -- required to augment the global Express.Request type
   namespace Express {
     interface Request {
       traceId?: string;
