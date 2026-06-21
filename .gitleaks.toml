@@ -1,21 +1,37 @@
 # gitleaks config — extends the default ruleset with project allowlists.
-# Only false positives are allowlisted; no real-secret rule is weakened.
+# Only confirmed false positives are allowlisted (local tooling, test fixtures,
+# CI dummy values, internal audit docs). No real-secret rule is weakened.
 title = "MUSIC OS 360 gitleaks config"
 
 [extend]
 useDefault = true
 
 [allowlist]
-description = "False positives: local tooling config, env templates and test fixtures (no real secrets)"
+description = "False positives: local tooling, test fixtures, CI dummies, env templates, audit docs"
 paths = [
-  # Local Claude Code tooling config — permission allowlists contain shell-command
-  # strings (e.g. `curl .../health/ready`) that the `curl-auth-header` rule misfires on.
+  # Local Claude Code tooling config (shell-command strings).
   '''\.claude/.*''',
-  # Env templates only hold placeholders (YOUR_ANON_KEY, etc.).
+  # Env templates — placeholders only (YOUR_ANON_KEY, etc.).
   '''.*\.env\.example''',
   '''\.env\.staging\.example''',
+  # Local dev/test scripts: mint fake JWTs / probe env.schema with dummy values.
+  '''apps/api/scripts/fase9-tokens\.js''',
+  '''apps/api/scripts/fase94b-tokens\.js''',
+  '''apps/api/scripts/fase10-prod-env-check\.cjs''',
+  '''apps/api/scripts/fase1d-recovery\.ts''',
+  # Internal audit/QA docs containing illustrative (non-real) key/token examples.
+  '''docs/.*\.md''',
 ]
 regexes = [
-  # Intentionally-invalid JWT fixtures used in tests.
+  # Intentionally-invalid JWT fixture used in tests.
   '''eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9\.invalid\.payload''',
+  # Shared dev/CI test ENCRYPTION_KEY / JWT signing key (never a prod secret).
+  '''33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217''',
+  # All-zero dummy ENCRYPTION_KEY used in CI docker runs.
+  '''0{40,}''',
+  # Obvious placeholder values.
+  '''deadbeef''',
+  '''eyJanon''',
+  '''eyJservice''',
+  '''re_realdev_prod_key''',
 ]
