@@ -6,6 +6,7 @@ import {
 } from "@/shared/ui/dialog";
 import { Badge } from "@/shared/ui/badge";
 import { User, Mail, Phone, Building2, Calendar, Shield } from "lucide-react";
+import { formatPersonName } from "@/shared/lib/format-name";
 
 interface UsuarioViewModalProps {
   open: boolean;
@@ -19,11 +20,11 @@ export function UsuarioViewModal({ open, onOpenChange, usuario }: UsuarioViewMod
   const getStatusBadge = (status: string) => {
     switch (status?.toLowerCase()) {
       case "ativo":
-        return <Badge className="bg-success hover:bg-success text-success-foreground">{status}</Badge>;
+        return <Badge variant="success">{status}</Badge>;
       case "inativo":
-        return <Badge className="bg-slate-500 hover:bg-slate-500 text-white">{status}</Badge>;
+        return <Badge variant="neutral">{status}</Badge>;
       default:
-        return <Badge variant="secondary">{status}</Badge>;
+        return <Badge variant="neutral">{status}</Badge>;
     }
   };
 
@@ -46,14 +47,14 @@ export function UsuarioViewModal({ open, onOpenChange, usuario }: UsuarioViewMod
               </span>
             </div>
             <div>
-              <h2 className="text-xl font-bold text-foreground">{usuario.nome}</h2>
+              <h2 className="text-xl font-bold text-foreground">{formatPersonName(usuario.nome, usuario.nome)}</h2>
               <p className="text-muted-foreground">{usuario.cargo}</p>
             </div>
           </div>
 
           {/* Badges */}
           <div className="flex gap-2">
-            <Badge className="bg-blue-500 hover:bg-blue-500 text-white">
+            <Badge variant="neutral">
               {usuario.cargo || "Usuário"}
             </Badge>
             {getStatusBadge(usuario.status)}

@@ -5,10 +5,13 @@ import { useTenant } from "@/app/providers/TenantContext";
 import { PLAN_LABEL } from "@/app/providers/tenant-labels";
 import { useIsAdmin } from "@/shared/hooks/useIsAdmin";
 import { useCurrentRole } from "@/shared/hooks/useHasRole";
+import { MOCK_MODE } from "@/shared/lib/env";
+import { formatPersonName } from "@/shared/lib/format-name";
+import { DEV_PROFILES, isHrefAllowed, useDevProfile } from "@/shared/dev/devProfiles";
 import {
   LayoutDashboard,
   Users,
-  FolderKanban,
+  Folder,
   Music,
   Radio,
   FileText,
@@ -20,7 +23,6 @@ import {
   Megaphone,
   ChevronDown,
   ListChecks,
-  ChevronRight,
   PanelLeftClose,
   PanelLeft,
   Upload,
@@ -43,13 +45,12 @@ import {
   ChevronsUpDown,
   CheckCircle2,
   Activity,
-  BarChart,
   HeadphonesIcon,
-  Ticket,
   MessagesSquare,
   BookOpen,
   ServerCrash,
   Mic2,
+  Video,
 } from "lucide-react";
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
@@ -66,7 +67,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { ThemeToggle } from "@/shared/components/ThemeToggle";
 
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 
@@ -85,14 +85,14 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard",       href: "/",           icon: LayoutDashboard },
+  { title: "Dashboard",    href: "/",           icon: LayoutDashboard },
   { title: "Artistas",        href: "/artistas",   icon: Users,        featureFlag: "moduleArtists" },
-  { title: "Projetos",        href: "/projetos",   icon: FolderKanban, featureFlag: "moduleProjects" },
   {
     title: "Catálogo",
     icon: Music,
     featureFlag: "moduleCatalog",
     children: [
+      { title: "Projetos",           href: "/projetos",          icon: Folder, featureFlag: "moduleProjects" },
       { title: "Obras & Fonogramas", href: "/registro-musicas",   icon: Music },
       { title: "Monitoramento",      href: "/rights-monitoring",  icon: Radio,         featureFlag: "moduleMonitoring" },
       { title: "Licenciamento",      href: "/licenciamento",      icon: Shield,        featureFlag: "moduleLicensing" },
@@ -109,6 +109,7 @@ const NAV_ITEMS: NavItem[] = [
     ],
   },
   { title: "Contratos", href: "/contratos", icon: FileText, featureFlag: "moduleContracts" },
+  { title: "Audiovisual", href: "/audiovisual", icon: Video },
   {
     title: "Financeiro",
     icon: DollarSign,
@@ -122,9 +123,8 @@ const NAV_ITEMS: NavItem[] = [
   { title: "Agenda",           href: "/agenda",     icon: Calendar,      featureFlag: "moduleEvents" },
   { title: "Inventário",       href: "/inventario", icon: Package,       featureFlag: "moduleInventory" },
   { title: "MusicChat",        href: "/chat",       icon: MessageCircle },
-  { title: "CRM",              href: "/crm",        icon: Contact,       featureFlag: "moduleCrm" },
-  { title: "Recursos Humanos", href: "/rh",         icon: Briefcase,     featureFlag: "moduleRh" },
-  { title: "Relatórios",       href: "/relatorios", icon: Activity },
+  { title: "CRM", href: "/leads", icon: Contact, featureFlag: "moduleCrm" },
+  { title: "RH",               href: "/rh",         icon: Briefcase,     featureFlag: "moduleRh" },
   {
     title: "Marketing",
     icon: Megaphone,
@@ -133,12 +133,13 @@ const NAV_ITEMS: NavItem[] = [
       { title: "Visão Geral",          href: "/marketing/visao-geral", icon: Eye },
       { title: "Campanhas",            href: "/marketing/campanhas",   icon: Target },
       { title: "Calendário de Conteúdo", href: "/marketing/calendario", icon: CalendarDays },
+      { title: "Tarefas",              href: "/marketing/tarefas",     icon: ListChecks },
       { title: "Métricas",             href: "/marketing/metricas",    icon: TrendingUp },
       { title: "Briefing",             href: "/marketing/briefing",    icon: FileEdit },
-      { title: "Tarefas",              href: "/marketing/tarefas",     icon: ListChecks },
       { title: "IA Criativa",          href: "/marketing/ia-criativa", icon: Sparkles },
     ],
   },
+  { title: "Relatórios",       href: "/relatorios", icon: Activity },
   { title: "Suporte", href: "/support", icon: HeadphonesIcon },
 ];
 
@@ -152,30 +153,64 @@ export function AppSidebar() {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const location = useLocation();
 
+  // Simulação de perfil — APENAS em MOCK_MODE; filtra a navegação por setor para
+  // validação visual de RBAC. Não é segurança real (ver shared/dev/devProfiles).
+  const devProfile = useDevProfile();
+  const profileFilterOn = MOCK_MODE && !DEV_PROFILES[devProfile]?.all;
+  const profileAllows = (href?: string) => !profileFilterOn || (!!href && isHrefAllowed(devProfile, href));
+
   const visibleNavItems = useMemo(
     () => NAV_ITEMS.flatMap((item) => {
       if (item.featureFlag && !isFeatureEnabled(item.featureFlag)) return [];
-      if (!item.children) return [item];
+      if (!item.children) {
+        if (!profileAllows(item.href)) return [];
+        return [item];
+      }
       const visibleChildren = item.children.filter(
-        (c) => !c.featureFlag || isFeatureEnabled(c.featureFlag),
+        (c) => (!c.featureFlag || isFeatureEnabled(c.featureFlag)) && profileAllows(c.href),
       );
       if (visibleChildren.length === 0) return [];
       return [{ ...item, children: visibleChildren }];
     }),
-    [isFeatureEnabled],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [isFeatureEnabled, profileFilterOn, devProfile],
   );
 
   const adminItems: NavItem[] = useMemo(
     () => {
+      // Em MOCK_MODE, os itens admin seguem o perfil simulado.
+      if (profileFilterOn && !DEV_PROFILES[devProfile]?.showAdminItems) return [];
       const items: NavItem[] = [];
-      if (isAdmin) items.push({ title: "Auditoria", href: "/auditoria", icon: ClipboardCheck });
-      if (isSuperAdmin) items.push({ title: "Painel Admin", href: "/admin/dashboard", icon: Shield });
+      if (isSuperAdmin || profileFilterOn) items.push({ title: "Painel Admin", href: "/admin/dashboard", icon: Shield });
       return items;
     },
-    [isAdmin, isSuperAdmin],
+    [isAdmin, isSuperAdmin, profileFilterOn, devProfile],
   );
 
-  const userFullName = (user?.user_metadata?.full_name as string) || "Usuário";
+  const sidebarNavItems = useMemo(() => {
+    const canShowAudit =
+      (!profileFilterOn || DEV_PROFILES[devProfile]?.showAdminItems) &&
+      (isAdmin || profileFilterOn);
+    if (!canShowAudit) return visibleNavItems;
+
+    const auditItem: NavItem = {
+      title: "Auditoria",
+      href: "/auditoria",
+      icon: ClipboardCheck,
+    };
+    const supportIndex = visibleNavItems.findIndex(
+      (item) => item.href === "/support",
+    );
+    if (supportIndex < 0) return [...visibleNavItems, auditItem];
+
+    return [
+      ...visibleNavItems.slice(0, supportIndex),
+      auditItem,
+      ...visibleNavItems.slice(supportIndex),
+    ];
+  }, [visibleNavItems, isAdmin, profileFilterOn, devProfile]);
+
+  const userFullName = formatPersonName(user?.user_metadata?.full_name as string, "Usuário");
   const userEmail = user?.email ?? "";
   const userInitials =
     userFullName
@@ -205,8 +240,6 @@ export function AppSidebar() {
   const isChildActive = (children?: NavItem["children"]) =>
     children?.some((c) => location.pathname === c.href);
 
-  // ── Nav item renderer ──────────────────────────────────────────────────────
-
   const renderNavItem = (item: NavItem) => {
     if (item.children) {
       const isOpen = openMenus.includes(item.title);
@@ -222,7 +255,7 @@ export function AppSidebar() {
             <button
               className={cn(
                 "flex w-full items-center gap-2 rounded-md px-2 py-[5px]",
-                "text-[12.5px] font-medium transition-colors duration-100",
+                "text-[12px] font-medium transition-colors duration-100",
                 "text-sidebar-foreground/60 hover:bg-sidebar-accent hover:text-sidebar-foreground",
                 hasActive && "text-sidebar-foreground/90",
               )}
@@ -290,7 +323,7 @@ export function AppSidebar() {
         to={item.href!}
         className={cn(
           "flex items-center gap-2 rounded-md px-2 py-[5px]",
-          "text-[12.5px] font-medium transition-colors duration-100",
+          "text-[12px] font-medium transition-colors duration-100",
           active
             ? "bg-sidebar-accent text-sidebar-primary font-semibold"
             : "text-sidebar-foreground/60 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
@@ -315,8 +348,6 @@ export function AppSidebar() {
     );
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   return (
     <aside
       className={cn(
@@ -326,7 +357,6 @@ export function AppSidebar() {
         collapsed ? "w-[52px]" : "w-[232px]",
       )}
     >
-      {/* ── Brand header ──────────────────────────────────────────────────── */}
       <div
         className={cn(
           "flex items-center border-b border-sidebar-border px-3",
@@ -346,10 +376,10 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="min-w-0">
-              <p className="text-[12.5px] font-bold leading-none tracking-tight text-sidebar-foreground">
+              <p className="text-[12px] font-bold leading-none tracking-tight text-sidebar-foreground">
                 MUSIC OS <span className="text-primary">360</span>
               </p>
-              <p className="text-[9px] font-medium text-sidebar-foreground/40 uppercase tracking-[0.09em] leading-none mt-[3px]">
+              <p className="text-[9px] font-medium text-sidebar-foreground/40  tracking-[0.09em] leading-none mt-[3px]">
                 ERP OPERACIONAL MUSICAL
               </p>
             </div>
@@ -382,10 +412,9 @@ export function AppSidebar() {
         )}
       </div>
 
-      {/* ── Tenant block ──────────────────────────────────────────────────── */}
       {!collapsed && (
         <div className="px-2.5 pt-1.5 pb-2 border-b border-sidebar-border">
-          <p className="text-[8.5px] font-semibold text-sidebar-foreground/30 uppercase tracking-[0.14em] px-1 pb-1">Organização</p>
+          <p className="text-[8px] font-semibold text-sidebar-foreground/30  tracking-[0.14em] px-1 pb-1">Organização</p>
           <div
             className={cn(
               "flex items-center gap-2 rounded-md px-2 py-1.5",
@@ -397,18 +426,18 @@ export function AppSidebar() {
               <Building2 className="h-3 w-3 text-primary" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[11.5px] font-semibold text-sidebar-foreground leading-none truncate">
+              <p className="text-[11px] font-semibold text-sidebar-foreground leading-none truncate">
                 {tenant.name}
               </p>
               <div className="flex items-center gap-1 mt-1">
                 <span
                   className={cn(
-                    "inline-flex items-center gap-1 text-[9px] font-bold uppercase tracking-[0.08em]",
+                    "inline-flex items-center gap-1 text-[9px] font-bold  tracking-[0.08em]",
                     "px-1 py-px rounded-sm",
                     tenant.plan === "enterprise"
-                      ? "bg-primary/12 text-primary"
+                      ? "bg-primary/80 text-primary-foreground border border-primary-foreground/20"
                       : tenant.plan === "professional"
-                        ? "bg-violet-500/12 text-violet-400"
+                        ? "bg-primary/12 text-primary"
                         : "bg-muted text-muted-foreground",
                   )}
                 >
@@ -422,9 +451,8 @@ export function AppSidebar() {
         </div>
       )}
 
-      {/* ── Navigation ────────────────────────────────────────────────────── */}
       <nav className="flex-1 overflow-y-auto py-2 px-2 space-y-px">
-        {visibleNavItems.map(renderNavItem)}
+        {sidebarNavItems.map(renderNavItem)}
         {adminItems.length > 0 && (
           <>
             <div className="my-2 mx-1 border-t border-sidebar-border/60" />
@@ -433,7 +461,6 @@ export function AppSidebar() {
         )}
       </nav>
 
-      {/* ── User menu ─────────────────────────────────────────────────────── */}
       <div className="border-t border-sidebar-border p-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -458,7 +485,7 @@ export function AppSidebar() {
                   <p className="text-[12px] font-medium truncate leading-none text-sidebar-foreground">
                     {userFullName}
                   </p>
-                  <p className="text-[10.5px] text-sidebar-foreground/38 truncate leading-none mt-0.5">
+                  <p className="text-[10px] text-sidebar-foreground/38 truncate leading-none mt-0.5">
                     {userEmail}
                   </p>
                 </div>
@@ -467,7 +494,7 @@ export function AppSidebar() {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" side="top" className="w-52">
             <div className="px-2 py-2">
-              <p className="text-[12.5px] font-semibold">{userFullName}</p>
+              <p className="text-[12px] font-semibold">{userFullName}</p>
               <p className="text-[11px] text-muted-foreground truncate">
                 {userEmail}
               </p>
@@ -479,12 +506,14 @@ export function AppSidebar() {
                 Meu Perfil
               </Link>
             </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link to="/configuracoes" className="cursor-pointer text-sm">
-                <Settings className="h-3.5 w-3.5 mr-2 opacity-60" />
-                Configurações
-              </Link>
-            </DropdownMenuItem>
+            {(!profileFilterOn || DEV_PROFILES[devProfile]?.showSettings) && (
+              <DropdownMenuItem asChild>
+                <Link to="/configuracoes" className="cursor-pointer text-sm">
+                  <Settings className="h-3.5 w-3.5 mr-2 opacity-60" />
+                  Configurações
+                </Link>
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => signOut()}

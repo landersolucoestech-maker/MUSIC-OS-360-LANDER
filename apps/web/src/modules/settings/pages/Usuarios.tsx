@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { MainLayout } from "@/shared/components/MainLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/shared/ui/card";
+import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
+import { Card, CardContent } from "@/shared/ui/card";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
@@ -11,6 +12,7 @@ import { UsuarioFormModal } from "@/modules/settings/components/UsuarioFormModal
 import { UsuarioViewModal } from "@/modules/settings/components/UsuarioViewModal";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useUsuarios, Usuario } from "@/modules/settings/hooks/useUsuarios";
+import { formatPersonName } from "@/shared/lib/format-name";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -127,11 +129,12 @@ export default function Usuarios() {
           />
         ) : (
           <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle className="text-lg">Usuários</CardTitle>
-              <CardDescription>Todos os usuários cadastrados no sistema</CardDescription>
-            </CardHeader>
             <CardContent className="pt-0">
+              <ListSectionHeader
+                title="Usuários"
+                count={filteredUsuarios.length}
+                description="Todos os usuários cadastrados no sistema"
+              />
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -152,7 +155,7 @@ export default function Usuarios() {
                             {getInitials(usuario.full_name)}
                           </div>
                           <div>
-                            <p className="font-medium text-sm">{usuario.full_name || "Usuário"}</p>
+                            <p className="font-medium text-sm">{formatPersonName(usuario.full_name, "Usuário")}</p>
                             <p className="text-xs text-muted-foreground">{usuario.email || "—"}</p>
                           </div>
                         </div>
@@ -165,7 +168,7 @@ export default function Usuarios() {
                       <TableCell className="text-muted-foreground text-sm">{usuario.phone || "—"}</TableCell>
                       <TableCell className="text-muted-foreground text-sm">{formatDate(usuario.created_at)}</TableCell>
                       <TableCell>
-                        <Badge className={`text-xs ${usuario.status === "ativo" ? "bg-success" : "bg-gray-500"} text-white`}>
+                        <Badge className={`text-xs ${usuario.status === "ativo" ? "bg-success" : "bg-gray-500"} text-foreground`}>
                           {usuario.status === "ativo" ? "Ativo" : "Inativo"}
                         </Badge>
                       </TableCell>
