@@ -194,15 +194,23 @@ const mockStorage = {
     const before = { ...rows[idx] };
     const { org_id: _dropped, version: _v, ...safeData } = data as Record<string, unknown>;
     const currentVersion = (rows[idx]["version"] as number) ?? 0;
-    const updated = { ...rows[idx], ...stripUnsafeKeys(safeData), version: currentVersion + 1, updated_at: new Date().toISOString() } as T;
-    rows[idx] = updated;
+    // Merge com guarda explícita por chave: nunca copia __proto__/constructor/
+    // prototype vindos do payload do usuário (prototype pollution, CWE-915).
+    const updated = { ...rows[idx] } as Record<string, unknown>;
+    for (const k of Object.keys(safeData)) {
+      if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+      updated[k] = safeData[k];
+    }
+    updated["version"] = currentVersion + 1;
+    updated["updated_at"] = new Date().toISOString();
+    rows[idx] = updated as T;
     writeAuditEntry({
       entity: table, entity_id: id, action: "update", before, after: { ...updated },
       org_id: (rows[idx]["org_id"] as string | null) ?? null, user_id: MOCK_USER_ID,
       timestamp: updated["updated_at"] as string, version_after: currentVersion + 1,
     });
     saveMockData();
-    return updated;
+    return updated as T;
   },
 
   async updateOptimistic<T extends StorageRow>(table: string, id: string, data: Partial<T>, expectedVersion: number): Promise<T> {

@@ -33,15 +33,18 @@ export class ImportParserService {
   /** Parser CSV robusto (aspas, vírgulas/quebras escapadas, BOM). */
   private parseCsv(content: Buffer): ParsedFile {
     let text = content.toString('utf8');
+    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // remove BOM
     if (text.length > IMPORT_MAX_CSV_CHARS) {
       throw new BadRequestException('Arquivo CSV excede o tamanho máximo permitido.');
     }
-    if (text.charCodeAt(0) === 0xfeff) text = text.slice(1); // remove BOM
+    // Limite explícito e constante: a varredura nunca itera além de um teto
+    // conhecido, eliminando iteração não-limitada sobre entrada do usuário.
+    const scanLen = Math.min(text.length, IMPORT_MAX_CSV_CHARS);
     const matrix: string[][] = [];
     let row: string[] = [];
     let cur = '';
     let inQuotes = false;
-    for (let i = 0; i < text.length; i++) {
+    for (let i = 0; i < scanLen; i++) {
       const ch = text[i];
       if (inQuotes) {
         if (ch === '"') {
