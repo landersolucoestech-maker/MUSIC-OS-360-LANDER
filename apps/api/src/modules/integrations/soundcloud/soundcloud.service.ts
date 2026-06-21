@@ -4,8 +4,10 @@ import { DataSource }         from 'typeorm';
 import { DATA_SOURCE }        from '../../../database/database.module';
 import { EncryptionService }  from '../../../core/security/encryption.service';
 import { IntegrationBaseService } from '../integration-base.service';
+import { assertAllowedHost } from '../../../core/resilience/safe-url';
 
 const SC_API = 'https://api.soundcloud.com';
+const SC_HOSTS = ['api.soundcloud.com'] as const;
 
 @Injectable()
 export class SoundCloudService extends IntegrationBaseService {
@@ -32,7 +34,8 @@ export class SoundCloudService extends IntegrationBaseService {
   async resolveUser(url: string) {
     const cid = this.clientId;
     if (!cid) return { error: 'SOUNDCLOUD_CLIENT_ID não configurado' };
-    const res = await fetch(`${SC_API}/resolve?url=${encodeURIComponent(url)}&client_id=${cid}`);
+    const safeUrl = assertAllowedHost(`${SC_API}/resolve?url=${encodeURIComponent(url)}&client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const res = await fetch(safeUrl);
     if (!res.ok) return { error: `SoundCloud API error: ${res.status}` };
     const d = await res.json() as any;
     return {
@@ -45,7 +48,8 @@ export class SoundCloudService extends IntegrationBaseService {
   async getTrackStats(trackId: string) {
     const cid = this.clientId;
     if (!cid) return { error: 'SOUNDCLOUD_CLIENT_ID não configurado' };
-    const res = await fetch(`${SC_API}/tracks/${trackId}?client_id=${cid}`);
+    const safeUrl = assertAllowedHost(`${SC_API}/tracks/${encodeURIComponent(trackId)}?client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const res = await fetch(safeUrl);
     if (!res.ok) return { error: `SoundCloud API error: ${res.status}` };
     const d = await res.json() as any;
     return {
@@ -59,7 +63,8 @@ export class SoundCloudService extends IntegrationBaseService {
   async searchTracks(query: string, limit = 10) {
     const cid = this.clientId;
     if (!cid) return [];
-    const res = await fetch(`${SC_API}/tracks?q=${encodeURIComponent(query)}&limit=${limit}&client_id=${cid}`);
+    const safeUrl = assertAllowedHost(`${SC_API}/tracks?q=${encodeURIComponent(query)}&limit=${encodeURIComponent(String(limit))}&client_id=${encodeURIComponent(cid)}`, SC_HOSTS);
+    const res = await fetch(safeUrl);
     if (!res.ok) return [];
     const data = await res.json() as any;
     return (Array.isArray(data) ? data : []).map((t: any) => ({
