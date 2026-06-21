@@ -194,9 +194,15 @@ const mockStorage = {
     const before = { ...rows[idx] };
     const { org_id: _dropped, version: _v, ...safeData } = data as Record<string, unknown>;
     const currentVersion = (rows[idx]["version"] as number) ?? 0;
-    // Merge com guarda explícita por chave: nunca copia __proto__/constructor/
-    // prototype vindos do payload do usuário (prototype pollution, CWE-915).
-    const updated = { ...rows[idx] } as Record<string, unknown>;
+    // Merge com guarda explícita por chave em AMBAS as fontes (registro
+    // existente + payload do usuário): nenhuma cópia de __proto__/constructor/
+    // prototype, sem spread de entrada não confiável (prototype pollution, CWE-915).
+    const updated: Record<string, unknown> = {};
+    const current = rows[idx] as Record<string, unknown>;
+    for (const k of Object.keys(current)) {
+      if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
+      updated[k] = current[k];
+    }
     for (const k of Object.keys(safeData)) {
       if (k === "__proto__" || k === "constructor" || k === "prototype") continue;
       updated[k] = safeData[k];
