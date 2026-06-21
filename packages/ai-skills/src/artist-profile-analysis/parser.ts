@@ -140,7 +140,7 @@ function buildFallback(input: ArtistProfileAnalysisInput): ArtistProfileAnalysis
 function extractJson(raw: string): Record<string, unknown> | null {
   if (!raw) return null;
 
-  const fenced = raw.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  const fenced = raw.match(/```(?:json)?([\s\S]*?)```/i);
   const candidate = fenced ? fenced[1] : raw;
 
   const direct = tryParse(candidate);

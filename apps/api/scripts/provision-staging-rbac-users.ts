@@ -6,10 +6,11 @@
 import 'reflect-metadata';
 import { createClient } from '@supabase/supabase-js';
 import { DataSource } from 'typeorm';
+import { randomBytes } from 'crypto';
 
 const ROLES = ['owner', 'admin', 'manager', 'editor', 'viewer', 'accounting', 'artist'] as const;
 const PASSWORD = process.env['PROVISION_PASSWORD']
-  ?? `Homolog!${Math.random().toString(36).slice(2, 10)}`;
+  ?? `Homolog!${randomBytes(9).toString('base64url')}`;
 
 function reqEnv(name: string): string {
   const value = process.env[name];
