@@ -1,11 +1,19 @@
-import { IsString, IsIn, IsUrl } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsOptional } from 'class-validator';
+import { ApiPropertyOptional, ApiProperty } from '@nestjs/swagger';
 
 export class CreateCheckoutDto {
-  @ApiProperty({ enum: ['starter', 'professional', 'enterprise'] })
-  @IsString()
-  @IsIn(['starter', 'professional', 'enterprise'])
-  plan: 'starter' | 'professional' | 'enterprise';
+  @ApiPropertyOptional({ description: 'ID (uuid) do plano no banco' })
+  @IsOptional() @IsString()
+  planId?: string;
+
+  @ApiPropertyOptional({ description: 'Slug do plano no banco (ex: professional)' })
+  @IsOptional() @IsString()
+  planSlug?: string;
+
+  /** Alias legado (slug). Mantido para compatibilidade do frontend. */
+  @ApiPropertyOptional({ deprecated: true })
+  @IsOptional() @IsString()
+  plan?: string;
 
   @ApiProperty({ example: 'https://app.example.com/settings/billing?success=1' })
   @IsString()

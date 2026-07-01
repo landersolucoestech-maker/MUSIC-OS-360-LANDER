@@ -82,6 +82,7 @@ import { RegistryModule }         from './modules/registry/registry.module';
 import { ReportsModule }          from './modules/reports/reports.module';
 import { JwtAuthGuard }    from './core/guards/auth.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
+import { BillingEnforcementGuard } from './core/guards/billing-enforcement.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
 import { PermissionsGuard } from './core/guards/permissions.guard';
 import { RateLimitGuard }  from './core/guards/rate-limit.guard';
@@ -236,6 +237,10 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     {
       provide:  APP_GUARD,
       useClass: TenantGuard,
+    },
+    {
+      provide:  APP_GUARD,
+      useClass: BillingEnforcementGuard,
     },
     {
       provide:  APP_GUARD,

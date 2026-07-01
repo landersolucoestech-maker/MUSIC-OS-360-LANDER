@@ -13,7 +13,7 @@
  */
 
 import {
-  Controller, Post, Get, Body, Headers,
+  Controller, Post, Patch, Get, Body, Headers, Param, Query,
   Req, RawBodyRequest,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
@@ -23,14 +23,60 @@ import { RequireRole }     from '../../core/decorators/roles.decorator';
 import { Public }          from '../../core/decorators/public.decorator';
 import { Audit } from '../../core/interceptors/audit.interceptor';
 import { BillingService }  from './billing.service';
+import { BillingEnforcementService, TenantBillingStatus } from './billing-enforcement.service';
+import { BillingPlansService } from './billing-plans.service';
 import { CreateCheckoutDto, CreatePortalDto } from './dto/billing.dto';
+import { CreatePlanDto, UpdatePlanDto } from './dto/billing-plans.dto';
 import type { Request }    from 'express';
 
 @ApiTags('Billing')
 @ApiBearerAuth()
 @Controller('billing')
 export class BillingController {
-  constructor(private readonly billing: BillingService) {}
+  constructor(
+    private readonly billing: BillingService,
+    private readonly enforcement: BillingEnforcementService,
+    private readonly plans: BillingPlansService,
+  ) {}
+
+  // ── Gestão de Planos (fonte primária = banco/admin; Stripe é sincronizado) ──
+  @Get('plans')
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Listar planos (admin+)' })
+  listPlans(@Query('includeInactive') includeInactive?: string) {
+    return this.plans.list({ includeInactive: includeInactive === 'true' });
+  }
+
+  @Get('plans/:id')
+  @RequireRole('admin')
+  @ApiOperation({ summary: 'Obter plano por id (admin+)' })
+  getPlan(@Param('id') id: string) {
+    return this.plans.get(id);
+  }
+
+  @Post('plans')
+  @RequireRole('super_admin')
+  @Audit('billing.plan_created')
+  @ApiOperation({ summary: 'Criar plano + sincronizar com Stripe (super_admin)' })
+  createPlan(@Body() body: CreatePlanDto) {
+    return this.plans.create(body);
+  }
+
+  @Patch('plans/:id')
+  @RequireRole('super_admin')
+  @Audit('billing.plan_updated')
+  @ApiOperation({ summary: 'Editar plano + re-sincronizar Stripe (super_admin)' })
+  updatePlan(@Param('id') id: string, @Body() body: UpdatePlanDto) {
+    return this.plans.update(id, body);
+  }
+
+  @Post('plans/:id/sync-stripe')
+  @RequireRole('super_admin')
+  @Audit('billing.plan_synced')
+  @ApiOperation({ summary: 'Re-sincronizar plano com Stripe (super_admin)' })
+  syncPlan(@Param('id') id: string) {
+    return this.plans.syncStripe(id);
+  }
 
   @Post('checkout')
   @RequireRole('owner')
@@ -43,7 +89,7 @@ export class BillingController {
     return this.billing.createCheckoutSession({
       orgId:      tenant.org_id,
       tenantId:   tenant.id,
-      plan:       body.plan,
+      planRef:    body.planId ?? body.planSlug ?? body.plan,
       successUrl: body.successUrl,
       cancelUrl:  body.cancelUrl,
     });
@@ -79,6 +125,60 @@ export class BillingController {
   @ApiOperation({ summary: 'SaaS metrics — MRR, ARR, churn, LTV (super_admin only)' })
   getSaasMetrics() {
     return this.billing.getSaasMetrics();
+  }
+
+  @Post('admin/tenants/:tenantId/suspend')
+  @RequireRole('super_admin')
+  @Audit('tenant.suspended')
+  suspendTenant(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.enforcement.suspendTenant(tenantId, body.reason ?? 'manual admin suspension');
+  }
+
+  @Post('admin/tenants/:tenantId/reactivate')
+  @RequireRole('super_admin')
+  @Audit('tenant.reactivated')
+  reactivateTenant(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.enforcement.activateTenant(tenantId, body.reason ?? 'manual admin reactivation');
+  }
+
+  @Post('admin/tenants/:tenantId/override')
+  @RequireRole('super_admin')
+  @Audit('billing.override_enabled')
+  applyOverride(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { status: TenantBillingStatus; reason: string; until: string },
+    @CurrentUser() user: any,
+    @Req() req: Request,
+  ) {
+    return this.enforcement.applyManualOverride({
+      tenantId,
+      status: body.status,
+      reason: body.reason,
+      until: new Date(body.until),
+      userId: user?.id ?? user?.userId ?? null,
+      ip: req.ip,
+    });
+  }
+
+  @Post('admin/tenants/:tenantId/override/remove')
+  @RequireRole('super_admin')
+  @Audit('billing.override_disabled')
+  removeOverride(
+    @Param('tenantId') tenantId: string,
+    @Body() body: { reason?: string },
+    @CurrentUser() user: any,
+  ) {
+    return this.enforcement.removeManualOverride(
+      tenantId,
+      body.reason ?? 'manual override removed',
+      user?.id ?? user?.userId ?? null,
+    );
   }
 
   @Post('webhooks/stripe')

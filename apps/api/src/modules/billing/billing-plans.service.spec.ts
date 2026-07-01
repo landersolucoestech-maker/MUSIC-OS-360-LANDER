@@ -1,0 +1,106 @@
+import { Test, TestingModule } from '@nestjs/testing';
+import { ConfigService } from '@nestjs/config';
+import { BadRequestException } from '@nestjs/common';
+import { BillingPlansService } from './billing-plans.service';
+import { DATA_SOURCE } from '../../database/database.module';
+
+jest.mock('stripe', () => {
+  const instance = {
+    products: { create: jest.fn(), update: jest.fn() },
+    prices:   { create: jest.fn(), update: jest.fn() },
+  };
+  const ctor = jest.fn(() => instance);
+  (ctor as any).default = ctor;
+  (ctor as any).__instance = instance;
+  return ctor;
+});
+
+const stripe = () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  return require('stripe').__instance;
+};
+
+describe('BillingPlansService', () => {
+  let service: BillingPlansService;
+  let repo: Record<string, jest.Mock>;
+
+  beforeEach(async () => {
+    jest.clearAllMocks();
+    repo = {
+      createQueryBuilder: jest.fn(),
+      findOne: jest.fn().mockResolvedValue(null),
+      create:  jest.fn((v: any) => v),
+      save:    jest.fn((v: any) => Promise.resolve({ id: 'plan-1', ...v })),
+      update:  jest.fn().mockResolvedValue({ affected: 1 }),
+    };
+    stripe().products.create.mockResolvedValue({ id: 'prod_1' });
+    stripe().products.update.mockResolvedValue({ id: 'prod_1' });
+    stripe().prices.create.mockResolvedValue({ id: 'price_new' });
+    stripe().prices.update.mockResolvedValue({ id: 'price_old' });
+
+    const module: TestingModule = await Test.createTestingModule({
+      providers: [
+        BillingPlansService,
+        { provide: ConfigService, useValue: { get: (k: string) => (k === 'STRIPE_SECRET_KEY' ? 'sk_test' : undefined) } },
+        { provide: DATA_SOURCE, useValue: { getRepository: () => repo } },
+      ],
+    }).compile();
+
+    service = module.get(BillingPlansService);
+  });
+
+  describe('create', () => {
+    it('cria Product + Price no Stripe e persiste os ids', async () => {
+      const plan = await service.create({ slug: 'pro', name: 'Pro', amount: 29900, currency: 'brl', interval: 'month' });
+      expect(stripe().products.create).toHaveBeenCalledTimes(1);
+      expect(stripe().prices.create).toHaveBeenCalledWith(expect.objectContaining({
+        product: 'prod_1', unit_amount: 29900, currency: 'brl', recurring: { interval: 'month' },
+      }));
+      expect(repo.update).toHaveBeenCalledWith('plan-1', expect.objectContaining({
+        stripe_product_id: 'prod_1', stripe_price_id: 'price_new',
+      }));
+      expect(plan.stripe_price_id).toBe('price_new');
+    });
+
+    it('rejeita amount <= 0', async () => {
+      await expect(service.create({ slug: 'x', name: 'X', amount: 0 })).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejeita currency inválida', async () => {
+      await expect(service.create({ slug: 'x', name: 'X', amount: 100, currency: 'BRL' })).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejeita interval inválido', async () => {
+      await expect(service.create({ slug: 'x', name: 'X', amount: 100, interval: 'week' })).rejects.toThrow(BadRequestException);
+    });
+
+    it('rejeita slug duplicado', async () => {
+      repo.findOne.mockResolvedValueOnce({ id: 'dup', slug: 'pro' });
+      await expect(service.create({ slug: 'pro', name: 'Pro', amount: 100 })).rejects.toThrow(BadRequestException);
+    });
+  });
+
+  describe('update', () => {
+    const existing = {
+      id: 'plan-1', slug: 'pro', name: 'Pro', description: null,
+      amount: 29900, currency: 'brl', interval: 'month', active: true,
+      features: {}, limits: {}, stripe_product_id: 'prod_1', stripe_price_id: 'price_1',
+    };
+
+    it('cria NOVO Price quando amount muda e desativa o antigo (sem recriar Product)', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...existing });
+      await service.update('plan-1', { amount: 39900 });
+      expect(stripe().products.create).not.toHaveBeenCalled();    // product já existe → update
+      expect(stripe().products.update).toHaveBeenCalledWith('prod_1', expect.any(Object));
+      expect(stripe().prices.create).toHaveBeenCalledTimes(1);    // novo price
+      expect(stripe().prices.update).toHaveBeenCalledWith('price_1', { active: false }); // desativa antigo
+    });
+
+    it('NÃO recria Price quando muda apenas o nome', async () => {
+      repo.findOne.mockResolvedValueOnce({ ...existing });
+      await service.update('plan-1', { name: 'Pro Plus' });
+      expect(stripe().prices.create).not.toHaveBeenCalled();
+      expect(stripe().products.update).toHaveBeenCalledTimes(1);
+    });
+  });
+});

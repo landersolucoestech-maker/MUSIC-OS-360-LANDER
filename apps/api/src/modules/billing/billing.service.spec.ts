@@ -5,6 +5,8 @@ import { BillingService }      from './billing.service';
 import { DATA_SOURCE }         from '../../database/database.module';
 import { WsGateway }           from '../../core/websocket/ws.gateway';
 import { EventsService }       from '../../core/events/events.service';
+import { BillingEnforcementService } from './billing-enforcement.service';
+import { BillingPlansService } from './billing-plans.service';
 
 jest.mock('stripe', () => {
   const instance = {
@@ -27,6 +29,7 @@ const getStripeInstance = () => {
 
 const buildMockQb = (resolveValue: any = null) => {
   const qb: any = {
+    select:     jest.fn(),
     where:      jest.fn(),
     andWhere:   jest.fn(),
     getOne:     jest.fn().mockResolvedValue(resolveValue),
@@ -38,6 +41,7 @@ const buildMockQb = (resolveValue: any = null) => {
     from:       jest.fn(),
     execute:    jest.fn().mockResolvedValue({ affected: 1 }),
   };
+  qb.select.mockReturnValue(qb);
   qb.where.mockReturnValue(qb);
   qb.andWhere.mockReturnValue(qb);
   qb.update.mockReturnValue(qb);
@@ -62,6 +66,7 @@ const buildMockDs = (getOneValue: any = null) => {
   const repo = buildMockRepo(getOneValue);
   return {
     getRepository: jest.fn(() => repo),
+    query: jest.fn().mockResolvedValue([]),
     _repo: repo,
   };
 };
@@ -69,10 +74,27 @@ const buildMockDs = (getOneValue: any = null) => {
 describe('BillingService', () => {
   let service: BillingService;
   let mockDs: ReturnType<typeof buildMockDs>;
+  let enforcement: Record<string, jest.Mock>;
+  let plans: Record<string, jest.Mock>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
     mockDs = buildMockDs();
+    plans = {
+      resolve: jest.fn().mockResolvedValue({
+        id: 'plan-pro', slug: 'professional', active: true, stripe_price_id: 'price_pro',
+      }),
+    };
+    enforcement = {
+      recordWebhookProcessed: jest.fn().mockResolvedValue('inserted'),
+      findTenantIdByStripe: jest.fn().mockResolvedValue('tenant-1'),
+      startPaymentGrace: jest.fn().mockResolvedValue({ status: 'payment_grace' }),
+      activateTenant: jest.fn().mockResolvedValue({ status: 'active' }),
+      ensureState: jest.fn().mockResolvedValue({ status: 'trial' }),
+      cancelTenant: jest.fn().mockResolvedValue({ status: 'cancelled' }),
+      suspendTenant: jest.fn().mockResolvedValue({ status: 'suspended' }),
+      getState: jest.fn().mockResolvedValue({ status: 'active' }),
+    };
 
     const stripe = getStripeInstance();
     stripe.checkout.sessions.create.mockResolvedValue({
@@ -101,6 +123,8 @@ describe('BillingService', () => {
         { provide: DATA_SOURCE, useValue: mockDs },
         { provide: WsGateway,   useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
         { provide: EventsService, useValue: { emitTyped: jest.fn(), emitAsync: jest.fn().mockResolvedValue([]) } },
+        { provide: BillingEnforcementService, useValue: enforcement },
+        { provide: BillingPlansService, useValue: plans },
       ],
     }).compile();
 
@@ -108,18 +132,45 @@ describe('BillingService', () => {
   });
 
   describe('createCheckoutSession', () => {
-    it('retorna url para plano válido', async () => {
+    it('usa stripe_price_id vindo do banco (não STRIPE_PRICE_*)', async () => {
       const r = await service.createCheckoutSession({
-        orgId: 'o1', tenantId: 't1', plan: 'professional',
+        orgId: 'o1', tenantId: 't1', planRef: 'professional',
         successUrl: 'https://ok', cancelUrl: 'https://cancel',
       });
       expect(r.url).toBe('https://checkout.stripe.com/test');
+      const stripe = getStripeInstance();
+      expect(stripe.checkout.sessions.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          line_items: [{ price: 'price_pro', quantity: 1 }],
+          metadata: expect.objectContaining({ plan_id: 'plan-pro', plan: 'professional', stripe_price_id: 'price_pro' }),
+        }),
+      );
     });
 
-    it('lança BadRequestException para plano inválido', async () => {
+    it('falha se plano não informado', async () => {
       await expect(service.createCheckoutSession({
-        orgId: 'o', tenantId: 't', plan: 'diamante' as any,
-        successUrl: '', cancelUrl: '',
+        orgId: 'o', tenantId: 't', successUrl: '', cancelUrl: '',
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('falha se plan_id inválido (não encontrado)', async () => {
+      plans.resolve.mockResolvedValueOnce(null);
+      await expect(service.createCheckoutSession({
+        orgId: 'o', tenantId: 't', planRef: 'inexistente', successUrl: '', cancelUrl: '',
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('falha se plano inativo', async () => {
+      plans.resolve.mockResolvedValueOnce({ id: 'p', slug: 'x', active: false, stripe_price_id: 'price_x' });
+      await expect(service.createCheckoutSession({
+        orgId: 'o', tenantId: 't', planRef: 'x', successUrl: '', cancelUrl: '',
+      })).rejects.toThrow(BadRequestException);
+    });
+
+    it('falha se plano não sincronizado com Stripe', async () => {
+      plans.resolve.mockResolvedValueOnce({ id: 'p', slug: 'x', active: true, stripe_price_id: null });
+      await expect(service.createCheckoutSession({
+        orgId: 'o', tenantId: 't', planRef: 'x', successUrl: '', cancelUrl: '',
       })).rejects.toThrow(BadRequestException);
     });
 
@@ -127,7 +178,7 @@ describe('BillingService', () => {
       const repo = mockDs._repo;
       repo._qb.getOne.mockResolvedValueOnce({ stripe_customer_id: 'cus_123', stripe_sub_id: 'sub_123' });
       await service.createCheckoutSession({
-        orgId: 'o1', tenantId: 't1', plan: 'starter',
+        orgId: 'o1', tenantId: 't1', planRef: 'professional',
         successUrl: 'https://ok', cancelUrl: 'https://cancel',
       });
       const stripe = getStripeInstance();
@@ -172,10 +223,85 @@ describe('BillingService', () => {
       stripe.webhooks.constructEvent.mockReturnValueOnce({
         id: 'evt_done', type: 'checkout.session.completed', data: { object: {} },
       });
-      const repo = mockDs._repo;
-      repo._qb.getOne.mockResolvedValueOnce({ id: 'wh-1', status: 'processed' });
+      enforcement.recordWebhookProcessed.mockResolvedValueOnce('duplicate');
       const r = await service.handleWebhook('sig', Buffer.from('{}'));
       expect(r).toEqual({ received: true });
+    });
+
+    it('inicia payment_grace em invoice.payment_failed', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce({
+        id: 'evt_failed',
+        type: 'invoice.payment_failed',
+        data: {
+          object: {
+            id: 'in_1',
+            customer: 'cus_1',
+            subscription: 'sub_1',
+            status: 'open',
+            amount_due: 25000,
+            amount_paid: 0,
+            currency: 'brl',
+          },
+        },
+      });
+      await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(enforcement.recordWebhookProcessed).toHaveBeenCalledWith(expect.objectContaining({
+        stripeEventId: 'evt_failed',
+        eventType: 'invoice.payment_failed',
+      }));
+      expect(enforcement.startPaymentGrace).toHaveBeenCalledWith('tenant-1', 'invoice.payment_failed');
+    });
+
+    it('reativa tenant em invoice.payment_succeeded', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce({
+        id: 'evt_paid',
+        type: 'invoice.payment_succeeded',
+        data: {
+          object: {
+            id: 'in_2',
+            customer: 'cus_1',
+            subscription: 'sub_1',
+            status: 'paid',
+            amount_due: 25000,
+            amount_paid: 25000,
+            currency: 'brl',
+          },
+        },
+      });
+      await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(enforcement.activateTenant).toHaveBeenCalledWith('tenant-1', 'invoice.payment_succeeded');
+    });
+  });
+
+  describe('checkout.session.completed (BILL-001-002-004)', () => {
+    const buildEvent = (metadata: Record<string, string> | null) => ({
+      id: 'evt_checkout',
+      type: 'checkout.session.completed',
+      data: { object: { customer: 'cus_1', subscription: 'sub_1', metadata } },
+    });
+
+    it('vincula customer/subscription e ativa o tenant com metadata válida', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(
+        buildEvent({ tenant_id: 'tenant-1', org_id: 'org-1', plan: 'professional' }),
+      );
+      const r = await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(r).toEqual({ received: true });
+      // acceptance: "tenant recebe customer/subscription" — via update chain + ativação
+      expect(mockDs._repo._qb.execute).toHaveBeenCalled();
+      expect(enforcement.activateTenant).toHaveBeenCalledWith('tenant-1', 'checkout.session.completed');
+    });
+
+    it('não provisiona (no-op) quando metadata está incompleta', async () => {
+      const stripe = getStripeInstance();
+      stripe.webhooks.constructEvent.mockReturnValueOnce(buildEvent({ org_id: 'org-1' }));
+      const r = await service.handleWebhook('sig', Buffer.from('{}'));
+      expect(r).toEqual({ received: true });
+      // idempotência registra o evento, mas nenhum efeito de provisionamento ocorre
+      expect(enforcement.recordWebhookProcessed).toHaveBeenCalled();
+      expect(enforcement.activateTenant).not.toHaveBeenCalled();
     });
   });
 

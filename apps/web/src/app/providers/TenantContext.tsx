@@ -12,7 +12,10 @@ import { SYSTEM_REGIONAL_SETTINGS } from "@/shared/lib/system-regional-settings"
 // ─── Plan & billing ───────────────────────────────────────────────────────────
 
 export type TenantPlan           = "starter" | "professional" | "enterprise";
-export type TenantBillingStatus  = "active" | "trial" | "suspended" | "cancelled";
+export type TenantBillingStatus  =
+  | "active" | "trial" | "suspended" | "cancelled"
+  // Estados de enforcement de inadimplência (fonte da verdade = backend tenant_billing_state)
+  | "past_due" | "payment_grace" | "read_only";
 export type TenantIndustry       = "gravadora" | "editora" | "distribuidora" | "agencia" | "publisher" | "outro";
 
 // ─── RBAC — Permissions ───────────────────────────────────────────────────────
@@ -89,6 +92,10 @@ export interface TenantBilling {
   planId?:         string;
   customerId?:     string;
   subscriptionId?: string;
+  /** Enforcement: exposto pelo backend (tenant_billing_state / GET /billing/subscription). */
+  graceUntil?:     string;
+  amountDue?:      number;
+  invoiceUrl?:     string;
 }
 
 // ─── Tenant ───────────────────────────────────────────────────────────────────

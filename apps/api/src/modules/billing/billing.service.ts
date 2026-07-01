@@ -1,13 +1,3 @@
-/**
- * billing/billing.service.ts
- *
- * Serviço Stripe Billing para Music OS 360.
- * Cobre: checkout sessions, portal sessions, webhooks com idempotência,
- * actualização de features/plan no tenant e notificação WebSocket.
- *
- * Stripe SDK v22 — CJS/ESM interop via require()
- */
-
 import { Injectable, BadRequestException, Logger, Inject, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
@@ -21,6 +11,8 @@ import {
 import { WebhookEventStatus } from '@music-os-360/types';
 import { WsGateway } from '../../core/websocket/ws.gateway';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
+import { BillingEnforcementService } from './billing-enforcement.service';
+import { BillingPlansService } from './billing-plans.service';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const StripeRaw = require('stripe');
@@ -29,19 +21,9 @@ const StripeClass: new (key: string, opts: Record<string, unknown>) => StripeCli
   (StripeRaw as any).default ?? StripeRaw;
 
 interface StripeClient {
-  checkout: {
-    sessions: {
-      create(params: Record<string, unknown>): Promise<{ url: string | null; id: string }>;
-    };
-  };
-  billingPortal: {
-    sessions: {
-      create(params: Record<string, unknown>): Promise<{ url: string }>;
-    };
-  };
-  webhooks: {
-    constructEvent(payload: string | Buffer, header: string, secret: string): StripeWebhookEvent;
-  };
+  checkout: { sessions: { create(params: Record<string, unknown>): Promise<{ url: string | null; id: string }> } };
+  billingPortal: { sessions: { create(params: Record<string, unknown>): Promise<{ url: string }> } };
+  webhooks: { constructEvent(payload: string | Buffer, header: string, secret: string): StripeWebhookEvent };
 }
 
 interface StripeCheckoutSession {
@@ -49,13 +31,34 @@ interface StripeCheckoutSession {
   subscription: string | null;
   metadata?: Record<string, string> | null;
 }
+
 interface StripeSubscription {
   id: string;
   status: string;
-  current_period_end: number;
+  customer?: string | null;
+  current_period_start?: number | null;
+  current_period_end?: number | null;
+  trial_end?: number | null;
+  cancel_at_period_end?: boolean;
+  items?: { data?: Array<{ price?: { id?: string | null } | null }> } | null;
   metadata?: Record<string, string> | null;
 }
-interface StripeInvoice { customer: string | null; }
+
+interface StripeInvoice {
+  id: string;
+  customer: string | null;
+  subscription?: string | null;
+  amount_due?: number | null;
+  amount_paid?: number | null;
+  currency?: string | null;
+  status?: string | null;
+  due_date?: number | null;
+  hosted_invoice_url?: string | null;
+  invoice_pdf?: string | null;
+  attempt_count?: number | null;
+  metadata?: Record<string, string> | null;
+}
+
 interface StripeWebhookEvent {
   id: string;
   type: string;
@@ -94,6 +97,16 @@ export const PLAN_LIMITS: Record<string, {
 
 type Plan = keyof typeof PLAN_FEATURES;
 
+function stripeDate(seconds?: number | null): Date | null {
+  return typeof seconds === 'number' && Number.isFinite(seconds)
+    ? new Date(seconds * 1000)
+    : null;
+}
+
+function normalizeSubscriptionStatus(status: string): string {
+  return status === 'canceled' ? 'cancelled' : status;
+}
+
 @Injectable()
 export class BillingService {
   private readonly stripe: StripeClient | null = null;
@@ -105,9 +118,11 @@ export class BillingService {
 
   constructor(
     private readonly config: ConfigService,
-    @Inject(DATA_SOURCE) ds: DataSource | null,
+    @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly ws: WsGateway,
     private readonly events: EventsService,
+    private readonly enforcement: BillingEnforcementService,
+    private readonly plans: BillingPlansService,
   ) {
     if (ds) {
       this.subRepo = ds.getRepository(BillingSubscriptionEntity);
@@ -120,38 +135,38 @@ export class BillingService {
       this.stripe = new StripeClass(key, { apiVersion: '2026-04-22.dahlia' });
       this.logger.log('Stripe Billing inicializado');
     } else {
-      this.logger.warn('STRIPE_SECRET_KEY não configurada — Billing desativado');
+      this.logger.warn('STRIPE_SECRET_KEY nao configurada - Billing desativado');
     }
   }
 
   private get stripeRequired(): StripeClient {
-    if (!this.stripe) throw new BadRequestException('Stripe não configurado neste ambiente');
+    if (!this.stripe) throw new BadRequestException('Stripe nao configurado neste ambiente');
     return this.stripe;
   }
 
   private assertBillingRepositories(): void {
-    if (!this.subRepo || !this.tenantRepo || !this.orgRepo || !this.webhookRepo) {
+    if (!this.ds || !this.subRepo || !this.tenantRepo || !this.orgRepo) {
       throw new ServiceUnavailableException('Billing persistence unavailable');
     }
   }
 
   async createCheckoutSession(params: {
-    orgId: string; tenantId: string; plan: Plan; successUrl: string; cancelUrl: string;
+    orgId: string; tenantId: string; planRef?: string; successUrl: string; cancelUrl: string;
   }) {
     this.assertBillingRepositories();
+
+    // Fonte primária do preço = banco (plano). NUNCA STRIPE_PRICE_* do env.
+    if (!params.planRef) throw new BadRequestException('Plano não informado (planId ou planSlug)');
+    const plan = await this.plans.resolve(params.planRef);
+    if (!plan || !plan.active) throw new BadRequestException(`Plano inválido ou inativo: ${params.planRef}`);
+    if (!plan.stripe_price_id) {
+      throw new BadRequestException(`Plano '${plan.slug}' não sincronizado com Stripe`);
+    }
+
     const sub = await this.subRepo!
       .createQueryBuilder('s')
       .where('s.org_id = :orgId', { orgId: params.orgId })
       .getOne();
-
-    const prices: Record<string, string | undefined> = {
-      starter: this.config.get('STRIPE_PRICE_STARTER'),
-      professional: this.config.get('STRIPE_PRICE_PROFESSIONAL'),
-      enterprise: this.config.get('STRIPE_PRICE_ENTERPRISE'),
-    };
-
-    const priceId = prices[params.plan];
-    if (!priceId) throw new BadRequestException(`Plano inválido ou sem preço configurado: ${params.plan}`);
 
     const customer = (sub?.stripe_customer_id && !sub.stripe_customer_id.startsWith('pending_'))
       ? sub.stripe_customer_id
@@ -160,8 +175,14 @@ export class BillingService {
     const session = await this.stripeRequired.checkout.sessions.create({
       mode: 'subscription',
       customer,
-      line_items: [{ price: priceId, quantity: 1 }],
-      metadata: { tenant_id: params.tenantId, org_id: params.orgId, plan: params.plan },
+      line_items: [{ price: plan.stripe_price_id, quantity: 1 }],
+      metadata: {
+        tenant_id: params.tenantId,
+        org_id: params.orgId,
+        plan_id: plan.id,
+        plan: plan.slug,
+        stripe_price_id: plan.stripe_price_id,
+      },
       success_url: params.successUrl,
       cancel_url: params.cancelUrl,
     });
@@ -192,15 +213,9 @@ export class BillingService {
     this.assertBillingRepositories();
 
     const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
-    if (!secret) {
-      throw new ServiceUnavailableException('Stripe webhook secret unavailable');
-    }
-    if (!signature) {
-      throw new BadRequestException('Stripe signature missing');
-    }
-    if (!rawBody || !Buffer.isBuffer(rawBody)) {
-      throw new BadRequestException('Stripe raw body missing');
-    }
+    if (!secret) throw new ServiceUnavailableException('Stripe webhook secret unavailable');
+    if (!signature) throw new BadRequestException('Stripe signature missing');
+    if (!rawBody || !Buffer.isBuffer(rawBody)) throw new BadRequestException('Stripe raw body missing');
 
     let event: StripeWebhookEvent;
     try {
@@ -209,65 +224,55 @@ export class BillingService {
       throw new BadRequestException('Assinatura Stripe inválida');
     }
 
-    const existing = await this.webhookRepo!
-      .createQueryBuilder('w')
-      .where('w.external_id = :externalId', { externalId: event.id })
-      .getOne();
-
-    if (existing?.status === WebhookEventStatus.PROCESSED) {
-      this.logger.log(`Webhook já processado: ${event.id}`);
+    const tenantId = await this.resolveTenantIdFromEvent(event);
+    const insertStatus = await this.enforcement.recordWebhookProcessed({
+      tenantId,
+      stripeEventId: event.id,
+      eventType: event.type,
+      payload: event as unknown as Record<string, unknown>,
+    });
+    if (insertStatus === 'duplicate') {
+      this.logger.log(`Webhook Stripe ja processado: ${event.id}`);
       return { received: true };
     }
 
-    if (!existing) {
-      const entity = this.webhookRepo!.create({
-        provider: 'stripe',
-        event_type: event.type,
-        external_id: event.id,
-        payload: event as unknown as Record<string, unknown>,
-        status: WebhookEventStatus.PENDING,
-      });
-      await this.webhookRepo!.save(entity).catch(() => { /* idempotência */ });
-    }
-
     try {
-      await this.processEvent(event);
-      await this.webhookRepo!
-        .createQueryBuilder()
-        .update(WebhookEventEntity)
-        .set({ status: 'processed', processed_at: new Date() } as any)
-        .where('external_id = :externalId', { externalId: event.id })
-        .execute();
+      await this.processEvent(event, tenantId);
+      await this.recordLegacyWebhook(event, tenantId, WebhookEventStatus.PROCESSED);
     } catch (err) {
-      await this.webhookRepo!
-        .createQueryBuilder()
-        .update(WebhookEventEntity)
-        .set({
-          status: 'failed',
-          error: (err as Error).message,
-          retry_count: (existing?.retry_count ?? 0) + 1,
-        } as any)
-        .where('external_id = :externalId', { externalId: event.id })
-        .execute();
+      await this.recordLegacyWebhook(event, tenantId, WebhookEventStatus.FAILED, (err as Error).message);
       throw err;
     }
 
     return { received: true };
   }
 
-  private async processEvent(event: StripeWebhookEvent) {
+  private async processEvent(event: StripeWebhookEvent, resolvedTenantId: string | null) {
     switch (event.type) {
       case 'checkout.session.completed':
         await this.onCheckoutCompleted(event.data.object as StripeCheckoutSession);
         break;
+      case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await this.onSubUpdated(event.data.object as StripeSubscription);
+        await this.onSubUpdated(event.data.object as StripeSubscription, resolvedTenantId);
         break;
       case 'customer.subscription.deleted':
-        await this.onSubCanceled(event.data.object as StripeSubscription);
+        await this.onSubCanceled(event.data.object as StripeSubscription, resolvedTenantId);
+        break;
+      case 'invoice.payment_succeeded':
+      case 'invoice.paid':
+        await this.onPaymentSucceeded(event.data.object as StripeInvoice, resolvedTenantId);
         break;
       case 'invoice.payment_failed':
-        await this.onPaymentFailed(event.data.object as StripeInvoice);
+      case 'invoice.payment_action_required':
+        await this.onPaymentFailed(event.data.object as StripeInvoice, resolvedTenantId);
+        break;
+      case 'invoice.finalized':
+      case 'invoice.voided':
+        await this.upsertStripeInvoice(event.data.object as StripeInvoice, resolvedTenantId);
+        break;
+      case 'invoice.marked_uncollectible':
+        await this.onInvoiceUncollectible(event.data.object as StripeInvoice, resolvedTenantId);
         break;
       default:
         this.logger.debug(`Evento Stripe ignorado: ${event.type}`);
@@ -275,8 +280,18 @@ export class BillingService {
   }
 
   private async onCheckoutCompleted(session: StripeCheckoutSession) {
-    const { tenant_id, org_id, plan } = session.metadata ?? {};
-    if (!tenant_id || !org_id || !plan) return;
+    const { tenant_id, org_id, plan, plan_id, stripe_price_id } = session.metadata ?? {};
+    if (!tenant_id || !org_id || !plan) {
+      // Contrato produtor↔consumidor: createCheckoutSession DEVE injetar metadata
+      // {tenant_id, org_id, plan}. Sem isso, a assinatura pode ter sido paga sem
+      // provisionar o tenant — não é erro de processamento, mas exige visibilidade.
+      this.logger.warn(
+        `checkout.session.completed ignorado: metadata incompleta ` +
+          `(customer=${session.customer ?? '∅'}, subscription=${session.subscription ?? '∅'}, ` +
+          `tenant_id=${tenant_id ?? '∅'}, org_id=${org_id ?? '∅'}, plan=${plan ?? '∅'}).`,
+      );
+      return;
+    }
 
     const features = PLAN_FEATURES[plan as Plan] ?? PLAN_FEATURES.starter;
 
@@ -284,9 +299,15 @@ export class BillingService {
       .createQueryBuilder()
       .update(BillingSubscriptionEntity)
       .set({
+        tenant_id,
         stripe_customer_id: session.customer ?? undefined,
         stripe_sub_id: session.subscription ?? undefined,
-        plan, status: 'active', trial_ends_at: null, updated_at: new Date(),
+        stripe_subscription_id: session.subscription ?? undefined,
+        stripe_price_id: stripe_price_id ?? undefined,
+        plan,
+        status: 'active',
+        trial_ends_at: null,
+        updated_at: new Date(),
       } as any)
       .where('org_id = :orgId', { orgId: org_id })
       .execute();
@@ -294,7 +315,7 @@ export class BillingService {
     await this.tenantRepo!
       .createQueryBuilder()
       .update(TenantEntity)
-      .set({ plan, features, updated_at: new Date() } as any)
+      .set({ plan, features, active: true, updated_at: new Date() } as any)
       .where('id = :tenantId', { tenantId: tenant_id })
       .execute();
 
@@ -305,8 +326,8 @@ export class BillingService {
       .where('id = :orgId', { orgId: org_id })
       .execute();
 
-    this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan });
-    this.logger.log(`Plano atualizado: org ${org_id} → ${plan}`);
+    await this.enforcement.activateTenant(tenant_id, 'checkout.session.completed');
+    this.ws.sendToTenant(tenant_id, 'billing:plan_upgraded', { org_id, plan, plan_id: plan_id ?? null });
 
     const tenantRecord = await this.tenantRepo!
       .createQueryBuilder('t')
@@ -327,95 +348,223 @@ export class BillingService {
           plan: plan as string,
         },
       });
-      this.logger.log(`BillingService: TENANT_CREATED emitted for tenant=${tenant_id} plan=${plan}`);
     }
   }
 
-  private async onSubUpdated(sub: StripeSubscription) {
-    const tenantId = sub.metadata?.['tenant_id'];
+  private async onSubUpdated(sub: StripeSubscription, resolvedTenantId: string | null) {
+    const tenantId = resolvedTenantId ?? sub.metadata?.['tenant_id'] ?? null;
     if (!tenantId) return;
+    await this.upsertStripeSubscription(sub, tenantId);
 
-    await this.subRepo!
-      .createQueryBuilder()
-      .update(BillingSubscriptionEntity)
-      .set({ status: sub.status, current_period_end: new Date(sub.current_period_end * 1000), updated_at: new Date() } as any)
-      .where('stripe_sub_id = :subId', { subId: sub.id })
-      .execute();
+    const status = normalizeSubscriptionStatus(sub.status);
+    if (status === 'active') await this.enforcement.activateTenant(tenantId, 'customer.subscription.updated');
+    else if (status === 'trialing') await this.enforcement.ensureState(tenantId);
+    else if (status === 'past_due' || status === 'unpaid') await this.enforcement.startPaymentGrace(tenantId, 'customer.subscription.updated');
+    else if (status === 'cancelled' || status === 'incomplete_expired') await this.enforcement.cancelTenant(tenantId, 'customer.subscription.updated');
   }
 
-  private async onSubCanceled(sub: StripeSubscription) {
-    const tenantId = sub.metadata?.['tenant_id'];
-    const orgId = sub.metadata?.['org_id'];
+  private async onSubCanceled(sub: StripeSubscription, resolvedTenantId: string | null) {
+    const tenantId = resolvedTenantId ?? sub.metadata?.['tenant_id'] ?? null;
+    const orgId = sub.metadata?.['org_id'] ?? await this.resolveOrgIdForTenant(tenantId);
     if (!tenantId || !orgId) return;
 
-    await this.subRepo!
-      .createQueryBuilder()
-      .update(BillingSubscriptionEntity)
-      .set({ status: 'canceled', updated_at: new Date() } as any)
-      .where('stripe_sub_id = :subId', { subId: sub.id })
-      .execute();
-
-    await this.tenantRepo!
-      .createQueryBuilder()
-      .update(TenantEntity)
-      .set({ plan: 'starter', features: PLAN_FEATURES.starter, updated_at: new Date() } as any)
-      .where('id = :tenantId', { tenantId })
-      .execute();
-
+    await this.upsertStripeSubscription({ ...sub, status: 'cancelled' }, tenantId);
     await this.orgRepo!
       .createQueryBuilder()
       .update(OrganizationEntity)
-      .set({ plan: 'starter', billing_status: 'canceled', updated_at: new Date() } as any)
+      .set({ billing_status: 'cancelled', updated_at: new Date() } as any)
       .where('id = :orgId', { orgId })
       .execute();
 
+    await this.enforcement.cancelTenant(tenantId, 'customer.subscription.deleted');
     this.ws.sendToTenant(tenantId, 'billing:cancelled', { org_id: orgId });
   }
 
-  private async onPaymentFailed(invoice: StripeInvoice) {
-    this.logger.warn(`Pagamento falhou: customer ${invoice.customer}`);
+  private async onPaymentSucceeded(invoice: StripeInvoice, resolvedTenantId: string | null) {
+    const tenantId = resolvedTenantId ?? await this.resolveTenantIdFromInvoice(invoice);
+    await this.upsertStripeInvoice(invoice, tenantId);
+    if (!tenantId) return;
 
-    if (!invoice.customer) return;
+    await this.enforcement.activateTenant(tenantId, 'invoice.payment_succeeded');
+    this.ws.sendToTenant(tenantId, 'billing:payment_succeeded', {
+      invoice_id: invoice.id,
+      hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+    });
+  }
 
-    const sub = await this.subRepo!
-      .createQueryBuilder('s')
-      .where('s.stripe_customer_id = :customerId', { customerId: invoice.customer })
-      .getOne();
+  private async onPaymentFailed(invoice: StripeInvoice, resolvedTenantId: string | null) {
+    const tenantId = resolvedTenantId ?? await this.resolveTenantIdFromInvoice(invoice);
+    await this.upsertStripeInvoice(invoice, tenantId);
+    if (!tenantId) return;
 
-    if (!sub) return;
-
-    await this.subRepo!
+    await this.enforcement.startPaymentGrace(tenantId, 'invoice.payment_failed');
+    await this.orgRepo!
       .createQueryBuilder()
-      .update(BillingSubscriptionEntity)
-      .set({ status: 'past_due', updated_at: new Date() } as any)
-      .where('id = :id', { id: sub.id })
+      .update(OrganizationEntity)
+      .set({ billing_status: 'past_due', updated_at: new Date() } as any)
+      .where('id = (SELECT org_id FROM tenants WHERE id = :tenantId)', { tenantId })
       .execute();
 
-    const orgRow = await this.orgRepo!
-      .createQueryBuilder('o')
-      .where('o.id = :orgId', { orgId: sub.org_id })
+    this.ws.sendToTenant(tenantId, 'billing:payment_failed', {
+      invoice_id: invoice.id,
+      hosted_invoice_url: invoice.hosted_invoice_url ?? null,
+      message: 'Pagamento recusado - atualize o metodo de pagamento para manter o acesso',
+    });
+  }
+
+  private async onInvoiceUncollectible(invoice: StripeInvoice, resolvedTenantId: string | null) {
+    const tenantId = resolvedTenantId ?? await this.resolveTenantIdFromInvoice(invoice);
+    await this.upsertStripeInvoice(invoice, tenantId);
+    if (tenantId) await this.enforcement.suspendTenant(tenantId, 'invoice.marked_uncollectible');
+  }
+
+  private async upsertStripeSubscription(sub: StripeSubscription, tenantId: string): Promise<void> {
+    const orgId = sub.metadata?.['org_id'] ?? await this.resolveOrgIdForTenant(tenantId);
+    if (!orgId || !this.ds) return;
+    const priceId = sub.items?.data?.[0]?.price?.id ?? null;
+    const status = normalizeSubscriptionStatus(sub.status);
+    await this.ds.query(
+      `INSERT INTO billing_subscriptions (
+         tenant_id, org_id, stripe_customer_id, stripe_sub_id, stripe_subscription_id, stripe_price_id,
+         plan, status, trial_ends_at, current_period_start, current_period_end, cancel_at_period_end, updated_at
+       )
+       VALUES ($1, $2, $3, $4, $4, $5, COALESCE($6, 'starter'), $7, $8, $9, $10, $11, now())
+       ON CONFLICT (tenant_id)
+       DO UPDATE SET
+         stripe_customer_id = COALESCE(EXCLUDED.stripe_customer_id, billing_subscriptions.stripe_customer_id),
+         stripe_sub_id = EXCLUDED.stripe_sub_id,
+         stripe_subscription_id = EXCLUDED.stripe_subscription_id,
+         stripe_price_id = COALESCE(EXCLUDED.stripe_price_id, billing_subscriptions.stripe_price_id),
+         plan = COALESCE(EXCLUDED.plan, billing_subscriptions.plan),
+         status = EXCLUDED.status,
+         trial_ends_at = EXCLUDED.trial_ends_at,
+         current_period_start = EXCLUDED.current_period_start,
+         current_period_end = EXCLUDED.current_period_end,
+         cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+         updated_at = now()`,
+      [
+        tenantId,
+        orgId,
+        sub.customer ?? null,
+        sub.id,
+        priceId,
+        sub.metadata?.['plan'] ?? null,
+        status,
+        stripeDate(sub.trial_end),
+        stripeDate(sub.current_period_start),
+        stripeDate(sub.current_period_end),
+        sub.cancel_at_period_end === true,
+      ],
+    );
+  }
+
+  private async upsertStripeInvoice(invoice: StripeInvoice, tenantId: string | null): Promise<void> {
+    if (!tenantId || !this.ds) return;
+    await this.ds.query(
+      `INSERT INTO invoices (
+         tenant_id, stripe_invoice_id, numero, tipo, status, amount_due, amount_paid, currency,
+         valor, due_date, hosted_invoice_url, invoice_pdf, attempt_count, metadata, created_by
+       )
+       VALUES ($1, $2, $2, 'stripe_subscription', COALESCE($3, 'open'), $4, $5, $6, ($4::numeric / 100.0),
+               $7, $8, $9, $10, $11::jsonb, 'stripe:webhook')
+       ON CONFLICT (stripe_invoice_id)
+       DO UPDATE SET
+         status = EXCLUDED.status,
+         amount_due = EXCLUDED.amount_due,
+         amount_paid = EXCLUDED.amount_paid,
+         currency = EXCLUDED.currency,
+         valor = EXCLUDED.valor,
+         due_date = EXCLUDED.due_date,
+         hosted_invoice_url = EXCLUDED.hosted_invoice_url,
+         invoice_pdf = EXCLUDED.invoice_pdf,
+         attempt_count = EXCLUDED.attempt_count,
+         metadata = EXCLUDED.metadata,
+         updated_at = now()`,
+      [
+        tenantId,
+        invoice.id,
+        invoice.status ?? null,
+        invoice.amount_due ?? 0,
+        invoice.amount_paid ?? 0,
+        invoice.currency ?? 'brl',
+        stripeDate(invoice.due_date),
+        invoice.hosted_invoice_url ?? null,
+        invoice.invoice_pdf ?? null,
+        invoice.attempt_count ?? 0,
+        JSON.stringify({ stripe: invoice }),
+      ],
+    );
+  }
+
+  private async resolveTenantIdFromEvent(event: StripeWebhookEvent): Promise<string | null> {
+    const object = event.data.object as Record<string, unknown>;
+    const metadata = object['metadata'] && typeof object['metadata'] === 'object'
+      ? object['metadata'] as Record<string, string>
+      : {};
+    const customerId = typeof object['customer'] === 'string' ? object['customer'] : null;
+    const subscriptionId =
+      typeof object['subscription'] === 'string' ? object['subscription'] :
+      typeof object['id'] === 'string' && event.type.startsWith('customer.subscription.') ? object['id'] as string : null;
+    return this.enforcement.findTenantIdByStripe({
+      tenantId: metadata['tenant_id'] ?? null,
+      customerId,
+      subscriptionId,
+    });
+  }
+
+  private async resolveTenantIdFromInvoice(invoice: StripeInvoice): Promise<string | null> {
+    return this.enforcement.findTenantIdByStripe({
+      tenantId: invoice.metadata?.['tenant_id'] ?? null,
+      customerId: invoice.customer,
+      subscriptionId: invoice.subscription ?? null,
+    });
+  }
+
+  private async resolveOrgIdForTenant(tenantId: string | null): Promise<string | null> {
+    if (!tenantId || !this.ds) return null;
+    const rows = await this.ds.query(
+      `SELECT org_id FROM tenants WHERE id = $1 LIMIT 1`,
+      [tenantId],
+    ) as Array<{ org_id: string }>;
+    return rows[0]?.org_id ?? null;
+  }
+
+  private async recordLegacyWebhook(
+    event: StripeWebhookEvent,
+    tenantId: string | null,
+    status: WebhookEventStatus,
+    error?: string,
+  ): Promise<void> {
+    if (!this.webhookRepo) return;
+    const existing = await this.webhookRepo
+      .createQueryBuilder('w')
+      .where('w.external_id = :externalId', { externalId: event.id })
       .getOne();
-
-    if (orgRow) {
-      await this.orgRepo!
-        .createQueryBuilder()
-        .update(OrganizationEntity)
-        .set({ billing_status: 'past_due', updated_at: new Date() } as any)
-        .where('id = :id', { id: orgRow.id })
-        .execute();
-
-      const tenantRow = await this.tenantRepo!
-        .createQueryBuilder('t')
-        .where('t.org_id = :orgId', { orgId: sub.org_id })
-        .getOne();
-
-      if (tenantRow) {
-        this.ws.sendToTenant(tenantRow.id, 'billing:payment_failed', {
-          org_id: sub.org_id,
-          message: 'Pagamento recusado — actualize o método de pagamento para manter o acesso',
-        });
-      }
+    if (!existing) {
+      await this.webhookRepo.save(this.webhookRepo.create({
+        tenant_id: tenantId,
+        provider: 'stripe',
+        event_type: event.type,
+        external_id: event.id,
+        payload: event as unknown as Record<string, unknown>,
+        status,
+        processed_at: status === WebhookEventStatus.PROCESSED ? new Date() : null,
+        error: error ?? null,
+      }));
+      return;
     }
+    await this.webhookRepo
+      .createQueryBuilder()
+      .update(WebhookEventEntity)
+      .set({
+        tenant_id: tenantId,
+        status,
+        processed_at: status === WebhookEventStatus.PROCESSED ? new Date() : existing.processed_at,
+        error: error ?? null,
+        retry_count: status === WebhookEventStatus.FAILED ? (existing.retry_count ?? 0) + 1 : existing.retry_count,
+      } as any)
+      .where('external_id = :externalId', { externalId: event.id })
+      .execute();
   }
 
   async getSubscription(orgId: string) {
@@ -424,19 +573,40 @@ export class BillingService {
       .createQueryBuilder('s')
       .where('s.org_id = :orgId', { orgId })
       .getOne();
-    return sub ?? null;
+    if (!sub) return null;
+    if (!sub.tenant_id) return sub;
+    const state = sub.tenant_id ? await this.enforcement.getState(sub.tenant_id) : null;
+    const invoiceRows = sub.tenant_id && this.ds
+      ? await this.ds.query(
+          `SELECT stripe_invoice_id, amount_due, amount_paid, currency, status, due_date, hosted_invoice_url, invoice_pdf, attempt_count
+             FROM invoices
+            WHERE tenant_id = $1 AND stripe_invoice_id IS NOT NULL
+            ORDER BY created_at DESC
+            LIMIT 1`,
+          [sub.tenant_id],
+        ) as Record<string, unknown>[]
+      : [];
+    return { ...sub, billing_state: state, latest_invoice: invoiceRows[0] ?? null };
   }
 
   async getUsage(tenantId: string, orgId: string) {
     this.assertBillingRepositories();
     const sub = await this.getSubscription(orgId);
-    const plan = (sub?.plan ?? 'starter') as string;
+    const plan = ((sub as any)?.plan ?? 'starter') as string;
     const limits = PLAN_LIMITS[plan] ?? PLAN_LIMITS.starter;
-    return { plan, limits, tenantId, orgId };
+    const billingState = await this.enforcement.getState(tenantId);
+    return { plan, limits, tenantId, orgId, billingState };
   }
 
   async getSaasMetrics() {
     this.assertBillingRepositories();
-    return { mrr: 0, arr: 0, churn: 0, ltv: 0 };
+    const rows = await this.ds!.query(
+      `SELECT
+         COUNT(*) FILTER (WHERE status = 'active')::int AS active_subscriptions,
+         COUNT(*) FILTER (WHERE status = 'past_due')::int AS past_due_subscriptions,
+         COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled_subscriptions
+       FROM billing_subscriptions`,
+    ) as Array<Record<string, number>>;
+    return rows[0] ?? { active_subscriptions: 0, past_due_subscriptions: 0, cancelled_subscriptions: 0 };
   }
 }

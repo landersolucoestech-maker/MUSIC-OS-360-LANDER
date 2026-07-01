@@ -116,9 +116,8 @@ const envSchema = z.object({
       },
       { message: 'STRIPE_WEBHOOK_SECRET is required in production when STRIPE_SECRET_KEY is set' },
     ),
-  STRIPE_PRICE_STARTER: z.string().optional(),
-  STRIPE_PRICE_PROFESSIONAL: z.string().optional(),
-  STRIPE_PRICE_ENTERPRISE: z.string().optional(),
+  // Preços/planos NÃO vêm mais do env. Fonte primária = tabela billing_plans (admin),
+  // e cada plano guarda seu stripe_price_id sincronizado. (STRIPE_PRICE_* removido.)
 
   AUTENTIQUE_WEBHOOK_SECRET: z
     .string()

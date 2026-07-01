@@ -81,6 +81,10 @@ const STATUS_BADGE: Record<string, { label: string; variant: "default" | "second
   active:    { label: "Ativo",      variant: "default" },
   trial:     { label: "Trial",      variant: "secondary" },
   past_due:  { label: "Em atraso",  variant: "destructive" },
+  payment_grace: { label: "Prazo de regularizacao", variant: "destructive" },
+  read_only: { label: "Somente leitura", variant: "outline" },
+  suspended: { label: "Suspenso", variant: "destructive" },
+  unpaid:    { label: "Em atraso", variant: "destructive" },
   cancelled: { label: "Cancelado",  variant: "destructive" },
   paused:    { label: "Pausado",    variant: "outline" },
 };
@@ -144,7 +148,7 @@ export default function Billing() {
   }, [queryClient]);
 
   const currentPlan   = subscription?.plan ?? "trial";
-  const currentStatus = subscription?.status ?? "trial";
+  const currentStatus = subscription?.billing_state?.status ?? subscription?.status ?? "trial";
   const statusInfo    = STATUS_BADGE[currentStatus] ?? STATUS_BADGE["trial"];
 
   return (

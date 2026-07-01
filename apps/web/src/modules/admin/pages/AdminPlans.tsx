@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
@@ -11,13 +11,14 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { ADMIN_PLANS as MOCK_PLANS } from "../data/admin-source";
+import { adminPlansService } from "../services/admin-plans.service";
 import type { AdminPlan } from "../types";
 import {
   Tag, Users, HardDrive, DollarSign, Check,
   Plus, X, Save, MoreHorizontal, Eye, Pencil, Trash2,
-  AlertTriangle, Power, PowerOff,
+  AlertTriangle, Power, PowerOff, RefreshCw,
 } from "lucide-react";
+import { MOCK_MODE } from "@/shared/lib/env";
 
 function fmtBRL(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -75,7 +76,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
             {isNew ? (
-              <><Plus className="h-4 w-4 text-blue-400" /> Novo Plano</>
+              <><Plus className="h-4 w-4 text-primary" /> Novo Plano</>
             ) : (
               <><div className="h-2.5 w-2.5 rounded-full" style={{ background: form.color }} /> Editar — {form.name}</>
             )}
@@ -91,7 +92,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 value={form.name}
                 onChange={e => field("name", e.target.value)}
                 placeholder="Ex: Growth Plus"
-                className="h-8 text-sm bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                 data-testid="input-plan-name"
               />
             </div>
@@ -118,7 +119,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 type="number"
                 value={form.price_monthly}
                 onChange={e => field("price_monthly", Number(e.target.value))}
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-primary/50"
                 data-testid="input-plan-price-monthly"
               />
             </div>
@@ -128,7 +129,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 type="number"
                 value={form.price_annual}
                 onChange={e => field("price_annual", Number(e.target.value))}
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-primary/50"
                 data-testid="input-plan-price-annual"
               />
             </div>
@@ -142,7 +143,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 type="number"
                 value={form.max_users}
                 onChange={e => field("max_users", Number(e.target.value))}
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-primary/50"
                 data-testid="input-plan-max-users"
               />
             </div>
@@ -152,7 +153,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 type="number"
                 value={form.max_artists}
                 onChange={e => field("max_artists", Number(e.target.value))}
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-primary/50"
                 data-testid="input-plan-max-artists"
               />
             </div>
@@ -162,34 +163,30 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 type="number"
                 value={form.max_storage_gb}
                 onChange={e => field("max_storage_gb", Number(e.target.value))}
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
+                className="h-8 text-sm bg-muted border-border text-foreground focus:border-primary/50"
                 data-testid="input-plan-storage"
               />
             </div>
           </div>
 
-          {/* Integração Stripe */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label className="text-[11px] text-muted-foreground tracking-wider">Stripe Product ID</Label>
-              <Input
-                value={form.stripe_product_id ?? ""}
-                onChange={e => field("stripe_product_id", e.target.value)}
-                placeholder="prod_..."
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
-                data-testid="input-plan-stripe-product"
-              />
+          {/* Integração Stripe — gerida pelo backend (sync). Display-only. */}
+          <div className="space-y-1.5">
+            <Label className="text-[11px] text-muted-foreground tracking-wider">
+              Integração Stripe <span className="text-muted-foreground/60">(gerido automaticamente)</span>
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="rounded-lg bg-muted border border-border px-2.5 py-1.5" data-testid="display-plan-stripe-product">
+                <p className="text-[9px] text-muted-foreground/70 tracking-wider">PRODUCT ID</p>
+                <p className="text-[12px] text-foreground font-mono truncate">{form.stripe_product_id || "—"}</p>
+              </div>
+              <div className="rounded-lg bg-muted border border-border px-2.5 py-1.5" data-testid="display-plan-stripe-price">
+                <p className="text-[9px] text-muted-foreground/70 tracking-wider">PRICE ID</p>
+                <p className="text-[12px] text-foreground font-mono truncate">{form.stripe_price_id || "—"}</p>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-[11px] text-muted-foreground tracking-wider">Stripe Price ID</Label>
-              <Input
-                value={form.stripe_price_id ?? ""}
-                onChange={e => field("stripe_price_id", e.target.value)}
-                placeholder="price_..."
-                className="h-8 text-sm bg-muted border-border text-foreground focus:border-blue-500/50"
-                data-testid="input-plan-stripe-price"
-              />
-            </div>
+            <p className="text-[10px] text-muted-foreground/70">
+              Criados/atualizados no Stripe ao salvar. Preço alterado → novo Price (o antigo é desativado).
+            </p>
           </div>
 
           {/* Features */}
@@ -219,7 +216,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
                 value={newFeature}
                 onChange={e => setNewFeature(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && addFeature()}
-                className="h-7 text-xs bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-blue-500/50"
+                className="h-7 text-xs bg-muted border-border text-foreground placeholder:text-muted-foreground focus:border-primary/50"
                 data-testid="input-new-feature"
               />
               <Button
@@ -246,8 +243,7 @@ function PlanFormDialog({ plan, onSave, onClose }: FormDialogProps) {
           </Button>
           <Button
             size="sm"
-            disabled={!canSave}
-            className="bg-blue-600 hover:bg-blue-500 text-foreground text-xs gap-1.5 disabled:opacity-40"
+            className="text-xs gap-1.5"
             onClick={() => onSave(form)}
             data-testid="btn-save-plan"
           >
@@ -385,10 +381,11 @@ interface PlanCardProps {
   onView: () => void;
   onEdit: () => void;
   onToggleActive: () => void;
+  onSyncStripe: () => void;
   onDelete: () => void;
 }
 
-function PlanCard({ plan, onView, onEdit, onToggleActive, onDelete }: PlanCardProps) {
+function PlanCard({ plan, onView, onEdit, onToggleActive, onSyncStripe, onDelete }: PlanCardProps) {
   const isActive = plan.active !== false;
   return (
     <div
@@ -415,7 +412,7 @@ function PlanCard({ plan, onView, onEdit, onToggleActive, onDelete }: PlanCardPr
               onClick={onView}
               data-testid={`view-plan-${plan.id}`}
             >
-              <Eye className="h-3.5 w-3.5 text-blue-400" />
+              <Eye className="h-3.5 w-3.5 text-primary" />
               Ver
             </DropdownMenuItem>
             <DropdownMenuItem
@@ -435,6 +432,16 @@ function PlanCard({ plan, onView, onEdit, onToggleActive, onDelete }: PlanCardPr
                 ? <><PowerOff className="h-3.5 w-3.5 text-amber-400" /> Desativar</>
                 : <><Power className="h-3.5 w-3.5 text-emerald-400" /> Ativar</>}
             </DropdownMenuItem>
+            {!MOCK_MODE && (
+              <DropdownMenuItem
+                className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
+                onClick={onSyncStripe}
+                data-testid={`sync-plan-${plan.id}`}
+              >
+                <RefreshCw className="h-3.5 w-3.5 text-primary" />
+                Sincronizar Stripe
+              </DropdownMenuItem>
+            )}
             <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem
               className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
@@ -509,32 +516,35 @@ function PlanCard({ plan, onView, onEdit, onToggleActive, onDelete }: PlanCardPr
 type ModalMode = "view" | "edit" | "create" | "delete" | null;
 
 export default function AdminPlans() {
-  const [plans, setPlans] = useState<AdminPlan[]>(MOCK_PLANS);
+  const [plans, setPlans] = useState<AdminPlan[]>([]);
   const [active, setActive] = useState<AdminPlan | null>(null);
   const [mode, setMode] = useState<ModalMode>(null);
+
+  // Planos persistidos (fonte da verdade do Admin) — não mais in-memory.
+  useEffect(() => {
+    void adminPlansService.list().then(setPlans);
+  }, []);
 
   function open(plan: AdminPlan, m: ModalMode) { setActive(plan); setMode(m); }
   function close() { setActive(null); setMode(null); }
 
   function handleSave(updated: AdminPlan) {
-    setPlans(prev =>
-      prev.some(p => p.id === updated.id)
-        ? prev.map(p => p.id === updated.id ? updated : p)
-        : [...prev, updated]
-    );
+    void adminPlansService.save(updated).then(setPlans);
     close();
   }
 
   function handleDelete() {
     if (!active) return;
-    setPlans(prev => prev.filter(p => p.id !== active.id));
+    void adminPlansService.remove(active.id).then(setPlans);
     close();
   }
 
   function handleToggleActive(plan: AdminPlan) {
-    setPlans(prev =>
-      prev.map(p => p.id === plan.id ? { ...p, active: p.active === false } : p)
-    );
+    void adminPlansService.save({ ...plan, active: plan.active === false }).then(setPlans);
+  }
+
+  function handleSyncStripe(plan: AdminPlan) {
+    void adminPlansService.syncStripe(plan.id).then(setPlans);
   }
 
   return (
@@ -549,7 +559,7 @@ export default function AdminPlans() {
           </div>
           <Button
             size="sm"
-            className="bg-blue-600 hover:bg-blue-500 text-foreground text-xs gap-1.5"
+            className="text-xs gap-1.5"
             onClick={() => setMode("create")}
             data-testid="btn-new-plan"
           >
@@ -567,6 +577,7 @@ export default function AdminPlans() {
               onView={() => open(plan, "view")}
               onEdit={() => open(plan, "edit")}
               onToggleActive={() => handleToggleActive(plan)}
+              onSyncStripe={() => handleSyncStripe(plan)}
               onDelete={() => open(plan, "delete")}
             />
           ))}
@@ -589,4 +600,3 @@ export default function AdminPlans() {
     </AdminLayout>
   );
 }
-

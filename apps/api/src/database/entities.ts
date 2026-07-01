@@ -367,16 +367,87 @@ export class MembershipJobFunctionEntity {
 @Index(['org_id'])
 export class BillingSubscriptionEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid', nullable: true }) tenant_id: string | null;
   @Column({ type: 'uuid' }) org_id: string;
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) stripe_customer_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) stripe_sub_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) stripe_subscription_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) stripe_price_id: string | null;
   @Column({ type: 'varchar', length: 50, default: TenantPlan.STARTER }) plan: TenantPlan;
   @Column({ type: 'varchar', length: 50, default: BillingStatus.TRIAL }) status: BillingStatus;
   @Column({ type: 'timestamp', nullable: true }) trial_ends_at: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) current_period_start: Date | null;
   @Column({ type: 'timestamp', nullable: true }) current_period_end: Date | null;
+  @Column({ type: 'boolean', default: false }) cancel_at_period_end: boolean;
+  @Column({ type: 'timestamp', nullable: true }) grace_until: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) suspended_at: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) resumed_at: Date | null;
   @Column({ type: 'integer', default: 3 }) seats: number;
   @Column({ type: 'integer', default: 1 }) seats_used: number;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+}
+
+@Entity('tenant_billing_state')
+@Index(['tenant_id'], { unique: true })
+@Index(['status'])
+export class TenantBillingStateEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 50, default: 'trial' }) status: string;
+  @Column({ type: 'timestamp', nullable: true }) last_payment_at: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) next_payment_at: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) grace_until: Date | null;
+  @Column({ type: 'timestamp', nullable: true }) suspended_at: Date | null;
+  @Column({ type: 'boolean', default: false }) manual_override: boolean;
+  @Column({ type: 'text', nullable: true }) manual_override_reason: string | null;
+  @Column({ type: 'timestamp', nullable: true }) manual_override_until: Date | null;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+}
+
+@Entity('payment_events')
+@Index(['stripe_event_id'], { unique: true })
+@Index(['tenant_id'])
+@Index(['event_type'])
+export class PaymentEventEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 255, unique: true }) stripe_event_id: string;
+  @Column({ type: 'uuid', nullable: true }) tenant_id: string | null;
+  @Column({ type: 'varchar', length: 100 }) event_type: string;
+  @Column({ type: 'jsonb' }) payload: Record<string, unknown>;
+  @Column({ type: 'timestamp', nullable: true }) processed_at: Date | null;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+}
+
+@Entity('billing_settings')
+@Index(['key'], { unique: true })
+export class BillingSettingsEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 120, unique: true }) key: string;
+  @Column({ type: 'jsonb' }) value: Record<string, unknown>;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+}
+
+// Planos são a fonte PRIMÁRIA (admin/banco); o Stripe recebe só a sincronização.
+@Entity('billing_plans')
+@Index(['active'])
+export class BillingPlanEntity {
+  @PrimaryGeneratedColumn('uuid') id: string;
+  @Column({ type: 'varchar', length: 60, unique: true }) slug: string;
+  @Column({ type: 'varchar', length: 120 }) name: string;
+  @Column({ type: 'text', nullable: true }) description: string | null;
+  /** Valor em centavos. */
+  @Column({ type: 'integer' }) amount: number;
+  @Column({ type: 'varchar', length: 3, default: 'brl' }) currency: string;
+  @Column({ type: 'varchar', length: 10, default: 'month' }) interval: string;
+  @Column({ type: 'boolean', default: true }) active: boolean;
+  @Column({ type: 'jsonb', default: {} }) features: Record<string, unknown>;
+  @Column({ type: 'jsonb', default: {} }) limits: Record<string, unknown>;
+  @Column({ type: 'varchar', length: 255, nullable: true }) stripe_product_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) stripe_price_id: string | null;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
 }
@@ -691,9 +762,17 @@ export class TransactionEntity {
 export class InvoiceEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'varchar', length: 255, nullable: true, unique: true }) stripe_invoice_id: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) numero: string | null;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: InvoiceStatus.PENDENTE }) status: InvoiceStatus;
+  @Column({ type: 'integer', nullable: true }) amount_due: number | null;
+  @Column({ type: 'integer', nullable: true }) amount_paid: number | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) currency: string | null;
+  @Column({ type: 'timestamp', nullable: true }) due_date: Date | null;
+  @Column({ type: 'text', nullable: true }) hosted_invoice_url: string | null;
+  @Column({ type: 'text', nullable: true }) invoice_pdf: string | null;
+  @Column({ type: 'integer', default: 0 }) attempt_count: number;
   @Column({ type: 'uuid', nullable: true }) prestador_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) tomador_nome: string | null;
   @Column({ type: 'text', nullable: true }) tomador_doc_encrypted: string | null;
@@ -2879,6 +2958,10 @@ export const ALL_ENTITIES = [
   JobFunctionEntity,
   MembershipJobFunctionEntity,
   BillingSubscriptionEntity,
+  TenantBillingStateEntity,
+  PaymentEventEntity,
+  BillingSettingsEntity,
+  BillingPlanEntity,
   ArtistEntity,
   ArtistPlatformProfileEntity,
   WorkEntity,

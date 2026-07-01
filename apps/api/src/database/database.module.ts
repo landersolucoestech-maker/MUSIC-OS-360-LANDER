@@ -99,6 +99,9 @@ import { ReconcileOperationalSchema20260620000004 } from './migrations/202606200
 import { ForceRLSOperationalTables20260620000005 } from './migrations/20260620000005_ForceRLSOperationalTables';
 import { CreateRbacErrorLogs20260621000001 } from './migrations/20260621000001_CreateRbacErrorLogs';
 import { HardenSupabaseDataApiSurface20260620000006 } from './migrations/20260620000006_HardenSupabaseDataApiSurface';
+import { BillingEnforcement20260701000001 } from './migrations/20260701000001_BillingEnforcement';
+import { BillingPlans20260701000002 } from './migrations/20260701000002_BillingPlans';
+import { BillingRlsHardening20260701000003 } from './migrations/20260701000003_BillingRlsHardening';
 
 // ── Source of truth: TypeORM migrations only ─────────────────────────────────
 // The apps/api/drizzle/ directory contains legacy SQL snapshots that are
@@ -180,6 +183,9 @@ const ALL_MIGRATIONS = [
   ForceRLSOperationalTables20260620000005,
   HardenSupabaseDataApiSurface20260620000006,
   CreateRbacErrorLogs20260621000001,
+  BillingEnforcement20260701000001,
+  BillingPlans20260701000002,
+  BillingRlsHardening20260701000003,
 ] as const;
 
 // Re-export from tokens file — services should import from database.tokens
