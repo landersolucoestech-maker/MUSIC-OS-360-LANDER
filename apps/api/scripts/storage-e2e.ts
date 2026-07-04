@@ -57,9 +57,17 @@ async function main(): Promise<number> {
     return 2;
   }
 
+  // Endpoint: usa R2_ENDPOINT quando definido (permite alvo S3-compatível de
+  // TESTE — ex.: MinIO local — sem tocar o bucket R2 de produção); caso contrário
+  // deriva do R2_ACCOUNT_ID (comportamento R2 padrão, inalterado). forcePathStyle
+  // é ativado para endpoints locais (MinIO exige) — correto também para R2.
+  const endpoint = env['R2_ENDPOINT'] ?? `https://${accountId}.r2.cloudflarestorage.com`;
+  const forcePathStyle =
+    env['R2_FORCE_PATH_STYLE'] === 'true' || /localhost|127\.0\.0\.1|:9000/.test(endpoint);
   const client = new S3Client({
     region: 'auto',
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
+    endpoint,
+    forcePathStyle,
     credentials: { accessKeyId: accessKey, secretAccessKey: secretKey },
   });
 
@@ -128,6 +136,9 @@ async function main(): Promise<number> {
     for (const k of [key, pkey]) {
       try { await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: k })); } catch { /* ignore */ }
     }
+    // Fecha os sockets keep-alive do SDK para o processo encerrar limpo
+    // (evita a assertion de teardown do libuv no Windows ao process.exit).
+    try { client.destroy(); } catch { /* ignore */ }
   }
 
   const failed = results.filter((r) => r[1] === 'FALHA');
@@ -135,4 +146,6 @@ async function main(): Promise<number> {
   return failed.length === 0 ? 0 : 1;
 }
 
-main().then((code) => process.exit(code)).catch((e) => { console.error(e); process.exit(1); });
+main()
+  .then((code) => { process.exitCode = code; })
+  .catch((e) => { console.error(e); process.exitCode = 1; });

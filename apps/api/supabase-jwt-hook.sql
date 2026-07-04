@@ -43,33 +43,42 @@ SECURITY DEFINER
 SET search_path = public, pg_catalog
 AS $$
 DECLARE
-  v_claims      jsonb;
-  v_user_id     text;
-  v_org_id      uuid;
-  v_role        text;
-  v_app_meta    jsonb;
+  v_claims               jsonb;
+  v_user_id              text;
+  v_requested_tenant_id  text;
+  v_tenant_id            uuid;
+  v_role                 text;
+  v_app_meta             jsonb;
 BEGIN
   v_claims    := event -> 'claims';
   v_user_id   := event ->> 'user_id';
 
   -- ─── Busca a membria ativa mais recente do utilizador ───────────────────────
-  -- auth_user_id armazena o sub UUID do Supabase.
-  -- Se o utilizador for membro de várias orgs (futuro), retorna a última ativa
-  -- por joined_at DESC para consistência.
-  SELECT om.org_id, om.role
-    INTO v_org_id, v_role
+  -- O app_metadata.org_id seleciona explicitamente o tenant corrente.
+  -- A selecao so e aceita quando existe membership e tenant ativos.
+  SELECT u.raw_app_meta_data ->> 'org_id'
+    INTO v_requested_tenant_id
+    FROM auth.users u
+   WHERE u.id::text = v_user_id;
+
+  SELECT om.tenant_id, om.role
+    INTO v_tenant_id, v_role
     FROM public.org_members om
+    JOIN public.tenants t ON t.id = om.tenant_id
    WHERE om.auth_user_id = v_user_id
      AND om.is_active     = true
-   ORDER BY om.joined_at DESC NULLS LAST
+     AND om.tenant_id::text = v_requested_tenant_id
+     AND t.active = true
+     AND t.deleted_at IS NULL
+   ORDER BY om.joined_at DESC NULLS LAST, om.id DESC
    LIMIT 1;
 
   -- ─── Injeta no app_metadata (mescla, não sobrescreve) ──────────────────────
   -- Preserva eventuais campos pré-existentes em app_metadata.
-  IF v_org_id IS NOT NULL THEN
+  IF v_tenant_id IS NOT NULL THEN
     v_app_meta := COALESCE(v_claims -> 'app_metadata', '{}'::jsonb)
                   || jsonb_build_object(
-                       'org_id', v_org_id::text,
+                       'org_id', v_tenant_id::text,
                        'role',   COALESCE(v_role, 'viewer')
                      );
     v_claims := jsonb_set(v_claims, '{app_metadata}', v_app_meta);

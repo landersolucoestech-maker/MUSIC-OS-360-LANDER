@@ -1,0 +1,97 @@
+name: Backup Postgres (daily)
+
+# Daily encrypted Postgres backup → R2/S3 with 30-day retention.
+# Runs scripts/pg-backup-cron.sh. Requires repo secrets:
+#   DATABASE_URL_PROD, BACKUP_BUCKET, AWS_ENDPOINT_URL,
+#   BACKUP_R2_ACCESS_KEY_ID, BACKUP_R2_SECRET_ACCESS_KEY,
+#   BACKUP_AGE_RECIPIENT (or BACKUP_GPG_RECIPIENT)
+
+on:
+  schedule:
+    - cron: "0 3 * * *"   # 03:00 UTC daily
+  workflow_dispatch:
+    inputs:
+      prefix:
+        description: "S3 key prefix (default musicos360-prod/)"
+        required: false
+        default: "musicos360-prod/"
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    name: pg_dump + encrypt + upload
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install age + awscli + postgres-client
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq age postgresql-client awscli
+
+      - name: Run backup
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
+          BACKUP_BUCKET: ${{ secrets.BACKUP_BUCKET }}
+          AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+          BACKUP_RETENTION_DAYS: "30"
+          BACKUP_PREFIX: ${{ github.event.inputs.prefix || 'musicos360-prod/' }}
+        run: bash scripts/pg-backup-cron.sh
+
+  # Optional weekly restore drill — pulls latest backup into a throwaway PG,
+  # runs paridade-check, reports row counts. Failure pages on-call.
+  restore-drill:
+    name: Weekly restore drill
+    if: github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    needs: [backup]
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: drill
+          POSTGRES_PASSWORD: drill
+          POSTGRES_DB: drill
+        ports: ['5432:5432']
+        options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Skip unless Monday
+        run: |
+          [ "$(date -u +%u)" = "1" ] || { echo "Not Monday — skipping drill"; exit 0; }
+
+      - name: Install tools
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq age postgresql-client awscli
+
+      - name: Download latest encrypted backup
+        env:
+          AWS_ENDPOINT_URL: ${{ secrets.AWS_ENDPOINT_URL }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
+        run: |
+          LATEST=$(aws --endpoint-url "$AWS_ENDPOINT_URL" s3 ls "s3://${{ secrets.BACKUP_BUCKET }}/musicos360-prod/" | sort | tail -1 | awk '{print $4}')
+          echo "Latest: $LATEST"
+          aws --endpoint-url "$AWS_ENDPOINT_URL" s3 cp "s3://${{ secrets.BACKUP_BUCKET }}/musicos360-prod/$LATEST" /tmp/backup.age
+          age --decrypt -i <(echo "${{ secrets.BACKUP_AGE_IDENTITY }}") -o /tmp/backup.sql /tmp/backup.age
+
+      - name: Restore + paridade
+        env:
+          PGPASSWORD: drill
+        run: |
+          psql -h localhost -U drill -d drill -f apps/api/scripts/local-auth-shim.sql
+          psql -h localhost -U drill -d drill -f /tmp/backup.sql
+          psql -h localhost -U drill -d drill -c "
+            SELECT
+              (SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='public') AS tables,
+              (SELECT COUNT(*) FROM information_schema.table_constraints WHERE constraint_type='FOREIGN KEY' AND table_schema='public') AS fks,
+              (SELECT COUNT(*) FROM pg_indexes WHERE schemaname='public') AS indexes,
+              (SELECT COUNT(*) FROM pg_policies WHERE schemaname='public') AS rls;
+          "

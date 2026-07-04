@@ -162,7 +162,7 @@ interface Case {
   needsId?: boolean;
 }
 
-let SEED_IDS: Record<string, string> = {};
+const SEED_IDS: Record<string, string> = {};
 
 async function seedFor44(): Promise<void> {
   // Cria 1 artista, 1 release, 1 contrato, 1 evento, 1 transação, 1 lead, 1 cliente

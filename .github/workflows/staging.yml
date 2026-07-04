@@ -1,0 +1,134 @@
+name: Staging CI/CD
+
+# Gate de homologacao: toda mudanca destinada a producao DEVE passar por staging.
+# Requer secrets de STAGING, isolados de producao:
+#   STAGING_DATABASE_URL
+#   STAGING_APP_DATABASE_URL
+#   STAGING_API_URL
+#   STAGING_DEPLOY_WEBHOOK_URL
+# Opcionais para smoke autenticado:
+#   STAGING_SMOKE_TOKEN
+#   STAGING_SMOKE_TENANT
+# NAO usar secrets de producao aqui.
+
+on:
+  push:
+    branches: [staging]
+  pull_request:
+    branches: [staging]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: typecheck lint unit build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm build
+
+  migrations-staging:
+    name: migrations and isolation checks in staging
+    needs: [quality]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: db:migrate staging
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          DATABASE_SESSION_CONTEXT_ENABLED: "true"
+          DATABASE_RLS_ENFORCEMENT: "true"
+          NODE_ENV: staging
+        run: |
+          test -n "$DATABASE_URL"
+          test -n "$APP_DATABASE_URL"
+          pnpm --filter @music-os-360/api db:migrate
+      - name: db:check staging
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          DATABASE_SESSION_CONTEXT_ENABLED: "true"
+          DATABASE_RLS_ENFORCEMENT: "true"
+          NODE_ENV: staging
+        run: pnpm --filter @music-os-360/api db:check
+      - name: blocking RLS and tenant checks
+        env:
+          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+          DATABASE_SESSION_CONTEXT_ENABLED: "true"
+          DATABASE_RLS_ENFORCEMENT: "true"
+          NODE_ENV: staging
+        run: |
+          pnpm --filter @music-os-360/api verify:rls
+          pnpm --filter @music-os-360/api verify:tenant-isolation
+
+  deploy-staging:
+    name: deploy staging
+    needs: [migrations-staging]
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    steps:
+      - name: require staging deploy hook
+        env:
+          STAGING_DEPLOY_WEBHOOK_URL: ${{ secrets.STAGING_DEPLOY_WEBHOOK_URL }}
+        run: test -n "$STAGING_DEPLOY_WEBHOOK_URL"
+      - name: trigger real staging deploy
+        env:
+          STAGING_DEPLOY_WEBHOOK_URL: ${{ secrets.STAGING_DEPLOY_WEBHOOK_URL }}
+        run: curl --fail --silent --show-error --request POST "$STAGING_DEPLOY_WEBHOOK_URL"
+
+  smoke-staging:
+    name: smoke staging
+    needs: [deploy-staging]
+    if: github.ref == 'refs/heads/staging'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: staging
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: smoke test staging
+        env:
+          API_URL: ${{ secrets.STAGING_API_URL }}
+          SMOKE_TOKEN: ${{ secrets.STAGING_SMOKE_TOKEN }}
+          SMOKE_TENANT: ${{ secrets.STAGING_SMOKE_TENANT }}
+        run: |
+          test -n "$API_URL"
+          pnpm --filter @music-os-360/api smoke-test
+
+# Regra de promocao:
+# - branch main/producao protegida;
+# - merge para producao somente com este workflow verde no commit promovido;
+# - required status checks: quality, migrations-staging, deploy-staging, smoke-staging.
