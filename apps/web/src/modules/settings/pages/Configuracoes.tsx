@@ -66,7 +66,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/shared/ui/alert-dialog";
-import { Database, Sparkles, Unplug } from "lucide-react";
+import { Database, Sparkles, Unplug, Palette } from "lucide-react";
+import { LogoUploader } from "@/modules/settings/components/LogoUploader";
+import { useQuery } from "@tanstack/react-query";
+import {
+  billingPlansService,
+  type BillingPlan,
+} from "@/modules/settings/services/billing-plans.service";
+import { billingInvoicesService } from "@/modules/settings/services/billing-invoices.service";
 import { resetMockData } from "@/shared/data/mockData";
 import {
   IntegrationLogo,
@@ -79,6 +86,19 @@ function formatRoleName(name: string): string {
 
 export default function Configuracoes() {
   const { tenant, setTenant } = useTenant();
+
+  // Planos de billing — fonte dinâmica (Admin → Banco). Nunca hardcoded na tela.
+  const billingPlansQuery = useQuery({
+    queryKey: ["billing-plans"],
+    queryFn: () => billingPlansService.listPlans(),
+    staleTime: 60_000,
+  });
+  // Faturas — fonte dinâmica (Stripe via backend). Sem mock na tela.
+  const billingInvoicesQuery = useQuery({
+    queryKey: ["billing-invoices"],
+    queryFn: () => billingInvoicesService.listInvoices(),
+    staleTime: 60_000,
+  });
   const { user, updatePassword } = useAuth();
   const { 
     userSettings, 
@@ -104,6 +124,20 @@ export default function Configuracoes() {
   const [seedLoading, setSeedLoading] = useState(false);
   const [clearLoading, setClearLoading] = useState(false);
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
+  const [publicRegistrationEnabled, setPublicRegistrationEnabled] = useState(true);
+  const publicRegistrationLink = useMemo(
+    () => (orgSlug ? `${window.location.origin}/cadastro/${orgSlug}` : ""),
+    [orgSlug],
+  );
+
+  const copyPublicRegistrationLink = async () => {
+    if (!publicRegistrationLink) {
+      toast.error("Defina um slug da organização antes de copiar o link.");
+      return;
+    }
+    await navigator.clipboard.writeText(publicRegistrationLink);
+    toast.success("Link de cadastro público copiado.");
+  };
 
   const handleLoadDemoData = async () => {
     setSeedLoading(true);
@@ -129,8 +163,9 @@ export default function Configuracoes() {
       setClearLoading(false);
     }
   };
-  const { 
-    roles, 
+  const {
+    roles,
+    permissions,
     teamInvites,
     isLoading: rolesLoading,
     inviteUser,
@@ -713,6 +748,10 @@ export default function Configuracoes() {
               <Link className="h-4 w-4" />
               Integrações
             </TabsTrigger>
+            <TabsTrigger value="cadastro-publico" className="flex items-center gap-2">
+              <Globe2 className="h-4 w-4" />
+              Cadastro Público
+            </TabsTrigger>
             <TabsTrigger value="billing" className="flex items-center gap-2">
               <CreditCard className="h-4 w-4" />
               Billing
@@ -725,23 +764,80 @@ export default function Configuracoes() {
 
           {/* Empresa */}
           <TabsContent value="empresa" className="mt-6 space-y-6">
-            <Card>
-              <CardHeader className="flex flex-row items-start justify-between gap-4">
-                <div>
+            <div className="grid gap-6 lg:grid-cols-3">
+              {/* Resumo — Identidade Visual */}
+              <Card className="lg:col-span-1">
+                <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <Building2 className="h-5 w-5" />
-                    Dados da Empresa
+                    <Palette className="h-5 w-5" />
+                    Identidade Visual
                   </CardTitle>
-                  <CardDescription>Informações da empresa para contratos e documentos</CardDescription>
-                </div>
-                {!isEditingCompany && (
-                  <Button variant="outline" size="sm" onClick={handleEditCompany} className="shrink-0">
-                    <Pencil className="h-4 w-4 mr-2" />
-                    Editar Dados
-                  </Button>
-                )}
-              </CardHeader>
-              <CardContent className="space-y-6">
+                  <CardDescription>Logo exibida nas áreas públicas e internas</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-col items-center text-center">
+                    <LogoUploader />
+
+                    <h2 className="mt-4 text-xl font-semibold">
+                      {companySettings.fantasy_name || companySettings.company_name || tenant.name}
+                    </h2>
+                    {orgSlug && (
+                      <p className="mt-1 break-all font-mono text-xs text-muted-foreground">
+                        /cadastro/{orgSlug}
+                      </p>
+                    )}
+
+                    <div className="mt-6 w-full space-y-4">
+                      {companySettings.cnpj && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-muted-foreground">CNPJ:</span>
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <FileText className="h-3 w-3" />
+                            {companySettings.cnpj}
+                          </Badge>
+                        </div>
+                      )}
+                      {companySettings.telefone && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-muted-foreground">Telefone:</span>
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <Smartphone className="h-3 w-3" />
+                            {companySettings.telefone}
+                          </Badge>
+                        </div>
+                      )}
+                      {companySettings.responsavel && (
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-sm text-muted-foreground">Responsável:</span>
+                          <Badge variant="outline" className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {companySettings.responsavel}
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Formulário — Dados da Empresa */}
+              <Card className="lg:col-span-2">
+                <CardHeader className="flex flex-row items-start justify-between gap-4">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <Building2 className="h-5 w-5" />
+                      Dados da Empresa
+                    </CardTitle>
+                    <CardDescription>Informações da empresa para contratos e documentos</CardDescription>
+                  </div>
+                  {!isEditingCompany && (
+                    <Button variant="outline" size="sm" onClick={handleEditCompany} className="shrink-0">
+                      <Pencil className="h-4 w-4 mr-2" />
+                      Editar Dados
+                    </Button>
+                  )}
+                </CardHeader>
+                <CardContent className="space-y-6">
                 <div className="grid gap-4 md:grid-cols-2">
                   <div className="space-y-2">
                     <Label>Razão Social</Label>
@@ -823,7 +919,7 @@ export default function Configuracoes() {
                   {orgSlug && !slugError && (
                     <p className="text-sm text-muted-foreground" data-testid="text-slug-preview">
                       Link de cadastro:{" "}
-                      <span className="font-mono">{window.location.origin}/signup/artista/{orgSlug}</span>
+                      <span className="font-mono">{window.location.origin}/cadastro/{orgSlug}</span>
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
@@ -851,8 +947,9 @@ export default function Configuracoes() {
                     </Button>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
 
             {isAdmin && (
               <Card data-testid="card-demo-data">
@@ -1323,7 +1420,9 @@ export default function Configuracoes() {
                   <Link className="h-5 w-5" />
                   Integrações
                 </CardTitle>
-                <CardDescription>Conecte serviços externos para automatizar processos</CardDescription>
+                <CardDescription>
+                  Conecte e configure as integrações específicas deste workspace. Essas conexões pertencem apenas a este cliente.
+                </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 {[
@@ -1592,17 +1691,114 @@ export default function Configuracoes() {
             />
           </TabsContent>
 
+          <TabsContent value="cadastro-publico" className="mt-6 space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Globe2 className="h-5 w-5" />
+                  Cadastro Público
+                </CardTitle>
+                <CardDescription>
+                  Gere e compartilhe o link público de cadastro de artistas vinculado a este workspace.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* Toggle */}
+                <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-4">
+                  <div>
+                    <p className="text-sm font-medium">Cadastro público ativo</p>
+                    <p className="text-xs text-muted-foreground">
+                      Quando desativado no backend, o link retorna cadastro indisponível.
+                    </p>
+                  </div>
+                  <Switch
+                    checked={publicRegistrationEnabled}
+                    onCheckedChange={setPublicRegistrationEnabled}
+                    className="shrink-0"
+                  />
+                </div>
+
+                {/* Link público */}
+                <div className="space-y-2">
+                  <Label>Link público</Label>
+                  <div className="flex flex-col gap-2 sm:flex-row">
+                    <Input
+                      value={publicRegistrationLink}
+                      placeholder="Defina um slug da organização na aba Empresa"
+                      readOnly
+                      className="font-mono text-xs sm:text-sm"
+                      data-testid="input-public-link"
+                    />
+                    <Button
+                      variant="outline"
+                      className="shrink-0"
+                      onClick={() => void copyPublicRegistrationLink()}
+                      disabled={!publicRegistrationLink}
+                    >
+                      <Copy className="h-4 w-4 mr-2" />
+                      Copiar
+                    </Button>
+                  </div>
+                  {!publicRegistrationLink && (
+                    <p className="text-xs text-muted-foreground">
+                      Configure o slug da organização na aba <strong>Empresa</strong> para gerar o link.
+                    </p>
+                  )}
+                </div>
+
+                {/* Métricas */}
+                <div className="space-y-2">
+                  <div className="grid gap-4 sm:grid-cols-3">
+                    {[
+                      { label: "Acessos", value: 0 },
+                      { label: "Conversões", value: 0 },
+                      { label: "Cadastros recebidos", value: 0 },
+                    ].map((m) => (
+                      <div key={m.label} className="rounded-lg border border-border p-4">
+                        <p className="text-sm text-muted-foreground">{m.label}</p>
+                        <p className="text-2xl font-semibold">{m.value}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    As métricas serão populadas quando o backend de cadastro público estiver ativo.
+                  </p>
+                </div>
+
+                {/* Ações */}
+                <div className="space-y-2">
+                  <div className="flex flex-wrap gap-2">
+                    <Button variant="outline" disabled title="Disponível quando o backend de cadastro público estiver ativo">
+                      <RefreshCw className="h-4 w-4 mr-2" />
+                      Gerar link
+                    </Button>
+                    <Button variant="outline" disabled title="Disponível quando o backend de cadastro público estiver ativo">
+                      <RotateCcw className="h-4 w-4 mr-2" />
+                      Regenerar slug
+                    </Button>
+                    {publicRegistrationEnabled && !!publicRegistrationLink && (
+                      <Button variant="destructive" disabled title="Disponível quando o backend de cadastro público estiver ativo">
+                        <Archive className="h-4 w-4 mr-2" />
+                        Revogar link
+                      </Button>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    A gestão do link (gerar, regenerar e revogar) estará disponível quando o backend de cadastro público for ativado.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
           {/* Billing */}
           <TabsContent value="billing" className="mt-6 space-y-6">
             {(() => {
               const billing = tenant.billing;
               const plan    = tenant.plan;
 
-              const PLAN_LABELS: Record<string, string> = {
-                starter:      "Starter",
-                professional: "Professional",
-                enterprise:   "Enterprise",
-              };
+              const plans: BillingPlan[] = billingPlansQuery.data ?? [];
+              const currentPlanName = plans.find((p) => p.id === plan)?.name ?? plan;
               const STATUS_LABELS: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
                 active:    { label: "Ativo",     variant: "default"     },
                 trial:     { label: "Trial",     variant: "secondary"   },
@@ -1617,35 +1813,7 @@ export default function Configuracoes() {
                 ? format(renewalDateObj, "dd/MM/yyyy", { locale: ptBR })
                 : "—";
 
-              const MOCK_INVOICES = [
-                { id: "INV-2026-05", date: "01/05/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-                { id: "INV-2026-04", date: "01/04/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-                { id: "INV-2026-03", date: "01/03/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-                { id: "INV-2026-02", date: "01/02/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-                { id: "INV-2026-01", date: "01/01/2026", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-                { id: "INV-2025-12", date: "01/12/2025", amount: "R$ 1.490,00", status: "Pago",     statusColor: "text-emerald-600 dark:text-emerald-400" },
-              ];
-
-              const PLANS = [
-                {
-                  id:    "starter",
-                  name:  "Starter",
-                  price: "R$ 390/mês",
-                  features: ["Até 3 usuários", "100 artistas", "Catálogo ilimitado", "Suporte por email"],
-                },
-                {
-                  id:    "professional",
-                  name:  "Professional",
-                  price: "R$ 790/mês",
-                  features: ["Até 10 usuários", "Artistas ilimitados", "Integrações avançadas", "Suporte prioritário"],
-                },
-                {
-                  id:    "enterprise",
-                  name:  "Enterprise",
-                  price: "R$ 1.490/mês",
-                  features: ["Usuários ilimitados", "Multi-tenant", "SSO + SAML", "SLA dedicado + onboarding"],
-                },
-              ];
+              const invoices = billingInvoicesQuery.data ?? [];
 
               return (
                 <>
@@ -1661,7 +1829,7 @@ export default function Configuracoes() {
                       </CardHeader>
                       <CardContent className="space-y-4">
                         <div className="flex items-center justify-between">
-                          <span className="text-2xl font-bold">{PLAN_LABELS[plan] ?? plan}</span>
+                          <span className="text-2xl font-bold">{currentPlanName}</span>
                           <Badge variant={statusInfo.variant} data-testid="billing-status-badge">
                             {statusInfo.label}
                           </Badge>
@@ -1794,22 +1962,39 @@ export default function Configuracoes() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {MOCK_INVOICES.map((inv) => (
+                            {billingInvoicesQuery.isLoading ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                                  <Loader2 className="h-4 w-4 animate-spin inline mr-2" /> Carregando faturas...
+                                </TableCell>
+                              </TableRow>
+                            ) : invoices.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                                  Nenhuma fatura disponível. O histórico é sincronizado do Stripe quando o backend estiver ativo.
+                                </TableCell>
+                              </TableRow>
+                            ) : (
+                            invoices.map((inv) => (
                               <TableRow key={inv.id}>
                                 <TableCell>
-                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{inv.id}</code>
+                                  <code className="text-xs bg-muted px-1.5 py-0.5 rounded">{inv.number ?? inv.id}</code>
                                 </TableCell>
                                 <TableCell className="text-muted-foreground">{inv.date}</TableCell>
                                 <TableCell className="text-right font-medium">{inv.amount}</TableCell>
                                 <TableCell className="text-center">
-                                  <span className={`text-xs font-medium ${inv.statusColor}`}>{inv.status}</span>
+                                  <span className={`text-xs font-medium ${inv.statusColor ?? "text-muted-foreground"}`}>{inv.status}</span>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <Button
                                     variant="ghost"
                                     size="sm"
                                     className="h-7 px-2 gap-1 text-xs"
-                                    onClick={() => toast.info(`Download de ${inv.id} não disponível em modo de demonstração.`)}
+                                    disabled={!inv.pdfUrl && !inv.stripeUrl}
+                                    onClick={() => {
+                                      const url = inv.pdfUrl ?? inv.stripeUrl;
+                                      if (url) window.open(url, "_blank", "noopener");
+                                    }}
                                     data-testid={`button-download-invoice-${inv.id}`}
                                   >
                                     <Download className="h-3 w-3" />
@@ -1817,7 +2002,8 @@ export default function Configuracoes() {
                                   </Button>
                                 </TableCell>
                               </TableRow>
-                            ))}
+                            ))
+                            )}
                           </TableBody>
                         </Table>
                       </div>
@@ -1834,8 +2020,23 @@ export default function Configuracoes() {
                       <CardDescription>Compare os planos e faça upgrade quando estiver pronto</CardDescription>
                     </CardHeader>
                     <CardContent>
+                      {billingPlansQuery.isLoading ? (
+                        <div className="flex items-center justify-center gap-2 py-8 text-sm text-muted-foreground">
+                          <Loader2 className="h-4 w-4 animate-spin" /> Carregando planos...
+                        </div>
+                      ) : billingPlansQuery.isError ? (
+                        <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+                          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                          <span>Não foi possível carregar os planos. Tente novamente em instantes.</span>
+                        </div>
+                      ) : plans.length === 0 ? (
+                        <div className="flex items-start gap-2 rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground">
+                          <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                          <span>Nenhum plano disponível no momento. Os planos são definidos pelo Painel Admin.</span>
+                        </div>
+                      ) : (
                       <div className="grid gap-4 sm:grid-cols-3">
-                        {PLANS.map((p) => {
+                        {plans.map((p) => {
                           const isCurrent = p.id === plan;
                           return (
                             <div
@@ -1880,6 +2081,7 @@ export default function Configuracoes() {
                           );
                         })}
                       </div>
+                      )}
                     </CardContent>
                   </Card>
                 </>
@@ -1889,6 +2091,28 @@ export default function Configuracoes() {
 
           {/* Usuários */}
           <TabsContent value="usuarios" className="mt-6 space-y-6">
+            {/* Métricas */}
+            <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
+              {[
+                { label: "Usuários Ativos", value: usuarios.filter((u) => (u.status ?? "ativo") === "ativo").length, icon: Users },
+                { label: "Convites Pendentes", value: teamInvites.length, icon: Mail },
+                { label: "Papéis Configurados", value: roles.length, icon: Shield },
+                { label: "Permissões Totais", value: permissions.length, icon: Key },
+              ].map((m) => (
+                <Card key={m.label}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <m.icon className="h-3.5 w-3.5" />
+                      {m.label}
+                    </div>
+                    <p className="text-2xl font-bold">
+                      {rolesLoading || usuariosLoading ? "—" : m.value}
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
             {/* Gerenciar Equipe */}
             <Card>
               <CardHeader>
@@ -1972,10 +2196,9 @@ export default function Configuracoes() {
                                 <SelectItem key={role.id} value={role.id}>{formatRoleName(role.name)}</SelectItem>
                               ))
                             ) : (
-                              <>
-                                <SelectItem value="admin">Admin</SelectItem>
-                                <SelectItem value="usuario">Usuário</SelectItem>
-                              </>
+                              <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                                Nenhum papel disponível
+                              </div>
                             )}
                           </SelectContent>
                         </Select>
@@ -2074,10 +2297,11 @@ export default function Configuracoes() {
                     <Loader2 className="h-6 w-6 animate-spin text-primary" />
                   </div>
                 ) : roles.length === 0 ? (
-                  <div className="text-center py-8">
-                    <p className="text-muted-foreground mb-4">Nenhum papel configurado ainda.</p>
-                    <p className="text-sm text-muted-foreground">Os papéis padrão serão criados automaticamente.</p>
-                  </div>
+                  <EmptyState
+                    icon={Shield}
+                    title="Nenhum papel disponível"
+                    description="Os papéis e permissões são gerenciados pelo RBAC do sistema. Crie um papel usando o botão acima ou aguarde a sincronização com o backend."
+                  />
                 ) : (
                   <div className="space-y-2">
                     {roles.map((role) => (

@@ -6,6 +6,8 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/app/providers/AuthContext";
 import { TenantProvider } from "@/app/providers/TenantContext";
 import { useTenant } from "@/app/providers/TenantContext";
+import { BillingProvider, useBilling } from "@/app/providers/BillingContext";
+import { BillingNotice } from "@/shared/infrastructure/BillingNotice";
 import { ErrorBoundary } from "@/shared/infrastructure/ErrorBoundary";
 import { RouteErrorBoundary } from "@/shared/infrastructure/RouteErrorBoundary";
 import { PageSkeleton } from "@/shared/components/PageSkeletons";
@@ -35,6 +37,7 @@ runClientMigrations();
 
 const Dashboard = lazy(() => import("@/modules/dashboard/pages/Dashboard"));
 const Landing = lazy(() => import("@/shared/pages/Landing"));
+const BillingBlockedPage = lazy(() => import("@/modules/settings/pages/BillingBlockedPage"));
 
 const SuspenseRoute: SuspenseRouteComponent = ({ children }) => (
   <RouteErrorBoundary>
@@ -53,6 +56,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function BillingGuard({ children }: { children: React.ReactNode }) {
+  const billing = useBilling();
+  const location = window.location.pathname;
+  const allowed =
+    location.startsWith("/billing") ||
+    location.startsWith("/configuracoes/billing") ||
+    location.startsWith("/support");
+  if (billing.isSuspended && !allowed) return <Navigate to="/billing/blocked" replace />;
+  return <>{children}</>;
+}
+
 function Home() {
   const { user, loading } = useAuth();
   const { tenant } = useTenant();
@@ -65,7 +79,7 @@ function Home() {
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
   <RouteErrorBoundary>
     <Suspense fallback={<PageSkeleton />}>
-      <AuthGuard>{children}</AuthGuard>
+      <AuthGuard><BillingGuard>{children}</BillingGuard></AuthGuard>
     </Suspense>
   </RouteErrorBoundary>
 );
@@ -93,35 +107,39 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <TenantProvider>
-          <RealtimeLayer />
-          <TooltipProvider>
-            <Sonner />
-            <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-              <Routes>
-                {publicRoutes(SuspenseRoute)}
+          <BillingProvider>
+            <RealtimeLayer />
+            <TooltipProvider>
+              <Sonner />
+              <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <BillingNotice />
+                <Routes>
+                  {publicRoutes(SuspenseRoute)}
 
-                <Route path="/" element={<SuspenseRoute><Home /></SuspenseRoute>} />
-                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/" element={<SuspenseRoute><Home /></SuspenseRoute>} />
+                  <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                  <Route path="/billing/blocked" element={<ProtectedRoute><BillingBlockedPage /></ProtectedRoute>} />
 
-                {artistRoutes(ProtectedRoute)}
-                {workspaceRoutes(ProtectedRoute)}
-                {catalogRoutes(ProtectedRoute)}
-                {accountingRoutes(ProtectedRoute)}
-                {releasesRoutes(ProtectedRoute)}
-                {crmRoutes(ProtectedRoute)}
-                {marketingRoutes(ProtectedRoute)}
-                {settingsRoutes(ProtectedRoute)}
-                {operationsRoutes(ProtectedRoute)}
-                {contractsRoutes(ProtectedRoute)}
-                <Route path="/contratos-v2" element={<Navigate to="/contratos" replace />} />
-                <Route path="/contratos-v2/*" element={<Navigate to="/contratos" replace />} />
-                {adminRoutes(SuspenseRoute, SuperAdminRoute)}
-                {reportsRoutes(ProtectedRoute)}
-                {supportRoutes(ProtectedRoute)}
-                {audiovisualRoutes(ProtectedRoute)}
-              </Routes>
-            </BrowserRouter>
-          </TooltipProvider>
+                  {artistRoutes(ProtectedRoute)}
+                  {workspaceRoutes(ProtectedRoute)}
+                  {catalogRoutes(ProtectedRoute)}
+                  {accountingRoutes(ProtectedRoute)}
+                  {releasesRoutes(ProtectedRoute)}
+                  {crmRoutes(ProtectedRoute)}
+                  {marketingRoutes(ProtectedRoute)}
+                  {settingsRoutes(ProtectedRoute)}
+                  {operationsRoutes(ProtectedRoute)}
+                  {contractsRoutes(ProtectedRoute)}
+                  <Route path="/contratos-v2" element={<Navigate to="/contratos" replace />} />
+                  <Route path="/contratos-v2/*" element={<Navigate to="/contratos" replace />} />
+                  {adminRoutes(SuspenseRoute, SuperAdminRoute)}
+                  {reportsRoutes(ProtectedRoute)}
+                  {supportRoutes(ProtectedRoute)}
+                  {audiovisualRoutes(ProtectedRoute)}
+                </Routes>
+              </BrowserRouter>
+            </TooltipProvider>
+          </BillingProvider>
         </TenantProvider>
       </AuthProvider>
     </QueryClientProvider>

@@ -38,10 +38,13 @@ export const INDUSTRY_LABEL: Record<TenantIndustry, string> = {
 
 /** Billing status labels */
 export const BILLING_STATUS_LABEL: Record<TenantBillingStatus, string> = {
-  active:    "Ativo",
-  trial:     "Trial",
-  suspended: "Suspenso",
-  cancelled: "Cancelado",
+  active:        "Ativo",
+  trial:         "Trial",
+  past_due:      "Em atraso",
+  payment_grace: "Pagamento pendente",
+  read_only:     "Somente leitura",
+  suspended:     "Suspenso",
+  cancelled:     "Cancelado",
 };
 
 /** Role labels */
