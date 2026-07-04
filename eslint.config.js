@@ -5,7 +5,23 @@ import reactRefresh from "eslint-plugin-react-refresh";
 import tseslint from "typescript-eslint";
 
 export default tseslint.config(
-  { ignores: ["dist"] },
+  {
+    ignores: [
+      "dist/**",
+      "coverage/**",
+      ".tmp/**",
+      ".turbo/**",
+      ".local/**",
+      ".validation-shots/**",
+      ".tmp-audit/**",
+      "node_modules/**",
+      "attached_assets/**",
+      "apps/**/coverage/**",
+      "apps/**/dist/**",
+      "packages/**/dist/**",
+      "scripts/runtime-visual-validation.mjs",
+    ],
+  },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
     files: ["**/*.{ts,tsx}"],

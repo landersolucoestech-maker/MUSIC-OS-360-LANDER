@@ -27,6 +27,9 @@ if (command === "dev") {
 
   await server.listen();
   server.printUrls();
+  if (!process.stdin.isTTY) {
+    setInterval(() => {}, 2 ** 30);
+  }
 } else if (command === "build") {
   await build(inlineConfig);
 } else if (command === "preview") {
