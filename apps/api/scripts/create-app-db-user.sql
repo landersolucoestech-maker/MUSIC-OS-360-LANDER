@@ -36,8 +36,10 @@ SELECT format('ALTER ROLE %I LOGIN PASSWORD %L', :'app_user', :'app_password')
 \gexec
 
 -- 2. Hardening: the application role must NEVER bypass RLS and must NOT be
---    superuser / createrole / createdb.
-ALTER ROLE :"app_user" NOBYPASSRLS NOSUPERUSER NOCREATEROLE NOCREATEDB;
+--    createrole / createdb. NOSUPERUSER is intentionally NOT specified: altering
+--    the SUPERUSER attribute requires superuser (managed Postgres like Supabase
+--    has a non-superuser owner), and CREATE ROLE never grants it by default.
+ALTER ROLE :"app_user" NOBYPASSRLS NOCREATEROLE NOCREATEDB;
 
 -- 3. Connection + schema usage.
 GRANT CONNECT ON DATABASE :"db_name" TO :"app_user";
