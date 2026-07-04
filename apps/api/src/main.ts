@@ -134,7 +134,17 @@ async function bootstrap() {
   );
 
   // ── Body limits (1MB) — PayloadTooLargeError → 413 via GlobalExceptionFilter ──
-  app.use(express.json({ limit: '1mb' }));
+  // This parser runs BEFORE Nest's internal rawBody-aware parser and consumes the
+  // stream, so it must populate req.rawBody itself or Stripe webhook signature
+  // verification (billing.controller → req.rawBody) receives undefined → 400.
+  app.use(
+    express.json({
+      limit: '1mb',
+      verify: (req, _res, buf) => {
+        (req as typeof req & { rawBody?: Buffer }).rawBody = buf;
+      },
+    }),
+  );
   app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
   // ── CORS ─────────────────────────────────────────────────────────────────────
