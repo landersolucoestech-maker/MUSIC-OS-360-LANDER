@@ -10,6 +10,7 @@ import type {
   UpdateLeadDto,
   QueryLeadDto,
   PublicArtistApplicationDto,
+  PublicArtistRegistrationDto,
 } from './dto/leads.dto';
 import { LeadStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
@@ -20,6 +21,7 @@ import { ActivityLogsService } from '../activity-logs/activity-logs.service';
 export class LeadsService {
   private readonly ds:   DataSource | null = null;
   private readonly repo: Repository<LeadEntity> | null = null;
+  private tenantColumns: Set<string> | null = null;
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
@@ -126,6 +128,33 @@ export class LeadsService {
     return rows[0];
   }
 
+  async resolvePublicWorkspace(slug: string): Promise<{
+    id: string;
+    name: string;
+    slug: string;
+    allowPublicRegistration: boolean;
+    logoUrl: string | null;
+  }> {
+    const tenant = await this.getPublicWorkspaceBySlug(slug, true);
+    return {
+      id: tenant.id,
+      name: tenant.name,
+      slug: tenant.slug,
+      allowPublicRegistration: true,
+      logoUrl: typeof tenant.settings?.['logoUrl'] === 'string' ? tenant.settings['logoUrl'] : null,
+    };
+  }
+
+  async submitPublicArtistRegistration(
+    dto: PublicArtistRegistrationDto,
+  ): Promise<{ id: string | null; protocol: string; accepted: true }> {
+    return this.submitPublicArtistApplication(dto.workspaceSlug, {
+      ...dto,
+      artisticName: dto.artistName,
+      musicalGenre: dto.musicalGenre ?? 'Nao informado',
+    });
+  }
+
   async submitPublicArtistApplication(
     slug: string,
     dto: PublicArtistApplicationDto,
@@ -134,16 +163,8 @@ export class LeadsService {
       return { id: null, protocol: 'ACCEPTED', accepted: true };
     }
 
-    const tenants = await (this.adminDs ?? this.ds)!.query(
-      `SELECT "id", "org_id"
-         FROM "tenants"
-        WHERE lower("slug") = lower($1)
-          AND "active" = true
-          AND "deleted_at" IS NULL
-        LIMIT 1`,
-      [slug.trim()],
-    ) as Array<{ id: string; org_id: string }>;
-    const tenant = tenants[0];
+    const tenant = await this.getPublicWorkspaceBySlug(slug, false);
+    const phone = dto.phone?.trim() ?? '';
     if (!tenant) throw new NotFoundException('Organização não encontrada ou inativa');
 
     const saved = await this.dbContext.runInTenantContext(
@@ -155,8 +176,8 @@ export class LeadsService {
           nome_artistico: dto.artisticName.trim(),
           nome_completo: dto.fullName.trim(),
           email_encrypted: this.enc.encryptNullable(dto.email.trim().toLowerCase()),
-          telefone_encrypted: this.enc.encryptNullable(dto.phone.trim()),
-          whatsapp: dto.phone.trim(),
+          telefone_encrypted: this.enc.encryptNullable(phone || undefined),
+          whatsapp: phone || null,
           cidade: dto.city?.trim() || null,
           estado: dto.state?.trim() || null,
           fonte: 'public_artist_application',
@@ -179,6 +200,7 @@ export class LeadsService {
       },
     );
     const protocol = saved.id.replace(/-/g, '').slice(-8).toUpperCase();
+    await this.incrementPublicRegistrationMetric(tenant.id, 'public_registration_conversion_count');
 
     this.events.emitTyped(DOMAIN_EVENTS.LEAD_CREATED, {
       tenantId: tenant.id,
@@ -194,6 +216,100 @@ export class LeadsService {
     });
 
     return { id: saved.id, protocol, accepted: true };
+  }
+
+  private async getTenantColumns(): Promise<Set<string>> {
+    if (this.tenantColumns) return this.tenantColumns;
+    const rows = await (this.adminDs ?? this.ds)!.query(
+      `SELECT column_name
+         FROM information_schema.columns
+        WHERE table_schema = 'public'
+          AND table_name = 'tenants'`,
+    ) as Array<{ column_name: string }>;
+    this.tenantColumns = new Set(rows.map((row) => row.column_name));
+    return this.tenantColumns;
+  }
+
+  private normalizePublicWorkspaceSlug(slug: string): string {
+    const normalized = slug.trim().toLowerCase();
+    if (!/^[a-z0-9][a-z0-9_-]{0,98}[a-z0-9]$/.test(normalized)) {
+      throw new NotFoundException('Link de cadastro invalido');
+    }
+    return normalized;
+  }
+
+  private async getPublicWorkspaceBySlug(slug: string, trackAccess: boolean): Promise<{
+    id: string;
+    org_id: string;
+    name: string;
+    slug: string;
+    active: boolean;
+    deleted_at: Date | null;
+    allow_public_registration: boolean;
+    public_registration_blocked: boolean;
+    public_registration_revoked_at: Date | null;
+    settings: Record<string, unknown>;
+  }> {
+    const normalizedSlug = this.normalizePublicWorkspaceSlug(slug);
+    const columns = await this.getTenantColumns();
+    const allowExpr = columns.has('allow_public_registration')
+      ? `"allow_public_registration"`
+      : `CASE WHEN lower(COALESCE("settings"->>'allow_public_registration', 'true')) = 'false' THEN false ELSE true END`;
+    const blockedExpr = columns.has('public_registration_blocked') ? `"public_registration_blocked"` : `false`;
+    const revokedExpr = columns.has('public_registration_revoked_at') ? `"public_registration_revoked_at"` : `NULL`;
+
+    const rows = await (this.adminDs ?? this.ds)!.query(
+      `SELECT "id",
+              "org_id",
+              "name",
+              "slug",
+              "active",
+              "deleted_at",
+              "settings",
+              ${allowExpr} AS "allow_public_registration",
+              ${blockedExpr} AS "public_registration_blocked",
+              ${revokedExpr} AS "public_registration_revoked_at"
+         FROM "tenants"
+        WHERE lower("slug") = lower($1)
+        LIMIT 1`,
+      [normalizedSlug],
+    ) as Array<{
+      id: string;
+      org_id: string;
+      name: string;
+      slug: string;
+      active: boolean;
+      deleted_at: Date | null;
+      allow_public_registration: boolean;
+      public_registration_blocked: boolean;
+      public_registration_revoked_at: Date | null;
+      settings: Record<string, unknown>;
+    }>;
+    const tenant = rows[0];
+    if (!tenant) throw new NotFoundException('Workspace nao encontrado');
+    if (!tenant.active || tenant.deleted_at) throw new NotFoundException('Cadastro indisponivel');
+    if (!tenant.allow_public_registration || tenant.public_registration_blocked || tenant.public_registration_revoked_at) {
+      throw new NotFoundException('Cadastro indisponivel para este workspace');
+    }
+    if (trackAccess) {
+      await this.incrementPublicRegistrationMetric(tenant.id, 'public_registration_access_count');
+    }
+    return tenant;
+  }
+
+  private async incrementPublicRegistrationMetric(
+    tenantId: string,
+    column: 'public_registration_access_count' | 'public_registration_conversion_count',
+  ): Promise<void> {
+    const columns = await this.getTenantColumns();
+    if (!columns.has(column)) return;
+    await (this.adminDs ?? this.ds)!.query(
+      `UPDATE "tenants"
+          SET "${column}" = COALESCE("${column}", 0) + 1,
+              "updated_at" = now()
+        WHERE "id" = $1`,
+      [tenantId],
+    );
   }
 
   async update(

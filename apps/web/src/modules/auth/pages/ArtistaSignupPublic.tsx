@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { MUSICAL_GENRE_LABELS } from "@/constants/musicalGenres";
-import { useNavigate, useParams } from "react-router-dom";
+import { useParams } from "react-router-dom";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { DatePickerField } from "@/shared/ui/date-picker-field";
@@ -31,6 +31,10 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { publicApi } from "@/shared/lib/api-client";
+import { MOCK_MODE } from "@/shared/lib/env";
+import { CompanyLogo } from "@/shared/ui/company-logo";
+import { companyLogoService } from "@/modules/settings/services/company-logo.service";
+import { useArtistas } from "@/modules/artist/hooks/useArtistas";
 
 // ─── Same constants as ArtistaFormModal ───────────────────────────────────────
 
@@ -44,7 +48,6 @@ const BANCOS = [
 const TIPO_PERFIL_OPTIONS = [
   { value: "independente",   label: "Independente" },
   { value: "com_empresario", label: "Com empresário" },
-  { value: "gravadora",      label: "Gravadora" },
 ];
 
 const CATEGORIAS_EQUIPE = [
@@ -55,11 +58,6 @@ const CATEGORIAS_EQUIPE = [
   { value: "contador",        label: "Contador" },
   { value: "editora_musical", label: "Editora Musical" },
   { value: "roadie",          label: "Roadie" },
-];
-
-const CATEGORIAS_GRAVADORA_EXTRA = [
-  { value: "gestor",     label: "Gestor" },
-  { value: "empresario", label: "Empresário" },
 ];
 
 const DISTRIBUIDORAS_OPTIONS = [
@@ -110,7 +108,13 @@ type StepNum = (typeof STEPS)[number]["num"];
 
 // ─── OrgInfo ──────────────────────────────────────────────────────────────────
 
-interface OrgInfo { name: string; slug: string; }
+interface OrgInfo {
+  id: string;
+  name: string;
+  slug: string;
+  allowPublicRegistration: boolean;
+  logoUrl?: string | null;
+}
 type SlugState = "checking" | "valid" | "invalid";
 
 // ─── URL icon helper (same as ArtistaFormModal) ───────────────────────────────
@@ -125,10 +129,10 @@ function UrlIcon({ state }: { state: UrlValidationState }) {
 
 export default function ArtistaSignupPublic() {
   const { orgSlug } = useParams<{ orgSlug?: string }>();
-  const navigate = useNavigate();
+  const { addArtista } = useArtistas();
 
   const [slugState, setSlugState] = useState<SlugState>("checking");
-  const [orgInfo, setOrgInfo]     = useState<OrgInfo>({ name: "MUSIC OS 360", slug: orgSlug ?? "" });
+  const [orgInfo, setOrgInfo]     = useState<OrgInfo>({ id: "", name: "MUSIC OS 360", slug: orgSlug ?? "", allowPublicRegistration: false });
   const [step, setStep]           = useState<StepNum>(1);
   const [errors, setErrors]       = useState<Record<string, string>>({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -136,7 +140,6 @@ export default function ArtistaSignupPublic() {
   const [protocol, setProtocol]   = useState("");
   const [acceptedTerms, setAcceptedTerms] = useState(false);
   const [companyWebsite, setCompanyWebsite] = useState("");
-  const [workspaceSlug, setWorkspaceSlug] = useState("");
 
   // ── Form state — mirrors ArtistaFormModal fields ───────────────────────────
   // Step 1: Informações Básicas
@@ -187,9 +190,24 @@ export default function ArtistaSignupPublic() {
   // ── Slug validation ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) { setSlugState("invalid"); return; }
+    if (MOCK_MODE) {
+      setOrgInfo({
+        id: "mock-public-workspace",
+        name: orgSlug
+          .split("-")
+          .filter(Boolean)
+          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+          .join(" "),
+        slug: orgSlug,
+        allowPublicRegistration: true,
+        logoUrl: companyLogoService.getPublicLogoMock(),
+      });
+      setSlugState("valid");
+      return;
+    }
     let cancelled = false;
     publicApi
-      .get<OrgInfo>(`/leads/public/artist-applications/${encodeURIComponent(orgSlug)}/tenant`)
+      .get<OrgInfo>(`/public/workspaces/${encodeURIComponent(orgSlug)}`)
       .then((info) => {
         if (cancelled) return;
         setOrgInfo(info);
@@ -203,7 +221,7 @@ export default function ArtistaSignupPublic() {
 
   // ── Ensure at least one empty equipe card when perfil changes ─────────────
   useEffect(() => {
-    const PERFIS_COM_EQUIPA = ["independente", "com_empresario", "gravadora"];
+    const PERFIS_COM_EQUIPA = ["independente", "com_empresario"];
     if (PERFIS_COM_EQUIPA.includes(tipoPerfil) && contatosEquipe.length === 0) {
       setContatosEquipe([{ ...EMPTY_CONTATO }]);
     }
@@ -358,40 +376,56 @@ export default function ArtistaSignupPublic() {
 
     setIsSubmitting(true);
     try {
-      const result = await publicApi.post<{ protocol: string }>(
-        `/leads/public/artist-applications/${encodeURIComponent(orgSlug)}`,
-        {
-          artisticName: nomeArtistico.trim(),
-          fullName: nome.trim(),
-          email: email.trim(),
-          phone: telefone.trim(),
-          musicalGenre: generoMusical,
-          objective: tipoPerfil,
-          message: notasInternas || biografia,
-          socialLinks: { spotify, instagram, youtube, tiktok, soundcloud, deezer, appleMusic },
-          additionalData: {
-            especialidades,
-            dataNascimento,
-            cpfCnpj,
-            rg,
-            genero,
-            endereco,
-            banco,
-            agencia,
-            conta,
-            chavePix,
-            titularConta,
-            fotoUrl,
-            documentosPessoaisUrl,
-            presskitUrl,
-            distribuidorasGerais,
-            contatosEquipe,
-          },
-          acceptedTerms,
-          companyWebsite,
-        },
-      );
-      setProtocol(result.protocol);
+      // Cadastro público cria DIRETAMENTE um artista (sem Lead/CRM/status intermediário).
+      const artistaPayload = {
+        nome_artistico:          nomeArtistico.trim(),
+        nome_civil:              nome.trim() || null,
+        genero_musical:          generoMusical || null,
+        genero:                  genero || null,
+        especialidades:          especialidades.length > 0 ? especialidades : null,
+        observacoes:             biografia.trim() || null,
+        foto_url:                fotoUrl || null,
+        documentos_pessoais_url: documentosPessoaisUrl || null,
+        presskit_url:            presskitUrl || null,
+        data_nascimento:         dataNascimento || null,
+        cpf_cnpj:                cpfCnpj || null,
+        rg:                      rg || null,
+        endereco:                endereco || null,
+        telefone:                telefone.trim() || null,
+        email:                   email.trim() || null,
+        banco:                   banco || null,
+        agencia:                 agencia || null,
+        conta:                   conta || null,
+        chave_pix:               chavePix || null,
+        titular_conta:           titularConta || null,
+        spotify_artist_url:      spotify || null,
+        youtube_channel_url:     youtube || null,
+        instagram:               instagram || null,
+        tiktok:                  tiktok || null,
+        deezer_url:              deezer || null,
+        apple_music_url:         appleMusic || null,
+        soundcloud_url:          soundcloud || null,
+        tipo_perfil:             tipoPerfil,
+        contatos_equipe:         contatosEquipe.length > 0 ? contatosEquipe : null,
+        distribuidoras_gerais:   distribuidorasGerais.length > 0 ? distribuidorasGerais : null,
+        notas_internas:          notasInternas || null,
+        status:                  "ativo",
+        origem:                  "public_artist_form",
+      };
+
+      if (MOCK_MODE) {
+        // Standalone: cria o artista direto na store — aparece na lista imediatamente.
+        const created = await addArtista.mutateAsync(artistaPayload as never);
+        const id = (created as { id?: string })?.id ?? String(Date.now());
+        setProtocol(`ART-${id.slice(-6).toUpperCase()}`);
+      } else {
+        // Produção: endpoint público que cria o artista diretamente (a implementar no backend).
+        const result = await publicApi.post<{ id: string; protocol?: string }>(
+          "/public/artists",
+          { workspaceSlug: orgSlug, ...artistaPayload, acceptedTerms, companyWebsite },
+        );
+        setProtocol(result.protocol ?? result.id ?? "OK");
+      }
       setSuccess(true);
     } catch (err: unknown) {
       toast.error("Erro ao enviar cadastro. Tente novamente.");
@@ -415,36 +449,6 @@ export default function ArtistaSignupPublic() {
 
   // ── Invalid slug ───────────────────────────────────────────────────────────
   if (slugState === "invalid") {
-    if (!orgSlug) {
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-6">
-          <form
-            className="w-full max-w-sm space-y-4 border border-border bg-card p-6"
-            onSubmit={(event) => {
-              event.preventDefault();
-              const slug = workspaceSlug.trim();
-              if (slug) navigate(`/artistas/cadastro/${encodeURIComponent(slug)}`);
-            }}
-          >
-            <div>
-              <h1 className="text-xl font-bold">Cadastro de artista</h1>
-              <p className="mt-2 text-sm text-muted-foreground">
-                Informe o identificador do workspace que recebeu da gravadora.
-              </p>
-            </div>
-            <Input
-              value={workspaceSlug}
-              onChange={(event) => setWorkspaceSlug(event.target.value)}
-              placeholder="nome-do-workspace"
-              autoComplete="organization"
-            />
-            <Button type="submit" className="w-full" disabled={!workspaceSlug.trim()}>
-              Continuar
-            </Button>
-          </form>
-        </div>
-      );
-    }
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-sm w-full text-center space-y-5">
@@ -452,9 +456,9 @@ export default function ArtistaSignupPublic() {
             <AlertCircle className="h-10 w-10 text-destructive" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Link inválido</h1>
+            <h1 className="text-xl font-bold">{orgSlug ? "Cadastro indisponivel" : "Link invalido"}</h1>
             <p className="text-muted-foreground text-sm mt-2">
-              Este link de cadastro não corresponde a nenhuma gravadora cadastrada. Entre em contato para obter o link correto.
+              Use o link publico de cadastro fornecido pela empresa responsavel.
             </p>
           </div>
           {orgSlug && (
@@ -501,16 +505,17 @@ export default function ArtistaSignupPublic() {
       <div className="bg-primary/5 border-b border-border">
         <div className="max-w-2xl mx-auto px-4 py-10 text-center space-y-3">
           <div className="flex justify-center mb-3">
-            <div className="rounded-xl bg-primary/10 border border-primary/20 w-16 h-16 flex items-center justify-center">
-              <span className="text-primary font-bold text-xl tracking-tight">
-                {orgInfo.name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("")}
-              </span>
-            </div>
+            <CompanyLogo
+              name={orgInfo.name}
+              logoUrl={orgInfo.logoUrl}
+              className="w-16 h-16"
+              textClassName="text-xl"
+            />
           </div>
           <div>
             <h1 className="text-2xl font-bold">{orgInfo.name}</h1>
             <div className="text-muted-foreground text-sm mt-2 space-y-2 max-w-lg mx-auto text-center">
-              <p className="font-medium text-foreground">Cadastro de Artista</p>
+              <p className="font-medium text-foreground">Cadastro de Artistas</p>
               <p>Preencha seus dados para realização do cadastro artístico junto à {orgInfo.name}.</p>
               <p className="text-xs leading-relaxed">
                 As informações fornecidas neste formulário serão utilizadas exclusivamente para processos
@@ -1147,7 +1152,7 @@ export default function ArtistaSignupPublic() {
             <Separator />
 
             {/* Equipa dinâmica — mesma lógica do ArtistaFormModal */}
-            {["independente", "com_empresario", "gravadora"].includes(tipoPerfil) && (
+            {["independente", "com_empresario"].includes(tipoPerfil) && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <Label className="text-sm text-muted-foreground">Equipa / Contactos</Label>
@@ -1225,9 +1230,6 @@ export default function ArtistaSignupPublic() {
                               </SelectTrigger>
                               <SelectContent className="bg-background border border-border z-50">
                                 {CATEGORIAS_EQUIPE.map((c) => (
-                                  <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
-                                ))}
-                                {tipoPerfil === "gravadora" && CATEGORIAS_GRAVADORA_EXTRA.map((c) => (
                                   <SelectItem key={c.value} value={c.value}>{c.label}</SelectItem>
                                 ))}
                               </SelectContent>
@@ -1383,7 +1385,7 @@ export default function ArtistaSignupPublic() {
             </div>
 
             <div className="space-y-1.5">
-              <Label className="text-sm">Notas Internas / Mensagem para a gravadora</Label>
+              <Label className="text-sm">Notas Internas / Mensagem para a equipe</Label>
               <Textarea
                 placeholder="Notas internas, rider técnico, preferências, informações adicionais, disponibilidade, projetos em andamento…"
                 className="min-h-[120px]"
@@ -1455,7 +1457,7 @@ export default function ArtistaSignupPublic() {
         </div>
 
         <p className="text-xs text-center text-muted-foreground">
-          Ao enviar, suas informações entram diretamente no sistema da gravadora.{" "}
+          Ao enviar, suas informações entram diretamente no sistema da equipe responsável.{" "}
           Seus dados são tratados com privacidade.
         </p>
       </div>

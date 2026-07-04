@@ -45,10 +45,10 @@ export class PublicArtistApplicationDto {
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) artisticName!: string;
   @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) fullName!: string;
   @ApiProperty() @IsEmail() @MaxLength(255) email!: string;
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(50) phone!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80) state?: string;
-  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(120) musicalGenre!: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) musicalGenre?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) objective?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(4000) message?: string;
   @ApiPropertyOptional() @IsOptional() @IsObject() socialLinks?: Record<string, string>;
@@ -59,4 +59,9 @@ export class PublicArtistApplicationDto {
   @IsString()
   @MaxLength(255)
   companyWebsite?: string;
+}
+
+export class PublicArtistRegistrationDto extends PublicArtistApplicationDto {
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(100) workspaceSlug!: string;
+  @ApiProperty() @IsString() @IsNotEmpty() @MaxLength(255) artistName!: string;
 }

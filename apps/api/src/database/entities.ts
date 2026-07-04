@@ -92,6 +92,11 @@ export class TenantEntity {
   @Column({ type: 'jsonb', default: {} }) features: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) settings: Record<string, unknown>;
   @Column({ type: 'boolean', default: true }) active: boolean;
+  @Column({ type: 'boolean', default: true }) allow_public_registration: boolean;
+  @Column({ type: 'boolean', default: false }) public_registration_blocked: boolean;
+  @Column({ type: 'timestamptz', nullable: true }) public_registration_revoked_at: Date | null;
+  @Column({ type: 'integer', default: 0 }) public_registration_access_count: number;
+  @Column({ type: 'integer', default: 0 }) public_registration_conversion_count: number;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
