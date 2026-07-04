@@ -165,9 +165,9 @@ export default function Landing() {
                 Começar gratuitamente <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/cadastro">
+            <a href="mailto:contato@musicos360.com?subject=Solicitar%20link%20de%20cadastro%20de%20artista">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">Sou artista</Button>
-            </Link>
+            </a>
             <a href="#modulos">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">Ver demonstração</Button>
             </a>
@@ -380,11 +380,11 @@ export default function Landing() {
                 Começar gratuitamente <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <Link to="/cadastro">
+            <a href="mailto:contato@musicos360.com?subject=Solicitar%20link%20de%20cadastro%20de%20artista">
               <Button size="lg" variant="outline" className="w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto">
                 Cadastro de artista
               </Button>
-            </Link>
+            </a>
             <a href="mailto:contato@musicos360.com?subject=Solicitar%20demonstração%20-%20MUSIC%20OS%20360">
               <Button size="lg" variant="outline" className="w-full border-primary-foreground/30 bg-transparent text-primary-foreground hover:bg-primary-foreground/10 sm:w-auto">
                 Solicitar demonstração

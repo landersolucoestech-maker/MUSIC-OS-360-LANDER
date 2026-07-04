@@ -6,10 +6,24 @@ import { Input } from "@/shared/ui/input";
 import { Label } from "@/shared/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
 import { Badge } from "@/shared/ui/badge";
-import { Pencil, User, Mail, Phone, Shield, Smartphone, History, Save, X, Camera, Loader2 } from "lucide-react";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/shared/ui/select";
+import { Pencil, User, Mail, Phone, Shield, Smartphone, History, X, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useUserSettings } from "@/modules/settings/hooks/useUserSettings";
 import { useAuth } from "@/app/providers/AuthContext";
+import { cn } from "@/shared/lib/utils";
+
+const SETOR_OPTIONS = [
+  "Administrativo", "A&R", "Comercial", "Financeiro", "Jurídico",
+  "Marketing", "Produção Musical", "Tecnologia", "Recursos Humanos", "Outro",
+];
+const CARGO_OPTIONS = [
+  "Diretor(a)", "Gerente", "Coordenador(a)", "Analista",
+  "Assistente", "Produtor(a)", "Estagiário(a)", "Outro",
+];
+const NIVEL_ACESSO_OPTIONS = ["Administrador", "Gestor", "Editor", "Usuário"];
 
 function getInitials(name: string): string {
   return name
@@ -139,35 +153,8 @@ export default function Perfil() {
   const displayName = userSettings.full_name || formData.nome;
   const avatarUrl = userSettings.avatar_url;
 
-  const headerActions = isEditing ? (
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5" onClick={handleCancel}>
-        <X className="h-3.5 w-3.5" /> Cancelar
-      </Button>
-      <Button
-        size="sm"
-        className="h-8 text-xs gap-1.5 bg-success hover:bg-success/90"
-        onClick={handleSave}
-        disabled={saving}
-        data-testid="button-save-profile"
-      >
-        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-        Salvar
-      </Button>
-    </div>
-  ) : (
-    <Button
-      size="sm"
-      className="h-8 text-xs gap-1.5"
-      onClick={() => setIsEditing(true)}
-      data-testid="button-edit-profile"
-    >
-      <Pencil className="h-3.5 w-3.5" /> Editar Perfil
-    </Button>
-  );
-
   return (
-    <MainLayout title="Meu Perfil" description="Gerencie suas informações pessoais" actions={headerActions}>
+    <MainLayout title="Meu Perfil" description="Gerencie suas informações pessoais">
       <div className="space-y-6">
 
         {/* Profile Content */}
@@ -288,12 +275,26 @@ export default function Perfil() {
 
           {/* Personal Info Card */}
           <Card className="lg:col-span-2">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Informações Pessoais
-              </CardTitle>
-              <CardDescription>Seus dados cadastrados no sistema</CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between gap-4">
+              <div>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="h-5 w-5" />
+                  Informações Pessoais
+                </CardTitle>
+                <CardDescription>Seus dados cadastrados no sistema</CardDescription>
+              </div>
+              {!isEditing && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsEditing(true)}
+                  className="shrink-0"
+                  data-testid="button-edit-profile"
+                >
+                  <Pencil className="h-4 w-4 mr-2" />
+                  Editar Perfil
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 md:grid-cols-2">
@@ -328,29 +329,75 @@ export default function Perfil() {
                 </div>
                 <div className="space-y-2">
                   <Label>Setor</Label>
-                  <Input
-                    value={formData.setor}
-                    readOnly={!isEditing}
-                    className={!isEditing ? "bg-muted" : ""}
-                    onChange={(e) => setFormData({ ...formData, setor: e.target.value })}
-                    data-testid="input-setor"
-                  />
+                  <Select
+                    value={formData.setor || undefined}
+                    onValueChange={(v) => setFormData({ ...formData, setor: v })}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger
+                      className={cn("h-9", !isEditing && "bg-muted")}
+                      data-testid="select-setor"
+                    >
+                      <SelectValue placeholder="Selecione o setor" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SETOR_OPTIONS.map((s) => (
+                        <SelectItem key={s} value={s}>{s}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
                 <div className="space-y-2">
                   <Label>Cargo</Label>
-                  <Input
-                    value={formData.cargo}
-                    readOnly={!isEditing}
-                    className={!isEditing ? "bg-muted" : ""}
-                    onChange={(e) => setFormData({ ...formData, cargo: e.target.value })}
-                    data-testid="input-cargo"
-                  />
+                  <Select
+                    value={formData.cargo || undefined}
+                    onValueChange={(v) => setFormData({ ...formData, cargo: v })}
+                    disabled={!isEditing}
+                  >
+                    <SelectTrigger
+                      className={cn("h-9", !isEditing && "bg-muted")}
+                      data-testid="select-cargo"
+                    >
+                      <SelectValue placeholder="Selecione o cargo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CARGO_OPTIONS.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
               <div className="space-y-2">
                 <Label>Nível de Acesso</Label>
-                <Input value={formData.nivelAcesso} readOnly className="bg-muted" data-testid="input-nivel-acesso" />
+                <Select value={formData.nivelAcesso || undefined} disabled>
+                  <SelectTrigger className="h-9 bg-muted" data-testid="select-nivel-acesso">
+                    <SelectValue placeholder="—" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {NIVEL_ACESSO_OPTIONS.map((n) => (
+                      <SelectItem key={n} value={n}>{n}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
+
+              {isEditing && (
+                <div className="flex gap-2">
+                  <Button
+                    className="bg-primary hover:bg-primary/90"
+                    onClick={handleSave}
+                    disabled={saving}
+                    data-testid="button-save-profile"
+                  >
+                    {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                    Salvar
+                  </Button>
+                  <Button variant="outline" onClick={handleCancel} disabled={saving}>
+                    Cancelar
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>

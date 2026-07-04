@@ -55,6 +55,8 @@ import {
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/ui/avatar";
+import { CompanyLogo } from "@/shared/ui/company-logo";
+import { SystemLogo } from "@/shared/ui/system-logo";
 import {
   Collapsible,
   CollapsibleContent,
@@ -365,25 +367,12 @@ export function AppSidebar() {
             : "h-[64px] justify-between gap-2",
         )}
       >
-        <div className="flex items-center gap-2.5 min-w-0">
-          <div
-            className={cn(
-              "flex items-center justify-center rounded-md bg-primary text-primary-foreground",
-              "font-bold text-[12px] shrink-0 select-none h-7 w-7",
-            )}
-          >
-            M
-          </div>
-          {!collapsed && (
-            <div className="min-w-0">
-              <p className="text-[12px] font-bold leading-none tracking-tight text-sidebar-foreground">
-                MUSIC OS <span className="text-primary">360</span>
-              </p>
-              <p className="text-[9px] font-medium text-sidebar-foreground/40  tracking-[0.09em] leading-none mt-[3px]">
-                ERP OPERACIONAL MUSICAL
-              </p>
-            </div>
-          )}
+        <div className="flex min-w-0 items-center">
+          <SystemLogo
+            collapsed={collapsed}
+            subtitle="ERP OPERACIONAL MUSICAL"
+            markClassName={collapsed ? "h-7" : "h-8"}
+          />
         </div>
 
         {!collapsed && (
@@ -422,9 +411,12 @@ export function AppSidebar() {
               "cursor-default select-none",
             )}
           >
-            <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 border border-primary/15 shrink-0">
-              <Building2 className="h-3 w-3 text-primary" />
-            </div>
+            <CompanyLogo
+              name={tenant.name}
+              logoUrl={tenant.config.logoUrl}
+              className="h-6 w-6 rounded border-primary/15 shrink-0"
+              textClassName="text-[9px]"
+            />
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold text-sidebar-foreground leading-none truncate">
                 {tenant.name}

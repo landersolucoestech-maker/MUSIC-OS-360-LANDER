@@ -5,15 +5,27 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/shared/ui/button";
 import { Checkbox } from "@/shared/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/shared/ui/select";
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import {
   Loader2, Building2, User, Settings, Rocket,
   ArrowLeft, ArrowRight, Check, Eye, EyeOff,
   BarChart3, FileText, Music, DollarSign, Calendar, Globe,
-  ShieldCheck, Zap,
+  Zap, AlertCircle,
 } from "lucide-react";
 import { useAuth } from "@/app/providers/AuthContext";
+import { useQuery } from "@tanstack/react-query";
+import {
+  activationPlansService,
+  type ActivationPlan,
+} from "@/modules/auth/services/activation-plans.service";
 
 /* ── helpers ── */
 function slugify(val: string) {
@@ -60,7 +72,7 @@ const step1Schema = z.object({
   companyName:     z.string().min(2, "Nome da empresa obrigatório"),
   tradeName:       z.string().min(2, "Nome fantasia obrigatório"),
   cnpj:            z.string().min(14, "CNPJ inválido"),
-  segment:         z.enum(["gravadora", "editora", "distribuidora", "indie", "outro"]),
+  segment:         z.enum(["gravadora", "editora", "produtora", "escritorio"]),
   address:         z.string().min(5, "Endereço obrigatório"),
   city:            z.string().min(2, "Cidade obrigatória"),
   state:           z.string().length(2, "UF com 2 letras"),
@@ -91,7 +103,7 @@ const step3Schema = z.object({
 });
 
 const step4Schema = z.object({
-  plan:          z.enum(["trial_7", "trial_14"]),
+  activationPlanId: z.string().min(1, "Selecione um plano de ativação"),
   acceptTerms:   z.literal(true, { errorMap: () => ({ message: "Aceite os termos" }) }),
   acceptLgpd:    z.literal(true, { errorMap: () => ({ message: "Aceite a LGPD" }) }),
 });
@@ -111,11 +123,10 @@ const STEPS = [
 
 const STATES_BR = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
 const SEGMENTS  = [
-  { value: "gravadora",     label: "Gravadora" },
-  { value: "editora",       label: "Editora Musical" },
-  { value: "distribuidora", label: "Distribuidora" },
-  { value: "indie",         label: "Artista Independente" },
-  { value: "outro",         label: "Outro" },
+  { value: "gravadora",  label: "Gravadora" },
+  { value: "editora",    label: "Editora Musical" },
+  { value: "produtora",  label: "Produtora Musical" },
+  { value: "escritorio", label: "Escritório Artístico" },
 ];
 
 /* ── shared field ── */
@@ -147,7 +158,16 @@ export default function Register() {
   const form1 = useForm<Step1>({ resolver: zodResolver(step1Schema), defaultValues: { segment: "gravadora", state: "SP" } });
   const form2 = useForm<Step2>({ resolver: zodResolver(step2Schema) });
   const form3 = useForm<Step3>({ resolver: zodResolver(step3Schema) });
-  const form4 = useForm<Step4>({ resolver: zodResolver(step4Schema), defaultValues: { plan: "trial_14" } });
+  const form4 = useForm<Step4>({ resolver: zodResolver(step4Schema), defaultValues: { activationPlanId: "" } });
+
+  /* Planos de ativação — fonte dinâmica (admin é a origem da verdade). */
+  const plansQuery = useQuery({
+    queryKey: ["public-activation-plans"],
+    queryFn: () => activationPlansService.listPublicPlans(),
+    staleTime: 60_000,
+  });
+  const plans: ActivationPlan[] = plansQuery.data ?? [];
+  const noPlansAvailable = !plansQuery.isLoading && !plansQuery.isError && plans.length === 0;
 
   const pw = form2.watch("password") ?? "";
   const pwStrength = passwordStrength(pw);
@@ -186,7 +206,7 @@ export default function Register() {
         address: all.address,
         city: all.city,
         state: all.state,
-        requested_plan: all.plan,
+        activation_plan_id: all.activationPlanId,
         accepted_terms: all.acceptTerms,
         accepted_lgpd: all.acceptLgpd,
       });
@@ -209,7 +229,7 @@ export default function Register() {
     { icon: Music,      title: "Catálogo Musical",      desc: "ISRC, ISWC, fonogramas e gestão de shares" },
     { icon: FileText,   title: "Contratos Digitais",    desc: "Templates, assinatura eletrônica e alertas de vencimento" },
     { icon: Calendar,   title: "Agenda & Eventos",      desc: "Calendário de shows, produções e entregáveis" },
-    { icon: Globe,      title: "Distribuição",          desc: "Envio multicanal para Spotify, Apple Music e mais" },
+    { icon: Globe,      title: "Distribuição",          desc: "Envio multicanal para plataformas digitais atráves integração com as distribuidoras" },
   ];
 
   return (
@@ -225,11 +245,21 @@ export default function Register() {
               <ArrowLeft className="h-4 w-4" />
               Voltar ao login
             </Link>
-            <img
-              src="/lovable-uploads/a21a1ab1-df8a-4b7b-a1e4-0e36f63eff02.png"
-              alt="MUSIC OS 360"
-              className="h-10 w-10 object-contain"
-            />
+            <svg
+              viewBox="0 0 155 125"
+              className="h-10 w-auto text-primary"
+              fill="currentColor"
+              role="img"
+              aria-label="MUSIC OS 360"
+            >
+              <rect x="0" y="51" width="13" height="30" rx="6" />
+              <rect x="21" y="35" width="15" height="62" rx="7" />
+              <rect x="44" y="21" width="17" height="90" rx="8" />
+              <rect x="69" y="7" width="20" height="118" rx="10" />
+              <rect x="97" y="29" width="16" height="74" rx="8" />
+              <rect x="121" y="45" width="14" height="42" rx="7" />
+              <rect x="143" y="55" width="12" height="22" rx="6" />
+            </svg>
           </div>
 
           {/* Title */}
@@ -262,7 +292,7 @@ export default function Register() {
                       !done && !active ? "bg-muted border-border" : "",
                     )}>
                       {done
-                        ? <Check className="h-4 w-4 text-foreground" />
+                        ? <Check className="h-4 w-4 text-white" />
                         : <Icon className={cn("h-3.5 w-3.5", active ? "text-primary" : "text-muted-foreground")} />
                       }
                     </div>
@@ -306,9 +336,27 @@ export default function Register() {
                   />
                 </Field>
                 <Field label="Segmento" error={form1.formState.errors.segment?.message}>
-                  <select className={selectCls} {...form1.register("segment")} data-testid="select-segment">
-                    {SEGMENTS.map((s) => <option key={s.value} value={s.value} className="bg-gray-900">{s.label}</option>)}
-                  </select>
+                  <Controller
+                    control={form1.control}
+                    name="segment"
+                    render={({ field }) => (
+                      <Select value={field.value} onValueChange={field.onChange}>
+                        <SelectTrigger
+                          className="h-11 rounded-lg border-border bg-muted"
+                          data-testid="select-segment"
+                        >
+                          <SelectValue placeholder="Selecione o segmento" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {SEGMENTS.map((s) => (
+                            <SelectItem key={s.value} value={s.value}>
+                              {s.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
                 </Field>
               </div>
 
@@ -472,32 +520,70 @@ export default function Register() {
                 <h2 className="text-base font-semibold text-foreground">Plano & Ativação</h2>
               </div>
 
-              {/* Plan selector */}
-              <div className="grid grid-cols-2 gap-3">
-                {([
-                  { value: "trial_7",  label: "Trial 7 dias",  desc: "Ideal para avaliação rápida", icon: Zap },
-                  { value: "trial_14", label: "Trial 14 dias", desc: "Mais tempo para explorar",    icon: ShieldCheck },
-                ] as const).map((plan) => {
-                  const Icon = plan.icon;
-                  const isSelected = form4.watch("plan") === plan.value;
-                  return (
-                    <button
-                      key={plan.value}
-                      type="button"
-                      onClick={() => form4.setValue("plan", plan.value)}
-                      className={cn(
-                        "flex flex-col items-start gap-1 p-4 rounded-lg border text-left transition-all",
-                        isSelected
-                          ? "border-primary bg-primary/10"
-                          : "border-border bg-muted hover:border-border",
-                      )}
-                    >
-                      <Icon className={cn("h-5 w-5 mb-1", isSelected ? "text-primary" : "text-muted-foreground")} />
-                      <span className="text-sm font-semibold text-foreground">{plan.label}</span>
-                      <span className="text-[11px] text-muted-foreground">{plan.desc}</span>
-                    </button>
-                  );
-                })}
+              {/* Plan selector — fonte dinâmica (planos definidos pelo admin) */}
+              <div>
+                {plansQuery.isLoading ? (
+                  <div className="flex items-center justify-center gap-2 rounded-lg border border-border bg-muted py-8 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Carregando planos...
+                  </div>
+                ) : plansQuery.isError ? (
+                  <div className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>Não foi possível carregar os planos. Tente novamente em instantes.</span>
+                  </div>
+                ) : noPlansAvailable ? (
+                  <div
+                    className="flex items-start gap-2 rounded-lg border border-border bg-muted p-4 text-sm text-muted-foreground"
+                    data-testid="plans-empty"
+                  >
+                    <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                    <span>
+                      Nenhum plano de ativação está disponível no momento. Entre em contato com o suporte.
+                    </span>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    {plans.map((plan) => {
+                      const isSelected = form4.watch("activationPlanId") === plan.id;
+                      return (
+                        <button
+                          key={plan.id}
+                          type="button"
+                          onClick={() => form4.setValue("activationPlanId", plan.id, { shouldValidate: true })}
+                          data-testid={`plan-${plan.id}`}
+                          className={cn(
+                            "flex flex-col items-start gap-1 p-4 rounded-lg border text-left transition-all",
+                            isSelected
+                              ? "border-primary bg-primary/10"
+                              : "border-border bg-muted hover:border-border",
+                          )}
+                        >
+                          <Zap className={cn("h-5 w-5 mb-1", isSelected ? "text-primary" : "text-muted-foreground")} />
+                          <span className="text-sm font-semibold text-foreground">{plan.name}</span>
+                          <span className="text-[11px] text-muted-foreground">{plan.description}</span>
+                          {plan.trialDays ? (
+                            <span className="mt-1 text-[10px] font-medium text-primary">
+                              {plan.trialDays} dias de teste
+                            </span>
+                          ) : plan.price != null ? (
+                            <span className="mt-1 text-[10px] font-medium text-primary">
+                              {new Intl.NumberFormat("pt-BR", {
+                                style: "currency",
+                                currency: plan.currency ?? "BRL",
+                              }).format(plan.price)}
+                              {plan.period === "mensal" ? "/mês" : plan.period === "anual" ? "/ano" : ""}
+                            </span>
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                {form4.formState.errors.activationPlanId && (
+                  <p className="mt-2 text-[11px] text-red-400">
+                    {form4.formState.errors.activationPlanId.message}
+                  </p>
+                )}
               </div>
 
               {/* Terms */}
@@ -529,7 +615,13 @@ export default function Register() {
                 )}
               </div>
 
-              <StepActions step={step} setStep={setStep} isLoading={isLoading} isLastStep />
+              <StepActions
+                step={step}
+                setStep={setStep}
+                isLoading={isLoading}
+                isLastStep
+                submitDisabled={plansQuery.isLoading || plansQuery.isError || noPlansAvailable}
+              />
             </form>
           )}
 
@@ -539,8 +631,8 @@ export default function Register() {
       {/* ── RIGHT — marketing panel ── */}
       <div className="hidden lg:flex lg:w-1/2 flex-col justify-center border-l border-border bg-card px-12 py-16">
         <div className="mb-10">
-          <h2 className="text-2xl font-bold text-foreground mb-2">Tudo para sua música crescer</h2>
-          <p className="text-sm text-muted-foreground">Um sistema completo para gravadoras, editoras e distribuidoras.</p>
+          <h2 className="text-2xl font-bold text-foreground mb-2">Tudo para sua empresa crescer</h2>
+          <p className="text-sm text-muted-foreground">Um sistema completo para Gravadoras, Editoras, Produtoras, Escritórios Artísticos, Gestão de Carreira, Agências de Marketing Musical.</p>
         </div>
         <div className="grid grid-cols-2 gap-5">
           {benefits.map(({ icon: Icon, title, desc }) => (
@@ -563,12 +655,13 @@ export default function Register() {
 
 /* ── Step navigation actions ── */
 function StepActions({
-  step, setStep, isLoading, isLastStep = false,
+  step, setStep, isLoading, isLastStep = false, submitDisabled = false,
 }: {
   step: number;
   setStep: (s: number) => void;
   isLoading: boolean;
   isLastStep?: boolean;
+  submitDisabled?: boolean;
 }) {
   return (
     <div className="flex gap-3 mt-auto pt-4">
@@ -586,7 +679,7 @@ function StepActions({
       <Button
         type="submit"
         className="flex-1 bg-primary hover:bg-primary/90"
-        disabled={isLoading}
+        disabled={isLoading || submitDisabled}
       >
         {isLoading ? (
           <><Loader2 className="h-4 w-4 animate-spin mr-1" /> Criando</>

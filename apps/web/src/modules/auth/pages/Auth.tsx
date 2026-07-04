@@ -6,32 +6,33 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/app/providers/AuthContext";
 import { toast } from "sonner";
 import {
-  Loader2,
-  User,
-  Lock,
+  ArrowLeft,
+  BarChart3,
   Eye,
   EyeOff,
   Facebook,
-  Instagram,
-  MessageCircle,
   Globe,
+  Instagram,
+  Loader2,
+  Lock,
   Mail,
-  ArrowLeft,
-  BarChart2,
+  MessageCircle,
   ShieldCheck,
-  Users,
   TrendingUp,
+  User,
+  UsersRound,
 } from "lucide-react";
 import { authRateLimiter } from "@/shared/lib/security";
-import { MOCK_MODE } from "@/shared/lib/env";
-const refImg = "/auth-bg.png";
+import { AUTH_DISABLED, MOCK_MODE } from "@/shared/lib/env";
+import { Button } from "@/shared/ui/button";
 
 const loginSchema = z.object({
-  email: z.string().trim().email("Email inválido"),
+  email: z.string().trim().email("E-mail inválido"),
   password: z.string().min(1, "Senha é obrigatória"),
 });
+
 const forgotSchema = z.object({
-  email: z.string().trim().email("Email inválido"),
+  email: z.string().trim().email("E-mail inválido"),
 });
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -40,19 +41,46 @@ type Mode = "login" | "forgot";
 
 export default function Auth() {
   const { user, loading } = useAuth();
-  // Mock mode — sempre autenticado
-  if (MOCK_MODE) return <Navigate to="/" replace />;
-  // Sessão já existe (ex: reload com token válido) → vai direto para o app
+
+  if (MOCK_MODE || AUTH_DISABLED) return <AuthPage />;
   if (!loading && user) return <Navigate to="/" replace />;
+
   return <AuthPage />;
 }
 
-// ── Particle nebula (bottom-left cluster matching reference) ───────────────────
-function Particles() {
-  return null;
+function LogoMark() {
+  return (
+    <div className="inline-flex items-center gap-3 select-none">
+      <svg
+        viewBox="0 0 155 125"
+        className="h-12 w-auto shrink-0 text-primary"
+        fill="currentColor"
+        role="img"
+        aria-label="MUSIC OS 360"
+      >
+        <rect x="0" y="51" width="13" height="30" rx="6" />
+        <rect x="21" y="35" width="15" height="62" rx="7" />
+        <rect x="44" y="21" width="17" height="90" rx="8" />
+        <rect x="69" y="7" width="20" height="118" rx="10" />
+        <rect x="97" y="29" width="16" height="74" rx="8" />
+        <rect x="121" y="45" width="14" height="42" rx="7" />
+        <rect x="143" y="55" width="12" height="22" rx="6" />
+      </svg>
+      <span className="flex flex-col justify-center">
+        <span className="block text-2xl font-black leading-[1.15] tracking-[0.1em] text-foreground">MUSIC</span>
+        <span className="block text-2xl font-black leading-[1.15] tracking-[0.1em] text-primary">OS 360</span>
+      </span>
+    </div>
+  );
 }
 
-// ── Main Page ─────────────────────────────────────────────────────────────────
+const benefits = [
+  { icon: BarChart3, title: "Analytics", text: "Dados que geram estratégias." },
+  { icon: ShieldCheck, title: "Segurança", text: "Proteção total para suas informações." },
+  { icon: UsersRound, title: "Integração", text: "Conecte artistas, equipes e parceiros." },
+  { icon: TrendingUp, title: "Performance", text: "Acompanhe e impulsione resultados." },
+];
+
 function AuthPage() {
   const location = useLocation();
   const [mode, setMode] = useState<Mode>(
@@ -60,298 +88,82 @@ function AuthPage() {
   );
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", background: "#F5F6F8" }}>
-      {/* ══ LEFT PANEL ══ */}
-      <div
-        className="w-full lg:w-[44%]"
-        style={{
-          display: "flex",
-          flexDirection: "column",
-          position: "relative",
-          overflow: "hidden",
-          background: "#FFFFFF",
-        }}
-      >
-        <Particles />
-
-        <div
-          style={{
-            position: "relative",
-            zIndex: 10,
-            display: "flex",
-            flexDirection: "column",
-            height: "100%",
-            padding: "36px 52px",
-          }}
-        >
-          <div
-            style={{
-              flex: 1,
-              display: "flex",
-              flexDirection: "column",
-              justifyContent: "center",
-              gap: "0",
-            }}
-          >
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: "18px",
-                marginBottom: "20px",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  gap: "4px",
-                  height: "56px",
-                }}
-              >
-                {[20, 32, 44, 56, 44, 32, 20].map((h, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: "5px",
-                      height: `${h}px`,
-                      borderRadius: "3px",
-                      background: "#0F4C81",
-                    }}
-                  />
-                ))}
-              </div>
-              <div style={{ lineHeight: 1.05 }}>
-                <div
-                  style={{
-                    color: "#1F2937",
-                    fontWeight: 900,
-                    fontSize: "32px",
-                    letterSpacing: "2px",
-                  }}
-                >
-                  MUSIC
-                </div>
-                <div
-                  style={{
-                    color: "#0F4C81",
-                    fontWeight: 900,
-                    fontSize: "32px",
-                    letterSpacing: "2px",
-                  }}
-                >
-                  OS 360
-                </div>
-              </div>
-            </div>
-
-            <div style={{ textAlign: "center", marginBottom: "28px" }}>
-              <p
-                style={{
-                  color: "#1F2937",
-                  fontWeight: 700,
-                  fontSize: "15px",
-                  marginBottom: "6px",
-                }}
-              >
-                Sistema de Gestão Musical
-              </p>
-              <p
-                style={{ color: "#6b7280", fontSize: "13px", lineHeight: 1.65 }}
-              >
-                Plataforma completa para gestão operacional
-                <br />
-                da indústria musical.
-              </p>
-            </div>
-
-            <div>
-              {mode === "login" && (
-                <LoginForm onForgot={() => setMode("forgot")} />
-              )}
-              {mode === "forgot" && (
-                <ForgotForm onBack={() => setMode("login")} />
-              )}
-            </div>
+    <main className="auth-layout grid min-h-screen overflow-x-hidden bg-background text-foreground lg:grid-cols-[44%_56%]">
+      {/* Painel esquerdo — login (identidade visual do sistema) */}
+      <section className="auth-login-left relative flex min-h-screen items-center justify-center overflow-hidden px-5 py-8 sm:px-8">
+        <div className="relative z-10 flex w-full max-w-[420px] flex-col">
+          <div className="mb-6 flex justify-center">
+            <LogoMark />
           </div>
 
-          <div style={{ paddingTop: "20px" }}>
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "center",
-                gap: "28px",
-                marginBottom: "12px",
-              }}
-            >
-              {[Facebook, Instagram, MessageCircle, Globe].map((Icon, i) => (
+          <div className="mb-6 text-center">
+            <p className="text-base font-semibold text-foreground">
+              Sistema de Gestão Musical
+            </p>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">
+              Plataforma completa para gestão operacional da indústria musical.
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-transparent p-6 sm:p-7">
+            {mode === "login" && <LoginForm onForgot={() => setMode("forgot")} />}
+            {mode === "forgot" && <ForgotForm onBack={() => setMode("login")} />}
+          </div>
+
+          <footer className="pt-7">
+            <div className="mb-3 flex justify-center gap-7">
+              {[Facebook, Instagram, MessageCircle, Globe].map((Icon, index) => (
                 <a
-                  key={i}
+                  key={index}
                   href="#"
-                  style={{ color: "#4b5563", transition: "color .2s" }}
-                  onMouseEnter={(e) =>
-                    (e.currentTarget.style.color = "#0F4C81")
-                  }
-                  onMouseLeave={(e) =>
-                    (e.currentTarget.style.color = "#4b5563")
-                  }
+                  aria-label="Canal social MUSIC OS 360"
+                  className="text-muted-foreground transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
                 >
                   <Icon size={20} />
                 </a>
               ))}
             </div>
-            <p
-              style={{
-                textAlign: "center",
-                fontSize: "11px",
-                color: "#374151",
-              }}
-            >
+            <p className="text-center text-[11px] text-muted-foreground">
               © MUSIC OS 360. Todos os direitos reservados.
             </p>
-          </div>
+          </footer>
         </div>
-      </div>
+      </section>
 
-      {/* ══ RIGHT PANEL ══ */}
-      <div
-        className="hidden lg:block lg:w-[56%]"
-        style={{
-          position: "relative",
-          overflow: "hidden",
-          background: "#F5F6F8",
-        }}
+      {/* Painel direito — foto do card 3D + conteudo institucional (HTML responsivo) */}
+      <section
+        className="auth-hero-right relative hidden min-h-screen flex-col justify-end overflow-hidden bg-[#0b0a09] bg-[length:100%_auto] bg-top bg-no-repeat lg:flex"
+        style={{ backgroundImage: "url('/auth-card.png')" }}
+        aria-label="MUSIC OS 360"
       >
-        <img
-          src={refImg}
-          alt=""
-          aria-hidden="true"
-          style={{
-            position: "absolute",
-            top: 0,
-            right: 0,
-            height: "100%",
-            width: "auto",
-            objectFit: "cover",
-            objectPosition: "right top",
-            userSelect: "none",
-            pointerEvents: "none",
-          }}
-        />
+        {/* gradiente: funde a base da foto na cor do painel */}
+        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0b0a09] via-[#0b0a09]/85 via-30% to-transparent to-55%" />
 
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            height: "68%",
-            background: "rgba(245,246,248,0.82)",
-            zIndex: 1,
-          }}
-        />
-
-        <div
-          style={{
-            position: "absolute",
-            bottom: 0,
-            left: 0,
-            right: 0,
-            padding: "0 56px 44px",
-            zIndex: 2,
-          }}
-        >
-          <h2
-            style={{
-              color: "#fff",
-              fontSize: "26px",
-              fontWeight: 800,
-              marginBottom: "8px",
-            }}
-          >
+        <div className="relative z-10 px-8 pb-12 xl:px-14 xl:pb-16">
+          <h2 className="text-3xl font-bold leading-tight text-white xl:text-4xl">
             Gestão. Controle. Crescimento.
           </h2>
-          <p
-            style={{
-              color: "#6b7280",
-              fontSize: "14px",
-              marginBottom: "32px",
-              lineHeight: 1.6,
-            }}
-          >
-            Tudo o que você precisa para
-            <br />
-            levar sua música mais longe.
+          <p className="mt-3 max-w-md text-base leading-7 text-slate-300">
+            Tudo o que você precisa para levar sua empresa mais longe.
           </p>
-          <div
-            style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}
-          >
-            {[
-              {
-                icon: BarChart2,
-                label: "ANALYTICS",
-                desc: "Dados que geram estratégias.",
-              },
-              {
-                icon: ShieldCheck,
-                label: "SEGURANÇA",
-                desc: "Proteção total para suas informações.",
-              },
-              {
-                icon: Users,
-                label: "INTEGRAÇÃO",
-                desc: "Conecte artistas, equipes e parceiros.",
-              },
-              {
-                icon: TrendingUp,
-                label: "PERFORMANCE",
-                desc: "Acompanhe e impulsione resultados.",
-              },
-            ].map(({ icon: Icon, label, desc }, idx) => (
-              <div
-                key={label}
-                style={{
-                  textAlign: "center",
-                  padding: "0 12px",
-                  borderLeft:
-                    idx > 0 ? "1px solid rgba(255,255,255,0.08)" : "none",
-                }}
-              >
-                <Icon
-                  size={26}
-                  style={{ color: "#60a5fa", margin: "0 auto 10px" }}
-                />
-                <p
-                  style={{
-                    color: "#fff",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    letterSpacing: "1px",
-                    marginBottom: "5px",
-                  }}
-                >
-                  {label}
+
+          <div className="mt-8 grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
+            {benefits.map(({ icon: Icon, title, text }) => (
+              <div key={title} className="border-l border-white/15 pl-4">
+                <Icon className="mb-3 h-6 w-6 text-primary" />
+                <p className="text-sm font-bold uppercase tracking-[0.12em] text-white">
+                  {title}
                 </p>
-                <p
-                  style={{
-                    color: "#6b7280",
-                    fontSize: "11px",
-                    lineHeight: 1.4,
-                  }}
-                >
-                  {desc}
-                </p>
+                <p className="mt-2 text-xs leading-5 text-slate-300">{text}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }
 
-// ── AuthInput ─────────────────────────────────────────────────────────────────
 interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   icon: React.ElementType;
   error?: string;
@@ -362,72 +174,38 @@ interface AuthInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
 
 const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
   function AuthInput(
-    { icon: Icon, error, showToggle, onToggle, showPass, type, ...rest },
+    { icon: Icon, error, showToggle, onToggle, showPass, type, placeholder, ...rest },
     ref,
   ) {
     return (
       <div>
-        <div
-          style={{
-            position: "relative",
-            display: "flex",
-            alignItems: "center",
-          }}
-        >
+        <div className="relative flex items-center">
           <Icon
-            size={15}
-            style={{
-              position: "absolute",
-              left: "15px",
-              color: "#6b7280",
-              pointerEvents: "none",
-            }}
+            size={16}
+            className="pointer-events-none absolute left-3 text-muted-foreground"
+            aria-hidden="true"
           />
           <input
             ref={ref}
             type={showToggle ? (showPass ? "text" : "password") : type}
-            style={{
-              width: "100%",
-              height: "50px",
-              borderRadius: "10px",
-              border: "1px solid #374151",
-              background: "transparent",
-              color: "#fff",
-              fontSize: "14px",
-              paddingLeft: "42px",
-              paddingRight: showToggle ? "42px" : "14px",
-              outline: "none",
-            }}
-            onFocus={(e) => (e.currentTarget.style.borderColor = "#3b82f6")}
-            onBlur={(e) => (e.currentTarget.style.borderColor = "#374151")}
+            placeholder={placeholder}
+            aria-label={typeof placeholder === "string" ? placeholder : undefined}
+            className="h-11 w-full rounded-md border border-input bg-card pl-10 pr-10 text-sm text-foreground outline-none transition-colors duration-150 placeholder:text-muted-foreground/70 hover:border-border focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             {...rest}
           />
           {showToggle && (
             <button
               type="button"
               onClick={onToggle}
-              style={{
-                position: "absolute",
-                right: "12px",
-                color: "#6b7280",
-                background: "none",
-                border: "none",
-                cursor: "pointer",
-              }}
+              aria-label={showPass ? "Ocultar senha" : "Mostrar senha"}
+              className="absolute right-2.5 rounded p-1 text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
             >
-              {showPass ? <EyeOff size={15} /> : <Eye size={15} />}
+              {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
           )}
         </div>
         {error && (
-          <p
-            style={{
-              color: "#f87171",
-              fontSize: "11px",
-              marginTop: "4px",
-              paddingLeft: "4px",
-            }}
-          >
+          <p className="mt-1.5 pl-1 text-xs text-destructive">
             {error}
           </p>
         )}
@@ -436,7 +214,6 @@ const AuthInput = forwardRef<HTMLInputElement, AuthInputProps>(
   },
 );
 
-// ── LoginForm ─────────────────────────────────────────────────────────────────
 function LoginForm({ onForgot }: { onForgot: () => void }) {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -460,6 +237,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       toast.error(`Conta bloqueada. Tente em ${min} minutos.`);
       return;
     }
+
     setLoading(true);
     try {
       const { error } = await signIn(data.email, data.password);
@@ -470,7 +248,6 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       } else {
         authRateLimiter.reset(data.email);
         toast.success("Bem-vindo ao MUSIC OS 360!");
-        // Navegação imperativa — não depende do ciclo reativo do onAuthStateChange
         navigate("/", { replace: true });
       }
     } catch (err: unknown) {
@@ -483,14 +260,11 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: "flex", flexDirection: "column", gap: "14px" }}
-    >
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5">
       <AuthInput
         icon={User}
         type="email"
-        placeholder="Digite o Usuário"
+        placeholder="Digite seu e-mail"
         autoComplete="email"
         error={errors.email?.message}
         {...register("email")}
@@ -502,78 +276,37 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
         autoComplete="current-password"
         showToggle
         showPass={showPass}
-        onToggle={() => setShowPass((p) => !p)}
+        onToggle={() => setShowPass((current) => !current)}
         error={errors.password?.message}
         {...register("password")}
       />
 
-      <button
+      <Button
         type="submit"
         disabled={loading}
-        style={{
-          width: "100%",
-          height: "50px",
-          borderRadius: "10px",
-          background: "#2563eb",
-          color: "#fff",
-          fontWeight: 800,
-          fontSize: "13px",
-          letterSpacing: "2px",
-          border: "none",
-          cursor: loading ? "not-allowed" : "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-          opacity: loading ? 0.8 : 1,
-          marginTop: "2px",
-        }}
-        onMouseEnter={(e) => {
-          if (!loading)
-            (e.currentTarget as HTMLButtonElement).style.background = "#1d4ed8";
-        }}
-        onMouseLeave={(e) => {
-          if (!loading)
-            (e.currentTarget as HTMLButtonElement).style.background = "#2563eb";
-        }}
+        className="mt-1 h-11 w-full text-sm font-semibold uppercase tracking-[0.08em]"
       >
         {loading ? (
           <>
-            <Loader2 size={15} className="animate-spin" />
-            ACESSANDO...
+            <Loader2 size={16} className="animate-spin" />
+            Acessando...
           </>
         ) : (
-          "ACESSAR O SISTEMA"
+          "Acessar o sistema"
         )}
-      </button>
+      </Button>
 
-      <div style={{ textAlign: "center", marginTop: "4px" }}>
+      <div className="pt-1 text-center">
         <button
           type="button"
           onClick={onForgot}
-          style={{
-            background: "none",
-            border: "none",
-            cursor: "pointer",
-            color: "#9ca3af",
-            fontSize: "13px",
-            textDecoration: "underline",
-            textUnderlineOffset: "3px",
-            display: "block",
-            width: "100%",
-            marginBottom: "8px",
-          }}
+          className="w-full rounded text-sm text-muted-foreground underline underline-offset-4 transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Esqueci minha senha
         </button>
         <Link
           to="/register"
-          style={{
-            color: "#3b82f6",
-            fontSize: "13px",
-            textDecoration: "none",
-            display: "block",
-          }}
+          className="mt-3 block rounded text-sm font-medium text-primary transition-colors hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
         >
           Criar nova conta
         </Link>
@@ -582,7 +315,6 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   );
 }
 
-// ── ForgotForm ────────────────────────────────────────────────────────────────
 function ForgotForm({ onBack }: { onBack: () => void }) {
   const [loading, setLoading] = useState(false);
   const { resetPassword } = useAuth();
@@ -611,72 +343,44 @@ function ForgotForm({ onBack }: { onBack: () => void }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      style={{ display: "flex", flexDirection: "column", gap: "14px" }}
-    >
-      <div style={{ marginBottom: "4px" }}>
-        <p style={{ color: "#fff", fontWeight: 700, fontSize: "15px" }}>
-          Recuperar Senha
-        </p>
-        <p style={{ color: "#6b7280", fontSize: "13px", marginTop: "6px" }}>
-          Digite seu email para receber um link de redefinição.
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3.5">
+      <div className="mb-1">
+        <h2 className="text-base font-semibold text-foreground">Recuperar senha</h2>
+        <p className="mt-1.5 text-sm leading-6 text-muted-foreground">
+          Digite seu e-mail para receber um link de redefinição.
         </p>
       </div>
+
       <AuthInput
         icon={Mail}
         type="email"
-        placeholder="Seu email"
+        placeholder="Seu e-mail"
         autoComplete="email"
         error={errors.email?.message}
         {...register("email")}
       />
-      <button
+
+      <Button
         type="submit"
         disabled={loading}
-        style={{
-          width: "100%",
-          height: "50px",
-          borderRadius: "10px",
-          background: "#2563eb",
-          color: "#fff",
-          fontWeight: 800,
-          fontSize: "13px",
-          letterSpacing: "2px",
-          border: "none",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "8px",
-        }}
+        className="mt-1 h-11 w-full text-sm font-semibold uppercase tracking-[0.08em]"
       >
         {loading ? (
           <>
-            <Loader2 size={15} className="animate-spin" />
-            ENVIANDO...
+            <Loader2 size={16} className="animate-spin" />
+            Enviando...
           </>
         ) : (
-          "ENVIAR LINK"
+          "Enviar link"
         )}
-      </button>
+      </Button>
+
       <button
         type="button"
         onClick={onBack}
-        style={{
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          color: "#6b7280",
-          fontSize: "13px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          gap: "4px",
-          width: "100%",
-        }}
+        className="flex w-full items-center justify-center gap-1.5 rounded text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background"
       >
-        <ArrowLeft size={14} /> Voltar ao Login
+        <ArrowLeft size={14} /> Voltar ao login
       </button>
     </form>
   );
