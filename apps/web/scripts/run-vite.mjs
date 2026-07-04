@@ -2,11 +2,15 @@ import { build, createServer, preview } from "vite";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import config from "../vite.config.mjs";
+import { assertWebSupabaseEnv } from "./assert-supabase-env.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
 const command = process.argv[2] ?? "dev";
 const port = Number(process.env.PORT ?? process.env.VITE_PORT ?? 5000);
+
+// Guard de ambiente: falha antes de subir/buildar se o Supabase ref for inválido.
+assertWebSupabaseEnv(command === "dev" ? "development" : "production", webRoot);
 
 const inlineConfig = {
   ...config,

@@ -86,8 +86,32 @@ export const ENV_MODE: string = (import.meta.env.MODE as string) ?? "development
  *
  * Returns true if env is valid, false if the app should not render.
  */
+/**
+ * Refs Supabase banidos de qualquer runtime (branch preview sem tabelas públicas).
+ * Espelha apps/api/src/core/config/env.schema.ts e scripts/env-check.mjs.
+ */
+const SUPABASE_REF_DENYLIST: readonly string[] = ["mkyvkciwyhfawmvluugb"];
+
 export function validateFrontendEnv(): boolean {
   const isProd = import.meta.env.PROD === true;
+
+  const supabaseUrl = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? "";
+  const bannedRef = SUPABASE_REF_DENYLIST.find((ref) => supabaseUrl.includes(ref));
+  if (bannedRef) {
+    console.error(
+      `[MUSIC OS 360] ❌ VITE_SUPABASE_URL aponta para o ref Supabase banido "${bannedRef}" ` +
+      "(branch preview sem tabelas públicas). O app não pode iniciar com este ambiente.",
+    );
+    const root = document.getElementById("root");
+    if (root) {
+      root.innerHTML =
+        `<div style="font-family:system-ui,sans-serif;padding:2rem;max-width:40rem;margin:auto">` +
+        `<h2 style="color:#dc2626">Configuration Error</h2>` +
+        `<p>The configured Supabase environment is not allowed. Contact your system administrator.</p>` +
+        `</div>`;
+    }
+    return false;
+  }
 
   const required: Array<{ key: string; value: string | undefined; label: string }> = [
     {

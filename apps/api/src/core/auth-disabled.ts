@@ -23,24 +23,34 @@ if (AUTH_DISABLED) {
   );
 }
 
+// Tenant/org usados pelo bypass. Sobrescritíveis via env (DEV_TENANT_ID /
+// DEV_ORG_ID) para apontar o dev local a um tenant COM dados reais (ex.: o
+// tenant de seed/demo). Sem override, mantém o sentinela histórico — um
+// workspace vazio, sem linhas no banco. Honrados apenas fora de produção,
+// pelas mesmas condições de AUTH_DISABLED acima.
+const DEV_TENANT_ID =
+  process.env.DEV_TENANT_ID ?? '00000000-0000-4000-8000-000000000001';
+const DEV_ORG_ID =
+  process.env.DEV_ORG_ID ?? '00000000-0000-4000-8000-000000000001';
+
 export const DEV_AUTH = {
   userId: "dev-auth-disabled-user",
   sessionId: "dev-auth-disabled-session",
-  orgId: "00000000-0000-4000-8000-000000000001",
+  orgId: DEV_ORG_ID,
   orgRole: "owner",
   claims: {
     sub: "dev-auth-disabled-user",
     app_metadata: {
-      org_id: "00000000-0000-4000-8000-000000000001",
+      org_id: DEV_ORG_ID,
       role: "owner",
     },
   },
 };
 
 export const DEV_TENANT = {
-  id: "00000000-0000-4000-8000-000000000001",
-  org_id: "00000000-0000-4000-8000-000000000001",
-  external_auth_org_id: "00000000-0000-4000-8000-000000000001",
+  id: DEV_TENANT_ID,
+  org_id: DEV_ORG_ID,
+  external_auth_org_id: DEV_ORG_ID,
   name: "Auth Disabled Workspace",
   slug: "auth-disabled",
   active: true,
