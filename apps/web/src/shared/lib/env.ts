@@ -13,15 +13,13 @@
  *
  */
 
-// Auth bypass is a LOCAL-DEV-ONLY convenience and must NEVER be active in a
-// production build. Gating on `import.meta.env.DEV` makes production fail closed
-// (real Supabase/JWT auth enforced) regardless of any env var an attacker or a
-// misconfigured deploy might set. In dev it stays enabled by default to preserve
-// the existing mock workflow; set VITE_AUTH_DISABLED=false to exercise real auth
-// locally. There is intentionally no way to enable this in a prod bundle.
+// Auth bypass is an explicit LOCAL-DEV-ONLY convenience and must NEVER be active
+// in a production build. Set VITE_AUTH_DISABLED=true in the web app and
+// AUTH_DISABLED=true in the API to bypass auth temporarily during development.
+// Set the flags to false or remove them to restore the original auth flow.
 export const AUTH_DISABLED: boolean =
   import.meta.env.DEV === true &&
-  import.meta.env.VITE_AUTH_DISABLED !== "false";
+  import.meta.env.VITE_AUTH_DISABLED === "true";
 
 export const MOCK_MODE: boolean =
   !import.meta.env.PROD &&
