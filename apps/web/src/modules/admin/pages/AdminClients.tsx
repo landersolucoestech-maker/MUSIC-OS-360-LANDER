@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Badge } from "@/shared/ui/badge";
@@ -11,14 +13,15 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/shared/ui/select";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle,
+  Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle,
 } from "@/shared/ui/dialog";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
 import { cn } from "@/shared/lib/utils";
-import { ADMIN_TENANTS as MOCK_TENANTS, ADMIN_SUBSCRIPTIONS as MOCK_SUBSCRIPTIONS } from "../data/admin-source";
+import { adminBillingService } from "../services/admin-billing.service";
+import { adminTenantsService } from "../services/admin-tenants.service";
 import type { AdminTenant, TenantStatus, PlanTier } from "../types";
 import {
   Building2, Search, Users, DollarSign,
@@ -29,7 +32,7 @@ import {
 const STATUS_STYLE: Record<TenantStatus, string> = {
   active:    "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   suspended: "text-red-400 bg-red-500/10 border-red-500/20",
-  trial:     "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  trial:     "text-primary bg-primary/10 border-primary/20",
   cancelled: "text-muted-foreground bg-muted border-border",
   pending:   "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
   past_due:  "text-orange-400 bg-orange-500/10 border-orange-500/20",
@@ -40,8 +43,9 @@ const STATUS_LABEL: Record<TenantStatus, string> = {
 };
 const PLAN_COLOR: Record<PlanTier, string> = {
   starter:    "text-muted-foreground",
-  growth:     "text-blue-400",
+  growth:     "text-primary",
   pro:        "text-primary",
+  professional: "text-primary",
   enterprise: "text-amber-400",
 };
 
@@ -54,12 +58,12 @@ function fmtDate(iso: string) {
 }
 
 function StorageBar({ used, limit }: { used: number; limit: number }) {
-  const pct = Math.min((used / limit) * 100, 100);
+  const pct = limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
   return (
     <div className="flex items-center gap-1.5">
       <div className="h-1 w-16 rounded-full bg-muted overflow-hidden">
         <div
-          className={cn("h-full rounded-full transition-all", pct > 80 ? "bg-red-500" : pct > 60 ? "bg-yellow-500" : "bg-blue-500")}
+          className={cn("h-full rounded-full transition-all", pct > 80 ? "bg-red-500" : pct > 60 ? "bg-yellow-500" : "bg-primary")}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -70,15 +74,29 @@ function StorageBar({ used, limit }: { used: number; limit: number }) {
 
 const CYCLE_LABEL: Record<string, string> = { monthly: "Mensal", annual: "Anual" };
 
-/* index subscriptions by tenant_id for O(1) lookup */
-const subByTenant = Object.fromEntries(MOCK_SUBSCRIPTIONS.map(s => [s.tenant_id, s]));
-
 export default function AdminClients() {
-  const [tenants, setTenants] = useState(MOCK_TENANTS);
+  const queryClient = useQueryClient();
   const [search, setSearch]         = useState("");
   const [statusFilter, setStatus]   = useState("all");
   const [planFilter, setPlan]       = useState("all");
   const [selected, setSelected]     = useState<AdminTenant | null>(null);
+  const [editing, setEditing]       = useState<AdminTenant | null>(null);
+
+  const tenantsQuery = useQuery({
+    queryKey: ["admin", "tenants"],
+    queryFn: adminTenantsService.list,
+  });
+
+  const subscriptionsQuery = useQuery({
+    queryKey: ["admin", "subscriptions"],
+    queryFn: adminBillingService.listSubscriptions,
+  });
+
+  const tenants = tenantsQuery.data ?? [];
+  const subByTenant = useMemo(
+    () => Object.fromEntries((subscriptionsQuery.data ?? []).map((s) => [s.tenant_id, s])),
+    [subscriptionsQuery.data],
+  );
 
   const filtered = tenants.filter((t) => {
     if (statusFilter !== "all" && t.status !== statusFilter) return false;
@@ -92,10 +110,31 @@ export default function AdminClients() {
 
   const { page, pageSize, total, pageItems, setPage, setPageSize } = usePagination(filtered, 10);
 
-  function toggleStatus(id: string) {
-    setTenants(prev => prev.map(t =>
-      t.id === id ? { ...t, status: t.status === "active" ? "suspended" : "active" } : t
-    ));
+  const saveTenantMutation = useMutation({
+    mutationFn: (tenant: AdminTenant) => adminTenantsService.update(tenant.id, {
+      name: tenant.name,
+      owner_email: tenant.owner_email,
+      slug: tenant.slug,
+      country: tenant.country,
+      plan: tenant.plan,
+      status: tenant.status,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
+      toast.success("Cliente atualizado");
+      setEditing(null);
+    },
+    onError: (error) => {
+      toast.error("Nao foi possivel atualizar o cliente", {
+        description: error instanceof Error ? error.message : "Verifique permissao e API.",
+      });
+    },
+  });
+
+  function saveEditing() {
+    if (!editing) return;
+    saveTenantMutation.mutate(editing);
   }
 
   const stats = {
@@ -104,6 +143,9 @@ export default function AdminClients() {
     susp:   tenants.filter(t => t.status === "suspended").length,
     mrr:    tenants.reduce((a, t) => a + t.mrr, 0),
   };
+
+  const isLoading = tenantsQuery.isLoading || subscriptionsQuery.isLoading;
+  const error = tenantsQuery.error ?? subscriptionsQuery.error;
 
   return (
     <AdminLayout>
@@ -119,7 +161,7 @@ export default function AdminClients() {
         <div className="grid grid-cols-4 gap-4">
           {[
             { label: "Tenants Ativos",  value: fmt(stats.active), icon: Building2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-            { label: "Em Trial",        value: fmt(stats.trial),  icon: RefreshCw,  color: "text-blue-400",    bg: "bg-blue-500/10" },
+            { label: "Em Trial",        value: fmt(stats.trial),  icon: RefreshCw,  color: "text-primary",    bg: "bg-primary/10" },
             { label: "Suspensos",       value: fmt(stats.susp),   icon: PowerOff,   color: "text-red-400",     bg: "bg-red-500/10" },
             { label: "MRR Total",       value: fmtBRL(stats.mrr), icon: DollarSign, color: "text-muted-foreground",    bg: "bg-muted" },
           ].map(({ label, value, icon: Icon, color, bg }) => (
@@ -165,6 +207,7 @@ export default function AdminClients() {
               <SelectItem value="starter">Starter</SelectItem>
               <SelectItem value="growth">Growth</SelectItem>
               <SelectItem value="pro">Pro</SelectItem>
+              <SelectItem value="professional">Professional</SelectItem>
               <SelectItem value="enterprise">Enterprise</SelectItem>
             </SelectContent>
           </Select>
@@ -176,7 +219,7 @@ export default function AdminClients() {
             title="Lista de Clientes"
             count={filtered.length}
             description="Acompanhe tenants, planos, status, cobrança e uso da plataforma"
-            className="px-4 pt-4"
+            className="p-4"
           />
           <Table>
             <TableHeader>
@@ -189,6 +232,27 @@ export default function AdminClients() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {isLoading && (
+                <TableRow>
+                  <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
+                    Carregando clientes reais...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && error && (
+                <TableRow>
+                  <TableCell colSpan={11} className="py-10 text-center text-sm text-red-300">
+                    Nao foi possivel carregar clientes: {error instanceof Error ? error.message : "erro desconhecido"}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!isLoading && !error && pageItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={11} className="py-10 text-center text-sm text-muted-foreground">
+                    Nenhum cliente encontrado na API.
+                  </TableCell>
+                </TableRow>
+              )}
               {pageItems.map((t) => {
                 const sub = subByTenant[t.id];
                 return (
@@ -273,11 +337,12 @@ export default function AdminClients() {
                             onClick={() => setSelected(t)}
                             data-testid={`view-${t.id}`}
                           >
-                            <Eye className="h-3.5 w-3.5 text-blue-400" />
+                            <Eye className="h-3.5 w-3.5 text-primary" />
                             Ver
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
+                            onClick={() => setEditing(t)}
                             data-testid={`edit-${t.id}`}
                           >
                             <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
@@ -286,10 +351,11 @@ export default function AdminClients() {
                           <DropdownMenuSeparator className="bg-muted" />
                           <DropdownMenuItem
                             className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"
+                            onClick={() => setEditing({ ...t, status: t.status === "suspended" ? "active" : "suspended" })}
                             data-testid={`delete-${t.id}`}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
-                            Excluir
+                            {t.status === "suspended" ? "Preparar reativacao" : "Preparar suspensao"}
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -315,7 +381,7 @@ export default function AdminClients() {
         <DialogContent className="sm:max-w-lg bg-card border-border">
           <DialogHeader>
             <DialogTitle className="text-foreground flex items-center gap-2">
-              <Building2 className="h-4.5 w-4.5 text-blue-400" />
+              <Building2 className="h-4.5 w-4.5 text-primary" />
               {selected?.name}
             </DialogTitle>
           </DialogHeader>
@@ -343,7 +409,7 @@ export default function AdminClients() {
                 <Button size="sm" variant="outline" className="flex-1 gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => setSelected(null)}>
                   <ArrowUpCircle className="h-3.5 w-3.5" /> Alterar Plano
                 </Button>
-                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => { toggleStatus(selected.id); setSelected(null); }}>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs border-border text-muted-foreground hover:text-foreground" onClick={() => { setEditing(selected); setSelected(null); }}>
                   <MoreHorizontal className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -351,7 +417,106 @@ export default function AdminClients() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Edit modal */}
+      <Dialog open={!!editing} onOpenChange={() => setEditing(null)}>
+        <DialogContent className="sm:max-w-lg bg-card border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground flex items-center gap-2">
+              <Pencil className="h-4.5 w-4.5 text-primary" />
+              Editar cliente
+            </DialogTitle>
+          </DialogHeader>
+          {editing && (
+            <div className="space-y-4 pt-2">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="space-y-1.5 sm:col-span-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">Nome do tenant</p>
+                  <Input
+                    value={editing.name}
+                    onChange={(e) => setEditing({ ...editing, name: e.target.value })}
+                    className="h-9 text-xs bg-muted border-border"
+                    data-testid="input-edit-tenant-name"
+                  />
+                </div>
+                <div className="space-y-1.5 sm:col-span-2">
+                  <p className="text-[11px] font-medium text-muted-foreground">Email do responsável</p>
+                  <Input
+                    value={editing.owner_email}
+                    onChange={(e) => setEditing({ ...editing, owner_email: e.target.value })}
+                    className="h-9 text-xs bg-muted border-border"
+                    data-testid="input-edit-tenant-email"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium text-muted-foreground">Slug</p>
+                  <Input
+                    value={editing.slug}
+                    onChange={(e) => setEditing({ ...editing, slug: e.target.value })}
+                    className="h-9 text-xs bg-muted border-border"
+                    data-testid="input-edit-tenant-slug"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium text-muted-foreground">País</p>
+                  <Input
+                    value={editing.country}
+                    onChange={(e) => setEditing({ ...editing, country: e.target.value })}
+                    className="h-9 text-xs bg-muted border-border"
+                    data-testid="input-edit-tenant-country"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium text-muted-foreground">Plano</p>
+                  <Select
+                    value={editing.plan}
+                    onValueChange={(value) => setEditing({ ...editing, plan: value as PlanTier })}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-muted border-border" data-testid="select-edit-tenant-plan">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="starter">Starter</SelectItem>
+                      <SelectItem value="growth">Growth</SelectItem>
+                      <SelectItem value="pro">Pro</SelectItem>
+                      <SelectItem value="professional">Professional</SelectItem>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-1.5">
+                  <p className="text-[11px] font-medium text-muted-foreground">Status</p>
+                  <Select
+                    value={editing.status}
+                    onValueChange={(value) => setEditing({ ...editing, status: value as TenantStatus })}
+                  >
+                    <SelectTrigger className="h-9 text-xs bg-muted border-border" data-testid="select-edit-tenant-status">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="trial">Trial</SelectItem>
+                      <SelectItem value="past_due">Em atraso</SelectItem>
+                      <SelectItem value="pending">Pendente</SelectItem>
+                      <SelectItem value="suspended">Suspenso</SelectItem>
+                      <SelectItem value="cancelled">Cancelado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" size="sm" className="text-xs" onClick={() => setEditing(null)}>
+                  Cancelar
+                </Button>
+                <Button size="sm" className="text-xs gap-1.5" onClick={saveEditing} disabled={saveTenantMutation.isPending} data-testid="button-save-client-edit">
+                  <Pencil className="h-3.5 w-3.5" />
+                  {saveTenantMutation.isPending ? "Salvando..." : "Salvar alterações"}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
-

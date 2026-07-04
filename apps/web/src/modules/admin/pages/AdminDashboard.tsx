@@ -1,32 +1,31 @@
 import { Link } from "react-router-dom";
+import { useMemo, type ComponentType } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { Badge } from "@/shared/ui/badge";
 import { cn } from "@/shared/lib/utils";
+import { MetricCard } from "@/shared/components/MetricCard";
 import {
   AreaChart, Area,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { adminBillingService } from "../services/admin-billing.service";
+import { adminTenantsService } from "../services/admin-tenants.service";
+import type { AdminTenant } from "../types";
 import {
-  ADMIN_KPIS as MOCK_KPIS,
-  ADMIN_REVENUE as MOCK_REVENUE,
-  ADMIN_TENANTS as MOCK_TENANTS,
-  ADMIN_SECURITY_EVENTS as MOCK_SECURITY_EVENTS,
-  ADMIN_NOTIFICATIONS as MOCK_ADMIN_NOTIFICATIONS,
-  ADMIN_DATA_IS_MOCK,
-} from "../data/admin-source";
-import {
-  TrendingUp, TrendingDown, DollarSign, Users, Building2,
-  AlertCircle, CheckCircle2, Activity, Zap,
-  CreditCard, ChevronRight, ArrowUpRight, ArrowDownRight,
+  TrendingDown, DollarSign, Users, Building2,
+  AlertCircle, CheckCircle2, Zap,
+  CreditCard, ChevronRight,
 } from "lucide-react";
 
 /* ── Métricas data (merged from AdminAnalytics) ── */
-const PLAN_DIST = [
-  { plan: "Starter",    count: 45, color: "#6B7280" },
-  { plan: "Growth",     count: 30, color: "#3B82F6" },
-  { plan: "Pro",        count: 18, color: "#8B5CF6" },
-  { plan: "Enterprise", count: 7,  color: "#F59E0B" },
-];
+const PLAN_COLORS: Record<string, string> = {
+  starter: "#6B7280",
+  growth: "#3B82F6",
+  pro: "#8B5CF6",
+  professional: "#3B82F6",
+  enterprise: "#F59E0B",
+};
 /* ─── helpers ─── */
 function fmt(n: number) {
   return n.toLocaleString("pt-BR");
@@ -34,52 +33,40 @@ function fmt(n: number) {
 function fmtBRL(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
 }
-function pctColor(n: number) {
-  return n >= 0 ? "text-emerald-400" : "text-red-400";
+type AdminKpiAccent = "primary" | "success" | "warning" | "destructive";
+interface AdminKpiCardProps {
+  label: string;
+  value: string | number;
+  description?: string;
+  icon: ComponentType<{ className?: string }>;
+  accent?: AdminKpiAccent;
+  href?: string;
 }
-function PctBadge({ value }: { value: number }) {
+
+function AdminKpiCard({ href, ...props }: AdminKpiCardProps) {
+  const card = (
+    <MetricCard
+      title={props.label}
+      value={props.value}
+      description={props.description}
+      icon={props.icon}
+      accent={props.accent}
+      className="h-full"
+    />
+  );
+
+  if (!href) return card;
+
   return (
-    <span className={cn("flex items-center gap-0.5 text-[11px] font-semibold", pctColor(value))}>
-      {value >= 0
-        ? <ArrowUpRight className="h-3 w-3" />
-        : <ArrowDownRight className="h-3 w-3" />
-      }
-      {Math.abs(value).toFixed(1)}%
-    </span>
-  );
-}
-
-/* ─── KPI Card ─── */
-function KPICard({
-  label, value, sub, trend, icon: Icon, iconBg, accent, href,
-}: {
-  label: string; value: string; sub?: string; trend?: number;
-  icon: React.ComponentType<{ className?: string }>;
-  iconBg: string; accent: string; href?: string;
-}) {
-  const inner = (
-    <div className={cn(
-      "group rounded-2xl border border-border bg-card p-5 space-y-3 transition-all duration-200",
-      href && "hover:border-blue-500/25 hover:bg-blue-500/[0.03] cursor-pointer",
-    )}
-      data-testid={`kpi-${label.toLowerCase().replace(/\s+/g, "-")}`}
+    <Link
+      to={href}
+      className="block h-full transition-opacity hover:opacity-90"
+      data-testid={`kpi-${props.label.toLowerCase().replace(/\s+/g, "-")}`}
     >
-      <div className="flex items-center justify-between">
-        <div className={cn("flex h-9 w-9 items-center justify-center rounded-xl", iconBg)}>
-          <Icon className={cn("h-4.5 w-4.5", accent)} />
-        </div>
-        {trend !== undefined && <PctBadge value={trend} />}
-      </div>
-      <div>
-        <p className="text-2xl font-bold text-foreground tracking-tight">{value}</p>
-        <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
-        {sub && <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>}
-      </div>
-    </div>
+      {card}
+    </Link>
   );
-  return href ? <Link to={href}>{inner}</Link> : inner;
 }
-
 /* ─── Custom Tooltip ─── */
 function ChartTooltip({ active, payload, label }: {
   active?: boolean; payload?: { name: string; value: number; color: string }[]; label?: string;
@@ -101,22 +88,125 @@ function ChartTooltip({ active, payload, label }: {
 
 /* ─── Main ─── */
 export default function AdminDashboard() {
-  const kpis = MOCK_KPIS;
-  const recentTenants = MOCK_TENANTS.slice(0, 5);
-  const unresolvedEvents = MOCK_SECURITY_EVENTS.filter(e => !e.resolved);
-  const unreadNotifs = MOCK_ADMIN_NOTIFICATIONS.filter(n => !n.read);
+  const tenantsQuery = useQuery({
+    queryKey: ["admin", "tenants"],
+    queryFn: adminTenantsService.list,
+  });
+  const subscriptionsQuery = useQuery({
+    queryKey: ["admin", "subscriptions"],
+    queryFn: adminBillingService.listSubscriptions,
+  });
 
-  const KPI_CARDS = [
-    { label: "MRR",                value: fmtBRL(kpis.mrr),           sub: `ARR: ${fmtBRL(kpis.arr)}`,       trend: kpis.mrr_growth_pct, icon: DollarSign,  iconBg: "bg-blue-500/15",    accent: "text-blue-400",    href: "/admin/revenue" },
-    { label: "Clientes Ativos",     value: fmt(kpis.active_tenants),   sub: `${kpis.trial_tenants} em trial`, trend: 14.2,               icon: Building2,   iconBg: "bg-emerald-500/15", accent: "text-emerald-400", href: "/admin/clients" },
-    { label: "Usuários Ativos 30d", value: fmt(kpis.active_users_30d), sub: `${fmt(kpis.total_users)} total`, trend: 8.7,                icon: Users,       iconBg: "bg-cyan-500/15",   accent: "text-cyan-400",    href: "/admin/users" },
-    { label: "Churn Rate",          value: `${kpis.churn_rate_pct}%`,  sub: "Últimos 30 dias",               trend: -0.3,               icon: TrendingDown,iconBg: "bg-red-500/15",     accent: "text-red-400" },
-    { label: "Conv. Trial → Pago",  value: `${kpis.trial_conversion_pct}%`, sub: "Média histórica",          trend: 3.1,                icon: TrendingUp,  iconBg: "bg-emerald-500/15", accent: "text-emerald-400", href: "/admin/subscriptions" },
-    { label: "LTV Médio",           value: fmtBRL(kpis.avg_ltv),       sub: `CAC: ${fmtBRL(kpis.avg_cac)}`, trend: 5.8,                icon: CreditCard,  iconBg: "bg-blue-500/15",    accent: "text-blue-400" },
-    { label: "Tickets Abertos",     value: fmt(kpis.open_tickets),     sub: "Suporte ativo",                trend: -12.5,              icon: AlertCircle, iconBg: "bg-yellow-500/15",  accent: "text-yellow-400",  href: "/admin/support" },
-    { label: "Uptime Sistema",      value: `${kpis.system_uptime_pct}%`,sub: "Últimos 90 dias",             trend: 0.02,               icon: Activity,    iconBg: "bg-emerald-500/15", accent: "text-emerald-400", href: "/admin/system" },
+  const tenants = tenantsQuery.data ?? [];
+  const subscriptions = subscriptionsQuery.data ?? [];
+  const recentTenants = tenants.slice(0, 5);
+  const unresolvedEvents: unknown[] = [];
+  const unreadNotifs: Array<{ id: string; severity: string; title: string; message: string; action_url?: string }> = [];
+
+  const kpis = useMemo(() => {
+    const activeTenants = tenants.filter((t) => t.status === "active").length;
+    const trialTenants = tenants.filter((t) => t.status === "trial").length;
+    const churnedTenants = tenants.filter((t) => ["cancelled", "suspended"].includes(t.status)).length;
+    const totalUsers = tenants.reduce((acc, tenant) => acc + tenant.users_count, 0);
+    const mrr = subscriptions
+      .filter((sub) => sub.status === "active")
+      .reduce((acc, sub) => acc + sub.mrr, 0);
+    const arr = mrr * 12;
+    const churnRate = tenants.length > 0 ? Number(((churnedTenants / tenants.length) * 100).toFixed(1)) : 0;
+    return {
+      mrr,
+      arr,
+      active_tenants: activeTenants,
+      trial_tenants: trialTenants,
+      total_users: totalUsers,
+      churn_rate_pct: churnRate,
+      churned_tenants: churnedTenants,
+    };
+  }, [subscriptions, tenants]);
+
+  const revenueData = useMemo(() => {
+    const month = new Date().toLocaleDateString("pt-BR", { month: "short" });
+    return [{ month, mrr: kpis.mrr }];
+  }, [kpis.mrr]);
+
+  const planDistribution = useMemo(() => {
+    const counts = new Map<string, number>();
+    tenants.forEach((tenant) => counts.set(tenant.plan, (counts.get(tenant.plan) ?? 0) + 1));
+    return Array.from(counts.entries()).map(([plan, count]) => ({
+      plan,
+      count,
+      color: PLAN_COLORS[plan] ?? "#6B7280",
+    }));
+  }, [tenants]);
+
+  const countryDistribution = useMemo(() => {
+    const labels: Record<string, { label: string; flag: string }> = {
+      BR: { label: "Brasil", flag: "BR" },
+      PT: { label: "Portugal", flag: "PT" },
+      US: { label: "EUA", flag: "US" },
+    };
+    const counts = new Map<string, number>();
+    tenants.forEach((tenant: AdminTenant) => {
+      const key = tenant.country || "Nao informado";
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    });
+    return Array.from(counts.entries()).map(([country, count]) => ({
+      country: labels[country]?.label ?? country,
+      flag: labels[country]?.flag ?? "--",
+      count,
+    }));
+  }, [tenants]);
+
+  const KPI_CARDS: AdminKpiCardProps[] = [
+    {
+      label: "MRR",
+      value: fmtBRL(kpis.mrr),
+      description: `ARR: ${fmtBRL(kpis.arr)}`,
+      icon: DollarSign,
+      accent: "primary",
+      href: "/admin/subscriptions",
+    },
+    {
+      label: "Clientes Ativos",
+      value: fmt(kpis.active_tenants),
+      description: `${kpis.trial_tenants} em trial`,
+      icon: Building2,
+      accent: "success",
+      href: "/admin/clients",
+    },
+    {
+      label: "Usuarios Cadastrados",
+      value: fmt(kpis.total_users),
+      description: `${fmt(tenants.length)} tenants no total`,
+      icon: Users,
+      accent: "primary",
+      href: "/admin/clients",
+    },
+    {
+      label: "Churn Rate",
+      value: `${kpis.churn_rate_pct}%`,
+      description: `${fmt(kpis.churned_tenants)} tenants suspensos/cancelados`,
+      icon: TrendingDown,
+      accent: kpis.churned_tenants > 0 ? "destructive" : "success",
+      href: "/admin/clients",
+    },
+    {
+      label: "Assinaturas Ativas",
+      value: fmt(subscriptions.filter((sub) => sub.status === "active").length),
+      description: `${fmt(subscriptions.length)} assinaturas registradas`,
+      icon: CreditCard,
+      accent: "success",
+      href: "/admin/subscriptions",
+    },
+    {
+      label: "Tenants em Atencao",
+      value: fmt(kpis.churned_tenants),
+      description: "Suspensos ou cancelados",
+      icon: AlertCircle,
+      accent: kpis.churned_tenants > 0 ? "warning" : "success",
+      href: "/admin/clients",
+    },
   ];
-
   return (
     <AdminLayout>
       <div className="p-6 space-y-6 animate-fade-in">
@@ -144,9 +234,9 @@ export default function AdminDashboard() {
         </div>
 
         {/* KPI Grid */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {KPI_CARDS.map((kpi) => (
-            <KPICard key={kpi.label} {...kpi} />
+            <AdminKpiCard key={kpi.label} {...kpi} />
           ))}
         </div>
 
@@ -165,7 +255,7 @@ export default function AdminDashboard() {
               </Link>
             </div>
             <ResponsiveContainer width="100%" height={220}>
-              <AreaChart data={MOCK_REVENUE}>
+              <AreaChart data={revenueData}>
                 <CartesianGrid stroke="rgba(255,255,255,0.04)" strokeDasharray="0" />
                 <XAxis dataKey="month" tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 11 }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fill: "rgba(255,255,255,0.35)", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} />
@@ -179,8 +269,8 @@ export default function AdminDashboard() {
           <div className="rounded-2xl border border-border bg-card p-5">
             <h2 className="text-[13px] font-semibold text-foreground mb-4">Distribuição por Plano</h2>
             <div className="space-y-3">
-              {PLAN_DIST.map((p) => {
-                const total = PLAN_DIST.reduce((a, x) => a + x.count, 0);
+              {planDistribution.map((p) => {
+                const total = planDistribution.reduce((a, x) => a + x.count, 0);
                 const pct   = (p.count / total * 100).toFixed(1);
                 return (
                   <div key={p.plan}>
@@ -204,9 +294,9 @@ export default function AdminDashboard() {
               </h3>
               <div className="space-y-2">
                 {[
-                  { country: "Brasil",   flag: "🇧🇷", count: MOCK_TENANTS.filter(t => t.country === "BR").length },
-                  { country: "Portugal", flag: "🇵🇹", count: MOCK_TENANTS.filter(t => t.country === "PT").length },
-                  { country: "EUA",      flag: "🇺🇸", count: MOCK_TENANTS.filter(t => t.country === "US").length },
+                  { country: "Brasil",   flag: "🇧🇷", count: countryDistribution.find((c) => c.country === "Brasil")?.count ?? 0 },
+                  { country: "Portugal", flag: "🇵🇹", count: countryDistribution.find((c) => c.country === "Portugal")?.count ?? 0 },
+                  { country: "EUA",      flag: "🇺🇸", count: countryDistribution.find((c) => c.country === "EUA")?.count ?? 0 },
                 ].filter(c => c.count > 0).map((c) => (
                   <div key={c.country} className="flex items-center justify-between">
                     <span className="text-[12px] text-muted-foreground flex items-center gap-2">
@@ -237,13 +327,13 @@ export default function AdminDashboard() {
                 const STATUS_COLOR: Record<string, string> = {
                   active: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
                   suspended: "text-red-400 bg-red-500/10 border-red-500/20",
-                  trial: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+                  trial: "text-primary bg-primary/10 border-primary/20",
                   cancelled: "text-muted-foreground bg-muted border-border",
                   pending: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
                 };
                 const PLAN_COLOR: Record<string, string> = {
                   starter: "text-muted-foreground",
-                  growth: "text-blue-400",
+                  growth: "text-primary",
                   pro: "text-primary",
                   enterprise: "text-amber-400",
                 };
@@ -252,8 +342,8 @@ export default function AdminDashboard() {
                 return (
                   <div key={t.id} className="flex items-center justify-between px-5 py-3.5 hover:bg-muted transition-colors" data-testid={`tenant-row-${t.id}`}>
                     <div className="flex items-center gap-3">
-                      <div className="h-8 w-8 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0">
-                        <Building2 className="h-4 w-4 text-blue-400/70" />
+                      <div className="h-8 w-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                        <Building2 className="h-4 w-4 text-primary/70" />
                       </div>
                       <div>
                         <p className="text-[13px] font-medium text-foreground">{t.name}</p>
@@ -285,11 +375,11 @@ export default function AdminDashboard() {
               {unreadNotifs.map((n) => {
                 const SV_COLOR: Record<string, string> = {
                   error: "text-red-400", warning: "text-yellow-400",
-                  info: "text-blue-400", success: "text-emerald-400",
+                  info: "text-primary", success: "text-emerald-400",
                 };
                 const SV_BG: Record<string, string> = {
                   error: "bg-red-500/10", warning: "bg-yellow-500/10",
-                  info: "bg-blue-500/10", success: "bg-emerald-500/10",
+                  info: "bg-primary/10", success: "bg-emerald-500/10",
                 };
                 const SV_ICON: Record<string, typeof AlertCircle> = {
                   error: AlertCircle, warning: AlertCircle,
@@ -324,7 +414,3 @@ export default function AdminDashboard() {
     </AdminLayout>
   );
 }
-
-
-
-

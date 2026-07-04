@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/shared/lib/utils";
 import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
+import { SystemLogo } from "@/shared/ui/system-logo";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
@@ -13,7 +14,7 @@ import {
   ScrollText, Bell, HeadphonesIcon,
   Settings, LogOut, ChevronLeft, ChevronRight,
   AlertCircle, CheckCircle2, Info, AlertTriangle, ExternalLink,
-  Music2, BookOpen,
+  BookOpen,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -28,7 +29,7 @@ const NAV_ITEMS = [
 ];
 
 const SEVERITY_ICON = {
-  info:    <Info className="h-3.5 w-3.5 text-blue-400" />,
+  info:    <Info className="h-3.5 w-3.5 text-primary" />,
   warning: <AlertTriangle className="h-3.5 w-3.5 text-yellow-400" />,
   error:   <AlertCircle className="h-3.5 w-3.5 text-red-400" />,
   success: <CheckCircle2 className="h-3.5 w-3.5 text-green-400" />,
@@ -48,31 +49,21 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Sidebar ── */}
       <aside className={cn(
-        "flex flex-col border-r border-border bg-card transition-all duration-300 shrink-0",
+        "flex flex-col border-r border-sidebar-border bg-sidebar transition-all duration-300 shrink-0",
         collapsed ? "w-16" : "w-60",
       )}>
         {/* Logo */}
-        <div className="flex items-center justify-between px-4 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-4 py-4 border-b border-sidebar-border">
           {!collapsed && (
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20 border border-blue-500/30">
-                <Music2 className="h-4 w-4 text-blue-400" />
-              </div>
-              <div>
-                <p className="text-[11px] font-bold text-foreground leading-none">MUSIC OS 360</p>
-                <p className="text-[9px] text-blue-400 mt-0.5 font-medium  tracking-wider">Super Admin</p>
-              </div>
-            </div>
+            <SystemLogo subtitle="Super Admin" markClassName="h-8" />
           )}
           {collapsed && (
-            <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-blue-500/20 border border-blue-500/30 mx-auto">
-              <Music2 className="h-4 w-4 text-blue-400" />
-            </div>
+            <SystemLogo collapsed markClassName="h-8" className="mx-auto" />
           )}
           {!collapsed && (
             <button
               onClick={() => setCollapsed(true)}
-              className="text-muted-foreground hover:text-muted-foreground transition-colors"
+              className="text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
@@ -91,13 +82,13 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 className={cn(
                   "flex items-center gap-2.5 rounded-xl px-2.5 py-2 text-[12px] font-medium transition-all duration-150",
                   isActive
-                    ? "bg-blue-500/15 text-blue-400 border border-blue-500/20"
-                    : "text-muted-foreground hover:text-muted-foreground hover:bg-muted",
+                    ? "bg-sidebar-accent text-sidebar-primary font-semibold"
+                    : "text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/70",
                   collapsed && "justify-center px-2",
                 )}
                 data-testid={`admin-nav-${label.toLowerCase().replace(/\s/g, "-")}`}
               >
-                <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-4 w-4")} />
+                <Icon className={cn("shrink-0", collapsed ? "h-5 w-5" : "h-4 w-4", isActive ? "text-sidebar-primary" : "opacity-60")} />
                 {!collapsed && <span>{label}</span>}
               </Link>
             );
@@ -108,7 +99,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {collapsed && (
           <button
             onClick={() => setCollapsed(false)}
-            className="p-4 text-muted-foreground hover:text-muted-foreground transition-colors flex items-center justify-center"
+            className="p-4 text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors flex items-center justify-center"
           >
             <ChevronRight className="h-4 w-4" />
           </button>
@@ -116,10 +107,10 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
 
         {/* Back to app */}
         {!collapsed && (
-          <div className="p-3 border-t border-border">
+          <div className="p-3 border-t border-sidebar-border">
             <button
               onClick={() => navigate("/")}
-              className="flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-[11px] text-muted-foreground hover:text-muted-foreground hover:bg-muted transition-all"
+              className="flex items-center gap-2 w-full px-2.5 py-2 rounded-xl text-[11px] text-sidebar-foreground/60 hover:text-sidebar-foreground hover:bg-sidebar-accent/70 transition-all"
               data-testid="admin-back-to-app"
             >
               <ExternalLink className="h-3.5 w-3.5" />
@@ -137,7 +128,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-3">
             <Badge
               variant="outline"
-              className="text-[9px] h-5 px-2 border-blue-500/30 text-blue-400 bg-blue-500/10 font-semibold tracking-wider"
+              className="text-[9px] h-5 px-2 border-primary/30 text-primary bg-primary/10 font-semibold tracking-wider"
             >
               SUPER ADMIN
             </Badge>
@@ -156,7 +147,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 >
                   <Bell className="h-4 w-4" />
                   {unread > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-blue-500 text-[8px] text-foreground flex items-center justify-center font-bold">
+                    <span className="absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full bg-primary text-[8px] text-foreground flex items-center justify-center font-bold">
                       {unread}
                     </span>
                   )}
@@ -173,12 +164,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                       <p className="text-[12px] font-medium text-foreground truncate">{n.title}</p>
                       <p className="text-[11px] text-muted-foreground truncate">{n.message}</p>
                     </div>
-                    {!n.read && <div className="h-1.5 w-1.5 rounded-full bg-blue-500 shrink-0" />}
+                    {!n.read && <div className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />}
                   </DropdownMenuItem>
                 ))}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <Link to="/admin/notifications" className="text-[12px] text-blue-400 justify-center">
+                  <Link to="/admin/notifications" className="text-[12px] text-primary justify-center">
                     Ver todas
                   </Link>
                 </DropdownMenuItem>
@@ -192,8 +183,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   className="flex items-center gap-2 px-2 py-1 rounded-xl hover:bg-muted transition-colors"
                   data-testid="admin-profile-btn"
                 >
-                  <div className="h-7 w-7 rounded-lg bg-blue-500/20 border border-blue-500/30 flex items-center justify-center">
-                    <span className="text-[11px] font-bold text-blue-400">SA</span>
+                  <div className="h-7 w-7 rounded-lg bg-primary/20 border border-primary/30 flex items-center justify-center">
+                    <span className="text-[11px] font-bold text-primary">SA</span>
                   </div>
                   <span className="text-[12px] text-muted-foreground">Super Admin</span>
                 </button>
@@ -236,4 +227,3 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
-

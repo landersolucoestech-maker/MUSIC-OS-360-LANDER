@@ -14,8 +14,9 @@
 import { IS_PROD } from "@/shared/lib/env";
 import type {
   AdminKPIs, RevenueDataPoint, AdminPlan, AdminTenant,
-  AdminSubscription, AdminUser, AdminAuditLog, AdminSecurityEvent,
-  AdminNotification, AdminSupportTicket, AdminIntegration, AdminSystemMetric,
+  AdminSubscription, AdminUser, AdminSecurityEvent,
+  AdminNotification, AdminIntegration, AdminSystemMetric,
+  PlatformIntegrationProvider,
 } from "../types";
 import * as mocks from "./mockAdmin";
 
@@ -35,9 +36,8 @@ export const ADMIN_PLANS: AdminPlan[]          = IS_PROD ? []         : mocks.MO
 export const ADMIN_TENANTS: AdminTenant[]      = IS_PROD ? []         : mocks.MOCK_TENANTS;
 export const ADMIN_SUBSCRIPTIONS: AdminSubscription[] = IS_PROD ? [] : mocks.MOCK_SUBSCRIPTIONS;
 export const ADMIN_USERS: AdminUser[]          = IS_PROD ? []         : mocks.MOCK_ADMIN_USERS;
-export const ADMIN_AUDIT_LOGS: AdminAuditLog[] = IS_PROD ? []         : mocks.MOCK_AUDIT_LOGS;
 export const ADMIN_SECURITY_EVENTS: AdminSecurityEvent[] = IS_PROD ? [] : mocks.MOCK_SECURITY_EVENTS;
 export const ADMIN_NOTIFICATIONS: AdminNotification[] = IS_PROD ? [] : mocks.MOCK_ADMIN_NOTIFICATIONS;
-export const ADMIN_SUPPORT_TICKETS: AdminSupportTicket[] = IS_PROD ? [] : mocks.MOCK_SUPPORT_TICKETS;
 export const ADMIN_INTEGRATIONS: AdminIntegration[] = IS_PROD ? [] : mocks.MOCK_INTEGRATIONS;
+export const ADMIN_PLATFORM_PROVIDERS: PlatformIntegrationProvider[] = IS_PROD ? [] : mocks.MOCK_PLATFORM_PROVIDERS;
 export const ADMIN_SYSTEM_METRICS: AdminSystemMetric[] = IS_PROD ? [] : (mocks as { MOCK_SYSTEM_METRICS?: AdminSystemMetric[] }).MOCK_SYSTEM_METRICS ?? [];

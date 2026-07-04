@@ -18,7 +18,6 @@ import {
   Plus, X, Save, MoreHorizontal, Eye, Pencil, Trash2,
   AlertTriangle, Power, PowerOff, RefreshCw,
 } from "lucide-react";
-import { MOCK_MODE } from "@/shared/lib/env";
 
 function fmtBRL(n: number) {
   return n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 });
@@ -432,16 +431,14 @@ function PlanCard({ plan, onView, onEdit, onToggleActive, onSyncStripe, onDelete
                 ? <><PowerOff className="h-3.5 w-3.5 text-amber-400" /> Desativar</>
                 : <><Power className="h-3.5 w-3.5 text-emerald-400" /> Ativar</>}
             </DropdownMenuItem>
-            {!MOCK_MODE && (
-              <DropdownMenuItem
-                className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
-                onClick={onSyncStripe}
-                data-testid={`sync-plan-${plan.id}`}
-              >
-                <RefreshCw className="h-3.5 w-3.5 text-primary" />
-                Sincronizar Stripe
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem
+              className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted"
+              onClick={onSyncStripe}
+              data-testid={`sync-plan-${plan.id}`}
+            >
+              <RefreshCw className="h-3.5 w-3.5 text-primary" />
+              Sincronizar Stripe
+            </DropdownMenuItem>
             <DropdownMenuSeparator className="bg-muted" />
             <DropdownMenuItem
               className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400"

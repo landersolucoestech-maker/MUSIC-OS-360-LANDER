@@ -6,6 +6,8 @@
 // ============================================================================
 
 import { useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Badge, type BadgeVariant } from "@/shared/ui/badge";
@@ -26,11 +28,11 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { ADMIN_SUBSCRIPTIONS } from "../data/admin-source";
 import type { AdminSubscription, PlanTier, SubscriptionStatus } from "../types";
+import { adminBillingService, type AdminBillingStateStatus } from "../services/admin-billing.service";
 import {
-  Search, MoreHorizontal, RefreshCw, XCircle, Receipt, DollarSign,
-  CheckCircle2, Clock, AlertTriangle,
+  Search, MoreHorizontal, XCircle, Receipt, DollarSign,
+  CheckCircle2, Clock, AlertTriangle, Lock, Unlock, ShieldCheck, ShieldOff,
 } from "lucide-react";
 
 function fmtBRL(n: number) {
@@ -45,6 +47,7 @@ const PLAN_LABEL: Record<PlanTier, string> = {
   starter: "Starter",
   growth: "Growth",
   pro: "Pro",
+  professional: "Professional",
   enterprise: "Enterprise",
 };
 
@@ -52,7 +55,11 @@ const STATUS_META: Record<SubscriptionStatus, { label: string; variant: BadgeVar
   active: { label: "Ativa", variant: "success" },
   trial: { label: "Trial", variant: "info" },
   past_due: { label: "Inadimplente", variant: "warning" },
+  payment_grace: { label: "Grace period", variant: "warning" },
+  read_only: { label: "Somente leitura", variant: "warning" },
+  suspended: { label: "Suspensa", variant: "danger" },
   cancelled: { label: "Cancelada", variant: "danger" },
+  unpaid: { label: "Unpaid", variant: "danger" },
 };
 
 const STATUS_FILTERS: { value: string; label: string }[] = [
@@ -60,8 +67,33 @@ const STATUS_FILTERS: { value: string; label: string }[] = [
   { value: "active", label: "Ativas" },
   { value: "trial", label: "Trial" },
   { value: "past_due", label: "Inadimplentes" },
+  { value: "payment_grace", label: "Grace period" },
+  { value: "read_only", label: "Somente leitura" },
+  { value: "suspended", label: "Suspensas" },
   { value: "cancelled", label: "Canceladas" },
 ];
+
+type BillingAdminAction =
+  | { kind: "suspend"; sub: AdminSubscription }
+  | { kind: "reactivate"; sub: AdminSubscription }
+  | { kind: "override_active"; sub: AdminSubscription }
+  | { kind: "override_read_only"; sub: AdminSubscription }
+  | { kind: "remove_override"; sub: AdminSubscription };
+
+function overrideUntil(days: number) {
+  const until = new Date();
+  until.setDate(until.getDate() + days);
+  return until.toISOString();
+}
+
+function subscriptionStatusFromBilling(status: AdminBillingStateStatus): SubscriptionStatus {
+  if (status === "trial") return "trial";
+  if (status === "payment_grace") return "payment_grace";
+  if (status === "read_only") return "read_only";
+  if (status === "suspended") return "suspended";
+  if (status === "cancelled") return "cancelled";
+  return "active";
+}
 
 /* ─────────────── Histórico de cobranças (mock derivado) ─────────────── */
 interface Invoice {
@@ -113,7 +145,7 @@ function BillingHistoryDialog({ sub, onClose }: { sub: AdminSubscription; onClos
       <DialogContent className="sm:max-w-lg bg-card border-border text-foreground">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
-            <Receipt className="h-4 w-4 text-blue-400" />
+            <Receipt className="h-4 w-4 text-primary" />
             Histórico de Cobranças — {sub.tenant_name}
           </DialogTitle>
         </DialogHeader>
@@ -166,19 +198,19 @@ function CancelDialog({ sub, onConfirm, onClose }: { sub: AdminSubscription; onC
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-foreground text-[15px]">
             <AlertTriangle className="h-4 w-4 text-red-400" />
-            Cancelar Assinatura
+            Suspender tenant
           </DialogTitle>
         </DialogHeader>
         <p className="py-2 text-[13px] text-muted-foreground">
-          Tem certeza que deseja cancelar a assinatura de{" "}
+          Tem certeza que deseja suspender o tenant{" "}
           <span className="font-semibold text-foreground">{sub.tenant_name}</span>?
-          O cliente perderá o acesso ao final do período vigente.
+          O backend bloqueara rotas tenant-scoped ate a reativacao.
         </p>
         <DialogFooter className="gap-2">
           <Button variant="outline" size="sm" className="text-xs" onClick={onClose}>Voltar</Button>
-          <Button size="sm" className="bg-red-600 hover:bg-red-500 text-foreground text-xs gap-1.5" onClick={onConfirm} data-testid="btn-confirm-cancel-sub">
+          <Button size="sm" className="gap-1.5 bg-red-600 text-xs text-white hover:bg-red-500 hover:text-white focus-visible:text-white" onClick={onConfirm} data-testid="btn-confirm-cancel-sub">
             <XCircle className="h-3.5 w-3.5" />
-            Cancelar assinatura
+            Suspender tenant
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -188,11 +220,18 @@ function CancelDialog({ sub, onConfirm, onClose }: { sub: AdminSubscription; onC
 
 /* ─────────────── Página principal ─────────────── */
 export default function AdminSubscriptions() {
-  const [subs, setSubs] = useState<AdminSubscription[]>(ADMIN_SUBSCRIPTIONS);
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [historySub, setHistorySub] = useState<AdminSubscription | null>(null);
   const [cancelSub, setCancelSub] = useState<AdminSubscription | null>(null);
+
+  const subscriptionsQuery = useQuery({
+    queryKey: ["admin", "subscriptions"],
+    queryFn: adminBillingService.listSubscriptions,
+  });
+
+  const subs = subscriptionsQuery.data ?? [];
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -208,22 +247,53 @@ export default function AdminSubscriptions() {
   const kpis = useMemo(() => ({
     total: subs.length,
     ativas: subs.filter((s) => s.status === "active").length,
-    inadimplentes: subs.filter((s) => s.status === "past_due").length,
+    inadimplentes: subs.filter((s) => ["past_due", "payment_grace", "read_only", "suspended", "unpaid"].includes(s.status)).length,
     mrr: subs.filter((s) => s.status === "active").reduce((acc, s) => acc + s.mrr, 0),
   }), [subs]);
 
-  function renew(sub: AdminSubscription) {
-    const next = new Date();
-    next.setDate(next.getDate() + (sub.billing_cycle === "annual" ? 365 : 30));
-    setSubs((prev) => prev.map((s) => s.id === sub.id
-      ? { ...s, status: "active", current_period_end: next.toISOString(), next_payment_at: next.toISOString(), last_payment_at: new Date().toISOString() }
-      : s));
-  }
+  const billingAction = useMutation({
+    mutationFn: async (action: BillingAdminAction) => {
+      if (action.kind === "suspend") {
+        return adminBillingService.suspendTenant(action.sub.tenant_id, "Suspensao manual pelo painel admin");
+      }
+      if (action.kind === "reactivate") {
+        return adminBillingService.reactivateTenant(action.sub.tenant_id, "Reativacao manual pelo painel admin");
+      }
+      if (action.kind === "override_active") {
+        return adminBillingService.applyOverride(action.sub.tenant_id, {
+          status: "active",
+          reason: "Override manual pelo painel admin",
+          until: overrideUntil(7),
+        });
+      }
+      if (action.kind === "override_read_only") {
+        return adminBillingService.applyOverride(action.sub.tenant_id, {
+          status: "read_only",
+          reason: "Override read-only pelo painel admin",
+          until: overrideUntil(7),
+        });
+      }
+      return adminBillingService.removeOverride(action.sub.tenant_id, "Override removido pelo painel admin");
+    },
+    onSuccess: (result, action) => {
+      const nextStatus = subscriptionStatusFromBilling(result.status);
+      queryClient.invalidateQueries({ queryKey: ["admin", "subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["admin", "tenants"] });
+      toast.success("Billing atualizado", {
+        description: `${action.sub.tenant_name}: ${STATUS_META[nextStatus].label}`,
+      });
+      setCancelSub(null);
+    },
+    onError: (error) => {
+      toast.error("Nao foi possivel atualizar o billing", {
+        description: error instanceof Error ? error.message : "Verifique permissao, API e tenant.",
+      });
+    },
+  });
 
   function confirmCancel() {
     if (!cancelSub) return;
-    setSubs((prev) => prev.map((s) => s.id === cancelSub.id ? { ...s, status: "cancelled" } : s));
-    setCancelSub(null);
+    billingAction.mutate({ kind: "suspend", sub: cancelSub });
   }
 
   return (
@@ -251,6 +321,27 @@ export default function AdminSubscriptions() {
               <p className="text-[11px] text-muted-foreground mt-0.5">{label}</p>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-2xl border border-border bg-card p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-start gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-muted">
+                <Lock className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h2 className="text-sm font-semibold text-foreground">Enforcement financeiro</h2>
+                <p className="mt-0.5 text-[12px] text-muted-foreground">
+                  Acoes administrativas conectadas ao backend para suspensao, reativacao, modo somente leitura e override por tenant.
+                </p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Badge variant="warning" className="text-[10px]">Grace period</Badge>
+              <Badge variant="warning" className="text-[10px]">Somente leitura</Badge>
+              <Badge variant="danger" className="text-[10px]">Suspenso</Badge>
+            </div>
+          </div>
         </div>
 
         {/* Filtros */}
@@ -283,7 +374,7 @@ export default function AdminSubscriptions() {
             title="Lista de Assinaturas"
             count={filtered.length}
             description="Acompanhe clientes, planos, ciclos, MRR e próximas cobranças"
-            className="px-4 pt-4"
+            className="p-4"
           />
           <Table>
             <TableHeader>
@@ -294,6 +385,27 @@ export default function AdminSubscriptions() {
               </TableRow>
             </TableHeader>
             <TableBody>
+              {subscriptionsQuery.isLoading && (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                    Carregando assinaturas reais...
+                  </TableCell>
+                </TableRow>
+              )}
+              {!subscriptionsQuery.isLoading && subscriptionsQuery.error && (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-red-300">
+                    Nao foi possivel carregar assinaturas: {subscriptionsQuery.error instanceof Error ? subscriptionsQuery.error.message : "erro desconhecido"}
+                  </TableCell>
+                </TableRow>
+              )}
+              {!subscriptionsQuery.isLoading && !subscriptionsQuery.error && pageItems.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={9} className="py-10 text-center text-sm text-muted-foreground">
+                    Nenhuma assinatura encontrada na API.
+                  </TableCell>
+                </TableRow>
+              )}
               {pageItems.map((s) => (
                 <TableRow key={s.id} className="border-border hover:bg-muted transition-colors" data-testid={`subscription-${s.id}`}>
                   <TableCell className="font-medium text-foreground">{s.tenant_name}</TableCell>
@@ -311,19 +423,32 @@ export default function AdminSubscriptions() {
                           <MoreHorizontal className="h-4 w-4" />
                         </button>
                       </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-44 bg-card border-border text-muted-foreground">
+                      <DropdownMenuContent align="end" className="w-56 bg-card border-border text-muted-foreground">
                         <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => setHistorySub(s)} data-testid={`history-sub-${s.id}`}>
-                          <Receipt className="h-3.5 w-3.5 text-blue-400" />
+                          <Receipt className="h-3.5 w-3.5 text-primary" />
                           Histórico de cobranças
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => renew(s)} disabled={s.status === "active"} data-testid={`renew-sub-${s.id}`}>
-                          <RefreshCw className="h-3.5 w-3.5 text-emerald-400" />
-                          Renovar
+                        <DropdownMenuSeparator className="bg-muted" />
+                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => !billingAction.isPending && billingAction.mutate({ kind: "reactivate", sub: s })} data-testid={`reactivate-tenant-${s.id}`}>
+                          <Unlock className="h-3.5 w-3.5 text-emerald-400" />
+                          Reativar tenant
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => !billingAction.isPending && billingAction.mutate({ kind: "override_active", sub: s })} data-testid={`override-active-${s.id}`}>
+                          <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                          Override ativo por 7 dias
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => !billingAction.isPending && billingAction.mutate({ kind: "override_read_only", sub: s })} data-testid={`override-read-only-${s.id}`}>
+                          <Lock className="h-3.5 w-3.5 text-yellow-400" />
+                          Forcar somente leitura
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer hover:bg-muted focus:bg-muted" onClick={() => !billingAction.isPending && billingAction.mutate({ kind: "remove_override", sub: s })} data-testid={`remove-override-${s.id}`}>
+                          <ShieldOff className="h-3.5 w-3.5 text-muted-foreground" />
+                          Remover override
                         </DropdownMenuItem>
                         <DropdownMenuSeparator className="bg-muted" />
-                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400" onClick={() => setCancelSub(s)} disabled={s.status === "cancelled"} data-testid={`cancel-sub-${s.id}`}>
+                        <DropdownMenuItem className="gap-2 text-xs cursor-pointer text-red-400 hover:bg-red-500/10 focus:bg-red-500/10 focus:text-red-400" onClick={() => !billingAction.isPending && setCancelSub(s)} data-testid={`suspend-tenant-${s.id}`}>
                           <XCircle className="h-3.5 w-3.5" />
-                          Cancelar
+                          Suspender tenant
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

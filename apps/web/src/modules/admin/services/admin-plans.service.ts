@@ -1,40 +1,14 @@
-/**
- * admin-plans.service.ts — CRUD de planos do Painel Admin (fonte da verdade).
- *
- * GOVERNANÇA: Painel Admin → (Banco billing_plans) → Billing/Workspaces/Stripe.
- *   Os planos são criados/editados aqui pelo Admin. O backend persiste em
- *   `billing_plans` e sincroniza com o Stripe (Product/Price). STRIPE_PRICE_* não
- *   é mais usado — cada plano guarda seu stripe_price_id.
- *
- *   - MOCK_MODE (dev standalone): persiste em localStorage (semente ADMIN_PLANS).
- *   - Produção: fala com o backend real:
- *       GET   /billing/plans?includeInactive=true  -> BackendPlan[]
- *       POST  /billing/plans                        -> cria + sincroniza Stripe
- *       PATCH /billing/plans/{id}                   -> edita + re-sincroniza
- *       POST  /billing/plans/{id}/sync-stripe       -> re-sincroniza
- *   (o backend não deleta planos — "remover" = desativar, active=false.)
- *
- * ADAPTER: a UI usa o modelo rico `AdminPlan` (mensal+anual, cor, labels). Os
- * campos CANÔNICOS que governam o checkout (amount/currency/interval/active/stripe)
- * são de 1ª classe no backend; os extras de exibição (price_annual, cor, labels,
- * tier) viajam no jsonb `features`. Entitlements por módulo continuam derivados do
- * slug (PLAN_FEATURES no backend), não deste jsonb.
- */
-import { MOCK_MODE } from "@/shared/lib/env";
 import { api } from "@/shared/lib/api-client";
-import { ADMIN_PLANS } from "../data/admin-source";
 import type { AdminPlan, PlanTier } from "../types";
-
-const STORAGE_KEY = "admin:plans";
 
 interface BackendPlan {
   id: string;
   slug: string;
   name: string;
   description: string | null;
-  amount: number;            // centavos
+  amount: number;
   currency: string;
-  interval: string;          // month | year
+  interval: string;
   active: boolean;
   features: Record<string, unknown>;
   limits: Record<string, unknown>;
@@ -84,62 +58,25 @@ function toBackendDto(p: AdminPlan): Record<string, unknown> {
   };
 }
 
-// ── MOCK store ──────────────────────────────────────────────────────────────
-function readStore(): AdminPlan[] | null {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? (JSON.parse(raw) as AdminPlan[]) : null;
-  } catch {
-    return null;
-  }
-}
-function writeStore(plans: AdminPlan[]): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(plans));
-}
-function ensureStore(): AdminPlan[] {
-  const current = readStore();
-  if (current) return current;
-  writeStore(ADMIN_PLANS);
-  return ADMIN_PLANS;
-}
-
 export const adminPlansService = {
   async list(): Promise<AdminPlan[]> {
-    if (MOCK_MODE) return ensureStore();
     const rows = await api.get<BackendPlan[]>("/billing/plans?includeInactive=true");
     return (rows ?? []).map(toAdminPlan);
   },
 
-  /** Cria ou atualiza um plano (upsert) + sincroniza Stripe no backend. */
   async save(plan: AdminPlan): Promise<AdminPlan[]> {
-    if (MOCK_MODE) {
-      const store = ensureStore().slice();
-      const idx = store.findIndex((p) => p.id === plan.id);
-      if (idx >= 0) store[idx] = plan;
-      else store.push(plan);
-      writeStore(store);
-      return store;
-    }
     const dto = toBackendDto(plan);
     if (plan.id && UUID_RE.test(plan.id)) await api.patch(`/billing/plans/${plan.id}`, dto);
     else await api.post("/billing/plans", dto);
     return this.list();
   },
 
-  /** "Remover" = desativar (backend não deleta planos com histórico Stripe). */
   async remove(id: string): Promise<AdminPlan[]> {
-    if (MOCK_MODE) {
-      const store = ensureStore().filter((p) => p.id !== id);
-      writeStore(store);
-      return store;
-    }
     await api.patch(`/billing/plans/${id}`, { active: false });
     return this.list();
   },
 
-  /** Re-sincroniza o plano com o Stripe (Product/Price). No-op em MOCK. */
   async syncStripe(id: string): Promise<AdminPlan[]> {
-    if (MOCK_MODE) return ensureStore();
     await api.post(`/billing/plans/${id}/sync-stripe`, {});
     return this.list();
   },

@@ -1,12 +1,19 @@
 // ============================================================================
 // AdminKnowledge — gestão da Base de Conhecimento dentro do Painel Admin.
-// Reutiliza o KnowledgeBaseManager (mesmo CRUD/dados do módulo de suporte),
-// apresentado como página administrativa.
+//
+// NÃO existe backend de Base de Conhecimento. O KnowledgeBaseManager opera
+// sobre localStorage (mock, via useKnowledgeArticles) e serve apenas para
+// iteração de UI em desenvolvimento. Por isso, em homologação/produção
+// (IS_PROD) a tela é DESABILITADA e mostra um estado "funcionalidade
+// indisponível" — nenhum localStorage/mock é usado como fonte runtime e
+// nenhum dado fictício é exibido. Os mocks ficam restritos a dev/test/storybook.
 // ============================================================================
 
 import { BookOpen } from "lucide-react";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { KnowledgeBaseManager } from "../components/knowledge/KnowledgeBaseManager";
+import { EmptyState } from "@/shared/components/EmptyState";
+import { IS_PROD } from "@/shared/lib/env";
 
 export default function AdminKnowledge() {
   return (
@@ -19,7 +26,16 @@ export default function AdminKnowledge() {
             <p className="text-sm text-muted-foreground">Gerencie artigos, FAQs, tutoriais e documentação do suporte.</p>
           </div>
         </div>
-        <KnowledgeBaseManager />
+
+        {IS_PROD ? (
+          <EmptyState
+            icon={BookOpen}
+            title="Funcionalidade indisponível"
+            description="A Base de Conhecimento depende de um backend ainda não implementado. Para preservar a integridade dos dados, nenhum conteúdo fictício é exibido em homologação/produção."
+          />
+        ) : (
+          <KnowledgeBaseManager />
+        )}
       </div>
     </AdminLayout>
   );

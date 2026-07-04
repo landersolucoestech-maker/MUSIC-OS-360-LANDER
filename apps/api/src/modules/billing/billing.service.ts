@@ -13,6 +13,7 @@ import { WsGateway } from '../../core/websocket/ws.gateway';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { BillingEnforcementService } from './billing-enforcement.service';
 import { BillingPlansService } from './billing-plans.service';
+import { AdminListQueryDto, UpdateAdminTenantDto } from './dto/admin-billing.dto';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 const StripeRaw = require('stripe');
@@ -97,6 +98,55 @@ export const PLAN_LIMITS: Record<string, {
 
 type Plan = keyof typeof PLAN_FEATURES;
 
+interface AdminTenantRow {
+  id: string;
+  name: string;
+  slug: string;
+  status: string | null;
+  plan: string | null;
+  owner_email: string | null;
+  users_count: string | number | null;
+  artists_count: string | number | null;
+  storage_used_mb: string | number | null;
+  storage_limit_mb: string | number | null;
+  mrr: string | number | null;
+  created_at: Date | string;
+  last_active_at: Date | string | null;
+  country: string | null;
+  trial_ends_at: Date | string | null;
+}
+
+interface AdminSubscriptionRow {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  plan: string | null;
+  status: string | null;
+  mrr: string | number | null;
+  billing_cycle: string | null;
+  started_at: Date | string;
+  current_period_end: Date | string | null;
+  payment_method: string | null;
+  trial_ends_at: Date | string | null;
+  last_payment_at: Date | string | null;
+  next_payment_at: Date | string | null;
+}
+
+interface AdminInvoiceRow {
+  id: string;
+  tenant_id: string;
+  tenant_name: string;
+  stripe_invoice_id: string | null;
+  status: string;
+  amount_due: string | number | null;
+  amount_paid: string | number | null;
+  currency: string | null;
+  due_date: Date | string | null;
+  hosted_invoice_url: string | null;
+  invoice_pdf: string | null;
+  created_at: Date | string;
+}
+
 function stripeDate(seconds?: number | null): Date | null {
   return typeof seconds === 'number' && Number.isFinite(seconds)
     ? new Date(seconds * 1000)
@@ -148,6 +198,276 @@ export class BillingService {
     if (!this.ds || !this.subRepo || !this.tenantRepo || !this.orgRepo) {
       throw new ServiceUnavailableException('Billing persistence unavailable');
     }
+  }
+
+  private assertDataSource(): DataSource {
+    if (!this.ds) throw new ServiceUnavailableException('Billing persistence unavailable');
+    return this.ds;
+  }
+
+  private toIso(value: Date | string | null | undefined): string {
+    if (!value) return '';
+    return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  }
+
+  private toOptionalIso(value: Date | string | null | undefined): string | undefined {
+    if (!value) return undefined;
+    return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  }
+
+  async listAdminTenants(query: AdminListQueryDto = {}) {
+    const ds = this.assertDataSource();
+    const params: unknown[] = [];
+    const filters: string[] = ['t.deleted_at IS NULL'];
+    if (query.search) {
+      params.push(`%${query.search.toLowerCase()}%`);
+      filters.push(`(lower(t.name) LIKE $${params.length} OR lower(t.slug) LIKE $${params.length} OR lower(COALESCE(owner.email, '')) LIKE $${params.length})`);
+    }
+    if (query.status && query.status !== 'all') {
+      params.push(query.status);
+      filters.push(`COALESCE(state.status, bs.status, CASE WHEN t.active THEN 'active' ELSE 'suspended' END) = $${params.length}`);
+    }
+    if (query.plan && query.plan !== 'all') {
+      params.push(query.plan);
+      filters.push(`COALESCE(bs.plan, t.plan) = $${params.length}`);
+    }
+
+    const rows = await ds.query(
+      `
+      SELECT
+        t.id,
+        t.name,
+        t.slug,
+        COALESCE(state.status, bs.status, CASE WHEN t.active THEN 'active' ELSE 'suspended' END) AS status,
+        COALESCE(bs.plan, t.plan) AS plan,
+        COALESCE(owner.email, '') AS owner_email,
+        COALESCE(users.users_count, 0) AS users_count,
+        COALESCE(artists.artists_count, 0) AS artists_count,
+        0 AS storage_used_mb,
+        COALESCE(((bp.limits ->> 'storageGb')::numeric * 1024), 0) AS storage_limit_mb,
+        CASE
+          WHEN bp.interval = 'year' THEN COALESCE(bp.amount, 0)::numeric / 1200
+          ELSE COALESCE(bp.amount, 0)::numeric / 100
+        END AS mrr,
+        t.created_at,
+        t.updated_at AS last_active_at,
+        COALESCE(t.settings ->> 'country', '') AS country,
+        bs.trial_ends_at
+      FROM tenants t
+      LEFT JOIN billing_subscriptions bs ON bs.tenant_id = t.id
+      LEFT JOIN tenant_billing_state state ON state.tenant_id = t.id
+      LEFT JOIN billing_plans bp ON bp.slug = COALESCE(bs.plan, t.plan)
+      LEFT JOIN LATERAL (
+        SELECT email
+        FROM org_members om
+        WHERE om.tenant_id = t.id
+          AND om.deleted_at IS NULL
+          AND om.is_active = true
+        ORDER BY CASE WHEN om.role = 'owner' THEN 0 WHEN om.role = 'admin' THEN 1 ELSE 2 END, om.created_at ASC
+        LIMIT 1
+      ) owner ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS users_count
+        FROM org_members om
+        WHERE om.tenant_id = t.id
+          AND om.deleted_at IS NULL
+          AND om.is_active = true
+      ) users ON true
+      LEFT JOIN LATERAL (
+        SELECT COUNT(*)::int AS artists_count
+        FROM artists a
+        WHERE a.tenant_id = t.id
+          AND a.deleted_at IS NULL
+      ) artists ON true
+      WHERE ${filters.join(' AND ')}
+      ORDER BY t.created_at DESC
+      LIMIT 500
+      `,
+      params,
+    ) as AdminTenantRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      name: row.name,
+      slug: row.slug,
+      status: row.status ?? 'pending',
+      plan: row.plan ?? 'starter',
+      owner_email: row.owner_email ?? '',
+      users_count: Number(row.users_count ?? 0),
+      artists_count: Number(row.artists_count ?? 0),
+      storage_used_mb: Number(row.storage_used_mb ?? 0),
+      storage_limit_mb: Number(row.storage_limit_mb ?? 0),
+      mrr: Math.round(Number(row.mrr ?? 0)),
+      created_at: this.toIso(row.created_at),
+      last_active_at: this.toIso(row.last_active_at ?? row.created_at),
+      country: row.country ?? '',
+      trial_ends_at: this.toOptionalIso(row.trial_ends_at),
+    }));
+  }
+
+  async updateAdminTenant(tenantId: string, body: UpdateAdminTenantDto) {
+    const ds = this.assertDataSource();
+    await ds.transaction(async (manager) => {
+      const tenant = await manager.getRepository(TenantEntity).findOne({ where: { id: tenantId } });
+      if (!tenant || tenant.deleted_at) throw new BadRequestException('Tenant nao encontrado');
+
+      if (body.name !== undefined) tenant.name = body.name;
+      if (body.slug !== undefined) tenant.slug = body.slug;
+      if (body.plan !== undefined) tenant.plan = body.plan as any;
+      if (body.country !== undefined) {
+        tenant.settings = { ...(tenant.settings ?? {}), country: body.country };
+      }
+      if (body.status !== undefined) {
+        tenant.active = !['suspended', 'cancelled'].includes(body.status);
+      }
+      await manager.getRepository(TenantEntity).save(tenant);
+
+      if (body.owner_email !== undefined) {
+        await manager.query(
+          `
+          UPDATE org_members
+             SET email = $2,
+                 updated_at = now()
+           WHERE id = (
+             SELECT id
+               FROM org_members
+              WHERE tenant_id = $1
+                AND deleted_at IS NULL
+              ORDER BY CASE WHEN role = 'owner' THEN 0 WHEN role = 'admin' THEN 1 ELSE 2 END, created_at ASC
+              LIMIT 1
+           )
+          `,
+          [tenantId, body.owner_email],
+        );
+      }
+
+      if (body.status !== undefined) {
+        await manager.query(
+          `
+          INSERT INTO tenant_billing_state (tenant_id, status)
+          VALUES ($1, $2)
+          ON CONFLICT (tenant_id)
+          DO UPDATE SET status = $2, updated_at = now()
+          `,
+          [tenantId, body.status],
+        );
+      }
+    });
+
+    const tenants = await this.listAdminTenants({});
+    return tenants.find((tenant) => tenant.id === tenantId) ?? null;
+  }
+
+  async listAdminSubscriptions(query: AdminListQueryDto = {}) {
+    const ds = this.assertDataSource();
+    const params: unknown[] = [];
+    const filters: string[] = ['t.deleted_at IS NULL'];
+    if (query.search) {
+      params.push(`%${query.search.toLowerCase()}%`);
+      filters.push(`lower(t.name) LIKE $${params.length}`);
+    }
+    if (query.status && query.status !== 'all') {
+      params.push(query.status);
+      filters.push(`COALESCE(state.status, bs.status, 'trial') = $${params.length}`);
+    }
+    if (query.plan && query.plan !== 'all') {
+      params.push(query.plan);
+      filters.push(`COALESCE(bs.plan, t.plan) = $${params.length}`);
+    }
+
+    const rows = await ds.query(
+      `
+      SELECT
+        COALESCE(bs.id::text, state.id::text, t.id::text) AS id,
+        t.id AS tenant_id,
+        t.name AS tenant_name,
+        COALESCE(bs.plan, t.plan) AS plan,
+        COALESCE(state.status, bs.status, 'trial') AS status,
+        CASE
+          WHEN bp.interval = 'year' THEN COALESCE(bp.amount, 0)::numeric / 1200
+          ELSE COALESCE(bp.amount, 0)::numeric / 100
+        END AS mrr,
+        CASE WHEN bp.interval = 'year' THEN 'annual' ELSE 'monthly' END AS billing_cycle,
+        COALESCE(bs.current_period_start, bs.created_at, t.created_at) AS started_at,
+        bs.current_period_end,
+        COALESCE(bs.metadata ->> 'payment_method', 'Stripe') AS payment_method,
+        bs.trial_ends_at,
+        state.last_payment_at,
+        COALESCE(state.next_payment_at, bs.current_period_end) AS next_payment_at
+      FROM tenants t
+      LEFT JOIN billing_subscriptions bs ON bs.tenant_id = t.id
+      LEFT JOIN tenant_billing_state state ON state.tenant_id = t.id
+      LEFT JOIN billing_plans bp ON bp.slug = COALESCE(bs.plan, t.plan)
+      WHERE ${filters.join(' AND ')}
+      ORDER BY COALESCE(state.updated_at, bs.updated_at, t.updated_at) DESC
+      LIMIT 500
+      `,
+      params,
+    ) as AdminSubscriptionRow[];
+
+    return rows.map((row) => ({
+      id: row.id,
+      tenant_id: row.tenant_id,
+      tenant_name: row.tenant_name,
+      plan: row.plan ?? 'starter',
+      status: normalizeSubscriptionStatus(row.status ?? 'trial'),
+      mrr: Math.round(Number(row.mrr ?? 0)),
+      billing_cycle: row.billing_cycle === 'annual' ? 'annual' : 'monthly',
+      started_at: this.toIso(row.started_at),
+      current_period_end: this.toIso(row.current_period_end ?? row.started_at),
+      payment_method: row.payment_method ?? 'Stripe',
+      trial_ends_at: this.toOptionalIso(row.trial_ends_at),
+      last_payment_at: this.toOptionalIso(row.last_payment_at),
+      next_payment_at: this.toOptionalIso(row.next_payment_at),
+    }));
+  }
+
+  async listAdminInvoices(query: AdminListQueryDto & { tenantId?: string } = {}) {
+    const ds = this.assertDataSource();
+    const params: unknown[] = [];
+    const filters: string[] = ['i.deleted_at IS NULL'];
+    if (query.tenantId) {
+      params.push(query.tenantId);
+      filters.push(`i.tenant_id = $${params.length}`);
+    }
+    if (query.status && query.status !== 'all') {
+      params.push(query.status);
+      filters.push(`i.status = $${params.length}`);
+    }
+    if (query.search) {
+      params.push(`%${query.search.toLowerCase()}%`);
+      filters.push(`(lower(t.name) LIKE $${params.length} OR lower(COALESCE(i.stripe_invoice_id, '')) LIKE $${params.length})`);
+    }
+    const rows = await ds.query(
+      `
+      SELECT
+        i.id,
+        i.tenant_id,
+        t.name AS tenant_name,
+        i.stripe_invoice_id,
+        i.status,
+        i.amount_due,
+        i.amount_paid,
+        i.currency,
+        i.due_date,
+        i.hosted_invoice_url,
+        i.invoice_pdf,
+        i.created_at
+      FROM invoices i
+      JOIN tenants t ON t.id = i.tenant_id
+      WHERE ${filters.join(' AND ')}
+      ORDER BY i.created_at DESC
+      LIMIT 500
+      `,
+      params,
+    ) as AdminInvoiceRow[];
+    return rows.map((row) => ({
+      ...row,
+      amount_due: Number(row.amount_due ?? 0),
+      amount_paid: Number(row.amount_paid ?? 0),
+      due_date: this.toOptionalIso(row.due_date),
+      created_at: this.toIso(row.created_at),
+    }));
   }
 
   async createCheckoutSession(params: {

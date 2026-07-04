@@ -7,13 +7,14 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { TablePagination } from "@/shared/ui/table-pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { cn } from "@/shared/lib/utils";
-import { ADMIN_AUDIT_LOGS as MOCK_AUDIT_LOGS } from "../data/admin-source";
+import { useQuery } from "@tanstack/react-query";
+import { adminAuditService } from "../services/admin-audit.service";
 import type { AuditAction } from "../types";
 import { Search, ScrollText, Globe, Clock } from "lucide-react";
 
 const ACTION_STYLE: Record<AuditAction, string> = {
   create:      "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  update:      "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  update:      "text-primary bg-primary/10 border-primary/20",
   delete:      "text-red-400 bg-red-500/10 border-red-500/20",
   login:       "text-muted-foreground bg-muted border-border",
   logout:      "text-muted-foreground bg-muted border-border",
@@ -37,7 +38,13 @@ function fmtDate(iso: string) {
 export default function AdminAudit() {
   const [search, setSearch] = useState("");
 
-  const filtered = MOCK_AUDIT_LOGS.filter((log) => {
+  const auditQuery = useQuery({
+    queryKey: ["admin", "audit-logs"],
+    queryFn: () => adminAuditService.list(),
+  });
+  const logs = auditQuery.data ?? [];
+
+  const filtered = logs.filter((log) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -60,10 +67,10 @@ export default function AdminAudit() {
 
         <div className="grid grid-cols-4 gap-4">
           {[
-            { label: "Eventos Totais",   value: MOCK_AUDIT_LOGS.length },
-            { label: "Hoje",             value: MOCK_AUDIT_LOGS.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length },
-            { label: "Ações Críticas",   value: MOCK_AUDIT_LOGS.filter(l => ["suspend","delete","impersonate"].includes(l.action)).length },
-            { label: "Exportações",      value: MOCK_AUDIT_LOGS.filter(l => l.action === "export").length },
+            { label: "Eventos Totais",   value: logs.length },
+            { label: "Hoje",             value: logs.filter(l => new Date(l.created_at).toDateString() === new Date().toDateString()).length },
+            { label: "Ações Críticas",   value: logs.filter(l => ["suspend","delete","impersonate"].includes(l.action)).length },
+            { label: "Exportações",      value: logs.filter(l => l.action === "export").length },
           ].map(({ label, value }) => (
             <div key={label} className="rounded-2xl border border-border bg-card p-4">
               <div className="flex h-8 w-8 items-center justify-center rounded-xl mb-3 bg-muted">
@@ -91,7 +98,7 @@ export default function AdminAudit() {
             title="Logs de Auditoria"
             count={filtered.length}
             description="Acompanhe ações administrativas, usuários, tenants e detalhes de auditoria"
-            className="px-4 pt-4"
+            className="p-4"
           />
           <Table>
             <TableHeader>
@@ -105,8 +112,8 @@ export default function AdminAudit() {
               {pageItems.map((log) => (
                 <TableRow key={log.id} className="border-border hover:bg-muted transition-colors" data-testid={`audit-${log.id}`}>
                   <TableCell className="py-3.5">
-                    <Badge variant="outline" className={cn("text-[10px] border", ACTION_STYLE[log.action])}>
-                      {ACTION_LABEL[log.action]}
+                    <Badge variant="outline" className={cn("text-[10px] border", ACTION_STYLE[log.action] ?? "text-muted-foreground bg-muted border-border")}>
+                      {ACTION_LABEL[log.action] ?? log.action}
                     </Badge>
                   </TableCell>
                   <TableCell className="py-3.5">
@@ -135,6 +142,25 @@ export default function AdminAudit() {
               ))}
             </TableBody>
           </Table>
+          {auditQuery.isLoading ? (
+            <div className="py-16 flex flex-col items-center gap-3">
+              <ScrollText className="h-8 w-8 text-muted-foreground animate-pulse" />
+              <p className="text-[13px] text-muted-foreground">Carregando auditoria…</p>
+            </div>
+          ) : auditQuery.isError ? (
+            <div className="py-16 flex flex-col items-center gap-3">
+              <ScrollText className="h-8 w-8 text-red-400" />
+              <p className="text-[13px] text-muted-foreground">Falha ao carregar os logs de auditoria.</p>
+              <button onClick={() => auditQuery.refetch()} className="text-[12px] text-primary hover:underline" data-testid="button-retry-audit">
+                Tentar novamente
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="py-16 flex flex-col items-center gap-3">
+              <ScrollText className="h-8 w-8 text-muted-foreground" />
+              <p className="text-[13px] text-muted-foreground">Nenhum evento de auditoria</p>
+            </div>
+          ) : null}
           <TablePagination
             total={total}
             page={page}

@@ -27,6 +27,7 @@ import { BillingEnforcementService, TenantBillingStatus } from './billing-enforc
 import { BillingPlansService } from './billing-plans.service';
 import { CreateCheckoutDto, CreatePortalDto } from './dto/billing.dto';
 import { CreatePlanDto, UpdatePlanDto } from './dto/billing-plans.dto';
+import { AdminListQueryDto, UpdateAdminTenantDto } from './dto/admin-billing.dto';
 import type { Request }    from 'express';
 
 @ApiTags('Billing')
@@ -125,6 +126,45 @@ export class BillingController {
   @ApiOperation({ summary: 'SaaS metrics — MRR, ARR, churn, LTV (super_admin only)' })
   getSaasMetrics() {
     return this.billing.getSaasMetrics();
+  }
+
+  @Get('admin/tenants')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Listar tenants reais para o painel Admin SaaS' })
+  listAdminTenants(@Query() query: AdminListQueryDto) {
+    return this.billing.listAdminTenants(query);
+  }
+
+  @Patch('admin/tenants/:tenantId')
+  @RequireRole('super_admin')
+  @Audit('tenant.admin_updated')
+  @ApiOperation({ summary: 'Editar tenant pelo painel Admin SaaS' })
+  updateAdminTenant(
+    @Param('tenantId') tenantId: string,
+    @Body() body: UpdateAdminTenantDto,
+  ) {
+    return this.billing.updateAdminTenant(tenantId, body);
+  }
+
+  @Get('admin/subscriptions')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Listar assinaturas reais para o painel Admin SaaS' })
+  listAdminSubscriptions(@Query() query: AdminListQueryDto) {
+    return this.billing.listAdminSubscriptions(query);
+  }
+
+  @Get('admin/tenants/:tenantId/billing-state')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Obter estado financeiro persistido de um tenant' })
+  getAdminTenantBillingState(@Param('tenantId') tenantId: string) {
+    return this.enforcement.getState(tenantId);
+  }
+
+  @Get('admin/invoices')
+  @RequireRole('super_admin')
+  @ApiOperation({ summary: 'Listar invoices reais do billing/admin' })
+  listAdminInvoices(@Query() query: AdminListQueryDto & { tenantId?: string }) {
+    return this.billing.listAdminInvoices(query);
   }
 
   @Post('admin/tenants/:tenantId/suspend')

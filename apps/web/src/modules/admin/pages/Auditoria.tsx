@@ -294,7 +294,6 @@ export default function Auditoria() {
   const headerActions = (
     <Button
       onClick={() => refetch()}
-      disabled={isFetching}
       variant="outline"
       data-testid="button-refresh-audit"
     >
@@ -319,4 +318,3 @@ export default function Auditoria() {
     </MainLayout>
   );
 }
-

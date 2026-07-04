@@ -1,9 +1,9 @@
 export type TenantStatus = "active" | "trial" | "suspended" | "cancelled" | "past_due" | "pending";
-export type PlanTier = "starter" | "growth" | "pro" | "enterprise";
+export type PlanTier = "starter" | "growth" | "pro" | "professional" | "enterprise";
 export type AdminUserRole = "super_admin" | "admin" | "operator" | "viewer";
 export type AdminRole = "super_admin" | "admin" | "operator" | "support" | "finance" | "viewer";
 export type AdminUserStatus = "active" | "blocked";
-export type SubscriptionStatus = "active" | "trial" | "past_due" | "cancelled";
+export type SubscriptionStatus = "active" | "trial" | "past_due" | "payment_grace" | "read_only" | "suspended" | "cancelled" | "unpaid";
 export type BillingCycle = "monthly" | "annual";
 export type ServiceHealth = "healthy" | "degraded" | "down";
 export type SecurityEventType = "brute_force" | "suspicious_ip" | "failed_login" | "account_locked" | string;
@@ -181,6 +181,64 @@ export interface AdminIntegration {
   last_sync_at?: string;
   description: string;
   icon: string;
+}
+
+/**
+ * Categorias de provedores GLOBAIS da plataforma SaaS (Painel Admin).
+ * Distinto das integrações por tenant (App > Configurações).
+ */
+export type PlatformCategory =
+  | "core" | "billing" | "email" | "observability" | "storage"
+  | "contracts" | "rights" | "social" | "music_platform"
+  | "launch_connector" | "fiscal" | "marketing" | "api" | "webhook";
+
+export type PlatformEnvironment = "production" | "sandbox" | "disabled";
+
+/**
+ * PlatformIntegrationProvider — provedor GLOBAL da plataforma (Painel Admin SaaS).
+ * Representa disponibilidade, infraestrutura, limites e status operacional global.
+ * NÃO representa a conexão de um cliente (isso é TenantIntegrationConnection).
+ */
+export interface PlatformIntegrationProvider {
+  id: string;
+  name: string;
+  provider: string;
+  category: PlatformCategory;
+  status: IntegrationStatus;
+  enabled: boolean;
+  environment: PlatformEnvironment;
+  availabilityByPlan: string[];
+  tenantsUsing: number;
+  requiresGlobalCredentials: boolean;
+  requiresTenantCredentials: boolean;
+  isCore: boolean;
+  lastHealthCheckAt?: string;
+  lastGlobalError?: string | null;
+  webhookStatus?: "ok" | "failing" | "none";
+  oauthStatus?: "ok" | "error" | "n/a";
+  description: string;
+  adminNotes?: string;
+  auditUpdatedAt?: string;
+}
+
+/**
+ * TenantIntegrationConnection — conexão de um CLIENTE/workspace (App > Configurações).
+ * Representa a conta conectada por aquele tenant, credenciais e sync.
+ */
+export interface TenantIntegrationConnection {
+  id: string;
+  tenantId: string;
+  provider: string;
+  status: IntegrationStatus;
+  connected: boolean;
+  connectedAccountName?: string | null;
+  credentialType?: "oauth" | "api_key" | "none";
+  scopes?: string[];
+  lastSyncAt?: string | null;
+  lastError?: string | null;
+  configuredBy?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface AdminNotification {

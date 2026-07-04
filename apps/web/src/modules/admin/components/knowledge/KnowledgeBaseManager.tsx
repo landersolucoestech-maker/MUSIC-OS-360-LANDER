@@ -273,7 +273,6 @@ export function KnowledgeBaseManager() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-6"
-                        disabled={index === 0}
                         onClick={() => moveArticle(article.id, "up")}
                         aria-label="Subir"
                       >
@@ -283,7 +282,6 @@ export function KnowledgeBaseManager() {
                         variant="ghost"
                         size="icon"
                         className="h-5 w-6"
-                        disabled={index === filtered.length - 1}
                         onClick={() => moveArticle(article.id, "down")}
                         aria-label="Descer"
                       >

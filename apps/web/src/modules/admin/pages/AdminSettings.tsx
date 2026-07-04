@@ -1,21 +1,29 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { AdminLayout } from "../layouts/AdminLayout";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
-import { ADMIN_INTEGRATIONS as MOCK_INTEGRATIONS, ADMIN_USERS as MOCK_ADMIN_USERS } from "../data/admin-source";
-import type { IntegrationStatus } from "../types";
+import { IS_PROD } from "@/shared/lib/env";
+import { ADMIN_PLATFORM_PROVIDERS as PLATFORM_PROVIDERS, ADMIN_USERS as MOCK_ADMIN_USERS } from "../data/admin-source";
+import type { IntegrationStatus, PlatformIntegrationProvider } from "../types";
 import type { AdminRole } from "../types";
 import {
   IntegrationLogo,
   type IntegrationLogoId,
 } from "@/shared/integrations";
 import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
+} from "@/shared/ui/dropdown-menu";
+import {
   Settings, Mail, Shield, Bell, Webhook, KeyRound, Zap,
   CheckCircle2, AlertCircle, Clock, XCircle,
   Eye, EyeOff, RefreshCw, Plus, Trash2, Copy,
   ToggleLeft, ToggleRight, Users, ShieldOff, Search,
+  MoreHorizontal, Activity, FileText, ScrollText,
 } from "lucide-react";
 
 /* ── types ── */
@@ -41,9 +49,15 @@ const STATUS_CFG: Record<IntegrationStatus, { label: string; color: string; bg: 
   pending:  { label: "Pendente",   color: "text-yellow-400",  bg: "bg-yellow-500/10 border-yellow-500/20",  icon: Clock        },
 };
 const CAT_LABEL: Record<string, string> = {
-  payment: "Pagamento", communication: "Comunicação", analytics: "Métricas",
-  storage: "Storage", music: "Música", accounting: "Accounting",
+  core: "Core da Plataforma", billing: "Billing", email: "E-mail",
+  observability: "Observabilidade", storage: "Storage", api: "API", webhook: "Webhooks",
+  contracts: "Contratos", rights: "Direitos & Associações", fiscal: "Fiscal",
+  social: "Redes Sociais", music_platform: "Plataformas de Música",
+  launch_connector: "Conectores de Lançamento", marketing: "Marketing",
+  // legado (App/tenant)
+  payment: "Pagamento", communication: "Comunicação", analytics: "Métricas", music: "Música", accounting: "Accounting", distribution: "Distribuição",
 };
+const ENV_LABEL: Record<string, string> = { production: "Produção", sandbox: "Sandbox", disabled: "Desabilitado" };
 function fmtDate(iso?: string) {
   if (!iso) return "—";
   return new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -104,7 +118,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
 function SaveBar() {
   return (
     <div className="flex justify-end pt-2">
-      <button className="rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-save-settings">
+      <button
+        className="rounded-xl bg-primary px-5 py-2 text-[13px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors"
+        data-testid="button-save-settings"
+        onClick={() => toast.success("Configurações salvas")}
+      >
         Salvar Alterações
       </button>
     </div>
@@ -293,7 +311,10 @@ function TabNotificacoes() {
   );
 }
 
-const MOCK_WEBHOOKS = [
+// Mocks de UI: expostos apenas em dev local. Em homologação/produção (IS_PROD)
+// retornam vazio — nunca exibir webhooks/segredos fictícios. Substituir por API
+// real (/admin/webhooks) quando o endpoint existir.
+const MOCK_WEBHOOKS = IS_PROD ? [] : [
   { id: "wh-1", url: "https://api.exemplo.com/hooks/musicos360", events: ["ticket.created", "ticket.resolved"], status: "active", last_called: "2026-05-08T08:10:00Z" },
   { id: "wh-2", url: "https://slack.com/services/T00/B00/xxx", events: ["user.invited", "tenant.created"], status: "active", last_called: "2026-05-07T15:30:00Z" },
   { id: "wh-3", url: "https://n8n.empresa.io/webhook/abc123", events: ["contract.expiring"], status: "error", last_called: "2026-05-06T10:00:00Z" },
@@ -303,7 +324,7 @@ function TabWebhooks() {
   return (
     <div className="space-y-4">
       <div className="flex justify-end">
-        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-add-webhook">
+        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors" data-testid="button-add-webhook">
           <Plus className="h-3.5 w-3.5" /> Novo Webhook
         </button>
       </div>
@@ -336,7 +357,8 @@ function TabWebhooks() {
           <div className="flex items-center gap-2">
             <input
               type="password"
-              defaultValue="whsec_abcdefghijklmnop1234567890"
+              defaultValue={IS_PROD ? "" : "whsec_abcdefghijklmnop1234567890"}
+              placeholder={IS_PROD ? "Configurar via API de webhooks" : undefined}
               className="flex-1 rounded-xl border border-border bg-muted px-3 py-2 text-[13px] text-foreground focus:outline-none focus:border-primary/40"
             />
             <button className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-[12px] text-muted-foreground hover:text-muted-foreground transition-colors">
@@ -349,7 +371,9 @@ function TabWebhooks() {
   );
 }
 
-const MOCK_KEYS = [
+// Mocks de UI: apenas dev local. Em homologação/produção retornam vazio —
+// nunca exibir chaves/segredos fictícios. Substituir por API real quando existir.
+const MOCK_KEYS = IS_PROD ? [] : [
   { id: "key-1", name: "Produção Principal",      key: "sk_live_••••••••••••••••3f9a", created: "2026-01-10T00:00:00Z", last_used: "2026-05-08T07:45:00Z", scopes: ["read", "write"] },
   { id: "key-2", name: "Integração Relatórios",   key: "sk_live_••••••••••••••••8b2c", created: "2026-03-01T00:00:00Z", last_used: "2026-05-07T12:00:00Z", scopes: ["read"] },
   { id: "key-3", name: "Webhook Interno",          key: "sk_live_••••••••••••••••1d7e", created: "2026-04-15T00:00:00Z", last_used: "2026-05-06T09:30:00Z", scopes: ["read", "write", "admin"] },
@@ -360,7 +384,7 @@ function TabChavesApi() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-[12px] text-muted-foreground">{MOCK_KEYS.length} chaves ativas</p>
-        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-foreground hover:bg-primary/90 transition-colors" data-testid="button-create-key">
+        <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors" data-testid="button-create-key">
           <Plus className="h-3.5 w-3.5" /> Nova Chave API
         </button>
       </div>
@@ -400,24 +424,77 @@ function TabChavesApi() {
   );
 }
 
+const PROVIDER_LOGO: Partial<Record<string, IntegrationLogoId>> = {
+  stripe: "stripe", abramus: "abramus", ecad: "ecad", ubc: "ubc",
+  autentique: "autentique", clicksign: "clicksign", docusign: "docusign", nfe: "nfe",
+  meta_business: "meta_business", google_business: "google_business",
+  onerpm: "onerpm", distrokid: "distrokid", symphonic: "symphonic",
+  soundon: "soundon", somvibe: "somvibe", musicpro: "musicpro",
+};
+const ENV_BADGE: Record<string, string> = {
+  production: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  sandbox: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
+  disabled: "bg-muted text-muted-foreground border-border",
+};
+
 function TabIntegracoes() {
-  const active  = MOCK_INTEGRATIONS.filter(i => i.status === "active").length;
-  const error   = MOCK_INTEGRATIONS.filter(i => i.status === "error").length;
-  const pending = MOCK_INTEGRATIONS.filter(i => i.status === "pending").length;
-  const byCategory = MOCK_INTEGRATIONS.reduce<Record<string, typeof MOCK_INTEGRATIONS>>((acc, i) => {
-    acc[i.category] = acc[i.category] ?? [];
-    acc[i.category].push(i);
+  const navigate = useNavigate();
+  const [providers, setProviders] = useState<PlatformIntegrationProvider[]>(PLATFORM_PROVIDERS);
+
+  function toggleProvider(p: PlatformIntegrationProvider) {
+    const next = !p.enabled;
+    setProviders((prev) => prev.map((x) => (x.id === p.id ? { ...x, enabled: next } : x)));
+    toast.success(`${p.name} ${next ? "habilitado" : "desabilitado"} na plataforma`);
+  }
+
+  function runHealthCheck(p: PlatformIntegrationProvider) {
+    const now = new Date().toISOString();
+    setProviders((prev) => prev.map((x) => (x.id === p.id ? { ...x, lastHealthCheckAt: now } : x)));
+    toast.success(`Health check disparado para ${p.name}`, {
+      description: p.lastGlobalError ? `Último erro: ${p.lastGlobalError}` : "Sem erros reportados.",
+    });
+  }
+
+  function pendingPlatformAction(label: string, p: PlatformIntegrationProvider) {
+    // Ação de gestão de provedor global — endpoint de plataforma ainda não disponível.
+    toast.info(`${label} — ${p.name}`, {
+      description: "Configuração de provedor global será feita pela API de plataforma (pendente).",
+    });
+  }
+
+  const total     = providers.length;
+  const active    = providers.filter(p => p.status === "active").length;
+  const error     = providers.filter(p => p.status === "error").length;
+  const disabled  = providers.filter(p => !p.enabled).length;
+  const tenants   = providers.reduce((s, p) => s + (p.tenantsUsing ?? 0), 0);
+  const whFailing = providers.filter(p => p.webhookStatus === "failing").length;
+  const credPend  = providers.filter(p => p.status === "pending" || p.oauthStatus === "error").length;
+  const healthBad = providers.filter(p => !!p.lastGlobalError || p.status === "error").length;
+
+  const byCategory = providers.reduce<Record<string, PlatformIntegrationProvider[]>>((acc, p) => {
+    (acc[p.category] = acc[p.category] ?? []).push(p);
     return acc;
   }, {});
+
+  const metrics = [
+    { label: "Provedores totais",   value: total,     icon: Zap,          color: "text-muted-foreground", bg: "bg-muted" },
+    { label: "Ativos",              value: active,    icon: CheckCircle2, color: "text-emerald-400",      bg: "bg-emerald-500/10" },
+    { label: "Com erro",            value: error,     icon: AlertCircle,  color: "text-red-400",          bg: "bg-red-500/10" },
+    { label: "Desabilitados",       value: disabled,  icon: ShieldOff,    color: "text-muted-foreground", bg: "bg-muted" },
+    { label: "Tenants usando",      value: tenants,   icon: Users,        color: "text-primary",          bg: "bg-primary/10" },
+    { label: "Webhooks com falha",  value: whFailing, icon: Webhook,      color: "text-yellow-400",       bg: "bg-yellow-500/10" },
+    { label: "Credenciais pendentes", value: credPend, icon: KeyRound,    color: "text-yellow-400",       bg: "bg-yellow-500/10" },
+    { label: "Health degradados",   value: healthBad, icon: Activity,     color: "text-red-400",          bg: "bg-red-500/10" },
+  ];
+
   return (
     <div className="space-y-5">
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "Total",     value: MOCK_INTEGRATIONS.length, icon: Zap,          color: "text-muted-foreground",    bg: "bg-muted" },
-          { label: "Ativos",    value: active,                   icon: CheckCircle2, color: "text-emerald-400", bg: "bg-emerald-500/10" },
-          { label: "Com Erro",  value: error,                    icon: AlertCircle,  color: "text-red-400",     bg: "bg-red-500/10" },
-          { label: "Pendentes", value: pending,                  icon: Clock,        color: "text-yellow-400",  bg: "bg-yellow-500/10" },
-        ].map(({ label, value, icon: Icon, color, bg }) => (
+      <p className="text-[12px] text-muted-foreground leading-relaxed">
+        Gerencie provedores globais, disponibilidade por plano, infraestrutura, health checks, limites e auditoria da plataforma SaaS.
+      </p>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {metrics.map(({ label, value, icon: Icon, color, bg }) => (
           <div key={label} className="rounded-2xl border border-border bg-card p-4">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
               <Icon className={cn("h-4 w-4", color)} />
@@ -427,46 +504,102 @@ function TabIntegracoes() {
           </div>
         ))}
       </div>
+
       {Object.entries(byCategory).map(([cat, items]) => (
-        <div key={cat}>
-          <h2 className="text-[12px] font-semibold text-muted-foreground  tracking-wider mb-3">
-            {CAT_LABEL[cat] ?? cat}
-          </h2>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {items.map((integration) => {
-              const cfg = STATUS_CFG[integration.status];
+        <div key={cat} className="space-y-3">
+          <div className="flex items-center gap-2 pb-1 border-b border-border/50">
+            <h2 className="text-[12px] font-semibold text-muted-foreground tracking-wider">
+              {CAT_LABEL[cat] ?? cat}
+            </h2>
+          </div>
+          <div className="space-y-2">
+            {items.map((p) => {
+              const cfg = STATUS_CFG[p.status];
               const SIcon = cfg.icon;
-              const logoByProvider: Partial<Record<string, IntegrationLogoId>> = {
-                stripe: "stripe",
-                abramus: "abramus",
-                twilio: "twilio",
-                google: "google_analytics",
-                aws: "aws_s3",
-                meta: "meta_business",
-                spotify: "spotify_ads",
-              };
-              const logoId = logoByProvider[integration.provider];
+              const logoId = PROVIDER_LOGO[p.provider];
               return (
-                <div key={integration.id} className="rounded-2xl border border-border bg-card p-5 space-y-3" data-testid={`integration-${integration.id}`}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                      {logoId ? (
-                        <IntegrationLogo id={logoId} className="h-9 w-9 rounded-xl" imageClassName="h-7 w-7" />
-                      ) : (
-                        <div className="h-9 w-9 rounded-xl bg-muted border border-border flex items-center justify-center">
-                          <Zap className="h-4 w-4 text-muted-foreground" />
-                        </div>
+                <div
+                  key={p.id}
+                  className="flex items-start justify-between gap-4 p-4 bg-muted/30 rounded-lg"
+                  data-testid={`platform-provider-${p.id}`}
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    {logoId ? (
+                      <IntegrationLogo id={logoId} className="h-10 w-10 rounded-lg shrink-0" imageClassName="h-6 w-6" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-lg bg-muted border border-border/50 flex items-center justify-center shrink-0">
+                        <Zap className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                    )}
+                    <div className="min-w-0 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <p className="text-sm font-semibold text-foreground">{p.name}</p>
+                        {p.isCore && (
+                          <Badge variant="outline" className="text-[9px] border-primary/20 bg-primary/10 text-primary">Core</Badge>
+                        )}
+                        <Badge variant="outline" className={cn("text-[9px] border", ENV_BADGE[p.environment])}>
+                          {ENV_LABEL[p.environment]}
+                        </Badge>
+                        {!p.enabled && (
+                          <Badge variant="outline" className="text-[9px] border-border bg-muted text-muted-foreground gap-1">
+                            <ShieldOff className="h-2.5 w-2.5" /> Desabilitado
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{p.description}</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                        <span>{p.tenantsUsing} tenants</span>
+                        <span>Planos: {p.availabilityByPlan.join(", ") || "—"}</span>
+                        <span>Health: {fmtDate(p.lastHealthCheckAt)}</span>
+                        {p.webhookStatus && p.webhookStatus !== "none" && (
+                          <span>Webhook: {p.webhookStatus === "ok" ? "OK" : "Falha"}</span>
+                        )}
+                        <Badge variant="outline" className="text-[9px] border-border bg-card text-muted-foreground">
+                          {p.requiresGlobalCredentials
+                            ? "Credencial global"
+                            : p.requiresTenantCredentials
+                              ? "Credencial por tenant"
+                              : "Sem credencial"}
+                        </Badge>
+                      </div>
+                      {p.lastGlobalError && (
+                        <p className="flex items-center gap-1 text-[11px] text-red-400">
+                          <AlertCircle className="h-3 w-3 shrink-0" /> {p.lastGlobalError}
+                        </p>
                       )}
-                      <span className="text-[13px] font-semibold text-foreground">{integration.name}</span>
                     </div>
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <Badge variant="outline" className={cn("text-[10px] border gap-1", cfg.bg, cfg.color)}>
                       <SIcon className="h-3 w-3" />{cfg.label}
                     </Badge>
-                  </div>
-                  <p className="text-[12px] text-muted-foreground leading-relaxed">{integration.description}</p>
-                  <div className="flex items-center justify-between pt-1 border-t border-border">
-                    <span className="text-[11px] text-muted-foreground">{integration.tenants_using} tenants usando</span>
-                    <span className="text-[10px] text-muted-foreground">Sync: {fmtDate(integration.last_sync_at)}</span>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="h-7 w-7 rounded-lg flex items-center justify-center text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+                          data-testid={`provider-actions-${p.id}`}
+                          aria-label="Ações do provedor"
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-52">
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/audit")} data-testid={`action-logs-${p.id}`}><ScrollText className="h-3.5 w-3.5" /> Ver logs</DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/audit")} data-testid={`action-audit-${p.id}`}><FileText className="h-3.5 w-3.5" /> Ver auditoria</DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/clients")} data-testid={`action-tenants-${p.id}`}><Users className="h-3.5 w-3.5" /> Ver tenants usando</DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => runHealthCheck(p)} data-testid={`action-health-${p.id}`}><Activity className="h-3.5 w-3.5" /> Executar health check</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => pendingPlatformAction("Configurar provedor", p)} data-testid={`action-config-${p.id}`}><Settings className="h-3.5 w-3.5" /> Configurar provedor</DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => navigate("/admin/plans")} data-testid={`action-plans-${p.id}`}><Shield className="h-3.5 w-3.5" /> Configurar planos</DropdownMenuItem>
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => pendingPlatformAction("Configurar webhooks", p)} data-testid={`action-webhooks-${p.id}`}><Webhook className="h-3.5 w-3.5" /> Configurar webhooks</DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="gap-2 text-xs" onClick={() => toggleProvider(p)} data-testid={`action-toggle-${p.id}`}>
+                          {p.enabled ? <ToggleLeft className="h-3.5 w-3.5" /> : <ToggleRight className="h-3.5 w-3.5" />}
+                          {p.enabled ? "Desabilitar provedor" : "Habilitar provedor"}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
                 </div>
               );
@@ -480,7 +613,7 @@ function TabIntegracoes() {
 
 const ROLE_STYLE: Record<AdminRole, string> = {
   super_admin: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  admin:       "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  admin:       "text-primary bg-primary/10 border-primary/20",
   operator:    "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
   support:     "text-primary bg-primary/10 border-primary/30",
   finance:     "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
@@ -509,7 +642,7 @@ function TabUsuarios() {
         {[
           { label: "Usuários Ativos", value: active,                  color: "text-emerald-400", bg: "bg-emerald-500/10", icon: Users     },
           { label: "Bloqueados",      value: blocked,                 color: "text-red-400",     bg: "bg-red-500/10",     icon: ShieldOff },
-          { label: "Com MFA",         value: mfa,                     color: "text-blue-400",    bg: "bg-blue-500/10",    icon: Shield    },
+          { label: "Com MFA",         value: mfa,                     color: "text-primary",    bg: "bg-primary/10",    icon: Shield    },
           { label: "Total",           value: MOCK_ADMIN_USERS.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
         ].map(({ label, value, color, bg, icon: Icon }) => (
           <div key={label} className="rounded-2xl border border-border bg-card p-4">
@@ -538,7 +671,7 @@ function TabUsuarios() {
           title="Usuários Administrativos"
           count={filtered.length}
           description="Acompanhe usuários, tenants, papéis, MFA e sessões ativas"
-          className="px-4 pt-4"
+          className="p-4"
         />
         <Table>
           <TableHeader>
