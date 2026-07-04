@@ -48,6 +48,32 @@ const getXLSX = () => import("xlsx");
 
 const ATIVO_STATUSES_VINCULO = new Set(["ativo", "assinado", "vigente", "vencendo"]);
 
+type VinculoTipo = "exclusivo" | "parceiro" | "independente";
+
+/**
+ * Classifica o vínculo do artista por CONTRATO ATIVO — dimensão única e
+ * mutuamente exclusiva (soma = total): exclusivo (tem contrato exclusivo ativo)
+ * → parceiro (tem contrato ativo, não exclusivo) → independente (sem contrato
+ * ativo). O perfil de negócio (`tipo_perfil`: gravadora/editora/…) é OUTRA
+ * dimensão e é filtrado à parte (perfilFilter) — não entra nesta contagem.
+ */
+function classifyVinculo(
+  cs?: Array<{ status?: string | null; exclusivo?: boolean | null }>,
+): VinculoTipo {
+  const ativos = (cs ?? []).filter((c) =>
+    ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase()),
+  );
+  if (ativos.some((c) => c.exclusivo === true)) return "exclusivo";
+  if (ativos.length > 0) return "parceiro";
+  return "independente";
+}
+
+const VINCULO_BADGE: Record<VinculoTipo, { label: string; status: string }> = {
+  exclusivo:    { label: "Exclusivo",    status: "exclusivo" },
+  parceiro:     { label: "Parceiro",     status: "parceiro" },
+  independente: { label: "Independente", status: "sem_contrato" },
+};
+
 const PERFIL_LABELS: Record<string, string> = {
   independente: "Independente",
   gravadora: "Gravadora",
@@ -75,15 +101,8 @@ export default function Artistas() {
     return map;
   }, [contratos]);
 
-  const getVinculoLabel = (artistaId: string): { label: string; status: string } => {
-    const cs = contratosPorArtista.get(artistaId);
-    const isExclusivo = cs?.some(
-      (c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())
-    ) ?? false;
-    return isExclusivo
-      ? { label: "Exclusivo", status: "ativo" }
-      : { label: "Parceiro", status: "confirmed" };
-  };
+  const getVinculoLabel = (artistaId: string): { label: string; status: string } =>
+    VINCULO_BADGE[classifyVinculo(contratosPorArtista.get(artistaId))];
 
   const isLoading = artistasLoading;
 
@@ -104,19 +123,14 @@ export default function Artistas() {
   }, [todosArtistas]);
 
   const kpiArtistas = useMemo(() => {
-    const exclusivos = todosArtistas.filter((a) => {
-      const cs = contratosPorArtista.get(a.id);
-      return cs?.some((c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())) ?? false;
-    }).length;
-    const parceiros = todosArtistas.filter((a) => {
-      const cs = contratosPorArtista.get(a.id);
-      const isExclusivo = cs?.some((c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())) ?? false;
-      return !isExclusivo && (a as any).status !== "onboarding";
-    }).length;
-    const independentes = todosArtistas.filter((a) => {
-      const tp = ((a as any).tipo_perfil as string | null | undefined) || "independente";
-      return tp === "independente";
-    }).length;
+    let exclusivos = 0, parceiros = 0, independentes = 0;
+    for (const a of todosArtistas) {
+      switch (classifyVinculo(contratosPorArtista.get(a.id))) {
+        case "exclusivo": exclusivos++; break;
+        case "parceiro":  parceiros++;  break;
+        default:          independentes++; break;
+      }
+    }
     return { exclusivos, parceiros, independentes };
   }, [todosArtistas, contratosPorArtista]);
 
@@ -129,13 +143,8 @@ export default function Artistas() {
         artista.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         artista.genero_musical?.toLowerCase().includes(searchTerm.toLowerCase());
       const cs = contratosPorArtista.get(artista.id);
-      const isExclusivo = cs?.some(
-        (c) => c.exclusivo === true && ATIVO_STATUSES_VINCULO.has((c.status || "").toLowerCase())
-      ) ?? false;
       const matchesStatus =
-        statusFilter === "todos" ||
-        (statusFilter === "exclusivo" && isExclusivo) ||
-        (statusFilter === "parceiro" && !isExclusivo);
+        statusFilter === "todos" || classifyVinculo(cs) === statusFilter;
       const matchesGenero = generoFilter === "todos" || artista.genero_musical === generoFilter;
       const tp = (artista.tipo_perfil as string | null | undefined) || "independente";
       const matchesPerfil = perfilFilter === "todos" || tp === perfilFilter;
@@ -278,7 +287,7 @@ export default function Artistas() {
           <MetricCard
             title="Independentes"
             value={kpiArtistas.independentes}
-            description="sem gravadora/editora"
+            description="sem contrato ativo"
             icon={CheckCircle}
             accent="success"
           />
@@ -304,6 +313,7 @@ export default function Artistas() {
                 <SelectItem value="todos">Todos os artistas</SelectItem>
                 <SelectItem value="exclusivo">Exclusivo</SelectItem>
                 <SelectItem value="parceiro">Parceiro</SelectItem>
+                <SelectItem value="independente">Independente</SelectItem>
               </SelectContent>
             </Select>
             <Select value={perfilFilter} onValueChange={setPerfilFilter}>

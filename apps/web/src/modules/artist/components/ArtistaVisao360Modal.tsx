@@ -116,6 +116,87 @@ import {
 } from "@/modules/contracts/hooks/useContratos";
 import { useTransacoes } from "@/modules/accounting/hooks/useTransacoes";
 import { ContratoStatusBadge } from "@/modules/contracts/components/ContratoStatusBadge";
+import { useEventos } from "@/modules/events/hooks/useEventos";
+import { useMarketingContents } from "@/modules/marketing/hooks/useMarketingContents";
+import { useMarketingCampaigns } from "@/modules/marketing/hooks/useMarketingCampaigns";
+
+// ── Marketing: rótulos de campanha/canal ──────────────────────────────────
+const CAMPAIGN_STATUS_LABELS: Record<string, string> = {
+  rascunho: "Rascunho", agendada: "Agendada", ativa: "Ativa",
+  pausada: "Pausada", concluida: "Concluída", cancelada: "Cancelada",
+};
+const CHANNEL_LABELS: Record<string, string> = {
+  instagram: "Instagram", facebook: "Facebook", tiktok: "TikTok", youtube: "YouTube",
+  twitter: "Twitter", threads: "Threads", linkedin: "LinkedIn", shorts: "Shorts",
+  reels: "Reels", stories: "Stories", blog: "Blog", podcast: "Podcast",
+  campanha: "Campanha", portal_noticias: "Portal", material_publicitario: "Publicidade",
+};
+const CAMPANHA_SECOES: Array<{ key: string; label: string; status: string[] }> = [
+  { key: "ativas", label: "Campanhas Ativas", status: ["ativa", "pausada"] },
+  { key: "encerradas", label: "Campanhas Encerradas", status: ["concluida", "cancelada"] },
+  { key: "planejadas", label: "Campanhas Planejadas", status: ["rascunho", "agendada"] },
+];
+
+// ── Financeiro: receitas por natureza ──────────────────────────────────────
+const NATUREZA_BUCKETS: Array<{ label: string; keywords: string[] }> = [
+  { label: "Royalties", keywords: ["royalt"] },
+  { label: "Shows", keywords: ["show", "cache", "cachê"] },
+  { label: "Licenciamentos", keywords: ["licenc", "sync"] },
+  { label: "Publicidade", keywords: ["public", "publi", "ads", "anuncio", "patroc"] },
+  { label: "Distribuição", keywords: ["distrib", "streaming"] },
+];
+
+// ── Contratos: filtros por tipo ────────────────────────────────────────────
+const CONTRATO_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> = [
+  { key: "todos", label: "Todos" },
+  { key: "empresarial", label: "Empresarial", tipos: ["exclusivo", "nao_exclusivo", "gestao", "representacao"] },
+  { key: "distribuicao", label: "Distribuição", tipos: ["distribuicao"] },
+  { key: "licenciamento", label: "Licenciamento", tipos: ["licenciamento"] },
+  { key: "producao", label: "Produção", tipos: ["producao"] },
+  { key: "parcerias", label: "Parcerias", tipos: ["parceria"] },
+  { key: "servicos", label: "Serviços", tipos: ["servicos"] },
+  { key: "outros", label: "Outros", tipos: ["outro"] },
+];
+
+// ── Agenda: rótulos e filtros ──────────────────────────────────────────────
+const EVENTO_TIPO_LABELS: Record<string, string> = {
+  show: "Show", festival: "Festival", gravacao: "Gravação", videoclipe: "Videoclipe",
+  ensaio: "Ensaio", reuniao: "Reunião", workshop: "Workshop", lancamento: "Lançamento",
+  live: "Live", streaming: "Streaming", entrevista: "Entrevista", evento: "Evento", outro: "Outro",
+};
+const EVENTO_STATUS_LABELS: Record<string, string> = {
+  planejado: "Planejado", agendado: "Agendado", confirmado: "Confirmado",
+  realizado: "Realizado", concluido: "Concluído", cancelado: "Cancelado", adiado: "Adiado",
+};
+const AGENDA_FILTERS: Array<{ key: string; label: string; tipos?: string[] }> = [
+  { key: "todos", label: "Todos" },
+  { key: "shows", label: "Shows", tipos: ["show", "festival"] },
+  { key: "reunioes", label: "Reuniões", tipos: ["reuniao"] },
+  { key: "entrevistas", label: "Entrevistas", tipos: ["entrevista"] },
+  { key: "ensaios", label: "Ensaios", tipos: ["ensaio"] },
+  { key: "gravacoes", label: "Gravações", tipos: ["gravacao", "videoclipe"] },
+  { key: "eventos", label: "Eventos", tipos: ["lancamento", "live", "streaming", "workshop", "evento"] },
+  { key: "outros", label: "Outros", tipos: ["outro"] },
+];
+
+// ── Conteúdos: rótulos e filtros ───────────────────────────────────────────
+const CONTENT_TYPE_LABELS: Record<string, string> = {
+  post: "Post", feed: "Feed", stories: "Stories", reels: "Reels", shorts: "Shorts",
+  video: "Vídeo", carrossel: "Carrossel", anuncio: "Anúncio", rede_social: "Rede Social",
+  institucional: "Institucional", comercial: "Comercial", artista: "Artista",
+  bastidores: "Bastidores", reuniao: "Reunião", evento: "Evento", portal: "Portal",
+  blog: "Blog", publicidade: "Publicidade",
+};
+const CONTENT_STATUS_LABELS: Record<string, string> = {
+  ideia: "Planejado", producao: "Em Produção", revisao: "Em Revisão",
+  agendado: "Agendado", publicado: "Publicado", falhou: "Falhou", atrasado: "Atrasado",
+};
+const CONTEUDO_FILTERS: Array<{ key: string; label: string; status?: string[] }> = [
+  { key: "todos", label: "Todos" },
+  { key: "planejados", label: "Planejados", status: ["ideia", "agendado"] },
+  { key: "producao", label: "Em Produção", status: ["producao", "revisao"] },
+  { key: "publicado", label: "Publicado", status: ["publicado"] },
+];
 
 interface Meta {
   id: number;
@@ -258,6 +339,9 @@ export function ArtistaVisao360Modal({
   const { contratos } = useContratos();
   const { transacoes } = useTransacoes();
   const { contacts } = useContacts();
+  const { eventos } = useEventos();
+  const { data: marketingContents = [] } = useMarketingContents();
+  const { data: marketingCampaigns = [] } = useMarketingCampaigns();
 
   // Resolve os contatos vinculados (referências) com os dados atuais do CRM.
   const contatosVinculadosResolvidos = useMemo(() => {
@@ -272,6 +356,9 @@ export function ArtistaVisao360Modal({
   const [activeTab, setActiveTab] = useState("visao-geral");
   const [showMetaForm, setShowMetaForm] = useState(false);
   const [editingMeta, setEditingMeta] = useState<Meta | null>(null);
+  const [agendaFilter, setAgendaFilter] = useState("todos");
+  const [conteudoFilter, setConteudoFilter] = useState("todos");
+  const [contratoFilter, setContratoFilter] = useState("todos");
 
   // Filter data by artista_id
   const artistaId = artista?.id;
@@ -291,6 +378,106 @@ export function ArtistaVisao360Modal({
     (t) => t.artista_id === artistaId,
   );
 
+  // ── Agenda (eventos do artista) ────────────────────────────────────────
+  const eventosReais = eventos.filter((e) => e.artista_id === artistaId);
+  const agendaFiltrada = eventosReais.filter((e) => {
+    const cfg = AGENDA_FILTERS.find((f) => f.key === agendaFilter);
+    if (!cfg || !cfg.tipos) return true;
+    return cfg.tipos.includes(String(e.tipo_evento ?? "").toLowerCase());
+  });
+
+  // ── Conteúdos (marketing contents do artista) ──────────────────────────
+  const conteudosReais = marketingContents.filter(
+    (c) => c.targetType === "artista" && c.targetId === artistaId,
+  );
+  const conteudosFiltrados = conteudosReais.filter((c) => {
+    const cfg = CONTEUDO_FILTERS.find((f) => f.key === conteudoFilter);
+    if (!cfg || !cfg.status) return true;
+    return cfg.status.includes(String(c.status ?? "").toLowerCase());
+  });
+
+  // ── Marketing (campanhas do artista) ───────────────────────────────────
+  const campanhasReais = marketingCampaigns.filter(
+    (c) => c.targetType === "artista" && c.targetId === artistaId,
+  );
+
+  // ── Movimentação (timeline operacional derivada dos dados do artista) ──
+  const movimentacaoItems: {
+    id: string;
+    tipo: string;
+    descricao: string;
+    data: string;
+    responsavel: string;
+  }[] = [];
+  contratosReais.forEach((c) => {
+    const d = (c as { created_at?: string }).created_at;
+    if (d) movimentacaoItems.push({ id: `mv-ctr-${c.id}`, tipo: "Jurídico", descricao: `Contrato: ${c.titulo}`, data: d, responsavel: "Admin" });
+  });
+  transacoesArtista.forEach((t) => {
+    const d = (t as { created_at?: string; data?: string }).created_at ?? (t as { data?: string }).data;
+    if (d) movimentacaoItems.push({ id: `mv-txn-${t.id}`, tipo: "Financeiro", descricao: t.descricao ?? (t.tipo === "receita" ? "Pagamento recebido" : "Despesa registrada"), data: d, responsavel: "Financeiro" });
+  });
+  eventosReais.forEach((e) => {
+    const d = e.data_inicio ?? (e as { created_at?: string }).created_at;
+    if (d) movimentacaoItems.push({ id: `mv-evt-${e.id}`, tipo: "Agenda", descricao: `${EVENTO_TIPO_LABELS[String(e.tipo_evento ?? "").toLowerCase()] ?? "Evento"}: ${e.titulo}`, data: d, responsavel: "—" });
+  });
+  lancamentosReais.forEach((l: any) => {
+    const d = l.created_at ?? l.data_lancamento;
+    if (d) movimentacaoItems.push({ id: `mv-lan-${l.id}`, tipo: "Produção", descricao: `Lançamento: ${l.titulo ?? ""}`, data: d, responsavel: "Admin" });
+  });
+  campanhasReais.forEach((c) => {
+    const d = c.startDate ?? c.createdAt;
+    if (d) movimentacaoItems.push({ id: `mv-cmp-${c.id}`, tipo: "Marketing", descricao: `Campanha: ${c.name}`, data: d, responsavel: c.owner || "—" });
+  });
+  conteudosReais.forEach((c) => {
+    const d = c.publishDate ?? c.createdAt;
+    if (d) movimentacaoItems.push({ id: `mv-cnt-${c.id}`, tipo: "Marketing", descricao: `Conteúdo: ${c.title}`, data: d, responsavel: c.owner || "—" });
+  });
+  movimentacaoItems.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+
+  // ── Visão Geral: KPIs executivos + widgets ─────────────────────────────
+  const nowTs = Date.now();
+  const showsConfirmados = eventosReais.filter(
+    (e) =>
+      ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) &&
+      ["confirmado", "realizado", "concluido"].includes(String(e.status ?? "").toLowerCase()),
+  ).length;
+  const lancamentosAtivos = lancamentosReais.length;
+  const campanhasAtivasCount = campanhasReais.filter(
+    (c) => String(c.status ?? "").toLowerCase() === "ativa",
+  ).length;
+  const conteudosPendentes = conteudosReais.filter((c) =>
+    ["ideia", "producao", "revisao", "agendado", "atrasado"].includes(String(c.status ?? "").toLowerCase()),
+  ).length;
+  const proximoShow = eventosReais
+    .filter(
+      (e) =>
+        ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) &&
+        e.data_inicio &&
+        new Date(e.data_inicio).getTime() >= nowTs,
+    )
+    .sort((a, b) => new Date(a.data_inicio!).getTime() - new Date(b.data_inicio!).getTime())[0];
+  const proximoLancamento = (lancamentosReais as any[])
+    .filter((l) => l.data_lancamento && new Date(l.data_lancamento).getTime() >= nowTs)
+    .sort((a, b) => new Date(a.data_lancamento).getTime() - new Date(b.data_lancamento).getTime())[0];
+
+  // ── Evolução: marcos (milestones) derivados ────────────────────────────
+  const marcosEvolucao: { id: string; label: string; descricao: string; data: string }[] = [];
+  if (artista?.created_at) marcosEvolucao.push({ id: "m-cad", label: "Cadastro", descricao: "Artista cadastrado no sistema", data: artista.created_at });
+  const primeiroLanc = (lancamentosReais as any[])
+    .filter((l) => l.created_at || l.data_lancamento)
+    .sort((a, b) => new Date(a.created_at ?? a.data_lancamento).getTime() - new Date(b.created_at ?? b.data_lancamento).getTime())[0];
+  if (primeiroLanc) marcosEvolucao.push({ id: "m-lan", label: "Primeiro Lançamento", descricao: primeiroLanc.titulo ?? "Lançamento", data: primeiroLanc.created_at ?? primeiroLanc.data_lancamento });
+  const primeiroShow = eventosReais
+    .filter((e) => ["show", "festival"].includes(String(e.tipo_evento ?? "").toLowerCase()) && e.data_inicio)
+    .sort((a, b) => new Date(a.data_inicio!).getTime() - new Date(b.data_inicio!).getTime())[0];
+  if (primeiroShow) marcosEvolucao.push({ id: "m-show", label: "Primeira Turnê/Show", descricao: primeiroShow.titulo, data: primeiroShow.data_inicio! });
+  const primeiroContrato = (contratosReais as any[])
+    .filter((c) => c.created_at)
+    .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())[0];
+  if (primeiroContrato) marcosEvolucao.push({ id: "m-ctr", label: "Contrato Assinado", descricao: primeiroContrato.titulo, data: primeiroContrato.created_at });
+  marcosEvolucao.sort((a, b) => new Date(a.data).getTime() - new Date(b.data).getTime());
+
   // ── Financeiro real ──────────────────────────────────────────────────
   const receitasTotal = transacoesArtista
     .filter((t) => t.tipo === "receita" && t.status === "pago")
@@ -299,6 +486,20 @@ export function ArtistaVisao360Modal({
     .filter((t) => t.tipo === "despesa" && t.status === "pago")
     .reduce((sum, t) => sum + (t.valor ?? 0), 0);
   const saldoTotal = receitasTotal - despesasTotal;
+  const roiGeral = despesasTotal > 0 ? saldoTotal / despesasTotal : null;
+  const margemGeral = receitasTotal > 0 ? saldoTotal / receitasTotal : null;
+  const receitasPagas = transacoesArtista.filter(
+    (t) => t.tipo === "receita" && t.status === "pago",
+  );
+  const receitasNatureza = NATUREZA_BUCKETS.map((b) => ({
+    label: b.label,
+    total: receitasPagas
+      .filter((t) => b.keywords.some((k) => String((t as { categoria?: string }).categoria ?? "").toLowerCase().includes(k)))
+      .reduce((s, t) => s + (t.valor ?? 0), 0),
+  }));
+  const receitasNaturezaOutros = receitasPagas
+    .filter((t) => !NATUREZA_BUCKETS.some((b) => b.keywords.some((k) => String((t as { categoria?: string }).categoria ?? "").toLowerCase().includes(k))))
+    .reduce((s, t) => s + (t.valor ?? 0), 0);
   const pendentesTotal = transacoesArtista
     .filter((t) => t.status === "pendente" || t.status === "a_receber")
     .reduce((sum, t) => sum + (t.valor ?? 0), 0);
@@ -315,6 +516,11 @@ export function ArtistaVisao360Modal({
     const fim = new Date(c.data_fim);
     return fim > today && fim <= in60Days;
   }).length;
+  const contratosFiltrados = contratosReais.filter((c) => {
+    const cfg = CONTRATO_FILTERS.find((f) => f.key === contratoFilter);
+    if (!cfg || !cfg.tipos) return true;
+    return cfg.tipos.includes(String(c.tipo ?? "").toLowerCase());
+  });
 
   // ── Histórico derivado de dados reais ────────────────────────────────
   const historicoReal: {
@@ -499,12 +705,12 @@ export function ArtistaVisao360Modal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] p-0">
+      <DialogContent className="max-w-6xl w-[95vw] max-h-[90vh] p-0 gap-0 flex flex-col overflow-hidden bg-card">
         <DialogTitle className="sr-only">
           Visão 360 do artista {artista.nome_artistico}
         </DialogTitle>
         {/* Header com Banner */}
-        <div className="border-b border-border">
+        <div className="border-b border-border shrink-0 bg-card">
           {artista.banner_url && (
             <div className="relative h-28 overflow-hidden">
               <img
@@ -573,62 +779,177 @@ export function ArtistaVisao360Modal({
         </div>
 
         {/* Tabs */}
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full flex flex-1 flex-col min-h-0 bg-card">
+          <TabsList className="w-full justify-start rounded-none border-b border-border bg-transparent h-auto p-0 overflow-x-auto shrink-0">
             <TabsTrigger
               value="visao-geral"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Visão Geral
             </TabsTrigger>
             <TabsTrigger
               value="perfil"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Perfil
             </TabsTrigger>
             <TabsTrigger
               value="catalogo"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Catálogo
             </TabsTrigger>
             <TabsTrigger
+              value="agenda"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
+            >
+              Agenda
+            </TabsTrigger>
+            <TabsTrigger
               value="financeiro"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Financeiro
             </TabsTrigger>
             <TabsTrigger
               value="contratos"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Contratos
             </TabsTrigger>
             <TabsTrigger
-              value="metas"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-            >
-              Metas
-            </TabsTrigger>
-            <TabsTrigger
               value="evolucao"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
               data-testid="tab-evolucao"
             >
               Evolução
             </TabsTrigger>
             <TabsTrigger
+              value="marketing"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
+            >
+              Marketing
+            </TabsTrigger>
+            <TabsTrigger
+              value="conteudos"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
+            >
+              Conteúdos
+            </TabsTrigger>
+            <TabsTrigger
+              value="movimentacao"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
+            >
+              Movimentação
+            </TabsTrigger>
+            <TabsTrigger
               value="historico"
-              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+              className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3 whitespace-nowrap"
             >
               Histórico
             </TabsTrigger>
           </TabsList>
 
-          <ScrollArea className="h-[calc(90vh-200px)]">
+          <ScrollArea className="flex-1 min-h-0">
             {/* Visão Geral */}
             <TabsContent value="visao-geral" className="p-6 space-y-6 mt-0">
+              {/* KPIs executivos */}
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold mb-4">Resumo Executivo</h3>
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-3">
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <DollarSign className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className={`text-lg font-bold ${getCurrencyToneClass(receitasTotal)}`}>{formatCurrency(receitasTotal)}</p>
+                      <p className="text-xs text-muted-foreground">Receita Total</p>
+                    </div>
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <DollarSign className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className={`text-lg font-bold ${getCurrencyToneClass(-despesasTotal)}`}>{formatCurrency(-despesasTotal)}</p>
+                      <p className="text-xs text-muted-foreground">Despesas Totais</p>
+                    </div>
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <TrendingUp className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className={`text-lg font-bold ${getCurrencyToneClass(saldoTotal)}`}>{formatCurrency(saldoTotal)}</p>
+                      <p className="text-xs text-muted-foreground">Lucro Líquido</p>
+                    </div>
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <BarChart3 className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className="text-lg font-bold">{roiGeral != null ? `${Math.round(roiGeral * 100)}%` : "—"}</p>
+                      <p className="text-xs text-muted-foreground">ROI Geral</p>
+                    </div>
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <Calendar className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className="text-lg font-bold">{showsConfirmados}</p>
+                      <p className="text-xs text-muted-foreground">Shows Confirmados</p>
+                    </div>
+                    <div className="text-center p-3 bg-primary/10 rounded-lg">
+                      <Rocket className="h-5 w-5 mx-auto text-primary mb-2" />
+                      <p className="text-lg font-bold">{lancamentosAtivos}</p>
+                      <p className="text-xs text-muted-foreground">Lançamentos Ativos</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Widgets de acompanhamento */}
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Calendar className="h-3.5 w-3.5" /> Próximo Show
+                    </div>
+                    {proximoShow ? (
+                      <>
+                        <p className="text-sm font-semibold truncate">{proximoShow.titulo}</p>
+                        <p className="text-xs text-muted-foreground">{formatDateDMY(proximoShow.data_inicio)}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum agendado</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Rocket className="h-3.5 w-3.5" /> Próximo Lançamento
+                    </div>
+                    {proximoLancamento ? (
+                      <>
+                        <p className="text-sm font-semibold truncate">{proximoLancamento.titulo}</p>
+                        <p className="text-xs text-muted-foreground">{formatDateDMY(proximoLancamento.data_lancamento)}</p>
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">Nenhum agendado</p>
+                    )}
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Zap className="h-3.5 w-3.5" /> Campanhas Ativas
+                    </div>
+                    <p className="text-xl font-bold">{campanhasAtivasCount}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <Video className="h-3.5 w-3.5" /> Conteúdos Pendentes
+                    </div>
+                    <p className="text-xl font-bold">{conteudosPendentes}</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground mb-1">
+                      <FileText className="h-3.5 w-3.5" /> Contratos Ativos
+                    </div>
+                    <p className="text-xl font-bold">{contratosAtivos}</p>
+                  </CardContent>
+                </Card>
+              </div>
+
               {/* Estágio da Carreira + Benchmark */}
               <div className="grid grid-cols-2 gap-4">
                 {/* Estágio da Carreira */}
@@ -1956,7 +2277,7 @@ export function ArtistaVisao360Modal({
             {/* Financeiro */}
             <TabsContent value="financeiro" className="p-6 space-y-6 mt-0">
               {/* Cards de Valores */}
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 <Card className="bg-success/10 border-success/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">
@@ -1995,7 +2316,38 @@ export function ArtistaVisao360Modal({
                     </p>
                   </CardContent>
                 </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">Margem</p>
+                    <p className="text-2xl font-bold">
+                      {margemGeral != null ? `${Math.round(margemGeral * 100)}%` : "—"}
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">ROI</p>
+                    <p className="text-2xl font-bold">
+                      {roiGeral != null ? `${Math.round(roiGeral * 100)}%` : "—"}
+                    </p>
+                  </CardContent>
+                </Card>
               </div>
+
+              {/* Receitas por natureza */}
+              <Card className="bg-muted/30">
+                <CardContent className="p-4">
+                  <h3 className="font-semibold mb-4">Receitas por Natureza</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {[...receitasNatureza, { label: "Outros", total: receitasNaturezaOutros }].map((n) => (
+                      <div key={n.label} className="text-center p-3 bg-primary/10 rounded-lg">
+                        <p className={`text-lg font-bold ${getCurrencyToneClass(n.total)}`}>{formatCurrency(n.total)}</p>
+                        <p className="text-xs text-muted-foreground">{n.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
 
               {/* Últimas Transações */}
               <Card className="bg-muted/30">
@@ -2076,15 +2428,29 @@ export function ArtistaVisao360Modal({
                 </Card>
               </div>
 
+              {/* Filtros por tipo */}
+              <div className="flex flex-wrap gap-2">
+                {CONTRATO_FILTERS.map((f) => (
+                  <Button
+                    key={f.key}
+                    size="sm"
+                    variant={contratoFilter === f.key ? "default" : "outline"}
+                    onClick={() => setContratoFilter(f.key)}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+
               {/* Lista de Contratos */}
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
                   <h3 className="font-semibold mb-4">
-                    Contratos ({contratosReais.length})
+                    Contratos ({contratosFiltrados.length})
                   </h3>
-                  {contratosReais.length > 0 ? (
+                  {contratosFiltrados.length > 0 ? (
                     <div className="space-y-3">
-                      {contratosReais.map((contrato) => {
+                      {contratosFiltrados.map((contrato) => {
                         const today = new Date();
                         today.setHours(0, 0, 0, 0);
                         const in30Days = new Date(today);
@@ -2170,8 +2536,77 @@ export function ArtistaVisao360Modal({
               </Card>
             </TabsContent>
 
-            {/* Metas */}
-            <TabsContent value="metas" className="p-6 space-y-6 mt-0">
+            {/* Marketing */}
+            <TabsContent value="marketing" className="p-6 space-y-6 mt-0">
+              {/* Campanhas */}
+              {campanhasReais.length === 0 ? (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-2">
+                    <Zap className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nenhuma campanha vinculada
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Campanhas de marketing vinculadas a este artista aparecerão aqui.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                CAMPANHA_SECOES.map((secao) => {
+                  const items = campanhasReais.filter((c) =>
+                    secao.status.includes(String(c.status ?? "").toLowerCase()),
+                  );
+                  if (items.length === 0) return null;
+                  return (
+                    <Card key={secao.key} className="bg-muted/30">
+                      <CardContent className="p-4">
+                        <h3 className="font-semibold mb-3">
+                          {secao.label} ({items.length})
+                        </h3>
+                        <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_110px_100px] gap-3 px-1 pb-2 text-xs font-medium text-muted-foreground border-b border-border">
+                          <span>Campanha</span>
+                          <span>Canal</span>
+                          <span>Investimento</span>
+                          <span>Status</span>
+                          <span>Resultado</span>
+                        </div>
+                        <div className="divide-y divide-border/40">
+                          {items.map((c) => {
+                            const canais = (c.platforms ?? [])
+                              .map((p) => CHANNEL_LABELS[String(p).toLowerCase()] ?? p)
+                              .join(", ");
+                            const roi = c.metrics?.roi;
+                            const resultado =
+                              roi && roi > 0
+                                ? `ROI ${Math.round(roi * 100)}%`
+                                : c.metrics?.conversions
+                                  ? `${c.metrics.conversions} conv.`
+                                  : "—";
+                            return (
+                              <div
+                                key={c.id}
+                                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_120px_110px_100px] gap-3 px-1 py-2 items-center text-sm"
+                              >
+                                <span className="truncate font-medium">{c.name}</span>
+                                <span className="truncate text-muted-foreground">{canais || "—"}</span>
+                                <span className="text-muted-foreground">{formatCurrency(c.budget ?? 0)}</span>
+                                <span>
+                                  <Badge variant="outline" className="text-xs">
+                                    {CAMPAIGN_STATUS_LABELS[String(c.status ?? "").toLowerCase()] ?? formatStatusPtBr(c.status)}
+                                  </Badge>
+                                </span>
+                                <span className="text-muted-foreground">{resultado}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
+
+              {/* Metas */}
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
                   <div className="flex items-center justify-between mb-4">
@@ -2361,9 +2796,221 @@ export function ArtistaVisao360Modal({
             {/* Evolução */}
             <TabsContent value="evolucao" className="p-6 space-y-6 mt-0">
               <ArtistaEvolucaoSection artista={artista} />
+
+              {/* Marcos / Linha do tempo */}
+              {marcosEvolucao.length > 0 && (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Award className="h-5 w-5 text-warning" />
+                      <h3 className="font-semibold">Marcos</h3>
+                    </div>
+                    <div className="space-y-3">
+                      {marcosEvolucao.map((m) => (
+                        <div key={m.id} className="flex items-start gap-3">
+                          <div className="h-2 w-2 rounded-full bg-primary mt-1.5 shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="text-sm font-medium">{m.label}</p>
+                              <span className="text-xs text-muted-foreground shrink-0">{formatDateDMY(m.data)}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate">{m.descricao}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
 
             {/* Histórico */}
+            {/* Agenda */}
+            <TabsContent value="agenda" className="p-6 space-y-6 mt-0">
+              <div className="flex flex-wrap gap-2">
+                {AGENDA_FILTERS.map((f) => (
+                  <Button
+                    key={f.key}
+                    size="sm"
+                    variant={agendaFilter === f.key ? "default" : "outline"}
+                    onClick={() => setAgendaFilter(f.key)}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+
+              {agendaFiltrada.length === 0 ? (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-2">
+                    <Calendar className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nenhum compromisso na agenda
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Shows, reuniões, ensaios e gravações vinculados a este artista aparecerão aqui.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">
+                      Compromissos ({agendaFiltrada.length})
+                    </h3>
+                    <div className="grid grid-cols-[88px_60px_110px_minmax(0,1fr)_minmax(0,1fr)_110px] gap-3 px-1 pb-2 text-xs font-medium text-muted-foreground border-b border-border">
+                      <span>Data</span>
+                      <span>Hora</span>
+                      <span>Tipo</span>
+                      <span>Título</span>
+                      <span>Local</span>
+                      <span>Status</span>
+                    </div>
+                    <ScrollArea className="h-[320px]">
+                      <div className="divide-y divide-border/40">
+                        {agendaFiltrada.map((e) => (
+                          <div
+                            key={e.id}
+                            className="grid grid-cols-[88px_60px_110px_minmax(0,1fr)_minmax(0,1fr)_110px] gap-3 px-1 py-2 items-center text-sm"
+                          >
+                            <span className="text-muted-foreground">{formatDateDMY(e.data_inicio)}</span>
+                            <span className="text-muted-foreground">{e.horario_inicio ?? "—"}</span>
+                            <span className="truncate">
+                              {EVENTO_TIPO_LABELS[String(e.tipo_evento ?? "").toLowerCase()] ?? formatStatusPtBr(e.tipo_evento)}
+                            </span>
+                            <span className="truncate font-medium">{e.titulo}</span>
+                            <span className="truncate text-muted-foreground">{e.local || e.cidade || "—"}</span>
+                            <span>
+                              <Badge variant="outline" className="text-xs">
+                                {EVENTO_STATUS_LABELS[String(e.status ?? "").toLowerCase()] ?? formatStatusPtBr(e.status)}
+                              </Badge>
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Conteúdos */}
+            <TabsContent value="conteudos" className="p-6 space-y-6 mt-0">
+              <div className="flex flex-wrap gap-2">
+                {CONTEUDO_FILTERS.map((f) => (
+                  <Button
+                    key={f.key}
+                    size="sm"
+                    variant={conteudoFilter === f.key ? "default" : "outline"}
+                    onClick={() => setConteudoFilter(f.key)}
+                  >
+                    {f.label}
+                  </Button>
+                ))}
+              </div>
+
+              {conteudosFiltrados.length === 0 ? (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-2">
+                    <Video className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nenhum conteúdo vinculado
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Reels, vídeos, fotos, teasers e demais conteúdos vinculados a este artista aparecerão aqui.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">
+                      Conteúdos ({conteudosFiltrados.length})
+                    </h3>
+                    <div className="grid grid-cols-[minmax(0,1fr)_110px_110px_100px_110px_120px] gap-3 px-1 pb-2 text-xs font-medium text-muted-foreground border-b border-border">
+                      <span>Título</span>
+                      <span>Tipo</span>
+                      <span>Formato</span>
+                      <span>Data Prevista</span>
+                      <span>Status</span>
+                      <span>Responsável</span>
+                    </div>
+                    <ScrollArea className="h-[320px]">
+                      <div className="divide-y divide-border/40">
+                        {conteudosFiltrados.map((c) => (
+                          <div
+                            key={c.id}
+                            className="grid grid-cols-[minmax(0,1fr)_110px_110px_100px_110px_120px] gap-3 px-1 py-2 items-center text-sm"
+                          >
+                            <span className="truncate font-medium">{c.title}</span>
+                            <span className="truncate text-muted-foreground">
+                              {CONTENT_TYPE_LABELS[String(c.type ?? "").toLowerCase()] ?? formatStatusPtBr(c.type)}
+                            </span>
+                            <span className="truncate text-muted-foreground">{c.format || "—"}</span>
+                            <span className="text-muted-foreground">{formatDateDMY(c.publishDate)}</span>
+                            <span>
+                              <Badge variant="outline" className="text-xs">
+                                {CONTENT_STATUS_LABELS[String(c.status ?? "").toLowerCase()] ?? formatStatusPtBr(c.status)}
+                              </Badge>
+                            </span>
+                            <span className="truncate text-muted-foreground">{c.owner || "—"}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
+            {/* Movimentação */}
+            <TabsContent value="movimentacao" className="p-6 space-y-6 mt-0">
+              {movimentacaoItems.length === 0 ? (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-8 flex flex-col items-center justify-center text-center gap-2">
+                    <Clock className="h-10 w-10 text-muted-foreground/30" />
+                    <p className="text-sm font-medium text-muted-foreground">
+                      Nenhuma movimentação registrada
+                    </p>
+                    <p className="text-xs text-muted-foreground/70">
+                      Ações comerciais, de marketing, financeiras, de produção, jurídicas e de agenda aparecerão aqui.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card className="bg-muted/30">
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold mb-3">
+                      Movimentação ({movimentacaoItems.length})
+                    </h3>
+                    <div className="grid grid-cols-[110px_110px_minmax(0,1fr)_120px] gap-3 px-1 pb-2 text-xs font-medium text-muted-foreground border-b border-border">
+                      <span>Data</span>
+                      <span>Tipo</span>
+                      <span>Descrição</span>
+                      <span>Responsável</span>
+                    </div>
+                    <ScrollArea className="h-[360px]">
+                      <div className="divide-y divide-border/40">
+                        {movimentacaoItems.map((m) => (
+                          <div
+                            key={m.id}
+                            className="grid grid-cols-[110px_110px_minmax(0,1fr)_120px] gap-3 px-1 py-2 items-center text-sm"
+                          >
+                            <span className="text-muted-foreground">{formatDateDMY(m.data)}</span>
+                            <span>
+                              <Badge variant="outline" className="text-xs">{m.tipo}</Badge>
+                            </span>
+                            <span className="truncate">{m.descricao}</span>
+                            <span className="truncate text-muted-foreground">{m.responsavel}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+            </TabsContent>
+
             <TabsContent value="historico" className="p-6 space-y-6 mt-0">
               <Card className="bg-muted/30">
                 <CardContent className="p-4">
@@ -2372,54 +3019,44 @@ export function ArtistaVisao360Modal({
                     <h3 className="font-semibold">Histórico de Atividades</h3>
                   </div>
 
-                  <div className="space-y-4">
-                    {historicoReal.length > 0 ? (
-                      historicoReal.map((item, index) => (
-                        <div key={item.id} className="relative">
-                          {index < historicoReal.length - 1 && (
-                            <div className="absolute left-5 top-10 w-0.5 h-full bg-border" />
-                          )}
-
-                          <div className="flex items-start gap-4 p-3 bg-background/50 rounded-lg">
-                            <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center shrink-0">
-                              {getHistoricoIcon(item.tipo)}
-                            </div>
-
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between">
-                                <p className="font-medium">{item.descricao}</p>
-                                {getHistoricoBadge(item.tipo)}
-                              </div>
-                              <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Calendar className="h-3 w-3" />
-                                  {new Date(item.data).toLocaleDateString(
-                                    "pt-BR",
-                                  )}{" "}
-                                  às{" "}
-                                  {new Date(item.data).toLocaleTimeString(
-                                    "pt-BR",
-                                    {
-                                      hour: "2-digit",
-                                      minute: "2-digit",
-                                    },
-                                  )}
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <User className="h-3 w-3" />
-                                  {item.usuario}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground">
-                        Nenhum registro de histórico encontrado
+                  {historicoReal.length > 0 ? (
+                    <>
+                      <div className="grid grid-cols-[140px_120px_130px_minmax(0,1fr)] gap-3 px-1 pb-2 text-xs font-medium text-muted-foreground border-b border-border">
+                        <span>Data</span>
+                        <span>Usuário</span>
+                        <span>Ação</span>
+                        <span>Detalhes</span>
                       </div>
-                    )}
-                  </div>
+                      <ScrollArea className="h-[360px]">
+                        <div className="divide-y divide-border/40">
+                          {historicoReal.map((item) => (
+                            <div
+                              key={item.id}
+                              className="grid grid-cols-[140px_120px_130px_minmax(0,1fr)] gap-3 px-1 py-2 items-center text-sm"
+                            >
+                              <span className="text-muted-foreground">
+                                {new Date(item.data).toLocaleDateString("pt-BR")}{" "}
+                                {new Date(item.data).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                              <span className="flex items-center gap-1 truncate">
+                                <User className="h-3 w-3 text-muted-foreground shrink-0" />
+                                {item.usuario}
+                              </span>
+                              <span>{getHistoricoBadge(item.tipo)}</span>
+                              <span className="flex items-center gap-2 truncate">
+                                <span className="text-muted-foreground shrink-0">{getHistoricoIcon(item.tipo)}</span>
+                                <span className="truncate">{item.descricao}</span>
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </ScrollArea>
+                    </>
+                  ) : (
+                    <div className="text-center py-12 text-muted-foreground">
+                      Nenhum registro de histórico encontrado
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

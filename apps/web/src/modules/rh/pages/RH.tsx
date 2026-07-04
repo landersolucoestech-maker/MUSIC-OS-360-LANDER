@@ -837,9 +837,9 @@ export default function RH() {
               <Table data-testid="table-folha">
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Funcionário</TableHead>
                     <TableHead>Mês Ref.</TableHead>
-                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead className="text-right">Bruto</TableHead>
                     <TableHead className="text-right">Descontos</TableHead>
                     <TableHead className="text-right">Bônus</TableHead>
@@ -852,8 +852,6 @@ export default function RH() {
                 <TableBody>
                   {folhaPg.pageItems.map((fp) => (
                     <TableRow key={fp.id} data-testid={`row-folha-${fp.id}`}>
-                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id ?? null)}</TableCell>
-                      <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
                       <TableCell>
                         <Checkbox
                           checked={selectedFolhaIds.includes(fp.id)}
@@ -862,6 +860,8 @@ export default function RH() {
                           data-testid={`checkbox-folha-${fp.id}`}
                         />
                       </TableCell>
+                      <TableCell className="font-medium">{getFuncionarioNome(fp.funcionario_id ?? null)}</TableCell>
+                      <TableCell className="text-muted-foreground">{fp.mes_referencia || "—"}</TableCell>
                       <TableCell className={`text-right ${getMonetarySemanticClass("neutral")}`}>{formatCurrency(Number(fp.salario_bruto) || 0)}</TableCell>
                       <TableCell className={`text-right ${getMonetarySemanticClass("negative")}`}>
                         {fp.descontos ? formatCurrency(-Number(fp.descontos)) : "—"}
@@ -969,11 +969,11 @@ export default function RH() {
               <Table data-testid="table-ferias">
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead>Funcionário</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Início</TableHead>
                     <TableHead>Fim</TableHead>
-                    <TableHead className="w-[36px]"></TableHead>
                     <TableHead className="text-center">Dias</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -982,13 +982,6 @@ export default function RH() {
                 <TableBody>
                   {feriasPg.pageItems.map((fa) => (
                     <TableRow key={fa.id} data-testid={`row-ferias-${fa.id}`}>
-                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id ?? null)}</TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(fa.data_inicio)}</TableCell>
-                      <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
-                      <TableCell className="text-center">{fa.dias_totais ?? "—"}</TableCell>
                       <TableCell>
                         <Checkbox
                           checked={selectedFeriasIds.includes(fa.id)}
@@ -997,6 +990,13 @@ export default function RH() {
                           data-testid={`checkbox-ferias-${fa.id}`}
                         />
                       </TableCell>
+                      <TableCell className="font-medium">{getFuncionarioNome(fa.funcionario_id ?? null)}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {fa.tipo ? fa.tipo.charAt(0).toUpperCase() + fa.tipo.slice(1) : "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.data_inicio)}</TableCell>
+                      <TableCell className="text-muted-foreground">{formatDate(fa.data_fim)}</TableCell>
+                      <TableCell className="text-center">{fa.dias_totais ?? "—"}</TableCell>
                       <TableCell>
                         <Badge variant={STATUS_VARIANT_AUSENCIA[fa.status || "pendente"] || "neutral"}>
                           {(fa.status || "pendente").charAt(0).toUpperCase() + (fa.status || "pendente").slice(1)}

@@ -144,29 +144,32 @@ export default function Contratos() {
     }
   };
 
-  // ── Metrics (real date math, not status strings) ──
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const in30Days = new Date(today);
-  in30Days.setDate(in30Days.getDate() + 30);
-  const currentYear = today.getFullYear();
+  // ── KPIs de contratos: PARTIÇÃO por status → a soma dos buckets = total da lista ──
+  // Cada contrato cai em EXATAMENTE um bucket (status desconhecido → "Em Análise"),
+  // garantindo Total = Vigentes + Assinados + Aguardando + Em Análise + Encerrados.
+  const norm = (s?: string | null) => (s ?? "").toLowerCase();
+  const EM_VIGOR_STATUSES = new Set(["vigente", "ativo"]);
+  const ASSINADO_STATUSES = new Set(["assinado"]);
+  const AGUARDANDO_STATUSES = new Set(["aguardando_assinatura", "pendente"]);
+  const ENCERRADO_STATUSES = new Set(["expirado", "rescindido", "cancelado", "encerrado"]);
+  const bucketOf = (status?: string | null): "vigente" | "assinado" | "aguardando" | "encerrado" | "analise" => {
+    const s = norm(status);
+    if (EM_VIGOR_STATUSES.has(s)) return "vigente";
+    if (ASSINADO_STATUSES.has(s)) return "assinado";
+    if (AGUARDANDO_STATUSES.has(s)) return "aguardando";
+    if (ENCERRADO_STATUSES.has(s)) return "encerrado";
+    return "analise"; // rascunho / em_analise / negociação / qualquer status desconhecido
+  };
 
-  const contratosVigentes = contratos.filter((c) => {
-    const start = c.data_inicio ? new Date(c.data_inicio) : null;
-    const end = c.data_fim ? new Date(c.data_fim) : null;
-    return start && end && start <= today && end >= today;
-  });
-  const contratosAtivos = contratosVigentes.length;
-  const contratosVencendo = contratos.filter((c) => {
-    const end = c.data_fim ? new Date(c.data_fim) : null;
-    return end && end >= today && end <= in30Days;
-  }).length;
-  const aguardandoAssinatura = contratos.filter((c) => c.status === "aguardando_assinatura").length;
-  const assinadosEsteAno = contratos.filter((c) => {
-    const start = c.data_inicio ? new Date(c.data_inicio) : null;
-    return start && start.getFullYear() === currentYear;
-  }).length;
-  const valorTotal = contratosVigentes.reduce((acc, c) => acc + (c.valor || 0), 0);
+  const tally = { vigente: 0, assinado: 0, aguardando: 0, analise: 0, encerrado: 0 };
+  let valorEfetivo = 0;
+  for (const c of contratos) {
+    const b = bucketOf(c.status);
+    tally[b] += 1;
+    if (b === "vigente" || b === "assinado") valorEfetivo += Number(c.valor ?? 0) || 0;
+  }
+  const totalContratos = contratos.length;
+  const today = new Date();
 
   if (isLoading) {
     return (
@@ -198,40 +201,54 @@ export default function Contratos() {
       }
     >
       <div className="space-y-6">
-        {/* ── KPI Stats ── */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        {/* ── KPI Stats: partição por status (Total = soma dos 5 buckets) ── */}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <MetricCard
-            title="Contratos Vigentes"
-            value={contratosAtivos}
-            description="ativos no momento"
-            icon={FileText}
-            accent="success"
-          />
-          <MetricCard
-            title="Vencendo em 30 dias"
-            value={contratosVencendo}
-            description="precisam renovação"
-            icon={Clock}
-            accent={contratosVencendo > 0 ? "warning" : "primary"}
-          />
-          <MetricCard
-            title="Aguardando Assinatura"
-            value={aguardandoAssinatura}
-            description="pendentes de assinar"
-            icon={PenLine}
-            accent={aguardandoAssinatura > 0 ? "warning" : "primary"}
-          />
-          <MetricCard
-            title="Assinados este ano"
-            value={assinadosEsteAno}
-            description="contratos assinados"
-            icon={CheckCircle}
+            title="Total de Contratos"
+            value={totalContratos}
+            description="na base"
+            icon={FileStack}
             accent="primary"
           />
           <MetricCard
+            title="Vigentes"
+            value={tally.vigente}
+            description="em vigor"
+            icon={CheckCircle}
+            accent="success"
+          />
+          <MetricCard
+            title="Assinados"
+            value={tally.assinado}
+            description="aguardando vigência"
+            icon={PenLine}
+            accent="primary"
+          />
+          <MetricCard
+            title="Aguardando Assinatura"
+            value={tally.aguardando}
+            description="pendentes de assinar"
+            icon={Clock}
+            accent={tally.aguardando > 0 ? "warning" : "primary"}
+          />
+          <MetricCard
+            title="Em Análise"
+            value={tally.analise}
+            description="rascunho / negociação"
+            icon={FileText}
+            accent="primary"
+          />
+          <MetricCard
+            title="Encerrados"
+            value={tally.encerrado}
+            description="expirados / rescindidos / cancelados"
+            icon={AlertCircle}
+            accent={tally.encerrado > 0 ? "warning" : "primary"}
+          />
+          <MetricCard
             title="Valor Total"
-            value={formatCurrency(valorTotal)}
-            description="contratos vigentes"
+            value={formatCurrency(valorEfetivo)}
+            description="vigentes + assinados"
             icon={DollarSign}
             accent="primary"
           />

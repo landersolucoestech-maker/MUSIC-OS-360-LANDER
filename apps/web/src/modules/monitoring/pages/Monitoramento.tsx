@@ -8,7 +8,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/shared/ui/dialog";
-import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, Music, X } from "lucide-react";
+import { Radio, Clock, AlertTriangle, CheckCircle, FileText, Upload, Search, RefreshCw, X, Shield } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { RequirePermission } from "@/shared/components/RequirePermission";
@@ -37,8 +37,10 @@ const fmt = (n: number) =>
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
 
+type MonitoringTab = "deteccao" | "ecad" | "divergencias" | "protecao_catalogo";
+
 export default function Monitoramento() {
-  const [activeTab, setActiveTab] = useState("deteccao");
+  const [activeTab, setActiveTab] = useState<MonitoringTab>("deteccao");
   const [search, setSearch] = useState("");
   const [ecadModalOpen, setEcadModalOpen] = useState(false);
   const [selectedPeriodo, setSelectedPeriodo] = useState<any>(null);
@@ -137,7 +139,7 @@ export default function Monitoramento() {
           </Card>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             variant={activeTab === "deteccao" ? "default" : "outline"}
             size="sm"
@@ -161,6 +163,14 @@ export default function Monitoramento() {
             className={activeTab === "divergencias" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
           >
             <AlertTriangle className="h-4 w-4" />Divergências ({naoReportados})
+          </Button>
+          <Button
+            variant={activeTab === "protecao_catalogo" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setActiveTab("protecao_catalogo")}
+            className={activeTab === "protecao_catalogo" ? "gap-2 bg-muted text-foreground hover:bg-muted" : "gap-2"}
+          >
+            <Shield className="h-4 w-4" />Proteção de Catálogo
           </Button>
         </div>
 
@@ -291,6 +301,60 @@ export default function Monitoramento() {
                   description="Importe relatórios do ECAD para conciliação"
                 />
               )}
+            </CardContent>
+          </Card>
+        )}
+
+        {activeTab === "protecao_catalogo" && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="h-5 w-5" />
+                Proteção de Catálogo
+              </CardTitle>
+              <CardDescription>
+                Monitore fingerprints, possíveis usos indevidos, similaridades e evidências relacionadas às obras cadastradas no catálogo.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">Obras Monitoradas</p>
+                    <p className="text-2xl font-semibold">{loadingObras ? "—" : obras?.length ?? 0}</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">Fingerprints Gerados</p>
+                    <p className="text-2xl font-semibold">0</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">Alertas de Uso Indevido</p>
+                    <p className="text-2xl font-semibold">0</p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4">
+                    <p className="text-sm text-muted-foreground">Risco Crítico</p>
+                    <p className="text-2xl font-semibold">0</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card className="border-dashed">
+                <CardContent className="flex flex-col items-center justify-center py-10 text-center">
+                  <Shield className="mb-4 h-10 w-10 text-muted-foreground" />
+                  <h3 className="text-lg font-semibold">
+                    Proteção de catálogo ainda não configurada
+                  </h3>
+                  <p className="mt-2 max-w-xl text-sm text-muted-foreground">
+                    Aqui serão exibidos fingerprints, análises de similaridade, possíveis usos indevidos, evidências e relatórios de proteção das obras monitoradas.
+                  </p>
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
         )}

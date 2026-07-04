@@ -33,11 +33,11 @@ export function RightsKPICards({ total, confirmados, naoReportados, divergencias
   const diferencaFinanceira = valorRecebido - valorEstimado;
 
   const kpis: KPI[] = [
-    { label: "Execuções Detectadas", value: fmtNum(total),         subvalue: "este mês",               trend: 8.4,  trendLabel: "vs. mês anterior", icon: Radio,         accent: "primary" },
-    { label: "Confirmadas",          value: fmtNum(confirmados),   subvalue: `${total > 0 ? Math.round((confirmados / total) * 100) : 0}% do total`, trend: 3.2, trendLabel: "vs. mês anterior", icon: CheckCircle, accent: "success" },
-    { label: "Não Reportadas",       value: fmtNum(naoReportados), subvalue: "aguardam conciliação",   trend: -12.1, trendLabel: "vs. mês anterior", icon: XCircle,      accent: "destructive" },
-    { label: "Divergências",         value: fmtNum(divergencias),  subvalue: "requerem atenção",       trend: -4.8, trendLabel: "vs. mês anterior", icon: AlertTriangle, accent: "warning" },
-    { label: "Match Rate",           value: `${matchRate}%`,       subvalue: "precisão ECAD",          trend: 1.9,  trendLabel: "vs. mês anterior", icon: TrendingUp,   accent: matchRate >= 80 ? "success" : matchRate >= 60 ? "warning" : "destructive" },
+    { label: "Execuções Detectadas", value: fmtNum(total),         subvalue: "este mês",               icon: Radio,         accent: "primary" },
+    { label: "Confirmadas",          value: fmtNum(confirmados),   subvalue: `${total > 0 ? Math.round((confirmados / total) * 100) : 0}% do total`, icon: CheckCircle, accent: "success" },
+    { label: "Não Reportadas",       value: fmtNum(naoReportados), subvalue: "aguardam conciliação",   icon: XCircle,      accent: "destructive" },
+    { label: "Divergências",         value: fmtNum(divergencias),  subvalue: "requerem atenção",       icon: AlertTriangle, accent: "warning" },
+    { label: "Match Rate",           value: `${matchRate}%`,       subvalue: "precisão ECAD",          icon: TrendingUp,   accent: matchRate >= 80 ? "success" : matchRate >= 60 ? "warning" : "destructive" },
     { label: "Valor Estimado",       value: fmtBRL(valorEstimado), subvalue: "arrecadação potencial",  icon: DollarSign,  accent: "primary" },
     { label: "Valor Recebido",       value: fmtBRL(valorRecebido), subvalue: "ECAD confirmado",        icon: DollarSign,  accent: "success" },
     { label: "Diferença Financeira", value: fmtBRL(Math.abs(diferencaFinanceira)), subvalue: diferencaFinanceira >= 0 ? "superávit" : "déficit", icon: DollarSign, accent: diferencaFinanceira >= 0 ? "success" : "destructive" },
