@@ -1,4 +1,4 @@
-import { BadRequestException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, UnprocessableEntityException } from '@nestjs/common';
 import { ExportEngineService } from './export-engine.service';
 import { ExportQueryBuilderService } from './export-query-builder.service';
 import { ExportFormatService } from './export-format.service';
@@ -56,14 +56,14 @@ describe('ExportEngineService — orquestração entity-driven', () => {
     expect(Buffer.isBuffer(xlsx.body)).toBe(true);
   });
 
-  it('entidade inexistente → 404', async () => {
+  it('entidade inexistente/não registrada para relatórios → 422', async () => {
     const { engine } = makeEngine({ hasEntity: false });
-    await expect(engine.export('nope', params(), 't', 'u')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(engine.export('nope', params(), 't', 'u')).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
-  it('entidade não reportável → 404', async () => {
+  it('entidade não exportável pela Central de Relatórios → 422', async () => {
     const { engine } = makeEngine({ reportable: false });
-    await expect(engine.export('artists', params(), 't', 'u')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(engine.export('artists', params(), 't', 'u')).rejects.toBeInstanceOf(UnprocessableEntityException);
   });
 
   it('contrato sem supportsExport → 400', async () => {

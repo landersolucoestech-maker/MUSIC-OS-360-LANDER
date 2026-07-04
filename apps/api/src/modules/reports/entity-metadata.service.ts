@@ -134,7 +134,11 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
 
   // ── Cobrança ──────────────────────────────────────────────────────────────
   billing: EntityCategory.BILLING,
+  billing_plans: EntityCategory.BILLING,
+  billing_settings: EntityCategory.BILLING,
   billing_subscriptions: EntityCategory.BILLING,
+  payment_events: EntityCategory.BILLING,
+  tenant_billing_state: EntityCategory.BILLING,
 
   // ── Infra interna de IA ───────────────────────────────────────────────────
   ai: EntityCategory.AI_INTERNAL,

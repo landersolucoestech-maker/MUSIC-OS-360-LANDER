@@ -6,8 +6,8 @@
  * com labels pt-BR e audita. Sem if/switch por entidade.
  */
 import {
-  BadRequestException, ForbiddenException, Inject, Injectable, NotFoundException,
-  Optional, ServiceUnavailableException,
+  BadRequestException, ForbiddenException, Inject, Injectable,
+  Optional, ServiceUnavailableException, UnprocessableEntityException,
 } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
@@ -44,14 +44,17 @@ export class ExportEngineService {
 
     // ── Validação da entidade (entity-driven) ──────────────────────────────────
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
-    if (!report) throw new NotFoundException(`Entidade não encontrada: ${entity}`);
-    if (!report.reportable) throw new NotFoundException(`Entidade não é reportável: ${entity}`);
+    if (!report) throw new UnprocessableEntityException(`Entidade não registrada para relatórios: ${entity}`);
+    if (!report.reportable) throw new UnprocessableEntityException(`Entidade não é exportável pela Central de Relatórios: ${entity}`);
 
     // Guarda: tabela física precisa existir (422 controlado, nunca 500).
     await this.tableGuard.assertTableUsable(entity, report);
 
     const def = this.definitions.getDefinition(entity);
-    if (!def) throw new NotFoundException(`Contrato de relatório ausente: ${entity}`);
+    // Entidade registrada/reportável, mas sem contrato de exportação → NÃO exportável.
+    // Erro controlado 422 (nunca 500/404): 404 fica reservado a recurso real inexistente;
+    // aqui a entidade existe, apenas não é exportável pela Central de Relatórios.
+    if (!def) throw new UnprocessableEntityException(`Entidade não é exportável (contrato de relatório ausente): ${entity}`);
     if (!def.supportsExport) throw new BadRequestException(`Entidade não suporta exportação: ${entity}`);
 
     // ── Query segura a partir do contrato ──────────────────────────────────────
