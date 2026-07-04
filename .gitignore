@@ -71,6 +71,9 @@ public/mockServiceWorker.js
 # RBAC shadow harness — local ES256 signing key (never commit)
 supabase/signing_keys.json
 
+# Local secrets directory — protected today only by a nested .gitignore; belt-and-suspenders at root
+.secrets/
+
 # Local artifacts — DB dumps, validation screenshots and harness outputs (never commit)
 backups/
 apps/api/backups/
