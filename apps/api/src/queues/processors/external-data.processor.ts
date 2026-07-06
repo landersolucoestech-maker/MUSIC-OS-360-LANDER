@@ -25,11 +25,12 @@ export class ExternalDataProcessor extends WorkerHost {
     this.logger.log(`[external-data] job=${job.name} id=${job.id} tenant=${d.tenantId}`);
 
     switch (job.name) {
-      case WORKFLOW_JOB_NAMES.DISTRIBUTOR_SUBMIT:
+      case WORKFLOW_JOB_NAMES.DISTRIBUTOR_SUBMIT: {
+        if (!d.providerId) throw new Error('External data job missing providerId (distributor.submit)');
         await this.exchange.submitDistributor({
           tenantId: d.tenantId,
           userId: String(d.userId ?? 'system:queue'),
-          providerId: String(d.providerId ?? 'mock-distributor'),
+          providerId: String(d.providerId),
           artistId: String(d['artistId']),
           releaseId: d['releaseId'] ? String(d['releaseId']) : null,
           phonogramIds: Array.isArray(d['phonogramIds']) ? d['phonogramIds'].map(String) : [],
@@ -37,25 +38,30 @@ export class ExternalDataProcessor extends WorkerHost {
           metadata: { jobId: String(job.id) },
         });
         return;
+      }
 
-      case WORKFLOW_JOB_NAMES.DISTRIBUTOR_STATUS_CHECK:
+      case WORKFLOW_JOB_NAMES.DISTRIBUTOR_STATUS_CHECK: {
+        if (!d.providerId) throw new Error('External data job missing providerId (distributor.status-check)');
         await this.exchange.checkDistributorStatus({
           tenantId: d.tenantId,
           userId: String(d.userId ?? 'system:queue'),
-          providerId: String(d.providerId ?? 'mock-distributor'),
+          providerId: String(d.providerId),
           submissionId: String(d['submissionId']),
           entityType: d['entityType'] as any,
           entityId: d['entityId'] ? String(d['entityId']) : undefined,
           idempotencyKey: String(job.id),
         });
         return;
+      }
 
       case WORKFLOW_JOB_NAMES.SOCIETY_SUBMIT:
-      case WORKFLOW_JOB_NAMES.EXTERNAL_DATA_SYNC:
+      case WORKFLOW_JOB_NAMES.EXTERNAL_DATA_SYNC: {
+        const providerId = d.providerId ?? d['societyHint'];
+        if (!providerId) throw new Error('External data job missing providerId/societyHint (society.submit)');
         await this.exchange.submitSociety({
           tenantId: d.tenantId,
           userId: String(d.userId ?? 'system:queue'),
-          providerId: String(d.providerId ?? d['societyHint'] ?? 'mock-society'),
+          providerId: String(providerId),
           artistId: d['artistId'] ? String(d['artistId']) : null,
           workIds: Array.isArray(d['workIds']) ? d['workIds'].map(String) : [],
           phonogramIds: Array.isArray(d['phonogramIds']) ? d['phonogramIds'].map(String) : [],
@@ -63,18 +69,21 @@ export class ExternalDataProcessor extends WorkerHost {
           metadata: { jobId: String(job.id) },
         });
         return;
+      }
 
-      case WORKFLOW_JOB_NAMES.SOCIETY_STATUS_CHECK:
+      case WORKFLOW_JOB_NAMES.SOCIETY_STATUS_CHECK: {
+        if (!d.providerId) throw new Error('External data job missing providerId (society.status-check)');
         await this.exchange.checkSocietyStatus({
           tenantId: d.tenantId,
           userId: String(d.userId ?? 'system:queue'),
-          providerId: String(d.providerId ?? 'mock-society'),
+          providerId: String(d.providerId),
           submissionId: String(d['submissionId']),
           entityType: d['entityType'] as any,
           entityId: d['entityId'] ? String(d['entityId']) : undefined,
           idempotencyKey: String(job.id),
         });
         return;
+      }
 
       default:
         this.logger.debug(`[external-data] ignored job=${job.name}`);

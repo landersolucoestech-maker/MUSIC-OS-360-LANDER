@@ -143,8 +143,8 @@ function useStubEvolution(artistaId: string | null | undefined, key: string) {
 
 export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps) {
   const artistaId: string | null = artista?.id ?? null;
-  const spotifyArtistId: string | null = artista?.spotify_artist_id ?? null;
-  const youtubeChannelId: string | null = artista?.youtube_channel_id ?? null;
+  const spotifyUrl: string | null = artista?.spotify_url ?? null;
+  const youtubeUrl: string | null = artista?.youtube_url ?? null;
   const deezerUrl: string | null = artista?.deezer_url ?? null;
   const soundcloudUrl: string | null = artista?.soundcloud_url ?? null;
   const appleMusicUrl: string | null = artista?.apple_music_url ?? null;
@@ -194,14 +194,14 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
       label: "Spotify",
       summary: spotifySummary,
       isLoading: spotifyQ.isLoading,
-      isMissingConfig: !spotifyArtistId,
+      isMissingConfig: !spotifyUrl,
     },
     {
       key: "youtube",
       label: "YouTube",
       summary: youtubeSummary,
       isLoading: youtubeQ.isLoading,
-      isMissingConfig: !youtubeChannelId,
+      isMissingConfig: !youtubeUrl,
     },
     {
       key: "deezer",
@@ -361,7 +361,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
           Icon={SiSpotify as any}
           accent="#1DB954"
           isLoading={spotifyQ.isLoading}
-          isMissingConfig={!spotifyArtistId}
+          isMissingConfig={!spotifyUrl}
           missingConfigLabel="Sem perfil do Spotify cadastrado para este artista."
           errorMessage={spotifyQ.error ? (spotifyQ.error as Error).message : null}
           points={spotifyQ.data}
@@ -375,7 +375,7 @@ export function ArtistaEvolucaoSection({ artista }: ArtistaEvolucaoSectionProps)
           Icon={Youtube}
           accent="#FF0000"
           isLoading={youtubeQ.isLoading}
-          isMissingConfig={!youtubeChannelId}
+          isMissingConfig={!youtubeUrl}
           missingConfigLabel="Sem canal do YouTube cadastrado para este artista."
           errorMessage={youtubeQ.error ? (youtubeQ.error as Error).message : null}
           points={youtubeQ.data}

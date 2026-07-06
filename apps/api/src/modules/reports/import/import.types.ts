@@ -3,7 +3,7 @@
  * Validação de importação (upload → parse → mapping → preview → validação).
  * NENHUMA persistência nesta fase.
  */
-export type ImportFormat = 'csv' | 'xlsx' | 'json';
+export type ImportFormat = 'xlsx';
 export const IMPORT_MAX_ROWS = 5000;
 
 export interface ParsedFile {

@@ -19,7 +19,7 @@ import {
 import {
   Users, Phone, Mail, Sparkles, Music,
   CheckCircle, Search, PlusCircle, Pencil, Trash2,
-  MoreVertical, X,
+  MoreVertical, X, Download,
 } from "lucide-react";
 import { SiInstagram, SiTiktok, SiYoutube, SiSpotify, SiSoundcloud, SiApplemusic } from "react-icons/si";
 import { DeezerIcon } from "@/shared/ui/deezer-icon";
@@ -38,10 +38,12 @@ import { ArtistaFormModal } from "@/modules/artist/components/ArtistaFormModal";
 import { DeleteConfirmModal } from "@/shared/components/DeleteConfirmModal";
 import { ArtistasSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
+import { ESPECIALIDADES_LABELS } from "@/modules/artist/mappers";
 import {
-  importRowToArtista,
-  ESPECIALIDADES_LABELS,
-} from "@/modules/artist/mappers";
+  artistaToExportRowFromForm,
+  parseArtistaImportRow,
+  formValuesToArtistaPayload,
+} from "@/modules/artist/forms/artist-form.definition";
 import { RequirePermission } from "@/shared/components/RequirePermission";
 
 const getXLSX = () => import("xlsx");
@@ -176,8 +178,11 @@ export default function Artistas() {
       }
       let importados = 0;
       for (const row of data) {
-        const payload = importRowToArtista(row);
-        if (!payload) continue;
+        // Itera a definição única do formulário Criar: mesmos campos,
+        // mesma conversão de persistência usada pelo submit do modal.
+        const values = parseArtistaImportRow(row);
+        if (!values) continue;
+        const payload = formValuesToArtistaPayload(values);
         await addArtista.mutateAsync(payload as any);
         importados++;
       }
@@ -187,6 +192,24 @@ export default function Artistas() {
     } finally {
       if (excelInputRef.current) excelInputRef.current.value = "";
     }
+  };
+
+  /**
+   * Exportação direta (sem modal): itera ARTIST_FORM_SECTIONS — a definição
+   * única que também renderiza o formulário Criar, gera a validação e guia a
+   * importação. 1 campo do formulário = 1 coluna, na mesma ordem visual.
+   */
+  const handleExcelExport = async () => {
+    if (todosArtistas.length === 0) {
+      toast.error("Nenhum artista para exportar");
+      return;
+    }
+    const XLSX = await getXLSX();
+    const rows = todosArtistas.map(artistaToExportRowFromForm);
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Artistas");
+    XLSX.writeFile(workbook, `artistas-${new Date().toISOString().slice(0, 10)}.xlsx`);
   };
 
   const clearFilters = () => {
@@ -246,6 +269,18 @@ export default function Artistas() {
             onChange={handleExcelImport}
             data-testid="input-import-excel"
           />
+          <RequirePermission module="artists" action="export">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 text-xs gap-1.5"
+              onClick={handleExcelExport}
+              data-testid="button-exportar-artistas"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Exportar
+            </Button>
+          </RequirePermission>
           <RequirePermission module="artists" action="write">
             <Button
               size="sm"
@@ -469,18 +504,8 @@ export default function Artistas() {
                                     const links = [
                                       { url: artista.instagram, icon: <SiInstagram className="h-4 w-4" />, label: "Instagram" },
                                       { url: artista.tiktok, icon: <SiTiktok className="h-4 w-4" />, label: "TikTok" },
-                                      {
-                                        url: artista.youtube_channel_id
-                                          ? `https://www.youtube.com/channel/${artista.youtube_channel_id}`
-                                          : null,
-                                        icon: <SiYoutube className="h-4 w-4" />, label: "YouTube",
-                                      },
-                                      {
-                                        url: artista.spotify_artist_id
-                                          ? `https://open.spotify.com/artist/${artista.spotify_artist_id}`
-                                          : null,
-                                        icon: <SiSpotify className="h-4 w-4" />, label: "Spotify",
-                                      },
+                                      { url: artista.youtube_url, icon: <SiYoutube className="h-4 w-4" />, label: "YouTube" },
+                                      { url: artista.spotify_url, icon: <SiSpotify className="h-4 w-4" />, label: "Spotify" },
                                       { url: artista.deezer_url, icon: <DeezerIcon className="h-4 w-4" />, label: "Deezer" },
                                       { url: artista.apple_music_url, icon: <SiApplemusic className="h-4 w-4" />, label: "Apple Music" },
                                       { url: artista.soundcloud_url, icon: <SiSoundcloud className="h-4 w-4" />, label: "SoundCloud" },
@@ -607,19 +632,17 @@ export default function Artistas() {
 
                   <ArtistaPlatformMetrics
                     artistaId={artista.id}
+                    spotifyUrl={(artista as Artista).spotify_url ?? null}
+                    youtubeUrl={(artista as Artista).youtube_url ?? null}
                     instagramUrl={(artista as Artista).instagram ?? null}
                     instagramSeguidores={(artista as Artista).instagram_seguidores ?? null}
                     tiktokUrl={(artista as Artista).tiktok ?? null}
                     tiktokSeguidores={(artista as Artista).tiktok_seguidores ?? null}
-                    spotifyArtistId={(artista as Artista).spotify_artist_id}
-                    spotifyOuvintes={(artista as Artista).spotify_ouvintes ?? null}
-                    youtubeChannelId={(artista as Artista).youtube_channel_id}
-                    youtubeInscritos={(artista as Artista).youtube_inscritos ?? null}
-                    deezerUrl={(artista as Artista).deezer_url}
+                    deezerUrl={(artista as Artista).deezer_url ?? null}
                     deezerFas={(artista as Artista).deezer_fas ?? null}
-                    appleMusicUrl={(artista as Artista).apple_music_url}
+                    appleMusicUrl={(artista as Artista).apple_music_url ?? null}
                     appleMusicAlbuns={(artista as Artista).apple_music_albuns ?? null}
-                    soundcloudUrl={(artista as Artista).soundcloud_url}
+                    soundcloudUrl={(artista as Artista).soundcloud_url ?? null}
                     soundcloudSeguidores={(artista as Artista).soundcloud_seguidores ?? null}
                   />
                 </div>

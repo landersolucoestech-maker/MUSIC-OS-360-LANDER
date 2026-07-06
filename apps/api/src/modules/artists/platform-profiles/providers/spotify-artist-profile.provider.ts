@@ -18,7 +18,9 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
     if (!(await this.isConfigured(input.tenantId))) {
-      throw new ServiceUnavailableException('Spotify não configurado');
+      throw new ServiceUnavailableException(
+        'Spotify não configurado: defina SPOTIFY_CLIENT_ID e SPOTIFY_CLIENT_SECRET no ambiente da API',
+      );
     }
 
     const artistId = input.externalId ?? this.extractArtistId(input.externalUrl ?? '');
@@ -28,7 +30,12 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
     const res = await fetch(`${SPOTIFY_API}/artists/${encodeURIComponent(artistId)}`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    if (!res.ok) throw new Error(`Spotify API error: ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 401) throw new Error('Spotify API respondeu 401: token expirado ou inválido');
+      if (res.status === 404) throw new Error(`Spotify API respondeu 404: artista "${artistId}" não encontrado`);
+      if (res.status === 429) throw new Error('Spotify API respondeu 429: limite de requisições excedido');
+      throw new Error(`Spotify API respondeu ${res.status} ao buscar o artista "${artistId}"`);
+    }
 
     const data = await res.json() as {
       id?: string;
@@ -75,7 +82,8 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
   private async getClientCredentialsToken(): Promise<string> {
     const clientId = process.env['SPOTIFY_CLIENT_ID'] ?? '';
     const clientSecret = process.env['SPOTIFY_CLIENT_SECRET'] ?? '';
-    if (!clientId || !clientSecret) throw new ServiceUnavailableException('Spotify credentials unavailable');
+    if (!clientId) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_ID não encontrada');
+    if (!clientSecret) throw new ServiceUnavailableException('Variável SPOTIFY_CLIENT_SECRET não encontrada');
 
     const res = await fetch(`${SPOTIFY_ACCOUNTS}/api/token`, {
       method: 'POST',
@@ -85,9 +93,16 @@ export class SpotifyArtistProfileProvider implements ArtistPlatformProvider {
       },
       body: new URLSearchParams({ grant_type: 'client_credentials' }),
     });
-    if (!res.ok) throw new Error(`Spotify token error: ${res.status}`);
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 401) {
+        throw new Error(
+          `Spotify OAuth respondeu ${res.status} ao emitir token: SPOTIFY_CLIENT_ID/SPOTIFY_CLIENT_SECRET inválidos`,
+        );
+      }
+      throw new Error(`Spotify OAuth respondeu ${res.status} ao emitir token client_credentials`);
+    }
     const data = await res.json() as { access_token?: string };
-    if (!data.access_token) throw new Error('Spotify token ausente');
+    if (!data.access_token) throw new Error('Spotify OAuth não retornou access_token no corpo da resposta');
     return data.access_token;
   }
 }

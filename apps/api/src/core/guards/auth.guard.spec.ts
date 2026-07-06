@@ -25,11 +25,13 @@ beforeAll(() => {
   mockPublicKey.value = pair.publicKey.export({ type: 'spki', format: 'pem' }).toString();
 });
 
-function makeGuard(isPublic = false): JwtAuthGuard {
+function makeGuard(isPublic = false, envOverrides: Record<string, string> = {}): JwtAuthGuard {
   const config = {
     get: jest.fn((key: string) => ({
       SUPABASE_URL: 'https://test.supabase.co',
       NODE_ENV: 'test',
+      ENCRYPTION_KEY: '0'.repeat(64),
+      ...envOverrides,
     }[key])),
   } as unknown as ConfigService;
 
@@ -37,7 +39,11 @@ function makeGuard(isPublic = false): JwtAuthGuard {
     getAllAndOverride: jest.fn().mockReturnValue(isPublic),
   } as unknown as Reflector;
 
-  const guard = new JwtAuthGuard(config, reflector);
+  const errorLog = {
+    record: jest.fn().mockResolvedValue(undefined),
+  } as any;
+
+  const guard = new JwtAuthGuard(config, reflector, errorLog);
   guard.onModuleInit();
   return guard;
 }
@@ -133,5 +139,28 @@ describe('JwtAuthGuard', () => {
 
   it('IS_PUBLIC_KEY e exportado', () => {
     expect(IS_PUBLIC_KEY).toBe('isPublic');
+  });
+
+  describe('SEC-01: dev-token bypass deve ser bloqueado em staging', () => {
+    function makeDevToken(): string {
+      return jwt.sign(
+        { sub: 'attacker', app_metadata: { org_id: 'victim-tenant', role: 'admin' } },
+        '0'.repeat(64),
+        { algorithm: 'HS256', issuer: 'music-os-360-dev' },
+      );
+    }
+
+    it('aceita dev-token HS256 quando NODE_ENV=development (comportamento existente)', async () => {
+      const guard = makeGuard(false, { NODE_ENV: 'development' });
+      const ctx = makeContext({ authHeader: `Bearer ${makeDevToken()}` });
+      await expect(guard.canActivate(ctx)).resolves.toBe(true);
+      expect(ctx.switchToHttp().getRequest().auth.userId).toBe('attacker');
+    });
+
+    it('rejeita dev-token HS256 quando NODE_ENV=staging (deve cair para verificacao JWKS real e falhar)', async () => {
+      const guard = makeGuard(false, { NODE_ENV: 'staging' });
+      const ctx = makeContext({ authHeader: `Bearer ${makeDevToken()}` });
+      await expect(guard.canActivate(ctx)).rejects.toThrow(UnauthorizedException);
+    });
   });
 });

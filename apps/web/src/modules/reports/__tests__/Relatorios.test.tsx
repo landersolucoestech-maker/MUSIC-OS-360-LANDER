@@ -6,7 +6,8 @@ const entities = [
   {
     entityName: "ArtistEntity",
     tableName: "artists",
-    category: "catalog",
+    label: "Artistas",
+    category: "REPORTABLE",
     reportable: true,
     columns: [{ name: "name", label: "Nome" }],
     risks: [],
@@ -14,7 +15,8 @@ const entities = [
   {
     entityName: "ContractEntity",
     tableName: "contracts",
-    category: "contracts",
+    label: "Contratos",
+    category: "REPORTABLE",
     reportable: true,
     columns: [{ name: "title", label: "Titulo" }],
     risks: [],
@@ -22,7 +24,8 @@ const entities = [
   {
     entityName: "AuditEntity",
     tableName: "audit_logs",
-    category: "security",
+    label: null,
+    category: "SECURITY",
     reportable: false,
     columns: [],
     risks: ["sensitive"],
@@ -30,9 +33,23 @@ const entities = [
 ];
 
 const definitions = [
-  { tableName: "artists", supportsExport: true, supportsImport: true },
-  { tableName: "contracts", supportsExport: true, supportsImport: false },
+  {
+    tableName: "artists",
+    supportsExport: true,
+    supportsImport: true,
+    exportableColumns: ["name"],
+    importableColumns: ["name"],
+  },
+  {
+    tableName: "contracts",
+    supportsExport: true,
+    supportsImport: false,
+    exportableColumns: ["title"],
+    importableColumns: [],
+  },
 ];
+
+const { exportMutate } = vi.hoisted(() => ({ exportMutate: vi.fn() }));
 
 vi.mock("../hooks/useReports", () => ({
   useReportEntities: () => ({
@@ -45,11 +62,7 @@ vi.mock("../hooks/useReports", () => ({
     isLoading: false,
     isError: false,
   }),
-}));
-
-vi.mock("../components/ExportDialog", () => ({
-  ExportDialog: ({ open, definition }) =>
-    open ? <div data-testid="export-dialog">{definition?.tableName}</div> : null,
+  useReportExport: () => ({ mutate: exportMutate, isPending: false }),
 }));
 
 vi.mock("../components/ImportDialog", () => ({
@@ -72,11 +85,15 @@ describe("Relatorios - contrato dirigido pela API", () => {
     expect(screen.queryByTestId("entity-row-audit_logs")).toBeNull();
   });
 
-  it("abre a exportacao para a entidade selecionada", () => {
+  it("exporta imediatamente ao clicar, sem modal intermediario", () => {
     render(<Relatorios />);
 
     fireEvent.click(screen.getByTestId("btn-export-contracts"));
-    expect(screen.getByTestId("export-dialog").textContent).toBe("contracts");
+    expect(screen.queryByTestId("export-dialog")).toBeNull();
+    expect(exportMutate).toHaveBeenCalledWith(
+      { entity: "contracts", params: expect.objectContaining({ format: "xlsx" }) },
+      expect.anything(),
+    );
   });
 
   it("abre a importacao para a entidade selecionada", () => {

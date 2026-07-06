@@ -324,7 +324,7 @@ export class IntegrationsController {
   @ApiOperation({ summary: 'Sincronizar métricas de artista no Spotify' })
   @HttpCode(HttpStatus.OK)
   syncSpotifyArtist(@Request() req: any, @Body() dto: SyncSpotifyArtistDto) {
-    return this.spotify.syncArtistMetrics(req.tenant?.id ?? req.tenantId, dto.spotifyArtistId);
+    return this.spotify.syncArtistMetrics(req.tenant?.id ?? req.tenantId, dto.spotifyUrl);
   }
 
   @Delete('spotify/disconnect')

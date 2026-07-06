@@ -13,7 +13,7 @@ import { MOCK_MODE } from '@/shared/lib/env';
  *
  * Components needing to subscribe to specific events should use `useWsEvent`.
  */
-export function useWebSocket() {
+export function useWebSocket(): { socket: Socket | null; connected: boolean } {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [connected, setConnected] = useState(false);
 

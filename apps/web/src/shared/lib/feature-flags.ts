@@ -156,15 +156,16 @@ export function resolveFlagsForPlan(
  * Cada entrada é o nome do módulo + razão da incompletude.
  * As páginas correspondentes já têm gates implementados em:
  *   - admin: `modules/admin/data/admin-source.ts`
- *   - reports: `modules/reports/services/reports-source.ts`
  *   - monitoring/rights: `modules/monitoring/rights/services/rights-source.ts`
  *   - support (parcial): `modules/support/hooks/useSupport.ts` (apenas tickets têm endpoint real)
+ *
+ * Reports: `Relatorios.tsx` já é 100% dirigido pelo backend real
+ * (`/reports/entities`, `/reports/definitions`) — sem gate/mock, removido daqui.
  *
  * Quando o backend correspondente for implementado, remover da lista.
  */
 export const MODULES_WITH_INCOMPLETE_BACKEND: Record<string, string> = {
   adminKpis:           "Admin KPIs (MRR/ARR/tenants) — endpoint /admin/* ainda não existe",
-  reportsHistory:      "Relatórios — backend não persiste import/export jobs ainda",
   marketingAnalytics:  "Marketing Métricas — métricas de campanhas vêm de mock",
   rightsMonitoring:    "Rights Monitoring — endpoints reais para execuções/cue sheets ainda não existem",
   supportChat:         "Suporte Chat/Knowledge/Requests — apenas /support-tickets implementado",

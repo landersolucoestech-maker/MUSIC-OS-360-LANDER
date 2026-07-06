@@ -53,7 +53,8 @@ describe('RbacDecisionService comparisons', () => {
       const telemetry = {
         record: jest.fn().mockResolvedValue(undefined),
       } as unknown as RbacTelemetryService;
-      const service = new RbacDecisionService(resolver, telemetry);
+      const errorLog = { record: jest.fn().mockResolvedValue(undefined) } as any;
+      const service = new RbacDecisionService(resolver, telemetry, errorLog);
 
       await service.evaluate({
         request: request(),

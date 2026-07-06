@@ -20,7 +20,9 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
 
   async resolve(input: ArtistPlatformProviderInput): Promise<SocialPlatformProfileSnapshot> {
     if (!(await this.isConfigured(input.tenantId))) {
-      throw new ServiceUnavailableException('YouTube não configurado');
+      throw new ServiceUnavailableException(
+        'YouTube não configurado: defina YOUTUBE_API_KEY no ambiente da API',
+      );
     }
 
     const apiKey = this.config.get<string>('YOUTUBE_API_KEY') ?? '';
@@ -32,7 +34,7 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
     const res = await fetch(
       `${YOUTUBE_API}/channels?part=statistics,snippet&id=${encodeURIComponent(channelId)}&key=${apiKey}`,
     );
-    if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+    if (!res.ok) throw new Error(await this.describeYouTubeError(res, `buscar o canal "${channelId}"`));
 
     const data = await res.json() as {
       items?: Array<{
@@ -126,7 +128,7 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
           ? `forHandle=@${encodeURIComponent(ref.value)}`
           : `forUsername=${encodeURIComponent(ref.value)}`;
       const res = await fetch(`${YOUTUBE_API}/channels?part=id&${param}&key=${apiKey}`);
-      if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+      if (!res.ok) throw new Error(await this.describeYouTubeError(res, `resolver o canal por ${ref.kind}`));
       const data = (await res.json()) as { items?: Array<{ id?: string }> };
       const id = data.items?.[0]?.id;
       if (id) return id;
@@ -138,9 +140,26 @@ export class YouTubeArtistProfileProvider implements ArtistPlatformProvider {
     const res = await fetch(
       `${YOUTUBE_API}/search?part=id&type=channel&maxResults=1&q=${encodeURIComponent(ref.value)}&key=${apiKey}`,
     );
-    if (!res.ok) throw new Error(`YouTube API error: ${res.status}`);
+    if (!res.ok) throw new Error(await this.describeYouTubeError(res, `pesquisar o canal "${ref.value}"`));
     const data = (await res.json()) as { items?: Array<{ id?: { channelId?: string } }> };
     return data.items?.[0]?.id?.channelId ?? null;
+  }
+
+  /**
+   * Erro específico da YouTube Data API: status + reason/message do corpo
+   * (ex.: 403 quotaExceeded, 400 API key not valid) — nunca um genérico.
+   */
+  private async describeYouTubeError(res: Response, action: string): Promise<string> {
+    let reason = '';
+    try {
+      const body = (await res.json()) as {
+        error?: { message?: string; errors?: Array<{ reason?: string }> };
+      };
+      const apiReason = body.error?.errors?.[0]?.reason;
+      const apiMessage = body.error?.message;
+      reason = [apiReason, apiMessage].filter(Boolean).join(' — ');
+    } catch { /* corpo não-JSON: mantém só o status */ }
+    return `YouTube API respondeu ${res.status} ao ${action}${reason ? `: ${reason}` : ''}`;
   }
 
   private toNumber(value: string | number | null | undefined): number | null {

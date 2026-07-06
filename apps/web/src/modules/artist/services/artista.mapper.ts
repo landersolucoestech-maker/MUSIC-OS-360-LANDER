@@ -45,7 +45,7 @@ function normalizeKey(s: string): string {
  * comparando após normalização de Unicode/case.
  * Isso resolve casos em que Excel salva "Tipo de Perfil" com NFD diferente.
  */
-function pickRow(row: Record<string, unknown>, ...keys: string[]): unknown {
+export function pickRow(row: Record<string, unknown>, ...keys: string[]): unknown {
   for (const key of keys) {
     // Tentativa exata primeiro (mais rápida)
     if (key in row) return row[key];
@@ -62,7 +62,7 @@ function pickRow(row: Record<string, unknown>, ...keys: string[]): unknown {
  * Normaliza o valor de "Tipo de Perfil" para o enum interno,
  * aceitando qualquer variação razoável de caixa, espaços ou acentos.
  */
-function normalizeTipoPerfil(
+export function normalizeTipoPerfil(
   raw: unknown,
 ): "independente" | "com_empresario" | "gravadora" | "editora" {
   const v = normalizeKey(str(raw));
@@ -103,7 +103,7 @@ const ESPECIALIDADES_ENUM: Record<string, string> = Object.fromEntries(
  * Converte qualquer variação de label ou enum para o valor interno.
  * Retorna "" para valores não reconhecidos (serão filtrados no import).
  */
-function normalizeEspecialidade(raw: string): string {
+export function normalizeEspecialidade(raw: string): string {
   const v1 = normalizeKey(raw);
   if (ESPECIALIDADES_ENUM[v1]) return ESPECIALIDADES_ENUM[v1];
 
@@ -133,40 +133,26 @@ export function gerarSlugArtistico(nome: string): string {
     .replace(/-+/g, "-");
 }
 
-// ─── Extratores de ID de plataformas ─────────────────────────────
-
-/** Aceita URL pública do Spotify OU o próprio ID cru. */
-export function extractSpotifyId(input: string | null | undefined): string | null {
-  if (!input) return null;
-  const v = String(input).trim();
-  if (!v) return null;
-  if (/^[A-Za-z0-9]{22}$/.test(v)) return v;
-  const m = v.match(/spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/([A-Za-z0-9]{10,})/i);
-  return m?.[1] ?? null;
-}
-
-/** Aceita URL pública do YouTube OU o ID de canal cru (começa com UC). */
-export function extractYoutubeId(input: string | null | undefined): string | null {
-  if (!input) return null;
-  const v = String(input).trim();
-  if (!v) return null;
-  if (/^UC[A-Za-z0-9_-]{22}$/.test(v)) return v;
-  const m = v.match(/youtube\.com\/channel\/(UC[A-Za-z0-9_-]{22})/i);
-  return m?.[1] ?? null;
-}
-
 // ─── Validadores de URL de plataformas ───────────────────────────
+// O domínio trabalha exclusivamente com URLs — não existe extração nem
+// reconstrução de ID de plataforma em nenhuma camada. Os regexes abaixo
+// espelham exatamente os `@Matches` de CreateArtistDto/UpdateArtistDto no
+// backend (fonte de verdade da validação); aqui servem só de feedback
+// visual imediato no formulário.
 
 export type UrlValidationState = "idle" | "valid" | "invalid";
 
+const SPOTIFY_ARTIST_URL_RE = /^https:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/[A-Za-z0-9]{22}(?:[/?#].*)?$/i;
+const YOUTUBE_URL_RE = /^https:\/\/(?:www\.)?(?:youtube\.com\/(?:@[^/?#]+|channel\/UC[A-Za-z0-9_-]{22})(?:[/?#].*)?|music\.youtube\.com\/(?:.*))$/i;
+
 export function validateSpotifyUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return extractSpotifyId(url) !== null ? "valid" : "invalid";
+  return SPOTIFY_ARTIST_URL_RE.test(url.trim()) ? "valid" : "invalid";
 }
 
 export function validateYoutubeUrl(url: string): UrlValidationState {
   if (!url.trim()) return "idle";
-  return extractYoutubeId(url) !== null ? "valid" : "invalid";
+  return YOUTUBE_URL_RE.test(url.trim()) ? "valid" : "invalid";
 }
 
 /**
@@ -212,156 +198,11 @@ export function validateAppleMusicUrl(url: string): UrlValidationState {
   return hasHost(url, "music.apple.com") ? "valid" : "invalid";
 }
 
-// ─── Mapeamento canônico de colunas ──────────────────────────────
-
-/**
- * Converte um registro de artista no objeto de linha que vai para o Excel.
- * Este é o mapeamento canônico: qualquer mudança de coluna deve ser feita aqui.
- */
-export function artistaToExportRow(a: Artista): Record<string, string> {
-  const distEmails = (a.distribuidoras_emails as Record<string, string> | null) ?? {};
-  return {
-    // 1. Informações Básicas
-    "Nome Artístico":            str(a.nome_artistico),
-    "Gênero Musical":            str(a.genero_musical),
-    "Função":                    Array.isArray(a.especialidades)
-                                   ? a.especialidades.map(e => ESPECIALIDADES_LABELS[e] ?? e).join(", ")
-                                   : "",
-    "Documentos Pessoais (PDF)": str(a.documentos_pessoais_url),
-    "Presskit / Media Kit (PDF)":str(a.presskit_url),
-    "Biografia":                 str(a.observacoes),
-    "Foto URL":                  str(a.foto_url),
-    // 2. Dados Pessoais
-    "Nome Civil":                str(a.nome_civil),
-    "Data de Nascimento":        str(a.data_nascimento),
-    "CPF":                       str(a.cpf_cnpj),
-    "RG":                        str(a.rg),
-    "Endereço completo":         str(a.endereco),
-    "Telefone":                  str(a.telefone),
-    "Email":                     str(a.email),
-    // 3. Dados Bancários
-    "Banco":                     str(a.banco),
-    "Agência":                   str(a.agencia),
-    "Conta":                     str(a.conta),
-    "Chave PIX":                 str(a.chave_pix),
-    "Titular da Conta":          str(a.titular_conta),
-    // 4. Plataformas (URLs completas para re-importação)
-    "Spotify URL":  str(a.spotify_artist_url),
-    "YouTube URL":  str(a.youtube_channel_url),
-    "Deezer URL":   str(a.deezer_url),
-    "Apple Music URL": str(a.apple_music_url),
-    "SoundCloud URL":  str(a.soundcloud_url),
-    // 5. Redes Sociais
-    "Instagram URL": str(a.instagram),
-    "TikTok URL":    str(a.tiktok),
-    // 6. Tipo de Perfil / Empresário
-    "Tipo de Perfil":           str(a.tipo_perfil) || "independente",
-    "Empresário Nome":          str(a.empresario_nome),
-    "Empresário Telefone":      str(a.empresario_telefone),
-    "Empresário Email":         str(a.empresario_email),
-    "Gravadora/Editora Nome":   str(a.gravadora_nome),
-    "Gravadora/Editora Tel":    str(a.gravadora_telefone),
-    "Gravadora/Editora Email":  str(a.gravadora_email),
-    "Resp. Gravadora Nome":     str(a.gravadora_responsavel_nome),
-    "Resp. Gravadora Tel":      str(a.gravadora_responsavel_telefone),
-    "Resp. Gravadora Email":    str(a.gravadora_responsavel_email),
-    // 7. Distribuidoras / Agregadoras (apenas e-mails)
-    "ONErpm – Email":    distEmails["onerpm"]    ?? "",
-    "DistroKid – Email": distEmails["distrokid"] ?? "",
-    "30 Por 1 – Email":  distEmails["30por1"]    ?? "",
-    "Symphonic – Email": distEmails["symphonic"] ?? "",
-    "Somvibe – Email":   distEmails["somvibe"]   ?? "",
-    "SoundOn – Email":   distEmails["soundon"]   ?? "",
-    "MusicPro – Email":  distEmails["musicpro"]  ?? "",
-    // 8. Observações internas
-    "Observações": str(a.notas_internas),
-  };
-}
-
-// Chaves das colunas de distribuidoras (usadas no import)
-const DIST_COLS: Record<string, string> = {
-  "ONErpm – Email":    "onerpm",
-  "DistroKid – Email": "distrokid",
-  "30 Por 1 – Email":  "30por1",
-  "Symphonic – Email": "symphonic",
-  "Somvibe – Email":   "somvibe",
-  "SoundOn – Email":   "soundon",
-  "MusicPro – Email":  "musicpro",
-};
-
-/**
- * Converte uma linha de Excel (resultado de sheet_to_json) em payload pronto
- * para `addArtista.mutateAsync`. Aceita tanto os cabeçalhos canônicos quanto
- * os nomes de campo internos como fallback.
- */
-export function importRowToArtista(row: Record<string, unknown>): Omit<Artista, "id" | "user_id" | "created_at" | "updated_at"> | null {
-  const p = (...keys: string[]) => pickRow(row, ...keys);
-
-  const nomeArtistico = strOrNull(p("Nome Artístico", "nome_artistico", "Nome", "nome"));
-  if (!nomeArtistico) return null;
-
-  const distribuidoras_emails: Record<string, string> = {};
-  const distribuidoras_selecionadas: Record<string, boolean> = {};
-  for (const [col, id] of Object.entries(DIST_COLS)) {
-    const v = strOrNull(p(col));
-    if (v) {
-      distribuidoras_emails[id] = v;
-      distribuidoras_selecionadas[id] = true;
-    }
-  }
-
-  return {
-    // 1. Básico
-    nome_artistico:  nomeArtistico,
-    genero_musical:  strOrNull(p("Gênero Musical", "Genero Musical", "genero_musical")),
-    tipo:            null,
-    status:          null,
-    especialidades:  strOrNull(p("Função", "Funcao", "Especialidades", "especialidades"))
-                       ?.split(",").map((s) => normalizeEspecialidade(s.trim())).filter(Boolean) ?? null,
-    documentos_pessoais_url: strOrNull(p("Documentos Pessoais (PDF)", "documentos_pessoais_url")),
-    presskit_url:            strOrNull(p("Presskit / Media Kit (PDF)", "presskit_url")),
-    observacoes:     strOrNull(p("Biografia", "observacoes")),
-    foto_url:        strOrNull(p("Foto URL", "foto_url")),
-    // 2. Pessoal
-    nome_civil:      strOrNull(p("Nome Civil", "nome_civil")),
-    data_nascimento: strOrNull(p("Data de Nascimento", "data_nascimento")),
-    cpf_cnpj:        strOrNull(p("CPF", "CPF/CNPJ", "cpf_cnpj")),
-    rg:              strOrNull(p("RG", "rg")),
-    endereco:        strOrNull(p("Endereço completo", "Endereço completo", "Endereço", "Endereco", "endereco")),
-    telefone:        strOrNull(p("Telefone", "telefone")),
-    email:           strOrNull(p("Email", "email")),
-    // 3. Bancário
-    banco:           strOrNull(p("Banco", "banco")),
-    agencia:         strOrNull(p("Agência", "Agencia", "agencia")),
-    conta:           strOrNull(p("Conta", "conta")),
-    chave_pix:       strOrNull(p("Chave PIX", "chave_pix")),
-    titular_conta:   strOrNull(p("Titular da Conta", "titular_conta")),
-    // 4. Plataformas
-    spotify_artist_url:  strOrNull(p("Spotify URL", "spotify_artist_url")),
-    youtube_channel_url: strOrNull(p("YouTube URL", "youtube_channel_url")),
-    deezer_url:         strOrNull(p("Deezer URL", "deezer_url")),
-    apple_music_url:    strOrNull(p("Apple Music URL", "apple_music_url")),
-    soundcloud_url:     strOrNull(p("SoundCloud URL", "soundcloud_url")),
-    // 5. Redes Sociais
-    instagram: strOrNull(p("Instagram URL", "instagram")),
-    tiktok:    strOrNull(p("TikTok URL", "tiktok")),
-    // 6. Perfil — normalizeTipoPerfil aceita qualquer variação de caixa/acento/espaço
-    tipo_perfil: normalizeTipoPerfil(p("Tipo de Perfil", "tipo_perfil", "Perfil", "perfil")),
-    empresario_nome:                strOrNull(p("Empresário Nome", "Empresario Nome", "empresario_nome")),
-    empresario_telefone:            strOrNull(p("Empresário Telefone", "Empresario Telefone", "empresario_telefone")),
-    empresario_email:               strOrNull(p("Empresário Email", "Empresario Email", "empresario_email")),
-    gravadora_nome:                 strOrNull(p("Gravadora/Editora Nome", "gravadora_nome")),
-    gravadora_telefone:             strOrNull(p("Gravadora/Editora Tel", "gravadora_telefone")),
-    gravadora_email:                strOrNull(p("Gravadora/Editora Email", "gravadora_email")),
-    gravadora_responsavel_nome:     strOrNull(p("Resp. Gravadora Nome", "gravadora_responsavel_nome")),
-    gravadora_responsavel_telefone: strOrNull(p("Resp. Gravadora Tel", "gravadora_responsavel_telefone")),
-    gravadora_responsavel_email:    strOrNull(p("Resp. Gravadora Email", "gravadora_responsavel_email")),
-    notas_internas:                 strOrNull(p("Observações", "Observacoes", "Notas Internas", "notas_internas")),
-    // 7. Distribuidoras
-    distribuidoras_emails:       Object.keys(distribuidoras_emails).length > 0       ? distribuidoras_emails       : null,
-    distribuidoras_selecionadas: Object.keys(distribuidoras_selecionadas).length > 0 ? distribuidoras_selecionadas : null,
-  };
-}
+// ─── Exportação / Importação ─────────────────────────────────────
+// REMOVIDO: artistaToExportRow / importRowToArtista (listas manuais de
+// colunas). Exportação e importação agora iteram a definição única do
+// formulário em forms/artist-form.definition.ts (artistaToExportRowFromForm
+// e parseArtistaImportRow) — 1 campo do formulário = 1 coluna, mesma ordem.
 
 // ─── Form Fields Interface ────────────────────────────────────────
 
@@ -635,12 +476,12 @@ export function artistaToFormFields(artista: Artista | null | undefined): Artist
     conta: str(artista.conta),
     chavePix: str(artista.chave_pix),
     titularConta: str(artista.titular_conta),
-    // Plataformas — reconstrói URLs públicas a partir dos IDs salvos
-    spotify: str(artista.spotify_artist_url),
+    // Plataformas — a URL é o dado persistido (nenhuma reconstrução a partir de ID)
+    spotify: str(artista.spotify_url),
     spotifyOuvintes: artista.spotify_ouvintes != null ? String(artista.spotify_ouvintes) : "",
     instagram: str(artista.instagram),
     instagramSeguidores: artista.instagram_seguidores != null ? String(artista.instagram_seguidores) : "",
-    youtube: str(artista.youtube_channel_url),
+    youtube: str(artista.youtube_url),
     youtubeInscritos: artista.youtube_inscritos != null ? String(artista.youtube_inscritos) : "",
     tiktok: str(artista.tiktok),
     tiktokSeguidores: artista.tiktok_seguidores != null ? String(artista.tiktok_seguidores) : "",
@@ -768,10 +609,10 @@ export function formToArtistaPayload(f: FormToArtistaInput): Omit<Artista, "id" 
     conta: strOrNull(f.conta),
     chave_pix: strOrNull(f.chavePix),
     titular_conta: strOrNull(f.titularConta),
-    // Plataformas
-    spotify_artist_url: extractSpotifyId(f.spotify),
+    // Plataformas — persiste a URL diretamente (contrato do backend: spotify_url/youtube_url)
+    spotify_url: strOrNull(f.spotify),
     spotify_ouvintes: numOrNull(f.spotifyOuvintes),
-    youtube_channel_url: extractYoutubeId(f.youtube),
+    youtube_url: strOrNull(f.youtube),
     youtube_inscritos: numOrNull(f.youtubeInscritos),
     deezer_url: strOrNull(f.deezer),
     deezer_fas: numOrNull(f.deezerFas),

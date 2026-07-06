@@ -52,6 +52,8 @@ export interface RelationMeta {
 export interface EntityReport {
   entityName: string;
   tableName: string;
+  /** Label pt-BR da entidade (camada central i18n). `null` quando não traduzida. */
+  label: string | null;
   category: EntityCategory;
   reportable: boolean;
   columns: ColumnMeta[];

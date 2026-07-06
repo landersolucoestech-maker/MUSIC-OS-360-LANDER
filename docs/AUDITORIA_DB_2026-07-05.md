@@ -1,0 +1,91 @@
+# Auditoria Completa de Banco de Dados — 2026-07-05
+
+> **Escopo:** schema real de produção (único Supabase, `aws-1-us-west-1.pooler.supabase.com`) × código da aplicação (API NestJS, web, scripts, migrations, seeds).
+> **Método:** dump read-only dos catálogos Postgres (`pg_class`, `information_schema`, `pg_constraint`, `pg_indexes`, `pg_enum`, `pg_policies`, `pg_proc`, `pg_stat_user_tables`) + metadata TypeORM (`ALL_ENTITIES`) + varredura de referências em todos os fontes (`apps/api/src`, `apps/api/scripts`, `apps/api/test`, `apps/web/src`, `scripts/`), com migrations contadas separadamente do "código vivo".
+> **Baseline:** este relatório CONFIRMA o baseline canônico 157/80 (`docs/ETAPA_4_CANONICAL_BASELINE_157_80.md`): 156 tabelas regulares + 1 tabela particionada (`rbac_decision_logs`) = **157 objetos-tabela**; **80 migrations** aplicadas = 80 arquivos no repo = 80 entradas em `ALL_MIGRATIONS` (diff vazio nos três sentidos, verificado nesta auditoria).
+
+## Inventário levantado
+
+| Objeto | Quantidade | Observação |
+|---|---|---|
+| Tabelas regulares (public) | 156 | + 1 particionada (`rbac_decision_logs`, partições mensais + default) |
+| Colunas | 2.258 | |
+| Entidades TypeORM registradas | 120 | `ALL_ENTITIES` — todas têm tabela em prod (0 órfãs no sentido entity→banco) |
+| Enums nativos | 4 | todos em uso por colunas reais (0 sem uso) |
+| Views / matviews | 0 / 0 | nada a auditar |
+| Functions (public) | 44 | RBAC/RLS/tenant-context; não auditadas função-a-função nesta rodada |
+| Triggers | 4 | |
+| Policies RLS | 225 | |
+| Sequences | 1 | |
+| Migrations aplicadas | 80 | paridade 1:1 com arquivos e `ALL_MIGRATIONS` |
+| Tabelas com 0 linhas | 127/156 | sistema pré-go-live; **vazio ≠ removível** — critério de remoção foi referência de código + origem da estrutura, nunca contagem de linhas |
+
+---
+
+## A. Estruturas corretas (permanecem sem alteração)
+
+1. **115 das 120 tabelas com entidade TypeORM** têm paridade 1:1 de colunas entity↔prod (as 5 exceções estão no grupo B).
+2. **Tabelas sem entidade TypeORM mas com uso vivo comprovado** (acesso via SQL raw, por design):
+   - `contacts`, `contact_attachments`, `contact_contracts`, `contact_timeline`, `lead_uploads` — CRM real (módulos Contacts/Leads), wave critical-contacts-RLS (4 policies cada).
+   - `tenant_invitations` — `auth-context.service.ts` e `users.service.ts`.
+   - `rbac_error_logs` — `rbac-error-log.service.ts`.
+   - `release_works` — join table N:N declarada via `@JoinTable` (por isso sem classe própria).
+   - `musicos360_migrations` — infra do TypeORM.
+   - `rbac_decision_logs` (+ partições `2026_06..2026_09`, `default`) — log particionado do RBAC Shadow; escrito pelo backend via conexão owner. Partições sem RLS: aceitável enquanto o acesso é owner-only (PostgREST não expõe), mas fica registrado.
+3. **Colunas contestadas no modal Exportar removidas por decisão de produto**: `artists.banner_url` e `artists.video_apresentacao_url` foram removidas do código vivo e passaram a ter migration destrutiva dedicada (`20260705000002_RemoveArtistBannerVideoFields`) para bancos existentes.
+4. 4 enums, 225 policies, índices e constraints das tabelas ativas — sem achados de incorreção estrutural.
+
+## B. Estruturas que precisam ser ajustadas
+
+| # | Estrutura | Problema | Correção | Status |
+|---|---|---|---|---|
+| B1 | `inventory_items` (2 colunas), `licenses` (7 colunas) | A migração `20260521000060` criou as tabelas com `CREATE TABLE IF NOT EXISTS`, mas elas **já existiam** em prod com shape anterior → registrada sem efeito. Entity/DTO/Service referenciam `local_compra`, `numero_nota_fiscal`, `obra_musical`, `artista`, `cliente`, `projeto`, `midia_destino`, `territorio`, `moeda` que **não existem em prod** → `InventoryService`/`LicensingService` (createQueryBuilder) **quebram em SELECT (42703)** | Migração aditiva **`20260705000001_ReconcileInventoryLicensesColumns`** (colunas anuláveis, idempotente, `down()` reversível), mesmo padrão da `AddLeadsPipelineStage` | **Criada e registrada; APLICAÇÃO PENDENTE (Go/No-Go)** |
+| B2 | `audiovisual_production_days` | Prod tem `call_time`/`end_time` (migração `20260527000003`) e o `production-days.service.ts` usa via SQL raw, mas a **entity não mapeava** as colunas | Colunas adicionadas à `AudiovisualProductionDayEntity` (`time`, nullable) | ✅ Aplicado (código) |
+| B3 | `MigrationValidatorService` × RLS de `musicos360_migrations` | A tabela de migrations tem **RLS habilitado sem policy** (fail-closed p/ PostgREST — correto), mas o validador de boot usava o DataSource de aplicação; com `DATABASE_SESSION_CONTEXT_ENABLED=true` + `APP_DATABASE_URL` (role NOBYPASSRLS) o SELECT volta vazio → falso "80 pendentes" em dev e **`process.exit(1)` latente em produção** | Validador agora usa `ADMIN_DATA_SOURCE` (owner, sempre `DATABASE_URL`), que recebeu a metadata `ALL_MIGRATIONS` (nunca executa — `migrationsRun:false`). Verificado no boot: "Schema sincronizado" | ✅ Aplicado (código) |
+| B4 | `financial_centers` | 22 linhas seedadas por migração, **FK viva** de `financial_category_centers.center_id`, porém **nenhuma leitura/escrita pelo código** da aplicação — feature de centros de custo semi-entregue | Decidir: (a) entregar centros de custo (criar entidade + expor no módulo financeiro) ou (b) remover tabela + FK + coluna `center_id` | ⏳ Decisão de produto (Go/No-Go) |
+| B5 | Classes `Crm*Entity` órfãs em `entities.ts` | `CrmCompanyEntity`, `CrmContactEntity`, `CrmTagEntity`, `CrmContactTagEntity`, `CrmTimelineEventEntity` estão definidas mas **fora de `ALL_ENTITIES`** (só se referenciam entre si); `ENTITY_CATEGORY` do reports tem chaves mortas correspondentes | Remover classes + chaves junto com a decisão D1 (mesmo cluster) | ⏳ Acoplado a D1 |
+
+## C. Estruturas que precisam ser criadas
+
+- **Somente** as 9 colunas da migração `20260705000001` (B1) — comprovadamente faltando: entity + DTO + service + (no caso de `territorio`) label i18n já existem e dependem delas.
+- **Nenhuma outra tabela/coluna nova é necessária.** Todas as funcionalidades implementadas têm suporte adequado no banco; não foi identificada feature sem tabela. Nada especulativo foi criado (regra 12).
+
+## D. Estruturas que devem ser removidas (migração gerada; NÃO aplicada em produção)
+
+> Remoções em produção são destrutivas e ficam condicionadas ao Go do usuário. Migração gerada:
+> `apps/api/src/database/migrations/20260705000003_RemoveDeadStructuresD1D8.ts`
+> (registrada em `ALL_MIGRATIONS`, `down()` documentado, **não executada**).
+
+| # | Estrutura | Justificativa técnica | Status |
+|---|---|---|---|
+| D1 | Cluster CRM legado: `crm_contacts`, `crm_companies`, `crm_tags`, `crm_contact_tags`, `crm_timeline_events` | 0 linhas, 0 referências vivas (classes órfãs fora do DataSource). Substituído pelo CRM real: `contacts`/`contact_*`/`leads`. Sobreposição integral de domínio | ✅ Na migração 20260705000003 + classes órfãs removidas de `entities.ts` |
+| D2 | `crm_tasks` | Substituída por `operational_tasks` (a classe `CrmTaskEntity` foi re-apontada para `operational_tasks` — `entities.ts`). Continha **4 linhas legadas** → migradas para `operational_tasks` antes do DROP | ✅ `INSERT ... SELECT` na mesma migração, antes do DROP |
+| D3 | 13 tabelas `conversation_*` de configuração (audit_events, auto_messages, business_hours, channel_accounts, closures, protocol_settings, queues, quick_replies, sectors, service_statuses, sla_policies, tags, transfers — da migração `20260604000001_CustomerCareConversationExtensions`) | 0 linhas, **nenhuma referência de código vivo** (só as migrations de RLS que as endureceram). Estrutura "para uso futuro" sem requisito funcional atual. **Atenção:** `conversations`, `conversation_messages`, `conversation_notes` SÃO usadas e FICAM | ✅ Na migração 20260705000003 |
+| D4 | `organization_members` | **Sem migração de origem** (criada fora do fluxo versionado), sem entidade, sem RLS, sem policies, 0 linhas; duplicidade com `org_members` (esta sim oficial, com entidade + RBAC) | ✅ Na migração 20260705000003 |
+| D5 | `financial_category_templates` | 0 linhas, 0 referências em qualquer fonte | ✅ Na migração 20260705000003 |
+| D6 | ~~Colunas legadas de `artists`: `spotify_url`, `youtube_url`, `instagram_url`, `tiktok_url`~~ | **CORREÇÃO DESTE RELATÓRIO:** `spotify_url`/`youtube_url` continuam **ativamente lidas e escritas** por `CreateArtistDto`, `ArtistsService` e `ArtistaEvolucaoSection.tsx` — NÃO são código morto. `instagram_url`/`tiktok_url` **nunca existiram** como colunas de `artists` (a tabela nunca teve esses nomes de coluna). Achado descartado; nenhuma remoção feita | ❌ Descartado (falso positivo da auditoria original) |
+| D7 | Colunas legadas de `financial_category_rules`: `transaction_type`, `counterparty_type`, `category`, `subcategory`, `links`, `sort_order` | Modelo flat antigo; a entity atual usa regras dinâmicas (`conditions`/`actions` jsonb) e nunca mapeou essas colunas. Confirmado 0 leitura pelo backend. O "frontend legado" (`financial-category-rules.types.ts`/`.seed.ts`/`useFinancialCategoryRulesStore.ts`) é um mock 100% local (localStorage), nunca chamou a API real — não depende dessas colunas e não foi alterado | ✅ Na migração 20260705000003 |
+| D8 | `financial_centers` (22 linhas seedadas, nunca lidas/escritas pelo código) + FK/coluna `financial_category_centers.center_id` | Decisão de produto: remover (não entregar centros de custo). `FinancialCategoryCenterEntity.center_id` removido da entity; tipo `FinancialCategoryCenterLink` no frontend ajustado (perdeu `center_id`, mantém `id`/`category_id`) | ✅ Na migração 20260705000003 |
+
+**Também nesta sessão:**
+- Classes órfãs `CrmCompanyEntity`, `CrmContactEntity`, `CrmTagEntity`, `CrmContactTagEntity`, `CrmTimelineEventEntity` removidas de `entities.ts` (B5), junto com as chaves mortas correspondentes em `entity-metadata.service.ts` e `entity-labels.pt-br.ts`. `CrmTaskEntity` **NÃO** foi removida — é a entidade real e em uso de `operational_tasks`.
+- `apps/web/src/modules/reports/components/export-registry.ts` + teste removidos (código morto, 0 referências de UI).
+- Migração `20260705000002_RemoveArtistBannerVideoFields` (criada em sessão anterior) estava **sem registro em `ALL_MIGRATIONS`** — corrigido; agora está registrada junto com a `20260705000003`, mas **nenhuma das três (`...001`, `...002`, `...003`) foi aplicada em produção**.
+
+---
+
+## Consistência banco × backend × frontend × permissões × relatórios/exportações
+
+- **Central de Relatórios/Exportações:** contrato 100% derivado da metadata TypeORM real (`EntityMetadataService.scan()` → `ReportEntityDefinitionService`), labels na camada i18n central, filtros de colunas internas/sensíveis aplicados no backend. Frontend sem nenhuma lista fixa.
+- **Permissões/RLS:** 225 policies; únicas tabelas com `tenant_id` sem RLS são as partições `rbac_decision_logs_*` (nota em A.2). `musicos360_migrations` fail-closed por design (B3 documenta a interação com o validador).
+- **Skills/Automações (infra invisível):** `skill_runs`, `skill_run_logs`, `workflow_*`, `musicchat_automation_*` — entidades e tabelas em paridade, uso interno apenas (sem tela), conforme decisão de arquitetura.
+- **Billing:** `billing_plans`, `billing_subscriptions`, `payment_events`, `tenant_billing_state`, `billing_settings` em paridade entity↔prod; acesso via serviços de billing (parte por SQL raw — por isso o falso-positivo do detector "entidade sem referência", ver nota metodológica).
+
+**Nota metodológica:** o detector "entidade sem referência de classe" acusou 20 classes (RBAC, billing, pipelines etc.), mas TODAS têm as **tabelas** usadas via SQL raw ou repositórios dinâmicos — nenhuma foi classificada como morta por esse critério isolado. Somente estruturas com zero uso em **qualquer** camada entraram em D.
+
+## Execução pendente (Go/No-Go)
+
+1. **Ainda pendente (usuário optou por NÃO aplicar agora):** `npm run db:migrate` em `apps/api` aplicaria `20260705000001` (aditiva, anulável, reversível). Sem ela, Inventário e Licenciamento seguem quebrados em produção. Nenhuma migração (`...001`, `...002`, `...003`) foi executada contra produção nesta sessão.
+2. **Decisão de produto tomada:** B4/D8 (`financial_centers`) → **remover**. Migração gerada (não aplicada).
+3. **Migração destrutiva D1–D8 gerada** (`20260705000003_RemoveDeadStructuresD1D8`), registrada em `ALL_MIGRATIONS`, com `down()` documentado — **não aplicada**. D6 foi descartado por ser um falso positivo (ver seção D acima).
+4. Próximo passo, quando o usuário autorizar: rodar as três migrações pendentes (`20260705000001`, `20260705000002`, `20260705000003`), nessa ordem, contra staging/mirror antes de produção — nenhuma delas foi ensaiada ainda.

@@ -279,8 +279,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session?.access_token]);
 
-  // ── AUDIT MODE (temporário): todos os módulos/feature-flags habilitados para inspeção (reverter: tenant.features[flag] ?? false) ──
-  const isFeatureEnabled = (_flag: keyof FeatureFlags): boolean => true;
+  const isFeatureEnabled = (flag: keyof FeatureFlags): boolean => tenant.features[flag] ?? false;
 
   // FONTE ÚNICA de autorização: membership.permissions (resource:action).
   // Permissivo APENAS em dev/mock/auth-disabled. Em produção, ausência de permissões

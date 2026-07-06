@@ -25,13 +25,16 @@ describe('HardenContactsLeadUploadsRls20260620000002', () => {
       expect(sql).toContain(
         `ALTER TABLE public."${table}" FORCE ROW LEVEL SECURITY`,
       );
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_select"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_insert"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_update"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_delete"`);
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated`,
+      );
+      expect(sql).toContain(`'${table}_tenant_select', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_insert', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_update', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_delete', '${table}'`);
     }
 
-    expect(sql.match(/CREATE POLICY ".+_tenant_(select|insert|update|delete)"/g)).toHaveLength(20);
+    expect(sql.match(/CREATE POLICY %I ON public\.%I/g)).toHaveLength(40);
     expect(sql).toContain(
       '"tenant_id" = (SELECT public.app_current_tenant_id())',
     );
@@ -55,10 +58,10 @@ describe('HardenContactsLeadUploadsRls20260620000002', () => {
 
     for (const table of TABLES) {
       expect(sql).toContain(
-        `REVOKE ALL PRIVILEGES ON TABLE public."${table}" FROM PUBLIC`,
+        `REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC', '${table}'`,
       );
       expect(sql).toContain(
-        `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."${table}" TO authenticated`,
+        `GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO authenticated', '${table}'`,
       );
     }
   });

@@ -34,12 +34,8 @@ function renderMetrics(overrides: Partial<MetricsProps> = {}) {
 
   const props: MetricsProps = {
     artistaId: "artist-1",
-    spotifyArtistId: SPOTIFY_ID,
     spotifyUrl: SPOTIFY_URL,
-    spotifyOuvintes: 1234,
-    youtubeChannelId: YOUTUBE_ID,
     youtubeUrl: YOUTUBE_URL,
-    youtubeInscritos: 4567,
     ...overrides,
   };
 
@@ -55,13 +51,24 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     vi.clearAllMocks();
   });
 
-  it("renderiza fallback legado sem snapshot", async () => {
+  it("mostra 'Não sincronizado' quando ha URL mas nenhum snapshot ainda", async () => {
     vi.mocked(api.get).mockResolvedValueOnce([]);
 
     renderMetrics();
 
-    expect(await screen.findByTestId("metric-spotify-artist-1")).toHaveTextContent("1.234");
-    expect(screen.getByTestId("metric-youtube-artist-1")).toHaveTextContent("4.567");
+    expect(await screen.findByTestId("metric-spotify-artist-1")).toHaveTextContent("Não sincronizado");
+    expect(screen.getByTestId("metric-youtube-artist-1")).toHaveTextContent("Não sincronizado");
+  });
+
+  it("mostra 'Não configurado' quando nao ha URL cadastrada", async () => {
+    vi.mocked(api.get).mockResolvedValueOnce([]);
+
+    renderMetrics({ spotifyUrl: null, youtubeUrl: null });
+
+    expect(await screen.findByTestId("metric-spotify-artist-1")).toHaveTextContent("—");
+    expect(screen.getByTestId("metric-youtube-artist-1")).toHaveTextContent("—");
+    expect(screen.queryByTestId("button-sync-spotify-artist-1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("button-sync-youtube-artist-1")).not.toBeInTheDocument();
   });
 
   it("renderiza snapshot success quando existir", async () => {
@@ -268,7 +275,9 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
 
     renderMetrics();
 
-    fireEvent.click(await screen.findByTestId("button-atualizar-metricas-artist-1"));
+    const atualizarButton = await screen.findByTestId("button-atualizar-metricas-artist-1");
+    await waitFor(() => expect(atualizarButton).not.toBeDisabled());
+    fireEvent.click(atualizarButton);
 
     await waitFor(() => {
       expect(api.post).toHaveBeenCalledWith("/artists/artist-1/platform-profiles/spotify/sync", {
@@ -282,7 +291,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     });
   });
 
-  it("nao exige spotifyArtistId quando ha spotifyUrl valido", async () => {
+  it("nao exige spotifyUrl quando ha spotifyUrl valido", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
     vi.mocked(api.post).mockResolvedValue({
       artist_id: "artist-1",
@@ -290,7 +299,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       skipped: [],
     });
 
-    renderMetrics({ spotifyArtistId: null, spotifyUrl: SPOTIFY_URL });
+    renderMetrics({ spotifyUrl: SPOTIFY_URL });
 
     fireEvent.click(await screen.findByTestId("button-sync-spotify-artist-1"));
 
@@ -302,7 +311,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
     });
   });
 
-  it("nao exige youtubeChannelId quando ha youtubeUrl valido", async () => {
+  it("nao exige youtubeUrl quando ha youtubeUrl valido", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
     vi.mocked(api.post).mockResolvedValue({
       artist_id: "artist-1",
@@ -310,7 +319,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
       skipped: [],
     });
 
-    renderMetrics({ youtubeChannelId: null, youtubeUrl: YOUTUBE_URL });
+    renderMetrics({ youtubeUrl: YOUTUBE_URL });
 
     fireEvent.click(await screen.findByTestId("button-sync-youtube-artist-1"));
 
@@ -325,7 +334,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
   it("link Spotify invalido bloqueia sync sem chamar endpoint", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
 
-    renderMetrics({ spotifyArtistId: null, spotifyUrl: "https://open.spotify.com/track/abc" });
+    renderMetrics({ spotifyUrl: "https://open.spotify.com/track/abc" });
 
     fireEvent.click(await screen.findByTestId("button-sync-spotify-artist-1"));
 
@@ -335,7 +344,7 @@ describe("ArtistaPlatformMetrics platform profiles", () => {
   it("link YouTube invalido bloqueia sync sem chamar endpoint", async () => {
     vi.mocked(api.get).mockResolvedValue([]);
 
-    renderMetrics({ youtubeChannelId: null, youtubeUrl: "https://www.youtube.com/@handle" });
+    renderMetrics({ youtubeUrl: "https://www.youtube.com/@handle" });
 
     fireEvent.click(await screen.findByTestId("button-sync-youtube-artist-1"));
 

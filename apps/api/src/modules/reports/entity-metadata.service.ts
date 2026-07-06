@@ -14,6 +14,7 @@ import { getMetadataArgsStorage } from 'typeorm';
 import { ALL_ENTITIES } from '../../database/entities';
 import { getReportableMetadata } from './reportable.decorator';
 import { tryGetFieldLabelPtBr } from './i18n/field-labels.pt-br';
+import { resolveEntityLabel } from './i18n/entity-labels.pt-br';
 import {
   EntityCategory,
   type ColumnMeta,
@@ -51,9 +52,6 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   forms: EntityCategory.REPORTABLE,
   conversations: EntityCategory.REPORTABLE,
   operational_tasks: EntityCategory.REPORTABLE,
-  crm_contacts: EntityCategory.REPORTABLE,
-  crm_companies: EntityCategory.REPORTABLE,
-  crm_tasks: EntityCategory.REPORTABLE,
   financial_categories: EntityCategory.REPORTABLE,
   financial_rules: EntityCategory.REPORTABLE,
   employees: EntityCategory.REPORTABLE,
@@ -83,8 +81,6 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   form_submissions: EntityCategory.NOT_REPORTABLE,
   conversation_messages: EntityCategory.NOT_REPORTABLE,
   conversation_notes: EntityCategory.NOT_REPORTABLE,
-  crm_tags: EntityCategory.NOT_REPORTABLE,
-  crm_timeline_events: EntityCategory.NOT_REPORTABLE,
   asset_versions: EntityCategory.NOT_REPORTABLE,
   campaign_tasks: EntityCategory.NOT_REPORTABLE,
   campaign_assets: EntityCategory.NOT_REPORTABLE,
@@ -105,7 +101,6 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   integrations: EntityCategory.NOT_REPORTABLE,
 
   // ── Junção (N:N) ──────────────────────────────────────────────────────────
-  crm_contact_tags: EntityCategory.JUNCTION,
   role_permissions: EntityCategory.JUNCTION,
   role_template_permissions: EntityCategory.JUNCTION,
   role_inheritance: EntityCategory.JUNCTION,
@@ -251,6 +246,7 @@ export class EntityMetadataService {
 
       const override = getReportableMetadata(cls);
       const category = override?.category ?? ENTITY_CATEGORY[tableName] ?? EntityCategory.UNKNOWN;
+      const label = resolveEntityLabel(tableName);
 
       // Colunas "visíveis" (candidatas a export) sem label pt-BR — não técnicas.
       const untranslatedVisible = columns.filter(
@@ -261,6 +257,7 @@ export class EntityMetadataService {
 
       const risks: string[] = [];
       if (category === EntityCategory.UNKNOWN) risks.push('UNCLASSIFIED');
+      if (category === EntityCategory.REPORTABLE && label === null) risks.push('UNTRANSLATED_ENTITY');
       if (category === EntityCategory.REPORTABLE && !hasTenantId) risks.push('MISSING_TENANT_ID');
       if (category === EntityCategory.REPORTABLE && !hasIdentifiable) risks.push('NO_IDENTIFIABLE_COLUMN');
       if (columns.length === 0) risks.push('NO_COLUMNS');
@@ -278,6 +275,7 @@ export class EntityMetadataService {
       entities.push({
         entityName: (cls as { name: string }).name,
         tableName,
+        label,
         category,
         reportable,
         columns,

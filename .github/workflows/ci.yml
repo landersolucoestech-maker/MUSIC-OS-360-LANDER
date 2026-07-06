@@ -333,39 +333,71 @@ jobs:
         continue-on-error: true
 
   # ─── DB Verification — RLS + tenant isolation (needs real Supabase) ──────────
-  # Runs on main/develop only. Requires DATABASE_URL secret in repo settings.
-  # To enable: add DATABASE_URL (pooler URL with %23-encoded password) to
-  # GitHub → Settings → Secrets and variables → Actions → Repository secrets.
+  # Runs on main/develop only. Requires DATABASE_URL (owner/bypassrls role) and
+  # APP_DATABASE_URL (musicos_app, NOBYPASSRLS — used by the test:e2e RLS suite)
+  # secrets in repo settings — point both at a non-production Supabase ref/branch:
+  # verify-tenant-isolation.ts and the e2e specs INSERT/UPDATE/DELETE real rows,
+  # and the former now hard-aborts if it detects the production Supabase ref (see
+  # extractSupabaseRef/SUPABASE_PROD_REF guard in the script).
+  # To enable the checks themselves: set repo variable DB_VERIFY_ENABLED=true
+  # under Settings → Actions → Variables (the job always runs and reports its
+  # own enabled/disabled state to the step summary either way).
   db-verify:
     name: DB Verify (RLS + Tenant Isolation)
     runs-on: ubuntu-latest
     needs: [quality]
-    if: |
-      (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop') &&
-      vars.DB_VERIFY_ENABLED == 'true'
+    # Always runs on main/develop (never silently "skipped" from the Actions UI) —
+    # the gate step below reports loudly to the job summary when disabled, instead
+    # of the whole job vanishing without explanation.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check DB verification gate
+        id: gate
+        run: |
+          if [ "${{ vars.DB_VERIFY_ENABLED }}" != "true" ]; then
+            echo "::warning::DB_VERIFY_ENABLED repo variable is not 'true' — RLS/tenant-isolation checks are SKIPPED this run. Multi-tenant isolation is NOT being verified in CI right now. Set DB_VERIFY_ENABLED=true under Settings > Actions > Variables to enable." | tee -a "$GITHUB_STEP_SUMMARY"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - uses: pnpm/action-setup@v4
+        if: steps.gate.outputs.enabled == 'true'
         with:
           version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
+        if: steps.gate.outputs.enabled == 'true'
         with:
           node-version: ${{ env.NODE_VERSION }}
           cache: "pnpm"
 
       - name: Install dependencies
+        if: steps.gate.outputs.enabled == 'true'
         run: pnpm install --frozen-lockfile
 
       - name: verify:rls (all tenant tables have RLS + policies)
+        if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api verify:rls
         working-directory: .
 
       - name: verify:tenant-isolation (cross-tenant DB blocks)
+        if: steps.gate.outputs.enabled == 'true'
         run: pnpm --filter @music-os-360/api verify:tenant-isolation
+        working-directory: .
+
+      # TEST-01 (auditoria 2026-07-05): esta suite prova RLS real contra Postgres
+      # (SELECT/INSERT/UPDATE/DELETE cross-tenant via APP_DATABASE_URL/musicos_app,
+      # NOBYPASSRLS) e nunca era chamada por nenhum workflow — uma regressao de RLS
+      # so seria pega manualmente. Roda no mesmo gate/DB do verify:rls acima.
+      - name: test:e2e (RLS real via Postgres — rls-isolation, request-context, phase3n-context)
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api test:e2e
         working-directory: .
 
   # ─── Smoke Test — full API integration (post-deploy, staging only) ───────────

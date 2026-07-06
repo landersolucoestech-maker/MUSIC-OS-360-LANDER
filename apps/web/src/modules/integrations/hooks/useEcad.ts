@@ -25,6 +25,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { MOCK_DATA } from "@/shared/data/mockData";
+import { MOCK_MODE } from "@/shared/lib/env";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 
 // ─── Storage helpers ──────────────────────────────────────────────────────────
@@ -214,6 +215,9 @@ export function useEcadArrecadacao(periodo: string, enabled = true) {
     queryFn: async () => {
       const creds = readCreds();
       if (!creds) throw new Error("ECAD não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Consulta de arrecadação ECAD ainda não está disponível (integração requer contrato institucional).");
+      }
       return generateMockArrecadacao(periodo);
     },
     enabled: enabled && Boolean(periodo),
@@ -229,6 +233,9 @@ export function useEcadConciliacao() {
     mutationFn: async ({ periodo: _periodo }) => {
       const creds = readCreds();
       if (!creds) throw new Error("ECAD não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Conciliação ECAD ainda não está disponível (integração requer contrato institucional).");
+      }
       await new Promise((r) => setTimeout(r, 800));
       return generateMockConciliacao();
     },
@@ -252,6 +259,9 @@ export function useEcadImportRelatorio() {
     mutationFn: async (file: File) => {
       const creds = readCreds();
       if (!creds) throw new Error("ECAD não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Importação de relatório ECAD ainda não está disponível (integração requer contrato institucional).");
+      }
       await new Promise((r) => setTimeout(r, 600));
       const linhas = Math.floor(file.size / 80);
       return { linhas, importadas: Math.floor(linhas * 0.95) };

@@ -9,6 +9,10 @@ const webRoot = path.resolve(__dirname, "..");
 const command = process.argv[2] ?? "dev";
 const port = Number(process.env.PORT ?? process.env.VITE_PORT ?? 5000);
 
+if (!process.stdin.isTTY) {
+  process.stdin.resume();
+}
+
 // Guard de ambiente: falha antes de subir/buildar se o Supabase ref for inválido.
 assertWebSupabaseEnv(command === "dev" ? "development" : "production", webRoot);
 
@@ -30,6 +34,9 @@ if (command === "dev") {
   });
 
   await server.listen();
+  server.httpServer?.on("close", () => {
+    console.error("[run-vite] HTTP server closed unexpectedly");
+  });
   server.printUrls();
   if (!process.stdin.isTTY) {
     setInterval(() => {}, 2 ** 30);

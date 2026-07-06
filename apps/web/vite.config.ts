@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react-swc";
 import path from "path";
 import type { Connect } from "vite";
 import type { IncomingMessage, ServerResponse } from "http";
+import { assertWebSupabaseEnv } from "./scripts/assert-supabase-env.mjs";
 
 /**
  * acrcloudApiPlugin — ACRCloud como infraestrutura backend nativa.
@@ -94,7 +95,10 @@ function acrcloudApiPlugin() {
   };
 }
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  assertWebSupabaseEnv(mode === "production" ? "production" : "development", __dirname);
+
+  return {
   plugins: [react(), acrcloudApiPlugin()],
   resolve: {
     alias: {
@@ -161,4 +165,5 @@ export default defineConfig({
       "/socket.io": { target: "http://127.0.0.1:3001", changeOrigin: true, ws: true },
     },
   },
+  };
 });

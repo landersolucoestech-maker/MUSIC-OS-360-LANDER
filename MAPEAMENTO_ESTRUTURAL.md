@@ -270,8 +270,8 @@ especialidades[]          // interprete, compositor_autor, produtor, dj_produtor
 fase_carreira, slug_artistico, tags_musicais[]
 contrato_id → contratos
 // Streaming
-spotify_artist_id, spotify_ouvintes
-youtube_channel_id, youtube_inscritos
+spotify_url, spotify_ouvintes
+youtube_url, youtube_inscritos
 deezer_url, deezer_fas
 apple_music_url, soundcloud_url, soundcloud_seguidores
 // Redes sociais
@@ -282,7 +282,7 @@ data_nascimento, rg, cpf_cnpj, endereco
 // Bancários
 banco, agencia, conta, chave_pix, titular_conta
 // Perfil 360
-banner_url, galeria_urls[], video_apresentacao_url
+galeria_urls[]
 manager_nome, manager_contato, produtor_executivo, agencia_booking, label_parceira
 // Relacionamentos comerciais (MODELO NOVO)
 relacionamentos[]: { tipo, nome, telefone, email, escritorio, crc, responsaveis[], distribuidoras[] }
@@ -626,7 +626,7 @@ Formulário multi-passo (8 passos) acessível em `/cadastro/:orgSlug`
 | 2 | Dados Pessoais | nome_civil, cpf_cnpj, data_nascimento, rg, endereco, tipo_pessoa |
 | 3 | Contatos | email, telefone, instagram, facebook, tiktok, twitter, website |
 | 4 | Dados Bancários | banco, agencia, conta, chave_pix, titular_conta |
-| 5 | Plataformas de Streaming | spotify_artist_id, youtube_channel_id, deezer_url, apple_music_url, soundcloud_url |
+| 5 | Plataformas de Streaming | spotify_url, youtube_url, deezer_url, apple_music_url, soundcloud_url |
 | 6 | Relacionamentos | empresario, gravadora, booker, juridico, financeiro, contador |
 | 7 | Distribuidoras | distribuidoras_selecionadas{}, distribuidoras_emails{} |
 

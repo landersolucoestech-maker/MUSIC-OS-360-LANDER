@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, Inject, Logger, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
@@ -10,14 +10,20 @@ import type { UpdateArtistDto } from './dto/update-artist.dto';
 import type { QueryArtistDto }  from './dto/query-artist.dto';
 import { ArtistStatus } from '@music-os-360/types';
 
-// Fields the entity has as real columns (excluding encrypted fields handled separately)
-const ENTITY_COLUMNS = new Set([
-  'nome_artistico', 'nome_civil', 'tipo', 'status', 'genero_musical', 'observacoes',
-  'foto_url', 'banner_url', 'galeria_urls', 'video_apresentacao_url', 'documentos',
-  'manager_nome', 'produtor_executivo', 'agencia_booking', 'label_parceira',
-  'especialidades', 'spotify_artist_id', 'youtube_channel_id',
+// ── Fonte única do mapeamento DTO ↔ colunas da entity ─────────────────────────
+// Colunas NOT NULL: null no PATCH é ignorado (nunca sobrescreve com null).
+const REQUIRED_COLUMNS = ['nome_artistico', 'tipo', 'status'] as const;
+
+// Colunas anuláveis: `undefined` = não tocar; `null`/valor = persistir exatamente.
+const NULLABLE_COLUMNS = [
+  'nome_civil', 'genero_musical', 'observacoes', 'foto_url',
+  'manager_nome', 'produtor_executivo',
+  'agencia_booking', 'label_parceira', 'spotify_url', 'youtube_url',
   'deezer_url', 'apple_music_url', 'soundcloud_url', 'contrato_id',
-]);
+] as const;
+
+// Colunas jsonb NOT NULL DEFAULT []: null vira lista vazia.
+const JSONB_LIST_COLUMNS = ['galeria_urls', 'documentos', 'especialidades'] as const;
 
 // Fields handled via encryption
 const ENCRYPTED_FIELDS = new Set(['email', 'telefone', 'cpf_cnpj', 'manager_contato']);
@@ -40,15 +46,15 @@ const METADATA_FIELDS = new Set([
   'contatos_vinculados', 'contatos_equipe', 'genero',
 ]);
 
-/** Spreads metadata fields back onto the entity so the frontend can read them as top-level fields. */
-function toResponse(entity: ArtistEntity): ArtistEntity & Record<string, unknown> {
-  const meta = (entity.metadata ?? {}) as Record<string, unknown>;
-  return { ...entity, ...meta };
-}
+/** Shape de resposta: entity sem ciphertext + metadata achatada + PII decifrada. */
+export type ArtistResponse =
+  Omit<ArtistEntity, 'email_encrypted' | 'telefone_encrypted' | 'cpf_cnpj_encrypted' | 'manager_contato_encrypted'>
+  & Record<string, unknown>;
 
 @Injectable()
 export class ArtistsService {
   private readonly repo: Repository<ArtistEntity> | null = null;
+  private readonly logger = new Logger(ArtistsService.name);
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
@@ -57,6 +63,38 @@ export class ArtistsService {
     private readonly planLimit: PlanLimitService,
   ) {
     if (ds) this.repo = ds.getRepository(ArtistEntity);
+  }
+
+  /**
+   * Resposta ao frontend: espalha os campos de metadata como top-level e
+   * DECIFRA os campos PII de volta para os nomes usados pelo formulário
+   * (email/telefone/cpf_cnpj/manager_contato). O ciphertext nunca sai da API.
+   * Sem isto, tudo que é salvo cifrado "some" ao recarregar.
+   */
+  private toResponse(entity: ArtistEntity): ArtistResponse {
+    const meta = (entity.metadata ?? {}) as Record<string, unknown>;
+    const {
+      email_encrypted, telefone_encrypted, cpf_cnpj_encrypted, manager_contato_encrypted,
+      ...rest
+    } = entity;
+    return {
+      ...rest,
+      ...meta,
+      email:           this.safeDecrypt(email_encrypted, 'email'),
+      telefone:        this.safeDecrypt(telefone_encrypted, 'telefone'),
+      cpf_cnpj:        this.safeDecrypt(cpf_cnpj_encrypted, 'cpf_cnpj'),
+      manager_contato: this.safeDecrypt(manager_contato_encrypted, 'manager_contato'),
+    };
+  }
+
+  /** Ciphertext ilegível (chave trocada/valor legado) nunca derruba a leitura. */
+  private safeDecrypt(value: string | null, field: string): string | null {
+    try {
+      return this.encryption.decryptNullable(value);
+    } catch {
+      this.logger.warn(`Falha ao decifrar campo "${field}" — retornando null`);
+      return null;
+    }
   }
 
   async list(tenantId: string, query: QueryArtistDto) {
@@ -80,7 +118,7 @@ export class ArtistsService {
 
     const [data, total] = await qb.getManyAndCount();
     return {
-      data: data.map(toResponse),
+      data: data.map((e) => this.toResponse(e)),
       meta: { total, offset: query.offset ?? 0, limit: query.limit ?? 50 },
     };
   }
@@ -95,10 +133,10 @@ export class ArtistsService {
   }
 
   async findByIdForResponse(tenantId: string, id: string) {
-    return toResponse(await this.findById(tenantId, id));
+    return this.toResponse(await this.findById(tenantId, id));
   }
 
-  async create(tenantId: string, userId: string, dto: CreateArtistDto, orgId?: string): Promise<ArtistEntity> {
+  async create(tenantId: string, userId: string, dto: CreateArtistDto, orgId?: string): Promise<ArtistResponse> {
     await this.planLimit.enforce(tenantId, orgId ?? tenantId, 'artists');
 
     // Collect metadata extras from dto
@@ -116,17 +154,15 @@ export class ArtistsService {
       genero_musical:      dto.genero_musical      ?? null,
       observacoes:         dto.observacoes         ?? null,
       foto_url:            dto.foto_url            ?? null,
-      banner_url:          dto.banner_url          ?? null,
       galeria_urls:        (dto.galeria_urls        ?? []) as any,
-      video_apresentacao_url: dto.video_apresentacao_url ?? null,
       documentos:          (dto.documentos          ?? []) as any,
       manager_nome:        dto.manager_nome        ?? null,
       manager_contato_encrypted: this.encryption.encryptNullable(dto.manager_contato),
       produtor_executivo:  dto.produtor_executivo  ?? null,
       agencia_booking:     dto.agencia_booking     ?? null,
       label_parceira:      dto.label_parceira      ?? null,
-      spotify_artist_id:   dto.spotify_artist_id   ?? null,
-      youtube_channel_id:  dto.youtube_channel_id  ?? null,
+      spotify_url:         dto.spotify_url         ?? null,
+      youtube_url:         dto.youtube_url         ?? null,
       deezer_url:          dto.deezer_url          ?? null,
       apple_music_url:     dto.apple_music_url     ?? null,
       soundcloud_url:      dto.soundcloud_url      ?? null,
@@ -156,10 +192,10 @@ export class ArtistsService {
       },
     });
 
-    return toResponse(saved);
+    return this.toResponse(saved);
   }
 
-  async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<ArtistEntity> {
+  async update(tenantId: string, userId: string, id: string, dto: UpdateArtistDto): Promise<ArtistResponse> {
     const existing = await this.findById(tenantId, id);
 
     // ── Status transition validation ───────────────────────────────────────────
@@ -171,35 +207,27 @@ export class ArtistsService {
     const updates: Record<string, unknown> = { updated_at: new Date(), updated_by: userId };
     const changedFields: string[] = [];
 
-    // Map direct entity columns
-    if (dto.nome_artistico    != null) { updates.nome_artistico    = dto.nome_artistico;    changedFields.push('nome_artistico'); }
-    if (dto.nome_civil        != null) { updates.nome_civil        = dto.nome_civil;        changedFields.push('nome_civil'); }
-    if (dto.tipo              != null) { updates.tipo              = dto.tipo;              changedFields.push('tipo'); }
-    if (dto.status            != null) { updates.status            = dto.status;            changedFields.push('status'); }
-    if (dto.genero_musical    != null) { updates.genero_musical    = dto.genero_musical;    changedFields.push('genero_musical'); }
-    if (dto.observacoes       != null) { updates.observacoes       = dto.observacoes;       changedFields.push('observacoes'); }
-    if (dto.foto_url          != null) { updates.foto_url          = dto.foto_url;          changedFields.push('foto_url'); }
-    if (dto.banner_url        != null) { updates.banner_url        = dto.banner_url;        changedFields.push('banner_url'); }
-    if (dto.galeria_urls      != null) { updates.galeria_urls      = dto.galeria_urls;      changedFields.push('galeria_urls'); }
-    if (dto.video_apresentacao_url != null) { updates.video_apresentacao_url = dto.video_apresentacao_url; changedFields.push('video_apresentacao_url'); }
-    if (dto.documentos        != null) { updates.documentos        = dto.documentos;        changedFields.push('documentos'); }
-    if (dto.manager_nome      != null) { updates.manager_nome      = dto.manager_nome;      changedFields.push('manager_nome'); }
-    if (dto.produtor_executivo != null) { updates.produtor_executivo = dto.produtor_executivo; changedFields.push('produtor_executivo'); }
-    if (dto.agencia_booking   != null) { updates.agencia_booking   = dto.agencia_booking;   changedFields.push('agencia_booking'); }
-    if (dto.label_parceira    != null) { updates.label_parceira    = dto.label_parceira;    changedFields.push('label_parceira'); }
-    if (dto.spotify_artist_id != null) { updates.spotify_artist_id = dto.spotify_artist_id; changedFields.push('spotify_artist_id'); }
-    if (dto.youtube_channel_id != null) { updates.youtube_channel_id = dto.youtube_channel_id; changedFields.push('youtube_channel_id'); }
-    if (dto.deezer_url        != null) { updates.deezer_url        = dto.deezer_url;        changedFields.push('deezer_url'); }
-    if (dto.apple_music_url   != null) { updates.apple_music_url   = dto.apple_music_url;   changedFields.push('apple_music_url'); }
-    if (dto.soundcloud_url    != null) { updates.soundcloud_url    = dto.soundcloud_url;    changedFields.push('soundcloud_url'); }
-    if (dto.contrato_id       != null) { updates.contrato_id       = dto.contrato_id;       changedFields.push('contrato_id'); }
-    if (dto.especialidades    != null) { updates.especialidades    = dto.especialidades;    changedFields.push('especialidades'); }
+    // Colunas diretas, dirigidas pelas listas canônicas (fonte única):
+    // NOT NULL ignoram null; anuláveis persistem exatamente o que veio (null limpa);
+    // listas jsonb NOT NULL normalizam null → [].
+    const dtoRec = dto as Record<string, unknown>;
+    for (const col of REQUIRED_COLUMNS) {
+      if (dtoRec[col] != null) { updates[col] = dtoRec[col]; changedFields.push(col); }
+    }
+    for (const col of NULLABLE_COLUMNS) {
+      if (dtoRec[col] !== undefined) { updates[col] = dtoRec[col] ?? null; changedFields.push(col); }
+    }
+    for (const col of JSONB_LIST_COLUMNS) {
+      if (dtoRec[col] !== undefined) { updates[col] = dtoRec[col] ?? []; changedFields.push(col); }
+    }
 
-    // Encrypted fields
-    if ((dto as any).email           !== undefined) { updates.email_encrypted           = this.encryption.encryptNullable((dto as any).email);           changedFields.push('email'); }
-    if ((dto as any).telefone        !== undefined) { updates.telefone_encrypted        = this.encryption.encryptNullable((dto as any).telefone);        changedFields.push('telefone'); }
-    if ((dto as any).cpf_cnpj        !== undefined) { updates.cpf_cnpj_encrypted        = this.encryption.encryptNullable((dto as any).cpf_cnpj);        changedFields.push('cpf_cnpj'); }
-    if ((dto as any).manager_contato !== undefined) { updates.manager_contato_encrypted = this.encryption.encryptNullable((dto as any).manager_contato); changedFields.push('manager_contato'); }
+    // Encrypted fields (nome do campo + sufixo _encrypted, uniforme para os 4)
+    for (const field of ENCRYPTED_FIELDS) {
+      if (dtoRec[field] !== undefined) {
+        updates[`${field}_encrypted`] = this.encryption.encryptNullable(dtoRec[field] as string | null);
+        changedFields.push(field);
+      }
+    }
 
     // Collect metadata-only fields
     const metadataExtras: Record<string, unknown> = {};
@@ -255,7 +283,7 @@ export class ArtistsService {
       });
     }
 
-    return toResponse(result);
+    return this.toResponse(result);
   }
 
   async softDelete(tenantId: string, userId: string, id: string): Promise<{ deleted: boolean }> {

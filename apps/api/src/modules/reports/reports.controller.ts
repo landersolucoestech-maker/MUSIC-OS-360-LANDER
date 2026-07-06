@@ -25,8 +25,7 @@ import { isSafeKey } from '../../core/security/safe-object';
 
 interface ImportValidateBody {
   filename: string;
-  contentBase64?: string;
-  content?: string;
+  contentBase64: string;
 }
 
 const RESERVED_QUERY_KEYS = new Set(['format', 'columns', 'sort', 'order', 'page', 'pageSize']);
@@ -44,7 +43,7 @@ function parseExportParams(query: Record<string, string | string[] | undefined>)
   }
   const columnsRaw = str(query['columns']);
   return {
-    format: (str(query['format']) ?? 'json') as ExportFormat,
+    format: 'xlsx' as ExportFormat,
     columns: columnsRaw ? columnsRaw.split(',').map((c) => c.trim()).filter(Boolean) : undefined,
     filters: Object.keys(filters).length ? filters : undefined,
     sort: str(query['sort']),
@@ -104,7 +103,7 @@ export class ReportsController {
   @Get('entities/:entity/export')
   @RequireRole('manager')
   @Audit('report.exported')
-  @ApiOperation({ summary: 'Exporta uma entidade reportável (JSON/CSV/XLSX) — entity-driven, tenant-safe' })
+  @ApiOperation({ summary: 'Exporta uma entidade reportável (XLSX) — entity-driven, tenant-safe' })
   async export(
     @CurrentTenant() tenant: { id: string },
     @CurrentUser() user: { userId: string },
@@ -116,10 +115,6 @@ export class ReportsController {
     const result = await this.exportEngine.export(entity, params, tenant?.id, user?.userId ?? 'unknown');
 
     res.setHeader('Content-Type', result.contentType);
-    if (result.format === 'json') {
-      res.status(200).json(result.body);
-      return;
-    }
     res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
     res.status(200).send(result.body);
   }
@@ -132,12 +127,10 @@ export class ReportsController {
     @Param('entity') entity: string,
     @Body() body: ImportValidateBody,
   ): Promise<ImportValidationResult> {
-    if (!body?.filename || (!body.contentBase64 && body.content === undefined)) {
-      throw new BadRequestException('Envie filename e content (texto) ou contentBase64.');
+    if (!body?.filename || !body.contentBase64) {
+      throw new BadRequestException('Envie filename e contentBase64 (arquivo XLSX).');
     }
-    const content = body.contentBase64
-      ? Buffer.from(body.contentBase64, 'base64')
-      : Buffer.from(body.content ?? '', 'utf8');
+    const content = Buffer.from(body.contentBase64, 'base64');
     return this.importEngine.validateFile(entity, { filename: body.filename, content }, tenant?.id);
   }
 
@@ -151,12 +144,10 @@ export class ReportsController {
     @Param('entity') entity: string,
     @Body() body: ImportValidateBody,
   ): Promise<ImportCommitResult> {
-    if (!body?.filename || (!body.contentBase64 && body.content === undefined)) {
-      throw new BadRequestException('Envie filename e content (texto) ou contentBase64.');
+    if (!body?.filename || !body.contentBase64) {
+      throw new BadRequestException('Envie filename e contentBase64 (arquivo XLSX).');
     }
-    const content = body.contentBase64
-      ? Buffer.from(body.contentBase64, 'base64')
-      : Buffer.from(body.content ?? '', 'utf8');
+    const content = Buffer.from(body.contentBase64, 'base64');
     return this.importCommit.commit(entity, { filename: body.filename, content }, tenant?.id, user?.userId ?? 'unknown');
   }
 }

@@ -709,25 +709,12 @@ export function ArtistaVisao360Modal({
         <DialogTitle className="sr-only">
           Visão 360 do artista {artista.nome_artistico}
         </DialogTitle>
-        {/* Header com Banner */}
         <div className="border-b border-border shrink-0 bg-card">
-          {artista.banner_url && (
-            <div className="relative h-28 overflow-hidden">
-              <img
-                src={artista.banner_url}
-                alt="Banner do artista"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </div>
-          )}
           <div className="p-6 pb-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4">
                 <div
-                  className={`h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-foreground shrink-0 ${artista.banner_url ? "-mt-8 ring-4 ring-background" : ""}`}
+                  className="h-14 w-14 rounded-full bg-primary flex items-center justify-center text-xl font-bold text-foreground shrink-0"
                 >
                   {artista.foto_url ? (
                     <img
@@ -1436,14 +1423,12 @@ export function ArtistaVisao360Modal({
               {/* Perfis e Redes Sociais */}
               <ArtistaPlatformMetrics
                 artistaId={artista.id}
-                instagramUrl={artista.instagram ?? null}
+                spotifyUrl={artista.spotify_url ?? null}
+                youtubeUrl={artista.youtube_url ?? null}
+                instagramUrl={artista.instagram_url ?? null}
                 instagramSeguidores={artista.instagram_seguidores ?? null}
                 tiktokUrl={artista.tiktok ?? null}
                 tiktokSeguidores={artista.tiktok_seguidores ?? null}
-                spotifyArtistId={artista.spotify_artist_id ?? null}
-                spotifyOuvintes={artista.spotify_ouvintes ?? null}
-                youtubeChannelId={artista.youtube_channel_id ?? null}
-                youtubeInscritos={artista.youtube_inscritos ?? null}
                 deezerUrl={artista.deezer_url ?? null}
                 deezerFas={artista.deezer_fas ?? null}
                 appleMusicUrl={artista.apple_music_url ?? null}
@@ -1759,7 +1744,7 @@ export function ArtistaVisao360Modal({
                     <CardContent className="p-4">
                       <div className="flex items-center gap-2 mb-4">
                         <Users className="h-5 w-5 text-muted-foreground" />
-                        <h3 className="font-semibold">Equipa / Contactos</h3>
+                        <h3 className="font-semibold">Equipe / Contatos</h3>
                       </div>
                       <div className="space-y-4">
                         {equipe.map((c, idx) => (
@@ -1833,7 +1818,7 @@ export function ArtistaVisao360Modal({
 
               {/* Data de Cadastro */}
               <div className="text-sm text-muted-foreground">
-                <span>Data de Cadastro: </span>
+                <span>Data do Cadastro: </span>
                 <span>
                   {artista.created_at
                     ? new Date(artista.created_at).toLocaleDateString("pt-BR")
@@ -1900,56 +1885,6 @@ export function ArtistaVisao360Modal({
                 </CardContent>
               </Card>
 
-              {/* Vídeo de Apresentação */}
-              <Card className="bg-muted/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <Video className="h-5 w-5 text-muted-foreground" />
-                    <h3 className="font-semibold">Vídeo de Apresentação</h3>
-                  </div>
-                  {artista.video_apresentacao_url ? (
-                    <div className="space-y-3">
-                      <div className="aspect-video w-full rounded-lg overflow-hidden bg-background">
-                        <iframe
-                          src={(() => {
-                            const url =
-                              artista.video_apresentacao_url as string;
-                            const match = url.match(
-                              /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/,
-                            );
-                            if (match)
-                              return `https://www.youtube.com/embed/${match[1]}`;
-                            return url;
-                          })()}
-                          className="w-full h-full"
-                          allowFullScreen
-                          title="Vídeo de apresentação"
-                        />
-                      </div>
-                      <a
-                        href={artista.video_apresentacao_url as string}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-sm text-primary hover:underline"
-                        data-testid="link-video-apresentacao"
-                      >
-                        <ExternalLink className="h-3.5 w-3.5" />
-                        Abrir no YouTube
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col items-center justify-center py-10 text-center gap-2">
-                      <Video className="h-10 w-10 text-muted-foreground/30" />
-                      <p className="text-sm text-muted-foreground">
-                        Nenhum vídeo de apresentação cadastrado
-                      </p>
-                      <p className="text-xs text-muted-foreground/60">
-                        Adicione uma URL do YouTube na edição do artista
-                      </p>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* Documentos */}
@@ -2281,7 +2216,7 @@ export function ArtistaVisao360Modal({
                 <Card className="bg-success/10 border-success/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">
-                      Receitas Total
+                      Receitas Totais
                     </p>
                     <p className={`text-2xl font-bold ${getCurrencyToneClass(receitasTotal)}`}>
                       {formatCurrency(receitasTotal)}
@@ -2291,7 +2226,7 @@ export function ArtistaVisao360Modal({
                 <Card className="bg-destructive/10 border-destructive/20">
                   <CardContent className="p-4">
                     <p className="text-sm text-muted-foreground">
-                      Despesas Total
+                      Despesas Totais
                     </p>
                     <p className={`text-2xl font-bold ${getCurrencyToneClass(-despesasTotal)}`}>
                       {formatCurrency(-despesasTotal)}

@@ -41,8 +41,8 @@ const SKILL_NAME = 'artist-profile-analysis';
 interface ArtistRow {
   nome_artistico: string;
   genero_musical: string | null;
-  spotify_artist_id: string | null;
-  youtube_channel_id: string | null;
+  spotify_url: string | null;
+  youtube_url: string | null;
   deezer_url: string | null;
   apple_music_url: string | null;
   soundcloud_url: string | null;
@@ -56,8 +56,8 @@ function buildPlatforms(artist: ArtistRow): ArtistPlatformProfile[] {
   const add = (platform: string, handle: string | null) => {
     if (handle) platforms.push({ platform, handle });
   };
-  add('spotify', artist.spotify_artist_id);
-  add('youtube', artist.youtube_channel_id);
+  add('spotify', artist.spotify_url);
+  add('youtube', artist.youtube_url);
   add('deezer', artist.deezer_url);
   add('apple_music', artist.apple_music_url);
   add('soundcloud', artist.soundcloud_url);
@@ -114,7 +114,7 @@ export class ArtistProfileAnalysisAutomation {
   ): Promise<ArtistRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT nome_artistico, genero_musical, spotify_artist_id, youtube_channel_id,
+      `SELECT nome_artistico, genero_musical, spotify_url, youtube_url,
               deezer_url, apple_music_url, soundcloud_url, observacoes, metadata
          FROM artists
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL

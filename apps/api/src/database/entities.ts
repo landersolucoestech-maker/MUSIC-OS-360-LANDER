@@ -475,9 +475,7 @@ export class ArtistEntity {
   @Column({ type: 'text', nullable: true }) telefone_encrypted: string | null;
   @Column({ type: 'text', nullable: true }) cpf_cnpj_encrypted: string | null;
   @Column({ type: 'text', nullable: true }) foto_url: string | null;
-  @Column({ type: 'text', nullable: true }) banner_url: string | null;
   @Column({ type: 'jsonb', default: [] }) galeria_urls: unknown[];
-  @Column({ type: 'text', nullable: true }) video_apresentacao_url: string | null;
   @Column({ type: 'jsonb', default: [] }) documentos: unknown[];
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) manager_nome: string | null;
@@ -486,8 +484,8 @@ export class ArtistEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) agencia_booking: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) label_parceira: string | null;
   @Column({ type: 'jsonb', default: [] }) especialidades: unknown[];
-  @Column({ type: 'varchar', length: 255, nullable: true }) spotify_artist_id: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) youtube_channel_id: string | null;
+  @Column({ type: 'text', nullable: true }) spotify_url: string | null;
+  @Column({ type: 'text', nullable: true }) youtube_url: string | null;
   @Column({ type: 'text', nullable: true }) deezer_url: string | null;
   @Column({ type: 'text', nullable: true }) apple_music_url: string | null;
   @Column({ type: 'text', nullable: true }) soundcloud_url: string | null;
@@ -1696,101 +1694,8 @@ export class FormSubmissionEntity {
 }
 
 // ─── CRM Canonical (Phase 7) ──────────────────────────────────────────────────
-
-@Entity('crm_companies')
-@Index(['tenant_id'])
-@Index(['tenant_id', 'deleted_at'])
-export class CrmCompanyEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) name: string;
-  @Column({ type: 'varchar', length: 100, nullable: true }) industry: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) website: string | null;
-  @Column({ type: 'text', nullable: true }) email_encrypted: string | null;
-  @Column({ type: 'text', nullable: true }) phone_encrypted: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) address: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) city: string | null;
-  @Column({ type: 'varchar', length: 2, nullable: true }) state: string | null;
-  @Column({ type: 'integer', default: 0 }) contact_count: number;
-  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
-  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
-
-  @OneToMany(() => CrmContactEntity, (c) => c.company)
-  contacts: Relation<CrmContactEntity[]>;
-}
-
-@Entity('crm_contacts')
-@Index(['tenant_id'])
-@Index(['tenant_id', 'deleted_at'])
-@Index(['tenant_id', 'company_id'])
-export class CrmContactEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) name: string;
-  @Column({ type: 'text', nullable: true }) email_encrypted: string | null;
-  @Column({ type: 'text', nullable: true }) phone_encrypted: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) job_title: string | null;
-  @Column({ type: 'uuid', nullable: true }) company_id: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) source: string | null;
-  @Column({ type: 'integer', default: 0 }) score: number;
-  @Column({ type: 'varchar', length: 50, default: 'active' }) status: string;
-  @Column({ type: 'uuid', nullable: true }) lead_id: string | null;
-  @Column({ type: 'uuid', nullable: true }) client_id: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) assigned_to: string | null;
-  @Column({ type: 'timestamptz', nullable: true }) last_contacted_at: Date | null;
-  @Column({ type: 'jsonb', default: {} }) social_links: Record<string, unknown>;
-  @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
-  @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
-  @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-  @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
-  @Column({ type: 'timestamptz', nullable: true }) deleted_at: Date | null;
-
-  @ManyToOne(() => CrmCompanyEntity, (c) => c.contacts, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'company_id' })
-  company: Relation<CrmCompanyEntity> | null;
-
-  @OneToMany(() => CrmContactTagEntity, (t) => t.contact)
-  contactTags: Relation<CrmContactTagEntity[]>;
-
-  @OneToMany(() => CrmTimelineEventEntity, (e) => e.contact)
-  timeline: Relation<CrmTimelineEventEntity[]>;
-}
-
-@Entity('crm_tags')
-@Index(['tenant_id', 'name'], { unique: true })
-export class CrmTagEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 100 }) name: string;
-  @Column({ type: 'varchar', length: 50, default: '#6366f1' }) color: string;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-
-  @OneToMany(() => CrmContactTagEntity, (ct) => ct.tag)
-  contactTags: Relation<CrmContactTagEntity[]>;
-}
-
-@Entity('crm_contact_tags')
-@Index(['contact_id', 'tag_id'], { unique: true })
-@Index(['tenant_id'])
-export class CrmContactTagEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid' }) contact_id: string;
-  @Column({ type: 'uuid' }) tag_id: string;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-
-  @ManyToOne(() => CrmContactEntity, (c) => c.contactTags, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'contact_id' })
-  contact: Relation<CrmContactEntity>;
-
-  @ManyToOne(() => CrmTagEntity, (t) => t.contactTags, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'tag_id' })
-  tag: Relation<CrmTagEntity>;
-}
+// crm_companies/crm_contacts/crm_tags/crm_contact_tags/crm_timeline_events were
+// removed by RemoveDeadCrmClusterD1D8 (0 linhas, substituídas por contacts/leads).
 
 // Compatibility class name retained while the persisted model is now the
 // domain-neutral operational task queue. CRM itself is contacts/leads based.
@@ -1815,24 +1720,6 @@ export class CrmTaskEntity {
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamptz' }) updated_at: Date;
 
-}
-
-@Entity('crm_timeline_events')
-@Index(['tenant_id', 'contact_id', 'occurred_at'])
-export class CrmTimelineEventEntity {
-  @PrimaryGeneratedColumn('uuid') id: string;
-  @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'uuid' }) contact_id: string;
-  @Column({ type: 'varchar', length: 100 }) event_type: string;
-  @Column({ type: 'varchar', length: 500, nullable: true }) summary: string | null;
-  @Column({ type: 'jsonb', default: {} }) payload: Record<string, unknown>;
-  @Column({ type: 'varchar', length: 255, nullable: true }) actor_id: string | null;
-  @Column({ type: 'timestamptz', default: () => 'CURRENT_TIMESTAMP' }) occurred_at: Date;
-  @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
-
-  @ManyToOne(() => CrmContactEntity, (c) => c.timeline, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'contact_id' })
-  contact: Relation<CrmContactEntity>;
 }
 
 // ─── Music Pipelines (Phase 8) ────────────────────────────────────────────────
@@ -2669,6 +2556,8 @@ export class AudiovisualProductionDayEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid' }) audiovisual_project_id: string;
   @Column({ type: 'date' }) shooting_date: string;
+  @Column({ type: 'time', nullable: true }) call_time: string | null;
+  @Column({ type: 'time', nullable: true }) end_time: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) location: string | null;
   @Column({ type: 'text', nullable: true }) weather_notes: string | null;
   @Column({ type: 'text', nullable: true }) team_notes: string | null;
@@ -2830,7 +2719,6 @@ export class FinancialCategoryCenterEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid' }) category_id: string;
-  @Column({ type: 'uuid' }) center_id: string;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
 }
 

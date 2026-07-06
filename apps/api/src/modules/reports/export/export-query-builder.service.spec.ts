@@ -16,7 +16,7 @@ const DEF: ReportEntityDefinition = {
   requiredImportColumns: ['nome_artistico'],
   supportsExport: true, supportsImport: true,
 };
-const base = (p: Partial<ExportQueryParams> = {}): ExportQueryParams => ({ format: 'json', page: 1, pageSize: 100, ...p });
+const base = (p: Partial<ExportQueryParams> = {}): ExportQueryParams => ({ format: 'xlsx', page: 1, pageSize: 100, ...p });
 
 describe('ExportQueryBuilderService — query segura entity-driven', () => {
   const svc = new ExportQueryBuilderService();

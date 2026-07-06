@@ -1,20 +1,15 @@
 // @ts-nocheck
-// Integration test para ArtistaVisao360Modal (Task #361).
+// Integration test para ArtistaVisao360Modal.
 //
-// Verifica que os chips de tendência (PlatformMiniTrend) aparecem nos
-// cards de Spotify / YouTube / Deezer da seção "Perfis e Redes Sociais"
-// do modal Visão 360°, respeitando o gating por ID configurado:
-//   * Plataforma sem ID configurado → nem chip nem placeholder aparece
-//     (a query nem é disparada).
-//   * Plataforma com ID configurado mas sem histórico (0 ou 1 snapshot)
-//     → placeholder "— sem histórico" aparece dentro do card.
-//   * Plataforma com ID configurado e histórico crescendo → badge
-//     "em crescimento" + percentual aparecem dentro do card.
+// Verifica os cards de Spotify / YouTube na seção "Perfis e Redes Sociais"
+// do modal Visão 360°, respeitando o backend real de platform-profiles:
+//   * Sem URL cadastrada → "—" e nenhum botão de sincronização.
+//   * Com URL cadastrada mas sem snapshot ainda → "Não sincronizado".
+//   * Com snapshot de sucesso → valores reais retornados pelo backend.
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { act } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-type MetricEvolutionPoint = { date: string; captured_at?: string; followers?: number | null; popularity?: number | null; views?: number | null; [key: string]: unknown; };
 
 // Estabiliza o ResponsiveContainer do recharts (usado por outras seções
 // do modal) para evitar avisos sobre dimensões zero no jsdom.
@@ -63,35 +58,15 @@ vi.mock("@/app/providers/TenantContext", () => ({
   }),
 }));
 
-const spotifyMock = vi.fn();
-const youtubeMock = vi.fn();
-const deezerMock = vi.fn();
-
-vi.mock("@/modules/integrations/hooks/useSpotify", () => ({
-  useSpotifyEvolution: (...args: any[]) => spotifyMock(...args),
-}));
-
-vi.mock("@/modules/integrations/hooks/useYouTube", () => ({
-  useYouTubeEvolution: (...args: any[]) => youtubeMock(...args),
-}));
-
-vi.mock("@/modules/integrations/hooks/useDeezer", () => ({
-  useDeezerEvolution: (...args: any[]) => deezerMock(...args),
+vi.mock("@/shared/lib/api-client", () => ({
+  api: {
+    get: vi.fn(),
+    post: vi.fn(),
+  },
 }));
 
 import { ArtistaVisao360Modal } from "@/modules/artist/components/ArtistaVisao360Modal";
-
-function point(date: string, followers: number | null): MetricEvolutionPoint {
-  return { captured_at: date, followers, popularity: null, views: null };
-}
-
-function emptyQuery() {
-  return { data: [], isLoading: false, error: null };
-}
-
-function dataQuery(points: MetricEvolutionPoint[]) {
-  return { data: points, isLoading: false, error: null };
-}
+import { api } from "@/shared/lib/api-client";
 
 async function renderModal(artista: any) {
   const queryClient = new QueryClient({
@@ -119,88 +94,76 @@ async function renderModal(artista: any) {
   return utils;
 }
 
-describe("<ArtistaVisao360Modal /> trend chips na aba Perfil", async () => {
+describe("<ArtistaVisao360Modal /> cards de plataforma na aba Perfil", () => {
   beforeEach(() => {
-    spotifyMock.mockReset();
-    youtubeMock.mockReset();
-    deezerMock.mockReset();
+    vi.mocked(api.get).mockReset();
+    vi.mocked(api.post).mockReset();
   });
 
-  it("renderiza fallback de Spotify quando integração não está configurada", async () => {
-    spotifyMock.mockReturnValue(
-      dataQuery([
-        point("2026-04-01T06:20:00Z", 1000),
-        point("2026-04-30T06:20:00Z", 1042),
-      ]),
-    );
-    youtubeMock.mockReturnValue(emptyQuery());
-    deezerMock.mockReturnValue(emptyQuery());
+  it("renderiza traço quando nenhuma URL de plataforma está configurada", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
 
     await renderModal({
       id: "art-1",
       nome_artistico: "Teste",
-      spotify_artist_id: "spot-1",
-      spotify_ouvintes: 1042,
-      youtube_channel_id: null,
-      deezer_url: null,
-    });
-
-    expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("1.042");
-  });
-
-  it("renderiza fallback de YouTube quando integração não está configurada", async () => {
-    spotifyMock.mockReturnValue(emptyQuery());
-    youtubeMock.mockReturnValue(
-      dataQuery([point("2026-04-30T06:20:00Z", 500)]),
-    );
-    deezerMock.mockReturnValue(emptyQuery());
-
-    await renderModal({
-      id: "art-1",
-      nome_artistico: "Teste",
-      spotify_artist_id: "spot-1",
-      youtube_channel_id: "UC1",
-      youtube_inscritos: 500,
-      deezer_url: "https://www.deezer.com/artist/123",
-    });
-
-    expect(screen.getByTestId("metric-youtube-art-1")).toHaveTextContent("500");
-  });
-
-  it("renderiza traço quando IDs de plataforma não estão configurados", async () => {
-    spotifyMock.mockReturnValue(emptyQuery());
-    youtubeMock.mockReturnValue(emptyQuery());
-    deezerMock.mockReturnValue(emptyQuery());
-
-    await renderModal({
-      id: "art-1",
-      nome_artistico: "Teste",
-      // Sem spotify_artist_id, youtube_channel_id ou deezer_url:
-      spotify_artist_id: null,
-      youtube_channel_id: null,
-      deezer_url: null,
+      spotify_url: null,
+      youtube_url: null,
     });
 
     expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("—");
     expect(screen.getByTestId("metric-youtube-art-1")).toHaveTextContent("—");
-    expect(screen.getByTestId("metric-deezer-art-1")).toHaveTextContent("—");
+    expect(screen.queryByTestId("button-sync-spotify-art-1")).not.toBeInTheDocument();
+    expect(screen.queryByTestId("button-sync-youtube-art-1")).not.toBeInTheDocument();
   });
 
-  it("renderiza fallback de Deezer a partir do valor salvo no artista", async () => {
-    spotifyMock.mockReturnValue(emptyQuery());
-    youtubeMock.mockReturnValue(emptyQuery());
-    deezerMock.mockReturnValue(emptyQuery());
+  it("renderiza 'Não sincronizado' quando ha URL mas nenhum snapshot ainda", async () => {
+    vi.mocked(api.get).mockResolvedValue([]);
 
     await renderModal({
       id: "art-1",
       nome_artistico: "Teste",
-      spotify_artist_id: "spot-1",
-      youtube_channel_id: null,
-      deezer_url: "https://www.deezer.com/artist/123",
-      deezer_fas: 321,
+      spotify_url: "https://open.spotify.com/artist/spot-1",
+      youtube_url: "https://www.youtube.com/channel/UC00000000000000000001",
     });
 
-    expect(screen.getByTestId("metric-deezer-art-1")).toHaveTextContent("321");
+    expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("Não sincronizado");
+    expect(screen.getByTestId("metric-youtube-art-1")).toHaveTextContent("Não sincronizado");
+  });
+
+  it("renderiza valores reais do snapshot quando o backend ja sincronizou", async () => {
+    vi.mocked(api.get).mockResolvedValue([
+      {
+        tenant_id: "tenant-1",
+        artist_id: "art-1",
+        platform: "spotify",
+        external_id: "spot-1",
+        external_url: null,
+        display_name: null,
+        username: null,
+        profile_url: null,
+        image_url: null,
+        followers: 1042,
+        subscribers: null,
+        monthly_listeners: null,
+        popularity: 50,
+        total_views: null,
+        total_videos: null,
+        total_tracks: null,
+        total_albums: null,
+        raw_payload: {},
+        sync_status: "success",
+        last_synced_at: "2026-06-12T00:00:00Z",
+        last_error: null,
+      },
+    ]);
+
+    await renderModal({
+      id: "art-1",
+      nome_artistico: "Teste",
+      spotify_url: "https://open.spotify.com/artist/spot-1",
+      youtube_url: null,
+    });
+
+    expect(screen.getByTestId("metric-spotify-art-1")).toHaveTextContent("1.042");
   });
 });
-

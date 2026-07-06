@@ -19,10 +19,13 @@ describe('ReconcileOperationalSchema20260620000004', () => {
       expect(sql).toContain(
         `ALTER TABLE public."${table}" FORCE ROW LEVEL SECURITY`,
       );
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_select"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_insert"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_update"`);
-      expect(sql).toContain(`CREATE POLICY "${table}_tenant_delete"`);
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated`,
+      );
+      expect(sql).toContain(`'${table}_tenant_select', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_insert', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_update', '${table}'`);
+      expect(sql).toContain(`'${table}_tenant_delete', '${table}'`);
     }
     expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)/i);
     expect(sql).toContain('fk_campaign_tasks_campaign_tenant');

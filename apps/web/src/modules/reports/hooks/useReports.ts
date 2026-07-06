@@ -26,13 +26,10 @@ export function useReportDefinitions() {
   });
 }
 
-/** Exportação: JSON retorna objeto; CSV/XLSX baixam arquivo. */
+/** Exportação: sempre XLSX, baixado como arquivo. */
 export function useReportExport() {
   return useMutation({
     mutationFn: async (vars: { entity: string; params: ExportParams }) => {
-      if (vars.params.format === "json") {
-        return { json: await reportsApi.exportJson(vars.entity, vars.params) };
-      }
       const { blob, filename } = await reportsApi.exportBlob(vars.entity, vars.params);
       triggerBlobDownload(blob, filename);
       return { filename };

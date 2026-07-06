@@ -79,8 +79,8 @@ function dataQuery(points: MetricEvolutionPoint[]) {
 
 const fullArtista = {
   id: "art-1",
-  spotify_artist_id: "spot-1",
-  youtube_channel_id: "UC1",
+  spotify_url: "https://open.spotify.com/artist/spot-1",
+  youtube_url: "https://www.youtube.com/channel/UC1",
   deezer_url: "https://www.deezer.com/artist/123",
 };
 
@@ -278,8 +278,8 @@ describe("<ArtistaEvolucaoSection />", () => {
       <ArtistaEvolucaoSection
         artista={{
           id: "art-1",
-          spotify_artist_id: null,
-          youtube_channel_id: null,
+          spotify_url: null,
+          youtube_url: null,
           deezer_url: null,
         }}
       />,

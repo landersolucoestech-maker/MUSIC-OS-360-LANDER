@@ -3,6 +3,7 @@ import { Inject, Injectable, Logger } from '@nestjs/common';
 import type { Job } from 'bullmq';
 import type { DataSource } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
+import { DatabaseContextService } from '../../database/database-context.service';
 import { ARTIST_PLATFORM_PROFILE_JOB_NAMES, QUEUE_NAMES } from '../queue.constants';
 import { ArtistEntity } from '../../database/entities';
 import { ArtistPlatformProfilesService } from '../../modules/artists/platform-profiles/artist-platform-profiles.service';
@@ -23,6 +24,7 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
   constructor(
     @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly profiles: ArtistPlatformProfilesService,
+    private readonly dbContext: DatabaseContextService,
     spotify: SpotifyArtistProfileProvider,
     youtube: YouTubeArtistProfileProvider,
   ) {
@@ -37,11 +39,38 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
     if (job.name !== ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC) return;
 
     const payload = job.data;
+    // Fail-closed: job assíncrono sem tenant NUNCA toca dados tenant-scoped.
+    if (!payload.tenant_id) {
+      this.logger.warn(`[artist-platform-sync] job=${job.id} sem tenant_id — abortado (fail-closed)`);
+      return;
+    }
+
     const provider = this.providers[payload.platform];
     if (!provider) {
       this.logger.warn(`[artist-platform-sync] provider unavailable platform=${payload.platform}`);
       return;
     }
+
+    // P2-5: todas as escritas do worker rodam dentro do contexto de tenant —
+    // as tabelas têm FORCE RLS com policy em private_get_tenant_id(); sem o
+    // set_config da sessão o INSERT/UPDATE é negado pelo Postgres.
+    await this.dbContext.runInTenantContext(
+      { tenantId: payload.tenant_id, orgId: null, role: null },
+      () => this.processInTenantContext(job, payload, provider),
+    );
+  }
+
+  private async processInTenantContext(
+    job: Job<ArtistPlatformSyncJobPayload>,
+    payload: ArtistPlatformSyncJobPayload,
+    provider: ArtistPlatformProvider,
+  ): Promise<void> {
+    const startedAt = Date.now();
+    const logCtx =
+      `job=${job.id} tenant=${payload.tenant_id} artist=${payload.artist_id} ` +
+      `platform=${payload.platform} externalId=${payload.external_id ?? '-'} ` +
+      `externalUrl=${payload.external_url ?? '-'} requestedBy=${payload.requested_by ?? '-'}`;
+    this.logger.log(`[artist-platform-sync] iniciado ${logCtx}`);
 
     await this.profiles.upsertPending({
       tenantId: payload.tenant_id,
@@ -64,6 +93,7 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
           externalUrl: payload.external_url ?? null,
           error: 'Artista não encontrado',
         });
+        this.logger.warn(`[artist-platform-sync] artista não encontrado ${logCtx}`);
         return;
       }
       if (!payload.external_id && !payload.external_url) {
@@ -75,6 +105,7 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
           externalUrl: payload.external_url ?? null,
           error: 'Perfil externo ausente no artista',
         });
+        this.logger.warn(`[artist-platform-sync] perfil externo ausente ${logCtx}`);
         return;
       }
 
@@ -85,7 +116,10 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
         externalUrl: payload.external_url ?? null,
       });
       await this.profiles.upsertSuccess(snapshot);
-      this.logger.log(`[artist-platform-sync] success artist=${payload.artist_id} platform=${payload.platform}`);
+      this.logger.log(
+        `[artist-platform-sync] success followers=${snapshot.followers ?? '-'} ` +
+          `subscribers=${snapshot.subscribers ?? '-'} latency_ms=${Date.now() - startedAt} ${logCtx}`,
+      );
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       await this.profiles.markFailed({
@@ -96,7 +130,10 @@ export class ArtistPlatformSyncProcessor extends WorkerHost {
         externalUrl: payload.external_url ?? null,
         error: message,
       });
-      this.logger.warn(`[artist-platform-sync] failed artist=${payload.artist_id} platform=${payload.platform}: ${message}`);
+      this.logger.warn(
+        `[artist-platform-sync] failed error="${message}" latency_ms=${Date.now() - startedAt} ${logCtx}`,
+        err instanceof Error ? err.stack : undefined,
+      );
     }
   }
 }

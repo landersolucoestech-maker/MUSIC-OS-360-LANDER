@@ -36,6 +36,16 @@ describe('EntityMetadataService — inventário entity-driven', () => {
     expect(offenders.map((e) => e.tableName)).toEqual([]);
   });
 
+  // ── VALIDAÇÃO 4: toda entidade REPORTABLE tem label pt-BR (label é produto) ─
+  it('toda entidade REPORTABLE possui label pt-BR na camada central', () => {
+    const offenders = inv.entities.filter(
+      (e) => e.category === EntityCategory.REPORTABLE && e.label === null,
+    );
+    expect(offenders.map((e) => e.tableName)).toEqual([]);
+    const untranslated = inv.entities.filter((e) => e.risks.includes('UNTRANSLATED_ENTITY'));
+    expect(untranslated.map((e) => e.tableName)).toEqual([]);
+  });
+
   // ── VALIDAÇÃO 5: infra/segurança/billing/ia/junção NÃO reportáveis ─────────
   it('audit_logs, billing, auth, health, ai_* e junções não são reportáveis', () => {
     const mustNotBeReportable: Array<[string, EntityCategory]> = [

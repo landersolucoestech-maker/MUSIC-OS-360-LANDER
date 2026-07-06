@@ -64,8 +64,8 @@ function makeEvent(overrides: Record<string, unknown> = {}) {
 const ARTIST_ROW = {
   nome_artistico: 'Banda Aurora',
   genero_musical: 'MPB',
-  spotify_artist_id: 'spot123',
-  youtube_channel_id: null,
+  spotify_url: 'https://open.spotify.com/artist/4NHQUGzhtTLFvgF5SZesLK',
+  youtube_url: null,
   deezer_url: null,
   apple_music_url: null,
   soundcloud_url: null,

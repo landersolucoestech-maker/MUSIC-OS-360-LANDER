@@ -86,12 +86,6 @@ export class ExportEngineService {
   ): ExportResult {
     const stamp = new Date().toISOString().slice(0, 10);
     const base = `${entity}_${stamp}`;
-    if (format === 'json') {
-      return { filename: `${base}.json`, contentType: 'application/json', body: this.format.toJson(entity, columns, rows), recordCount: rows.length, format };
-    }
-    if (format === 'csv') {
-      return { filename: `${base}.csv`, contentType: 'text/csv;charset=utf-8', body: this.format.toCsv(columns, rows), recordCount: rows.length, format };
-    }
     return {
       filename: `${base}.xlsx`,
       contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',

@@ -18,8 +18,15 @@ export class ExternalDataProviderRegistry {
   private readonly providers = new Map<string, AnyProvider>();
 
   constructor() {
-    this.register(new MockDistributorProvider());
-    this.register(new MockSocietyProvider());
+    // Mock providers only ever run outside production/staging — real distributor
+    // and society integrations are not built yet, and this registry must not
+    // silently fabricate successful submissions in a live environment.
+    const nodeEnv = process.env.NODE_ENV ?? 'development';
+    const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
+    if (!isProdLike) {
+      this.register(new MockDistributorProvider());
+      this.register(new MockSocietyProvider());
+    }
   }
 
   register(provider: AnyProvider): void {
@@ -32,7 +39,7 @@ export class ExternalDataProviderRegistry {
       .filter((metadata) => !kind || metadata.kind === kind);
   }
 
-  getDistributor(providerId = 'mock-distributor'): ExternalDataExchangeProvider<DistributorSubmissionPayload> {
+  getDistributor(providerId: string): ExternalDataExchangeProvider<DistributorSubmissionPayload> {
     const provider = this.providers.get(providerId);
     if (!provider || provider.metadata.kind !== 'distributor') {
       throw new Error(`Distributor provider not registered: ${providerId}`);
@@ -40,7 +47,7 @@ export class ExternalDataProviderRegistry {
     return provider as ExternalDataExchangeProvider<DistributorSubmissionPayload>;
   }
 
-  getSociety(providerId = 'mock-society'): ExternalDataExchangeProvider<SocietyDataSubmissionPayload> {
+  getSociety(providerId: string): ExternalDataExchangeProvider<SocietyDataSubmissionPayload> {
     const provider = this.providers.get(providerId);
     if (!provider || provider.metadata.kind !== 'society') {
       throw new Error(`Society provider not registered: ${providerId}`);

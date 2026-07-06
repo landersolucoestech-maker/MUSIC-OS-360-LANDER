@@ -53,7 +53,6 @@ export interface FinancialCategoryLink {
 export interface FinancialCategoryCenterLink {
   id: string;
   category_id: string;
-  center_id: string;
 }
 
 export interface FinancialCategoryRule {

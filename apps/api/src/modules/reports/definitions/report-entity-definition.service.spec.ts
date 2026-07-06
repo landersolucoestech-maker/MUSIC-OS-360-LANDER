@@ -1,6 +1,7 @@
 import { EntityMetadataService } from '../entity-metadata.service';
 import { ReportEntityDefinitionService } from './report-entity-definition.service';
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
+import { EntityCategory } from '../entity-metadata.types';
 
 /** FASE 2.1 — contratos por entidade reportável, ancorados na metadata real. */
 describe('ReportEntityDefinitionService — contratos', () => {
@@ -67,6 +68,29 @@ describe('ReportEntityDefinitionService — contratos', () => {
     }
   });
 
+  it('importação deriva SEMPRE do mesmo schema da exportação (nenhuma entidade foge da regra)', () => {
+    const offenders: string[] = [];
+    for (const d of defs) {
+      for (const col of d.importableColumns) {
+        if (!d.exportableColumns.includes(col)) offenders.push(`${d.tableName}.${col}`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('nenhuma entidade reportável expõe relacionamento completo como coluna de export/import', () => {
+    const offenders: string[] = [];
+    for (const e of reportable) {
+      const d = defs.find((x) => x.tableName === e.tableName)!;
+      for (const rel of e.relations) {
+        if (d.exportableColumns.includes(rel.property) || d.importableColumns.includes(rel.property)) {
+          offenders.push(`${e.tableName}.${rel.property}`);
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('contratos núcleo têm forma coerente', () => {
     const artists = defs.find((d) => d.tableName === 'artists')!;
     expect(artists.supportsExport).toBe(true);
@@ -74,5 +98,82 @@ describe('ReportEntityDefinitionService — contratos', () => {
     expect(artists.exportableColumns).not.toContain('id');
     expect(artists.exportableColumns).not.toContain('tenant_id');
     expect(artists.requiredImportColumns.length).toBeGreaterThan(0);
+  });
+
+  describe('exclusão genérica de campos fora do formulário (todas as entidades, sem exceção)', () => {
+    function defsFor(columns: Array<Partial<import('../entity-metadata.types').ColumnMeta> & { name: string }>) {
+      const fakeMetadata = {
+        scan: () => ({
+          entities: [{
+            entityName: 'FakeEntity', tableName: 'fake_table', category: EntityCategory.REPORTABLE,
+            reportable: true, hasTenantId: true, hasSoftDelete: false, hasTimestamps: false, risks: [],
+            columns: columns.map((c) => ({
+              label: null, type: 'varchar', nullable: true, primary: false, generated: false,
+              isEnum: false, isCreatedAt: false, isUpdatedAt: false, isDeletedAt: false, isTenantId: false,
+              ...c,
+            })),
+          }],
+        }),
+      } as unknown as EntityMetadataService;
+      return new ReportEntityDefinitionService(fakeMetadata).getDefinitions();
+    }
+
+    it('coluna tipo simple-array (lista serializada por vírgula) nunca é exportável/importável', () => {
+      const [def] = defsFor([
+        { name: 'nome', type: 'varchar' },
+        { name: 'tags', type: 'simple-array' },
+      ]);
+      expect(def.exportableColumns).not.toContain('tags');
+      expect(def.importableColumns).not.toContain('tags');
+    });
+
+    it('coluna com nome sugerindo blob técnico (html/raw/payload/snapshot/xml/dump/debug) é excluída', () => {
+      const [def] = defsFor([
+        { name: 'nome', type: 'varchar' },
+        { name: 'conteudo_html', type: 'text' },
+        { name: 'raw_response', type: 'text' },
+        { name: 'sync_payload', type: 'text' },
+        { name: 'audit_snapshot', type: 'text' },
+        { name: 'import_xml', type: 'text' },
+        { name: 'debug_trace', type: 'text' },
+        { name: 'legacy_dump', type: 'text' },
+      ]);
+      for (const col of [
+        'conteudo_html', 'raw_response', 'sync_payload', 'audit_snapshot',
+        'import_xml', 'debug_trace', 'legacy_dump',
+      ]) {
+        expect(def.exportableColumns).not.toContain(col);
+        expect(def.importableColumns).not.toContain(col);
+      }
+    });
+
+    it('coluna tipo json/jsonb (qualquer nome) é sempre excluída', () => {
+      const [def] = defsFor([
+        { name: 'nome', type: 'varchar' },
+        { name: 'preferencias', type: 'json' },
+        { name: 'configuracoes', type: 'jsonb' },
+      ]);
+      expect(def.exportableColumns).not.toContain('preferencias');
+      expect(def.exportableColumns).not.toContain('configuracoes');
+    });
+
+    it('anotação interna (notas_internas/observacoes_internas) é excluída, mas observação de formulário permanece', () => {
+      const [def] = defsFor([
+        { name: 'nome', type: 'varchar' },
+        { name: 'observacoes', type: 'text' },
+        { name: 'notas_internas', type: 'text' },
+      ]);
+      expect(def.exportableColumns).toContain('observacoes');
+      expect(def.exportableColumns).not.toContain('notas_internas');
+    });
+
+    it('campo de texto longo legítimo do formulário (ex.: corpo de contrato) permanece exportável', () => {
+      const [def] = defsFor([
+        { name: 'titulo', type: 'varchar' },
+        { name: 'conteudo', type: 'text' },
+      ]);
+      expect(def.exportableColumns).toContain('conteudo');
+      expect(def.importableColumns).toContain('conteudo');
+    });
   });
 });

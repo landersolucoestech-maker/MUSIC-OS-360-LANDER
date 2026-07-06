@@ -44,7 +44,7 @@ function makeSvc(opts: { validation?: ImportValidationResult; def?: ReportEntity
   return { svc, qr, engine, audit };
 }
 
-const file = { filename: 'artists.csv', content: Buffer.from('Nome artístico\nA0\nA1') };
+const file = { filename: 'artists.xlsx', content: Buffer.from('Nome artístico\nA0\nA1') };
 
 describe('ImportCommitService — commit transacional (FASE 2.3B)', () => {
   it('import válido → COMMIT atômico, insere whitelist + tenant forçado, audita', async () => {
@@ -58,9 +58,9 @@ describe('ImportCommitService — commit transacional (FASE 2.3B)', () => {
     expect(res.importedRows).toBe(2);
     expect(res.failedRows).toBe(0);
     // INSERT com tenant_id forçado = tenant atual
-    const insert = qr.query.mock.calls.find((c: any[]) => String(c[0]).startsWith('INSERT'));
-    expect(insert[0]).toContain('"tenant_id"');
-    expect(insert[1]).toContain('tenant-1');
+    const insert = qr.query.mock.calls.find((c: any[]) => String(c[0]).startsWith('INSERT')) as [string, unknown] | undefined;
+    expect(insert?.[0]).toContain('"tenant_id"');
+    expect(insert?.[1]).toContain('tenant-1');
     expect(audit.record).toHaveBeenCalledWith(expect.objectContaining({ status: 'committed', successCount: 2 }));
   });
 

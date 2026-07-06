@@ -134,9 +134,12 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
       throw new UnauthorizedException('Authentication token missing');
     }
 
-    // In non-production, accept dev tokens signed with ENCRYPTION_KEY (HS256)
+    // In non-prod-like envs only, accept dev tokens signed with ENCRYPTION_KEY (HS256).
+    // Staging is treated as prod-like here (same as the Supabase ref allowlist in main.ts)
+    // since it can hold real user data — the bypass must not be reachable there.
     const nodeEnv = this.config.get<string>('NODE_ENV') ?? 'development';
-    if (nodeEnv !== 'production') {
+    const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
+    if (!isProdLike) {
       const devClaims = this.tryVerifyDevToken(token);
       if (devClaims) {
         request.auth = {

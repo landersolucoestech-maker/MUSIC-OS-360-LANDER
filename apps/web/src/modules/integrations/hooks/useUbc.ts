@@ -23,6 +23,7 @@ import { useMemo } from "react";
 import { toast } from "sonner";
 import { MOCK_DATA, MOCK_USER_ID, saveMockData } from "@/shared/data/mockData";
 import { mockUbcProvider } from "@/modules/integrations/providers/mock/mock-rights.provider";
+import { MOCK_MODE } from "@/shared/lib/env";
 import type {
   RegisterObraInput,
   RegistrationResult,
@@ -306,6 +307,7 @@ export function useUbcSearch(query: string) {
     queryFn: async () => {
       const creds = readCreds();
       if (!creds) return { results: [], error: "not_configured" };
+      if (!MOCK_MODE) return { results: [], error: "not_available" };
       const results = searchUbc(UBC_OBRAS, trimmed);
       return { results, total: results.length, has_more: false };
     },
@@ -323,6 +325,7 @@ export function useUbcSearchArtists(query: string) {
     queryFn: async () => {
       const creds = readCreds();
       if (!creds) return [];
+      if (!MOCK_MODE) return [];
       return mockUbcProvider.searchArtists({ query: trimmed, limit: 10 });
     },
     enabled: trimmed.length >= 2,
@@ -338,6 +341,7 @@ export function useUbcImport() {
     mutationFn: async (input: { external_id: string; record?: UbcSearchResult }): Promise<{ record?: UbcSearchResult }> => {
       const creds = readCreds();
       if (!creds) throw new Error("UBC não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) throw new Error("Importação de obras da UBC ainda não está disponível (integração requer contrato institucional).");
       const rec = input.record ?? UBC_OBRAS.find((r) => r.external_id === input.external_id);
       if (!rec) throw new Error(`Registro ${input.external_id} não encontrado no banco UBC.`);
       const existing = buildLocalMap([input.external_id]).get(input.external_id);
@@ -364,6 +368,7 @@ export function useUbcSyncAll() {
     mutationFn: async (): Promise<UbcSyncSummary> => {
       const creds = readCreds();
       if (!creds) throw new Error("UBC não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) throw new Error("Sincronização com a UBC ainda não está disponível (integração requer contrato institucional).");
       const started_at = new Date().toISOString();
       const summary: UbcSyncSummary = {
         started_at,
@@ -449,6 +454,7 @@ export function useUbcRegistrationHistory(localId: string) {
     queryFn: async () => {
       const creds = readCreds();
       if (!creds) return [];
+      if (!MOCK_MODE) return [];
       return mockUbcProvider.getRegistrationHistory("obra", localId);
     },
     enabled: Boolean(localId),
@@ -464,6 +470,7 @@ export function useUbcRegisterObra() {
     mutationFn: async (input) => {
       const creds = readCreds();
       if (!creds) throw new Error("UBC não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) throw new Error("Registro de obra na UBC ainda não está disponível (integração requer contrato institucional).");
       return mockUbcProvider.registerObra(input);
     },
     onSuccess: (data) => {
@@ -493,6 +500,7 @@ export function useUbcGenerateISWC() {
     mutationFn: async (input) => {
       const creds = readCreds();
       if (!creds) throw new Error("UBC não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) throw new Error("Geração de ISWC via UBC ainda não está disponível (integração requer contrato institucional).");
       return mockUbcProvider.generateISWC(input);
     },
     onSuccess: (data) => {
@@ -520,6 +528,7 @@ export function useUbcGenerateISRC() {
     mutationFn: async (input) => {
       const creds = readCreds();
       if (!creds) throw new Error("UBC não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) throw new Error("Geração de ISRC via UBC ainda não está disponível (integração requer contrato institucional).");
       return mockUbcProvider.generateISRC(input);
     },
     onSuccess: (data) => {

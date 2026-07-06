@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn, IsArray, IsEmail, IsObject } from 'class-validator';
+import { IsString, IsOptional, IsNotEmpty, IsBase64, IsIn, IsArray, IsEmail, IsObject, Matches } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class OAuthInitDto {
@@ -103,9 +103,9 @@ export class SpotifyConnectDto {
 }
 
 export class SyncSpotifyArtistDto {
-  @ApiProperty({ description: 'ID do artista no Spotify' })
-  @IsString() @IsNotEmpty()
-  spotifyArtistId!: string;
+  @ApiProperty({ description: 'URL do perfil do artista no Spotify' })
+  @IsString() @IsNotEmpty() @Matches(/^https:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/[A-Za-z0-9]{22}(?:[/?#].*)?$/i, { message: 'Informe uma URL válida do Spotify' })
+  spotifyUrl!: string;
 }
 
 export class RequestExternalDataSyncDto {
@@ -120,8 +120,9 @@ export class RequestExternalDataSyncDto {
 }
 
 export class DistributorSubmitDto {
-  @ApiPropertyOptional({ default: 'mock-distributor' }) @IsOptional() @IsString()
-  providerId?: string;
+  @ApiProperty({ description: 'ID do provider distribuidor registrado (não há default — nenhum provider real está registrado em produção)' })
+  @IsString() @IsNotEmpty()
+  providerId!: string;
 
   @ApiProperty() @IsString() @IsNotEmpty()
   artistId!: string;
@@ -140,8 +141,9 @@ export class DistributorSubmitDto {
 }
 
 export class SocietySubmitDto {
-  @ApiPropertyOptional({ default: 'mock-society' }) @IsOptional() @IsString()
-  providerId?: string;
+  @ApiProperty({ description: 'ID do provider de sociedade/PRO registrado (não há default — nenhum provider real está registrado em produção)' })
+  @IsString() @IsNotEmpty()
+  providerId!: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString()
   artistId?: string;
@@ -160,8 +162,9 @@ export class SocietySubmitDto {
 }
 
 export class ExternalDataStatusCheckDto {
-  @ApiPropertyOptional() @IsOptional() @IsString()
-  providerId?: string;
+  @ApiProperty({ description: 'ID do provider registrado (não há default — nenhum provider real está registrado em produção)' })
+  @IsString() @IsNotEmpty()
+  providerId!: string;
 
   @ApiProperty() @IsString() @IsNotEmpty()
   submissionId!: string;

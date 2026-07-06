@@ -137,6 +137,21 @@ async function probeRedis(url: string): Promise<boolean> {
   });
 }
 
+/**
+ * Decisão ÚNICA (memoizada) de disponibilidade do BullMQ no boot.
+ * Compartilhada entre QueueModule e AdminQueuesModule para que o Bull Board
+ * nunca seja montado quando as filas estão em modo no-op (Redis ausente/fora).
+ */
+let bullAvailability: Promise<boolean> | undefined;
+export function bullMqAvailable(): Promise<boolean> {
+  bullAvailability ??= (async () => {
+    const url = resolveRedisUrl();
+    if (!isIoRedisUrl(url)) return false;
+    return probeRedis(url!);
+  })();
+  return bullAvailability;
+}
+
 const ALL_QUEUES = [
   QUEUE_NAMES.EMAILS,
   QUEUE_NAMES.NOTIFICATIONS,
@@ -178,7 +193,7 @@ export class QueueModule {
       return QueueModule.noOpModule();
     }
 
-    const ok = await probeRedis(url!);
+    const ok = await bullMqAvailable();
     if (!ok) {
       if (isProd) {
         moduleLogger.error('Redis inacessível em produção — abortando startup');

@@ -16,6 +16,7 @@ import { ExpressAdapter } from '@bull-board/express';
 import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
 import { QUEUE_NAMES } from '../../queues/queue.constants';
+import { bullMqAvailable } from '../../queues/queue.module';
 import type { Request, Response, NextFunction } from 'express';
 
 const BULL_BOARD_PATH = '/admin/queues';
@@ -37,7 +38,7 @@ function basicAuthMiddleware(user: string, pass: string) {
 export class AdminQueuesModule implements NestModule {
   private static readonly logger = new Logger('AdminQueuesModule');
 
-  static register(): DynamicModule {
+  static async register(): Promise<DynamicModule> {
     const user = process.env['ADMIN_QUEUES_USER'] ?? 'admin';
     const pass = process.env['ADMIN_QUEUES_PASS'] ?? (process.env['NODE_ENV'] === 'production' ? '' : 'admin');
     const enabled = !!(user && pass);
@@ -48,6 +49,14 @@ export class AdminQueuesModule implements NestModule {
     }
 
     if (!enabled) {
+      return { module: AdminQueuesModule };
+    }
+
+    // Bull Board só existe quando as filas existem: se o QueueModule caiu em
+    // no-op (Redis ausente/inacessível em dev), montar o board quebraria o
+    // bootstrap com "Nest could not find BullQueue_<nome>".
+    if (!(await bullMqAvailable())) {
+      AdminQueuesModule.logger.warn('AdminQueuesModule: BullMQ em modo no-op — dashboard de filas desativado');
       return { module: AdminQueuesModule };
     }
 

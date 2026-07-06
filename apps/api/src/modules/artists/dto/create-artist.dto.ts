@@ -1,5 +1,5 @@
 import {
-  IsString, IsOptional, MaxLength, IsObject, IsArray, IsEnum, IsNumber, IsUUID,
+  IsString, IsOptional, MaxLength, IsObject, IsArray, IsEnum, IsNumber, IsUUID, Matches,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArtistStatus } from '@music-os-360/types';
@@ -16,9 +16,8 @@ export class CreateArtistDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) genero_musical?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() foto_url?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() banner_url?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() spotify_artist_id?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() youtube_channel_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @Matches(/^https:\/\/open\.spotify\.com\/(?:intl-[a-z]{2}\/)?artist\/[A-Za-z0-9]{22}(?:[/?#].*)?$/i, { message: 'Informe uma URL válida do Spotify' }) spotify_url?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @Matches(/^https:\/\/(?:www\.)?(?:youtube\.com\/(?:@[^/?#]+|channel\/UC[A-Za-z0-9_-]{22})(?:[/?#].*)?|music\.youtube\.com\/(?:.*))$/i, { message: 'Informe uma URL válida do YouTube' }) youtube_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsArray() especialidades?: string[];
   @ApiPropertyOptional() @IsOptional() @IsString() email?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() telefone?: string;
@@ -76,7 +75,6 @@ export class CreateArtistDto {
 
   // ── Documentos / Mídia ───────────────────────────────────────────────────────
   @ApiPropertyOptional() @IsOptional() @IsArray() galeria_urls?: string[];
-  @ApiPropertyOptional() @IsOptional() @IsString() video_apresentacao_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsArray() documentos?: unknown[];
   @ApiPropertyOptional() @IsOptional() @IsString() documentos_pessoais_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() presskit_url?: string;

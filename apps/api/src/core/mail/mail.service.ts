@@ -6,7 +6,7 @@
  * Templates em HTML inline (sem dependências externas).
  */
 
-import { Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService }      from '@nestjs/config';
 
 export interface SendMailOptions {
@@ -28,7 +28,7 @@ export class MailService {
   private readonly fromEmail: string;
   private readonly apiKey:    string | undefined;
 
-  constructor(private readonly config: ConfigService) {
+  constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     this.apiKey    = config.get<string>('RESEND_API_KEY');
     this.fromEmail = config.get<string>('RESEND_FROM_EMAIL') ?? 'noreply@musicos360.com.br';
   }

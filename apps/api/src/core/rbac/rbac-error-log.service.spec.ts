@@ -18,7 +18,9 @@ describe('RbacErrorLogService', () => {
     });
     expect(svc.getCounters().cache_error).toBe(1);
     expect(query).toHaveBeenCalledTimes(1);
-    const [sql, params] = query.mock.calls[0];
+    const call = (query.mock.calls[0] ?? []) as unknown[];
+    const sql = call[0] as string;
+    const params = call[1] as Array<unknown>;
     expect(sql).toContain('INSERT INTO rbac_error_logs');
     expect(params[4]).toBe('cache_error'); // error_type
     expect(params[2]).toBe('10000000-0000-0000-0000-000000000002'); // tenant_id (valid uuid kept)
@@ -39,7 +41,8 @@ describe('RbacErrorLogService', () => {
   it('nulls out non-uuid tenant/user ids before persisting', async () => {
     const { svc, query } = make();
     await svc.record({ errorType: 'guard_error', errorSource: 'g', tenantId: 'not-a-uuid', userId: '' });
-    const [, params] = query.mock.calls[0];
+    const call = (query.mock.calls[0] ?? []) as unknown[];
+    const params = call[1] as Array<unknown>;
     expect(params[2]).toBeNull(); // tenant_id
     expect(params[3]).toBeNull(); // user_id
   });

@@ -30,57 +30,45 @@ export class HardenContactsLeadUploadsRls20260620000002
       await qr.query(`ALTER TABLE public."${table}" ENABLE ROW LEVEL SECURITY`);
       await qr.query(`ALTER TABLE public."${table}" FORCE ROW LEVEL SECURITY`);
 
-      await qr.query(`DROP POLICY IF EXISTS "${table}_tenant_select" ON public."${table}"`);
-      await qr.query(`
-        CREATE POLICY "${table}_tenant_select"
-          ON public."${table}"
-          FOR SELECT
-          TO authenticated, musicos_app
-          USING ("tenant_id" = (SELECT public.app_current_tenant_id()))
-      `);
-
-      await qr.query(`DROP POLICY IF EXISTS "${table}_tenant_insert" ON public."${table}"`);
-      await qr.query(`
-        CREATE POLICY "${table}_tenant_insert"
-          ON public."${table}"
-          FOR INSERT
-          TO authenticated, musicos_app
-          WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))
-      `);
-
-      await qr.query(`DROP POLICY IF EXISTS "${table}_tenant_update" ON public."${table}"`);
-      await qr.query(`
-        CREATE POLICY "${table}_tenant_update"
-          ON public."${table}"
-          FOR UPDATE
-          TO authenticated, musicos_app
-          USING ("tenant_id" = (SELECT public.app_current_tenant_id()))
-          WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))
-      `);
-
-      await qr.query(`DROP POLICY IF EXISTS "${table}_tenant_delete" ON public."${table}"`);
-      await qr.query(`
-        CREATE POLICY "${table}_tenant_delete"
-          ON public."${table}"
-          FOR DELETE
-          TO authenticated, musicos_app
-          USING ("tenant_id" = (SELECT public.app_current_tenant_id()))
-      `);
-
-      await qr.query(`REVOKE ALL PRIVILEGES ON TABLE public."${table}" FROM PUBLIC`);
       await qr.query(`
         DO $do$
+        DECLARE
+          has_authenticated boolean;
+          has_musicos_app boolean;
         BEGIN
+          SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') INTO has_authenticated;
+          SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') INTO has_musicos_app;
+
+          EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_select', '${table}');
+          EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_insert', '${table}');
+          EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_update', '${table}');
+          EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_delete', '${table}');
+
+          IF has_authenticated THEN
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}');
+          END IF;
+
+          IF has_musicos_app THEN
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO musicos_app WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}');
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}');
+          END IF;
+
+          EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC', '${table}');
           IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'anon') THEN
-            EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public."${table}" FROM anon';
+            EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM anon', '${table}');
           END IF;
-          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') THEN
-            EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public."${table}" FROM authenticated';
-            EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."${table}" TO authenticated';
+          IF has_authenticated THEN
+            EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM authenticated', '${table}');
+            EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO authenticated', '${table}');
           END IF;
-          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') THEN
-            EXECUTE 'REVOKE ALL PRIVILEGES ON TABLE public."${table}" FROM musicos_app';
-            EXECUTE 'GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public."${table}" TO musicos_app';
+          IF has_musicos_app THEN
+            EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM musicos_app', '${table}');
+            EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.%I TO musicos_app', '${table}');
           END IF;
         END
         $do$;

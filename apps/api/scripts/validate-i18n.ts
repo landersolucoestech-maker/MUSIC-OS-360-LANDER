@@ -40,8 +40,8 @@ for (const [key, label] of entries) {
 
 // 2: reverse map dos rótulos críticos.
 for (const [label, expected] of [
-  ['link do spotify', 'spotifyArtistId'],
-  ['link do youtube', 'youtubeChannelId'],
+  ['link do spotify', 'spotifyUrl'],
+  ['link do youtube', 'youtubeUrl'],
   ['nome do empresário', 'managerName'],
   ['empresa', 'companyName'],
   ['plataforma de assinatura', 'signingPlatform'],

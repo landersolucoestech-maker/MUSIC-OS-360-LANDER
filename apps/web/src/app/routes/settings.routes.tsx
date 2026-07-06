@@ -20,7 +20,7 @@ export function settingsRoutes(P: SuspenseRouteComponent) {
       <Route path="/settings/roles" element={<P><AdminRoute><Configuracoes /></AdminRoute></P>} />
       <Route path="/settings/permissions" element={<P><AdminRoute><Configuracoes /></AdminRoute></P>} />
       <Route path="/perfil" element={<P><Perfil /></P>} />
-      <Route path="/usuarios" element={<P><Usuarios /></P>} />
+      <Route path="/usuarios" element={<P><AdminRoute><Usuarios /></AdminRoute></P>} />
       <Route path="/configuracoes/billing" element={<P><Billing /></P>} />
       <Route path="/onboarding" element={<P><Onboarding /></P>} />
       <Route

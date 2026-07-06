@@ -91,7 +91,17 @@ describe('ArtistsService', () => {
 
     const result = await service.list(TENANT_A, {});
 
-    expect(result.data).toEqual([artistA]);
+    // Contrato de resposta: ciphertext NUNCA sai da API; os campos PII voltam
+    // decifrados nos nomes usados pelo formulário (null quando não preenchidos).
+    const { email_encrypted, telefone_encrypted, cpf_cnpj_encrypted, ...artistAPublic } = artistA;
+    expect(result.data).toEqual([{
+      ...artistAPublic,
+      email: null,
+      telefone: null,
+      cpf_cnpj: null,
+      manager_contato: null,
+    }]);
+    expect(result.data[0]).not.toHaveProperty('email_encrypted');
     expect(result.meta.total).toBe(1);
     expect(ds._repo._qb.where).toHaveBeenCalledWith(
       'a.tenant_id = :tenantId',
@@ -141,7 +151,29 @@ describe('ArtistsService', () => {
     );
     expect(ds._repo.save).toHaveBeenCalled();
     expect(events.emitTyped).toHaveBeenCalled();
-    expect(result.email_encrypted).toBe(`enc:${dto.email}`);
+    // Round-trip: a resposta devolve o valor decifrado e nunca o ciphertext.
+    expect(result.email).toBe(dto.email);
+    expect(result.telefone).toBe(dto.telefone);
+    expect(result.cpf_cnpj).toBe(dto.cpf_cnpj);
+    expect(result).not.toHaveProperty('email_encrypted');
+  });
+
+  it('update() limpa campo anulável com null e não toca campos omitidos', async () => {
+    const ds = makeDataSource();
+    const service = new ArtistsService(ds as any, makeEncryptionMock(), makeEventsMock() as any, makePlanLimitMock() as any);
+
+    await service.update(TENANT_A, USER_ID, 'artist-001', {
+      agencia_booking: null,
+      observacoes: 'nova bio',
+    } as any);
+
+    expect(ds._repo.update).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'artist-001', tenant_id: TENANT_A }),
+      expect.objectContaining({ agencia_booking: null, observacoes: 'nova bio' }),
+    );
+    const updates = ds._repo.update.mock.calls[0][1] as Record<string, unknown>;
+    expect(updates).not.toHaveProperty('nome_artistico');
+    expect(updates).not.toHaveProperty('email_encrypted');
   });
 
   it('softDelete() define deleted_at e updated_by sem apagar fisicamente', async () => {

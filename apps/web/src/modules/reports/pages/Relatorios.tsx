@@ -6,21 +6,36 @@
  * label no frontend. O backend é a única fonte da verdade.
  */
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Card, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
 import { Upload, Download, AlertTriangle, Loader2, Database } from "lucide-react";
-import { useReportEntities, useReportDefinitions } from "../hooks/useReports";
-import { ExportDialog } from "../components/ExportDialog";
+import { useReportEntities, useReportDefinitions, useReportExport } from "../hooks/useReports";
 import { ImportDialog } from "../components/ImportDialog";
 import type { ReportEntityDefinition } from "../services/reports-api";
 
 export default function Relatorios() {
   const entitiesQ = useReportEntities();
   const definitionsQ = useReportDefinitions();
+  const exportM = useReportExport();
   const [selected, setSelected] = useState<string | null>(null);
-  const [exportOpen, setExportOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [exporting, setExporting] = useState<string | null>(null);
+
+  // Exportação direta: sem modal/tela intermediária. Omitir `columns` faz o
+  // backend exportar TODAS as colunas do contrato da entidade, na ordem oficial.
+  function runExport(tableName: string) {
+    setExporting(tableName);
+    exportM.mutate(
+      { entity: tableName, params: { format: "xlsx", pageSize: 1000 } },
+      {
+        onSuccess: () => toast.success("Exportação concluída."),
+        onError: (e) => toast.error(e instanceof Error ? e.message : "Falha na exportação."),
+        onSettled: () => setExporting(null),
+      },
+    );
+  }
 
   const defByTable = useMemo(() => {
     const m = new Map<string, ReportEntityDefinition>();
@@ -34,11 +49,6 @@ export default function Relatorios() {
   );
 
   const selectedDef = selected ? defByTable.get(selected) ?? null : null;
-  const labelOf = useMemo(() => {
-    const ent = entitiesQ.data?.entities.find((e) => e.tableName === selected);
-    const map = new Map(ent?.columns.map((c) => [c.name, c.label]) ?? []);
-    return (col: string) => map.get(col) ?? col;
-  }, [entitiesQ.data, selected]);
 
   const loading = entitiesQ.isLoading || definitionsQ.isLoading;
   const error = entitiesQ.isError || definitionsQ.isError;
@@ -76,11 +86,7 @@ export default function Relatorios() {
                       <Database className="h-3.5 w-3.5 text-muted-foreground" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-medium text-foreground">{e.tableName}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {e.category}
-                        {e.risks.length > 0 && <span className="ml-2 text-warning">· {e.risks.join(", ")}</span>}
-                      </p>
+                      <p className="text-xs font-medium text-foreground">{e.label ?? e.tableName}</p>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <Button
@@ -93,11 +99,13 @@ export default function Relatorios() {
                       </Button>
                       <Button
                         size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        disabled={!def?.supportsExport}
-                        onClick={() => { setSelected(e.tableName); setExportOpen(true); }}
+                        disabled={!def?.supportsExport || exporting === e.tableName}
+                        onClick={() => runExport(e.tableName)}
                         data-testid={`btn-export-${e.tableName}`}
                       >
-                        <Download className="h-3 w-3" /> Exportar
+                        {exporting === e.tableName
+                          ? <Loader2 className="h-3 w-3 animate-spin" />
+                          : <Download className="h-3 w-3" />} Exportar
                       </Button>
                     </div>
                   </div>
@@ -108,7 +116,6 @@ export default function Relatorios() {
         )}
       </div>
 
-      <ExportDialog open={exportOpen} onClose={() => setExportOpen(false)} definition={selectedDef} labelOf={labelOf} />
       <ImportDialog open={importOpen} onClose={() => setImportOpen(false)} definition={selectedDef} />
     </MainLayout>
   );

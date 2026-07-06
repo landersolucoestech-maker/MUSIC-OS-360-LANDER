@@ -33,6 +33,7 @@ import { SupabaseAuthColumnNames20260520000004 }      from './migrations/2026052
 import { RLSPolicies20260520000020 }                  from './migrations/20260520000020_RLSPolicies';
 import { PerformanceIndexes20260521000030 }           from './migrations/20260521000030_PerformanceIndexes';
 import { ConversationsAndForms20260521000040 }        from './migrations/20260521000040_ConversationsAndForms';
+import { CrmPipelinesAnalytics20260521000050 }         from './migrations/20260521000050_CrmPipelinesAnalytics';
 import { InventoryLicensingFinancialRules20260521000060 } from './migrations/20260521000060_InventoryLicensingFinancialRules';
 import { FixRLSFallback20260522000001 }                from './migrations/20260522000001_FixRLSFallback';
 import { ForceRLSFailClosed20260522000002 }            from './migrations/20260522000002_ForceRLSFailClosed';
@@ -102,6 +103,9 @@ import { HardenSupabaseDataApiSurface20260620000006 } from './migrations/2026062
 import { BillingEnforcement20260701000001 } from './migrations/20260701000001_BillingEnforcement';
 import { BillingPlans20260701000002 } from './migrations/20260701000002_BillingPlans';
 import { BillingRlsHardening20260701000003 } from './migrations/20260701000003_BillingRlsHardening';
+import { ReconcileInventoryLicensesColumns20260705000001 } from './migrations/20260705000001_ReconcileInventoryLicensesColumns';
+import { RemoveArtistBannerVideoFields20260705000002 } from './migrations/20260705000002_RemoveArtistBannerVideoFields';
+import { RemoveDeadStructuresD1D8_20260705000003 } from './migrations/20260705000003_RemoveDeadStructuresD1D8';
 
 // ── Source of truth: TypeORM migrations only ─────────────────────────────────
 // The apps/api/drizzle/ directory contains legacy SQL snapshots that are
@@ -117,6 +121,7 @@ const ALL_MIGRATIONS = [
   RLSPolicies20260520000020,
   PerformanceIndexes20260521000030,
   ConversationsAndForms20260521000040,
+  CrmPipelinesAnalytics20260521000050,
   InventoryLicensingFinancialRules20260521000060,
   FixRLSFallback20260522000001,
   ForceRLSFailClosed20260522000002,
@@ -186,6 +191,9 @@ const ALL_MIGRATIONS = [
   BillingEnforcement20260701000001,
   BillingPlans20260701000002,
   BillingRlsHardening20260701000003,
+  ReconcileInventoryLicensesColumns20260705000001,
+  RemoveArtistBannerVideoFields20260705000002,
+  RemoveDeadStructuresD1D8_20260705000003,
 ] as const;
 
 // Re-export from tokens file — services should import from database.tokens
@@ -222,7 +230,10 @@ export async function createAdminDataSource(config: ConfigService): Promise<Data
     type:                'postgres',
     url,
     entities:            ALL_ENTITIES,
-    migrations:          [],
+    // Metadata apenas (nunca executa: migrationsRun=false). Permite ao
+    // MigrationValidatorService rodar showMigrations() na conexão owner —
+    // musicos360_migrations tem RLS sem policy e fica invisível ao app role.
+    migrations:          [...ALL_MIGRATIONS],
     synchronize:         false,
     migrationsRun:       false,
     logging:             isProd ? ['error', 'warn'] : ['error', 'warn'],

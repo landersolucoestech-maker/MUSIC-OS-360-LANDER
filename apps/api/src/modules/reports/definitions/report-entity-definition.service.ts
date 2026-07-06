@@ -17,8 +17,18 @@ const IDENTITY_NAMES = [
   'ticket_number', 'isrc', 'iswc',
 ];
 
-/** Tipos de blob estruturado (JSON/snapshot) — não são colunas de relatório. */
-const JSON_TYPES = new Set(['json', 'jsonb', 'simple-json']);
+/** Tipos de blob estruturado (JSON/array serializado) — não são colunas de formulário. */
+const JSON_TYPES = new Set(['json', 'jsonb', 'simple-json', 'simple-array']);
+
+/**
+ * Nome sugere conteúdo técnico/bruto que nunca é um campo de formulário
+ * (payload de integração, snapshot de auditoria, HTML/XML bruto, dump/debug).
+ * Genérico e entity-agnostic — não depende de lista por tabela.
+ */
+const BLOB_NAME_HINT = /(^|_)(html|raw|payload|snapshot|dump|debug|xml)(_|$)/i;
+
+/** Nome sugere anotação interna (nunca exibida no formulário do usuário final). */
+const HIDDEN_INTERNAL_HINT = /^(notas?_internas?|observacoes?_internas?|comentarios?_internos?|internal_notes)$/i;
 
 /** Colunas técnicas/auditoria que nunca são exportáveis. */
 function isInternalColumn(c: ColumnMeta): boolean {
@@ -27,6 +37,8 @@ function isInternalColumn(c: ColumnMeta): boolean {
     c.isCreatedAt || c.isUpdatedAt || c.isDeletedAt ||
     /_id$/.test(c.name) ||
     JSON_TYPES.has(c.type) ||
+    BLOB_NAME_HINT.test(c.name) ||
+    HIDDEN_INTERNAL_HINT.test(c.name) ||
     ['created_by', 'updated_by', 'uploaded_by', 'approved_by', 'org_slug', 'metadata'].includes(c.name)
   );
 }

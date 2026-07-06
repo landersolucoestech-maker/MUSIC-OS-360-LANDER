@@ -58,9 +58,9 @@ export interface Artista {
   tags_musicais?: string[] | null;
   fase_carreira?: string | null;
   relacionamentos?: ArtistaRelacionamento[] | null;
-  spotify_artist_id?: string | null;
+  spotify_url?: string | null;
   spotify_ouvintes?: number | null;
-  youtube_channel_id?: string | null;
+  youtube_url?: string | null;
   youtube_inscritos?: number | null;
   deezer_url?: string | null;
   deezer_fas?: number | null;
@@ -105,9 +105,7 @@ export interface Artista {
   documentos_pessoais_url?: string | null;
   presskit_url?: string | null;
   notas_internas?: string | null;
-  banner_url?: string | null;
   galeria_urls?: string[] | null;
-  video_apresentacao_url?: string | null;
   manager_nome?: string | null;
   manager_contato?: string | null;
   produtor_executivo?: string | null;
@@ -142,4 +140,3 @@ export interface Artista {
 export type ArtistaInsert = Omit<Artista, "id" | "user_id" | "created_at" | "updated_at">;
 export type ArtistaUpdate = Partial<ArtistaInsert>;
 export type ArtistaAssinado = Artista;
-

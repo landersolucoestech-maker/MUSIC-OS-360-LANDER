@@ -184,10 +184,8 @@ export default function ArtistaCadastro() {
   const [distribuidorasEmpresa, setDistribuidorasEmpresa] = useState<DistribuidoraEntry[]>([{ ...EMPTY_DISTRIBUIDORA }]);
 
   // ── 7. Mídia 360 ──────────────────────────────────────────────────────────
-  const [bannerUrl, setBannerUrl] = useState("");
   const [galeriaUrls, setGaleriaUrls] = useState<string[]>([]);
   const [galeriaInput, setGaleriaInput] = useState("");
-  const [videoApresentacaoUrl, setVideoApresentacaoUrl] = useState("");
   const [managerNome, setManagerNome] = useState("");
   const [managerContato, setManagerContato] = useState("");
   const [produtorExecutivo, setProdutorExecutivo] = useState("");
@@ -274,9 +272,7 @@ export default function ArtistaCadastro() {
         : [],
     );
     setContratoSelecionadoId(f.contratoId);
-    setBannerUrl(typeof artistaExistente.banner_url === "string" ? artistaExistente.banner_url : "");
     setGaleriaUrls(Array.isArray(artistaExistente.galeria_urls) ? artistaExistente.galeria_urls as string[] : []);
-    setVideoApresentacaoUrl(typeof artistaExistente.video_apresentacao_url === "string" ? artistaExistente.video_apresentacao_url : "");
     setManagerNome(typeof artistaExistente.manager_nome === "string" ? artistaExistente.manager_nome : "");
     setManagerContato(typeof artistaExistente.manager_contato === "string" ? artistaExistente.manager_contato : "");
     setProdutorExecutivo(typeof artistaExistente.produtor_executivo === "string" ? artistaExistente.produtor_executivo : "");
@@ -439,9 +435,7 @@ export default function ArtistaCadastro() {
 
       const extraFields = {
         genero: generoPessoa || null,
-        banner_url: bannerUrl.trim() || null,
         galeria_urls: galeriaUrls.length > 0 ? galeriaUrls : null,
-        video_apresentacao_url: videoApresentacaoUrl.trim() || null,
         manager_nome: managerNome.trim() || null,
         manager_contato: managerContato.trim() || null,
         produtor_executivo: produtorExecutivo.trim() || null,
@@ -1176,29 +1170,6 @@ export default function ArtistaCadastro() {
           <TabsContent value="midia">
             <Card>
               <CardContent className="pt-6 space-y-6">
-
-                <div className="space-y-2">
-                  <Label>Banner / Capa (URL)</Label>
-                  <Input
-                    placeholder="https://... (imagem 1920×600 recomendada)"
-                    value={bannerUrl}
-                    onChange={(e) => setBannerUrl(e.target.value)}
-                    data-testid="input-banner-url"
-                  />
-                  {bannerUrl && (
-                    <img src={safeImageSrc(bannerUrl)} alt="Banner preview" className="w-full h-24 object-cover rounded-md border mt-2" />
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Vídeo de Apresentação (URL)</Label>
-                  <Input
-                    placeholder="https://youtube.com/watch?v=... ou https://vimeo.com/..."
-                    value={videoApresentacaoUrl}
-                    onChange={(e) => setVideoApresentacaoUrl(e.target.value)}
-                    data-testid="input-video-url"
-                  />
-                </div>
 
                 <div className="space-y-2">
                   <Label>Galeria de Fotos</Label>

@@ -22,7 +22,7 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-const SUPABASE_PROD_REF = "iundcoubyaiwzqyytvdr";
+const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
 const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF];

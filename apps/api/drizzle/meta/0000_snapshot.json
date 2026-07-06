@@ -233,24 +233,12 @@
           "primaryKey": false,
           "notNull": false
         },
-        "banner_url": {
-          "name": "banner_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "galeria_urls": {
           "name": "galeria_urls",
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false,
           "default": "'[]'::jsonb"
-        },
-        "video_apresentacao_url": {
-          "name": "video_apresentacao_url",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         },
         "documentos": {
           "name": "documentos",

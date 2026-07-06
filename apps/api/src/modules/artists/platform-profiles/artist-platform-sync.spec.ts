@@ -11,8 +11,13 @@ const payload = {
   external_url: 'https://open.spotify.com/artist/4NHQUGzhtTLFvgF5SZesLK',
   requested_by: 'user-1',
   reason: 'manual' as const,
-  idempotency_key: 'tenant-1:artist-1:spotify:manual:hash',
+  idempotency_key: 'tenant-1__artist-1__spotify__manual__hash',
 };
+
+/** Mock do DatabaseContextService no padrão do notifications.processor.spec. */
+const makeDbContext = () => ({
+  runInTenantContext: jest.fn((_ctx: unknown, work: (m: unknown) => unknown) => work(undefined)),
+});
 
 const SPOTIFY_ID = '4NHQUGzhtTLFvgF5SZesLK';
 const YOUTUBE_ID = 'UC_x5XG1OV2P6uZZ5FSM9Ttw';
@@ -20,7 +25,7 @@ const YOUTUBE_ID = 'UC_x5XG1OV2P6uZZ5FSM9Ttw';
 describe('ArtistExternalProfileSyncService', () => {
   it('enfileira sync manual de Spotify com pending tenant-scoped', async () => {
     const artists = {
-      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_artist_id: null, youtube_channel_id: null }),
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
     };
     const profiles = {
       hasRecentPending: jest.fn().mockResolvedValue(false),
@@ -47,14 +52,17 @@ describe('ArtistExternalProfileSyncService', () => {
     expect(queue.add).toHaveBeenCalledWith(
       ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
       expect.objectContaining({ tenant_id: 'tenant-1', artist_id: 'artist-1', platform: 'spotify' }),
-      expect.objectContaining({ attempts: 3, jobId: expect.stringContaining('tenant-1:artist-1:spotify:manual:') }),
+      expect.objectContaining({ attempts: 3, jobId: expect.stringContaining('tenant-1__artist-1__spotify__manual__') }),
     );
+    // BullMQ proíbe ':' em jobId customizado — regressão do 500 "Custom Id cannot contain :".
+    const jobId = (queue.add.mock.calls[0][2] as { jobId: string }).jobId;
+    expect(jobId).not.toContain(':');
     expect(result.enqueued).toEqual([{ platform: 'spotify', job_id: 'job-1' }]);
   });
 
   it('enfileira sync manual de YouTube', async () => {
     const artists = {
-      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_artist_id: null, youtube_channel_id: null }),
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
     };
     const profiles = {
       hasRecentPending: jest.fn().mockResolvedValue(false),
@@ -85,7 +93,7 @@ describe('ArtistExternalProfileSyncService', () => {
 
   it('retorna skipped quando artista nao tem perfil externo da plataforma', async () => {
     const artists = {
-      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_artist_id: null, youtube_channel_id: null }),
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
     };
     const service = new ArtistExternalProfileSyncService(
       artists as never,
@@ -119,7 +127,7 @@ describe('ArtistExternalProfileSyncService', () => {
 
   it('rejeita link Spotify que nao seja de artista', async () => {
     const artists = {
-      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_artist_id: null, youtube_channel_id: null }),
+      findById: jest.fn().mockResolvedValue({ id: 'artist-1', spotify_url: null, youtube_url: null }),
     };
     const service = new ArtistExternalProfileSyncService(
       artists as never,
@@ -142,8 +150,8 @@ describe('ArtistPlatformSyncProcessor', () => {
     const findOne = jest.fn().mockResolvedValue({
       id: 'artist-1',
       tenant_id: 'tenant-1',
-      spotify_artist_id: 'spotify-current',
-      youtube_channel_id: null,
+      spotify_url: 'https://open.spotify.com/artist/spotify-current',
+      youtube_url: null,
     });
     const ds = { getRepository: jest.fn(() => ({ findOne })) };
     const profiles = {
@@ -161,15 +169,22 @@ describe('ArtistPlatformSyncProcessor', () => {
         sync_status: 'success',
       }),
     };
+    const dbContext = makeDbContext();
     const processor = new ArtistPlatformSyncProcessor(
       ds as never,
       profiles as never,
+      dbContext as never,
       spotify as never,
       { platform: 'youtube' } as never,
     );
 
     await processor.process({ name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC, data: payload } as never);
 
+    // FORCE RLS: toda a persistência do worker roda dentro do contexto do tenant do job.
+    expect(dbContext.runInTenantContext).toHaveBeenCalledWith(
+      { tenantId: 'tenant-1', orgId: null, role: null },
+      expect.any(Function),
+    );
     expect(findOne).toHaveBeenCalledWith({
       where: { id: 'artist-1', tenant_id: 'tenant-1', deleted_at: null },
     });
@@ -186,7 +201,7 @@ describe('ArtistPlatformSyncProcessor', () => {
   it('persiste failed quando provider falha', async () => {
     const ds = {
       getRepository: jest.fn(() => ({
-        findOne: jest.fn().mockResolvedValue({ id: 'artist-1', tenant_id: 'tenant-1', spotify_artist_id: 'spotify-1' }),
+        findOne: jest.fn().mockResolvedValue({ id: 'artist-1', tenant_id: 'tenant-1', spotify_url: 'https://open.spotify.com/artist/spotify-1' }),
       })),
     };
     const profiles = {
@@ -196,11 +211,12 @@ describe('ArtistPlatformSyncProcessor', () => {
     };
     const spotify = {
       platform: 'spotify',
-      resolve: jest.fn().mockRejectedValue(new Error('Spotify API error: 429')),
+      resolve: jest.fn().mockRejectedValue(new Error('Spotify API respondeu 429: limite de requisições excedido')),
     };
     const processor = new ArtistPlatformSyncProcessor(
       ds as never,
       profiles as never,
+      makeDbContext() as never,
       spotify as never,
       { platform: 'youtube' } as never,
     );
@@ -212,7 +228,27 @@ describe('ArtistPlatformSyncProcessor', () => {
       tenantId: 'tenant-1',
       artistId: 'artist-1',
       platform: 'spotify',
-      error: 'Spotify API error: 429',
+      error: 'Spotify API respondeu 429: limite de requisições excedido',
     }));
+  });
+
+  it('aborta fail-closed quando o job não tem tenant_id', async () => {
+    const profiles = { upsertPending: jest.fn(), upsertSuccess: jest.fn(), markFailed: jest.fn() };
+    const dbContext = makeDbContext();
+    const processor = new ArtistPlatformSyncProcessor(
+      { getRepository: jest.fn() } as never,
+      profiles as never,
+      dbContext as never,
+      { platform: 'spotify' } as never,
+      { platform: 'youtube' } as never,
+    );
+
+    await processor.process({
+      name: ARTIST_PLATFORM_PROFILE_JOB_NAMES.SYNC,
+      data: { ...payload, tenant_id: '' },
+    } as never);
+
+    expect(dbContext.runInTenantContext).not.toHaveBeenCalled();
+    expect(profiles.upsertPending).not.toHaveBeenCalled();
   });
 });

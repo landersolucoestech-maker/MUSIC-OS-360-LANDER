@@ -51,8 +51,8 @@ describe('field-labels.pt-br — camada central de labels', () => {
       ['manager_name', 'Nome do empresário', 'managerName'],
       ['company_name', 'Empresa', 'companyName'],
       ['signing_platform', 'Plataforma de assinatura', 'signingPlatform'],
-      ['spotify_artist_id', 'Link do Spotify', 'spotifyArtistId'],
-      ['youtube_channel_id', 'Link do YouTube', 'youtubeChannelId'],
+      ['spotify_url', 'Link do Spotify', 'spotifyUrl'],
+      ['youtube_url', 'Link do YouTube', 'youtubeUrl'],
     ];
     for (const [techKey, expectedLabel, canonical] of cases) {
       expect(getFieldLabelPtBr(techKey)).toBe(expectedLabel);
@@ -72,11 +72,11 @@ describe('field-labels.pt-br — camada central de labels', () => {
     expect(normalizeFieldKey('managerName')).toBe('managerName');
     expect(normalizeFieldKey('ManagerName')).toBe('managerName');
     expect(normalizeFieldKey('manager-name')).toBe('managerName');
-    expect(normalizeFieldKey('spotify_artist_id')).toBe('spotifyArtistId');
+    expect(normalizeFieldKey('spotify_url')).toBe('spotifyUrl');
   });
 
   it('reverse map não tem ambiguidade nos rótulos críticos', () => {
-    expect(FIELD_KEYS_BY_LABEL_PT_BR['link do spotify']).toBe('spotifyArtistId');
+    expect(FIELD_KEYS_BY_LABEL_PT_BR['link do spotify']).toBe('spotifyUrl');
     expect(FIELD_KEYS_BY_LABEL_PT_BR['nome do empresário']).toBe('managerName');
   });
 });

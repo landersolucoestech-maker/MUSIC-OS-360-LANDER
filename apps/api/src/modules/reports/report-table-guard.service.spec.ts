@@ -4,7 +4,7 @@ import type { EntityReport } from './entity-metadata.types';
 
 function report(partial: Partial<EntityReport>): EntityReport {
   return {
-    entityName: 'X', tableName: 'x', category: 'REPORTABLE' as any, reportable: true,
+    entityName: 'X', tableName: 'x', label: null, category: 'REPORTABLE' as any, reportable: true,
     columns: [], relations: [], hasTenantId: false, hasSoftDelete: false, hasTimestamps: false, risks: [],
     ...partial,
   };

@@ -4,11 +4,11 @@ import { z } from 'zod';
 // Fonte única de verdade dos refs permitidos por ambiente. O frontend espelha
 // esta lista em apps/web/scripts/assert-supabase-env.mjs e o gate de repo em
 // scripts/env-check.mjs — qualquer alteração deve ser feita nos três lugares.
-export const SUPABASE_PROD_REF = 'iundcoubyaiwzqyytvdr';
+export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq';
 export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif';
 /** Refs banidos de QUALQUER runtime (ex.: branch preview sem tabelas públicas). */
 export const SUPABASE_REF_DENYLIST: readonly string[] = ['mkyvkciwyhfawmvluugb'];
-const SUPABASE_ALLOWED_REFS: readonly string[] = [
+export const SUPABASE_ALLOWED_REFS: readonly string[] = [
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,
 ];
@@ -106,11 +106,12 @@ const envSchema = z.object({
     .default('0000000000000000000000000000000000000000000000000000000000000000')
     .refine(
       (val) => {
-        const isProduction = process.env.NODE_ENV === 'production';
+        const nodeEnv = process.env.NODE_ENV;
+        const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
         const isAllZero = /^0+$/.test(val);
-        return !(isProduction && isAllZero);
+        return !(isProdLike && isAllZero);
       },
-      { message: 'ENCRYPTION_KEY cannot be all-zero in production' },
+      { message: 'ENCRYPTION_KEY cannot be all-zero in production or staging' },
     ),
   ENCRYPTION_IV_SECRET: z.string().min(1).default('dev_iv_secret_placeholder'),
 

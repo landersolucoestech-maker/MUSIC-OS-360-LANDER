@@ -129,7 +129,8 @@ export class ExternalDataExchangeService {
 
   async submitDistributor(input: SubmitDistributorInput): Promise<ExternalDataSubmissionResult> {
     this.assertDb();
-    const providerId = input.providerId ?? 'mock-distributor';
+    if (!input.providerId) throw new BadRequestException('providerId is required to submit to a distributor');
+    const providerId = input.providerId;
     const provider = this.registry.getDistributor(providerId);
     const payload = await this.buildDistributorPayload(input, providerId);
     const context = this.context(input.tenantId, input.userId, providerId, input.idempotencyKey);
@@ -195,7 +196,8 @@ export class ExternalDataExchangeService {
 
   async submitSociety(input: SubmitSocietyInput): Promise<ExternalDataSubmissionResult> {
     this.assertDb();
-    const providerId = input.providerId ?? 'mock-society';
+    if (!input.providerId) throw new BadRequestException('providerId is required to submit to a society');
+    const providerId = input.providerId;
     const provider = this.registry.getSociety(providerId);
     const payload = await this.buildSocietyPayload(input, providerId);
     const entityId = input.artistId ?? input.workIds?.[0] ?? input.phonogramIds?.[0];
@@ -262,7 +264,8 @@ export class ExternalDataExchangeService {
   }
 
   async checkDistributorStatus(input: StatusCheckInput): Promise<ExternalDataSubmissionResult> {
-    const providerId = input.providerId ?? 'mock-distributor';
+    if (!input.providerId) throw new BadRequestException('providerId is required to check distributor status');
+    const providerId = input.providerId;
     const result = await this.registry.getDistributor(providerId)
       .checkStatus(input.submissionId, this.context(input.tenantId, input.userId, providerId, input.idempotencyKey));
     if (input.entityType && input.entityId) await this.persistResult(input.tenantId, input.userId, input.entityType, input.entityId, result);
@@ -285,7 +288,8 @@ export class ExternalDataExchangeService {
   }
 
   async checkSocietyStatus(input: StatusCheckInput): Promise<ExternalDataSubmissionResult> {
-    const providerId = input.providerId ?? 'mock-society';
+    if (!input.providerId) throw new BadRequestException('providerId is required to check society status');
+    const providerId = input.providerId;
     const result = await this.registry.getSociety(providerId)
       .checkStatus(input.submissionId, this.context(input.tenantId, input.userId, providerId, input.idempotencyKey));
     if (input.entityType && input.entityId) await this.persistResult(input.tenantId, input.userId, input.entityType, input.entityId, result);
@@ -374,8 +378,8 @@ export class ExternalDataExchangeService {
           id: artist.id,
           name: artist.nome_artistico,
           genre: artist.genero_musical,
-          spotify_artist_id: artist.spotify_artist_id,
-          youtube_channel_id: artist.youtube_channel_id,
+          spotify_url: artist.spotify_url,
+          youtube_url: artist.youtube_url,
         },
         release: release ? {
           id: release.id,

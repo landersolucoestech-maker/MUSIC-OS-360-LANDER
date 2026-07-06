@@ -17,16 +17,25 @@ import {
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
-import { DATA_SOURCE } from './database.tokens';
+import { ADMIN_DATA_SOURCE, DATA_SOURCE } from './database.tokens';
 
 @Injectable()
 export class MigrationValidatorService implements OnApplicationBootstrap {
   private readonly logger = new Logger(MigrationValidatorService.name);
 
   constructor(
-    @Optional() @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
+    @Optional() @Inject(DATA_SOURCE) private readonly appDs: DataSource | null,
+    // musicos360_migrations tem RLS habilitado sem policy: sob APP_DATABASE_URL
+    // (role NOBYPASSRLS, session-context ON) o SELECT volta vazio e showMigrations()
+    // acusaria 80 pendentes — em produção isso mataria o boot. A validação precisa
+    // da conexão owner (sempre DATABASE_URL), que enxerga a tabela de migrations.
+    @Optional() @Inject(ADMIN_DATA_SOURCE) private readonly adminDs: DataSource | null,
     private readonly config: ConfigService,
   ) {}
+
+  private get ds(): DataSource | null {
+    return this.adminDs ?? this.appDs;
+  }
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ds) {

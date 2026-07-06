@@ -41,6 +41,12 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
+import {
+  SUPABASE_ALLOWED_REFS,
+  SUPABASE_PROD_REF,
+  SUPABASE_REF_DENYLIST,
+  extractSupabaseRef,
+} from './core/config/env.schema';
 
 // Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
 // (ex: redis.railway.internal não está disponível fora da Railway private network)
@@ -48,6 +54,57 @@ const NETWORK_CODES = new Set(['ENOTFOUND', 'ECONNREFUSED', 'ECONNRESET', 'EPIPE
 const NET_LOG_THROTTLE_MS = 30_000;
 let __netLastCode = '';
 let __netLastLogAt = 0;
+
+function assertApiRuntimeEnv(logger: Logger): void {
+  const nodeEnv = process.env.NODE_ENV ?? 'development';
+  const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
+  const errors: string[] = [];
+
+  const refSources: Array<[string, string | null]> = [
+    ['SUPABASE_URL', extractSupabaseRef(process.env.SUPABASE_URL)],
+    ['DATABASE_URL', extractSupabaseRef(process.env.DATABASE_URL)],
+    ['APP_DATABASE_URL', extractSupabaseRef(process.env.APP_DATABASE_URL)],
+    ['VITE_SUPABASE_URL', extractSupabaseRef(process.env.VITE_SUPABASE_URL)],
+  ];
+
+  for (const [key, ref] of refSources) {
+    if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
+      errors.push(`${key} aponta para o ref Supabase banido "${ref}"`);
+    }
+    if (isProdLike && ref && !SUPABASE_ALLOWED_REFS.includes(ref)) {
+      errors.push(`${key} usa ref "${ref}" fora da allowlist em NODE_ENV=${nodeEnv}`);
+    }
+    if (nodeEnv === 'production' && ref && ref !== SUPABASE_PROD_REF) {
+      errors.push(`${key} deve usar o ref de producao "${SUPABASE_PROD_REF}" em production`);
+    }
+  }
+
+  if (isProdLike) {
+    for (const key of ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'] as const) {
+      if (!process.env[key]) errors.push(`${key} e obrigatorio em NODE_ENV=${nodeEnv}`);
+    }
+    for (const flag of ['USE_MOCK', 'MOCK_MODE', 'AUTH_DISABLED'] as const) {
+      if (process.env[flag] === 'true') {
+        errors.push(`${flag}=true e proibido em NODE_ENV=${nodeEnv}`);
+      }
+    }
+  }
+
+  const resolved = refSources.filter((entry): entry is [string, string] => entry[1] !== null);
+  const distinctRefs = [...new Set(resolved.map(([, ref]) => ref))];
+  if (distinctRefs.length > 1) {
+    errors.push(
+      `refs Supabase divergentes: ${resolved
+        .map(([key, ref]) => `${key}=${ref}`)
+        .join(' | ')}`,
+    );
+  }
+
+  if (errors.length > 0) {
+    logger.error(`FATAL: ambiente Supabase invalido:\n${errors.map((err) => `  - ${err}`).join('\n')}`);
+    process.exit(1);
+  }
+}
 
 function suppressNetworkNoise(err: NodeJS.ErrnoException): boolean {
   if (!err.code || !NETWORK_CODES.has(err.code)) return false;
@@ -71,18 +128,19 @@ process.on('unhandledRejection', (reason: unknown) => {
 
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
+  assertApiRuntimeEnv(logger);
 
   // ── Production security gates (fail-closed) ────────────────────────────────
   // Abort startup if someone tries to run production with auth/RBAC/tenant
   // bypassed or with mock mode enabled. These are not silent — the process exits.
   const nodeEnv = process.env.NODE_ENV ?? 'development';
-  if (nodeEnv === 'production') {
+  if (nodeEnv === 'production' || nodeEnv === 'staging') {
     if (process.env.AUTH_DISABLED === 'true') {
-      logger.error('FATAL: AUTH_DISABLED=true is forbidden in production. Aborting.');
+      logger.error(`FATAL: AUTH_DISABLED=true is forbidden in ${nodeEnv}. Aborting.`);
       process.exit(1);
     }
     if (process.env.MOCK_MODE === 'true' || process.env.VITE_MOCK_MODE === 'true') {
-      logger.error('FATAL: MOCK_MODE=true is forbidden in production. Aborting.');
+      logger.error(`FATAL: MOCK_MODE=true is forbidden in ${nodeEnv}. Aborting.`);
       process.exit(1);
     }
   }

@@ -25,6 +25,7 @@ import 'reflect-metadata';
 import * as path from 'path';
 import * as fs from 'fs';
 import { randomUUID } from 'crypto';
+import { extractSupabaseRef, SUPABASE_PROD_REF } from '../src/core/config/env.schema';
 
 try {
   require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });    // apps/api/.env when run from package
@@ -61,6 +62,17 @@ async function setTenant(client: import('pg').Client, tenantId: string) {
 }
 
 async function main(): Promise<void> {
+  // Guard: this script INSERTs/DELETEs real rows in organizations/tenants/artists.
+  // Never allow it to run against the production Supabase ref, regardless of which
+  // secret/CI variable happened to populate DATABASE_URL.
+  const targetRef = extractSupabaseRef(databaseUrl);
+  if (targetRef === SUPABASE_PROD_REF) {
+    console.error('\n  ✗ ABORTADO: DATABASE_URL aponta para o ref de PRODUÇÃO Supabase.');
+    console.error('    Este script escreve/apaga linhas reais em organizations/tenants/artists.');
+    console.error('    Aponte DATABASE_URL para um branch/staging não-produtivo antes de rodar.\n');
+    process.exit(1);
+  }
+
   let passed = 0;
   let failed = 0;
 

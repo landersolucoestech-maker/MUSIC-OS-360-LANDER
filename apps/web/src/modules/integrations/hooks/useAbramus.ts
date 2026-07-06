@@ -441,7 +441,8 @@ export function useAbramusRegistrationHistory(kind: AbramusKind, localId: string
   return useQuery<RegistrationHistoryEntry[]>({
     queryKey: ["abramus", "registration-history", kind, localId],
     queryFn: async () => {
-      if (MOCK_MODE && !_mockCreds) return [];
+      if (!MOCK_MODE) return [];
+      if (!_mockCreds) return [];
       const rightsKind = kind === "obras" ? "obra" : "fonograma";
       return mockAbramusProvider.getRegistrationHistory(rightsKind, localId);
     },
@@ -454,8 +455,32 @@ export function useAbramusRegisterObra() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterObraInput>({
     mutationFn: async (input) => {
-      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
-      return mockAbramusProvider.registerObra(input);
+      if (MOCK_MODE) {
+        if (!_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+        return mockAbramusProvider.registerObra(input);
+      }
+      const res = await api.post<{ external_id?: string; code?: string; iswc?: string | null }>(
+        "/integrations/abramus/register-work",
+        {
+          titulo: input.titulo,
+          compositor: input.compositores[0] ?? "",
+          coautores: input.compositores.slice(1),
+          iswc: input.iswc,
+          genero: input.genero,
+          duracao: input.duracao,
+          editora: input.editora,
+        },
+      );
+      return {
+        entity: "abramus",
+        kind: "obra",
+        local_id: input.local_id,
+        external_id: res.external_id ?? "",
+        code: res.code ?? res.external_id ?? "",
+        iswc: res.iswc ?? input.iswc ?? null,
+        registered_at: new Date().toISOString(),
+        status: "registered",
+      };
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["obras"] });
@@ -478,7 +503,10 @@ export function useAbramusRegisterFonograma() {
   const queryClient = useQueryClient();
   return useMutation<RegistrationResult, Error, RegisterFonogramaInput>({
     mutationFn: async (input) => {
-      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Registro de fonograma na ABRAMUS ainda não está disponível (sem endpoint real configurado).");
+      }
+      if (!_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.registerFonograma(input);
     },
     onSuccess: (data) => {
@@ -502,7 +530,10 @@ export function useAbramusGenerateISWC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISWCResult, Error, GenerateISWCInput>({
     mutationFn: async (input) => {
-      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Geração de ISWC via ABRAMUS ainda não está disponível (sem endpoint real configurado).");
+      }
+      if (!_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISWC(input);
     },
     onSuccess: (data) => {
@@ -521,7 +552,10 @@ export function useAbramusGenerateISRC() {
   const queryClient = useQueryClient();
   return useMutation<GenerateISRCResult, Error, GenerateISRCInput>({
     mutationFn: async (input) => {
-      if (MOCK_MODE && !_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
+      if (!MOCK_MODE) {
+        throw new Error("Geração de ISRC via ABRAMUS ainda não está disponível (sem endpoint real configurado).");
+      }
+      if (!_mockCreds) throw new Error("ABRAMUS não está conectado. Configure as credenciais primeiro.");
       return mockAbramusProvider.generateISRC(input);
     },
     onSuccess: (data) => {

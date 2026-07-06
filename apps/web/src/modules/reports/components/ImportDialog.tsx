@@ -73,12 +73,21 @@ export function ImportDialog({ open, onClose, definition }: Props) {
           >
             <Upload className="mx-auto mb-2 h-7 w-7 text-muted-foreground" />
             <p className="text-sm font-medium">{file ? file.name : "Clique para selecionar o arquivo"}</p>
-            <p className="mt-1 text-xs text-muted-foreground">CSV, XLSX ou JSON</p>
+            <p className="mt-1 text-xs text-muted-foreground">XLSX</p>
           </div>
           <input
-            ref={fileRef} type="file" accept=".csv,.xlsx,.xls,.json" className="hidden"
+            ref={fileRef} type="file" accept=".xlsx" className="hidden"
             data-testid="import-file"
-            onChange={(e) => { setFile(e.target.files?.[0] ?? null); setPreview(null); }}
+            onChange={(e) => {
+              const f = e.target.files?.[0] ?? null;
+              if (f && !/\.xlsx$/i.test(f.name)) {
+                toast.error("Apenas arquivos .xlsx são aceitos.");
+                e.target.value = "";
+                return;
+              }
+              setFile(f);
+              setPreview(null);
+            }}
           />
 
           {preview && (

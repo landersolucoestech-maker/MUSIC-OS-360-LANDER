@@ -84,9 +84,9 @@ export function useSpotifyConnect() {
 export function useSpotifyArtistMetrics() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (spotifyArtistId: string) => {
+    mutationFn: async (spotifyUrl: string) => {
       if (MOCK_MODE) throw new Error("Modo mock — métricas Spotify desabilitadas.");
-      return api.post("/integrations/spotify/sync-artist", { spotifyArtistId });
+      return api.post("/integrations/spotify/sync-artist", { spotifyUrl });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["integrations", "spotify"] });

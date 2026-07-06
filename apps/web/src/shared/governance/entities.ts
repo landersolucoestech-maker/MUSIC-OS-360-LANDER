@@ -71,8 +71,8 @@ export const ENTITY_CATALOG: Record<string, EntityDefinition> = {
     primaryKey:   "id",
     externalIds:  [
       "cpf_cnpj",
-      "spotify_artist_id",
-      "youtube_channel_id",
+      "spotify_url",
+      "youtube_url",
       "deezer_url",
       "apple_music_url",
       "soundcloud_url",
