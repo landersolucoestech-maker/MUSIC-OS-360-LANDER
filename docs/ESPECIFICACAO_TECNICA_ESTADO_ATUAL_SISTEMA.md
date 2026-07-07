@@ -22,6 +22,37 @@ Data da auditoria local: 2026-07-06.
 > O restante do documento (matriz UI/API/DB, migrations pendentes, refatorações P1-P3)
 > continua válido e não foi re-verificado nesta atualização.
 
+> **ATUALIZAÇÃO FASE 2 (2026-07-06/2026-07-07, PostgreSQL real via pooler Supabase):**
+> A Fase 2 — Consistência UI/API/Banco foi executada para o escopo inicial autorizado
+> (`Artists`, `Catalog / Works / Phonograms`, `Billing`, `Reports`, `Uploads`,
+> `CRM / Leads / Contacts`) usando a API local em `http://127.0.0.1:3001/api/v1`
+> e o banco real do projeto Supabase `jtizbxbrwyczbkdiruoq` via pooler
+> `aws-1-sa-east-1.pooler.supabase.com:5432/postgres`.
+>
+> Evidências:
+> - API readiness: `GET /api/v1/health/ready` retornou `database.status=up`, `driver=postgres`,
+>   URL mascarada/apontando para o pooler Supabase.
+> - Validação CRUD real: run `phase2-1783386546652` retornou `result=PASSOU`.
+> - Gates pós-correções: `npm.cmd run typecheck` PASS; `npm.cmd run build` PASS;
+>   `npm.cmd run test` PASS fora do sandbox local real.
+> - Testes finais: API Jest `87/87 suites`, `727/727 tests`; Web Vitest `38/38 files`, `401/401 tests`.
+>
+> Correções pontuais aplicadas durante a Fase 2:
+> - `apps/api/src/modules/phonograms/phonograms.service.ts`: mapper DTO/API para entity/banco
+>   (`title/workId/artistId/duration` -> `titulo/obra_id/artista_id/duration_seconds`).
+> - `apps/api/src/modules/leads/leads.service.ts`: mapper `stage` -> `pipeline_stage`.
+> - `apps/api/src/modules/contacts/contacts.service.ts`: persistência runtime em tabela real
+>   `contacts` via `DATA_SOURCE`, mantendo fallback in-memory apenas para testes sem datasource.
+>
+> Pendências mantidas:
+> - `DIRECT_DATABASE_URL` segue com `ENOTFOUND` no host direto Supabase; débito técnico de
+>   conectividade direta, não bloqueador do CRUD funcional via pooler.
+> - `Contacts` não possui endpoint `DELETE /contacts/:id`; limpeza da validação foi feita no banco.
+> - `Uploads` não possui delete funcional exercitado; remoção foi validada por `status=deleted`,
+>   `deleted_at` e `GET /uploads/:fileId/download` retornando `404`.
+> - UI visual/browser não foi exercitada nesta rodada; a validação foi API + banco real com reload
+>   por `GET` após mutação.
+
 Escopo: monorepo em `C:\Users\Usuario\Downloads\MUSIC-OS-360`. Documento baseado em leitura estática, comandos locais e execução de gates. Nenhuma funcionalidade foi considerada `OK` sem execução funcional. Quando houve apenas existência de código, o status foi marcado como `PARCIAL`, `NÃO VALIDADO` ou `BUILD OK / FUNCIONAL NÃO VALIDADO`.
 
 Comandos executados como evidência:
@@ -459,9 +490,39 @@ Critério: todos comandos P0 verdes.
 
 ### Fase 2 — Consistência UI/API/Banco
 
-Tarefas: gerar matriz campo a campo com DB ativo para artists/catalog/billing/reports/uploads; remover campos legados restantes; validar mappers.
+Status: EXECUTADA E VALIDADA para o escopo inicial autorizado, com banco real Supabase via pooler.
 
-Critério: reload persiste dados e import/export roundtrip.
+Comando/evidência principal: `node .tmp/phase2-validation.mjs` executado temporariamente e removido após uso. Run final `phase2-1783386546652`: `result=PASSOU`.
+
+Critério: CRUD real por API, persistência no banco real, reload por `GET` após mutação, limpeza dos registros de teste e ausência de mock/fallback/fake/local.
+
+| Módulo | Campo/Fluxo | UI | Form | Payload | DTO | Entity | Migration | Banco | Response | Mapper | Reload após F5/GET | Teste | Status |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| Artists | criar/listar/editar/detalhe/excluir | NÃO VALIDADO visual | API validada | `nome_artistico`, `genero_musical`, tenant | DTO/controller existente | `ArtistEntity` | migrations existentes | `artists.tenant_id`, `nome_artistico`, `genero_musical`, `deleted_at` | `201/200` | service existente | `GET /artists/:id` após PATCH OK | run `phase2-1783386546652`, `artistId=8069d27a-c53e-4185-a9dd-102cfe174ad4` | OK |
+| Catalog / Works | criar/editar/detalhe/excluir | NÃO VALIDADO visual | API validada | `titulo`, `status`, tenant | DTO/controller existente | `WorkEntity` | migrations existentes | `works.titulo`, `status`, `tenant_id`, `deleted_at` | `201/200` | service existente | `GET /works/:id` após PATCH OK | `workId=bf664708-2bfd-4791-b70d-2ad318d18eaf` | OK |
+| Catalog / Phonograms | criar/editar/detalhe/excluir | NÃO VALIDADO visual | API validada | `title/workId/artistId/duration` | DTO aceitava nomes frontend | `PhonogramEntity` usa `titulo/obra_id/artista_id/duration_seconds` | migrations existentes | `phonograms.titulo`, `genero_musical`, `tenant_id` | `201/200` após correção | `toEntityPayload()` | `GET /phonograms/:id` após PATCH OK | `phonId=4ad56433-a6e0-4839-a73f-4483ead8083e` | OK após correção |
+| Billing | plano + billing state | NÃO VALIDADO visual | API validada | `slug`, `amount`, `active`, tenant billing state | DTO/controller existente | billing entities/services | migrations billing `20260701000001..3` | `billing_plans`, `tenant_billing_state` | `201/200` | service existente | `GET /billing/plans/:id` e state OK | `planId=26b70f66-c307-4b7a-8a02-aa9a4b4aee65` | OK |
+| Reports | entidades/definitions/export | NÃO VALIDADO visual | N/A | query/export | controller existente | dynamic metadata | migrations variadas | leitura de tabelas reais autorizadas | export `200`, `17100 bytes` | export engine | download API OK | `/reports/entities=120`, `/reports/definitions=37` | OK |
+| Uploads | presign + persistência + download pós-delete | NÃO VALIDADO visual | API validada | file metadata | `presign` DTO/controller | upload persistence | `uploads` table | `uploads.file_id`, `tenant_id`, `status`, `r2_key`, `deleted_at` | `201`, download `404` após delete lógico | storage/upload controller | `GET /uploads/:fileId/download` após DB delete lógico OK | `fileId=2dc394cb-87fa-4a44-8b83-ee05a759682b` | OK/PARCIAL |
+| CRM / Leads | criar/editar/detalhe/excluir | NÃO VALIDADO visual | API validada | `name`, `email`, `phone`, `stage`, `notes` | DTO aceitava `stage` | `LeadEntity` usa `pipeline_stage` | migrations existentes | `leads.pipeline_stage`, `tenant_id`, `deleted_at` | `201/200` após correção | `stage -> pipeline_stage` | `GET /leads/:id` após PATCH OK | `leadId=649e8d54-ead8-48ef-9de2-f35e0dd9bb79` | OK após correção |
+| CRM / Contacts | criar/editar/detalhe + persistência | NÃO VALIDADO visual | API validada | `name`, `contact_type`, `email`, `phone`, `notes` | controller aceita payload genérico | sem entity dedicada; SQL parametrizado via `DATA_SOURCE` | `20260528000002_LeadsContactsOperationalRefactor.ts` | `contacts.id`, `tenant_id`, `name`, `notes`, `email_encrypted` | `201/200` após correção | `normalizePayload()`/`toResponse()` | `GET /contacts/:id` após PATCH OK | `contactId=d3479ead-8704-473d-8147-4e23276ea54b` | OK/PARCIAL |
+
+Problemas encontrados e tratados:
+
+| ID | Módulo | Campo/Fluxo | Problema | Evidência | Impacto | Correção necessária/aplicada | Prioridade |
+|---|---|---|---|---|---|---|---|
+| F2-CATALOG-001 | Catalog / Phonograms | create/update | DTO/API enviava `title/workId/artistId/duration`, entity/banco esperavam `titulo/obra_id/artista_id/duration_seconds`; `POST /phonograms` retornava 500. | Run anterior retornou 500 em `/api/v1/phonograms`; correção em `phonograms.service.ts:53-93`; run final passou. | Fonogramas não eram criados no banco real pelo payload frontend/API. | Aplicado mapper `toEntityPayload()`. | P1 |
+| F2-CRM-001 | CRM / Leads | `stage` | DTO aceitava `stage`, mas update tentava persistir campo inexistente na entity/tabela; banco possui `pipeline_stage`. | `PATCH /leads/:id` retornou 500; correção em `leads.service.ts:412-417`; run final persistiu `pipeline_stage=qualified`. | Lead perdia edição/falhava no fluxo de CRM. | Aplicado mapper `stage -> pipeline_stage`. | P1 |
+| F2-CRM-002 | CRM / Contacts | persistência | API respondia 201/200, mas service usava `Map` in-memory e `select ... from contacts where id=$1` retornava 0 linhas. | Run anterior reportou `CRM/Contacts não persiste no banco real`; correção em `contacts.service.ts:11-217`; run final encontrou row em `contacts`. | Contatos sumiam ao reiniciar API e não sustentavam relatórios/auditoria. | Aplicada persistência real via `DATA_SOURCE` e SQL parametrizado. | P0/P1 |
+
+Pendências da Fase 2:
+
+| ID | Área | Pendência | Evidência | Impacto | Status |
+|---|---|---|---|---|---|
+| F2-PEND-001 | Supabase | `DIRECT_DATABASE_URL` segue com `ENOTFOUND` no host direto `db.jtizbxbrwyczbkdiruoq.supabase.co`. | Validações anteriores aceitaram `DATABASE_URL` e `APP_DATABASE_URL` via pooler; `DIRECT_DATABASE_URL` ficou como débito técnico separado. | Pode afetar tarefas que exijam conexão direta, migrations/maintenance fora do pooler. | RISCO / NÃO BLOQUEIA CRUD via pooler |
+| F2-PEND-002 | CRM / Contacts | Não há `DELETE /contacts/:id`. | `contacts.controller.ts` expõe `GET`, `POST`, `PATCH`; cleanup do run precisou deletar no banco. | CRUD funcional completo fica parcial para exclusão por API. | PARCIAL |
+| F2-PEND-003 | Uploads | Delete funcional por API não foi exercitado. | Validação removeu por `status=deleted/deleted_at` no banco e confirmou download `404`. | Exclusão end-to-end de upload ainda não homologada. | PARCIAL |
+| F2-PEND-004 | UI | UI visual/browser não foi exercitada nesta rodada. | Validação executada por API + DB real; reload por `GET` após mutação. | Possíveis divergências de formulário visual/cache React Query ainda podem existir. | UI NÃO VALIDADA / API OK |
 
 ### Fase 3 — Segurança e multi-tenancy
 
@@ -532,15 +593,15 @@ Escalabilidade por workers, governança de integrações, automação de complia
 | testes RBAC passando | NÃO VALIDADO |
 | testes billing passando | NÃO VALIDADO |
 | testes webhook passando | NÃO VALIDADO |
-| testes upload passando | NÃO VALIDADO |
-| schema consistente | NÃO VALIDADO |
+| testes upload passando | PARCIAL — presign/persistência/download 404 pós-delete lógico validados na Fase 2 |
+| schema consistente | PARCIAL — Artists/Catalog/Billing/Reports/Uploads/CRM validados no banco real na Fase 2 |
 | migrations consistentes | NÃO VALIDADO |
 | RLS validado | NÃO VALIDADO |
 | FORCE RLS validado | NÃO VALIDADO |
 | auth validado | PARCIAL |
 | RBAC validado | PARCIAL |
 | feature gates server-side | PARCIAL |
-| billing real | NÃO VALIDADO |
+| billing real | PARCIAL — billing plans e tenant billing state validados via API+DB real na Fase 2 |
 | webhooks assinados | API OK / NÃO VALIDADO |
 | idempotência validada | NÃO VALIDADO |
 | logs ativos | PARCIAL |
@@ -553,8 +614,8 @@ Escalabilidade por workers, governança de integrações, automação de complia
 | staging validado | NÃO VALIDADO |
 | produção validada | NÃO VALIDADO |
 | documentação mínima | PARCIAL |
-| fluxos críticos homologados | NÃO VALIDADO |
-| zero mock sem gate | QUEBRADO no env atual |
+| fluxos críticos homologados | PARCIAL — Fase 2 validou CRUD real API+DB para Artists, Catalog, Billing, Reports, Uploads e CRM |
+| zero mock sem gate | PARCIAL — gates produção com mock/auth disabled desligados; auditoria de dados fake por fluxo ainda pendente |
 | zero dado fake em produção | NÃO VALIDADO |
 | zero endpoint crítico sem teste | NÃO VALIDADO |
 | zero tabela crítica sem tenant | NÃO VALIDADO |
@@ -563,20 +624,20 @@ Escalabilidade por workers, governança de integrações, automação de complia
 
 ## 25. Conclusão técnica
 
-Estado real: o sistema possui uma base técnica ampla e ambiciosa, com modularização por domínio, NestJS, React/Vite, RLS, RBAC, billing, integrações, filas, observabilidade e documentação operacional. Porém, o estado atual local não está homologado para produção porque build, env check e testes falham.
+Estado real: o sistema possui uma base técnica ampla e ambiciosa, com modularização por domínio, NestJS, React/Vite, RLS, RBAC, billing, integrações, filas, observabilidade e documentação operacional. Após Fase 1 e Fase 2, os gates locais principais estão verdes e o escopo inicial de consistência API/Banco foi validado contra PostgreSQL real Supabase via pooler.
 
 Partes que podem ser mantidas: estrutura monorepo, módulos principais, guards globais, migrations RLS, runbooks, CI como intenção, API client, providers de auth/tenant/billing, services de reports/billing/uploads desde que passem nos gates.
 
-Partes que precisam ser corrigidas: env Supabase/mock/auth, scripts/configs de teste, dependências de integração de testes, build frontend, validação DB/RLS, fluxos billing/upload/webhook.
+Partes que precisam ser corrigidas: conectividade `DIRECT_DATABASE_URL`, validação DB/RLS completa fora do escopo Fase 2, delete API de contacts, delete funcional de uploads, UI visual/browser dos fluxos homologados por API, billing/webhook além do smoke funcional validado.
 
 Partes que precisam ser refatoradas: componentes web gigantes, `entities.ts`, `billing.service.ts`, `integrations.controller.ts`, services/controllers com múltiplas responsabilidades.
 
 Partes que precisam ser reestruturadas: matriz de dados UI/API/DB, separação de domínio, boundaries entre módulos, governança de integrações e mocks.
 
-Riscos que impedem produção: build quebrado, env divergente, testes quebrados, RLS não validado em banco real, billing/webhooks não homologados end-to-end.
+Riscos que impedem produção: RLS/FORCE RLS ainda não homologado de ponta a ponta, `DIRECT_DATABASE_URL` com `ENOTFOUND`, billing/webhooks não homologados end-to-end, UI visual/cache não validado por browser, delete de contacts/uploads parcial.
 
 Riscos que impedem escala: componentes/services grandes, relatórios/export sem teste de volume, workers/queues sem teste de carga, observabilidade não validada.
 
 Riscos que impedem enterprise: DR/restore/rollback não testados, segurança de endpoints públicos não provada, feature gates/billing sem homologação real, fonte da verdade dispersa.
 
-Caminho seguro: estabilizar gates P0, validar tenant/RLS com banco real, homologar billing/upload/reports, decompor pontos gigantes, e só então avançar refatoração incremental orientada por testes e runbooks.
+Caminho seguro: manter gates verdes, validar tenant/RLS com banco real, completar pendências de delete/API/UI da Fase 2, homologar billing/webhook/upload end-to-end, decompor pontos gigantes, e só então avançar refatoração incremental orientada por testes e runbooks.

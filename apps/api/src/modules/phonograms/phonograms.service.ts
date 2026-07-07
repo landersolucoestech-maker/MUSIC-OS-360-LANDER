@@ -50,8 +50,28 @@ export class PhonogramsService {
     return result;
   }
 
+  private toEntityPayload(dto: CreatePhonogramDto | UpdatePhonogramDto): Record<string, unknown> {
+    const input = dto as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...input };
+
+    out['titulo'] = input['titulo'] ?? input['title'];
+    out['obra_id'] = input['obra_id'] ?? input['workId'];
+    out['artista_id'] = input['artista_id'] ?? input['artistId'];
+    out['duration_seconds'] = input['duration_seconds'] ?? input['duration'];
+    out['tipo'] = input['tipo'] ?? 'master';
+
+    delete out['title'];
+    delete out['workId'];
+    delete out['artistId'];
+    delete out['duration'];
+    delete out['fileUrl'];
+
+    Object.keys(out).forEach((key) => out[key] === undefined && delete out[key]);
+    return out;
+  }
+
   async create(tenantId: string, userId: string, dto: CreatePhonogramDto): Promise<PhonogramEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    const entity = this.repo!.create({ tenant_id: tenantId, ...this.toEntityPayload(dto), created_by: userId, updated_by: userId } as any);
     const saved = (await this.repo!.save(entity as any)) as PhonogramEntity;
 
     // Dispara automações nativas internas (ex.: catalog-metadata-validator). Os
@@ -70,7 +90,7 @@ export class PhonogramsService {
   async update(tenantId: string, userId: string, id: string, dto: UpdatePhonogramDto): Promise<PhonogramEntity> {
     await this.findById(tenantId, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date(), updated_by: userId } as any);
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...this.toEntityPayload(dto), updated_at: new Date(), updated_by: userId } as any);
     return this.findById(tenantId, id);
   }
 

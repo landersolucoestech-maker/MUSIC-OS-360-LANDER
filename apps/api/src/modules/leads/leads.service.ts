@@ -410,10 +410,11 @@ export class LeadsService {
   }
 
   private normalizeLeadPayload(input: Record<string, unknown>, existingMetadata: Record<string, unknown> = {}) {
-    const { name, source, notes, assignedTo, value, metadata, ...rest } = input;
+    const { name, source, stage, notes, assignedTo, value, metadata, ...rest } = input;
     const mapped: Record<string, unknown> = { ...rest };
     if (name !== undefined) mapped['nome'] = name;
     if (source !== undefined) mapped['fonte'] = source;
+    if (stage !== undefined) mapped['pipeline_stage'] = stage;
 
     const mergedMetadata = {
       ...existingMetadata,
