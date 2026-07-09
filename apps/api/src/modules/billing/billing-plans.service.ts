@@ -1,4 +1,4 @@
-import {
+import { Optional,
   Injectable, Logger, Inject, BadRequestException,
   NotFoundException, ServiceUnavailableException,
 } from '@nestjs/common';
@@ -45,11 +45,11 @@ export class BillingPlansService {
   private readonly planRepo: Repository<BillingPlanEntity> | null = null;
 
   constructor(
-    private readonly config: ConfigService,
+    @Optional() @Inject(ConfigService) private readonly config: ConfigService | undefined,
     @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
   ) {
     if (ds) this.planRepo = ds.getRepository(BillingPlanEntity);
-    const key = this.config.get<string>('STRIPE_SECRET_KEY');
+    const key = this.config?.get<string>('STRIPE_SECRET_KEY') ?? process.env.STRIPE_SECRET_KEY;
     if (key) this.stripe = new StripeClass(key, { apiVersion: '2026-04-22.dahlia' });
   }
 

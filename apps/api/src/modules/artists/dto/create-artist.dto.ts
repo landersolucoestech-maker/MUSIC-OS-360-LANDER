@@ -40,13 +40,13 @@ export class CreateArtistDto {
   @ApiPropertyOptional() @IsOptional() @IsString() deezer_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() apple_music_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() soundcloud_url?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() instagram?: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() tiktok?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() instagram_url?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() tiktok_url?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() spotify_ouvintes?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() youtube_inscritos?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() deezer_fas?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() apple_music_albuns?: number;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() soundcloud_seguidores?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() apple_music_albuns_url?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() soundcloud_seguidores_url?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() instagram_seguidores?: number;
   @ApiPropertyOptional() @IsOptional() @IsNumber() tiktok_seguidores?: number;
 

@@ -23,7 +23,7 @@ describe('ExportQueryBuilderService — query segura entity-driven', () => {
 
   it('monta SELECT com colunas explícitas (nunca SELECT *) + tenant sempre', () => {
     const q = svc.build(DEF, base(), 'tenant-1');
-    expect(q.sql).toContain('SELECT "nome_artistico", "email", "status" FROM "artists"');
+    expect(q.sql).toContain('SELECT "nome_artistico", "email_encrypted" AS "email", "status" FROM "artists"');
     expect(q.sql).not.toContain('*');
     expect(q.sql).toContain('"tenant_id" = $1');
     expect(q.parameters[0]).toBe('tenant-1');

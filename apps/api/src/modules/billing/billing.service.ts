@@ -1,4 +1,4 @@
-import { Injectable, BadRequestException, Logger, Inject, ServiceUnavailableException } from '@nestjs/common';
+import { Optional, Injectable, BadRequestException, Logger, Inject, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -167,7 +167,7 @@ export class BillingService {
   private readonly webhookRepo: Repository<WebhookEventEntity> | null = null;
 
   constructor(
-    private readonly config: ConfigService,
+    @Optional() @Inject(ConfigService) private readonly config: ConfigService | undefined,
     @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly ws: WsGateway,
     private readonly events: EventsService,
@@ -180,7 +180,7 @@ export class BillingService {
       this.orgRepo = ds.getRepository(OrganizationEntity);
       this.webhookRepo = ds.getRepository(WebhookEventEntity);
     }
-    const key = this.config.get<string>('STRIPE_SECRET_KEY');
+    const key = this.config?.get<string>('STRIPE_SECRET_KEY') ?? process.env.STRIPE_SECRET_KEY;
     if (key) {
       this.stripe = new StripeClass(key, { apiVersion: '2026-04-22.dahlia' });
       this.logger.log('Stripe Billing inicializado');
@@ -532,7 +532,7 @@ export class BillingService {
   async handleWebhook(signature: string | undefined, rawBody: Buffer | undefined) {
     this.assertBillingRepositories();
 
-    const secret = this.config.get<string>('STRIPE_WEBHOOK_SECRET');
+    const secret = this.config?.get<string>('STRIPE_WEBHOOK_SECRET') ?? process.env.STRIPE_WEBHOOK_SECRET;
     if (!secret) throw new ServiceUnavailableException('Stripe webhook secret unavailable');
     if (!signature) throw new BadRequestException('Stripe signature missing');
     if (!rawBody || !Buffer.isBuffer(rawBody)) throw new BadRequestException('Stripe raw body missing');

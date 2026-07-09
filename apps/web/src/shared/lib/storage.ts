@@ -256,11 +256,14 @@ const mockStorage = {
     return result.slice(0, filters?.limit ?? 200);
   },
 
-  raw(): typeof MOCK_DATA { return MOCK_DATA; },
-  getRaw<T>(key: string): T | null { return (MOCK_DATA[key] as T) ?? null; },
-  setRaw<T>(key: string, value: T): void {
-    (MOCK_DATA as Record<string, unknown>)[key] = value;
-    saveMockData();
+  raw(): typeof MOCK_DATA {
+    throw new IntegrationError("storage", "storage.raw() is unavailable in HTTP mode; use a backend endpoint.");
+  },
+  getRaw<T>(_key: string): T | null {
+    throw new IntegrationError("storage", "storage.getRaw() is unavailable in HTTP mode; use a backend endpoint.");
+  },
+  setRaw<T>(_key: string, _value: T): void {
+    throw new IntegrationError("storage", "storage.setRaw() is unavailable in HTTP mode; use a backend endpoint.");
   },
 };
 

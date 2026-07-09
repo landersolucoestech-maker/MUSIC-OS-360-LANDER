@@ -1,40 +1,44 @@
-/**
- * modules/reports/definitions/report-entity-definition.service.ts
- *
- * FASE 2.1 — compõe o contrato ReportEntityDefinition de cada entidade
- * reportável EFETIVA, ancorado nas colunas REAIS da metadata TypeORM (FASE 1).
- * Nunca inventa coluna. Colunas sensíveis nunca entram em export/import.
- * Labels não vivem aqui — são resolvidos pela camada i18n.
- */
 import { Injectable } from '@nestjs/common';
 import { EntityMetadataService } from '../entity-metadata.service';
 import type { ColumnMeta, EntityReport } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from './report-entity-definition.types';
+import { ARTIST_FORM_FIELDS } from '../form-contracts/artists.form-contract';
 
 const IDENTITY_NAMES = [
-  'numero', 'nome', 'nome_artistico', 'nome_civil', 'razao_social', 'titulo',
-  'title', 'name', 'codigo', 'code', 'slug', 'email', 'label', 'assunto',
-  'ticket_number', 'isrc', 'iswc',
+  'numero',
+  'nome',
+  'nome_artistico',
+  'nome_civil',
+  'razao_social',
+  'titulo',
+  'title',
+  'name',
+  'codigo',
+  'code',
+  'slug',
+  'email',
+  'label',
+  'assunto',
+  'ticket_number',
+  'isrc',
+  'iswc',
 ];
 
-/** Tipos de blob estruturado (JSON/array serializado) — não são colunas de formulário. */
 const JSON_TYPES = new Set(['json', 'jsonb', 'simple-json', 'simple-array']);
 
-/**
- * Nome sugere conteúdo técnico/bruto que nunca é um campo de formulário
- * (payload de integração, snapshot de auditoria, HTML/XML bruto, dump/debug).
- * Genérico e entity-agnostic — não depende de lista por tabela.
- */
 const BLOB_NAME_HINT = /(^|_)(html|raw|payload|snapshot|dump|debug|xml)(_|$)/i;
 
-/** Nome sugere anotação interna (nunca exibida no formulário do usuário final). */
-const HIDDEN_INTERNAL_HINT = /^(notas?_internas?|observacoes?_internas?|comentarios?_internos?|internal_notes)$/i;
+const HIDDEN_INTERNAL_HINT =
+  /^(notas?_internas?|observacoes?_internas?|comentarios?_internos?|internal_notes)$/i;
 
-/** Colunas técnicas/auditoria que nunca são exportáveis. */
 function isInternalColumn(c: ColumnMeta): boolean {
   return (
-    c.primary || c.generated || c.isTenantId ||
-    c.isCreatedAt || c.isUpdatedAt || c.isDeletedAt ||
+    c.primary ||
+    c.generated ||
+    c.isTenantId ||
+    c.isCreatedAt ||
+    c.isUpdatedAt ||
+    c.isDeletedAt ||
     /_id$/.test(c.name) ||
     JSON_TYPES.has(c.type) ||
     BLOB_NAME_HINT.test(c.name) ||
@@ -43,14 +47,26 @@ function isInternalColumn(c: ColumnMeta): boolean {
   );
 }
 
-/** Colunas sensíveis (criptografadas/credenciais) — nunca exportadas/importadas. */
 function isSensitiveColumn(c: ColumnMeta): boolean {
   return /_encrypted$|token|password|secret|hash|credential/i.test(c.name);
 }
 
 const DATE_TYPES = new Set(['timestamp', 'timestamptz', 'date', 'datetime', 'Date']);
-const NUMERIC_TYPES = new Set(['int', 'integer', 'numeric', 'decimal', 'float', 'bigint', 'Number', 'real', 'double precision']);
-const FILTERABLE_HINTS = /^(status|situacao|categoria|category|tipo|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
+
+const NUMERIC_TYPES = new Set([
+  'int',
+  'integer',
+  'numeric',
+  'decimal',
+  'float',
+  'bigint',
+  'Number',
+  'real',
+  'double precision',
+]);
+
+const FILTERABLE_HINTS =
+  /^(status|situacao|categoria|category|tipo|type|kind|stage|prioridade|priority|active|ativo|is_active|published|approved|archived)$/;
 
 @Injectable()
 export class ReportEntityDefinitionService {
@@ -72,15 +88,24 @@ export class ReportEntityDefinitionService {
     const sensitive = cols.filter(isSensitiveColumn).map((c) => c.name);
 
     const visible = cols.filter((c) => !isInternalColumn(c) && !isSensitiveColumn(c));
-    const exportableColumns = visible.map((c) => c.name);
 
-    // Importáveis: visíveis exceto colunas claramente derivadas/automáticas.
-    const importableColumns = visible
-      .filter((c) => !/_count$|^auto_|_at$/.test(c.name) && c.name !== 'auto_generated')
-      .map((c) => c.name);
+    const exportableColumns =
+      e.tableName === 'artists'
+        ? [...ARTIST_FORM_FIELDS]
+        : visible.map((c) => c.name);
+
+    const importableColumns =
+      e.tableName === 'artists'
+        ? [...ARTIST_FORM_FIELDS]
+        : visible
+            .filter((c) => !/_count$|^auto_|_at$/.test(c.name) && c.name !== 'auto_generated')
+            .map((c) => c.name);
 
     const identityColumn =
-      cols.find((c) => IDENTITY_NAMES.includes(c.name))?.name ?? exportableColumns[0] ?? 'id';
+      e.tableName === 'artists'
+        ? 'nome_artistico'
+        : cols.find((c) => IDENTITY_NAMES.includes(c.name))?.name ?? exportableColumns[0] ?? 'id';
+
     const displayColumn = identityColumn;
 
     const dateColumn =
@@ -88,21 +113,35 @@ export class ReportEntityDefinitionService {
       cols.find((c) => DATE_TYPES.has(c.type) && !c.isUpdatedAt && !c.isDeletedAt)?.name ??
       'created_at';
 
-    const filterableColumns = visible
-      .filter((c) => FILTERABLE_HINTS.test(c.name) || c.isEnum || c.type === 'Boolean' || DATE_TYPES.has(c.type))
-      .map((c) => c.name);
+    const filterableColumns =
+      e.tableName === 'artists'
+        ? ['status', 'tipo', 'genero_musical']
+        : visible
+            .filter(
+              (c) =>
+                FILTERABLE_HINTS.test(c.name) ||
+                c.isEnum ||
+                c.type === 'Boolean' ||
+                DATE_TYPES.has(c.type),
+            )
+            .map((c) => c.name);
 
     const sortableColumns = Array.from(
       new Set([
         identityColumn,
         dateColumn,
-        ...visible.filter((c) => NUMERIC_TYPES.has(c.type) || DATE_TYPES.has(c.type)).map((c) => c.name),
+        ...visible
+          .filter((c) => NUMERIC_TYPES.has(c.type) || DATE_TYPES.has(c.type))
+          .map((c) => c.name),
       ]),
     );
 
-    const searchableColumns = visible
-      .filter((c) => (c.type === 'String' || c.type === 'varchar' || c.type === 'text') && !c.isEnum)
-      .map((c) => c.name);
+    const searchableColumns =
+      e.tableName === 'artists'
+        ? ['nome_artistico', 'nome_civil', 'genero_musical', 'observacoes']
+        : visible
+            .filter((c) => (c.type === 'String' || c.type === 'varchar' || c.type === 'text') && !c.isEnum)
+            .map((c) => c.name);
 
     return {
       entityName: e.entityName,
@@ -118,8 +157,6 @@ export class ReportEntityDefinitionService {
       searchableColumns,
       sensitiveColumns: sensitive,
       requiredImportColumns: [identityColumn],
-      // Export sempre disponível; import declarado para entidades com identidade
-      // e ao menos uma coluna importável (a execução real é fase posterior).
       supportsExport: exportableColumns.length > 0,
       supportsImport: importableColumns.length > 0 && IDENTITY_NAMES.includes(identityColumn),
     };

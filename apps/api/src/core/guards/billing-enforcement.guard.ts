@@ -3,6 +3,7 @@ import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import { IS_PUBLIC_KEY } from '../decorators/public.decorator';
 import { AUTH_BOOTSTRAP_KEY } from '../decorators/auth-bootstrap.decorator';
+import { AUTH_DISABLED } from '../auth-disabled';
 import { BillingEnforcementService } from '../../modules/billing/billing-enforcement.service';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -65,6 +66,8 @@ export class BillingEnforcementGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (AUTH_DISABLED) return true;
+
     const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),

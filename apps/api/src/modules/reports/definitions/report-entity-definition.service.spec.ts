@@ -2,6 +2,7 @@ import { EntityMetadataService } from '../entity-metadata.service';
 import { ReportEntityDefinitionService } from './report-entity-definition.service';
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
 import { EntityCategory } from '../entity-metadata.types';
+import { ARTIST_DIRECT_COLUMNS, ARTIST_ENCRYPTED_FIELDS } from '../form-contracts/artists.form-contract';
 
 /** FASE 2.1 — contratos por entidade reportável, ancorados na metadata real. */
 describe('ReportEntityDefinitionService — contratos', () => {
@@ -28,7 +29,12 @@ describe('ReportEntityDefinitionService — contratos', () => {
         ...d.sortableColumns, ...d.searchableColumns, ...d.sensitiveColumns,
         ...d.requiredImportColumns,
       ];
-      for (const col of all) if (!real.has(col)) offenders.push(`${d.tableName}.${col}`);
+      for (const col of all) {
+        const backedArtistAlias =
+          d.tableName === 'artists' &&
+          (ARTIST_DIRECT_COLUMNS.has(col) || real.has(ARTIST_ENCRYPTED_FIELDS[col]));
+        if (!real.has(col) && !backedArtistAlias) offenders.push(`${d.tableName}.${col}`);
+      }
     }
     expect(offenders).toEqual([]);
   });

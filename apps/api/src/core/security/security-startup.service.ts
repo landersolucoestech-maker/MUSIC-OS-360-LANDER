@@ -7,7 +7,7 @@
  * Em desenvolvimento, emite warnings sem bloquear o boot.
  */
 
-import { Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
+import { Optional, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 const ZERO_KEY = '0000000000000000000000000000000000000000000000000000000000000000';
@@ -23,28 +23,32 @@ interface SecurityCheck {
 export class SecurityStartupService implements OnApplicationBootstrap {
   private readonly logger = new Logger(SecurityStartupService.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Optional() private readonly config?: ConfigService) {}
+
+  private getConfig(key: string): string | undefined {
+    return this.config?.get<string>(key) ?? process.env[key];
+  }
 
   onApplicationBootstrap(): void {
-    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
+    const isProduction = this.getConfig('NODE_ENV') === 'production';
     const checks: SecurityCheck[] = [
       {
         name:    'ENCRYPTION_KEY presente',
         fatal:   true,
-        check:   () => Boolean(this.config.get<string>('ENCRYPTION_KEY')),
+        check:   () => Boolean(this.getConfig('ENCRYPTION_KEY')),
         message: 'ENCRYPTION_KEY não definida — dados PII serão cifrados com chave zero (INSEGURO)',
       },
       {
         name:    'ENCRYPTION_KEY não é zero-key',
         fatal:   true,
-        check:   () => this.config.get<string>('ENCRYPTION_KEY') !== ZERO_KEY,
+        check:   () => this.getConfig('ENCRYPTION_KEY') !== ZERO_KEY,
         message: 'ENCRYPTION_KEY é a chave zero padrão — substituir por chave de 64 hex chars antes do deploy',
       },
       {
         name:    'SUPABASE_URL presente',
         fatal:   true,
         check:   () => Boolean(
-          this.config.get<string>('SUPABASE_URL') ??
+          this.getConfig('SUPABASE_URL') ??
           process.env['VITE_SUPABASE_URL']
         ),
         message: 'SUPABASE_URL não definida — autenticação JWT não funcionará',
@@ -52,13 +56,13 @@ export class SecurityStartupService implements OnApplicationBootstrap {
       {
         name:    'DATABASE_URL presente',
         fatal:   false,
-        check:   () => Boolean(this.config.get<string>('DATABASE_URL')),
+        check:   () => Boolean(this.getConfig('DATABASE_URL')),
         message: 'DATABASE_URL não definida — API em modo standalone sem persistência',
       },
       {
         name:    'SUPABASE_SERVICE_ROLE_KEY presente em produção',
         fatal:   true,
-        check:   () => !isProduction || Boolean(this.config.get<string>('SUPABASE_SERVICE_ROLE_KEY')),
+        check:   () => !isProduction || Boolean(this.getConfig('SUPABASE_SERVICE_ROLE_KEY')),
         message: 'SUPABASE_SERVICE_ROLE_KEY não definida — operações admin Supabase não funcionarão',
       },
       {
@@ -66,29 +70,29 @@ export class SecurityStartupService implements OnApplicationBootstrap {
         fatal:   true,
         check:   () => {
           if (!isProduction) return true;
-          const stripeActive = Boolean(this.config.get<string>('STRIPE_SECRET_KEY'));
-          return !stripeActive || Boolean(this.config.get<string>('STRIPE_WEBHOOK_SECRET'));
+          const stripeActive = Boolean(this.getConfig('STRIPE_SECRET_KEY'));
+          return !stripeActive || Boolean(this.getConfig('STRIPE_WEBHOOK_SECRET'));
         },
         message: 'STRIPE_WEBHOOK_SECRET não definido — webhooks Stripe serão rejeitados em produção',
       },
       {
         name:    'SENTRY_DSN presente em produção',
         fatal:   true,
-        check:   () => !isProduction || Boolean(this.config.get<string>('SENTRY_DSN')),
+        check:   () => !isProduction || Boolean(this.getConfig('SENTRY_DSN')),
         message: 'SENTRY_DSN não definido em produção — erros não serão reportados ao Sentry',
       },
       {
         name:    'RESEND_API_KEY presente em produção',
         fatal:   false,
-        check:   () => !isProduction || Boolean(this.config.get<string>('RESEND_API_KEY')),
+        check:   () => !isProduction || Boolean(this.getConfig('RESEND_API_KEY')),
         message: 'RESEND_API_KEY não definida em produção — emails transacionais não serão enviados',
       },
       {
         name:    'JWT_SECRET / SUPABASE_JWT_SECRET presente',
         fatal:   false,
         check:   () => Boolean(
-          this.config.get<string>('SUPABASE_JWT_SECRET') ??
-          this.config.get<string>('JWT_SECRET')
+          this.getConfig('SUPABASE_JWT_SECRET') ??
+          this.getConfig('JWT_SECRET')
         ),
         message: 'SUPABASE_JWT_SECRET não definido — verificação de assinatura HMAC pode falhar',
       },

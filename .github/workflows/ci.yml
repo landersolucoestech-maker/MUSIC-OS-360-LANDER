@@ -48,7 +48,7 @@ jobs:
     env:
       NODE_ENV: test
       # Minimal env for test runner — no real DB needed
-      DATABASE_URL: "postgresql://test:test@localhost:5432/test_db"
+      DATABASE_URL: "postgresql://localhost:5432/test_db"
       ENCRYPTION_KEY: "0000000000000000000000000000000000000000000000000000000000000001"
       ENCRYPTION_IV_SECRET: "test_iv_secret"
       JWT_SECRET: "test_jwt_secret"
@@ -159,10 +159,13 @@ jobs:
           cache-to: type=gha,mode=max
 
       - name: Smoke — image starts and /health/live responds
+        env:
+          CI_POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
         run: |
           docker network create ci-net || true
+          CI_POSTGRES_PASSWORD="${CI_POSTGRES_PASSWORD:?CI_POSTGRES_PASSWORD secret is required}"
           docker run -d --rm --name pg --network ci-net \
-            -e POSTGRES_USER=musicos360 -e POSTGRES_PASSWORD=musicos360_dev -e POSTGRES_DB=musicos360 \
+            -e POSTGRES_USER=musicos360 -e POSTGRES_PASSWORD="$CI_POSTGRES_PASSWORD" -e POSTGRES_DB=musicos360 \
             postgres:16-alpine
           docker run -d --rm --name redis --network ci-net redis:7-alpine
           # Wait for PG to be ready
@@ -172,7 +175,7 @@ jobs:
           done
           docker run -d --rm --name api --network ci-net -p 3001:3001 \
             -e NODE_ENV=development \
-            -e DATABASE_URL=postgresql://musicos360:musicos360_dev@pg:5432/musicos360 \
+            -e DATABASE_URL="postgresql://musicos360:$CI_POSTGRES_PASSWORD@pg:5432/musicos360" \
             -e DB_SSL=false \
             -e REDIS_URL=redis://redis:6379 \
             -e REDIS_QUEUE_URL=redis://redis:6379 \
@@ -258,12 +261,12 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: musicos360
-          POSTGRES_PASSWORD: musicos360_dev
+          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
           POSTGRES_DB: musicos360
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: postgresql://musicos360:musicos360_dev@localhost:5432/musicos360
+      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
       DB_SSL: 'false'
       ENCRYPTION_KEY: '33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217'
     steps:

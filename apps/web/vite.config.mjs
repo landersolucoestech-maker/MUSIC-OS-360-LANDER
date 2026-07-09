@@ -12,80 +12,8 @@ const guardMode =
 
 assertWebSupabaseEnv(guardMode, __dirname);
 
-function acrcloudApiPlugin() {
-  return {
-    name: "acrcloud-api-middleware",
-    configureServer(server) {
-      server.middlewares.use(async (req, res, next) => {
-        if (!req.url?.startsWith("/api/acrcloud/") || req.method !== "POST") {
-          return next();
-        }
-
-        const endpoint = req.url.replace("/api/acrcloud/", "").split("?")[0];
-
-        let body = "";
-        req.on("data", (chunk) => {
-          body += chunk.toString();
-        });
-        req.on("end", () => {
-          try {
-            const ts = new Date().toISOString();
-            const mockResponses = {
-              recognize: {
-                status: "success",
-                track: {
-                  title: "Demo Track",
-                  artist: "Demo Artist",
-                  album: "Demo Album",
-                  isrc: "BRUM71400520",
-                  duration: 237,
-                },
-                confidence: 0.97,
-                fingerprint_id: `fp_${Date.now()}`,
-                processed_at: ts,
-              },
-              copyright: {
-                status: "success",
-                protected: true,
-                rights_holders: [
-                  { name: "Demo Publisher", share: 100, territory: "WW" },
-                ],
-                license_type: "PRO",
-                expiry: null,
-              },
-              catalog: {
-                status: "success",
-                matches: 3,
-                tracks: [{ id: "t001", title: "Demo Track", similarity: 0.97 }],
-              },
-              monitor: {
-                status: "monitoring",
-                job_id: `job_${Date.now()}`,
-                estimated_completion: new Date(Date.now() + 3_600_000).toISOString(),
-              },
-            };
-
-            const response = mockResponses[endpoint] ?? {
-              status: "error",
-              error: `Endpoint desconhecido: ${endpoint}`,
-            };
-
-            res.setHeader("Content-Type", "application/json");
-            res.setHeader("X-Powered-By", "Music-OS-360-ACRCloud-Backend");
-            res.end(JSON.stringify(response));
-          } catch (err) {
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json");
-            res.end(JSON.stringify({ status: "error", error: String(err) }));
-          }
-        });
-      });
-    },
-  };
-}
-
 export default defineConfig({
-    plugins: [react(), acrcloudApiPlugin()],
+    plugins: [react()],
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),

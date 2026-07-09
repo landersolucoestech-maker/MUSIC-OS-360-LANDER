@@ -37,33 +37,27 @@ export class ExportEngineService {
     tenantId: string | undefined,
     userId: string,
   ): Promise<ExportResult> {
-    if (!tenantId) throw new ForbiddenException('Tenant não identificado');
+    if (!tenantId) throw new ForbiddenException('Tenant nao identificado');
     if (!EXPORT_FORMATS.includes(params.format)) {
-      throw new BadRequestException(`Formato inválido: ${params.format}`);
+      throw new BadRequestException(`Formato invalido: ${params.format}`);
     }
 
-    // ── Validação da entidade (entity-driven) ──────────────────────────────────
     const report = this.metadata.scan().entities.find((e) => e.tableName === entity);
-    if (!report) throw new UnprocessableEntityException(`Entidade não registrada para relatórios: ${entity}`);
-    if (!report.reportable) throw new UnprocessableEntityException(`Entidade não é exportável pela Central de Relatórios: ${entity}`);
+    if (!report) throw new UnprocessableEntityException(`Entidade nao registrada para relatorios: ${entity}`);
+    if (!report.reportable) throw new UnprocessableEntityException(`Entidade nao e exportavel pela Central de Relatorios: ${entity}`);
 
-    // Guarda: tabela física precisa existir (422 controlado, nunca 500).
     await this.tableGuard.assertTableUsable(entity, report);
 
     const def = this.definitions.getDefinition(entity);
-    // Entidade registrada/reportável, mas sem contrato de exportação → NÃO exportável.
-    // Erro controlado 422 (nunca 500/404): 404 fica reservado a recurso real inexistente;
-    // aqui a entidade existe, apenas não é exportável pela Central de Relatórios.
-    if (!def) throw new UnprocessableEntityException(`Entidade não é exportável (contrato de relatório ausente): ${entity}`);
-    if (!def.supportsExport) throw new BadRequestException(`Entidade não suporta exportação: ${entity}`);
+    if (!def) throw new UnprocessableEntityException(`Entidade nao e exportavel (contrato de relatorio ausente): ${entity}`);
+    if (!def.supportsExport) throw new BadRequestException(`Entidade nao suporta exportacao: ${entity}`);
 
-    // ── Query segura a partir do contrato ──────────────────────────────────────
     const softDeleteColumn = report.hasSoftDelete
       ? report.columns.find((c) => c.isDeletedAt)?.name
       : undefined;
     const query = this.queryBuilder.build(def, params, tenantId, { softDeleteColumn });
 
-    if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponível');
+    if (!this.ds) throw new ServiceUnavailableException('Banco de dados indisponivel');
 
     let rows: Record<string, unknown>[];
     try {

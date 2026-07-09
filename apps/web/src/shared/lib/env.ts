@@ -22,9 +22,11 @@ export const AUTH_DISABLED: boolean =
   import.meta.env.VITE_AUTH_DISABLED === "true";
 
 export const MOCK_MODE: boolean =
-  !import.meta.env.PROD &&
-  import.meta.env.VITE_USE_MOCK !== "false" &&
-  import.meta.env.VITE_MOCK_MODE !== "false";
+  import.meta.env.DEV === true &&
+  (
+    import.meta.env.VITE_USE_MOCK === "true" ||
+    import.meta.env.VITE_MOCK_MODE === "true"
+  );
 
 /**
  * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).

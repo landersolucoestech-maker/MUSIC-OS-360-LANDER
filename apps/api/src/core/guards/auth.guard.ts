@@ -1,4 +1,4 @@
-import {
+import { Optional,
   Injectable,
   CanActivate,
   ExecutionContext,
@@ -11,9 +11,21 @@ import { ConfigService } from '@nestjs/config';
 import { Reflector } from '@nestjs/core';
 import type { Request } from 'express';
 import * as jwt from 'jsonwebtoken';
-import * as jwksRsa from 'jwks-rsa';
+import type * as jwksRsaType from 'jwks-rsa';
 import { AUTH_DISABLED, DEV_AUTH } from '../auth-disabled';
 import { RbacErrorLogService } from '../rbac/rbac-error-log.service';
+
+// Lazy-loaded via require: sob tsx/esbuild o `import * as` de um módulo CJS que
+// exporta função vira namespace não-chamável — mesmo padrão do token-verifier.service.
+type JwksRsaFn = (options: jwksRsaType.Options) => jwksRsaType.JwksClient;
+let _jwksRsa: JwksRsaFn | null = null;
+function getJwksRsa(): JwksRsaFn {
+  if (!_jwksRsa) {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    _jwksRsa = require('jwks-rsa');
+  }
+  return _jwksRsa!;
+}
 
 export const IS_PUBLIC_KEY = 'isPublic';
 
@@ -55,14 +67,14 @@ function normalizeSupabaseUrl(value: string): string {
 @Injectable()
 export class JwtAuthGuard implements CanActivate, OnModuleInit {
   private readonly logger = new Logger(JwtAuthGuard.name);
-  private jwksClient!: jwksRsa.JwksClient;
+  private jwksClient!: jwksRsaType.JwksClient;
   private issuer!: string;
   private readonly audience = 'authenticated';
 
   constructor(
-    private readonly config: ConfigService,
-    private readonly reflector: Reflector,
-    private readonly errorLog: RbacErrorLogService,
+    @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly reflector?: Reflector,
+    @Optional() private readonly errorLog?: RbacErrorLogService,
   ) {}
 
   /**
@@ -75,7 +87,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     } catch (error) {
       if (!(error instanceof HttpException)) {
         const request = context.switchToHttp().getRequest<Request>();
-        void this.errorLog.record({
+        void this.errorLog?.record({
           errorType: 'guard_error',
           errorSource: 'JwtAuthGuard',
           request,
@@ -93,7 +105,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     }
 
     const rawSupabaseUrl =
-      this.config.get<string>('SUPABASE_URL') ??
+      this.config?.get<string>('SUPABASE_URL') ??
       process.env['VITE_SUPABASE_URL'] ??
       '';
     const supabaseUrl = normalizeSupabaseUrl(rawSupabaseUrl);
@@ -106,7 +118,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     const jwksUri = `${this.issuer}/.well-known/jwks.json`;
     this.logger.log(`JWKS endpoint: ${jwksUri}`);
 
-    this.jwksClient = jwksRsa({
+    this.jwksClient = getJwksRsa()({
       jwksUri,
       cache: true,
       cacheMaxAge: 60 * 60 * 1000,
@@ -121,7 +133,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
       return true;
     }
 
-    const isPublic = this.reflector.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
+    const isPublic = this.reflector?.getAllAndOverride<boolean>(IS_PUBLIC_KEY, [
       context.getHandler(),
       context.getClass(),
     ]);
@@ -137,7 +149,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
     // In non-prod-like envs only, accept dev tokens signed with ENCRYPTION_KEY (HS256).
     // Staging is treated as prod-like here (same as the Supabase ref allowlist in main.ts)
     // since it can hold real user data — the bypass must not be reachable there.
-    const nodeEnv = this.config.get<string>('NODE_ENV') ?? 'development';
+    const nodeEnv = this.config?.get<string>('NODE_ENV') ?? 'development';
     const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
     if (!isProdLike) {
       const devClaims = this.tryVerifyDevToken(token);
@@ -172,7 +184,7 @@ export class JwtAuthGuard implements CanActivate, OnModuleInit {
 
   private tryVerifyDevToken(token: string): Record<string, unknown> | null {
     try {
-      const secret = this.config.get<string>('ENCRYPTION_KEY');
+      const secret = this.config?.get<string>('ENCRYPTION_KEY');
       if (!secret) return null;
       const decoded = jwt.verify(token, secret, {
         algorithms: ['HS256'],

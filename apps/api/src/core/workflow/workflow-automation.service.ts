@@ -94,9 +94,9 @@ export class WorkflowAutomationService implements OnModuleInit {
 
   constructor(
     @Optional() @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
-    private readonly events:   EventsService,
-    private readonly workflow: WorkflowService,
-    private readonly execution: WorkflowExecutionService,
+    @Optional() @Inject(EventsService) private readonly events: EventsService | undefined,
+    @Optional() @Inject(WorkflowService) private readonly workflow: WorkflowService | undefined,
+    @Optional() @Inject(WorkflowExecutionService) private readonly execution: WorkflowExecutionService | undefined,
     @Optional() @InjectQueue('notifications') private readonly notifQueue: Queue | null,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
@@ -113,12 +113,16 @@ export class WorkflowAutomationService implements OnModuleInit {
 
     // Subscribe to all domain events
     const events = Object.values(DOMAIN_EVENTS) as string[];
-    for (const event of events) {
-      this.events.on(event, (payload: DomainEvent) => {
-        this.processEvent(event, payload).catch((err: unknown) =>
-          this.logger.error(`WorkflowAutomation processEvent falhou [${event}]: ${String(err)}`),
-        );
-      });
+    if (this.events) {
+      for (const event of events) {
+        this.events.on(event, (payload: DomainEvent) => {
+          this.processEvent(event, payload).catch((err: unknown) =>
+            this.logger.error(`WorkflowAutomation processEvent falhou [${event}]: ${String(err)}`),
+          );
+        });
+      }
+    } else {
+      this.logger.warn('WorkflowAutomationService: EventsService indisponivel; triggers nao assinados');
     }
 
     this.logger.log(
@@ -177,8 +181,15 @@ export class WorkflowAutomationService implements OnModuleInit {
   }
 
   private async executeRule(rule: TriggerRule, event: DomainEvent): Promise<void> {
+    const execution = this.execution;
+    if (!execution) {
+      this.logger.warn(
+        `WorkflowAutomation ignorou regra sem WorkflowExecutionService [${rule.id}]`,
+      );
+      return;
+    }
     const tenantId = event.tenantId;
-    const executionId = await this.execution.start({
+    const executionId = await execution.start({
       tenantId,
       ruleId: rule.id,
       ruleName: rule.name,
@@ -194,7 +205,7 @@ export class WorkflowAutomationService implements OnModuleInit {
       try {
         await this.executeAction(action, event);
         succeeded++;
-        await this.execution.logAction(executionId, tenantId, action.type, 'success');
+        await execution.logAction(executionId, tenantId, action.type, 'success');
         this.logger.debug(
           `Trigger [${rule.id}] → action [${action.type}] executado para tenant=${event.tenantId}`,
         );
@@ -202,7 +213,7 @@ export class WorkflowAutomationService implements OnModuleInit {
         failed++;
         const msg = String(err);
         if (!firstError) firstError = msg;
-        await this.execution.logAction(executionId, tenantId, action.type, 'failed', msg);
+        await execution.logAction(executionId, tenantId, action.type, 'failed', msg);
         this.logger.warn(
           `Trigger [${rule.id}] → action [${action.type}] falhou: ${msg}. Enfileirando para retry.`,
         );
@@ -210,7 +221,7 @@ export class WorkflowAutomationService implements OnModuleInit {
       }
     }
 
-    await this.execution.finish(executionId, { tenantId, ruleId: rule.id, succeeded, failed, error: firstError });
+    await execution.finish(executionId, { tenantId, ruleId: rule.id, succeeded, failed, error: firstError });
   }
 
   private async executeAction(action: TriggerAction, event: DomainEvent): Promise<void> {

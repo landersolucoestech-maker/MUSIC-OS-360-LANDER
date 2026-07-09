@@ -190,7 +190,7 @@ export class SpotifyService {
     this.logger.log(`Spotify OAuth: ${userId}@${tenantId} conectado`);
   }
 
-  async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ followers: number; popularity: number; name: string; image: string | null } | null> {
+  async syncArtistMetrics(tenantId: string, spotifyUrlOrId: string): Promise<{ listeners: number | null; popularity: number; name: string; image: string | null } | null> {
     if (!this.isConfigured()) return null;
 
     // Proper URL host check (not a substring match): `evil.com/spotify.com`
@@ -218,9 +218,9 @@ export class SpotifyService {
       headers: { 'Authorization': `Bearer ${token}` },
     });
     const data = await res.json() as any;
-    this.logger.log(`Spotify: ${data.name} — ${data.followers?.total?.toLocaleString()} followers`);
+    this.logger.log(`Spotify: ${data.name} retornou perfil publico; monthly listeners nao disponivel neste endpoint`);
     return {
-      followers: data.followers?.total ?? 0,
+      listeners: null,
       popularity: data.popularity ?? 0,
       name: data.name ?? '',
       image: data.images?.[0]?.url ?? null,

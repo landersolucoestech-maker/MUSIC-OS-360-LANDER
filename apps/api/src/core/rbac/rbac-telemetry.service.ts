@@ -1,4 +1,4 @@
-import {
+import { Optional,
   Inject,
   Injectable,
   Logger,
@@ -20,11 +20,19 @@ export class RbacTelemetryService implements OnModuleInit, OnModuleDestroy {
   constructor(
     @Inject(ADMIN_DATA_SOURCE) private readonly ds: DataSource | null,
     private readonly metrics: MetricsService,
-    private readonly config: ConfigService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
 
+  private getConfigNumber(key: string, fallback: number): number {
+    return this.config?.get<number>(key, fallback) ?? Number(process.env[key] ?? fallback);
+  }
+
+  private getConfigString(key: string): string | undefined {
+    return this.config?.get<string>(key) ?? process.env[key];
+  }
+
   onModuleInit(): void {
-    const intervalHours = this.config.get<number>(
+    const intervalHours = this.getConfigNumber(
       'RBAC_DECISION_RETENTION_INTERVAL_HOURS',
       6,
     );
@@ -92,7 +100,7 @@ export class RbacTelemetryService implements OnModuleInit, OnModuleDestroy {
         );
 
         if (
-          this.config.get<string>('RBAC_AUDIT_MIRROR_ENABLED') !== 'false'
+          this.getConfigString('RBAC_AUDIT_MIRROR_ENABLED') !== 'false'
         ) {
           const auditActions = [
             `rbac.${event.activeDecision.toLowerCase()}`,
@@ -162,7 +170,7 @@ export class RbacTelemetryService implements OnModuleInit, OnModuleDestroy {
 
   private async pruneExpired(): Promise<void> {
     if (!this.ds?.isInitialized) return;
-    const retentionDays = this.config.get<number>(
+    const retentionDays = this.getConfigNumber(
       'RBAC_DECISION_RETENTION_DAYS',
       30,
     );

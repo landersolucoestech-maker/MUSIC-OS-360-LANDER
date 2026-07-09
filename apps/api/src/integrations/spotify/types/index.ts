@@ -3,8 +3,7 @@ export interface SpotifyArtist {
   name: string;
   imageUrl?: string;
   genres: string[];
-  followers: number;
-  monthlyListeners?: number;
+  listeners: number | null;
   externalUrl: string;
 }
 

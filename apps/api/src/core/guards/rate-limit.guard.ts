@@ -5,7 +5,7 @@
  * Runs before JwtAuthGuard/TenantGuard, therefore it must not rely on tenant context.
  */
 
-import { Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
+import { Optional, Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { RateLimitService } from '../security/rate-limit.service';
 
@@ -29,9 +29,11 @@ function clientIp(request: Request): string {
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  constructor(private readonly rateLimitService: RateLimitService) {}
+  constructor(@Optional() private readonly rateLimitService?: RateLimitService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
+    if (!this.rateLimitService) return true;
+
     const request = context.switchToHttp().getRequest<Request>();
     const routeKey = `${request.method}:${request.route?.path ?? request.path ?? 'unknown-route'}`;
     const identifier = `${clientIp(request)}:${routeKey}`;

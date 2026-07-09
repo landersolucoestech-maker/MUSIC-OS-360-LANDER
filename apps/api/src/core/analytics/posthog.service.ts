@@ -22,9 +22,9 @@ export class PostHogService implements OnModuleDestroy {
   private readonly host:    string;
   private client: any = null;
 
-  constructor(private readonly config: ConfigService) {
-    this.apiKey = config.get<string>('POSTHOG_API_KEY');
-    this.host   = config.get<string>('POSTHOG_HOST') ?? 'https://app.posthog.com';
+  constructor(private readonly config?: ConfigService) {
+    this.apiKey = config?.get<string>('POSTHOG_API_KEY') ?? process.env.POSTHOG_API_KEY;
+    this.host   = config?.get<string>('POSTHOG_HOST') ?? process.env.POSTHOG_HOST ?? 'https://app.posthog.com';
 
     if (this.apiKey && !isPostHogPlaceholder(this.apiKey)) {
       this.initClient().catch(err => this.logger.warn(`PostHog init falhou: ${String(err)}`));

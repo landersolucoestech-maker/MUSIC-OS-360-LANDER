@@ -22,7 +22,7 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { Logger }         from '@nestjs/common';
+import { Optional, Inject, Logger } from '@nestjs/common';
 import { ConfigService }  from '@nestjs/config';
 import { TokenVerifierService } from '../security/token-verifier.service';
 
@@ -71,13 +71,13 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
   private readonly userSockets = new Map<string, Set<string>>();
 
   constructor(
-    private readonly config: ConfigService,
+    @Optional() @Inject(ConfigService) private readonly config: ConfigService | undefined,
     private readonly tokenVerifier: TokenVerifierService,
   ) {}
 
   async afterInit() {
-    const rawOrigins = this.config.get<string>('CORS_ORIGINS') ?? 'http://localhost:5000';
-    const nodeEnv    = this.config.get<string>('NODE_ENV') ?? 'development';
+    const rawOrigins = this.config?.get<string>('CORS_ORIGINS') ?? process.env.CORS_ORIGINS ?? 'http://localhost:5000';
+    const nodeEnv    = this.config?.get<string>('NODE_ENV') ?? process.env.NODE_ENV ?? 'development';
 
     if (this.server?.engine) {
       this.server.engine.on('initial_headers', (_headers: Record<string, string>, req: { headers: Record<string, string | string[] | undefined> }) => {
@@ -92,7 +92,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
     }
 
     // Redis Pub/Sub — opcional; usa REDIS_QUEUE_URL (ioredis-compatible).
-    const queueUrl = this.config.get<string>('REDIS_QUEUE_URL');
+    const queueUrl = this.config?.get<string>('REDIS_QUEUE_URL') ?? process.env.REDIS_QUEUE_URL;
 
     if (queueUrl && queueUrl !== 'redis://localhost:6379' && !queueUrl.includes('railway.internal')) {
       try {
@@ -133,7 +133,7 @@ export class WsGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayD
 
   async handleConnection(socket: Socket) {
     // P0-07: WS_ENABLED=false disables real-time entirely (until /socket.io/ runtime fixed).
-    if ((this.config.get<string>('WS_ENABLED') ?? 'true') === 'false') {
+    if ((this.config?.get<string>('WS_ENABLED') ?? process.env.WS_ENABLED ?? 'true') === 'false') {
       this.logger.warn(`WS: WS_ENABLED=false — socket ${socket.id} rejected`);
       socket.disconnect(true);
       return;

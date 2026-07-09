@@ -1,4 +1,4 @@
-import {
+import { Optional,
   Injectable,
   Logger,
   OnModuleDestroy,
@@ -21,18 +21,23 @@ export class RbacDistributedCacheService
   private readonly listeners = new Set<(roleIds: Set<string>) => void>();
 
   constructor(
-    private readonly config: ConfigService,
-    private readonly errorLog: RbacErrorLogService,
+    @Optional() private readonly config?: ConfigService,
+    @Optional() private readonly errorLog?: RbacErrorLogService,
   ) {}
 
   async onModuleInit(): Promise<void> {
-    if (this.config.get<string>('RBAC_DISTRIBUTED_CACHE_ENABLED') === 'false') {
+    const distributedCacheEnabled =
+      this.config?.get<string>('RBAC_DISTRIBUTED_CACHE_ENABLED') ??
+      process.env.RBAC_DISTRIBUTED_CACHE_ENABLED;
+    if (distributedCacheEnabled === 'false') {
       return;
     }
 
     const url =
-      this.config.get<string>('REDIS_URL') ??
-      this.config.get<string>('REDIS_QUEUE_URL');
+      this.config?.get<string>('REDIS_URL') ??
+      this.config?.get<string>('REDIS_QUEUE_URL') ??
+      process.env.REDIS_URL ??
+      process.env.REDIS_QUEUE_URL;
     if (!url) return;
 
     try {
@@ -164,7 +169,7 @@ export class RbacDistributedCacheService
     } catch {
       // Observability must never affect authorization.
     }
-    void this.errorLog.record({
+    void this.errorLog?.record({
       errorType: 'cache_error',
       errorSource: `RbacDistributedCache:${operation}`,
       error,

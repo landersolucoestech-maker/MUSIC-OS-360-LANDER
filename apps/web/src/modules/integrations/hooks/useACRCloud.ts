@@ -1,157 +1,130 @@
-/**
- * modules/integrations/hooks/useACRCloud.ts
- *
- * ACRCloud como infraestrutura backend nativa do Music OS 360.
- *
- * REGRA ABSOLUTA:
- *   - Nenhuma credencial ACRCloud é exposta ao browser
- *   - Nenhum login/OAuth/modal/credencial para o utilizador final
- *   - Todo o processamento ocorre exclusivamente via API interna /api/acrcloud/*
- *   - ACRCloud funciona como engine invisível — o utilizador nunca sabe que existe
- *
- * Fluxo:
- *   Frontend → /api/acrcloud/* (Music OS 360 API interna)
- *                → Backend → ACRCloud API (server-side, autenticado com HMAC)
- *                → Backend processa resposta
- *   Frontend ← apenas resultado tratado
- */
-
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { mockMusicMonitoringProvider } from "@/modules/integrations/providers/mock/mock-music-monitoring.provider";
 import type {
+  CreateMonitoringProjectInput,
   FingerprintInput,
   FingerprintResult,
-  PlayReportQuery,
-  PlayReport,
-  PlayReportSummary,
   MonitoringAlert,
   MonitoringProject,
-  CreateMonitoringProjectInput,
-  MusicSearchQuery,
   MusicSearchResult,
+  PlayReport,
+  PlayReportQuery,
+  PlayReportSummary,
 } from "@/modules/integrations/dto";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-
 export interface ACRCloudStatus extends IntegrationRuntimeStatus {
   integration_id: "acrcloud";
-  plan?:          string | null;
+  plan?: string | null;
   quota_remaining?: number | null;
 }
 
-// ─── API interna ──────────────────────────────────────────────────────────────
-// O frontend chama APENAS os endpoints internos do Music OS 360.
-// Nunca chama api.acrcloud.com directamente.
+function unwrapApiResponse<T>(payload: unknown): T {
+  if (
+    typeof payload === "object" &&
+    payload !== null &&
+    "data" in payload
+  ) {
+    return (payload as { data: T }).data;
+  }
+  return payload as T;
+}
 
 async function callAcrcloudApi<T>(
   endpoint: "recognize" | "copyright" | "catalog" | "monitor",
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
 ): Promise<T> {
-  const res = await fetch(`/api/acrcloud/${endpoint}`, {
+  const apiPath = endpoint === "recognize"
+    ? "/api/v1/integrations/acrcloud/recognize"
+    : null;
+
+  if (!apiPath) {
+    throw new Error(`Endpoint ACRCloud real nao implementado: ${endpoint}`);
+  }
+
+  const res = await fetch(apiPath, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
+
   if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: "Erro interno" }));
-    throw new Error((err as { error?: string }).error ?? `HTTP ${res.status}`);
+    const err = await res.json().catch((): { error?: string; message?: string } => ({ error: "Erro interno" }));
+    throw new Error(err.error ?? err.message ?? `HTTP ${res.status}`);
   }
-  return res.json() as Promise<T>;
+
+  return unwrapApiResponse<T>(await res.json());
 }
 
-// ─── Hook: Status ─────────────────────────────────────────────────────────────
-// ACRCloud é sempre "connected" — é infraestrutura da plataforma, não do utilizador.
+function notImplemented<T>(message: string): Promise<T> {
+  return Promise.reject(new Error(message));
+}
 
 export function useACRCloudStatus() {
   return useQuery<ACRCloudStatus>({
     queryKey: ["integrations", "acrcloud", "status"],
-    queryFn: async (): Promise<ACRCloudStatus> => {
-      // Verifica disponibilidade do serviço interno (não expõe credenciais)
-      const health = await mockMusicMonitoringProvider.verifyConnection();
-      return {
-        integration_id:  "acrcloud",
-        status:          health.ok ? "connected" : "error",
-        connected:       health.ok,
-        plan:            health.plan ?? "Enterprise",
-        quota_remaining: health.quota_remaining ?? null,
-        last_error:      null,
-        last_checked_at: new Date().toISOString(),
-      };
-    },
+    queryFn: async (): Promise<ACRCloudStatus> => ({
+      integration_id: "acrcloud",
+      status: "disconnected",
+      connected: false,
+      plan: null,
+      quota_remaining: null,
+      last_error: "Status ACRCloud real nao implementado na API",
+      last_checked_at: new Date().toISOString(),
+    }),
     staleTime: 60_000,
   });
 }
 
-// ─── Hook: Identificar por fingerprint ───────────────────────────────────────
-// Envia áudio para o backend → backend autentica com ACRCloud server-side → retorna resultado.
-
 export function useACRCloudIdentify() {
   return useMutation<FingerprintResult, Error, FingerprintInput>({
-    mutationFn: async (input) => {
-      // Em modo mock, usa o provider interno; em produção chamaria /api/acrcloud/recognize
-      try {
-        await callAcrcloudApi("recognize", { input });
-      } catch {
-        /* em modo standalone, o endpoint pode não estar disponível — usa mock */
-      }
-      return mockMusicMonitoringProvider.identify(input);
-    },
+    mutationFn: (input) => callAcrcloudApi("recognize", { input }),
     onSuccess: (data) => {
       if (data.matched && data.best_match) {
         toast.success(
-          `Música identificada: "${data.best_match.titulo}" — ${data.best_match.artista} (${data.best_match.score}% confiança)`
+          `Musica identificada: "${data.best_match.titulo}" - ${data.best_match.artista} (${data.best_match.score}% confianca)`,
         );
       } else {
-        toast.info("Nenhuma correspondência encontrada para o trecho de áudio.");
+        toast.info("Nenhuma correspondencia encontrada para o trecho de audio.");
       }
     },
     onError: (err) => {
-      toast.error(`Erro na identificação: ${err.message}`);
+      toast.error(`Erro na identificacao: ${err.message}`);
     },
   });
 }
-
-// ─── Hook: Relatórios de execução ─────────────────────────────────────────────
 
 export function useACRCloudPlayReports(query: PlayReportQuery, enabled = true) {
   return useQuery<PlayReport[]>({
     queryKey: ["acrcloud", "play-reports", query],
-    queryFn: () => mockMusicMonitoringProvider.getPlayReports(query),
+    queryFn: () => notImplemented("Relatorios ACRCloud reais nao implementados na API"),
     enabled,
     staleTime: 60_000,
   });
 }
-
-// ─── Hook: Resumo de execuções ────────────────────────────────────────────────
 
 export function useACRCloudPlaySummary(query: PlayReportQuery, enabled = true) {
   return useQuery<PlayReportSummary>({
     queryKey: ["acrcloud", "play-summary", query],
-    queryFn: () => mockMusicMonitoringProvider.getPlayReportSummary(query),
+    queryFn: () => notImplemented("Resumo ACRCloud real nao implementado na API"),
     enabled,
     staleTime: 60_000,
   });
 }
 
-// ─── Hook: Alertas ───────────────────────────────────────────────────────────
-
 export function useACRCloudAlerts(options?: { unacknowledged_only?: boolean; limit?: number }) {
   return useQuery<MonitoringAlert[]>({
     queryKey: ["acrcloud", "alerts", options],
-    queryFn: () => mockMusicMonitoringProvider.getAlerts(options),
+    queryFn: () => notImplemented("Alertas ACRCloud reais nao implementados na API"),
     staleTime: 30_000,
     refetchInterval: 120_000,
   });
 }
 
-// ─── Hook: Confirmar alerta ────────────────────────────────────────────────────
-
 export function useACRCloudAcknowledgeAlert() {
   const queryClient = useQueryClient();
   return useMutation<void, Error, string>({
-    mutationFn: (alertId) => mockMusicMonitoringProvider.acknowledgeAlert(alertId),
+    mutationFn: (_alertId) => notImplemented("Confirmacao de alerta ACRCloud real nao implementada na API"),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["acrcloud", "alerts"] });
       toast.success("Alerta marcado como lido.");
@@ -162,37 +135,28 @@ export function useACRCloudAcknowledgeAlert() {
   });
 }
 
-// ─── Hook: Pesquisa no catálogo ────────────────────────────────────────────────
-
 export function useACRCloudSearch(query: string, enabled = true) {
   const trimmed = query.trim();
   return useQuery<MusicSearchResult[]>({
     queryKey: ["acrcloud", "search", trimmed],
-    queryFn: () => {
-      const searchQuery: MusicSearchQuery = { query: trimmed, limit: 20 };
-      return mockMusicMonitoringProvider.search(searchQuery);
-    },
+    queryFn: () => notImplemented("Pesquisa ACRCloud real nao implementada na API"),
     enabled: enabled && trimmed.length >= 2,
     staleTime: 30_000,
   });
 }
 
-// ─── Hook: Projectos de monitoramento ────────────────────────────────────────
-
 export function useACRCloudProjects() {
   return useQuery<MonitoringProject[]>({
     queryKey: ["acrcloud", "projects"],
-    queryFn: () => mockMusicMonitoringProvider.listProjects(),
+    queryFn: () => notImplemented("Projetos ACRCloud reais nao implementados na API"),
     staleTime: 60_000,
   });
 }
 
-// ─── Hook: Criar projecto ─────────────────────────────────────────────────────
-
 export function useACRCloudCreateProject() {
   const queryClient = useQueryClient();
   return useMutation<MonitoringProject, Error, CreateMonitoringProjectInput>({
-    mutationFn: (input) => mockMusicMonitoringProvider.createProject(input),
+    mutationFn: (_input) => notImplemented("Criacao de projeto ACRCloud real nao implementada na API"),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["acrcloud", "projects"] });
       toast.success(`Projeto "${data.name}" criado com sucesso.`);
@@ -203,13 +167,10 @@ export function useACRCloudCreateProject() {
   });
 }
 
-// ─── Hook: Activar/desactivar projecto ───────────────────────────────────────
-
 export function useACRCloudToggleProject() {
   const queryClient = useQueryClient();
   return useMutation<MonitoringProject, Error, { projectId: string; active: boolean }>({
-    mutationFn: ({ projectId, active }) =>
-      mockMusicMonitoringProvider.toggleProject(projectId, active),
+    mutationFn: (_input) => notImplemented("Toggle de projeto ACRCloud real nao implementado na API"),
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["acrcloud", "projects"] });
       toast.success(`Projeto "${data.name}" ${data.active ? "ativado" : "pausado"}.`);
@@ -220,45 +181,27 @@ export function useACRCloudToggleProject() {
   });
 }
 
-// ─── Hook: Reconhecimento de copyright (via API interna) ─────────────────────
-
 export function useACRCloudCheckCopyright() {
   return useMutation<{ protected: boolean; rights_holders: { name: string; share: number }[] }, Error, { isrc?: string; title?: string; artist?: string }>({
-    mutationFn: async (input) => {
-      try {
-        return await callAcrcloudApi("copyright", input);
-      } catch {
-        /* mock fallback */
-        return { protected: true, rights_holders: [{ name: "Demo Publisher", share: 100 }] };
-      }
-    },
+    mutationFn: (input) => callAcrcloudApi("copyright", input),
     onSuccess: (data) => {
       if (data.protected) {
-        toast.info(`Obra protegida. Detentores: ${data.rights_holders.map(r => r.name).join(", ")}.`);
+        toast.info(`Obra protegida. Detentores: ${data.rights_holders.map((r) => r.name).join(", ")}.`);
       } else {
-        toast.success("Obra sem restrições de copyright identificadas.");
+        toast.success("Obra sem restricoes de copyright identificadas.");
       }
     },
     onError: (err) => {
-      toast.error(`Erro na verificação: ${err.message}`);
+      toast.error(`Erro na verificacao: ${err.message}`);
     },
   });
 }
 
-// ─── Hook: Monitorar uso de faixa ─────────────────────────────────────────────
-
 export function useACRCloudMonitorTrack() {
   return useMutation<{ job_id: string; status: string }, Error, { isrc?: string; title: string; artist: string }>({
-    mutationFn: async (input) => {
-      try {
-        return await callAcrcloudApi("monitor", input);
-      } catch {
-        /* mock fallback */
-        return { job_id: `job_${Date.now()}`, status: "monitoring" };
-      }
-    },
+    mutationFn: (input) => callAcrcloudApi("monitor", input),
     onSuccess: (data) => {
-      toast.success(`Monitoramento activo (job: ${data.job_id}).`);
+      toast.success(`Monitoramento ativo (job: ${data.job_id}).`);
     },
     onError: (err) => {
       toast.error(`Erro ao iniciar monitoramento: ${err.message}`);

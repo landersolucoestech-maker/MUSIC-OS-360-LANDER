@@ -4,16 +4,16 @@
 // AUTH_DISABLED bypasses JwtAuthGuard / TenantGuard / RolesGuard / RateLimitGuard.
 // It is honored ONLY when BOTH conditions hold:
 //   1. explicit opt-in via env: AUTH_DISABLED=true
-//   2. NODE_ENV is NOT 'production'
-// Production is ALWAYS fail-closed (guards enforced), regardless of env.
+//   2. NODE_ENV is exactly 'development'
+// Staging/production are ALWAYS fail-closed (guards enforced), regardless of env.
 // A hard bootstrap guard in main.ts additionally aborts startup if someone sets
 // AUTH_DISABLED=true in production.
 // ─────────────────────────────────────────────────────────────────────────────
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
-const IS_PRODUCTION = NODE_ENV === 'production';
+const IS_DEVELOPMENT = NODE_ENV === 'development';
 const AUTH_DISABLE_REQUESTED = process.env.AUTH_DISABLED === 'true';
 
-export const AUTH_DISABLED = AUTH_DISABLE_REQUESTED && !IS_PRODUCTION;
+export const AUTH_DISABLED = AUTH_DISABLE_REQUESTED && IS_DEVELOPMENT;
 
 if (AUTH_DISABLED) {
   // eslint-disable-next-line no-console

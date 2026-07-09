@@ -478,6 +478,24 @@ function patchMockData(data: Record<string, unknown[]>): void {
     }
   }
 
+  // artistas — remove aliases antigos de mídia de qualquer registro persistido
+  // no localStorage. O domínio vivo de artista fica restrito a foto_url,
+  // spotify_url e youtube_url.
+  const LEGACY_ARTIST_MEDIA_FIELDS = [
+    "banner",
+    "presentation_video", "presentationVideo",
+    "video_url", "videoUrl",
+    "youtube_video", "youtubeVideo",
+    "video", "url_video",
+  ];
+  if (artistas) {
+    for (const artist of artistas) {
+      for (const field of LEGACY_ARTIST_MEDIA_FIELDS) {
+        delete artist[field];
+      }
+    }
+  }
+
   // contract_service_types — seed inicial (Task #41): tabela nova, injeta se ausente
   if (!data["contract_service_types"] || (data["contract_service_types"] as unknown[]).length === 0) {
     data["contract_service_types"] = [

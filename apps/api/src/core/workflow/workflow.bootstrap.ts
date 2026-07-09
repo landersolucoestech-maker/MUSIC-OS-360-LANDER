@@ -5,7 +5,7 @@
  * Chamado automaticamente via OnModuleInit.
  */
 
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Optional, Injectable, OnModuleInit } from '@nestjs/common';
 import { WorkflowService } from './workflow.service';
 import { RELEASES_WORKFLOW }  from './definitions/releases.workflow';
 import { CONTRACTS_WORKFLOW } from './definitions/contracts.workflow';
@@ -16,9 +16,11 @@ import { TICKETS_WORKFLOW }   from './definitions/tickets.workflow';
 
 @Injectable()
 export class WorkflowBootstrap implements OnModuleInit {
-  constructor(private readonly workflowService: WorkflowService) {}
+  constructor(@Optional() private readonly workflowService?: WorkflowService) {}
 
   onModuleInit(): void {
+    if (!this.workflowService) return;
+
     this.workflowService.register(RELEASES_WORKFLOW);
     this.workflowService.register(CONTRACTS_WORKFLOW);
     this.workflowService.register(LEADS_WORKFLOW);

@@ -30,8 +30,12 @@ export class MigrationValidatorService implements OnApplicationBootstrap {
     // acusaria 80 pendentes — em produção isso mataria o boot. A validação precisa
     // da conexão owner (sempre DATABASE_URL), que enxerga a tabela de migrations.
     @Optional() @Inject(ADMIN_DATA_SOURCE) private readonly adminDs: DataSource | null,
-    private readonly config: ConfigService,
+    @Optional() private readonly config?: ConfigService,
   ) {}
+
+  private getConfig(key: string): string | undefined {
+    return this.config?.get<string>(key) ?? process.env[key];
+  }
 
   private get ds(): DataSource | null {
     return this.adminDs ?? this.appDs;
@@ -39,7 +43,7 @@ export class MigrationValidatorService implements OnApplicationBootstrap {
 
   async onApplicationBootstrap(): Promise<void> {
     if (!this.ds) {
-      if (this.config.get<string>('NODE_ENV') === 'production') {
+      if (this.getConfig('NODE_ENV') === 'production') {
         this.logger.error('DB unavailable in production - migration validation cannot run');
         process.exit(1);
       }
@@ -47,8 +51,8 @@ export class MigrationValidatorService implements OnApplicationBootstrap {
       return;
     }
 
-    const isProduction = this.config.get<string>('NODE_ENV') === 'production';
-    const skipCheck    = this.config.get<string>('SKIP_MIGRATION_CHECK') === 'true';
+    const isProduction = this.getConfig('NODE_ENV') === 'production';
+    const skipCheck    = this.getConfig('SKIP_MIGRATION_CHECK') === 'true';
 
     if (skipCheck) {
       this.logger.warn('SKIP_MIGRATION_CHECK=true — validação desactivada');

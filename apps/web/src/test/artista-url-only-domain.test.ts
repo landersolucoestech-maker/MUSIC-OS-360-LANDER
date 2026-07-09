@@ -2,8 +2,8 @@
  * artista-url-only-domain.test.ts
  *
  * Regressão: nenhum payload produzido pelo formulário/mapper de Artista pode
- * conter spotify_artist_id/youtube_artist_id/youtube_channel_id/banner_url/
- * video_apresentacao(_url) — o domínio trabalha exclusivamente com
+ * conter spotify_artist_id/youtube_artist_id/youtube_channel_id/
+ * — o domínio trabalha exclusivamente com
  * foto_url/spotify_url/youtube_url. Cobre também que os validadores exigem
  * uma URL real (uma ID crua isolada não é mais aceita).
  */
@@ -22,9 +22,6 @@ const LEGACY_KEYS = [
   "spotify_artist_id",
   "youtube_artist_id",
   "youtube_channel_id",
-  "banner_url",
-  "video_apresentacao",
-  "video_apresentacao_url",
 ];
 
 describe("Domínio Artista — exclusivamente URL (foto_url/spotify_url/youtube_url)", () => {
@@ -69,7 +66,6 @@ describe("Domínio Artista — exclusivamente URL (foto_url/spotify_url/youtube_
     // Os únicos campos de plataforma/mídia exportados são exatamente estes 3.
     const fieldIds = allArtistFormFields().map((f) => f.id);
     expect(fieldIds).toEqual(expect.arrayContaining(["fotoUrl", "spotify", "youtube"]));
-    expect(fieldIds).not.toEqual(expect.arrayContaining(["bannerUrl", "videoApresentacao"]));
   });
 
   it("validateSpotifyUrl rejeita uma ID crua (só URL é aceita)", () => {

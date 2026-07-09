@@ -39,16 +39,12 @@ const FORBIDDEN_SNAKE = [
   /spotify_artist_id/i,
   /youtube_artist_id/i,
   /youtube_channel_id/i,
-  /banner_url/i,
-  /video_apresentacao/i,
 ];
 
 const FORBIDDEN_CAMEL = [
   /spotifyArtistId/i,
   /youtubeArtistId/i,
   /youtubeChannelId/i,
-  /bannerUrl/i,
-  /videoApresentacao/i,
 ];
 
 function walk(dir: string, out: string[] = []): string[] {

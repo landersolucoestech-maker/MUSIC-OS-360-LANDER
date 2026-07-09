@@ -137,6 +137,7 @@ export const FIELD_LABELS_PT_BR = {
   projectId: 'Projeto',
   releaseId: 'Lançamento',
   contractId: 'Contrato',
+  contratoId: 'Contrato',
   amount: 'Valor',
   amountDue: 'Valor devido',
   amountPaid: 'Valor pago',

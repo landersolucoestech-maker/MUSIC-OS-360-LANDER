@@ -35,7 +35,9 @@ import { ValidationPipe, Logger, RequestMethod } from '@nestjs/common';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-import * as compression from 'compression';
+// `import =` para interop CJS: compression não expõe `.default`, então o default
+// import quebra em runtime sob ts-node (esModuleInterop off). Funciona sob tsx e ts-node.
+import compression = require('compression');
 import * as express from 'express';
 import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
@@ -275,21 +277,25 @@ async function bootstrap() {
 
   // ── Swagger (dev / staging apenas) ───────────────────────────────────────────
   if (process.env['NODE_ENV'] !== 'production') {
-    const config = new DocumentBuilder()
-      .setTitle('MUSIC OS 360° API')
-      .setDescription('Enterprise Music Management SaaS — API REST')
-      .setVersion('1.0')
-      .addBearerAuth(
-        { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-        'JWT',
-      )
-      .addServer(`http://localhost:${process.env['PORT'] ?? 3001}`, 'Development')
-      .build();
+    try {
+      const config = new DocumentBuilder()
+        .setTitle('MUSIC OS 360° API')
+        .setDescription('Enterprise Music Management SaaS — API REST')
+        .setVersion('1.0')
+        .addBearerAuth(
+          { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+          'JWT',
+        )
+        .addServer(`http://localhost:${process.env['PORT'] ?? 3001}`, 'Development')
+        .build();
 
-    const document = SwaggerModule.createDocument(app, config);
-    SwaggerModule.setup('docs', app, document, {
-      swaggerOptions: { persistAuthorization: true },
-    });
+      const document = SwaggerModule.createDocument(app, config);
+      SwaggerModule.setup('docs', app, document, {
+        swaggerOptions: { persistAuthorization: true },
+      });
+    } catch (err) {
+      logger.warn(`Swagger desativado neste boot: ${String(err)}`);
+    }
   }
 
   // ── Graceful Shutdown ────────────────────────────────────────────────────────

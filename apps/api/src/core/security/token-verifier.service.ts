@@ -6,7 +6,7 @@
  * ENCRYPTION_KEY + issuer "music-os-360-dev" — matches dev-auth.controller flow.
  */
 
-import { Global, Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Optional, Global, Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import type * as jwksRsaType from 'jwks-rsa';
@@ -46,11 +46,15 @@ export class TokenVerifierService implements OnModuleInit {
   private issuer!: string;
   private readonly audience = 'authenticated';
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(@Optional() private readonly config?: ConfigService) {}
+
+  private getConfig(key: string): string | undefined {
+    return this.config?.get<string>(key) ?? process.env[key];
+  }
 
   onModuleInit(): void {
     const supabaseUrl = normalizeSupabaseUrl(
-      this.config.get<string>('SUPABASE_URL') ?? process.env['VITE_SUPABASE_URL'] ?? '',
+      this.getConfig('SUPABASE_URL') ?? process.env['VITE_SUPABASE_URL'] ?? '',
     );
     if (!supabaseUrl) {
       throw new Error('SUPABASE_URL is required for TokenVerifierService');
@@ -67,9 +71,9 @@ export class TokenVerifierService implements OnModuleInit {
 
   /** Try the local HS256 dev token first; null if not signed by ENCRYPTION_KEY. */
   tryVerifyDevToken(token: string): Record<string, unknown> | null {
-    const isProd = this.config.get<string>('NODE_ENV') === 'production';
+    const isProd = this.getConfig('NODE_ENV') === 'production';
     if (isProd) return null;
-    const secret = this.config.get<string>('ENCRYPTION_KEY');
+    const secret = this.getConfig('ENCRYPTION_KEY');
     if (!secret) return null;
     try {
       const decoded = jwt.verify(token, secret, {
