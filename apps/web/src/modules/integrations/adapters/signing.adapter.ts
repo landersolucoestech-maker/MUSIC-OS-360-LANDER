@@ -1,36 +1,43 @@
 /**
  * integrations/adapters/signing.adapter.ts
  *
- * Adapter de assinatura digital — seleciona o provider correto
- * com base no ID do provedor especificado pelo chamador.
+ * Adapter de assinatura digital.
  *
- * Providers suportados (mock mode):
- *   - "autentique"  → MockSigningProvider (padrão)
- *   - "clicksign"   → MockClicksignProvider (requer credenciais em localStorage)
- *   - "docusign"    → MockDocuSignProvider  (requer credenciais em localStorage)
- *
- * REGRA: o frontend NUNCA chama APIs externas de assinatura directamente.
- * Em produção, todas as operações passam pelo backend.
+ * REGRA: o frontend NUNCA chama APIs externas de assinatura directamente e
+ * NUNCA simula sucesso. Enquanto o fluxo não estiver fiado ao backend real
+ * (/integrations/autentique), qualquer chamada falha explicitamente — mesmo
+ * padrão de unavailable.provider (storage/streaming).
  *
  * Uso:
  *   import { resolveSigningAdapter } from "@/modules/integrations/adapters/signing.adapter";
- *   const adapter = resolveSigningAdapter("clicksign");
- *   const doc = await adapter.createDocument({ title, document, signers });
+ *   const adapter = resolveSigningAdapter("autentique");
  */
 
 import type { ISigningProvider } from "@/modules/integrations/dto";
-import { mockSigningProvider }    from "@/modules/integrations/providers/mock/mock-signing.provider";
-import { mockClicksignProvider }  from "@/modules/integrations/providers/mock/mock-clicksign.provider";
-import { mockDocuSignProvider }   from "@/modules/integrations/providers/mock/mock-docusign.provider";
 
 export type SigningProviderId = "autentique" | "clicksign" | "docusign";
 
-export function resolveSigningAdapter(provider: SigningProviderId = "autentique"): ISigningProvider {
-  switch (provider) {
-    case "clicksign": return mockClicksignProvider;
-    case "docusign":  return mockDocuSignProvider;
-    default:          return mockSigningProvider;
-  }
+function unavailable(provider: string): never {
+  throw new Error(
+    `Assinatura digital (${provider}) não possui provider real configurado no frontend. ` +
+    "Use o backend real (/integrations/autentique) antes de chamar este adapter.",
+  );
 }
 
-export const signingAdapter: ISigningProvider = mockSigningProvider;
+function createUnavailableSigningProvider(provider: SigningProviderId): ISigningProvider {
+  return {
+    createDocument: () => Promise.reject(unavailable(provider)),
+    getDocument:    () => Promise.reject(unavailable(provider)),
+    listDocuments:  () => Promise.reject(unavailable(provider)),
+    cancelDocument: () => Promise.reject(unavailable(provider)),
+    resendInvite:   () => Promise.reject(unavailable(provider)),
+    handleWebhook:  () => Promise.reject(unavailable(provider)),
+    verifyConnection: () => Promise.resolve(false),
+  };
+}
+
+export function resolveSigningAdapter(provider: SigningProviderId = "autentique"): ISigningProvider {
+  return createUnavailableSigningProvider(provider);
+}
+
+export const signingAdapter: ISigningProvider = createUnavailableSigningProvider("autentique");
