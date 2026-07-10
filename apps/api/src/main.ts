@@ -49,6 +49,7 @@ import {
   SUPABASE_REF_DENYLIST,
   extractSupabaseRef,
 } from './core/config/env.schema';
+import { isProdLike } from './core/config/runtime-environment';
 
 // Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
 // (ex: redis.railway.internal não está disponível fora da Railway private network)
@@ -59,7 +60,7 @@ let __netLastLogAt = 0;
 
 function assertApiRuntimeEnv(logger: Logger): void {
   const nodeEnv = process.env.NODE_ENV ?? 'development';
-  const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
+  const prodLike = isProdLike(nodeEnv);
   const errors: string[] = [];
 
   const refSources: Array<[string, string | null]> = [
@@ -73,7 +74,7 @@ function assertApiRuntimeEnv(logger: Logger): void {
     if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
       errors.push(`${key} aponta para o ref Supabase banido "${ref}"`);
     }
-    if (isProdLike && ref && !SUPABASE_ALLOWED_REFS.includes(ref)) {
+    if (prodLike && ref && !SUPABASE_ALLOWED_REFS.includes(ref)) {
       errors.push(`${key} usa ref "${ref}" fora da allowlist em NODE_ENV=${nodeEnv}`);
     }
     if (nodeEnv === 'production' && ref && ref !== SUPABASE_PROD_REF) {
@@ -81,7 +82,7 @@ function assertApiRuntimeEnv(logger: Logger): void {
     }
   }
 
-  if (isProdLike) {
+  if (prodLike) {
     for (const key of ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'] as const) {
       if (!process.env[key]) errors.push(`${key} e obrigatorio em NODE_ENV=${nodeEnv}`);
     }
@@ -136,7 +137,7 @@ async function bootstrap() {
   // Abort startup if someone tries to run production with auth/RBAC/tenant
   // bypassed or with mock mode enabled. These are not silent — the process exits.
   const nodeEnv = process.env.NODE_ENV ?? 'development';
-  if (nodeEnv === 'production' || nodeEnv === 'staging') {
+  if (isProdLike(nodeEnv)) {
     if (process.env.AUTH_DISABLED === 'true') {
       logger.error(`FATAL: AUTH_DISABLED=true is forbidden in ${nodeEnv}. Aborting.`);
       process.exit(1);
@@ -166,11 +167,11 @@ async function bootstrap() {
           imgSrc: ["'self'", 'data:', 'https:'],
           scriptSrc: ["'self'"],
           frameAncestors: ["'none'"],
-          upgradeInsecureRequests: process.env['NODE_ENV'] === 'production' ? [] : null,
+          upgradeInsecureRequests: isProdLike(process.env['NODE_ENV']) ? [] : null,
         },
       },
       // HSTS: 1 year, include subdomains — only in production (HTTPS required)
-      hsts: process.env['NODE_ENV'] === 'production'
+      hsts: isProdLike(process.env['NODE_ENV'])
         ? { maxAge: 31_536_000, includeSubDomains: true, preload: true }
         : false,
       crossOriginEmbedderPolicy: false,
@@ -208,11 +209,12 @@ async function bootstrap() {
   app.use(express.urlencoded({ limit: '1mb', extended: true }));
 
   // ── CORS ─────────────────────────────────────────────────────────────────────
+  const prodLikeCors = isProdLike(process.env['NODE_ENV']);
   const allowedOrigins = (
-    process.env['CORS_ORIGINS'] ?? 'http://localhost:5000'
-  ).split(',');
+    process.env['CORS_ORIGINS'] ?? (prodLikeCors ? '' : 'http://localhost:5000')
+  ).split(',').map((origin) => origin.trim()).filter(Boolean);
 
-  const isDevEnv = process.env['NODE_ENV'] !== 'production';
+  const isDevEnv = !prodLikeCors;
 
   app.enableCors({
     origin: (origin, callback) => {
@@ -275,8 +277,8 @@ async function bootstrap() {
     new TransformInterceptor(),
   );
 
-  // ── Swagger (dev / staging apenas) ───────────────────────────────────────────
-  if (process.env['NODE_ENV'] !== 'production') {
+  // ── Swagger (dev/test apenas) ────────────────────────────────────────────────
+  if (!isProdLike(process.env['NODE_ENV'])) {
     try {
       const config = new DocumentBuilder()
         .setTitle('MUSIC OS 360° API')
@@ -312,7 +314,7 @@ async function bootstrap() {
 
   logger.log(`🎵 MUSIC OS 360° API rodando em http://localhost:${port}/api/v1`);
 
-  if (process.env['NODE_ENV'] !== 'production') {
+  if (!isProdLike(process.env['NODE_ENV'])) {
     logger.log(`📚 Swagger em http://localhost:${port}/docs`);
   }
 }

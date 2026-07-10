@@ -9,7 +9,7 @@
 
 import { Injectable, HttpException, HttpStatus, Logger } from '@nestjs/common';
 
-type RateLimitCategory = 'auth' | 'api' | 'ai' | 'upload' | 'webhook';
+export type RateLimitCategory = 'auth' | 'api' | 'ai' | 'upload' | 'webhook';
 
 interface WindowConfig {
   maxRequests: number;

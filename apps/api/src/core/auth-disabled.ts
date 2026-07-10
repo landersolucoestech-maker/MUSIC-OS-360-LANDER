@@ -9,8 +9,10 @@
 // A hard bootstrap guard in main.ts additionally aborts startup if someone sets
 // AUTH_DISABLED=true in production.
 // ─────────────────────────────────────────────────────────────────────────────
+import { isProdLike } from './config/runtime-environment';
+
 const NODE_ENV = process.env.NODE_ENV ?? 'development';
-const IS_DEVELOPMENT = NODE_ENV === 'development';
+const IS_DEVELOPMENT = NODE_ENV === 'development' && !isProdLike(NODE_ENV);
 const AUTH_DISABLE_REQUESTED = process.env.AUTH_DISABLED === 'true';
 
 export const AUTH_DISABLED = AUTH_DISABLE_REQUESTED && IS_DEVELOPMENT;

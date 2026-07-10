@@ -15,6 +15,7 @@ import { BullBoardModule } from '@bull-board/nestjs';
 import { ExpressAdapter } from '@bull-board/express';
 import { BullAdapter } from '@bull-board/api/bullAdapter';
 import { BullMQAdapter } from '@bull-board/api/bullMQAdapter';
+import { isProdLike } from '../config/runtime-environment';
 import { QUEUE_NAMES } from '../../queues/queue.constants';
 import { bullMqAvailable } from '../../queues/queue.module';
 import type { Request, Response, NextFunction } from 'express';
@@ -39,12 +40,13 @@ export class AdminQueuesModule implements NestModule {
   private static readonly logger = new Logger('AdminQueuesModule');
 
   static async register(): Promise<DynamicModule> {
+    const prodLike = isProdLike(process.env['NODE_ENV']);
     const user = process.env['ADMIN_QUEUES_USER'] ?? 'admin';
-    const pass = process.env['ADMIN_QUEUES_PASS'] ?? (process.env['NODE_ENV'] === 'production' ? '' : 'admin');
+    const pass = process.env['ADMIN_QUEUES_PASS'] ?? (prodLike ? '' : 'admin');
     const enabled = !!(user && pass);
 
-    if (process.env['NODE_ENV'] === 'production' && (!process.env['ADMIN_QUEUES_USER'] || !process.env['ADMIN_QUEUES_PASS'])) {
-      AdminQueuesModule.logger.warn('AdminQueuesModule: ADMIN_QUEUES_USER/PASS missing in production — dashboard disabled');
+    if (prodLike && (!process.env['ADMIN_QUEUES_USER'] || !process.env['ADMIN_QUEUES_PASS'])) {
+      AdminQueuesModule.logger.warn('AdminQueuesModule: ADMIN_QUEUES_USER/PASS missing in prod-like environment - dashboard disabled');
       return { module: AdminQueuesModule };
     }
 
@@ -81,8 +83,9 @@ export class AdminQueuesModule implements NestModule {
   }
 
   configure(consumer: MiddlewareConsumer): void {
+    const prodLike = isProdLike(process.env['NODE_ENV']);
     const user = process.env['ADMIN_QUEUES_USER'] ?? 'admin';
-    const pass = process.env['ADMIN_QUEUES_PASS'] ?? (process.env['NODE_ENV'] === 'production' ? '' : 'admin');
+    const pass = process.env['ADMIN_QUEUES_PASS'] ?? (prodLike ? '' : 'admin');
     if (!user || !pass) return;
     consumer.apply(basicAuthMiddleware(user, pass)).forRoutes(BULL_BOARD_PATH, `${BULL_BOARD_PATH}/(.*)`);
   }

@@ -91,43 +91,23 @@ async function handleACRCloud(
       const _key    = process.env.ACRCLOUD_ACCESS_KEY;
       const _secret = process.env.ACRCLOUD_ACCESS_SECRET;
 
-      // Em modo mock/standalone: retornar resposta simulada tratada
-      const ts = new Date().toISOString();
-      const mockResponses: Record<string, unknown> = {
-        recognize: {
-          status:         "success",
-          track:          { title: "Demo Track", artist: "Demo Artist", album: "Demo Album", isrc: "BRUM71400520", duration: 237 },
-          confidence:     0.97,
-          fingerprint_id: `fp_${Date.now()}`,
-          processed_at:   ts,
-        },
-        copyright: {
-          status:         "success",
-          protected:      true,
-          rights_holders: [{ name: "Demo Publisher", share: 100, territory: "WW" }],
-          license_type:   "PRO",
-          expiry:         null,
-        },
-        catalog: {
-          status:  "success",
-          matches: 3,
-          tracks:  [{ id: "t001", title: "Demo Track", similarity: 0.97 }],
-        },
-        monitor: {
-          status:               "monitoring",
-          job_id:               `job_${Date.now()}`,
-          estimated_completion: new Date(Date.now() + 3_600_000).toISOString(),
-        },
-      };
+      if (!_host || !_key || !_secret) {
+        res.statusCode = 503;
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify({
+          status: "error",
+          error: "ACRCloud credentials are not configured",
+        }));
+        return;
+      }
 
-      const response = mockResponses[endpoint] ?? {
-        status: "error",
-        error:  `Endpoint desconhecido: ${endpoint}`,
-      };
-
+      res.statusCode = 501;
       res.setHeader("Content-Type", "application/json");
       res.setHeader("X-Powered-By", "Music-OS-360-ACRCloud-Backend");
-      res.end(JSON.stringify(response));
+      res.end(JSON.stringify({
+        status: "error",
+        error: `ACRCloud endpoint "${endpoint}" requires a real provider implementation`,
+      }));
     } catch (err: unknown) {
       res.statusCode = 500;
       res.setHeader("Content-Type", "application/json");

@@ -21,14 +21,13 @@ import React, {
 import { useQueryClient } from "@tanstack/react-query";
 import type { Session as SupabaseSession, User as SupabaseUser } from "@supabase/supabase-js";
 import type { AuthError, Session, User } from "@/shared/types/auth";
-import { MOCK_USER, MOCK_SESSION } from "@/shared/data/mockData";
 import {
   api,
   clearAuthBackoff,
   setAccessToken,
   setTenantId,
 } from "@/shared/lib/api-client";
-import { AUTH_DISABLED, MOCK_MODE, IS_DEV } from "@/shared/lib/env";
+import { IS_DEV } from "@/shared/lib/env";
 import { getSupabaseClient } from "@/lib/supabase";
 
 function devLog(label: string, data?: unknown): void {
@@ -161,25 +160,6 @@ function ensureWorkspaceProvisioned(
       .finally(() => { activeProvisioning = null; });
   }
   return activeProvisioning;
-}
-
-function MockAuthProvider({ children }: { children: React.ReactNode }) {
-  useEffect(() => {
-    setAccessToken(null);
-    setTenantId((MOCK_USER as User).org_id ?? null);
-  }, []);
-
-  const value: AuthContextType = {
-    user: MOCK_USER as User,
-    session: MOCK_SESSION as Session,
-    loading: false,
-    signIn: async () => ({ error: null }),
-    signUp: async () => ({ error: null }),
-    signOut: async () => { /* standalone — mantém mock */ },
-    resetPassword: async () => ({ error: null }),
-    updatePassword: async () => ({ error: null }),
-  };
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
@@ -326,7 +306,6 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  if (AUTH_DISABLED || MOCK_MODE) return <MockAuthProvider>{children}</MockAuthProvider>;
   return <SupabaseAuthProvider>{children}</SupabaseAuthProvider>;
 }
 
@@ -335,3 +314,4 @@ export function useAuth() {
   if (!ctx) throw new Error("useAuth deve ser usado dentro de AuthProvider");
   return ctx;
 }
+

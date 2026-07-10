@@ -9,6 +9,7 @@
 
 import { Optional, Injectable, Logger, OnApplicationBootstrap } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { isProdLike } from '../config/runtime-environment';
 
 const ZERO_KEY = '0000000000000000000000000000000000000000000000000000000000000000';
 
@@ -30,7 +31,7 @@ export class SecurityStartupService implements OnApplicationBootstrap {
   }
 
   onApplicationBootstrap(): void {
-    const isProduction = this.getConfig('NODE_ENV') === 'production';
+    const prodLike = isProdLike(this.getConfig('NODE_ENV'));
     const checks: SecurityCheck[] = [
       {
         name:    'ENCRYPTION_KEY presente',
@@ -62,14 +63,14 @@ export class SecurityStartupService implements OnApplicationBootstrap {
       {
         name:    'SUPABASE_SERVICE_ROLE_KEY presente em produção',
         fatal:   true,
-        check:   () => !isProduction || Boolean(this.getConfig('SUPABASE_SERVICE_ROLE_KEY')),
+        check:   () => !prodLike || Boolean(this.getConfig('SUPABASE_SERVICE_ROLE_KEY')),
         message: 'SUPABASE_SERVICE_ROLE_KEY não definida — operações admin Supabase não funcionarão',
       },
       {
         name:    'STRIPE_WEBHOOK_SECRET presente quando Stripe activo',
         fatal:   true,
         check:   () => {
-          if (!isProduction) return true;
+          if (!prodLike) return true;
           const stripeActive = Boolean(this.getConfig('STRIPE_SECRET_KEY'));
           return !stripeActive || Boolean(this.getConfig('STRIPE_WEBHOOK_SECRET'));
         },
@@ -78,13 +79,13 @@ export class SecurityStartupService implements OnApplicationBootstrap {
       {
         name:    'SENTRY_DSN presente em produção',
         fatal:   true,
-        check:   () => !isProduction || Boolean(this.getConfig('SENTRY_DSN')),
+        check:   () => !prodLike || Boolean(this.getConfig('SENTRY_DSN')),
         message: 'SENTRY_DSN não definido em produção — erros não serão reportados ao Sentry',
       },
       {
         name:    'RESEND_API_KEY presente em produção',
         fatal:   false,
-        check:   () => !isProduction || Boolean(this.getConfig('RESEND_API_KEY')),
+        check:   () => !prodLike || Boolean(this.getConfig('RESEND_API_KEY')),
         message: 'RESEND_API_KEY não definida em produção — emails transacionais não serão enviados',
       },
       {
@@ -96,12 +97,28 @@ export class SecurityStartupService implements OnApplicationBootstrap {
         ),
         message: 'SUPABASE_JWT_SECRET não definido — verificação de assinatura HMAC pode falhar',
       },
+      {
+        name:    'AUTH/MOCK bypass desativado em prod-like',
+        fatal:   true,
+        check:   () =>
+          !prodLike ||
+          !['AUTH_DISABLED', 'MOCK_MODE', 'USE_MOCK', 'VITE_MOCK_MODE'].some(
+            (key) => this.getConfig(key) === 'true',
+          ),
+        message: 'AUTH_DISABLED/MOCK_MODE/USE_MOCK/VITE_MOCK_MODE nao podem estar ativos em staging/production',
+      },
+      {
+        name:    'METRICS_TOKEN presente em prod-like',
+        fatal:   true,
+        check:   () => !prodLike || Boolean(this.getConfig('METRICS_TOKEN')),
+        message: 'METRICS_TOKEN nao definido - /metrics deve exigir token em staging/production',
+      },
     ];
 
     let hasFatal = false;
     for (const item of checks) {
       if (!item.check()) {
-        if (item.fatal && isProduction) {
+        if (item.fatal && prodLike) {
           this.logger.error(`[FATAL SECURITY] ${item.name}: ${item.message}`);
           hasFatal = true;
         } else {

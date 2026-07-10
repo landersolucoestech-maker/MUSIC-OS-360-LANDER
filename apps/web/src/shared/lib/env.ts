@@ -13,6 +13,8 @@
  *
  */
 
+import { isProdLike } from "@music-os-360/config/environment";
+
 // Auth bypass is an explicit LOCAL-DEV-ONLY convenience and must NEVER be active
 // in a production build. Set VITE_AUTH_DISABLED=true in the web app and
 // AUTH_DISABLED=true in the API to bypass auth temporarily during development.
@@ -22,11 +24,7 @@ export const AUTH_DISABLED: boolean =
   import.meta.env.VITE_AUTH_DISABLED === "true";
 
 export const MOCK_MODE: boolean =
-  import.meta.env.DEV === true &&
-  (
-    import.meta.env.VITE_USE_MOCK === "true" ||
-    import.meta.env.VITE_MOCK_MODE === "true"
-  );
+  false;
 
 /**
  * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).
@@ -78,6 +76,7 @@ export const WS_ENABLED: boolean =
  * Equivale a import.meta.env.MODE.
  */
 export const ENV_MODE: string = (import.meta.env.MODE as string) ?? "development";
+export const IS_PROD_LIKE: boolean = isProdLike(ENV_MODE);
 
 /**
  * validateFrontendEnv — called once at app startup (main.tsx).

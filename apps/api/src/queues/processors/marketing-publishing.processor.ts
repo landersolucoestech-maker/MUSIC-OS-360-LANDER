@@ -57,14 +57,8 @@ export class MarketingPublishingProcessor extends WorkerHost {
   }
 
   private async publish(row: MarketingContentPostEntity): Promise<{ providerPostId: string }> {
-    const metadata = row.metadata ?? {};
-    const mockPublishing = metadata['mockPublishing'] === true || process.env['MARKETING_PUBLISHING_MODE'] === 'mock';
-    if (!mockPublishing) {
-      throw new Error(
-        `Publicacao real para ${row.channel} nao configurada. Configure provider OAuth/API e defina o adaptador de publicacao.`,
-      );
-    }
-
-    return { providerPostId: `mock-${row.channel}-${row.id}` };
+    throw new Error(
+      `Publicacao real para ${row.channel} nao configurada. Configure provider OAuth/API e defina o adaptador de publicacao.`,
+    );
   }
 }

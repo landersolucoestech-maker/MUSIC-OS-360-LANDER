@@ -8,6 +8,7 @@
 import { Optional, Injectable, CanActivate, ExecutionContext } from '@nestjs/common';
 import type { Request } from 'express';
 import { RateLimitService } from '../security/rate-limit.service';
+import type { RateLimitCategory } from '../security/rate-limit.service';
 
 function firstForwardedIp(value: unknown): string | null {
   if (Array.isArray(value)) return firstForwardedIp(value[0]);
@@ -27,6 +28,19 @@ function clientIp(request: Request): string {
   );
 }
 
+function normalizePath(path: string): string {
+  return path.toLowerCase();
+}
+
+function resolveRateLimitCategory(request: Request): RateLimitCategory {
+  const path = normalizePath(request.path ?? request.originalUrl ?? '');
+  if (path.includes('/auth/') || path.includes('/dev-auth')) return 'auth';
+  if (path.includes('/ai/') || path.endsWith('/ai')) return 'ai';
+  if (path.includes('/uploads') || path.includes('/upload')) return 'upload';
+  if (path.includes('/webhook') || path.includes('/webhooks')) return 'webhook';
+  return 'api';
+}
+
 @Injectable()
 export class RateLimitGuard implements CanActivate {
   constructor(@Optional() private readonly rateLimitService?: RateLimitService) {}
@@ -35,9 +49,10 @@ export class RateLimitGuard implements CanActivate {
     if (!this.rateLimitService) return true;
 
     const request = context.switchToHttp().getRequest<Request>();
+    const category = resolveRateLimitCategory(request);
     const routeKey = `${request.method}:${request.route?.path ?? request.path ?? 'unknown-route'}`;
     const identifier = `${clientIp(request)}:${routeKey}`;
-    await this.rateLimitService.check('api', identifier);
+    await this.rateLimitService.check(category, identifier);
     return true;
   }
 }

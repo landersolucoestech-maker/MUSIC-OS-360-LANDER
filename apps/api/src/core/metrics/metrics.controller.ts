@@ -3,18 +3,20 @@
  *
  * GET /metrics — Prometheus text/plain.
  *
- * Production policy:
- *  - METRICS_TOKEN env var: if set, request must include `Authorization: Bearer <token>`
- *    OR `?token=<token>` query param.
+ * Prod-like policy:
+ *  - METRICS_TOKEN is required in staging/production.
+ *  - Requests must include `Authorization: Bearer <token>`.
  *  - METRICS_TOKEN unset in production → only allow from loopback / private network
- *    (handled at infra layer; here we still serve, with a startup warning logged elsewhere).
- *  - Always exposed in development for local prom scrapers.
+ *  - Query-string tokens are rejected to avoid leaking credentials via logs.
+ *  - Development remains open when METRICS_TOKEN is unset for local scrapers.
  */
 
 import { Controller, Get, Header, Req, ForbiddenException, Inject, Optional } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { DataSource } from 'typeorm';
 import type { Request } from 'express';
+import { timingSafeEqual } from 'crypto';
+import { isProdLike } from '../config/runtime-environment';
 import { Public } from '../decorators/public.decorator';
 import { DATA_SOURCE } from '../../database/database.module';
 import { MetricsService } from './metrics.service';
@@ -32,10 +34,16 @@ export class MetricsController {
   @Header('Content-Type', 'text/plain; version=0.0.4; charset=utf-8')
   async scrape(@Req() req: Request): Promise<string> {
     const expected = this.config.get<string>('METRICS_TOKEN');
+    const prodLike = isProdLike(this.config.get<string>('NODE_ENV') ?? process.env.NODE_ENV);
+    if (req.query?.['token'] != null) {
+      throw new ForbiddenException('Metrics token must be sent via Authorization header');
+    }
+    if (prodLike && !expected) {
+      throw new ForbiddenException('Metrics token is not configured');
+    }
     if (expected) {
       const headerToken = (req.headers['authorization'] ?? '').replace(/^Bearer\s+/i, '');
-      const queryToken = (req.query?.['token'] as string | undefined) ?? '';
-      if (headerToken !== expected && queryToken !== expected) {
+      if (!safeTokenEquals(headerToken, expected)) {
         throw new ForbiddenException('Invalid metrics token');
       }
     }
@@ -97,4 +105,11 @@ export class MetricsController {
 
     return this.metrics.render();
   }
+}
+
+function safeTokenEquals(actual: string, expected: string): boolean {
+  const actualBuffer = Buffer.from(actual);
+  const expectedBuffer = Buffer.from(expected);
+  if (actualBuffer.length !== expectedBuffer.length) return false;
+  return timingSafeEqual(actualBuffer, expectedBuffer);
 }

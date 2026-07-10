@@ -11,6 +11,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         "@": path.resolve(__dirname, "src"),
+        "@music-os-360/config/environment": path.resolve(__dirname, "../../packages/config/src/environment.ts"),
         "@music-os-360/ai-skills": path.resolve(__dirname, "../../packages/ai-skills/src/index.ts"),
       },
     },

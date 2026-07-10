@@ -17,6 +17,37 @@ vi.mock("@/shared/components/MainLayout", () => ({
   MainLayout: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }));
 
+// ── rights-source: fixtures de teste (a fonte real é vazia até a integração
+// consumir /content-detections; ver rights-source.ts). Estas linhas espelham o
+// dataset dev usado quando os testes foram escritos. ─────────────────────────
+vi.mock("@/modules/monitoring/rights/services/rights-source", () => ({
+  RIGHTS_DATA_IS_MOCK: true,
+  RIGHTS_EXECUCOES: [
+    { id: "re-001", obra_titulo: "Noite de Luz", artista: "Vitória Lunar", isrc: "BRMSC2500001", origem: "Rádio Globo FM", tipo_execucao: "radio_fm", data_hora: "2026-05-08T14:32:00", match_ecad: true, valor_estimado: 18.50, status: "confirmado" },
+    { id: "re-002", obra_titulo: "Beira do Rio", artista: "Grupo Raiz Nordestina", isrc: "BRMSC2500002", origem: "TV Globo", tipo_execucao: "tv_aberta", data_hora: "2026-05-08T21:05:00", match_ecad: true, valor_estimado: 124.00, status: "confirmado" },
+    { id: "re-003", obra_titulo: "Frequência 440", artista: "DJ Marcus Flow", isrc: "BRMSC2500003", origem: "Multishow", tipo_execucao: "tv_fechada", data_hora: "2026-05-07T23:15:00", match_ecad: false, valor_estimado: 87.50, status: "divergencia" },
+    { id: "re-004", obra_titulo: "Amor de Interior", artista: "Ana Beatriz Santos", isrc: "BRMSC2500004", origem: "Rádio Nacional AM", tipo_execucao: "radio_am", data_hora: "2026-05-07T10:20:00", match_ecad: true, valor_estimado: 9.20, status: "confirmado" },
+    { id: "re-005", obra_titulo: "Suíte Brasileira nº 1", artista: "Trio Bossa Moderna", isrc: "BRMSC2500005", origem: "Show Ao Vivo — SP", tipo_execucao: "show_ao_vivo", data_hora: "2026-05-06T22:00:00", match_ecad: true, valor_estimado: 560.00, status: "pendente" },
+    { id: "re-006", obra_titulo: "Cidade Mágica", artista: "Vitória Lunar", isrc: "BRMSC2500006", origem: "Web Rádio Samba Brasil", tipo_execucao: "web_radio", data_hora: "2026-05-06T16:45:00", match_ecad: false, valor_estimado: 4.10, status: "nao_reportado" },
+    { id: "re-007", obra_titulo: "Xote da Saudade", artista: "Grupo Raiz Nordestina", isrc: "BRMSC2500007", origem: "Casa Noturna Via Music", tipo_execucao: "casa_noturna", data_hora: "2026-05-05T23:55:00", match_ecad: true, valor_estimado: 32.00, status: "pendente" },
+    { id: "re-008", obra_titulo: "Trap do Norte", artista: "Pedro Breaks", isrc: "BRMSC2500008", origem: "Festival Rec Beat", tipo_execucao: "evento", data_hora: "2026-05-04T20:30:00", match_ecad: false, valor_estimado: 210.00, status: "nao_reportado" },
+    { id: "re-009", obra_titulo: "Noite de Luz", artista: "Vitória Lunar", isrc: "BRMSC2500001", origem: "Rádio Transamérica", tipo_execucao: "radio_fm", data_hora: "2026-05-04T08:00:00", match_ecad: true, valor_estimado: 18.50, status: "confirmado" },
+    { id: "re-010", obra_titulo: "Amor de Interior", artista: "Ana Beatriz Santos", isrc: "BRMSC2500004", origem: "TV Cultura", tipo_execucao: "tv_aberta", data_hora: "2026-05-03T15:30:00", match_ecad: true, valor_estimado: 98.00, status: "confirmado" },
+    { id: "re-011", obra_titulo: "Track Desconhecida", artista: "Artista Desconhecido", isrc: "BRMSC2599998", origem: "Web Rádio Hits Brasil", tipo_execucao: "web_radio", data_hora: "2026-05-02T11:20:00", match_ecad: false, valor_estimado: 3.50, status: "nao_reportado" },
+  ],
+  RIGHTS_BROADCAST_DETECTIONS: [
+    { id: "bd-001", obra_titulo: "Noite de Luz", artista: "Vitória Lunar", isrc: "BRMSC2500001", emissora: "Rádio Globo", canal: "FM 98.1", tipo: "radio", data_hora: "2026-05-08T14:32:00", duracao_segundos: 222, valor_estimado: 18.50, status: "confirmado" },
+    { id: "bd-002", obra_titulo: "Beira do Rio", artista: "Grupo Raiz Nordestina", isrc: "BRMSC2500002", emissora: "TV Globo", canal: "Canal 4", tipo: "tv", data_hora: "2026-05-08T21:05:00", duracao_segundos: 255, valor_estimado: 124.00, status: "confirmado" },
+    { id: "bd-003", obra_titulo: "Frequência 440", artista: "DJ Marcus Flow", isrc: "BRMSC2500003", emissora: "Multishow", canal: "Cabo 34", tipo: "tv", data_hora: "2026-05-07T23:15:00", duracao_segundos: 330, valor_estimado: 87.50, status: "divergencia" },
+    { id: "bd-004", obra_titulo: "Cidade Mágica", artista: "Vitória Lunar", isrc: "BRMSC2500006", emissora: "Web Rádio Samba Brasil", canal: "Online", tipo: "web_radio", data_hora: "2026-05-06T16:45:00", duracao_segundos: 205, valor_estimado: 4.10, status: "nao_reportado" },
+  ],
+  RIGHTS_CUE_SHEETS: [],
+  RIGHTS_SETLISTS: [],
+  RIGHTS_ECAD_PERIODOS: [],
+  RIGHTS_TIMELINE_BY_ISRC: {},
+  RIGHTS_ECAD_HISTORICO_ISRC: {},
+}));
+
 // ── MOCK_DATA: provide obras for ISRCs used in MOCK_EXECUCOES_PUBLICAS ───────
 // BRMSC2599998 is intentionally absent → creates an orphan execution.
 vi.mock("@/shared/data/mockData", () => ({

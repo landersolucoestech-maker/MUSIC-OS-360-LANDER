@@ -10,7 +10,8 @@
     ".": "./src/index.ts",
     "./env": "./src/env.ts",
     "./constants": "./src/constants.ts",
-    "./features": "./src/features.ts"
+    "./features": "./src/features.ts",
+    "./environment": "./src/environment.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

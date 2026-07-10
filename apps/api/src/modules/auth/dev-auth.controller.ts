@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { createClient } from '@supabase/supabase-js';
 import { DataSource, Repository } from 'typeorm';
 import * as jwt from 'jsonwebtoken';
+import { isProdLike } from '../../core/config/runtime-environment';
 import { Public } from '../../core/decorators/public.decorator';
 import { DATA_SOURCE } from '../../database/database.module';
 import { TenantEntity, OrgMemberEntity } from '../../database/entities';
@@ -29,8 +30,9 @@ export class DevAuthController implements OnModuleInit {
   }
 
   private assertDev(): void {
-    if (this.config.get<string>('NODE_ENV') === 'production') {
-      throw new ForbiddenException('Dev auth endpoint is disabled in production');
+    const nodeEnv = this.config.get<string>('NODE_ENV') ?? process.env.NODE_ENV;
+    if (isProdLike(nodeEnv)) {
+      throw new ForbiddenException(`Dev auth endpoint is disabled in ${nodeEnv}`);
     }
   }
 

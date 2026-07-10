@@ -19,6 +19,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["src/*"],
+      "@music-os-360/config/environment": ["../../packages/config/src/environment.ts"],
       "@music-os-360/ai-skills": ["../../packages/ai-skills/src/index.ts"]
     }
   },

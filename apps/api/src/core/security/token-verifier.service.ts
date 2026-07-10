@@ -10,6 +10,7 @@ import { Optional, Global, Injectable, Logger, OnModuleInit } from '@nestjs/comm
 import { ConfigService } from '@nestjs/config';
 import * as jwt from 'jsonwebtoken';
 import type * as jwksRsaType from 'jwks-rsa';
+import { isProdLike } from '../config/runtime-environment';
 
 // Lazy-loaded to avoid Jest parse errors when test suites that only need
 // HTTP guards transitively import this file (jwks-rsa uses syntax ts-jest
@@ -71,8 +72,7 @@ export class TokenVerifierService implements OnModuleInit {
 
   /** Try the local HS256 dev token first; null if not signed by ENCRYPTION_KEY. */
   tryVerifyDevToken(token: string): Record<string, unknown> | null {
-    const isProd = this.getConfig('NODE_ENV') === 'production';
-    if (isProd) return null;
+    if (isProdLike(this.getConfig('NODE_ENV'))) return null;
     const secret = this.getConfig('ENCRYPTION_KEY');
     if (!secret) return null;
     try {
