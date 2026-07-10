@@ -1,4 +1,5 @@
 import { useState, useRef } from "react";
+import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { ListSectionHeader } from "@/shared/components/ListSectionHeader";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
@@ -26,22 +27,6 @@ const PIPELINE_STEPS = [
   { key: "matching",    label: "Match ECAD",      desc: "Associando execuções ao catálogo..." },
   { key: "done",        label: "Conciliação",     desc: "Relatório conciliado com sucesso" },
 ];
-
-const MOCK_PREVIEW: ParsePreview = {
-  total_linhas: 1847,
-  obras_detectadas: 23,
-  periodo: "2026-Q1",
-  valor_total: 15670.90,
-  linhas_ok: 1847,
-  linhas_erro: 0,
-  amostra: [
-    { isrc: "BRMSC2500001", obra: "Noite de Luz",          interprete: "Vitória Lunar",         periodo: "2026-01", execucoes: 312, valor: 5760.00 },
-    { isrc: "BRMSC2500002", obra: "Beira do Rio",          interprete: "Grupo Raiz Nordestina", periodo: "2026-01", execucoes: 198, valor: 3564.00 },
-    { isrc: "BRMSC2500004", obra: "Amor de Interior",      interprete: "Ana Beatriz Santos",    periodo: "2026-02", execucoes: 145, valor: 2610.00 },
-    { isrc: "BRMSC2500003", obra: "Frequência 440",        interprete: "DJ Marcus Flow",        periodo: "2026-03", execucoes:  87, valor: 1566.00 },
-    { isrc: "BRMSC2500005", obra: "Suíte Brasileira nº 1", interprete: "Trio Bossa Moderna",   periodo: "2026-02", execucoes:  64, valor: 1152.00 },
-  ],
-};
 
 const fmtBRL = (n: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(n);
@@ -79,24 +64,11 @@ export function EcadImportModal({ open, onOpenChange }: Props) {
 
   const runPipeline = () => {
     if (!file) return;
-    const steps: ImportStep[] = ["uploading", "parsing", "normalizing", "matching", "done"];
-    let idx = 0;
-    setStep("uploading");
-    setCurrentPipelineIdx(0);
-
-    const advance = () => {
-      idx++;
-      if (idx < steps.length) {
-        setStep(steps[idx]);
-        setCurrentPipelineIdx(idx);
-        if (idx === steps.length - 1) {
-          setPreview(MOCK_PREVIEW);
-        } else {
-          setTimeout(advance, 900 + Math.random() * 400);
-        }
-      }
-    };
-    setTimeout(advance, 1000);
+    // Importação real de relatório ECAD requer endpoint no backend; nunca
+    // simular progresso nem preview com dados fictícios.
+    toast.error(
+      "Importação de relatório ECAD ainda não está disponível (requer endpoint real no backend).",
+    );
   };
 
   const reset = () => {

@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { getCacheConfig } from "@/shared/lib/query-config";
 import { storage } from "@/shared/lib/storage";
-import { MOCK_USER_ID } from "@/shared/data/mockData";
 
 /**
  * Hook genérico de CRUD usado por todos os módulos.
@@ -171,4 +170,3 @@ export function usePaginatedQuery<T extends object>(
   return { fetchPage, pageSize, enabled: true };
 }
 
-export { MOCK_USER_ID };

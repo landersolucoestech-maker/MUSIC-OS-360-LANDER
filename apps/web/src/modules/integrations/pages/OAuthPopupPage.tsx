@@ -11,7 +11,6 @@ import {
   ShieldCheck,
   Upload,
 } from "lucide-react";
-import { MOCK_MODE } from "@/shared/lib/env";
 import {
   IntegrationLogo,
   type IntegrationLogoId,
@@ -898,7 +897,7 @@ export default function OAuthPopupPage() {
   const [oauthError, setOauthError] = useState(false);
 
   useEffect(() => {
-    if (MOCK_MODE || !isOAuthPlatform(platform)) return;
+    if (!isOAuthPlatform(platform)) return;
 
     const backendPath = BACKEND_AUTH_ENDPOINTS[platform];
     if (backendPath) {
@@ -936,17 +935,9 @@ export default function OAuthPopupPage() {
 
   if (isOAuthPlatform(platform)) {
     const definition = OAUTH_DEFINITIONS[platform];
-    if (!MOCK_MODE) {
-      return oauthError
-        ? <OAuthUnavailable definition={definition} />
-        : <Redirecting definition={definition} />;
-    }
-    return (
-      <OAuthExperience
-        platform={platform}
-        onContinue={() => window.location.replace(OFFICIAL_ACCOUNT_PORTALS[platform])}
-      />
-    );
+    return oauthError
+      ? <OAuthUnavailable definition={definition} />
+      : <Redirecting definition={definition} />;
   }
 
   return <UnknownExperience platform={platform} />;

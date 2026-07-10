@@ -7,7 +7,6 @@ export const APP_VERSION = "1.0.0";
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
 export const STORAGE_PREFIX = "musicos360_";
-export const MOCK_DATA_KEY = `${STORAGE_PREFIX}mock_data`;
 export const SIDEBAR_STATE_KEY = `${STORAGE_PREFIX}sidebar_state`;
 
 // ─── Auth cookie names ────────────────────────────────────────────────────────
@@ -41,5 +40,4 @@ export const ALLOWED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export const EVENTS = {
   AUTH_LOGOUT: "musicos360:auth:logout",
   TENANT_CHANGED: "musicos360:tenant:changed",
-  MOCK_DATA_RESET: "musicos360:mock:reset",
 } as const;

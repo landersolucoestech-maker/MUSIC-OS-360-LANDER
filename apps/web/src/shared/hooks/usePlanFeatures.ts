@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { stripeClient } from '@/modules/integrations/clients/stripe.client';
-import { AUTH_DISABLED, MOCK_MODE } from '@/shared/lib/env';
+import { AUTH_DISABLED } from '@/shared/lib/env';
 
 export interface PlanFeatures {
   moduleArtists:     boolean;
@@ -45,7 +45,7 @@ export function usePlanFeatures() {
   const queryClient = useQueryClient();
   // Local-only convenience. Both flags are forced false by env.ts in a
   // production bundle, so billing can never be bypassed in production.
-  const bypassBilling = MOCK_MODE || AUTH_DISABLED;
+  const bypassBilling = AUTH_DISABLED;
 
   const { data: subscription, isLoading } = useQuery({
     queryKey: ['billing', 'subscription'],

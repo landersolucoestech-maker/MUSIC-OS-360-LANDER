@@ -7,7 +7,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { cn } from "@/shared/lib/utils";
 import { IS_PROD } from "@/shared/lib/env";
-import { ADMIN_PLATFORM_PROVIDERS as PLATFORM_PROVIDERS, ADMIN_USERS as MOCK_ADMIN_USERS } from "../data/admin-source";
+import { ADMIN_PLATFORM_PROVIDERS as PLATFORM_PROVIDERS, ADMIN_USERS } from "../data/admin-source";
 import type { IntegrationStatus, PlatformIntegrationProvider } from "../types";
 import type { AdminRole } from "../types";
 import {
@@ -311,14 +311,9 @@ function TabNotificacoes() {
   );
 }
 
-// Mocks de UI: expostos apenas em dev local. Em homologação/produção (IS_PROD)
-// retornam vazio — nunca exibir webhooks/segredos fictícios. Substituir por API
-// real (/admin/webhooks) quando o endpoint existir.
-const MOCK_WEBHOOKS = IS_PROD ? [] : [
-  { id: "wh-1", url: "https://api.exemplo.com/hooks/musicos360", events: ["ticket.created", "ticket.resolved"], status: "active", last_called: "2026-05-08T08:10:00Z" },
-  { id: "wh-2", url: "https://slack.com/services/T00/B00/xxx", events: ["user.invited", "tenant.created"], status: "active", last_called: "2026-05-07T15:30:00Z" },
-  { id: "wh-3", url: "https://n8n.empresa.io/webhook/abc123", events: ["contract.expiring"], status: "error", last_called: "2026-05-06T10:00:00Z" },
-];
+// Webhooks configurados virão da API real (/admin/webhooks) quando o endpoint
+// existir. Nunca exibir dados fictícios — vazio até lá.
+const WEBHOOKS: Array<{ id: string; url: string; events: string[]; status: string; last_called: string }> = [];
 
 function TabWebhooks() {
   return (
@@ -330,7 +325,7 @@ function TabWebhooks() {
       </div>
       <Section title="Endpoints Configurados">
         <div className="space-y-3">
-          {MOCK_WEBHOOKS.map(wh => (
+          {WEBHOOKS.map(wh => (
             <div key={wh.id} className="rounded-xl border border-border bg-muted p-4 space-y-2" data-testid={`webhook-${wh.id}`}>
               <div className="flex items-center justify-between gap-3">
                 <span className="text-[12px] font-sans text-muted-foreground truncate">{wh.url}</span>
@@ -357,8 +352,8 @@ function TabWebhooks() {
           <div className="flex items-center gap-2">
             <input
               type="password"
-              defaultValue={IS_PROD ? "" : "whsec_abcdefghijklmnop1234567890"}
-              placeholder={IS_PROD ? "Configurar via API de webhooks" : undefined}
+              defaultValue=""
+              placeholder="Configurar via API de webhooks"
               className="flex-1 rounded-xl border border-border bg-muted px-3 py-2 text-[13px] text-foreground focus:outline-none focus:border-primary/40"
             />
             <button className="flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-[12px] text-muted-foreground hover:text-muted-foreground transition-colors">
@@ -371,26 +366,21 @@ function TabWebhooks() {
   );
 }
 
-// Mocks de UI: apenas dev local. Em homologação/produção retornam vazio —
-// nunca exibir chaves/segredos fictícios. Substituir por API real quando existir.
-const MOCK_KEYS = IS_PROD ? [] : [
-  { id: "key-1", name: "Produção Principal",      key: "sk_live_••••••••••••••••3f9a", created: "2026-01-10T00:00:00Z", last_used: "2026-05-08T07:45:00Z", scopes: ["read", "write"] },
-  { id: "key-2", name: "Integração Relatórios",   key: "sk_live_••••••••••••••••8b2c", created: "2026-03-01T00:00:00Z", last_used: "2026-05-07T12:00:00Z", scopes: ["read"] },
-  { id: "key-3", name: "Webhook Interno",          key: "sk_live_••••••••••••••••1d7e", created: "2026-04-15T00:00:00Z", last_used: "2026-05-06T09:30:00Z", scopes: ["read", "write", "admin"] },
-];
+// Chaves de API virão da API real quando o endpoint existir. Vazio até lá.
+const API_KEYS: Array<{ id: string; name: string; key: string; created: string; last_used: string; scopes: string[] }> = [];
 
 function TabChavesApi() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <p className="text-[12px] text-muted-foreground">{MOCK_KEYS.length} chaves ativas</p>
+        <p className="text-[12px] text-muted-foreground">{API_KEYS.length} chaves ativas</p>
         <button className="flex items-center gap-1.5 rounded-xl bg-primary px-4 py-2 text-[12px] font-semibold text-primary-foreground hover:bg-primary/90 transition-colors" data-testid="button-create-key">
           <Plus className="h-3.5 w-3.5" /> Nova Chave API
         </button>
       </div>
       <Section title="Chaves Ativas">
         <div className="space-y-3">
-          {MOCK_KEYS.map(k => (
+          {API_KEYS.map(k => (
             <div key={k.id} className="rounded-xl border border-border bg-muted p-4 space-y-3" data-testid={`apikey-${k.id}`}>
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -627,14 +617,14 @@ const ROLE_LABEL: Record<AdminRole, string> = {
 
 function TabUsuarios() {
   const [search, setSearch] = useState("");
-  const filtered = MOCK_ADMIN_USERS.filter((u) => {
+  const filtered = ADMIN_USERS.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q) || u.tenant_name.toLowerCase().includes(q);
   });
-  const active  = MOCK_ADMIN_USERS.filter(u => u.status === "active").length;
-  const blocked = MOCK_ADMIN_USERS.filter(u => u.status === "blocked").length;
-  const mfa     = MOCK_ADMIN_USERS.filter(u => u.mfa_enabled).length;
+  const active  = ADMIN_USERS.filter(u => u.status === "active").length;
+  const blocked = ADMIN_USERS.filter(u => u.status === "blocked").length;
+  const mfa     = ADMIN_USERS.filter(u => u.mfa_enabled).length;
 
   return (
     <div className="space-y-5">
@@ -643,7 +633,7 @@ function TabUsuarios() {
           { label: "Usuários Ativos", value: active,                  color: "text-emerald-400", bg: "bg-emerald-500/10", icon: Users     },
           { label: "Bloqueados",      value: blocked,                 color: "text-red-400",     bg: "bg-red-500/10",     icon: ShieldOff },
           { label: "Com MFA",         value: mfa,                     color: "text-primary",    bg: "bg-primary/10",    icon: Shield    },
-          { label: "Total",           value: MOCK_ADMIN_USERS.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
+          { label: "Total",           value: ADMIN_USERS.length, color: "text-muted-foreground",    bg: "bg-muted",        icon: Users     },
         ].map(({ label, value, color, bg, icon: Icon }) => (
           <div key={label} className="rounded-2xl border border-border bg-card p-4">
             <div className={cn("flex h-8 w-8 items-center justify-center rounded-xl mb-3", bg)}>
@@ -776,6 +766,5 @@ export default function AdminSettings() {
     </AdminLayout>
   );
 }
-
 
 

@@ -23,7 +23,7 @@ import {
   UsersRound,
 } from "lucide-react";
 import { authRateLimiter } from "@/shared/lib/security";
-import { AUTH_DISABLED, MOCK_MODE } from "@/shared/lib/env";
+import { AUTH_DISABLED } from "@/shared/lib/env";
 import { Button } from "@/shared/ui/button";
 
 const loginSchema = z.object({
@@ -42,7 +42,7 @@ type Mode = "login" | "forgot";
 export default function Auth() {
   const { user, loading } = useAuth();
 
-  if (MOCK_MODE || AUTH_DISABLED) return <AuthPage />;
+  if (AUTH_DISABLED) return <AuthPage />;
   if (!loading && user) return <Navigate to="/" replace />;
 
   return <AuthPage />;

@@ -1,6 +1,6 @@
 import { createRoot } from "react-dom/client";
 import "./index.css";
-import { MOCK_MODE, validateFrontendEnv } from "@/shared/lib/env";
+import { validateFrontendEnv } from "@/shared/lib/env";
 
 function renderStartupError(error: unknown): void {
   const root = document.getElementById("root");
@@ -37,8 +37,6 @@ if (!validateFrontendEnv()) {
 
 // ── Sentry (error monitoring) ─────────────────────────────────────────────
 async function initObservability(): Promise<void> {
-  if (MOCK_MODE) return;
-
   if (import.meta.env.VITE_SENTRY_DSN) {
     try {
       const Sentry = await import("@sentry/react");

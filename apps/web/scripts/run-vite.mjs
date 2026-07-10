@@ -12,8 +12,17 @@ process.chdir(webRoot);
 const configModule = await import(pathToFileURL(path.join(webRoot, "vite.config.mjs")).href);
 const config = configModule.default ?? {};
 
-if (!process.stdin.isTTY) {
-  process.stdin.resume();
+// CAUSA RAIZ (localhost morria em background): com stdin fechado/não-TTY,
+// `process.stdin.resume()` emite `end` imediatamente e solta o handle; o
+// keepAlive antigo era `unref()` (não segura o event loop). Durante lacunas
+// assíncronas do startup do Vite o loop drenava e o Node saía com código 0,
+// silenciosamente. A correção é um timer REF'D (segura o loop até SIGINT/
+// SIGTERM), armado só para servidores (dev/preview) — build sai normalmente.
+function holdEventLoopForServer() {
+  setInterval(() => {}, 2 ** 30);
+  for (const sig of ["SIGINT", "SIGTERM"]) {
+    process.on(sig, () => process.exit(0));
+  }
 }
 
 // Guard de ambiente: falha antes de subir/buildar se o Supabase ref for inválido.
@@ -25,6 +34,7 @@ const inlineConfig = {
 };
 
 if (command === "dev") {
+  holdEventLoopForServer();
   const server = await createServer({
     ...config,
     root: webRoot,
@@ -37,16 +47,15 @@ if (command === "dev") {
     },
   });
 
-  const keepAlive = setInterval(() => {}, 2 ** 30);
   await server.listen();
   server.httpServer?.on("close", () => {
     console.error("[run-vite] HTTP server closed unexpectedly");
   });
   server.printUrls();
-  keepAlive.unref?.();
 } else if (command === "build") {
   await build(inlineConfig);
 } else if (command === "preview") {
+  holdEventLoopForServer();
   const server = await preview({
     ...inlineConfig,
     preview: {

@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { api } from "@/shared/lib/api-client";
 import { Link } from "react-router-dom";
 import { AppSidebar } from "./layout/AppSidebar";
 import { cn } from "@/shared/lib/utils";
@@ -46,12 +48,6 @@ const ROLE_LABEL: Record<string, string> = {
   editor:       "Editor",
   viewer:       "Visualizador",
 };
-
-const MOCK_NOTIFICATIONS = [
-  { id: 1, title: "Novo contrato assinado", body: "Contrato com João Silva", time: "2h atrás", read: false },
-  { id: 2, title: "Lançamento publicado", body: "Álbum 'Nova Era' publicado", time: "4h atrás", read: false },
-  { id: 3, title: "Pagamento recebido", body: "R$ 12.400,00 creditado", time: "6h atrás", read: false },
-];
 
 function normalizeNativeTableSortIndicators(table: HTMLTableElement, activeTh: HTMLTableCellElement, direction: "asc" | "desc") {
   table.querySelectorAll("th[data-native-sortable='true']").forEach((header) => {
@@ -179,11 +175,35 @@ function TopbarUserMenu() {
 }
 
 function NotificationsPopover() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
+  // Notificações reais do backend (/notifications). Sem dados fictícios:
+  // erro ou backend indisponível ⇒ lista vazia (estado verdadeiro).
+  const queryClient = useQueryClient();
+  const { data: rawNotifications = [] } = useQuery({
+    queryKey: ["notifications", "topbar"],
+    queryFn: async () => {
+      const res = await api.get<{ data?: Array<{ id: string; title: string; body: string | null; read_at: string | null; created_at: string }> } | Array<{ id: string; title: string; body: string | null; read_at: string | null; created_at: string }>>("/notifications?limit=10");
+      return Array.isArray(res) ? res : res?.data ?? [];
+    },
+    staleTime: 60_000,
+    retry: false,
+  });
+  const notifications = rawNotifications.map((n) => ({
+    id: n.id,
+    title: n.title,
+    body: n.body ?? "",
+    time: new Date(n.created_at).toLocaleString("pt-BR"),
+    read: n.read_at != null,
+  }));
   const unread = notifications.filter((n) => !n.read).length;
 
-  const markAllRead = () =>
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllRead = async () => {
+    try {
+      await api.patch("/notifications/read-all", {});
+      queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    } catch {
+      // erro real é reportado pelo interceptor do api-client
+    }
+  };
 
   return (
     <Popover>

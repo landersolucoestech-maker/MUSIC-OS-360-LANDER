@@ -3,13 +3,11 @@
  *
  * Hook para integração Apple Music for Artists.
  * Credenciais gerenciadas server-side (criptografadas no banco).
- * Em MOCK_MODE retorna stubs sem chamar o backend.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/shared/lib/api-client";
-import { MOCK_MODE } from "@/shared/lib/env";
 
 export interface AppleMusicStatus {
   connected: boolean;
@@ -30,7 +28,6 @@ export function useAppleMusicStatus() {
   return useQuery<AppleMusicStatus>({
     queryKey: ["integrations", "apple-music", "status"],
     queryFn: async (): Promise<AppleMusicStatus> => {
-      if (MOCK_MODE) return { connected: false, last_sync_at: null };
       return api.get<AppleMusicStatus>("/integrations/apple-music/status");
     },
     staleTime: 30_000,
@@ -41,7 +38,6 @@ export function useAppleMusicSaveCredentials() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (input: AppleMusicCredentials) => {
-      if (MOCK_MODE) return;
       return api.post("/integrations/apple-music/configure", {
         teamId: input.team_id,
         keyId: input.key_id,
@@ -60,7 +56,6 @@ export function useAppleMusicDeleteCredentials() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (MOCK_MODE) return;
       return api.delete("/integrations/apple-music/disconnect");
     },
     onSuccess: () => {
@@ -75,10 +70,10 @@ export function useAppleMusicArtistMetrics(artistId?: string, storefront = "br")
   return useQuery({
     queryKey: ["integrations", "apple-music", "artist", artistId, storefront],
     queryFn: async () => {
-      if (MOCK_MODE || !artistId) return null;
+      if (!artistId) return null;
       return api.get(`/integrations/apple-music/artist/${artistId}?storefront=${storefront}`);
     },
-    enabled: !MOCK_MODE && !!artistId,
+    enabled: !!artistId,
     staleTime: 60_000,
   });
 }

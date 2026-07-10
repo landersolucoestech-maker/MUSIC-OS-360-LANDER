@@ -6,7 +6,7 @@ import {
   ExternalDataWebhookPayload,
 } from './external-data.types';
 
-export class MockDistributorProvider implements ExternalDataExchangeProvider<DistributorSubmissionPayload> {
+export class UnconfiguredDistributorProvider implements ExternalDataExchangeProvider<DistributorSubmissionPayload> {
   readonly metadata = {
     providerId: 'distributor-provider-not-configured',
     displayName: 'Distributor Provider Not Configured',

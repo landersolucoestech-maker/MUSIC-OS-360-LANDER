@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import type { Socket } from 'socket.io-client';
 import { getWsSocket, disconnectWsSocket } from '@/shared/lib/ws-client';
 import { getAccessToken } from '@/shared/lib/api-client';
-import { MOCK_MODE } from '@/shared/lib/env';
 
 /**
  * Establishes and maintains a single Socket.IO connection per session.
@@ -18,7 +17,6 @@ export function useWebSocket(): { socket: Socket | null; connected: boolean } {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    if (MOCK_MODE) return;
 
     const token = getAccessToken();
     if (!token) return;

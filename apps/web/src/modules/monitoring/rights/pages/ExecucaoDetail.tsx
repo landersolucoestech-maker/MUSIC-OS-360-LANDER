@@ -14,9 +14,9 @@ import {
   Info
 } from "lucide-react";
 import {
-  RIGHTS_EXECUCOES as MOCK_EXECUCOES_PUBLICAS,
-  RIGHTS_TIMELINE_BY_ISRC as MOCK_TIMELINE_BY_ISRC,
-  RIGHTS_ECAD_HISTORICO_ISRC as MOCK_ECAD_HISTORICO_ISRC,
+  RIGHTS_EXECUCOES,
+  RIGHTS_TIMELINE_BY_ISRC,
+  RIGHTS_ECAD_HISTORICO_ISRC,
 } from "../services/rights-source";
 import type { ExecutionType, ExecutionStatus, TimelineEventType } from "../types";
 import { formatRightsDateTime } from "../utils/date-format";
@@ -70,7 +70,7 @@ export default function ExecucaoDetail() {
   const [activeAction, setActiveAction] = useState<ActionModal>(null);
   const [resolvedStatus, setResolvedStatus] = useState<ExecutionStatus | null>(null);
 
-  const exec = MOCK_EXECUCOES_PUBLICAS.find(e => e.id === id);
+  const exec = RIGHTS_EXECUCOES.find(e => e.id === id);
 
   if (!exec) {
     return (
@@ -90,11 +90,11 @@ export default function ExecucaoDetail() {
   const currentStatus = resolvedStatus ?? exec.status;
   const statusCfg = STATUS_CONFIG[currentStatus];
   const tipoCfg = TIPO_LABEL[exec.tipo_execucao];
-  const timeline = (MOCK_TIMELINE_BY_ISRC[exec.isrc] ?? []).sort(
+  const timeline = (RIGHTS_TIMELINE_BY_ISRC[exec.isrc] ?? []).sort(
     (a, b) => new Date(b.data_hora).getTime() - new Date(a.data_hora).getTime()
   );
-  const ecadHistorico = MOCK_ECAD_HISTORICO_ISRC[exec.isrc] ?? [];
-  const allDetections = MOCK_EXECUCOES_PUBLICAS.filter(e => e.isrc === exec.isrc);
+  const ecadHistorico = RIGHTS_ECAD_HISTORICO_ISRC[exec.isrc] ?? [];
+  const allDetections = RIGHTS_EXECUCOES.filter(e => e.isrc === exec.isrc);
   const totalArrecadado = ecadHistorico.filter(h => h.status === "recebido").reduce((s, h) => s + h.valor_arrecadado, 0);
   const totalExecucoesEcad = ecadHistorico.filter(h => h.status === "recebido").reduce((s, h) => s + h.total_execucoes, 0);
 

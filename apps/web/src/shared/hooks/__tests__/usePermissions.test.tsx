@@ -3,12 +3,11 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 
 // Estado mutável compartilhado com os mocks (hoisted para o vi.mock poder referenciar).
 const state = vi.hoisted(() => ({
-  env: { MOCK_MODE: false, AUTH_DISABLED: false, IS_DEV: false },
+  env: { AUTH_DISABLED: false, IS_DEV: false },
   permissionKeys: null as string[] | null,
 }));
 
 vi.mock("@/shared/lib/env", () => ({
-  get MOCK_MODE() { return state.env.MOCK_MODE; },
   get AUTH_DISABLED() { return state.env.AUTH_DISABLED; },
   get IS_DEV() { return state.env.IS_DEV; },
 }));
@@ -19,9 +18,9 @@ vi.mock("@/app/providers/TenantContext", () => ({
 
 import { usePermissions } from "../usePermissions";
 
-function setProd() { state.env = { MOCK_MODE: false, AUTH_DISABLED: false, IS_DEV: false }; }
-function setDev() { state.env = { MOCK_MODE: false, AUTH_DISABLED: false, IS_DEV: true }; }
-function setMock() { state.env = { MOCK_MODE: true, AUTH_DISABLED: false, IS_DEV: false }; }
+function setProd() { state.env = { AUTH_DISABLED: false, IS_DEV: false }; }
+function setDev() { state.env = { AUTH_DISABLED: false, IS_DEV: true }; }
+function setAuthDisabled() { state.env = { AUTH_DISABLED: true, IS_DEV: false }; }
 function perms() { return renderHook(() => usePermissions()).result.current; }
 
 beforeEach(() => { setProd(); state.permissionKeys = null; });
@@ -75,7 +74,7 @@ describe("usePermissions — produção (sem bypass)", () => {
   });
 });
 
-describe("usePermissions — dev/mock (permissivo)", () => {
+describe("usePermissions — dev/auth-disabled (permissivo)", () => {
   it("IS_DEV + permissionKeys null → permite (não trava o dev)", () => {
     setDev();
     state.permissionKeys = null;
@@ -85,8 +84,8 @@ describe("usePermissions — dev/mock (permissivo)", () => {
     expect(p.isLoadingPermissions).toBe(false);
   });
 
-  it("MOCK_MODE + permissionKeys null → permite", () => {
-    setMock();
+  it("AUTH_DISABLED + permissionKeys null → permite", () => {
+    setAuthDisabled();
     state.permissionKeys = null;
     const p = perms();
     expect(p.hasPermission("contracts:delete")).toBe(true);

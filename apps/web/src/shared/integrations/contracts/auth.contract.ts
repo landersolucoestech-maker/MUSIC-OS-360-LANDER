@@ -106,10 +106,3 @@ export const JWT_AUTH_CAPABILITIES: AuthProviderCapabilities = {
   supportsAuditLog: true,
 };
 
-export const MOCK_AUTH_CAPABILITIES: AuthProviderCapabilities = {
-  supportsSSO: false,
-  supportsMFA: false,
-  supportsPasswordReset: false,
-  supportsInvites: false,
-  supportsAuditLog: false,
-};

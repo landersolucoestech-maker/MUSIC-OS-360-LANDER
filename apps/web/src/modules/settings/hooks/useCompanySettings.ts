@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { MOCK_COMPANY_SETTINGS } from "@/shared/data/mockData";
 import { IS_PROD } from "@/shared/lib/env";
 
 export interface CompanySettings {
@@ -29,7 +28,7 @@ export function useCompanySettings() {
     // (CNPJ/razão social/endereço). Em produção, retornar null em vez de dados
     // fictícios — a Nota Fiscal deve exibir campos vazios para preenchimento
     // manual, nunca um CNPJ inventado.
-    queryFn: async () => (IS_PROD ? null : (MOCK_COMPANY_SETTINGS as CompanySettings)),
+    queryFn: async () => null as CompanySettings | null,
   });
 
   return { companySettings: data, isLoading, error };

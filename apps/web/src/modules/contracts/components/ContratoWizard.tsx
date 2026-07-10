@@ -1144,7 +1144,8 @@ export function ContratoWizard({ open, onOpenChange, contrato }: ContratoWizardP
       }
 
       if (sendForSignature) {
-        toast.info(`Envio simulado — integração com ${provider || "plataforma"} não activa`);
+        toast.error(`Integração com ${provider || "plataforma"} não configurada`);
+        throw new Error(`Integração com ${provider || "plataforma"} não configurada`);
       }
       onOpenChange(false);
     } finally {

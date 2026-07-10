@@ -4,12 +4,9 @@
  * REGRA: nenhum outro ficheiro deve ler import.meta.env directamente
  * para flags de modo. Importar sempre daqui.
  *
- * MOCK_MODE: true  → standalone (MOCK_DATA + localStorage, sem backend)
- * MOCK_MODE: false → produção (HTTP API real, backend NestJS)
- *
- * VITE_USE_MOCK é a flag canónica.
- * VITE_MOCK_MODE é mantida por retrocompatibilidade.
- * Qualquer das duas definida como "false" desactiva o modo mock.
+ * Não existe modo mock: o frontend consome exclusivamente o backend real.
+ * (VITE_USE_MOCK/VITE_MOCK_MODE=true são bloqueadas no build pelo guard
+ * assert-supabase-env.)
  *
  */
 
@@ -19,12 +16,15 @@ import { isProdLike } from "@music-os-360/config/environment";
 // in a production build. Set VITE_AUTH_DISABLED=true in the web app and
 // AUTH_DISABLED=true in the API to bypass auth temporarily during development.
 // Set the flags to false or remove them to restore the original auth flow.
+/**
+ * Modo mock foi REMOVIDO: literal false (tipo 'false') para que todo braço
+ * 'if (MOCK_MODE)' remanescente seja código provadamente morto, eliminado do
+ * bundle por dead-code-elimination. Não lê env var nenhuma — impossível ligar.
+ * Remoção física dos braços restantes: ver relatório no-mock.
+ */
 export const AUTH_DISABLED: boolean =
   import.meta.env.DEV === true &&
   import.meta.env.VITE_AUTH_DISABLED === "true";
-
-export const MOCK_MODE: boolean =
-  false;
 
 /**
  * URL base da API backend. String vazia = URLs relativas (same-domain, proxy Vite).
@@ -162,7 +162,7 @@ export function validateFrontendEnv(): boolean {
   // Development: warn but allow startup so devs can still iterate.
   console.warn(
     `[MUSIC OS 360] ⚠️  Missing environment variables (app will use fallbacks):\n${lines}\n` +
-    "Set these in apps/web/.env.local or enable explicit local MOCK_MODE for development.",
+    "Set these in apps/web/.env.local or ajuste o backend local.",
   );
   return true;
 }

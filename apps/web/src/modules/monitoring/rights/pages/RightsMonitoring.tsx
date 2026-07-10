@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { RightsKPICards } from "../components/RightsKPICards";
 import { ExecucoesTable } from "../components/ExecucoesTable";
-import { DivergenciasPanel, MOCK_DIVERGENCIAS } from "../components/DivergenciasPanel";
+import { DivergenciasPanel } from "../components/DivergenciasPanel";
 import { ResolverDivergenciaModal } from "../components/ResolverDivergenciaModal";
 import type { Divergencia } from "../components/DivergenciasPanel";
 import { EcadImportModal } from "../components/EcadImportModal";
@@ -289,11 +289,10 @@ export default function RightsMonitoring() {
     [orphanExecs],
   );
 
-  // Merge static + dynamic divergências (remove static div-005 which is now superseded by dynamic)
-  // e aplica overrides de resolução (estado local).
+  // Divergências reais: apenas as computadas dinamicamente (execuções órfãs),
+  // com overrides de resolução (estado local).
   const allDivergencias: Divergencia[] = useMemo(() => {
-    const staticFiltered = MOCK_DIVERGENCIAS.filter(d => d.id !== "div-005");
-    return [...staticFiltered, ...dynamicDivergencias].map(d =>
+    return [...dynamicDivergencias].map(d =>
       divOverrides[d.id] ? { ...d, ...divOverrides[d.id] } : d,
     ).filter((d) => !deletedDivergenciaIds.includes(d.id));
   }, [deletedDivergenciaIds, dynamicDivergencias, divOverrides]);

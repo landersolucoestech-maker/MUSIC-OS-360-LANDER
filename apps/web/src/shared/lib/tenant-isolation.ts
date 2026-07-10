@@ -2,7 +2,6 @@
  * MUSIC OS 360 — Tenant Isolation
  *
  * Utilities that enforce data scoping per tenant.
- * In standalone/mock mode the tenant_id is always MOCK_TENANT_ID.
  * In production mode the tenant_id comes from the JWT (org_id claim).
  *
  * Usage:
@@ -10,7 +9,6 @@
  *   const record   = assertTenantOwnership(record, currentTenantId);
  */
 
-export const MOCK_TENANT_ID = "ten-gravadora-exemplo-001";
 
 // ─── Type helpers ─────────────────────────────────────────────────────────────
 
@@ -24,7 +22,6 @@ export interface TenantScoped {
 /**
  * Filter an array of records to only those belonging to the given tenant.
  * Records without a tenant_id field are treated as belonging to the current tenant
- * (backwards-compatible for mock data that lacks the field).
  */
 export function isolateByTenant<T extends TenantScoped>(
   records: T[],
@@ -63,7 +60,6 @@ export function stampTenantId<T>(record: T, tenantId: string): T & { tenant_id: 
  * Prevents data leakage when the app runs with multiple tenants in dev.
  *
  * @example
- *   tenantStorageKey("ten-abc-001", "musicos360_mock_data")
  *   // => "musicos360_ten-abc-001_mock_data"
  */
 export function tenantStorageKey(tenantId: string, baseKey: string): string {

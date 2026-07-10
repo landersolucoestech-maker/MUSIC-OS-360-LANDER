@@ -1,62 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { localStore } from "@/shared/lib/local-store";
+import { toast } from "sonner";
 import type { VinculadoDocument } from "@/modules/contracts/types/document-types";
 
-const MOCK_DOCUMENTS: VinculadoDocument[] = [
-  {
-    id: "doc-001",
-    org_id: "ten-gravadora-exemplo-001",
-    template_id: "tpl-001",
-    title: "Contrato de Gravação — MC Levi",
-    status: "signed",
-    content_html: "<p>Contrato assinado.</p>",
-    signing_provider: "autentique",
-    variables: { NOME_ARTISTA: "MC Levi", EXTERNAL_RIGHTS: "15" },
-    signers: [
-      { id: "sgn-001", document_id: "doc-001", role: "artista", name: "MC Levi",           email: "mc.levi@email.com",       status: "signed", signed_at: "2026-03-15T14:22:00.000Z" },
-      { id: "sgn-002", document_id: "doc-001", role: "label",   name: "Gravadora Exemplo", email: "contratos@gravadora.com", status: "signed", signed_at: "2026-03-15T15:00:00.000Z" },
-    ],
-    logs: [
-      { id: "log-001", document_id: "doc-001", event: "created",            created_at: "2026-03-10T09:00:00.000Z" },
-      { id: "log-002", document_id: "doc-001", event: "sent_for_signature", created_at: "2026-03-12T10:00:00.000Z" },
-      { id: "log-003", document_id: "doc-001", event: "completed",          created_at: "2026-03-15T15:00:00.000Z" },
-    ],
-    signed_at:  "2026-03-15T15:00:00.000Z",
-    created_at: "2026-03-10T09:00:00.000Z",
-    updated_at: "2026-03-15T15:00:00.000Z",
-  },
-  {
-    id: "doc-002",
-    org_id: "ten-gravadora-exemplo-001",
-    template_id: "tpl-002",
-    title: "Contrato de Show — Ana Lima / São Paulo",
-    status: "pending_signature",
-    content_html: "<p>Aguardando assinaturas.</p>",
-    signing_provider: "clicksign",
-    variables: { NOME_ARTISTA: "Ana Lima", DATA_SHOW: "2026-06-15", LOCAL_SHOW: "Vibra São Paulo", CACHE: "35000" },
-    signers: [
-      { id: "sgn-003", document_id: "doc-002", role: "artista", name: "Ana Lima",          email: "ana.lima@email.com",      status: "signed",  signed_at: "2026-05-10T09:00:00.000Z" },
-      { id: "sgn-004", document_id: "doc-002", role: "label",   name: "Gravadora Exemplo", email: "contratos@gravadora.com", status: "pending" },
-    ],
-    logs: [
-      { id: "log-004", document_id: "doc-002", event: "created",            created_at: "2026-05-08T09:00:00.000Z" },
-      { id: "log-005", document_id: "doc-002", event: "sent_for_signature", created_at: "2026-05-09T10:00:00.000Z" },
-      { id: "log-006", document_id: "doc-002", event: "signer_signed",      created_at: "2026-05-10T09:00:00.000Z" },
-    ],
-    created_at: "2026-05-08T09:00:00.000Z",
-    updated_at: "2026-05-10T09:00:00.000Z",
-  },
-];
-
-const STORAGE_KEY = "contracts_docs";
-
-function loadDocuments(): VinculadoDocument[] {
-  return localStore.get<VinculadoDocument[]>(STORAGE_KEY) ?? MOCK_DOCUMENTS;
-}
-
-function saveDocuments(docs: VinculadoDocument[]): void {
-  localStore.set(STORAGE_KEY, docs);
-}
+// Documentos vinculados não possuem endpoint real ainda: leitura reporta o
+// estado verdadeiro (vazio) e escrita falha explicitamente. É proibido simular
+// o backend em localStorage ou devolver documentos fictícios.
+const DOCUMENTS_BACKEND_UNAVAILABLE =
+  "Documentos de contrato ainda não possuem endpoint real no backend — operação indisponível.";
 
 export const CONTRACTS_DOC_KEYS = {
   documents: ["contracts", "documents"] as const,
@@ -65,7 +15,7 @@ export const CONTRACTS_DOC_KEYS = {
 export function useDocuments() {
   return useQuery({
     queryKey: CONTRACTS_DOC_KEYS.documents,
-    queryFn:  async (): Promise<VinculadoDocument[]> => loadDocuments(),
+    queryFn:  async (): Promise<VinculadoDocument[]> => [],
     staleTime: 1000 * 30,
   });
 }
@@ -73,17 +23,9 @@ export function useDocuments() {
 export function useSaveDocument() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (doc: VinculadoDocument): Promise<VinculadoDocument> => {
-      const existing = loadDocuments();
-      const idx = existing.findIndex((d) => d.id === doc.id);
-      let updated: VinculadoDocument[];
-      if (idx >= 0) {
-        updated = existing.map((d) => (d.id === doc.id ? doc : d));
-      } else {
-        updated = [doc, ...existing];
-      }
-      saveDocuments(updated);
-      return doc;
+    mutationFn: async (_doc: VinculadoDocument): Promise<VinculadoDocument> => {
+      toast.error(DOCUMENTS_BACKEND_UNAVAILABLE);
+      throw new Error(DOCUMENTS_BACKEND_UNAVAILABLE);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: CONTRACTS_DOC_KEYS.documents });

@@ -4,7 +4,6 @@
  * Builds an ISRC → obra index so executions can be enriched with real catalog data.
  */
 
-import { MOCK_DATA } from "@/shared/data/mockData";
 
 export interface CatalogObra {
   id: string;
@@ -29,11 +28,11 @@ export interface CatalogArtista {
 }
 
 export function getCatalogObras(): CatalogObra[] {
-  return (MOCK_DATA.obras as CatalogObra[]) ?? [];
+  return [];
 }
 
 export function getCatalogArtistas(): CatalogArtista[] {
-  const raw = (MOCK_DATA.artistas ?? []) as Array<{ id: string; nome_artistico?: string }>;
+  const raw: Array<{ id: string; nome_artistico?: string }> = [];
   return raw
     .filter(a => a.nome_artistico)
     .map(a => ({ id: a.id, nome_artistico: a.nome_artistico! }))

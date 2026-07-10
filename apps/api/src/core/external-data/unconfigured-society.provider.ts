@@ -6,7 +6,7 @@ import {
   SocietyDataSubmissionPayload,
 } from './external-data.types';
 
-export class MockSocietyProvider implements ExternalDataExchangeProvider<SocietyDataSubmissionPayload> {
+export class UnconfiguredSocietyProvider implements ExternalDataExchangeProvider<SocietyDataSubmissionPayload> {
   readonly metadata = {
     providerId: 'society-provider-not-configured',
     displayName: 'Society Provider Not Configured',

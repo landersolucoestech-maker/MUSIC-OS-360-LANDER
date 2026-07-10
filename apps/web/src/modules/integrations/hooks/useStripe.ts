@@ -16,6 +16,7 @@
  */
 
 import { useQuery } from "@tanstack/react-query";
+import { api } from "@/shared/lib/api-client";
 import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
 import type { TenantSubscription } from "@/shared/integrations/contracts/payments.contract";
 import { PLAN_FEATURES } from "@/shared/integrations/contracts/payments.contract";
@@ -49,28 +50,14 @@ export function useStripeStatus() {
   });
 }
 
-// ─── Hook de subscription (mock) ─────────────────────────────────────────────
-
-/**
- * Em modo standalone devolve a subscription mock do tenant.
- * MIGRAÇÃO FUTURA: chamar backend que consulta Stripe API.
- */
+// ─── Hook de subscription (backend real) ─────────────────────────────────────
 export function useStripeSubscription(tenantId: string) {
   return useQuery<TenantSubscription | null>({
     queryKey: ["integrations", "stripe", "subscription", tenantId],
-    queryFn: async (): Promise<TenantSubscription> => ({
-      tenant_id: tenantId,
-      subscription_id: "mock_sub_professional",
-      plan: "professional",
-      status: "active",
-      current_period_start: new Date(Date.now() - 15 * 86400_000).toISOString(),
-      current_period_end: new Date(Date.now() + 15 * 86400_000).toISOString(),
-      trial_end: null,
-      cancel_at: null,
-      features: PLAN_FEATURES["professional"],
-      amount_cents: 49900,
-      currency: "brl",
-    }),
+    // Assinatura REAL do backend (/billing/subscription — Stripe). Nunca
+    // fabricar assinatura: sem dado, retorna null (estado verdadeiro).
+    queryFn: async (): Promise<TenantSubscription | null> =>
+      (await api.get<TenantSubscription | null>("/billing/subscription")) ?? null,
     staleTime: 5 * 60_000,
   });
 }

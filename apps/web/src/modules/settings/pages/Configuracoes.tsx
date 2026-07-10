@@ -74,7 +74,6 @@ import {
   type BillingPlan,
 } from "@/modules/settings/services/billing-plans.service";
 import { billingInvoicesService } from "@/modules/settings/services/billing-invoices.service";
-import { resetMockData } from "@/shared/data/mockData";
 import {
   IntegrationLogo,
   type IntegrationLogoId,
@@ -121,9 +120,6 @@ export default function Configuracoes() {
     [usuarios, user?.id],
   );
   const isAdmin = currentUserRole === "admin" || currentUserRole === "owner";
-  const [seedLoading, setSeedLoading] = useState(false);
-  const [clearLoading, setClearLoading] = useState(false);
-  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [publicRegistrationEnabled, setPublicRegistrationEnabled] = useState(true);
   const publicRegistrationLink = useMemo(
     () => (orgSlug ? `${window.location.origin}/cadastro/${orgSlug}` : ""),
@@ -139,30 +135,6 @@ export default function Configuracoes() {
     toast.success("Link de cadastro público copiado.");
   };
 
-  const handleLoadDemoData = async () => {
-    setSeedLoading(true);
-    try {
-      resetMockData();
-      toast.success("Dados de demonstração restaurados.");
-    } finally {
-      setSeedLoading(false);
-    }
-  };
-
-  const handleClearDemoData = async () => {
-    setClearLoading(true);
-    setClearConfirmOpen(false);
-    try {
-      try {
-        localStorage.removeItem("musicos360_mock_data");
-      } catch {
-        // ignora falha de quota / acesso
-      }
-      window.location.reload();
-    } finally {
-      setClearLoading(false);
-    }
-  };
   const {
     roles,
     permissions,
@@ -951,88 +923,6 @@ export default function Configuracoes() {
               </Card>
             </div>
 
-            {isAdmin && (
-              <Card data-testid="card-demo-data">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5" />
-                    Dados de Demonstração
-                  </CardTitle>
-                  <CardDescription>
-                    Carregue a base fictícia da MusicOS 360 (8 artistas, contratos,
-                    finanças, marketing, RH, leads etc.) para apresentações comerciais
-                    e testes. Disponível apenas para administradores.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-                    O sistema opera totalmente em modo standalone. Todas as alterações
-                    são salvas localmente no navegador (localStorage). Você pode
-                    restaurar os dados originais ou limpar tudo a qualquer momento.
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      onClick={handleLoadDemoData}
-                      disabled={seedLoading || clearLoading}
-                      data-testid="button-load-demo-data"
-                    >
-                      {seedLoading ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <Sparkles className="h-4 w-4 mr-2" />
-                      )}
-                      Carregar dados demo
-                    </Button>
-
-                    <AlertDialog
-                      open={clearConfirmOpen}
-                      onOpenChange={setClearConfirmOpen}
-                    >
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="outline"
-                          disabled={seedLoading || clearLoading}
-                          data-testid="button-clear-demo-data"
-                        >
-                          {clearLoading ? (
-                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                          ) : (
-                            <Trash2 className="h-4 w-4 mr-2" />
-                          )}
-                          Limpar dados demo
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>
-                            Remover dados de demonstração?
-                          </AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Todos os registros com UUIDs iniciados em{" "}
-                            <code>5eed</code> serão apagados permanentemente.
-                            Dados reais, contas de usuário e configurações da
-                            aplicação não serão afetados. Deseja continuar?
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel data-testid="button-cancel-clear-demo">
-                            Cancelar
-                          </AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={handleClearDemoData}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            data-testid="button-confirm-clear-demo"
-                          >
-                            Sim, limpar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </TabsContent>
 
           {/* Automações */}
@@ -2351,51 +2241,6 @@ export default function Configuracoes() {
           </TabsContent>
         </Tabs>
 
-        {isAdmin && (
-          <Card className="mt-6 border-warning/30 bg-warning/5">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center gap-2 text-warning text-base">
-                <Database className="h-4 w-4" />
-                Dados de Demonstração
-              </CardTitle>
-              <CardDescription className="text-warning/80">
-                O sistema está em modo demo. Todas as alterações são salvas no navegador e persistem entre sessões.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AlertDialog>
-                <AlertDialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="border-warning/50 text-warning hover:bg-warning/10"
-                    data-testid="button-reset-demo-data"
-                  >
-                    <RefreshCw className="h-4 w-4 mr-2" />
-                    Restaurar dados originais
-                  </Button>
-                </AlertDialogTrigger>
-                <AlertDialogContent>
-                  <AlertDialogHeader>
-                    <AlertDialogTitle>Restaurar dados de demonstração?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                      Isso apagará todas as alterações feitas durante a demonstração (artistas, leads, contratos, etc.) e restaurará os dados originais. Esta ação não pode ser desfeita.
-                    </AlertDialogDescription>
-                  </AlertDialogHeader>
-                  <AlertDialogFooter>
-                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                    <AlertDialogAction
-                      onClick={resetMockData}
-                      className="bg-warning hover:bg-warning/90 text-warning-foreground"
-                      data-testid="button-confirm-reset-demo"
-                    >
-                      Restaurar dados originais
-                    </AlertDialogAction>
-                  </AlertDialogFooter>
-                </AlertDialogContent>
-              </AlertDialog>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       <UsuarioViewModal 

@@ -4,8 +4,6 @@
  * Audit Trail — historial de todas as mutações auditadas no sistema.
  * Acesso restrito a OWNER/ADMIN.
  *
- * - MOCK_MODE=true  → dados vêm do useAuditTrail (mock estático)
- * - MOCK_MODE=false → chama GET /audit-logs via storage.list
  *
  * Filtros: search free-text, entity_type, action_group, date range (from/to)
  */

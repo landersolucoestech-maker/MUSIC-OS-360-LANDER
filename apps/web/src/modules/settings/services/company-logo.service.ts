@@ -4,7 +4,6 @@
  * MULTI-TENANT: a logo é sempre isolada por workspaceId. Nunca compartilhar
  * entre organizações.
  *
- * - MOCK_MODE (dev standalone): persiste em localStorage (dataURL) sob a chave
  *   `company-logo:{workspaceId}`. Espelha a última logo numa chave de preview
  *   público (`company-logo:__public__`) só para demonstrar, em dev, a
  *   renderização na página pública /cadastro/:slug.
@@ -17,7 +16,7 @@
  *   DELETE /workspaces/{id}/logo                       -> 204
  *   GET    /public/workspaces/{slug}                   -> { ..., logoUrl }
  */
-import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
+import { API_BASE_URL } from "@/shared/lib/env";
 import { getAccessToken, getTenantId } from "@/shared/lib/api-client";
 
 export const ALLOWED_LOGO_MIME = [
@@ -35,8 +34,6 @@ export interface LogoValidationResult {
   error?: string;
 }
 
-const MOCK_PREFIX = "company-logo:";
-const MOCK_PUBLIC_KEY = "company-logo:__public__";
 
 function extOf(name: string): string {
   const i = name.lastIndexOf(".");
@@ -96,18 +93,9 @@ export const companyLogoService = {
   /** Retorna a logo do workspace (URL/dataURL) ou null se não houver. */
   async getLogo(workspaceId: string): Promise<string | null> {
     if (!workspaceId) return null;
-    if (MOCK_MODE) {
-      return localStorage.getItem(MOCK_PREFIX + workspaceId);
-    }
     // Produção: o logoUrl vem agregado nos dados do workspace (backend).
     // Mantido aqui só por simetria — normalmente já existe no TenantConfig.
     return null;
-  },
-
-  /** Convenience MOCK-only: última logo salva, usada na demo da página pública em dev. */
-  getPublicLogoMock(): string | null {
-    if (!MOCK_MODE) return null;
-    return localStorage.getItem(MOCK_PUBLIC_KEY);
   },
 
   /**
@@ -118,13 +106,6 @@ export const companyLogoService = {
     if (!workspaceId) throw new Error("Workspace não identificado.");
     const validation = await validateLogoFile(file);
     if (!validation.ok) throw new Error(validation.error ?? "Arquivo inválido.");
-
-    if (MOCK_MODE) {
-      const dataUrl = await readAsDataUrl(file);
-      localStorage.setItem(MOCK_PREFIX + workspaceId, dataUrl);
-      localStorage.setItem(MOCK_PUBLIC_KEY, dataUrl);
-      return dataUrl;
-    }
 
     // Produção: upload multipart ao backend (R2). Endpoint a implementar no backend.
     const form = new FormData();
@@ -150,11 +131,6 @@ export const companyLogoService = {
   /** Remove a logo do workspace. */
   async removeLogo(workspaceId: string): Promise<void> {
     if (!workspaceId) return;
-    if (MOCK_MODE) {
-      localStorage.removeItem(MOCK_PREFIX + workspaceId);
-      localStorage.removeItem(MOCK_PUBLIC_KEY);
-      return;
-    }
     const { api } = await import("@/shared/lib/api-client");
     await api.delete(`/workspaces/${encodeURIComponent(workspaceId)}/logo`);
   },

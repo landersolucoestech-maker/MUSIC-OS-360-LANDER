@@ -48,11 +48,12 @@ vi.mock("@/modules/monitoring/rights/services/rights-source", () => ({
   RIGHTS_ECAD_HISTORICO_ISRC: {},
 }));
 
-// ── MOCK_DATA: provide obras for ISRCs used in MOCK_EXECUCOES_PUBLICAS ───────
-// BRMSC2599998 is intentionally absent → creates an orphan execution.
-vi.mock("@/shared/data/mockData", () => ({
-  MOCK_DATA: {
-    obras: [
+// ── catalog-lookup: fixture de teste com obras (BRMSC2599998 ausente de
+// propósito → execução re-011 vira órfã). A fonte real é vazia até o backend
+// de catálogo ser consumido aqui.
+vi.mock("@/modules/monitoring/rights/services/catalog-lookup", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/modules/monitoring/rights/services/catalog-lookup")>();
+  const obras = [
       {
         id: "obra-001",
         titulo: "Noite de Luz",
@@ -181,11 +182,14 @@ vi.mock("@/shared/data/mockData", () => ({
         status: "registrado",
         duracao: "2:58",
       },
-      // BRMSC2599998 ("Track Desconhecida") is intentionally NOT included
-      // so that execution re-011 becomes an orphan.
-    ],
-  },
-}));
+  ];
+  return {
+    ...actual,
+    getCatalogObras: () => obras,
+    getIsrcIndex: () => actual.buildIsrcIndex(obras),
+    getCatalogArtistas: () => [],
+  };
+});
 
 import RightsMonitoring from "@/modules/monitoring/rights/pages/RightsMonitoring";
 
@@ -287,14 +291,12 @@ describe("RightsMonitoring page — Divergências tab badge", () => {
 
     const divTab = screen.getByTestId("tab-divergencias");
 
-    // Expected badge count = 6, derived from:
-    //   Static MOCK_DIVERGENCIAS (div-005 removed as superseded) = div-001, div-002,
-    //   div-003 (em_resolucao), div-004, div-006 → 5 open static entries
-    //   + 1 dynamic orphan divergência for BRMSC2599998 (not in mocked obras)
-    //   = 6 total open divergências
+    // Divergências agora são APENAS as dinâmicas (execuções órfãs) — as
+    // estáticas fictícias foram removidas. Na fixture, só BRMSC2599998
+    // (re-011) está fora do catálogo → badge = 1.
     const badgeSpan = within(divTab).getByText(/^\d+$/);
     const badgeCount = parseInt(badgeSpan.textContent ?? "0", 10);
-    expect(badgeCount).toBe(6);
+    expect(badgeCount).toBe(1);
   });
 
   it("clicking Divergências tab shows panel with orphan ISRC divergência entry", async () => {

@@ -78,7 +78,7 @@ export const ROLE_PERMISSIONS: Record<TenantRole, TenantPermissions> = {
   viewer:  Object.fromEntries(MODULE_KEYS.map(k => [k, k === "audit" || k === "settings" ? NO_ACCESS : READ_ONLY])) as TenantPermissions,
 };
 
-/** Deriva permissões do JWT real (produção). Em MOCK_MODE nunca é chamado. */
+/** Deriva permissões do JWT real. */
 export function getPermissionsFromToken(): TenantPermissions {
   try {
     const token = getAccessToken();

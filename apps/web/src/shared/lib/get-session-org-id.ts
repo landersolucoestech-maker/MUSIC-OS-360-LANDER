@@ -6,7 +6,6 @@
  */
 
 import { getAccessToken } from "./api-client";
-import { MOCK_MODE } from "./env";
 
 function decodeJwtPayload(token: string): Record<string, unknown> {
   try {
@@ -22,7 +21,6 @@ function decodeJwtPayload(token: string): Record<string, unknown> {
  *   2. top-level org_id    — fallback para JWTs legados ou custom templates
  */
 export function getSessionOrgId(): string | null {
-  if (MOCK_MODE) return null;
   const token = getAccessToken();
   if (!token)   return null;
   try {

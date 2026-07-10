@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/shared/lib/api-client";
 import { storage } from "@/shared/lib/storage";
-import { MOCK_MODE } from "@/shared/lib/env";
 import {
   startOfMonth,
   endOfMonth,
@@ -44,41 +43,6 @@ export interface OperationalDashboard {
   pending_provider_requirements_count: number;
   generated_at: string;
 }
-
-const EMPTY: OperationalDashboard = {
-  artists: 0,
-  artists_by_status: {},
-  contracts: 0,
-  contracts_by_status: {},
-  active_contracts_count: 0,
-  contracts_expiring_soon_count: 0,
-  leads: 0,
-  open_tickets: 0,
-  campaigns: 0,
-  revenue_current_month: 0,
-  expenses_current_month: 0,
-  net_result_current_month: 0,
-  pending_receivables: 0,
-  overdue_invoices_count: 0,
-  paid_transactions_count: 0,
-  cancelled_transactions_count: 0,
-  invoices_by_status: {},
-  transactions_by_status: {},
-  transactions_by_tipo: {},
-  pending_tasks_count: 0,
-  overdue_tasks_count: 0,
-  onboarding_in_progress_count: 0,
-  overdue_followups_count: 0,
-  pending_distribution_setups: 0,
-  pending_external_syncs: 0,
-  failed_external_syncs: 0,
-  successful_external_syncs: 0,
-  distributor_submissions_count: 0,
-  society_submissions_count: 0,
-  external_validation_errors_count: 0,
-  pending_provider_requirements_count: 0,
-  generated_at: new Date().toISOString(),
-};
 
 function tryParseDate(v: unknown): Date | null {
   if (v instanceof Date) return isValid(v) ? v : null;
@@ -258,13 +222,11 @@ async function computeFromMockStorage(): Promise<OperationalDashboard> {
 export function useOperationalDashboard() {
   const { data, isLoading, error, refetch } = useQuery<OperationalDashboard>({
     queryKey: ["operational-dashboard"],
-    queryFn: MOCK_MODE
-      ? computeFromMockStorage
-      : () => api.get<OperationalDashboard>("/analytics/dashboard"),
+    queryFn: () => api.get<OperationalDashboard>("/analytics/dashboard"),
     staleTime: 30_000,
     refetchInterval: 60_000,
   });
 
-  return { dashboard: data ?? (MOCK_MODE ? EMPTY : null), isLoading, error, refetch };
+  return { dashboard: data ?? null, isLoading, error, refetch };
 }
 

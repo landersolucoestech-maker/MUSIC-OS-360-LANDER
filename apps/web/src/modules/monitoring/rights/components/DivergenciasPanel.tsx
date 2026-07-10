@@ -7,7 +7,6 @@ import { TablePagination } from "@/shared/ui/table-pagination";
 import { usePagination } from "@/shared/hooks/usePagination";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { AlertTriangle, XCircle, Info, CheckCircle, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown, Trash2 } from "lucide-react";
-import { IS_PROD } from "@/shared/lib/env";
 import { formatRightsDate } from "../utils/date-format";
 
 export type DivergenciaSeverity = "critica" | "alta" | "media" | "baixa";
@@ -44,18 +43,6 @@ const SEVERITY_CONFIG: Record<DivergenciaSeverity, { label: string; variant: Bad
   baixa:   { label: "Baixa",    variant: "neutral", icon: <Info className="h-4 w-4 text-muted-foreground" />,    border: "border-l-border" },
 };
 
-// Dados dev-only. Gate IS_PROD garante que `MOCK_DIVERGENCIAS` é array vazio
-// em build de produção — backend ainda não tem endpoint real de divergências.
-const _DEV_DIVERGENCIAS: Divergencia[] = [
-  { id: "div-001", tipo: "Execução sem conciliação ECAD", descricao: "Execução detectada na Rádio Globo FM mas sem registro correspondente no relatório ECAD Q1/2026.", obra: "Frequência 440", isrc: "BRMSC2500003", origem: "Rádio Globo FM", severity: "critica", risco_score: 92, data: "2026-05-07", status: "aberta" },
-  { id: "div-002", tipo: "ISRC ausente no relatório ECAD", descricao: "Relatório ECAD importado contém obra sem ISRC identificado. Correspondência manual necessária.", obra: "Cidade Mágica", isrc: "BRMSC2500006", origem: "ECAD Q1/2026", severity: "alta", risco_score: 78, data: "2026-05-06", status: "aberta" },
-  { id: "div-003", tipo: "Publisher não identificado", descricao: "Execução registrada sem publisher vinculado. Recebimentos externos de direitos podem não ser distribuídos corretamente.", obra: "Trap do Norte", isrc: "BRMSC2500008", origem: "Festival Rec Beat", severity: "alta", risco_score: 74, data: "2026-05-04", status: "em_resolucao" },
-  { id: "div-004", tipo: "Diferença financeira detectada", descricao: "Valor arrecadado pelo ECAD (R$ 87,50) difere do estimado (R$ 124,00) em mais de 20%.", obra: "Frequência 440", isrc: "BRMSC2500003", origem: "Multishow", severity: "media", risco_score: 55, data: "2026-05-07", status: "aberta" },
-  { id: "div-005", tipo: "Execução sem obra cadastrada", descricao: "Sinal de broadcast detectado via ACRCloud sem correspondência no catálogo interno.", obra: undefined, isrc: "BRMSC2599999", origem: "Web Rádio Samba Brasil", severity: "media", risco_score: 48, data: "2026-05-06", status: "aberta" },
-  { id: "div-006", tipo: "Setlist não enviado ao ECAD", descricao: "Show realizado em 2026-03-28 (Festival Lollapalooza) sem setlist enviado dentro do prazo.", obra: undefined, isrc: undefined, origem: "Lollapalooza Brasil", severity: "baixa", risco_score: 31, data: "2026-04-05", status: "aberta" },
-];
-
-export const MOCK_DIVERGENCIAS: Divergencia[] = IS_PROD ? [] : _DEV_DIVERGENCIAS;
 
 interface Props {
   divergencias: Divergencia[];

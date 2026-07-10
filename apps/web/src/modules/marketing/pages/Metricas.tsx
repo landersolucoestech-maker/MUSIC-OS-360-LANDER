@@ -168,7 +168,6 @@ function buildOverviewKpis(ctrl: ReturnType<typeof useCentralAnaliticaMarketing>
       id,
       label: kpi?.label ?? id,
       value: formatMetric(kpi?.value, kpi?.format ?? "compact"),
-      hint: kpi?.simulated ? "simulado" : undefined,
     };
   });
 }
@@ -281,8 +280,6 @@ export default function Metricas() {
     <FeatureGate feature="moduleMarketing" featureName="Marketing">
       <MainLayout title="Métricas" description="Performance de marketing por plataforma">
         <div className="space-y-6">
-          <SimulatedMetricsAlert />
-
           {releaseId && (
             <div className="rounded-lg border border-border bg-card px-4 py-3 text-sm">
               <div className="flex flex-wrap items-center gap-2">
@@ -366,24 +363,6 @@ function ExportDropdown() {
   );
 }
 
-function SimulatedMetricsAlert() {
-  return (
-    <div className="flex flex-col gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-800 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex items-start gap-3">
-        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-        <p className="text-xs leading-relaxed">
-          Dados simulados. Configure as integrações com Spotify, YouTube e Instagram para ver métricas reais.
-        </p>
-      </div>
-      <Button asChild size="sm" variant="outline" className="h-8 shrink-0 border-amber-500/30 bg-background/60">
-        <Link to="/configuracoes">
-          Configurações · Integrações
-          <ExternalLink className="ml-1.5 h-3.5 w-3.5" />
-        </Link>
-      </Button>
-    </div>
-  );
-}
 
 function PlatformTabs({ value, onChange }: { value: PlatformId; onChange: (value: string) => void }) {
   return (
@@ -612,3 +591,4 @@ function chartColor(platform: PlatformId) {
       return "#6366f1";
   }
 }
+

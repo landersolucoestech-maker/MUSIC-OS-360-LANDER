@@ -8,7 +8,7 @@
 
 import { useState, useEffect, useRef, useCallback, type ComponentType, type CSSProperties } from "react";
 import { getAccessToken } from "@/shared/lib/api-client";
-import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
+import { API_BASE_URL } from "@/shared/lib/env";
 import { toast } from "sonner";
 import {
   Dialog,
@@ -574,38 +574,35 @@ export function MarketingOAuthDialog({ open, onOpenChange, platform, onConnect }
 
     let exchangeToken: string;
 
-    if (MOCK_MODE) {
-      exchangeToken = crypto.randomUUID();
-    } else {
-      try {
-        const authToken = getAccessToken();
-        const res = await fetch(`${API_BASE_URL}/api/v1/integrations/oauth/init`, {
-          method:  "POST",
-          headers: {
-            "Content-Type": "application/json",
-            ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
-          },
-          body: JSON.stringify({ platform }),
-        });
-        if (!res.ok) {
-          popup.close();
-          popupRef.current = null;
-          const body = await res.json().catch(() => ({})) as Record<string, unknown>;
-          const msg = (body["message"] as string | undefined) ?? `HTTP ${res.status}`;
-          console.error("[OAuth] /oauth/init failed:", msg);
-          toast.error(`Erro ao iniciar autenticação: ${msg}`);
-          return;
-        }
-        const data = (await res.json()) as { exchange_token: string };
-        exchangeToken = data.exchange_token;
-      } catch (err) {
+    try {
+      const authToken = getAccessToken();
+      const res = await fetch(`${API_BASE_URL}/api/v1/integrations/oauth/init`, {
+        method:  "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(authToken ? { Authorization: `Bearer ${authToken}` } : {}),
+        },
+        body: JSON.stringify({ platform }),
+      });
+      if (!res.ok) {
         popup.close();
         popupRef.current = null;
-        console.error("[OAuth] /oauth/init error:", err);
-        toast.error("Não foi possível conectar à API. Verifique se o servidor está rodando.");
+        const body = await res.json().catch(() => ({})) as Record<string, unknown>;
+        const msg = (body["message"] as string | undefined) ?? `HTTP ${res.status}`;
+        console.error("[OAuth] /oauth/init failed:", msg);
+        toast.error(`Erro ao iniciar autenticação: ${msg}`);
         return;
       }
+      const data = (await res.json()) as { exchange_token: string };
+      exchangeToken = data.exchange_token;
+    } catch (err) {
+      popup.close();
+      popupRef.current = null;
+      console.error("[OAuth] /oauth/init error:", err);
+      toast.error("Não foi possível conectar à API. Verifique se o servidor está rodando.");
+      return;
     }
+
 
     sessionStorage.setItem(`musicos360_oauth_nonce_${platform}`, exchangeToken);
     popup.location.href = `/oauth/${platform}?nonce=${encodeURIComponent(exchangeToken)}`;

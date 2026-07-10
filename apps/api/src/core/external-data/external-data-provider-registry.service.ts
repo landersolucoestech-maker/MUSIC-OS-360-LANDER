@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { MockDistributorProvider } from './mock-distributor.provider';
-import { MockSocietyProvider } from './mock-society.provider';
+import { UnconfiguredDistributorProvider } from './unconfigured-distributor.provider';
+import { UnconfiguredSocietyProvider } from './unconfigured-society.provider';
 import {
   DistributorSubmissionPayload,
   ExternalDataExchangeKind,
@@ -18,14 +18,14 @@ export class ExternalDataProviderRegistry {
   private readonly providers = new Map<string, AnyProvider>();
 
   constructor() {
-    // Mock providers only ever run outside production/staging — real distributor
-    // and society integrations are not built yet, and this registry must not
-    // silently fabricate successful submissions in a live environment.
+    // Providers reais de distribuidora/sociedade ainda não existem; os providers
+    // "unconfigured" registrados fora de prod/staging FALHAM explicitamente em
+    // toda operação — nunca fabricam submissões.
     const nodeEnv = process.env.NODE_ENV ?? 'development';
     const isProdLike = nodeEnv === 'production' || nodeEnv === 'staging';
     if (!isProdLike) {
-      this.register(new MockDistributorProvider());
-      this.register(new MockSocietyProvider());
+      this.register(new UnconfiguredDistributorProvider());
+      this.register(new UnconfiguredSocietyProvider());
     }
   }
 

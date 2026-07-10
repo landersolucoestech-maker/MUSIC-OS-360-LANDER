@@ -3,10 +3,7 @@
  *
  * AuthContext — bridge multi-modo:
  *
- * MOCK_MODE=true  (standalone / desenvolvimento):
- *   Usuário mock sempre autenticado. Sem chamadas de rede.
- *
- * MOCK_MODE=false:
+ * Autenticação real via Supabase (sem modo mock).
  *   Autenticação real via Supabase Auth.
  *   O SDK gerencia tokens, refresh automático e persistência de sessão.
  */

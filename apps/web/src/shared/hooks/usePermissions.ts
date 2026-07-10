@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { useTenant } from "@/app/providers/TenantContext";
 import type { TenantModuleKey, TenantModulePermission } from "@/app/providers/TenantContext";
-import { MOCK_MODE, AUTH_DISABLED, IS_DEV } from "@/shared/lib/env";
+import { AUTH_DISABLED, IS_DEV } from "@/shared/lib/env";
 import { tenantModulePermissionKeys } from "@/shared/lib/permission-map";
 
 /**
@@ -34,7 +34,7 @@ export function usePermissions(): UsePermissions {
   return useMemo<UsePermissions>(() => {
     // Permissivo APENAS fora de produção (dev/mock/auth-disabled). Em produção real,
     // ausência de permissões NUNCA libera.
-    const devPermissive = MOCK_MODE || AUTH_DISABLED || IS_DEV;
+    const devPermissive = AUTH_DISABLED || IS_DEV;
     const isLoadingPermissions = !devPermissive && permissionKeys === null;
     const granted = new Set(permissionKeys ?? []);
 

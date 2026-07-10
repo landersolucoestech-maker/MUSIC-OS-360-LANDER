@@ -5,9 +5,7 @@ import { useTenant } from "@/app/providers/TenantContext";
 import { PLAN_LABEL } from "@/app/providers/tenant-labels";
 import { useIsAdmin } from "@/shared/hooks/useIsAdmin";
 import { useCurrentRole } from "@/shared/hooks/useHasRole";
-import { MOCK_MODE } from "@/shared/lib/env";
 import { formatPersonName } from "@/shared/lib/format-name";
-import { DEV_PROFILES, isHrefAllowed, useDevProfile } from "@/shared/dev/devProfiles";
 import {
   LayoutDashboard,
   Users,
@@ -155,44 +153,33 @@ export function AppSidebar() {
   const [openMenus, setOpenMenus] = useState<string[]>([]);
   const location = useLocation();
 
-  // Simulação de perfil — APENAS em MOCK_MODE; filtra a navegação por setor para
-  // validação visual de RBAC. Não é segurança real (ver shared/dev/devProfiles).
-  const devProfile = useDevProfile();
-  const profileFilterOn = MOCK_MODE && !DEV_PROFILES[devProfile]?.all;
-  const profileAllows = (href?: string) => !profileFilterOn || (!!href && isHrefAllowed(devProfile, href));
 
   const visibleNavItems = useMemo(
     () => NAV_ITEMS.flatMap((item) => {
       if (item.featureFlag && !isFeatureEnabled(item.featureFlag)) return [];
-      if (!item.children) {
-        if (!profileAllows(item.href)) return [];
-        return [item];
-      }
+      if (!item.children) return [item];
       const visibleChildren = item.children.filter(
-        (c) => (!c.featureFlag || isFeatureEnabled(c.featureFlag)) && profileAllows(c.href),
+        (c) => !c.featureFlag || isFeatureEnabled(c.featureFlag),
       );
       if (visibleChildren.length === 0) return [];
       return [{ ...item, children: visibleChildren }];
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [isFeatureEnabled, profileFilterOn, devProfile],
+    [isFeatureEnabled],
   );
 
   const adminItems: NavItem[] = useMemo(
     () => {
-      // Em MOCK_MODE, os itens admin seguem o perfil simulado.
-      if (profileFilterOn && !DEV_PROFILES[devProfile]?.showAdminItems) return [];
       const items: NavItem[] = [];
-      if (isSuperAdmin || profileFilterOn) items.push({ title: "Painel Admin", href: "/admin/dashboard", icon: Shield });
+      if (isSuperAdmin) items.push({ title: "Painel Admin", href: "/admin/dashboard", icon: Shield });
       return items;
     },
-    [isAdmin, isSuperAdmin, profileFilterOn, devProfile],
+    [isAdmin, isSuperAdmin],
   );
 
   const sidebarNavItems = useMemo(() => {
     const canShowAudit =
-      (!profileFilterOn || DEV_PROFILES[devProfile]?.showAdminItems) &&
-      (isAdmin || profileFilterOn);
+      isAdmin;
     if (!canShowAudit) return visibleNavItems;
 
     const auditItem: NavItem = {
@@ -210,7 +197,7 @@ export function AppSidebar() {
       auditItem,
       ...visibleNavItems.slice(supportIndex),
     ];
-  }, [visibleNavItems, isAdmin, profileFilterOn, devProfile]);
+  }, [visibleNavItems, isAdmin]);
 
   const userFullName = formatPersonName(user?.user_metadata?.full_name as string, "Usuário");
   const userEmail = user?.email ?? "";
@@ -498,14 +485,12 @@ export function AppSidebar() {
                 Meu Perfil
               </Link>
             </DropdownMenuItem>
-            {(!profileFilterOn || DEV_PROFILES[devProfile]?.showSettings) && (
-              <DropdownMenuItem asChild>
-                <Link to="/configuracoes" className="cursor-pointer text-sm">
-                  <Settings className="h-3.5 w-3.5 mr-2 opacity-60" />
-                  Configurações
-                </Link>
-              </DropdownMenuItem>
-            )}
+            <DropdownMenuItem asChild>
+              <Link to="/configuracoes" className="cursor-pointer text-sm">
+                <Settings className="h-3.5 w-3.5 mr-2 opacity-60" />
+                Configurações
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onClick={() => signOut()}

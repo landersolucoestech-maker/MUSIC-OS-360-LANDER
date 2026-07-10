@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/shared/lib/api-client";
-import { AUTH_DISABLED, MOCK_MODE } from "@/shared/lib/env";
+import { AUTH_DISABLED } from "@/shared/lib/env";
 import { useAuth } from "./AuthContext";
 import { useTenant, type TenantBillingStatus } from "./TenantContext";
 
@@ -70,7 +70,7 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   const refresh = async () => {
-    if (AUTH_DISABLED || MOCK_MODE || !session?.access_token) return;
+    if (AUTH_DISABLED || !session?.access_token) return;
     setLoading(true);
     try {
       const subscription = await api.get<BillingSubscriptionResponse | null>("/billing/subscription");

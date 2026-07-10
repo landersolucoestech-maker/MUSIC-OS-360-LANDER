@@ -6,22 +6,19 @@
  * arrays vazios / KPIs zerados. As páginas admin devem renderizar empty state
  * "Admin analytics indisponível — endpoint real ainda não implementado".
  *
- * Em desenvolvimento, retorna os mocks completos para iteração de UI.
  *
  * Quando endpoints `/admin/*` reais existirem, substituir esta camada por
  * hooks que consomem a API real.
  */
-import { IS_PROD } from "@/shared/lib/env";
 import type {
   AdminKPIs, RevenueDataPoint, AdminPlan, AdminTenant,
   AdminSubscription, AdminUser, AdminSecurityEvent,
   AdminNotification, AdminIntegration, AdminSystemMetric,
   PlatformIntegrationProvider,
 } from "../types";
-import * as mocks from "./mockAdmin";
 
-/** True quando estamos exibindo dados fictícios para iteração local. */
-export const ADMIN_DATA_IS_MOCK: boolean = !IS_PROD;
+/** Não existem mais dados fictícios em nenhum modo. */
+export const ADMIN_DATA_IS_MOCK = false as const;
 
 const EMPTY_KPIS: AdminKPIs = {
   mrr: 0, arr: 0, total_tenants: 0, active_tenants: 0, trial_tenants: 0, churned_tenants: 0,
@@ -30,14 +27,14 @@ const EMPTY_KPIS: AdminKPIs = {
   mrr_growth_pct: 0, new_tenants_30d: 0, dau: 0, mau: 0, sessions_today: 0, nps_score: 0,
 };
 
-export const ADMIN_KPIS: AdminKPIs             = IS_PROD ? EMPTY_KPIS : mocks.MOCK_KPIS;
-export const ADMIN_REVENUE: RevenueDataPoint[] = IS_PROD ? []         : mocks.MOCK_REVENUE;
-export const ADMIN_PLANS: AdminPlan[]          = IS_PROD ? []         : mocks.MOCK_PLANS;
-export const ADMIN_TENANTS: AdminTenant[]      = IS_PROD ? []         : mocks.MOCK_TENANTS;
-export const ADMIN_SUBSCRIPTIONS: AdminSubscription[] = IS_PROD ? [] : mocks.MOCK_SUBSCRIPTIONS;
-export const ADMIN_USERS: AdminUser[]          = IS_PROD ? []         : mocks.MOCK_ADMIN_USERS;
-export const ADMIN_SECURITY_EVENTS: AdminSecurityEvent[] = IS_PROD ? [] : mocks.MOCK_SECURITY_EVENTS;
-export const ADMIN_NOTIFICATIONS: AdminNotification[] = IS_PROD ? [] : mocks.MOCK_ADMIN_NOTIFICATIONS;
-export const ADMIN_INTEGRATIONS: AdminIntegration[] = IS_PROD ? [] : mocks.MOCK_INTEGRATIONS;
-export const ADMIN_PLATFORM_PROVIDERS: PlatformIntegrationProvider[] = IS_PROD ? [] : mocks.MOCK_PLATFORM_PROVIDERS;
-export const ADMIN_SYSTEM_METRICS: AdminSystemMetric[] = IS_PROD ? [] : (mocks as { MOCK_SYSTEM_METRICS?: AdminSystemMetric[] }).MOCK_SYSTEM_METRICS ?? [];
+export const ADMIN_KPIS: AdminKPIs             = EMPTY_KPIS;
+export const ADMIN_REVENUE: RevenueDataPoint[] = [];
+export const ADMIN_PLANS: AdminPlan[]          = [];
+export const ADMIN_TENANTS: AdminTenant[]      = [];
+export const ADMIN_SUBSCRIPTIONS: AdminSubscription[] = [];
+export const ADMIN_USERS: AdminUser[]          = [];
+export const ADMIN_SECURITY_EVENTS: AdminSecurityEvent[] = [];
+export const ADMIN_NOTIFICATIONS: AdminNotification[] = [];
+export const ADMIN_INTEGRATIONS: AdminIntegration[] = [];
+export const ADMIN_PLATFORM_PROVIDERS: PlatformIntegrationProvider[] = [];
+export const ADMIN_SYSTEM_METRICS: AdminSystemMetric[] = [];

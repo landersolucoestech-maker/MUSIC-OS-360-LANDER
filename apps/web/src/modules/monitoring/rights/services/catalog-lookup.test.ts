@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect } from "vitest";
 import {
   buildIsrcIndex,
   computeEcadMatchRate,
@@ -25,61 +25,6 @@ const makeObra = (overrides: Partial<CatalogObra> = {}): CatalogObra => ({
   duracao: "3:30",
   ...overrides,
 });
-
-vi.mock("@/shared/data/mockData", () => ({
-  MOCK_DATA: {
-    obras: [
-      {
-        id: "obra-001",
-        titulo: "Noite de Luz",
-        compositor: "Vitória Carvalho",
-        compositores: "Vitória Carvalho, Lucas Mendes",
-        co_compositores: "Lucas Mendes",
-        detentores: "MusicOS Publishing",
-        editora: "MusicOS Publishing",
-        isrc: "BRMSC2500001",
-        iswc: "T-123.456.789-0",
-        cod_abramus: "ABR-001-2025",
-        cod_ecad: "ECAD-0001-VL",
-        genero: "Pop",
-        status: "registrado",
-        duracao: "3:42",
-      },
-      {
-        id: "obra-002",
-        titulo: "Beira do Rio",
-        compositor: "Grupo Raiz Nordestina",
-        compositores: "Grupo Raiz Nordestina",
-        co_compositores: null,
-        detentores: "MusicOS Publishing",
-        editora: "MusicOS Publishing",
-        isrc: "BRMSC2500002",
-        iswc: "T-234.567.890-1",
-        cod_abramus: "ABR-002-2025",
-        cod_ecad: "ECAD-0002-RN",
-        genero: "Forró",
-        status: "registrado",
-        duracao: "4:15",
-      },
-      {
-        id: "obra-003",
-        titulo: "No ECAD Code",
-        compositor: "Unknown",
-        compositores: "Unknown",
-        co_compositores: null,
-        detentores: "Unknown",
-        editora: "Unknown",
-        isrc: "BRMSC2500016",
-        iswc: null,
-        cod_abramus: null,
-        cod_ecad: null,
-        genero: "Funk",
-        status: "pendente",
-        duracao: "3:10",
-      },
-    ],
-  },
-}));
 
 describe("buildIsrcIndex", () => {
   it("builds a Map indexed by ISRC", () => {
@@ -201,30 +146,18 @@ describe("findOrphanIsrcs", () => {
   });
 });
 
-describe("getCatalogObras (via mock)", () => {
-  it("returns obras from MOCK_DATA", () => {
+describe("getCatalogObras (fonte real ausente)", () => {
+  it("retorna vazio — catálogo local só existirá via backend real (nunca dados fictícios)", () => {
     const obras = getCatalogObras();
     expect(Array.isArray(obras)).toBe(true);
-    expect(obras.length).toBeGreaterThan(0);
-    expect(obras[0]).toHaveProperty("isrc");
-    expect(obras[0]).toHaveProperty("cod_ecad");
+    expect(obras).toEqual([]);
   });
 });
 
-describe("getIsrcIndex (integration)", () => {
-  it("returns a non-empty Map indexed by ISRC using mocked MOCK_DATA", () => {
+describe("getIsrcIndex (fonte real ausente)", () => {
+  it("retorna Map vazio quando não há catálogo", () => {
     const index = getIsrcIndex();
     expect(index instanceof Map).toBe(true);
-    expect(index.size).toBeGreaterThan(0);
-    expect(index.has("BRMSC2500001")).toBe(true);
-    expect(index.get("BRMSC2500001")?.titulo).toBe("Noite de Luz");
-  });
-
-  it("includes obras with and without cod_ecad", () => {
-    const index = getIsrcIndex();
-    const withEcad = index.get("BRMSC2500001");
-    const withoutEcad = index.get("BRMSC2500016");
-    expect(withEcad?.cod_ecad).toBe("ECAD-0001-VL");
-    expect(withoutEcad?.cod_ecad).toBeNull();
+    expect(index.size).toBe(0);
   });
 });

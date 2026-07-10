@@ -23,9 +23,7 @@ export type {
 } from "@/shared/integrations/contracts/auth.contract";
 
 export {
-  SUPABASE_AUTH_CAPABILITIES,
-  MOCK_AUTH_CAPABILITIES,
-} from "@/shared/integrations/contracts/auth.contract";
+  SUPABASE_AUTH_CAPABILITIES,} from "@/shared/integrations/contracts/auth.contract";
 
 // ── Email (Resend) ────────────────────────────────────────────────────────────
 export type {

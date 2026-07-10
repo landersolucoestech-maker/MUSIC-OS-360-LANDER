@@ -8,7 +8,7 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { ADMIN_NOTIFICATIONS as MOCK_ADMIN_NOTIFICATIONS, ADMIN_DATA_IS_MOCK } from "../data/admin-source";
+import { ADMIN_NOTIFICATIONS, ADMIN_DATA_IS_MOCK } from "../data/admin-source";
 import {
   LayoutDashboard, Building2, Tag, Receipt,
   ScrollText, Bell, HeadphonesIcon,
@@ -39,7 +39,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
   const location  = useLocation();
   const navigate  = useNavigate();
   const [collapsed, setCollapsed] = useState(false);
-  const unread = MOCK_ADMIN_NOTIFICATIONS.filter(n => !n.read).length;
+  const unread = ADMIN_NOTIFICATIONS.filter(n => !n.read).length;
 
   const active = (href: string) =>
     location.pathname === href || location.pathname.startsWith(href + "/");
@@ -157,7 +157,7 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <div className="px-3 py-2 border-b border-border/60">
                   <p className="text-[12px] font-semibold">Notificações</p>
                 </div>
-                {MOCK_ADMIN_NOTIFICATIONS.slice(0, 4).map((n) => (
+                {ADMIN_NOTIFICATIONS.slice(0, 4).map((n) => (
                   <DropdownMenuItem key={n.id} className="gap-2 py-2.5 cursor-pointer">
                     {SEVERITY_ICON[n.severity as keyof typeof SEVERITY_ICON]}
                     <div className="flex-1 min-w-0">

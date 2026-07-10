@@ -2,13 +2,12 @@ import { AlertCircle } from 'lucide-react';
 import { Button }      from '@/shared/ui/button';
 import { usePlanFeatures } from '@/shared/hooks/usePlanFeatures';
 import { useNavigate }     from 'react-router-dom';
-import { MOCK_MODE }       from '@/shared/lib/env';
 
 export function TrialBanner() {
   const { isTrialing } = usePlanFeatures();
   const navigate = useNavigate();
 
-  if (MOCK_MODE || !isTrialing) return null;
+  if (!isTrialing) return null;
 
   return (
     <div className="bg-amber-50 border-b border-amber-200 px-4 py-2">

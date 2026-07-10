@@ -7,7 +7,6 @@ import { Label } from "@/shared/ui/label";
 import { Textarea } from "@/shared/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/shared/ui/select";
 import type { AudiovisualProject } from "../types/audiovisual.types";
-import { audiovisualMusicCatalog } from "../mock/audiovisual.mock";
 
 export interface AudiovisualMusicCatalogOption {
   id: string;
@@ -140,7 +139,7 @@ export function AudiovisualProjectFormModal({
   onSubmit?: (data: Partial<AudiovisualProject>) => void;
   musicCatalog?: AudiovisualMusicCatalogOption[];
 }) {
-  const catalog = musicCatalog?.length ? musicCatalog : audiovisualMusicCatalog;
+  const catalog = musicCatalog ?? [];
   const [form, setForm] = useState<FormState>(initialForm);
 
   useEffect(() => {

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { QUERY_KEYS } from "@/shared/lib/query-config";
-import { MOCK_USER_ID } from "@/shared/data/mockData";
+import { useAuth } from "@/app/providers/AuthContext";
 import { storage } from "@/shared/lib/storage";
 
 /**
@@ -22,6 +22,7 @@ export interface Usuario {
 }
 
 export function useUsuarios() {
+  const { user } = useAuth();
   const queryClient = useQueryClient();
 
   const { data: usuarios = [], isLoading, error } = useQuery<Usuario[]>({
@@ -64,6 +65,6 @@ export function useUsuarios() {
     isLoading,
     error,
     updateUsuario,
-    currentUserId: MOCK_USER_ID,
+    currentUserId: user?.id ?? "",
   };
 }

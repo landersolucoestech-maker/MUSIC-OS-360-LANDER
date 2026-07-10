@@ -1,20 +1,11 @@
 /**
  * integrations/providers/index.ts
  *
- * Barrel de todos os providers de integração.
- * Exporta as instâncias singleton mock e as classes para extensão.
+ * Barrel de providers de integração.
+ *
+ * Não existem mais providers mock: cada integração usa o backend real ou o
+ * provider de indisponibilidade explícita (adapters/unavailable.provider),
+ * que rejeita toda operação em vez de devolver dados artificiais.
  */
 
-export { MockAuthProvider,          mockAuthProvider          } from "./mock/mock-auth.provider";
-export { MockEmailProvider,         mockEmailProvider         } from "./mock/mock-email.provider";
-export { MockPaymentsProvider,      mockPaymentsProvider      } from "./mock/mock-payments.provider";
-export { MockAnalyticsProvider,     mockAnalyticsProvider     } from "./mock/mock-analytics.provider";
-export { MockErrorMonitorProvider,  mockErrorMonitorProvider  } from "./mock/mock-error-monitor.provider";
-export {
-  MockRightsProvider,
-  mockEcadProvider,
-  mockUbcProvider,
-  mockAbramusProvider,
-}                                                              from "./mock/mock-rights.provider";
-export { MockChatProvider,          mockChatProvider          } from "./mock/mock-chat.provider";
-
+export {};

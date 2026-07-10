@@ -31,7 +31,6 @@ import {
 import { toast } from "sonner";
 import { cn } from "@/shared/lib/utils";
 import { publicApi } from "@/shared/lib/api-client";
-import { MOCK_MODE } from "@/shared/lib/env";
 import { CompanyLogo } from "@/shared/ui/company-logo";
 import { companyLogoService } from "@/modules/settings/services/company-logo.service";
 import { useArtistas } from "@/modules/artist/hooks/useArtistas";
@@ -190,21 +189,6 @@ export default function ArtistaSignupPublic() {
   // ── Slug validation ────────────────────────────────────────────────────────
   useEffect(() => {
     if (!orgSlug) { setSlugState("invalid"); return; }
-    if (MOCK_MODE) {
-      setOrgInfo({
-        id: "mock-public-workspace",
-        name: orgSlug
-          .split("-")
-          .filter(Boolean)
-          .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-          .join(" "),
-        slug: orgSlug,
-        allowPublicRegistration: true,
-        logoUrl: companyLogoService.getPublicLogoMock(),
-      });
-      setSlugState("valid");
-      return;
-    }
     let cancelled = false;
     publicApi
       .get<OrgInfo>(`/public/workspaces/${encodeURIComponent(orgSlug)}`)
@@ -413,19 +397,11 @@ export default function ArtistaSignupPublic() {
         origem:                  "public_artist_form",
       };
 
-      if (MOCK_MODE) {
-        // Standalone: cria o artista direto na store — aparece na lista imediatamente.
-        const created = await addArtista.mutateAsync(artistaPayload as never);
-        const id = (created as { id?: string })?.id ?? String(Date.now());
-        setProtocol(`ART-${id.slice(-6).toUpperCase()}`);
-      } else {
-        // Produção: endpoint público que cria o artista diretamente (a implementar no backend).
-        const result = await publicApi.post<{ id: string; protocol?: string }>(
-          "/public/artists",
-          { workspaceSlug: orgSlug, ...artistaPayload, acceptedTerms, companyWebsite },
-        );
-        setProtocol(result.protocol ?? result.id ?? "OK");
-      }
+      const result = await publicApi.post<{ id: string; protocol?: string }>(
+        "/public/artists",
+        { workspaceSlug: orgSlug, ...artistaPayload, acceptedTerms, companyWebsite },
+      );
+      setProtocol(result.protocol ?? result.id ?? "OK");
       setSuccess(true);
     } catch (err: unknown) {
       toast.error("Erro ao enviar cadastro. Tente novamente.");

@@ -3,13 +3,11 @@
  *
  * Hook para integração Instagram Insights (Meta Graph API).
  * Fluxo OAuth 2.0 via popup → backend gerencia tokens.
- * Em MOCK_MODE retorna stubs sem chamar o backend.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { api } from "@/shared/lib/api-client";
-import { MOCK_MODE } from "@/shared/lib/env";
 
 export interface InstagramStatus {
   connected: boolean;
@@ -32,7 +30,6 @@ export function useInstagramStatus() {
   return useQuery<InstagramStatus>({
     queryKey: ["integrations", "instagram", "status"],
     queryFn: async (): Promise<InstagramStatus> => {
-      if (MOCK_MODE) return { connected: false, last_sync_at: null };
       return api.get<InstagramStatus>("/integrations/instagram/status");
     },
     staleTime: 30_000,
@@ -42,7 +39,6 @@ export function useInstagramStatus() {
 export function useInstagramConnect() {
   return {
     connect: async () => {
-      if (MOCK_MODE) { toast.info("Modo mock — OAuth Instagram desabilitado."); return; }
       const { url } = await api.get<{ url: string }>("/integrations/instagram/auth");
       const popup = window.open(url, "instagram_oauth", "width=600,height=700");
       if (!popup) toast.error("Popup bloqueado. Permita popups para este site.");
@@ -54,10 +50,8 @@ export function useInstagramAccountMetrics() {
   return useQuery<InstagramAccountMetrics | null>({
     queryKey: ["integrations", "instagram", "metrics"],
     queryFn: async () => {
-      if (MOCK_MODE) return null;
       return api.get<InstagramAccountMetrics>("/integrations/instagram/metrics");
     },
-    enabled: !MOCK_MODE,
     staleTime: 60_000,
   });
 }
@@ -66,7 +60,6 @@ export function useInstagramDisconnect() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      if (MOCK_MODE) return;
       return api.delete("/integrations/instagram/disconnect");
     },
     onSuccess: () => {

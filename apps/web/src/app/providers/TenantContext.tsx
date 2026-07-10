@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from "react";
 import type { FeatureFlags } from "@/shared/lib/feature-flags";
 import { DEFAULT_FEATURE_FLAGS } from "@/shared/lib/feature-flags";
-import { AUTH_DISABLED, MOCK_MODE, IS_DEV } from "@/shared/lib/env";
+import { AUTH_DISABLED, IS_DEV } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
 import { tenantModulePermissionKeys } from "@/shared/lib/permission-map";
 import { api, getAccessToken } from "@/shared/lib/api-client";
@@ -126,29 +126,29 @@ export interface Tenant {
 
 // getPermissionsFromToken disponível em ./tenant-labels
 
-// ─── Mock tenant — Gravadora Exemplo Ltda ─────────────────────────────────────
+// ─── Tenant base vazio (nenhum dado fictício; preenchido pela API real) ──────
 
-const MOCK_TENANT: Tenant = {
-  id:       "ten-gravadora-exemplo-001",
-  name:     "Gravadora Exemplo Ltda",
-  slug:     "gravadora-exemplo",
-  plan:     "enterprise",
+const BASE_TENANT: Tenant = {
+  id:       "",
+  name:     "",
+  slug:     "",
+  plan:     "starter",
   industry: "gravadora",
-  cnpj:     "12.345.678/0001-90",
-  phone:    "+55 11 3000-0000",
-  address:  "Av. Paulista, 1000 — São Paulo, SP",
+  cnpj:     "",
+  phone:    "",
+  address:  "",
   features:    DEFAULT_FEATURE_FLAGS,
   permissions: ROLE_PERMISSIONS.owner,
   config: {},
   billing: {
     status:            "active",
-    seats:             25,
-    seatsUsed:         8,
-    currentPeriodEnd:  "2026-06-01T00:00:00.000Z",
+    seats:             0,
+    seatsUsed:         0,
+    currentPeriodEnd:  "",
   },
   onboarding: DEFAULT_ONBOARDING,
   meta: {
-    createdAt: "2024-01-15T00:00:00.000Z",
+    createdAt: "",
     timezone:  SYSTEM_REGIONAL_SETTINGS.timezone,
     locale:    SYSTEM_REGIONAL_SETTINGS.locale,
     currency:  SYSTEM_REGIONAL_SETTINGS.currency,
@@ -174,10 +174,9 @@ interface TenantContextType {
 const TenantContext = createContext<TenantContextType | undefined>(undefined);
 
 function buildInitialTenant(): Tenant {
-  if (AUTH_DISABLED) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
-  if (MOCK_MODE) return { ...MOCK_TENANT, permissions: ROLE_PERMISSIONS.owner };
+  if (AUTH_DISABLED) return { ...BASE_TENANT, name: "Desenvolvimento (auth desativada)", permissions: ROLE_PERMISSIONS.owner };
   return {
-    ...MOCK_TENANT,
+    ...BASE_TENANT,
     id:          "",
     name:        "MUSIC OS 360",
     slug:        "",
@@ -238,7 +237,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (AUTH_DISABLED) return;
-    if (MOCK_MODE || !session?.access_token) return;
+    if (!session?.access_token) return;
 
     let active = true;
     api.get<SaasAuthContext>("/auth/context")
@@ -285,7 +284,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // Permissivo APENAS em dev/mock/auth-disabled. Em produção, ausência de permissões
   // (permissionKeys === null, ainda carregando ou indisponível) NÃO abre — fail-closed.
   const hasPermission = (module: TenantModuleKey, action: keyof TenantModulePermission): boolean => {
-    if (MOCK_MODE || AUTH_DISABLED || IS_DEV) return true;
+    if (AUTH_DISABLED || IS_DEV) return true;
     if (permissionKeys === null) return false;
     const keys = tenantModulePermissionKeys(module, action);
     return keys.some((key) => permissionKeys.includes(key));
@@ -352,7 +351,7 @@ export function useSyncTenantFromJWT(_userEmail?: string): void {
 
   // Função interna de sincronização — partilhada pelos dois efeitos abaixo
   const syncFromJwt = React.useCallback(() => {
-    if (MOCK_MODE) return;
+    
     if (AUTH_DISABLED) return;
 
     // JWT claims (app_metadata.role + app_metadata.org_id via Hook)

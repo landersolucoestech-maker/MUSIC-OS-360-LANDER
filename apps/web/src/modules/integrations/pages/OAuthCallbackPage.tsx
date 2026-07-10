@@ -16,12 +16,10 @@
  *   4. postMessage({ type, platform, access_token }) → opener (same origin).
  *   5. Close the popup.
  *
- * MOCK_MODE=true:  this page is never reached (popup simulates login directly).
- * MOCK_MODE=false: this is the ONLY path that produces a real access_token.
  */
 
 import { useEffect, useState } from "react";
-import { MOCK_MODE, API_BASE_URL } from "@/shared/lib/env";
+import { API_BASE_URL } from "@/shared/lib/env";
 
 type ExchangeState =
   | { status: "pending" }
@@ -36,10 +34,6 @@ export default function OAuthCallbackPage() {
   const [state, setState] = useState<ExchangeState>({ status: "pending" });
 
   useEffect(() => {
-    if (MOCK_MODE) {
-      setState({ status: "no_code" });
-      return;
-    }
 
     const params   = new URLSearchParams(window.location.search);
     const code     = params.get("code");

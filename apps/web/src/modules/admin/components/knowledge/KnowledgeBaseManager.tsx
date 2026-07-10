@@ -54,7 +54,7 @@ import {
 } from "@/shared/ui/alert-dialog";
 import { EmptyState } from "@/shared/components/EmptyState";
 import { useKnowledgeArticles } from "@/modules/support/hooks/useSupport";
-import { MOCK_KNOWLEDGE_CATEGORIES } from "@/modules/support/data/mockSupport";
+import { SUPPORT_KNOWLEDGE_CATEGORIES } from "@/modules/support/data/support-source";
 import type { KnowledgeArticle, KnowledgeArticleType, KnowledgeArticleStatus } from "@/modules/support/types";
 
 const STATUS_OPTIONS: Array<{ value: KnowledgeArticleStatus; label: string }> = [
@@ -95,7 +95,7 @@ interface ArticleFormState {
 
 const EMPTY_FORM: ArticleFormState = {
   title: "",
-  category_id: MOCK_KNOWLEDGE_CATEGORIES[0]?.id ?? "",
+  category_id: SUPPORT_KNOWLEDGE_CATEGORIES[0]?.id ?? "",
   type: "article",
   summary: "",
   content: "",
@@ -161,7 +161,7 @@ export function KnowledgeBaseManager() {
       toast.error("Informe o conteúdo.");
       return;
     }
-    const category = MOCK_KNOWLEDGE_CATEGORIES.find((c) => c.id === form.category_id);
+    const category = SUPPORT_KNOWLEDGE_CATEGORIES.find((c) => c.id === form.category_id);
     const payload = {
       title,
       category_id: form.category_id,
@@ -227,7 +227,7 @@ export function KnowledgeBaseManager() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="todas">Todas as categorias</SelectItem>
-              {MOCK_KNOWLEDGE_CATEGORIES.map((cat) => (
+              {SUPPORT_KNOWLEDGE_CATEGORIES.map((cat) => (
                 <SelectItem key={cat.id} value={cat.id}>
                   {cat.name}
                 </SelectItem>
@@ -374,7 +374,7 @@ export function KnowledgeBaseManager() {
                     <SelectValue placeholder="Selecione" />
                   </SelectTrigger>
                   <SelectContent>
-                    {MOCK_KNOWLEDGE_CATEGORIES.map((cat) => (
+                    {SUPPORT_KNOWLEDGE_CATEGORIES.map((cat) => (
                       <SelectItem key={cat.id} value={cat.id}>
                         {cat.name}
                       </SelectItem>
