@@ -5,7 +5,9 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const webRoot = path.resolve(__dirname, "..");
 const command = process.argv[2] ?? "dev";
-const port = Number(process.env.PORT ?? process.env.VITE_PORT ?? 5000);
+// VITE_PORT > PORT: PORT é a convenção da API (Nest, 3001); priorizar VITE_PORT
+// impede o dev server web de colidir com a API quando PORT está exportado.
+const port = Number(process.env.VITE_PORT ?? process.env.PORT ?? 5000);
 
 process.chdir(webRoot);
 

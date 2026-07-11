@@ -10,6 +10,9 @@
     "packages/*"
   ],
   "scripts": {
+    "dev": "corepack pnpm --parallel --filter @music-os-360/api --filter @music-os-360/web dev",
+    "dev:api": "corepack pnpm --filter @music-os-360/api dev",
+    "dev:web": "corepack pnpm --filter @music-os-360/web dev",
     "build": "corepack pnpm --filter @music-os-360/api build && corepack pnpm --filter @music-os-360/web build",
     "typecheck": "corepack pnpm --filter @music-os-360/api typecheck && corepack pnpm --filter @music-os-360/web typecheck",
     "lint": "eslint .",
