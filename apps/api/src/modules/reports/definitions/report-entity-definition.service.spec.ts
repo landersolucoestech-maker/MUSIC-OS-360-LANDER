@@ -2,7 +2,11 @@ import { EntityMetadataService } from '../entity-metadata.service';
 import { ReportEntityDefinitionService } from './report-entity-definition.service';
 import { tryGetFieldLabelPtBr } from '../i18n/field-labels.pt-br';
 import { EntityCategory } from '../entity-metadata.types';
-import { ARTIST_DIRECT_COLUMNS, ARTIST_ENCRYPTED_FIELDS } from '../form-contracts/artists.form-contract';
+import {
+  contractEncryptedFields,
+  contractMetadataFields,
+  getReportFormContract,
+} from '../form-contracts/report-form-contracts';
 
 /** FASE 2.1 — contratos por entidade reportável, ancorados na metadata real. */
 describe('ReportEntityDefinitionService — contratos', () => {
@@ -29,11 +33,16 @@ describe('ReportEntityDefinitionService — contratos', () => {
         ...d.sortableColumns, ...d.searchableColumns, ...d.sensitiveColumns,
         ...d.requiredImportColumns,
       ];
+      // Coluna do contrato central pode ser: física, cifrada (coluna *_encrypted
+      // existente) ou residente em metadata jsonb (a tabela precisa ter metadata).
+      const contract = getReportFormContract(d.tableName);
+      const encrypted = contract ? contractEncryptedFields(contract) : {};
+      const metaFields = contract ? contractMetadataFields(contract) : new Set<string>();
       for (const col of all) {
-        const backedArtistAlias =
-          d.tableName === 'artists' &&
-          (ARTIST_DIRECT_COLUMNS.has(col) || real.has(ARTIST_ENCRYPTED_FIELDS[col]));
-        if (!real.has(col) && !backedArtistAlias) offenders.push(`${d.tableName}.${col}`);
+        const backedByContract =
+          (encrypted[col] !== undefined && real.has(encrypted[col])) ||
+          (metaFields.has(col) && real.has('metadata'));
+        if (!real.has(col) && !backedByContract) offenders.push(`${d.tableName}.${col}`);
       }
     }
     expect(offenders).toEqual([]);

@@ -29,7 +29,9 @@ function makeEngine(opts: {
   const ds = { query: jest.fn().mockResolvedValue(rows) } as any;
   const audit = { record: jest.fn() } as any;
   const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
-  const engine = new ExportEngineService(ds, metadata, definitions, new ExportQueryBuilderService(), new ExportFormatService(), audit, tableGuard);
+  // Double de EncryptionService: identidade (o spec injeta plaintext nas rows).
+  const encryption = { decryptNullable: jest.fn((v: string | null) => v) } as any;
+  const engine = new ExportEngineService(ds, metadata, definitions, new ExportQueryBuilderService(), new ExportFormatService(), audit, tableGuard, encryption);
   return { engine, ds, audit };
 }
 

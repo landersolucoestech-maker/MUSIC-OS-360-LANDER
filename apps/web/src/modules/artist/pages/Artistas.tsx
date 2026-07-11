@@ -19,7 +19,7 @@ import {
 import {
   Users, Phone, Mail, Sparkles, Music,
   CheckCircle, Search, PlusCircle, Pencil, Trash2,
-  MoreVertical, X, Download,
+  MoreVertical, X,
 } from "lucide-react";
 import { SiInstagram, SiTiktok, SiYoutube, SiSpotify, SiSoundcloud, SiApplemusic } from "react-icons/si";
 import { DeezerIcon } from "@/shared/ui/deezer-icon";
@@ -40,7 +40,6 @@ import { ArtistasSkeleton } from "@/shared/components/PageSkeletons";
 import { toast } from "sonner";
 import { ESPECIALIDADES_LABELS } from "@/modules/artist/mappers";
 import {
-  artistaToExportRowFromForm,
   parseArtistaImportRow,
   formValuesToArtistaPayload,
 } from "@/modules/artist/forms/artist-form.definition";
@@ -194,24 +193,6 @@ export default function Artistas() {
     }
   };
 
-  /**
-   * Exportação direta (sem modal): itera ARTIST_FORM_SECTIONS — a definição
-   * única que também renderiza o formulário Criar, gera a validação e guia a
-   * importação. 1 campo do formulário = 1 coluna, na mesma ordem visual.
-   */
-  const handleExcelExport = async () => {
-    if (todosArtistas.length === 0) {
-      toast.error("Nenhum artista para exportar");
-      return;
-    }
-    const XLSX = await getXLSX();
-    const rows = todosArtistas.map(artistaToExportRowFromForm);
-    const worksheet = XLSX.utils.json_to_sheet(rows);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Artistas");
-    XLSX.writeFile(workbook, `artistas-${new Date().toISOString().slice(0, 10)}.xlsx`);
-  };
-
   const clearFilters = () => {
     setSearchTerm("");
     setStatusFilter("todos");
@@ -269,18 +250,6 @@ export default function Artistas() {
             onChange={handleExcelImport}
             data-testid="input-import-excel"
           />
-          <RequirePermission module="artists" action="export">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 text-xs gap-1.5"
-              onClick={handleExcelExport}
-              data-testid="button-exportar-artistas"
-            >
-              <Download className="h-3.5 w-3.5" />
-              Exportar
-            </Button>
-          </RequirePermission>
           <RequirePermission module="artists" action="write">
             <Button
               size="sm"

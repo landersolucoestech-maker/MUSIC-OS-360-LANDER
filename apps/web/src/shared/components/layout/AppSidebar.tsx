@@ -85,7 +85,7 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { title: "Dashboard",    href: "/",           icon: LayoutDashboard },
+  { title: "Dashboard",    href: "/dashboard",  icon: LayoutDashboard },
   { title: "Artistas",        href: "/artistas",   icon: Users,        featureFlag: "moduleArtists" },
   {
     title: "Catálogo",

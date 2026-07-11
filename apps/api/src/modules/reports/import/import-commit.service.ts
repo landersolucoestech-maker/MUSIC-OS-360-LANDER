@@ -15,10 +15,10 @@ import type { ReportEntityDefinition } from '../definitions/report-entity-defini
 import type { RowValidation } from './import.types';
 import { EncryptionService } from '../../../core/security/encryption.service';
 import {
-  ARTIST_DIRECT_COLUMNS,
-  ARTIST_ENCRYPTED_FIELDS,
-  isArtistMetadataField,
-} from '../form-contracts/artists.form-contract';
+  contractEncryptedFields,
+  contractMetadataFields,
+  getReportFormContract,
+} from '../form-contracts/report-form-contracts';
 
 export interface ImportCommitResult {
   entity: string;
@@ -112,6 +112,12 @@ export class ImportCommitService {
 
     await qr.connect();
     await qr.startTransaction();
+
+    // Contexto de tenant da TRANSAÇÃO (RLS fail-closed): o QueryRunner próprio
+    // escapa do proxy ALS de request, então o set_config transaction-local é
+    // obrigatório aqui — sem ele o INSERT/SELECT é bloqueado pelas policies.
+    // O tenant vem SEMPRE da autenticação; nunca do arquivo importado.
+    await qr.query(`SELECT set_config('app.current_tenant_id', $1, true)`, [tenantId]);
 
     const errors: string[] = [];
 
@@ -245,48 +251,27 @@ export class ImportCommitService {
     row: RowValidation,
     tenantId: string,
   ): Promise<void> {
-    if (def.tableName === 'artists') {
-      await this.insertArtistRow(qr, def, row, tenantId);
-      return;
-    }
+    // Persistência dirigida pelo contrato central (fonte única): coluna direta,
+    // campo cifrado (re-encriptado do valor plaintext) ou campo em metadata jsonb.
+    const contract = getReportFormContract(def.tableName);
+    const encryptedFields = contract ? contractEncryptedFields(contract) : {};
+    const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
 
-    const cols: string[] = [];
-    const values: unknown[] = [];
-
-    for (const col of def.importableColumns) {
-      if (col in row.data) {
-        cols.push(col);
-        values.push(row.data[col]);
-      }
-    }
-
-    cols.push('tenant_id');
-    values.push(tenantId);
-
-    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
-    const sql = `INSERT INTO ${quote(def.tableName)} (${cols.map(quote).join(', ')}) VALUES (${placeholders})`;
-
-    await qr.query(sql, values);
-  }
-
-  private async insertArtistRow(
-    qr: QueryRunner,
-    def: ReportEntityDefinition,
-    row: RowValidation,
-    tenantId: string,
-  ): Promise<void> {
     const cols: string[] = [];
     const values: unknown[] = [];
     const metadata: Record<string, unknown> = {};
+    let hasMetadataField = false;
 
     for (const col of def.importableColumns) {
       if (!(col in row.data)) continue;
 
-      const rawValue = normalizeImportedValue(row.data[col]);
+      const rawValue = contract ? normalizeImportedValue(row.data[col]) : row.data[col];
 
-      const encryptedColumn = ARTIST_ENCRYPTED_FIELDS[col];
+      // Célula vazia = AUSÊNCIA: a coluna é omitida do INSERT para o default do
+      // schema valer (ex.: jsonb NOT NULL DEFAULT '[]'). Nunca convertida em null.
+      if (contract && rawValue === null) continue;
 
+      const encryptedColumn = encryptedFields[col];
       if (encryptedColumn) {
         cols.push(encryptedColumn);
         values.push(
@@ -297,19 +282,20 @@ export class ImportCommitService {
         continue;
       }
 
-      if (ARTIST_DIRECT_COLUMNS.has(col)) {
-        cols.push(col);
-        values.push(rawValue);
+      if (metadataFields.has(col)) {
+        metadata[col] = rawValue;
+        hasMetadataField = true;
         continue;
       }
 
-      if (isArtistMetadataField(col)) {
-        metadata[col] = rawValue;
-      }
+      cols.push(col);
+      values.push(rawValue);
     }
 
-    cols.push('metadata');
-    values.push(metadata);
+    if (contract && (hasMetadataField || metadataFields.size > 0)) {
+      cols.push('metadata');
+      values.push(metadata);
+    }
 
     cols.push('tenant_id');
     values.push(tenantId);

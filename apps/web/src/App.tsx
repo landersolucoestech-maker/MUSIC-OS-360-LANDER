@@ -69,10 +69,11 @@ function BillingGuard({ children }: { children: React.ReactNode }) {
 function Home() {
   const { user, loading } = useAuth();
   const { tenant } = useTenant();
+  if (AUTH_DISABLED) return <Navigate to="/dashboard" replace />;
   if (loading) return <PageSkeleton />;
   if (!user) return <Landing />;
   if (!tenant.onboarding.completed) return <Navigate to="/onboarding" replace />;
-  return <Dashboard />;
+  return <Navigate to="/dashboard" replace />;
 }
 
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (

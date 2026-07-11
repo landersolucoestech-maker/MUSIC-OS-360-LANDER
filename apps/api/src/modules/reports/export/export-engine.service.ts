@@ -17,6 +17,11 @@ import { ExportQueryBuilderService } from './export-query-builder.service';
 import { ExportFormatService } from './export-format.service';
 import { ExportAuditService } from './export-audit.service';
 import { ReportTableGuardService } from '../report-table-guard.service';
+import { EncryptionService } from '../../../core/security/encryption.service';
+import {
+  contractEncryptedFields,
+  getReportFormContract,
+} from '../form-contracts/report-form-contracts';
 import { EXPORT_FORMATS, type ExportFormat, type ExportQueryParams, type ExportResult } from './export.types';
 
 @Injectable()
@@ -29,6 +34,7 @@ export class ExportEngineService {
     private readonly format: ExportFormatService,
     private readonly audit: ExportAuditService,
     private readonly tableGuard: ReportTableGuardService,
+    private readonly encryption: EncryptionService,
   ) {}
 
   async export(
@@ -65,6 +71,21 @@ export class ExportEngineService {
     } catch (err) {
       this.audit.record({ userId, tenantId, entity, format: params.format, recordCount: 0, status: 'failed', error: String(err) });
       throw err;
+    }
+
+    // Campos cifrados são exportados DESCRIPTOGRAFADOS (a chave lógica do
+    // formulário, ex.: email). Sem isso o arquivo carregaria ciphertext e o
+    // round-trip exportar→importar re-cifraria o ciphertext (dado corrompido).
+    const encryptedFields = Object.keys(
+      getReportFormContract(entity) ? contractEncryptedFields(getReportFormContract(entity)!) : {},
+    ).filter((k) => query.columns.includes(k));
+    if (encryptedFields.length > 0) {
+      for (const row of rows) {
+        for (const key of encryptedFields) {
+          const v = row[key];
+          row[key] = typeof v === 'string' && v.length > 0 ? this.encryption.decryptNullable(v) : null;
+        }
+      }
     }
 
     const result = this.serialize(entity, params.format, query.columns, rows);

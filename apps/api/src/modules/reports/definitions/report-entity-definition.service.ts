@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { EntityMetadataService } from '../entity-metadata.service';
 import type { ColumnMeta, EntityReport } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from './report-entity-definition.types';
-import { ARTIST_FORM_FIELDS } from '../form-contracts/artists.form-contract';
+import {
+  contractDirectColumns,
+  contractExportableColumns,
+  contractImportableColumns,
+  getReportFormContract,
+} from '../form-contracts/report-form-contracts';
 
 const IDENTITY_NAMES = [
   'numero',
@@ -89,22 +94,24 @@ export class ReportEntityDefinitionService {
 
     const visible = cols.filter((c) => !isInternalColumn(c) && !isSensitiveColumn(c));
 
-    const exportableColumns =
-      e.tableName === 'artists'
-        ? [...ARTIST_FORM_FIELDS]
-        : visible.map((c) => c.name);
+    // Fonte única de verdade: contrato de formulário registrado para a entidade.
+    // Sem contrato, cai na heurística de metadata (entidades sem formulário).
+    const contract = getReportFormContract(e.tableName);
+    const directContractColumns = contract ? contractDirectColumns(contract) : null;
 
-    const importableColumns =
-      e.tableName === 'artists'
-        ? [...ARTIST_FORM_FIELDS]
-        : visible
-            .filter((c) => !/_count$|^auto_|_at$/.test(c.name) && c.name !== 'auto_generated')
-            .map((c) => c.name);
+    const exportableColumns = contract
+      ? contractExportableColumns(contract)
+      : visible.map((c) => c.name);
+
+    const importableColumns = contract
+      ? contractImportableColumns(contract)
+      : visible
+          .filter((c) => !/_count$|^auto_|_at$/.test(c.name) && c.name !== 'auto_generated')
+          .map((c) => c.name);
 
     const identityColumn =
-      e.tableName === 'artists'
-        ? 'nome_artistico'
-        : cols.find((c) => IDENTITY_NAMES.includes(c.name))?.name ?? exportableColumns[0] ?? 'id';
+      contract?.identityColumn ??
+      (cols.find((c) => IDENTITY_NAMES.includes(c.name))?.name ?? exportableColumns[0] ?? 'id');
 
     const displayColumn = identityColumn;
 
@@ -113,35 +120,40 @@ export class ReportEntityDefinitionService {
       cols.find((c) => DATE_TYPES.has(c.type) && !c.isUpdatedAt && !c.isDeletedAt)?.name ??
       'created_at';
 
-    const filterableColumns =
-      e.tableName === 'artists'
-        ? ['status', 'tipo', 'genero_musical']
-        : visible
-            .filter(
-              (c) =>
-                FILTERABLE_HINTS.test(c.name) ||
-                c.isEnum ||
-                c.type === 'Boolean' ||
-                DATE_TYPES.has(c.type),
-            )
-            .map((c) => c.name);
+    // Filtros/ordenação/busca operam em SQL: restritos a colunas FÍSICAS.
+    // Em entidades com contrato, ainda exigimos que a coluna faça parte dele.
+    const sqlSafe = (name: string): boolean =>
+      !directContractColumns || directContractColumns.has(name);
+
+    const filterableColumns = contract?.filterableColumns ?? visible
+      .filter(
+        (c) =>
+          (FILTERABLE_HINTS.test(c.name) ||
+            c.isEnum ||
+            c.type === 'Boolean' ||
+            DATE_TYPES.has(c.type)) &&
+          sqlSafe(c.name),
+      )
+      .map((c) => c.name);
 
     const sortableColumns = Array.from(
       new Set([
         identityColumn,
         dateColumn,
         ...visible
-          .filter((c) => NUMERIC_TYPES.has(c.type) || DATE_TYPES.has(c.type))
+          .filter((c) => (NUMERIC_TYPES.has(c.type) || DATE_TYPES.has(c.type)) && sqlSafe(c.name))
           .map((c) => c.name),
       ]),
     );
 
-    const searchableColumns =
-      e.tableName === 'artists'
-        ? ['nome_artistico', 'nome_civil', 'genero_musical', 'observacoes']
-        : visible
-            .filter((c) => (c.type === 'String' || c.type === 'varchar' || c.type === 'text') && !c.isEnum)
-            .map((c) => c.name);
+    const searchableColumns = contract?.searchableColumns ?? visible
+      .filter(
+        (c) =>
+          (c.type === 'String' || c.type === 'varchar' || c.type === 'text') &&
+          !c.isEnum &&
+          sqlSafe(c.name),
+      )
+      .map((c) => c.name);
 
     return {
       entityName: e.entityName,

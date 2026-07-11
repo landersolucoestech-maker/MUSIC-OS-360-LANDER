@@ -2,9 +2,10 @@ import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/com
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 import { EXPORT_MAX_PAGE_SIZE, type BuiltExportQuery, type ExportQueryParams } from './export.types';
 import {
-  ARTIST_DIRECT_COLUMNS,
-  ARTIST_ENCRYPTED_FIELDS,
-} from '../form-contracts/artists.form-contract';
+  contractEncryptedFields,
+  contractMetadataFields,
+  getReportFormContract,
+} from '../form-contracts/report-form-contracts';
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
@@ -53,20 +54,22 @@ export class ExportQueryBuilderService {
 
     const columns = [...requested];
 
+    // Resolução física via contrato central (fonte única): coluna direta,
+    // campo em metadata jsonb ou coluna cifrada (exposta pela chave lógica).
+    const contract = getReportFormContract(def.tableName);
+    const encryptedFields = contract ? contractEncryptedFields(contract) : {};
+    const metadataFields = contract ? contractMetadataFields(contract) : new Set<string>();
+
     const selectList = columns
       .map((column) => {
-        if (def.tableName !== 'artists') return quote(column);
-
-        const encryptedPhysicalColumn = ARTIST_ENCRYPTED_FIELDS[column];
+        const encryptedPhysicalColumn = encryptedFields[column];
         if (encryptedPhysicalColumn) {
           return `${quote(encryptedPhysicalColumn)} AS ${quote(column)}`;
         }
-
-        if (ARTIST_DIRECT_COLUMNS.has(column)) {
-          return quote(column);
+        if (metadataFields.has(column)) {
+          return metadataSelectExpression(column);
         }
-
-        return metadataSelectExpression(column);
+        return quote(column);
       })
       .join(', ');
 

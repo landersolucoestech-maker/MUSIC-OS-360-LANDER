@@ -3,6 +3,11 @@ import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { ArtistEntity } from '../../database/entities';
 import { EncryptionService } from '../../core/security/encryption.service';
+import {
+  REPORT_FORM_CONTRACTS,
+  contractEncryptedFields,
+  contractMetadataFields,
+} from '../reports/form-contracts/report-form-contracts';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { PlanLimitService } from '../../core/billing/plan-limit.service';
 import type { CreateArtistDto } from './dto/create-artist.dto';
@@ -25,25 +30,17 @@ const NULLABLE_COLUMNS = [
 // Colunas jsonb NOT NULL DEFAULT []: null vira lista vazia.
 const JSONB_LIST_COLUMNS = ['galeria_urls', 'documentos', 'especialidades'] as const;
 
-// Fields handled via encryption
-const ENCRYPTED_FIELDS = new Set(['email', 'telefone', 'cpf_cnpj', 'manager_contato']);
+// FONTE ÚNICA: os conjuntos de campos cifrados e de metadata derivam do
+// contrato central de Relatórios (form-contracts) — o mesmo usado por
+// export/import. Antes havia uma lista própria aqui com chaves legadas
+// (instagram/tiktok sem _url) que fazia o create DESCARTAR silenciosamente
+// campos reais do formulário (instagram_url, tiktok_url, etc.).
+const ENCRYPTED_FIELDS = new Set(Object.keys(contractEncryptedFields(REPORT_FORM_CONTRACTS.artists)));
 
-// Fields that go into metadata JSONB (no dedicated entity column)
 const METADATA_FIELDS = new Set([
-  'data_nascimento', 'rg', 'endereco',
-  'banco', 'agencia', 'conta', 'chave_pix', 'titular_conta',
-  'instagram', 'tiktok', 'facebook', 'twitter', 'website',
-  'spotify_ouvintes', 'youtube_inscritos', 'deezer_fas',
-  'apple_music_albuns', 'soundcloud_seguidores', 'instagram_seguidores', 'tiktok_seguidores',
-  'tipo_perfil', 'empresario_id', 'empresario_nome', 'empresario_telefone', 'empresario_email',
-  'gravadora_id', 'gravadora_nome', 'gravadora_telefone', 'gravadora_email',
-  'gravadora_responsavel_id', 'gravadora_responsavel_nome', 'gravadora_responsavel_telefone', 'gravadora_responsavel_email',
-  'relacionamentos',
-  'distribuidoras_selecionadas', 'distribuidoras_emails',
-  'distribuidoras_empresa_selecionadas', 'distribuidoras_empresa_emails', 'distribuidoras_gerais',
-  'documentos_pessoais_url', 'presskit_url',
-  'notas_internas', 'slug_artistico', 'tags_musicais', 'fase_carreira',
-  'contatos_vinculados', 'contatos_equipe', 'genero',
+  ...contractMetadataFields(REPORT_FORM_CONTRACTS.artists),
+  // Campo de formulário persistível porém NUNCA exportado (interno por política).
+  'notas_internas',
 ]);
 
 /** Shape de resposta: entity sem ciphertext + metadata achatada + PII decifrada. */
