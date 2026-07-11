@@ -11,8 +11,27 @@ import { loadEnv } from "vite";
 
 export const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 export const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
+export const SUPABASE_DEV_REF = "hoiigqoocaivdaapetia";
 export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
-const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF];
+const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
+
+/** Ref esperado por ambiente — development EXIGE o projeto DEV. */
+function expectedRefFor(nodeEnv) {
+  if (nodeEnv === "production") return SUPABASE_PROD_REF;
+  if (nodeEnv === "staging") return SUPABASE_STAGING_REF;
+  return SUPABASE_DEV_REF;
+}
+
+/** Payload público do JWT ({ ref, role }). Nunca expõe o token. */
+function jwtClaims(token) {
+  if (!token || token.split(".").length < 2) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return { ref: payload.ref ?? null, role: payload.role ?? null };
+  } catch {
+    return null;
+  }
+}
 
 export function extractSupabaseRef(value) {
   if (!value) return null;
@@ -31,8 +50,11 @@ export function extractSupabaseRef(value) {
  */
 export function assertWebSupabaseEnv(mode, envDir) {
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
-  const nodeEnv = env.NODE_ENV ?? (mode === "production" ? "production" : "development");
-  const isProdLike = mode === "production" || nodeEnv === "production" || nodeEnv === "staging";
+  // O ambiente-alvo (qual projeto Supabase) é definido pelo NODE_ENV, NÃO pelo
+  // modo de build do Vite. Um `pnpm build` local (sem NODE_ENV) valida como
+  // DESENVOLVIMENTO; um build de produção/staging DEVE exportar NODE_ENV.
+  const nodeEnv = env.NODE_ENV ?? "development";
+  const isProdLike = nodeEnv === "production" || nodeEnv === "staging";
   const errors = [];
 
   const webUrl = env.VITE_SUPABASE_URL ?? "";
@@ -49,6 +71,31 @@ export function assertWebSupabaseEnv(mode, envDir) {
     errors.push(
       `SUPABASE_URL (${backendRef}) and VITE_SUPABASE_URL (${webRef}) point to different projects`,
     );
+  }
+
+  // Isolamento por ambiente (vale SEMPRE, inclusive em development): o ref usado
+  // precisa ser o do ambiente atual. Fecha o buraco de dev apontar para produção.
+  const expectedRef = expectedRefFor(nodeEnv);
+  if (webRef && webRef !== expectedRef) {
+    errors.push(
+      `VITE_SUPABASE_URL uses ref "${webRef}" but NODE_ENV=${nodeEnv} requires the "${expectedRef}" project`,
+    );
+  }
+  if (backendRef && backendRef !== expectedRef) {
+    errors.push(
+      `SUPABASE_URL uses ref "${backendRef}" but NODE_ENV=${nodeEnv} requires the "${expectedRef}" project`,
+    );
+  }
+
+  // Coerência ref × payload do anon JWT (sem expor o token).
+  const anonClaims = jwtClaims(env.VITE_SUPABASE_ANON_KEY);
+  if (anonClaims) {
+    if (anonClaims.ref && anonClaims.ref !== expectedRef) {
+      errors.push(`VITE_SUPABASE_ANON_KEY payload ref "${anonClaims.ref}" != expected "${expectedRef}"`);
+    }
+    if (anonClaims.role && anonClaims.role !== "anon") {
+      errors.push(`VITE_SUPABASE_ANON_KEY role "${anonClaims.role}" (expected "anon" — keys swapped?)`);
+    }
   }
 
   if (isProdLike) {

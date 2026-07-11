@@ -44,9 +44,9 @@ import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
 import {
-  SUPABASE_ALLOWED_REFS,
-  SUPABASE_PROD_REF,
   SUPABASE_REF_DENYLIST,
+  decodeSupabaseJwtClaims,
+  expectedSupabaseRef,
   extractSupabaseRef,
 } from './core/config/env.schema';
 import { isProdLike } from './core/config/runtime-environment';
@@ -61,6 +61,7 @@ let __netLastLogAt = 0;
 function assertApiRuntimeEnv(logger: Logger): void {
   const nodeEnv = process.env.NODE_ENV ?? 'development';
   const prodLike = isProdLike(nodeEnv);
+  const expectedRef = expectedSupabaseRef(nodeEnv);
   const errors: string[] = [];
 
   const refSources: Array<[string, string | null]> = [
@@ -74,11 +75,33 @@ function assertApiRuntimeEnv(logger: Logger): void {
     if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
       errors.push(`${key} aponta para o ref Supabase banido "${ref}"`);
     }
-    if (prodLike && ref && !SUPABASE_ALLOWED_REFS.includes(ref)) {
-      errors.push(`${key} usa ref "${ref}" fora da allowlist em NODE_ENV=${nodeEnv}`);
+    // Isolamento por ambiente: cada NODE_ENV só aceita o SEU projeto. Em
+    // development, prod/staging são tão proibidos quanto qualquer ref estranho.
+    if (ref && ref !== expectedRef) {
+      errors.push(
+        `${key} usa ref "${ref}" mas NODE_ENV=${nodeEnv} exige o projeto "${expectedRef}"`,
+      );
     }
-    if (nodeEnv === 'production' && ref && ref !== SUPABASE_PROD_REF) {
-      errors.push(`${key} deve usar o ref de producao "${SUPABASE_PROD_REF}" em production`);
+  }
+
+  // Coerência ref × payload dos JWTs (sem expor o token).
+  const jwtSources: Array<[string, string | undefined, string]> = [
+    ['SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY, 'anon'],
+    ['VITE_SUPABASE_ANON_KEY', process.env.VITE_SUPABASE_ANON_KEY, 'anon'],
+    ['SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY, 'service_role'],
+  ];
+  for (const [key, token, expectedRole] of jwtSources) {
+    if (!token) continue;
+    const claims = decodeSupabaseJwtClaims(token);
+    if (!claims) {
+      errors.push(`${key} nao e um JWT decodificavel`);
+      continue;
+    }
+    if (claims.ref && claims.ref !== expectedRef) {
+      errors.push(`${key} tem payload ref "${claims.ref}" != projeto esperado "${expectedRef}"`);
+    }
+    if (claims.role && claims.role !== expectedRole) {
+      errors.push(`${key} tem role "${claims.role}" (esperado "${expectedRole}" — chaves invertidas?)`);
     }
   }
 

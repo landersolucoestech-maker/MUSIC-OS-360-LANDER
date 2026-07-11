@@ -6,12 +6,40 @@ import { z } from 'zod';
 // scripts/env-check.mjs — qualquer alteração deve ser feita nos três lugares.
 export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq';
 export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif';
+/** Projeto Supabase de DESENVOLVIMENTO (branch dev isolado; nunca produção). */
+export const SUPABASE_DEV_REF = 'hoiigqoocaivdaapetia';
 /** Refs banidos de QUALQUER runtime (ex.: branch preview sem tabelas públicas). */
 export const SUPABASE_REF_DENYLIST: readonly string[] = ['mkyvkciwyhfawmvluugb'];
 export const SUPABASE_ALLOWED_REFS: readonly string[] = [
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,
+  SUPABASE_DEV_REF,
 ];
+
+/**
+ * Ref esperado por NODE_ENV — isolamento absoluto: development EXIGE o projeto
+ * DEV; prod/staging (e qualquer outro ref) ficam proibidos localmente.
+ */
+export function expectedSupabaseRef(nodeEnv: string | undefined): string {
+  if (nodeEnv === 'production') return SUPABASE_PROD_REF;
+  if (nodeEnv === 'staging') return SUPABASE_STAGING_REF;
+  return SUPABASE_DEV_REF;
+}
+
+/** Decodifica só o payload público do JWT ({ ref, role }). Nunca expõe o token. */
+export function decodeSupabaseJwtClaims(
+  token: string | undefined | null,
+): { ref: string | null; role: string | null } | null {
+  if (!token || token.split('.').length < 2) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split('.')[1], 'base64url').toString('utf8'),
+    ) as { ref?: string; role?: string };
+    return { ref: payload.ref ?? null, role: payload.role ?? null };
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Extrai o project ref de qualquer formato de conexão Supabase:

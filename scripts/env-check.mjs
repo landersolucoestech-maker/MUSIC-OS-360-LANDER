@@ -24,8 +24,31 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 
 const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
+const SUPABASE_DEV_REF = "hoiigqoocaivdaapetia";
 const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
-const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF];
+const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
+
+/**
+ * Ref Supabase esperado para cada NODE_ENV — isolamento absoluto de ambientes.
+ * development EXIGE o projeto DEV; prod/staging (e qualquer outro ref) ficam
+ * PROIBIDOS localmente. Fecha o buraco de dev apontar para produção.
+ */
+function expectedRefFor(nodeEnv) {
+  if (nodeEnv === "production") return SUPABASE_PROD_REF;
+  if (nodeEnv === "staging") return SUPABASE_STAGING_REF;
+  return SUPABASE_DEV_REF;
+}
+
+/** Decodifica só o payload público do JWT e devolve { ref, role }. Nunca imprime o token. */
+function jwtClaims(token) {
+  if (!token || typeof token !== "string" || token.split(".").length < 2) return null;
+  try {
+    const payload = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8"));
+    return { ref: payload.ref ?? null, role: payload.role ?? null };
+  } catch {
+    return null;
+  }
+}
 
 // Únicos arquivos autorizados a MENCIONAR refs banidos: são os próprios guards.
 const GUARD_FILE_ALLOWLIST = new Set([
@@ -139,12 +162,18 @@ const refSources = [
   ["VITE_SUPABASE_URL (web)", extractSupabaseRef(web.VITE_SUPABASE_URL)],
 ];
 
+const expectedRef = expectedRefFor(nodeEnv);
+
 for (const [label, ref] of refSources) {
   if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
     errors.push(`${label} usa o ref banido "${ref}" (branch preview sem tabelas públicas)`);
   }
-  if (ref && !SUPABASE_ALLOWED_REFS.includes(ref) && !SUPABASE_REF_DENYLIST.includes(ref)) {
-    errors.push(`${label} usa ref "${ref}" fora da allowlist [${SUPABASE_ALLOWED_REFS.join(", ")}]`);
+  // Isolamento: cada ambiente só aceita o SEU projeto. Em development, prod e
+  // staging são tão proibidos quanto qualquer ref desconhecido.
+  if (ref && ref !== expectedRef) {
+    errors.push(
+      `${label} usa ref "${ref}" mas NODE_ENV=${nodeEnv} exige o projeto ${nodeEnv} "${expectedRef}"`,
+    );
   }
 }
 
@@ -158,8 +187,26 @@ if (distinct.length > 1) {
   );
 }
 
-if (nodeEnv === "production" && distinct.length === 1 && distinct[0] !== SUPABASE_PROD_REF) {
-  errors.push(`NODE_ENV=production exige o ref de produção "${SUPABASE_PROD_REF}" (em uso: "${distinct[0]}")`);
+// ── Coerência ref × payload dos JWTs (anon e service role) ────────────────────
+// O ref do token DEVE bater com o ref das URLs; anon nunca pode ser service_role.
+const jwtSources = [
+  ["SUPABASE_ANON_KEY (api)", apiEnv.SUPABASE_ANON_KEY, "anon"],
+  ["VITE_SUPABASE_ANON_KEY (web)", web.VITE_SUPABASE_ANON_KEY, "anon"],
+  ["SUPABASE_SERVICE_ROLE_KEY (api)", apiEnv.SUPABASE_SERVICE_ROLE_KEY, "service_role"],
+];
+for (const [label, token, expectedRole] of jwtSources) {
+  if (!token) continue; // ausência é tratada por outras regras (obrigatoriedade)
+  const claims = jwtClaims(token);
+  if (!claims) {
+    errors.push(`${label} não é um JWT decodificável`);
+    continue;
+  }
+  if (claims.ref && claims.ref !== expectedRef) {
+    errors.push(`${label} tem payload ref "${claims.ref}" ≠ projeto esperado "${expectedRef}"`);
+  }
+  if (claims.role && claims.role !== expectedRole) {
+    errors.push(`${label} tem role "${claims.role}" no payload (esperado "${expectedRole}" — chaves invertidas?)`);
+  }
 }
 
 // VITE_API_URL bem formada
@@ -198,8 +245,16 @@ if (errors.length > 0) {
   process.exit(1);
 }
 
+const envLabel =
+  distinct[0] === SUPABASE_PROD_REF
+    ? "produção"
+    : distinct[0] === SUPABASE_STAGING_REF
+      ? "staging"
+      : distinct[0] === SUPABASE_DEV_REF
+        ? "desenvolvimento"
+        : "?";
 console.log(
   `✅ env:check OK — ref Supabase "${distinct[0] ?? "n/d"}" ` +
-    `(${distinct[0] === SUPABASE_PROD_REF ? "produção" : distinct[0] === SUPABASE_STAGING_REF ? "staging" : "?"}) · ` +
+    `(${envLabel}) · ` +
     `NODE_ENV=${nodeEnv} · mock=${webMock ? "ON" : "off"} · frontend↔backend alinhados`,
 );

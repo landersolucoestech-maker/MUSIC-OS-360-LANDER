@@ -93,6 +93,10 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     ConfigModule.forRoot({
       isGlobal: true,
       validate: validateEnv,
+      // main.ts (loadLocalEnv) já popula process.env a partir de apps/api/.env
+      // ANTES do bootstrap; reler o arquivo aqui duplicava a carga e podia
+      // divergir. Estratégia única: process.env é a fonte de verdade.
+      ignoreEnvFile: true,
     }),
 
     // ── PostgreSQL (TypeORM / node-postgres) ──────────────────────────────────
