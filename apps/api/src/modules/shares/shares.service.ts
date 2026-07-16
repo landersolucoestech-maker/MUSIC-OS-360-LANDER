@@ -39,15 +39,39 @@ export class SharesService {
     return result;
   }
 
+  /**
+   * Chaves do formulário persistem 1:1 nas suas colunas (regra 2026-07-12).
+   * Aliases EN legados (holderName/role/percentage/workId/trackId/holderDoc)
+   * são mapeados para as colunas físicas legadas; as NOT NULL (titular_nome,
+   * percentual) são espelhadas a partir dos campos do formulário.
+   */
+  private toColumns(dto: CreateShareDto | UpdateShareDto): Record<string, unknown> {
+    const d = dto as Record<string, unknown>;
+    const out: Record<string, unknown> = { ...d };
+    // Aliases EN → colunas legadas (nunca sobrescrevem campos do form)
+    if (d['holderName'] !== undefined) out['titular_nome'] = d['holderName'];
+    if (d['holderDoc']  !== undefined) out['titular_doc']  = d['holderDoc'];
+    if (d['role']       !== undefined) out['papel']        = d['role'];
+    if (d['percentage'] !== undefined) out['percentual']   = d['percentage'];
+    if (d['workId']     !== undefined) out['obra_id']      = d['workId'];
+    if (d['trackId']    !== undefined) out['fonograma_id'] = d['trackId'];
+    for (const k of ['holderName', 'holderDoc', 'role', 'percentage', 'workId', 'trackId']) delete out[k];
+    Object.keys(out).forEach((k) => out[k] === undefined && delete out[k]);
+    return out;
+  }
+
   async create(tenantId: string, dto: CreateShareDto): Promise<ShareEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any) });
+    const cols = this.toColumns(dto);
+    cols['titular_nome'] = cols['titular_nome'] ?? cols['detentor'] ?? cols['artista_externo'] ?? cols['pagador'] ?? cols['destinatario'] ?? 'N/D';
+    cols['percentual'] = cols['percentual'] ?? 0;
+    const entity = this.repo!.create({ tenant_id: tenantId, ...cols } as any);
     return this.repo!.save(entity as any) as any;
   }
 
   async update(tenantId: string, id: string, dto: UpdateShareDto): Promise<ShareEntity> {
     await this.findById(tenantId, id);
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...(dto as any), updated_at: new Date() } as any);
+    await this.repo!.update({ id, tenant_id: tenantId } as any, { ...this.toColumns(dto), updated_at: new Date() } as any);
     return this.findById(tenantId, id);
   }
 

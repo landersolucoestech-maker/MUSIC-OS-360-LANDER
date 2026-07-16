@@ -695,6 +695,9 @@ export class ContractEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) autentique_doc_id: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) signing_platform: string | null;
   @Column({ type: 'jsonb', default: [] }) versoes: unknown[];
+  // ── Campos do formulário/wizard (1 coluna por campo — nome exato) ────────────
+  @Column({ type: 'uuid', nullable: true }) template_id: string | null;
+  @Column({ type: 'jsonb', nullable: true }) signers: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -1053,6 +1056,28 @@ export class ShareEntity {
   @Column({ type: 'boolean', nullable: true }) is_featured: boolean | null;
   @Column({ type: 'timestamp', nullable: true }) start_date: Date | null;
   @Column({ type: 'timestamp', nullable: true }) end_date: Date | null;
+
+  // ── Campos do formulário de Share (1 coluna por campo — nome exato) ──────────
+  @Column({ type: 'varchar', length: 30, nullable: true }) share_type: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) direcao: string | null;
+  @Column({ type: 'uuid', nullable: true }) lancamento_id: string | null;
+  @Column({ type: 'varchar', length: 500, nullable: true }) nome_musica: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) detentor: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) destinatario: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) tipo: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) artista_externo: string | null;
+  @Column({ type: 'uuid', nullable: true }) artista_projeto_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) pagador: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) pagador_contato: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) origem_acordo: string | null;
+  @Column({ type: 'date', nullable: true }) data_prevista: string | null;
+  @Column({ type: 'text', nullable: true }) documentos: string | null;
+  @Column({ type: 'text', nullable: true }) acordo_notas: string | null;
+  @Column({ type: 'text', nullable: true }) acordo_url: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'integer', nullable: true }) versao: number | null;
+  @Column({ type: 'jsonb', nullable: true }) historico: unknown[] | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => WorkEntity, (w) => w.shares, { nullable: true, onDelete: 'SET NULL' })

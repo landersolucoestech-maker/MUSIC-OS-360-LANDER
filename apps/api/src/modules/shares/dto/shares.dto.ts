@@ -1,23 +1,46 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, Min, Max, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, Min, Max, MaxLength, IsUUID, IsArray, IsInt, IsDateString } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 const ROLES = ['author', 'composer', 'producer', 'performer', 'publisher', 'master-owner', 'other'] as const;
 
 export class CreateShareDto {
-  @ApiProperty() @IsString() @MaxLength(255) holderName!: string;
-  @ApiProperty({ enum: ROLES }) @IsIn(ROLES) role!: string;
-  @ApiProperty() @IsNumber() @Min(0) @Max(100) @Type(()=>Number) percentage!: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) holderName?: string;
+  @ApiPropertyOptional({ enum: ROLES }) @IsOptional() @IsIn(ROLES) role?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) @Type(() => Number) percentage?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() workId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() trackId?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) holderDoc?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+
+  // ── Campos do formulário (chaves EXATAS do SharePendenteFormModal) ───────────
+  // Regra de produto 2026-07-12: cada campo do form tem a sua coluna física.
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) share_type?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) percentual?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() acordo_notas?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() acordo_url?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) direcao?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() lancamento_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) nome_musica?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) detentor?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) destinatario?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) tipo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artista_externo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_projeto_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) pagador_contato?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) origem_acordo?: string;
+  @ApiPropertyOptional() @IsOptional() @IsDateString() data_prevista?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() documentos?: string;
+  @ApiPropertyOptional() @IsOptional() @Type(() => Number) @IsInt() versao?: number;
+  @ApiPropertyOptional() @IsOptional() @IsArray() historico?: unknown[];
 }
 
-export class UpdateShareDto extends PartialType(CreateShareDto) {
-  @ApiPropertyOptional() @IsOptional() @IsIn(['active','inactive','transferred']) status?: string;
-}
+export class UpdateShareDto extends PartialType(CreateShareDto) {}
 
 export class QueryShareDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsString() workId?: string;
