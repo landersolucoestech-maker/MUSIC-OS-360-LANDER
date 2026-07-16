@@ -792,6 +792,29 @@ export class TransactionEntity {
   // NOT NULL DEFAULT '{}' no banco).
   @Column({ type: 'uuid', nullable: true }) financial_category_id: string | null;
   @Column({ type: 'jsonb', default: {} }) financial_category_snapshot: Record<string, unknown>;
+  // ── Campos do formulário (1 coluna por campo — nome EXATO da chave do form) ──
+  @Column({ type: 'varchar', length: 50, nullable: true }) tipo_transacao: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tipo_cliente: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) subcategoria: string | null;
+  @Column({ type: 'date', nullable: true }) data_transacao: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) fornecedor_cliente: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) orgao_arrecadador: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) centro_custo: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) competencia: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) conta_origem: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) conta_destino: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) item_investimento: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) motivo_viagem: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) nome_publicidade: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) forma_pagamento: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tipo_pagamento: string | null;
+  @Column({ type: 'integer', nullable: true }) quantidade_parcelas: number | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) intervalo_parcelas: string | null;
+  @Column({ type: 'date', nullable: true }) data_primeira_parcela: string | null;
+  @Column({ type: 'text', nullable: true }) anexo_url: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) anexo_nome: string | null;
+  @Column({ type: 'uuid', nullable: true }) evento_id: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -826,6 +849,43 @@ export class InvoiceEntity {
   @Column({ type: 'timestamp', nullable: true }) data_emissao: Date | null;
   @Column({ type: 'timestamp', nullable: true }) data_vencimento: Date | null;
   @Column({ type: 'text', nullable: true }) arquivo_url: string | null;
+  // ── Campos do formulário de Nota Fiscal (1 coluna por campo — nome exato) ────
+  @Column({ type: 'varchar', length: 20, nullable: true }) serie: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) tipo_nota: string | null;
+  @Column({ type: 'uuid', nullable: true }) cliente_id: string | null;
+  @Column({ type: 'uuid', nullable: true }) venda_id: string | null;
+  @Column({ type: 'text', nullable: true }) url_pdf: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) natureza_operacao: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) codigo_servico_municipal: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) codigo_municipio: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) cfop: string | null;
+  @Column({ type: 'text', nullable: true }) descricao_servicos: string | null;
+  @Column({ type: 'date', nullable: true }) vencimento: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) tomador_cnpj: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) tomador_razao_social: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tomador_inscricao_estadual: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tomador_inscricao_municipal: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) tomador_email: string | null;
+  @Column({ type: 'varchar', length: 300, nullable: true }) tomador_endereco: string | null;
+  @Column({ type: 'varchar', length: 120, nullable: true }) tomador_cidade: string | null;
+  @Column({ type: 'varchar', length: 5, nullable: true }) tomador_uf: string | null;
+  @Column({ type: 'varchar', length: 15, nullable: true }) tomador_cep: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_servicos: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_deducoes: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) base_calculo: string | null;
+  @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) aliquota_iss: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_iss: string | null;
+  @Column({ type: 'boolean', nullable: true }) iss_retido: boolean | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_pis: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_cofins: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_inss: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_ir: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_csll: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_liquido: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) forma_pagamento: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) condicao_pagamento: string | null;
+  @Column({ type: 'jsonb', nullable: true }) itens: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -852,6 +912,32 @@ export class ClientEntity {
   @Column({ type: 'varchar', length: 2, nullable: true }) estado: string | null;
   @Column({ type: 'varchar', length: 50, default: ClientStatus.ATIVO }) status: ClientStatus;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  // ── Campos do formulário de Contato (1 coluna por campo — nome exato) ────────
+  @Column({ type: 'varchar', length: 255, nullable: true }) nome_pf: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) cpf: string | null;
+  @Column({ type: 'varchar', length: 25, nullable: true }) cnpj: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) funcao: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) instagram: string | null;
+  @Column({ type: 'text', nullable: true }) foto: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) razao_social: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) nome_fantasia: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) categoria: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) perfil: string | null;
+  @Column({ type: 'varchar', length: 15, nullable: true }) cep: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) logradouro: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) numero: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) complemento: string | null;
+  @Column({ type: 'varchar', length: 120, nullable: true }) bairro: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) status_contato: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) prioridade_contato: string | null;
+  @Column({ type: 'varchar', length: 40, nullable: true }) prioridade: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) responsavel_nome: string | null;
+  @Column({ type: 'varchar', length: 150, nullable: true }) responsavel_email: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) responsavel_telefone: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) responsavel_cargo: string | null;
+  @Column({ type: 'jsonb', nullable: true }) interacoes: unknown[] | null;
+  @Column({ type: 'jsonb', nullable: true }) attachments: unknown[] | null;
+  @Column({ type: 'varchar', length: 500, nullable: true }) endereco_completo: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -901,6 +987,8 @@ export class LeadEntity {
   @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true }) probabilidadeFechamento: string | null;
   @Column({ type: 'timestamptz', nullable: true }) proximo_follow_up: Date | null;
   @Column({ type: 'text', array: true, default: () => "'{}'" }) tags: string[];
+  // Campo do formulário de Lead (regra 2026-07-12: 1 coluna por campo)
+  @Column({ type: 'jsonb', nullable: true }) uploads: unknown[] | null;
 
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -998,6 +1086,14 @@ export class EventEntity {
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor: string | null;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  // ── Campos do formulário de Evento (1 coluna por campo — nome exato) ─────────
+  @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
+  @Column({ type: 'varchar', length: 300, nullable: true }) endereco: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) contato_local: string | null;
+  @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor_cache: string | null;
+  @Column({ type: 'integer', nullable: true }) publico_esperado: number | null;
+  @Column({ type: 'text', nullable: true }) descricao: string | null;
+  @Column({ type: 'jsonb', nullable: true }) participantes: unknown[] | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -1139,6 +1235,16 @@ export class TakedownEntity {
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'text', nullable: true }) motivo: string | null;
   @Column({ type: 'text', nullable: true }) resposta: string | null;
+  // ── Campos do formulário de Takedown (1 coluna por campo — nome exato) ───────
+  @Column({ type: 'varchar', length: 30, nullable: true }) tipo: string | null;
+  @Column({ type: 'varchar', length: 500, nullable: true }) obra_afetada: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) artista: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) prioridade: string | null;
+  @Column({ type: 'text', nullable: true }) url_infracao: string | null;
+  @Column({ type: 'text', nullable: true }) descricao: string | null;
+  @Column({ type: 'text', nullable: true }) evidencias: string | null;
+  @Column({ type: 'date', nullable: true }) data_identificacao: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
@@ -1992,6 +2098,9 @@ export class LicenseEntity {
   @Column({ type: 'decimal', precision: 14, scale: 2, nullable: true }) valor: string | null;
   @Column({ type: 'varchar', length: 10, default: 'BRL' }) moeda: string;
   @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  // Campos do formulário de Licença (regra 2026-07-12: 1 coluna por campo)
+  @Column({ type: 'varchar', length: 50, nullable: true }) remuneration_type: string | null;
+  @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
