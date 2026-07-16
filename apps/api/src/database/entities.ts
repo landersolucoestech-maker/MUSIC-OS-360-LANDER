@@ -559,7 +559,7 @@ export class WorkEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) compositor: string | null;
-  @Column({ type: 'text', nullable: true }) compositores: string | null;
+  @Column({ type: 'jsonb', nullable: true }) compositores: unknown[] | null;
   @Column({ type: 'text', nullable: true }) co_compositores: string | null;
   @Column({ type: 'text', nullable: true }) detentores: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) editora: string | null;
@@ -594,6 +594,22 @@ export class WorkEntity {
   @Column({ type: 'boolean', nullable: true }) ai_used: boolean | null;
   @Column({ type: 'jsonb', nullable: true }) ai_tools: unknown[] | null;
   @Column({ type: 'jsonb', nullable: true }) ai_prompts: unknown[] | null;
+
+  // ── Campos do formulário (1 coluna por campo — nome EXATO da chave do form) ──
+  @Column({ type: 'varchar', length: 20, nullable: true }) idioma: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) instrumental: string | null;
+  @Column({ type: 'boolean', nullable: true }) criada_por_ia: boolean | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tipo_ia: string | null;
+  @Column({ type: 'jsonb', nullable: true }) ia_harmonia: Record<string, unknown> | null;
+  @Column({ type: 'jsonb', nullable: true }) ia_melodia: Record<string, unknown> | null;
+  @Column({ type: 'jsonb', nullable: true }) ia_letra: Record<string, unknown> | null;
+  @Column({ type: 'jsonb', nullable: true }) outros_titulos: unknown[] | null;
+  @Column({ type: 'jsonb', nullable: true }) referencias_conexas: unknown[] | null;
+  @Column({ type: 'text', nullable: true }) letra_completa: string | null;
+  @Column({ type: 'jsonb', nullable: true }) participantes: unknown[] | null;
+  @Column({ type: 'jsonb', nullable: true }) letristas: unknown[] | null;
+  @Column({ type: 'uuid', nullable: true }) projeto_id: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) tipo_obra: string | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
   @ManyToOne(() => ArtistEntity, (a) => a.works, { nullable: true, onDelete: 'SET NULL' })
@@ -659,6 +675,29 @@ export class PhonogramEntity {
   @Column({ type: 'varchar', length: 100, nullable: true }) abramus_protocol: string | null;
   // migration 20260605000001_AddGenreToPhonograms
   @Column({ type: 'varchar', length: 100, nullable: true }) genero_musical: string | null;
+
+  // ── Campos do formulário (1 coluna por campo — nome EXATO da chave do form) ──
+  @Column({ type: 'varchar', length: 100, nullable: true }) agregadora: string | null;
+  @Column({ type: 'varchar', length: 5, nullable: true }) isrc_pais: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) isrc_registrante: string | null;
+  @Column({ type: 'varchar', length: 4, nullable: true }) isrc_ano: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) isrc_designacao: string | null;
+  @Column({ type: 'boolean', nullable: true }) criada_por_ia: boolean | null;
+  @Column({ type: 'boolean', nullable: true }) instrumental: boolean | null;
+  @Column({ type: 'boolean', nullable: true }) nacional: boolean | null;
+  @Column({ type: 'boolean', nullable: true }) pub_simultanea: boolean | null;
+  @Column({ type: 'date', nullable: true }) emissao: string | null;
+  @Column({ type: 'date', nullable: true }) gravacao_original: string | null;
+  @Column({ type: 'date', nullable: true }) data_lancamento: string | null;
+  @Column({ type: 'integer', nullable: true }) duracao_min: number | null;
+  @Column({ type: 'integer', nullable: true }) duracao_seg: number | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) midia: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) classificacao: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) pais_origem: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) pais_publicacao: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'jsonb', nullable: true }) participacao: unknown[] | null;
+  @Column({ type: 'jsonb', nullable: true }) arquivo_audio: Record<string, unknown> | null;
 
   // ── Relations ───────────────────────────────────────────────────────────────
   // Artist→Works navigation: Artist → phonograms → PhonogramEntity → work → WorkEntity
