@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { PhonogramEntity } from '../../database/entities';
@@ -58,7 +58,9 @@ export class PhonogramsService {
     out['obra_id'] = input['obra_id'] ?? input['workId'];
     out['artista_id'] = input['artista_id'] ?? input['artistId'];
     out['duration_seconds'] = input['duration_seconds'] ?? input['duration'];
-    out['tipo'] = input['tipo'] ?? 'master';
+    // tipo: default apenas quando explicitamente ausente no CREATE (ver create());
+    // num PATCH sem tipo, não sobrescrever o valor persistido.
+    if (input['tipo'] !== undefined) out['tipo'] = input['tipo'];
 
     delete out['title'];
     delete out['workId'];
@@ -71,7 +73,10 @@ export class PhonogramsService {
   }
 
   async create(tenantId: string, userId: string, dto: CreatePhonogramDto): Promise<PhonogramEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...this.toEntityPayload(dto), created_by: userId, updated_by: userId } as any);
+    if (!dto.titulo?.trim() && !dto.title?.trim()) {
+      throw new BadRequestException('titulo é obrigatório');
+    }
+    const entity = this.repo!.create({ tenant_id: tenantId, tipo: 'master', ...this.toEntityPayload(dto), created_by: userId, updated_by: userId } as any);
     const saved = (await this.repo!.save(entity as any)) as PhonogramEntity;
 
     // Dispara automações nativas internas (ex.: catalog-metadata-validator). Os

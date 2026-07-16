@@ -223,12 +223,20 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
   fields: [
     col('titulo'), col('status'), col('genero_musical'), col('isrc'),
     col('duracao'), col('artista_id'), col('obra_id'),
+    // Campos do formulário de Fonograma (regra 2026-07-12: 1 coluna por campo, nome exato)
+    col('cod_abramus'), col('cod_ecad'), col('agregadora'),
+    col('isrc_pais'), col('isrc_registrante'), col('isrc_ano'), col('isrc_designacao'),
+    col('criada_por_ia'), col('instrumental'), col('nacional'), col('pub_simultanea'),
+    col('emissao'), col('gravacao_original'), col('data_lancamento'),
+    col('duracao_min'), col('duracao_seg'), col('midia'), col('classificacao'),
+    col('pais_origem'), col('pais_publicacao'), col('gravadora'),
+    col('observacoes'), col('participacao'), col('arquivo_audio'),
     // Somente leitura: registro/sociedades e metadados de gravação
     ro('tipo'), ro('version_title'), ro('interpretes'), ro('compositores'),
-    ro('produtores'), ro('gravadora'), ro('duration_seconds'),
+    ro('produtores'), ro('duration_seconds'),
     ro('recording_date'), ro('release_date'), ro('copyright_year'),
     ro('copyright_owner'), ro('country_of_recording'),
-    ro('cod_abramus'), ro('cod_ecad'), ro('abramus_protocol'), ro('registry_status'),
+    ro('abramus_protocol'), ro('registry_status'),
     ro('external_reference'), ro('origem_externa'), ro('origem_externa_sincronizado_em'),
   ],
   excludedFormFields: {

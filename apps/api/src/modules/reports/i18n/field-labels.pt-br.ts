@@ -397,6 +397,22 @@ export const FIELD_LABELS_PT_BR = {
   letristas: 'Letristas',
   projetoId: 'Projeto vinculado',
   tipoObra: 'Tipo de obra',
+  // ── Campos do formulário de Fonograma (regra 2026-07-12) ─────────────────────
+  agregadora: 'Agregadora',
+  isrcPais: 'ISRC — País',
+  isrcRegistrante: 'ISRC — Registrante',
+  isrcAno: 'ISRC — Ano',
+  isrcDesignacao: 'ISRC — Designação',
+  nacional: 'Nacional',
+  pubSimultanea: 'Publicação simultânea',
+  gravacaoOriginal: 'Gravação original',
+  duracaoMin: 'Duração (minutos)',
+  duracaoSeg: 'Duração (segundos)',
+  midia: 'Mídia',
+  classificacao: 'Classificação',
+  paisOrigem: 'País de origem',
+  paisPublicacao: 'País de publicação',
+  arquivoAudio: 'Arquivo de áudio',
 } as const satisfies Record<string, string>;
 
 export type FieldLabelKey = keyof typeof FIELD_LABELS_PT_BR;
