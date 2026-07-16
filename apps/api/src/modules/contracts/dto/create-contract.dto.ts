@@ -140,4 +140,9 @@ export class CreateContractDto {
   @ApiPropertyOptional({ type: [Object] })
   @IsOptional() @IsArray()
   signers?: unknown[];
+
+  // Campo do wizard (regra 2026-07-12: 1 coluna por campo, nome exato)
+  @ApiPropertyOptional()
+  @IsOptional() @IsUUID()
+  template_id?: string;
 }

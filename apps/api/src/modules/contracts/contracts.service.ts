@@ -117,6 +117,9 @@ export class ContractsService {
     out.autentique_doc_id = dto['autentique_doc_id'] ?? null;
     out.signing_platform  = dto['signing_platform']  ?? null;
     out.versoes       = (dto['versoes'] as unknown[] | undefined) ?? [];
+    // Campos do wizard (regra 2026-07-12: 1 coluna por campo, nome exato)
+    out.template_id   = dto['template_id'] ?? null;
+    if (Array.isArray(dto['signers'])) out.signers = dto['signers'];
 
     // valor: aceita number ou IsNumberString
     const valorRaw = dto['valor'] ?? dto['value'];
@@ -125,10 +128,9 @@ export class ContractsService {
       out.valor = Number.isFinite(n) ? String(n) : null;
     }
 
-    // signers + parties + extras → metadata
+    // parties + extras EN → metadata (signers agora tem coluna própria)
     const metaIn = (dto['metadata'] as Record<string, unknown> | undefined) ?? {};
     const meta: Record<string, unknown> = { ...metaIn };
-    if (Array.isArray(dto['signers']))  meta['signers']  = dto['signers'];
     if (Array.isArray(dto['parties']))  meta['parties']  = dto['parties'];
     if (dto['currency'])                meta['currency'] = dto['currency'];
     if (dto['signedAt'])                meta['signed_at'] = dto['signedAt'];
@@ -143,6 +145,8 @@ export class ContractsService {
     const { status: _ignoredStatus, ...rest } = dto as unknown as Record<string, unknown>;
     void _ignoredStatus;
     const normalized = this.normalizeContractDto(rest);
+    // contracts.tipo é NOT NULL; o wizard pode não ter tipo de serviço definido.
+    if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
     const entity = this.repo!.create({
       tenant_id:  tenantId,
       ...normalized,
