@@ -1082,6 +1082,9 @@ export class EventEntity {
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: EventStatus.AGENDADO }) status: EventStatus;
   @Column({ type: 'timestamp' }) data: Date;
+  // C3/E1 (migration 20260716000001): coluna canônica futura de início do evento.
+  // Nullable até a fase E5; dual-written com `data` a partir da fase E2.
+  @Column({ type: 'timestamp', nullable: true }) starts_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) local: string | null;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) valor: string | null;
