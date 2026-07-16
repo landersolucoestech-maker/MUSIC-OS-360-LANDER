@@ -134,6 +134,7 @@ const CONTRACTS_CONTRACT: ReportFormContract = {
     col('data_inicio'), col('data_fim'), col('exclusivo'), col('observacoes'),
     col('arquivo_url'), col('signing_platform'),
     col('artista_id'), col('cliente_id'), col('lancamento_id'),
+    col('template_id'), // campo do wizard (regra 2026-07-12: coluna própria)
     ro('autentique_doc_id'), // estado técnico da integração de assinatura
     ro('versoes'),           // histórico de versões (gerado pelo fluxo de assinatura)
   ],

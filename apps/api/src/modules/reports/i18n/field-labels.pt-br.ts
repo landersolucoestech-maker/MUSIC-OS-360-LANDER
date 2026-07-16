@@ -106,6 +106,7 @@ export const FIELD_LABELS_PT_BR = {
   tiktokSeguidores: 'Seguidores no TikTok',
   instagramUrl: 'Link do Instagram',
   tiktokUrl: 'Link do TikTok',
+  templateId: 'Template do contrato',
   appleMusicAlbunsUrl: 'Álbuns no Apple Music',
   soundcloudSeguidoresUrl: 'Seguidores no SoundCloud (link)',
   deezerFas: 'Fãs no Deezer',
