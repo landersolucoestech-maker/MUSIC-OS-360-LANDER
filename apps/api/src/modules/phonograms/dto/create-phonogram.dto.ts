@@ -3,9 +3,10 @@ import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePhonogramDto {
-  // Título: o formulário envia `titulo`; `title` é o alias EN legado.
+  // Título: o formulário envia `titulo`; `title` é o alias EN legado,
+  // aceito temporariamente (C2 — deprecated, sem remoção nesta fase).
   // O service exige pelo menos um dos dois.
-  @ApiPropertyOptional({ example: 'Noite Estrelada (Ao Vivo)' })
+  @ApiPropertyOptional({ example: 'Noite Estrelada (Ao Vivo)', deprecated: true, description: 'Alias legado. Use "titulo".' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
@@ -17,12 +18,12 @@ export class CreatePhonogramDto {
   @MaxLength(500)
   titulo?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-da-obra' })
+  @ApiPropertyOptional({ example: 'uuid-da-obra', deprecated: true, description: 'Alias legado. Use "obra_id".' })
   @IsOptional()
   @IsUUID()
   workId?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-do-artista' })
+  @ApiPropertyOptional({ example: 'uuid-do-artista', deprecated: true, description: 'Alias legado. Use "artista_id".' })
   @IsOptional()
   @IsUUID()
   artistId?: string;

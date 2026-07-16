@@ -141,7 +141,7 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
     });
   });
 
-  describe('create() — precedência atual PT/EN (comportamento documentado, não corrigido nesta fase)', () => {
+  describe('create() — resolução PT/EN via normalizador (C2)', () => {
     it('titulo (PT) sozinho é persistido', async () => {
       await service.create(TENANT, 'u1', { titulo: 'Nome PT' } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
@@ -156,36 +156,68 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       );
     });
 
-    it('quando ambos presentes e diferentes, PT vence silenciosamente (sem erro, sem log)', async () => {
-      await service.create(TENANT, 'u1', { titulo: 'Nome PT', title: 'Nome EN' } as any);
-      expect(mockDs._repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ titulo: 'Nome PT' }),
-      );
+    // C2: mudança intencional de contrato — antes PT vencia silenciosamente;
+    // agora valores conflitantes (não-equivalentes) são rejeitados com 400
+    // antes de qualquer chamada ao repository.
+    it('quando ambos presentes e diferentes: 400 PHONOGRAM_ALIAS_CONFLICT, repository não chamado', async () => {
+      await expect(
+        service.create(TENANT, 'u1', { titulo: 'Nome PT', title: 'Nome EN' } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+      expect(mockDs._repo.create).not.toHaveBeenCalled();
     });
 
-    it('obra_id (PT) e workId (EN) — PT vence quando ambos presentes', async () => {
-      await service.create(TENANT, 'u1', {
-        titulo: 'X', obra_id: 'obra-pt', workId: 'obra-en',
-      } as any);
-      expect(mockDs._repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ obra_id: 'obra-pt' }),
-      );
+    it('obra_id (PT) e workId (EN) diferentes: 400 PHONOGRAM_ALIAS_CONFLICT, repository não chamado', async () => {
+      await expect(
+        service.create(TENANT, 'u1', {
+          titulo: 'X',
+          obra_id: '123e4567-e89b-12d3-a456-426614174000',
+          workId: '223e4567-e89b-12d3-a456-426614174000',
+        } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+      expect(mockDs._repo.create).not.toHaveBeenCalled();
     });
 
-    it('artista_id (PT) e artistId (EN) — PT vence quando ambos presentes', async () => {
-      await service.create(TENANT, 'u1', {
-        titulo: 'X', artista_id: 'artista-pt', artistId: 'artista-en',
-      } as any);
-      expect(mockDs._repo.create).toHaveBeenCalledWith(
-        expect.objectContaining({ artista_id: 'artista-pt' }),
-      );
+    it('artista_id (PT) e artistId (EN) diferentes: 400 PHONOGRAM_ALIAS_CONFLICT, repository não chamado', async () => {
+      await expect(
+        service.create(TENANT, 'u1', {
+          titulo: 'X',
+          artista_id: '123e4567-e89b-12d3-a456-426614174000',
+          artistId: '223e4567-e89b-12d3-a456-426614174000',
+        } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+      expect(mockDs._repo.create).not.toHaveBeenCalled();
     });
 
-    it('titulo ausente + title=valor → titulo persistido com o valor de title (comportamento atual do "??")', async () => {
+    it('titulo ausente + title=valor → titulo persistido com o valor de title', async () => {
       await service.create(TENANT, 'u1', { title: 'ok', titulo: undefined } as any);
       expect(mockDs._repo.create).toHaveBeenCalledWith(
         expect.objectContaining({ titulo: 'ok' }),
       );
+    });
+
+    it('obra_id e workId equivalentes (mesmo UUID, case-insensitive): aceito, valor canônico persistido', async () => {
+      await service.create(TENANT, 'u1', {
+        titulo: 'X',
+        obra_id: '123e4567-e89b-12d3-a456-426614174000',
+        workId: '123E4567-E89B-12D3-A456-426614174000',
+      } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ obra_id: '123e4567-e89b-12d3-a456-426614174000' }),
+      );
+    });
+
+    it('warning é emitido quando um alias legado é efetivamente recebido', async () => {
+      const warnSpy = jest.spyOn((service as any).logger, 'warn');
+      await service.create(TENANT, 'u1', { title: 'Nome EN' } as any);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('Phonogram legacy alias used: alias=title operation=create tenantId=tenant-test'),
+      );
+    });
+
+    it('nenhum warning é emitido quando apenas campos canônicos são usados', async () => {
+      const warnSpy = jest.spyOn((service as any).logger, 'warn');
+      await service.create(TENANT, 'u1', { titulo: 'X' } as any);
+      expect(warnSpy).not.toHaveBeenCalled();
     });
   });
 
@@ -197,10 +229,17 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       );
     });
 
+    // C2: payload reescrito para usar aliases equivalentes (não mais
+    // conflitantes) — o objetivo original do teste (resposta contém somente
+    // nomes canônicos, sem aliases EN) é preservado.
     it('resposta do create não contém aliases EN (title/workId/artistId/duration/fileUrl)', async () => {
       await service.create(TENANT, 'u1', {
-        titulo: 'X', title: 'Y', obra_id: 'o1', workId: 'o2',
-        artista_id: 'a1', artistId: 'a2', duration: 120, fileUrl: 'x.mp3',
+        titulo: 'X', title: 'X',
+        obra_id: '123e4567-e89b-12d3-a456-426614174000',
+        workId: '123e4567-e89b-12d3-a456-426614174000',
+        artista_id: '223e4567-e89b-12d3-a456-426614174000',
+        artistId: '223e4567-e89b-12d3-a456-426614174000',
+        duration: 120, fileUrl: 'x.mp3',
       } as any);
       const created = mockDs._repo.create.mock.calls[0][0];
       expect(created).not.toHaveProperty('title');
@@ -208,6 +247,11 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       expect(created).not.toHaveProperty('artistId');
       expect(created).not.toHaveProperty('duration');
       expect(created).not.toHaveProperty('fileUrl');
+      expect(created).toMatchObject({
+        titulo: 'X',
+        obra_id: '123e4567-e89b-12d3-a456-426614174000',
+        artista_id: '223e4567-e89b-12d3-a456-426614174000',
+      });
     });
   });
 
@@ -222,6 +266,126 @@ describe('PhonogramsService — Estado B (pré-C2, comportamento atual documenta
       await service.update(TENANT, 'u1', PHONO_ID, { tipo: 'remix' } as any);
       const updateCall = mockDs._repo.update.mock.calls[0];
       expect(updateCall[1]).toHaveProperty('tipo', 'remix');
+    });
+  });
+
+  describe('update() — resolução de aliases (C2)', () => {
+    it('PATCH sem titulo/title/obra_id/artista_id: nenhum desses campos é alterado (ausência não altera)', async () => {
+      await service.update(TENANT, 'u1', PHONO_ID, { observacoes: 'x' } as any);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).not.toHaveProperty('titulo');
+      expect(updateCall[1]).not.toHaveProperty('obra_id');
+      expect(updateCall[1]).not.toHaveProperty('artista_id');
+    });
+
+    it('alias legado em update: aceito e resolvido para o nome canônico', async () => {
+      await service.update(TENANT, 'u1', PHONO_ID, { title: 'Novo Nome' } as any);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).toMatchObject({ titulo: 'Novo Nome' });
+      expect(updateCall[1]).not.toHaveProperty('title');
+    });
+
+    it('warning emitido no update quando alias legado é usado (inclui phonogramId)', async () => {
+      const warnSpy = jest.spyOn((service as any).logger, 'warn');
+      await service.update(TENANT, 'u1', PHONO_ID, { title: 'Novo Nome' } as any);
+      expect(warnSpy).toHaveBeenCalledWith(
+        expect.stringContaining(`operation=update tenantId=${TENANT} phonogramId=${PHONO_ID}`),
+      );
+    });
+
+    it('conflito PT/EN no update: 400, repository.update não chamado', async () => {
+      await expect(
+        service.update(TENANT, 'u1', PHONO_ID, { titulo: 'A', title: 'B' } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+      expect(mockDs._repo.update).not.toHaveBeenCalled();
+    });
+
+    it('titulo inválido (vazio) no update: 400, repository.update não chamado', async () => {
+      await expect(
+        service.update(TENANT, 'u1', PHONO_ID, { titulo: '' } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_TITLE_INVALID' } });
+      expect(mockDs._repo.update).not.toHaveBeenCalled();
+    });
+
+    it('null opcional (obra_id) sozinho no update: aceito, removido antes da persistência (não limpa coluna nesta fase)', async () => {
+      await service.update(TENANT, 'u1', PHONO_ID, { obra_id: null } as any);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).not.toHaveProperty('obra_id');
+    });
+  });
+
+  describe('list() — resolução de aliases de obra_id/artista_id (C2)', () => {
+    it('obra_id: filtra pelo canônico', async () => {
+      await service.list(TENANT, { obra_id: '123e4567-e89b-12d3-a456-426614174000' } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
+        'p.obra_id = :obraId', { obraId: '123e4567-e89b-12d3-a456-426614174000' },
+      );
+    });
+
+    it('workId (alias legado): filtra pelo canônico e emite warning', async () => {
+      const warnSpy = jest.spyOn((service as any).logger, 'warn');
+      await service.list(TENANT, { workId: '123e4567-e89b-12d3-a456-426614174000' } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
+        'p.obra_id = :obraId', { obraId: '123e4567-e89b-12d3-a456-426614174000' },
+      );
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('alias=workId operation=list'));
+    });
+
+    it('obra_id e workId iguais: aceita e filtra normalmente', async () => {
+      await service.list(TENANT, {
+        obra_id: '123e4567-e89b-12d3-a456-426614174000',
+        workId: '123e4567-e89b-12d3-a456-426614174000',
+      } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
+        'p.obra_id = :obraId', { obraId: '123e4567-e89b-12d3-a456-426614174000' },
+      );
+    });
+
+    it('obra_id e workId conflitantes: 400 antes do query builder', async () => {
+      await expect(
+        service.list(TENANT, {
+          obra_id: '123e4567-e89b-12d3-a456-426614174000',
+          workId: '223e4567-e89b-12d3-a456-426614174000',
+        } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+      expect(mockDs._repo._qb.getManyAndCount).not.toHaveBeenCalled();
+    });
+
+    it('artista_id: filtra pelo canônico', async () => {
+      await service.list(TENANT, { artista_id: '123e4567-e89b-12d3-a456-426614174000' } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
+        'p.artista_id = :artistaId', { artistaId: '123e4567-e89b-12d3-a456-426614174000' },
+      );
+    });
+
+    it('artistId (alias legado): filtra pelo canônico e emite warning', async () => {
+      await service.list(TENANT, { artistId: '123e4567-e89b-12d3-a456-426614174000' } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith(
+        'p.artista_id = :artistaId', { artistaId: '123e4567-e89b-12d3-a456-426614174000' },
+      );
+    });
+
+    it('artista_id e artistId conflitantes: 400', async () => {
+      await expect(
+        service.list(TENANT, {
+          artista_id: '123e4567-e89b-12d3-a456-426614174000',
+          artistId: '223e4567-e89b-12d3-a456-426614174000',
+        } as any),
+      ).rejects.toMatchObject({ response: { code: 'PHONOGRAM_ALIAS_CONFLICT' } });
+    });
+
+    it('ausência de obra_id/artista_id: não adiciona filtro para esses campos', async () => {
+      await service.list(TENANT, { status: 'ativo' } as any);
+      const calledWithObraId = mockDs._repo._qb.andWhere.mock.calls.some((c: unknown[]) => c[0] === 'p.obra_id = :obraId');
+      const calledWithArtistaId = mockDs._repo._qb.andWhere.mock.calls.some((c: unknown[]) => c[0] === 'p.artista_id = :artistaId');
+      expect(calledWithObraId).toBe(false);
+      expect(calledWithArtistaId).toBe(false);
+    });
+
+    it('demais filtros (status, search) continuam funcionando', async () => {
+      await service.list(TENANT, { status: 'ativo', search: 'noite' } as any);
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith('p.status = :status', { status: 'ativo' });
+      expect(mockDs._repo._qb.andWhere).toHaveBeenCalledWith('p.titulo ILIKE :search', { search: '%noite%' });
     });
   });
 
