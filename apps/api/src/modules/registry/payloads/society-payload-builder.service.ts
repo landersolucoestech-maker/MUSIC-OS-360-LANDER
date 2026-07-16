@@ -1,5 +1,5 @@
 import { Injectable, Inject, NotFoundException, BadRequestException } from '@nestjs/common';
-import { DataSource, Repository } from 'typeorm';
+import { DataSource, Repository, IsNull } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import {
   WorkEntity,
@@ -8,6 +8,7 @@ import {
   ExternalIdentifierEntity,
 } from '../../../database/entities';
 import { IdentifierProvider, IdentifierType, RegistrableEntityType } from '@music-os-360/types';
+import { isRegistryEligibleShare } from '../../shares/share-eligibility.util';
 import type {
   PayloadIdentifier,
   PayloadParty,
@@ -20,13 +21,28 @@ function isPublisher(role: string | null | undefined): boolean {
   return r.includes('publisher') || r.includes('editora') || r.includes('editor');
 }
 
+/**
+ * Só é chamada com shares já filtradas por isRegistryEligibleShare() — uma
+ * share elegível sem titular_nome/percentual é dado de registro incompleto,
+ * não "ausência aceitável". Nunca silenciosamente vira '' ou 0 (ver Fase 5 / C6).
+ */
 function shareToParty(s: ShareEntity): PayloadParty {
-  const pct = Number(s.percentual ?? 0);
+  const name = s.credited_name ?? s.titular_nome;
+  if (!name || !name.trim()) {
+    throw new BadRequestException(`Share ${s.id} elegível para registro está sem titular_nome (dado de registro incompleto).`);
+  }
+  if (s.percentual == null) {
+    throw new BadRequestException(`Share ${s.id} elegível para registro está sem percentual (dado de registro incompleto).`);
+  }
+  const pct = Number(s.percentual);
+  if (!Number.isFinite(pct)) {
+    throw new BadRequestException(`Share ${s.id} tem percentual inválido: "${s.percentual}".`);
+  }
   return {
-    name: (s.credited_name ?? s.titular_nome ?? '').trim(),
+    name: name.trim(),
     document: s.titular_doc ?? null,
     role: s.role ?? s.papel ?? null,
-    percentage: Number.isFinite(pct) ? pct : null,
+    percentage: pct,
     ipi_cae: null,
     society: null,
     territory: s.territory ?? null,
@@ -76,7 +92,9 @@ export class SocietyPayloadBuilderService {
     this.assertDb();
     const work = await this.works!.findOne({ where: { id: workId, tenant_id: tenantId } });
     if (!work || work.deleted_at) throw new NotFoundException('Obra não encontrada');
-    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, obra_id: workId } })).filter((s) => !s.deleted_at);
+    // share_type IS NULL = elegibilidade transitória de registro (ver share-eligibility.util.ts).
+    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, obra_id: workId, share_type: IsNull() } }))
+      .filter((s) => !s.deleted_at && isRegistryEligibleShare(s));
 
     const legacy: PayloadIdentifier[] = [];
     if (work.iswc) legacy.push({ provider: IdentifierProvider.CISAC, type: IdentifierType.ISWC, value: work.iswc, is_primary: true });
@@ -114,7 +132,9 @@ export class SocietyPayloadBuilderService {
     this.assertDb();
     const rec = await this.phonograms!.findOne({ where: { id: recordingId, tenant_id: tenantId } });
     if (!rec || rec.deleted_at) throw new NotFoundException('Fonograma não encontrado');
-    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, fonograma_id: recordingId } })).filter((s) => !s.deleted_at);
+    // share_type IS NULL = elegibilidade transitória de registro (ver share-eligibility.util.ts).
+    const shares = (await this.shares!.find({ where: { tenant_id: tenantId, fonograma_id: recordingId, share_type: IsNull() } }))
+      .filter((s) => !s.deleted_at && isRegistryEligibleShare(s));
 
     const legacy: PayloadIdentifier[] = [];
     if (rec.isrc) legacy.push({ provider: IdentifierProvider.ISRC, type: IdentifierType.ISRC, value: rec.isrc, is_primary: true });

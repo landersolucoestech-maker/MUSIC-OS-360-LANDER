@@ -1035,10 +1035,10 @@ export class ShareEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'uuid', nullable: true }) obra_id: string | null;
   @Column({ type: 'uuid', nullable: true }) fonograma_id: string | null;
-  @Column({ type: 'varchar', length: 255 }) titular_nome: string;
+  @Column({ type: 'varchar', length: 255, nullable: true }) titular_nome: string | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) titular_doc: string | null;
   @Column({ type: 'varchar', length: 100, default: 'autor' }) papel: string;
-  @Column({ type: 'decimal', precision: 7, scale: 4 }) percentual: string;
+  @Column({ type: 'decimal', precision: 7, scale: 4, nullable: true }) percentual: string | null;
   @Column({ type: 'varchar', length: 50, default: ShareStatus.ATIVO }) status: ShareStatus;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;

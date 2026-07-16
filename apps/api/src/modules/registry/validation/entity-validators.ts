@@ -9,6 +9,7 @@ import { SocietyValidationSeverity } from '@music-os-360/types';
 import type { WorkEntity, PhonogramEntity, ShareEntity } from '../../../database/entities';
 import type { RegistryValidationIssue } from '../payloads/registry-payload.types';
 import { isValidIsrc, isValidCpf, isValidCnpj, onlyDigits } from '../validators/registry-validators';
+import { isRegistryEligibleShare } from '../../shares/share-eligibility.util';
 
 const E = SocietyValidationSeverity.ERROR;
 const W = SocietyValidationSeverity.WARNING;
@@ -50,30 +51,42 @@ export class WorkRegistryValidationService {
   validate(work: WorkEntity, shares: ShareEntity[]): RegistryValidationIssue[] {
     const issues: RegistryValidationIssue[] = [];
     const active = shares.filter((s) => !s.deleted_at);
+    // share_type IS NULL = elegibilidade transitória de registro — shares
+    // financeiras/pendentes (ver Fase 5 / C6) nunca contam como autor nem
+    // entram na soma de splits.
+    const eligible = active.filter(isRegistryEligibleShare);
 
     if (!work.titulo || !work.titulo.trim()) {
       issues.push(issue(E, 'work_title_required', 'title', 'Título da obra é obrigatório.'));
     }
 
-    const authors = active.filter((s) => !isPublisherRole(s.role ?? s.papel));
+    const authors = eligible.filter((s) => !isPublisherRole(s.role ?? s.papel));
     if (authors.length === 0) {
       issues.push(issue(E, 'work_no_author', 'authors', 'A obra precisa de pelo menos um autor/compositor.'));
     }
 
-    for (const s of active) {
+    let percentualSum = 0;
+    for (const s of eligible) {
+      if (!s.titular_nome || !s.titular_nome.trim()) {
+        issues.push(issue(E, 'work_split_titular_nome_missing', 'splits.titular_nome', `Share ${s.id} elegível para registro está sem titular_nome.`));
+      }
+      if (s.percentual == null) {
+        issues.push(issue(E, 'work_split_percentual_missing', 'splits.percentual', `Share ${s.id} elegível para registro está sem percentual.`));
+        continue;
+      }
       const p = toPercent(s.percentual);
       if (p < 0 || p > 100) {
         issues.push(issue(E, 'work_split_percentage_invalid', 'splits', `Percentual inválido (${p}). Deve estar entre 0 e 100.`));
       }
+      percentualSum += p;
       if (!validateDocumentSoft(s.titular_doc)) {
         issues.push(issue(W, 'work_invalid_document', 'splits.document', `Documento do titular "${s.titular_nome}" parece inválido.`));
       }
     }
 
-    if (active.length > 0) {
-      const total = active.reduce((acc, s) => acc + toPercent(s.percentual), 0);
-      if (Math.abs(total - 100) > 0.01) {
-        issues.push(issue(E, 'work_split_not_100', 'splits', `A soma dos splits ativos deve ser 100% (atual: ${total.toFixed(2)}%).`));
+    if (eligible.length > 0) {
+      if (Math.abs(percentualSum - 100) > 0.01) {
+        issues.push(issue(E, 'work_split_not_100', 'splits', `A soma dos splits ativos deve ser 100% (atual: ${percentualSum.toFixed(2)}%).`));
       }
     }
 
@@ -94,6 +107,8 @@ export class RecordingRegistryValidationService {
   validate(recording: PhonogramEntity, shares: ShareEntity[]): RegistryValidationIssue[] {
     const issues: RegistryValidationIssue[] = [];
     const active = shares.filter((s) => !s.deleted_at);
+    // share_type IS NULL = elegibilidade transitória de registro (ver Fase 5 / C6).
+    const eligible = active.filter(isRegistryEligibleShare);
 
     if (!recording.obra_id) {
       issues.push(issue(E, 'recording_work_required', 'work_id', 'Fonograma deve estar vinculado a uma obra (work_id).'));
@@ -108,19 +123,19 @@ export class RecordingRegistryValidationService {
     }
 
     const hasMainArtist = !!recording.main_artist_id || !!recording.artista_id ||
-      active.some((s) => isInterpreterRole(s.role ?? s.papel));
+      eligible.some((s) => isInterpreterRole(s.role ?? s.papel));
     if (!hasMainArtist) {
       issues.push(issue(E, 'recording_main_artist_required', 'main_artist', 'Fonograma precisa de um artista principal/intérprete.'));
     }
 
     const hasProducer = !!recording.phonographic_producer_id ||
-      active.some((s) => isProducerRole(s.role ?? s.papel)) ||
+      eligible.some((s) => isProducerRole(s.role ?? s.papel)) ||
       !!(recording.produtores && recording.produtores.trim());
     if (!hasProducer) {
       issues.push(issue(E, 'recording_producer_required', 'phonographic_producer', 'Fonograma precisa de um produtor fonográfico.'));
     }
 
-    const hasInterpreter = active.some((s) => isInterpreterRole(s.role ?? s.papel)) ||
+    const hasInterpreter = eligible.some((s) => isInterpreterRole(s.role ?? s.papel)) ||
       !!(recording.interpretes && recording.interpretes.trim()) || !!recording.artista_id;
     if (!hasInterpreter) {
       issues.push(issue(E, 'recording_no_interpreter', 'interpreters', 'Fonograma precisa de pelo menos um intérprete.'));

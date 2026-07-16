@@ -61,9 +61,12 @@ export class SharesService {
   }
 
   async create(tenantId: string, dto: CreateShareDto): Promise<ShareEntity> {
+    // titular_nome/percentual (campos de titularidade — usados na submissão
+    // ABRAMUS/ECAD) só recebem valor quando o chamador envia holderName/
+    // percentage explicitamente. Nunca são derivados de detentor/
+    // artista_externo/pagador/destinatario (campos do share financeiro —
+    // conceito distinto, ver Fase 5 / C6) nem preenchidos com default artificial.
     const cols = this.toColumns(dto);
-    cols['titular_nome'] = cols['titular_nome'] ?? cols['detentor'] ?? cols['artista_externo'] ?? cols['pagador'] ?? cols['destinatario'] ?? 'N/D';
-    cols['percentual'] = cols['percentual'] ?? 0;
     const entity = this.repo!.create({ tenant_id: tenantId, ...cols } as any);
     return this.repo!.save(entity as any) as any;
   }

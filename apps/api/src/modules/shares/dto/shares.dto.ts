@@ -1,12 +1,18 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, Min, Max, MaxLength, IsUUID, IsArray, IsInt, IsDateString } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, Min, Max, MaxLength, IsUUID, IsArray, IsInt, IsDateString, Matches } from 'class-validator';
 import { Type } from 'class-transformer';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 const ROLES = ['author', 'composer', 'producer', 'performer', 'publisher', 'master-owner', 'other'] as const;
 
 export class CreateShareDto {
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) holderName?: string;
+  // ── Aliases EN legados (integrações/registry) — opcionais ────────────────────
+  // holderName é a única entrada que alimenta titular_nome (toColumns() em
+  // shares.service.ts) — não existe um campo `titular_nome` direto no DTO.
+  // Rejeita vazio/só-espaços em vez de aceitar e persistir um titular em branco.
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255)
+  @Matches(/\S/, { message: 'holderName não pode ser vazio ou conter apenas espaços' })
+  holderName?: string;
   @ApiPropertyOptional({ enum: ROLES }) @IsOptional() @IsIn(ROLES) role?: string;
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Min(0) @Max(100) @Type(() => Number) percentage?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() workId?: string;
