@@ -46,7 +46,9 @@ export class WorksService {
   }
 
   async create(tenantId: string, userId: string, dto: CreateWorkDto): Promise<WorkEntity> {
-    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), created_by: userId, updated_by: userId });
+    // works.tipo é NOT NULL; o formulário envia tipo_obra (campo próprio).
+    const tipo = dto.tipo ?? dto.tipo_obra ?? 'composicao';
+    const entity = this.repo!.create({ tenant_id: tenantId, ...(dto as any), tipo, created_by: userId, updated_by: userId });
     const saved = (await this.repo!.save(entity as any)) as WorkEntity;
 
     // Dispara automações nativas internas (ex.: catalog-metadata-validator). Os

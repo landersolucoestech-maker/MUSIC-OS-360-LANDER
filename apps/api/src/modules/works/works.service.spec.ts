@@ -1,8 +1,17 @@
+import 'reflect-metadata';
 import { Test }              from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
+import { plainToInstance }   from 'class-transformer';
+import { validate }          from 'class-validator';
 import { WorksService }      from './works.service';
+import { CreateWorkDto }     from './dto/create-work.dto';
 import { DATA_SOURCE }       from '../../database/database.module';
 import { EventsService }     from '../../core/events/events.service';
+
+async function validateDto(payload: Record<string, unknown>) {
+  const instance = plainToInstance(CreateWorkDto, payload);
+  return validate(instance, { whitelist: true, forbidNonWhitelisted: true });
+}
 
 const TENANT  = 'tenant-test';
 const WORK_ID = 'work-test';
@@ -88,5 +97,85 @@ describe('WorksService', () => {
   it('findById usa where com tenant_id correto', async () => {
     await service.findById(TENANT, WORK_ID);
     expect(mockDs._repo._qb.where).toHaveBeenCalled();
+  });
+
+  describe('CreateWorkDto — payload real do formulário (Estado B, pré-C2)', () => {
+    const realFormPayload = {
+      titulo: 'Minha Obra',
+      genero: 'pop',
+      idioma: 'pt',
+      cod_abramus: null,
+      cod_ecad: null,
+      duracao: '03:30',
+      instrumental: 'nao',
+      criada_por_ia: false,
+      tipo_ia: null,
+      ia_harmonia: null,
+      ia_melodia: null,
+      ia_letra: null,
+      outros_titulos: null,
+      referencias_conexas: null,
+      letra_completa: null,
+      participantes: null,
+      status: 'pendente',
+      compositores: ['Fulano'],
+      letristas: null,
+      projeto_id: '123e4567-e89b-12d3-a456-426614174000',
+      artista_id: null,
+      tipo_obra: 'musica',
+    };
+
+    it('aceita o payload real do frontend (formToObraPayload), incluindo projeto_id', async () => {
+      const errors = await validateDto(realFormPayload);
+      expect(errors).toEqual([]);
+    });
+
+    it('rejeita projeto_id com UUID inválido', async () => {
+      const errors = await validateDto({ ...realFormPayload, projeto_id: 'nao-e-uuid' });
+      expect(errors.some((e) => e.property === 'projeto_id')).toBe(true);
+    });
+
+    it('rejeita campo desconhecido (whitelist)', async () => {
+      const errors = await validateDto({ ...realFormPayload, campo_inexistente: 'x' });
+      expect(errors.some((e) => e.property === 'campo_inexistente')).toBe(true);
+    });
+  });
+
+  describe('create() — fallback de tipo (works.tipo é NOT NULL)', () => {
+    it('usa tipo_obra quando tipo está ausente', async () => {
+      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo_obra: 'musica' } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'musica' }),
+      );
+    });
+
+    it('usa composicao quando tipo e tipo_obra estão ausentes', async () => {
+      await service.create(TENANT, 'u1', { titulo: 'Nova' } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'composicao' }),
+      );
+    });
+
+    it('tipo explícito vence sobre tipo_obra quando ambos presentes', async () => {
+      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo: 'original', tipo_obra: 'musica' } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ tipo: 'original' }),
+      );
+    });
+
+    it('persiste compositores como array', async () => {
+      await service.create(TENANT, 'u1', { titulo: 'Nova', tipo: 'original', compositores: ['A', 'B'] } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ compositores: ['A', 'B'] }),
+      );
+    });
+  });
+
+  describe('update() — PATCH parcial não força default de tipo', () => {
+    it('não inclui tipo no payload de update quando o DTO não o envia', async () => {
+      await service.update(TENANT, 'u1', WORK_ID, { observacoes: 'x' } as any);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).not.toHaveProperty('tipo');
+    });
   });
 });

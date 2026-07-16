@@ -196,10 +196,17 @@ const WORKS_CONTRACT: ReportFormContract = {
     col('titulo'), col('tipo'), col('status'), col('genero'),
     col('compositor'), col('compositores'), col('editora'),
     col('isrc'), col('iswc'),
+    // Campos do formulário de Obra (regra 2026-07-12: 1 coluna por campo, nome exato)
+    col('idioma'), col('cod_abramus'), col('cod_ecad'), col('duracao'),
+    col('instrumental'), col('criada_por_ia'), col('tipo_ia'),
+    col('ia_harmonia'), col('ia_melodia'), col('ia_letra'),
+    col('outros_titulos'), col('referencias_conexas'), col('letra_completa'),
+    col('participantes'), col('letristas'), col('projeto_id'),
+    col('artista_id'), col('tipo_obra'),
     // Somente leitura: registro/sociedades e enriquecimento (não são do form de criação)
-    ro('co_compositores'), ro('detentores'), ro('duracao'), ro('duration_seconds'),
+    ro('co_compositores'), ro('detentores'), ro('duration_seconds'),
     ro('language'), ro('lyrics'), ro('is_instrumental'), ro('ai_used'),
-    ro('cod_abramus'), ro('cod_ecad'), ro('abramus_protocol'), ro('registry_status'),
+    ro('abramus_protocol'), ro('registry_status'),
     ro('external_reference'), ro('origem_externa'), ro('origem_externa_sincronizado_em'),
   ],
   excludedFormFields: {

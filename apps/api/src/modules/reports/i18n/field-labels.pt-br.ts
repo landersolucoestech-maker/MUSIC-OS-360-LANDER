@@ -382,6 +382,21 @@ export const FIELD_LABELS_PT_BR = {
   version: 'Versão',
   versionTitle: 'Título da versão',
   versoes: 'Versões',
+  // ── Campos do formulário de Obra (regra 2026-07-12) ──────────────────────────
+  idioma: 'Idioma',
+  instrumental: 'Instrumental',
+  criadaPorIa: 'Criada por IA',
+  tipoIa: 'Tipo de IA',
+  iaHarmonia: 'IA — Harmonia',
+  iaMelodia: 'IA — Melodia',
+  iaLetra: 'IA — Letra',
+  outrosTitulos: 'Outros títulos',
+  referenciasConexas: 'Referências conexas',
+  letraCompleta: 'Letra completa',
+  participantes: 'Participantes',
+  letristas: 'Letristas',
+  projetoId: 'Projeto vinculado',
+  tipoObra: 'Tipo de obra',
 } as const satisfies Record<string, string>;
 
 export type FieldLabelKey = keyof typeof FIELD_LABELS_PT_BR;
