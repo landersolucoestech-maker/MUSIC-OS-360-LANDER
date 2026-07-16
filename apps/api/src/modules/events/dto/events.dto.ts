@@ -26,6 +26,15 @@ export class CreateEventDto {
   @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(()=>Number) capacity?: number;
   @ApiPropertyOptional() @IsOptional() @IsString() ticketUrl?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+
+  // ── Campos do formulário (chaves EXATAS do SchedulerFormModal) ───────────────
+  // Regra de produto 2026-07-12: cada campo do form tem a sua coluna física.
+  @ApiPropertyOptional() @IsOptional() @IsString() endereco?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() contato_local?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) valor_cache?: number;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) publico_esperado?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() descricao?: string;
+  @ApiPropertyOptional() @IsOptional() participantes?: unknown[];
 }
 
 export class UpdateEventDto extends PartialType(CreateEventDto) {

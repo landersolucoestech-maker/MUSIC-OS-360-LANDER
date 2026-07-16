@@ -58,8 +58,16 @@ export class EventsService {
     if (d['artistId']  != null) out['artista_id'] = d['artistId'];
     if (d['venue']     != null) out['local']      = d['venue'];
     if (d['startsAt']  != null) out['data']       = new Date(d['startsAt'] as string | Date);
+    if (d['endsAt']    != null) out['data_fim']   = new Date(d['endsAt'] as string | Date);
     if (d['status']    != null) out['status']     = d['status'];
     if (d['metadata']  != null) out['metadata']   = d['metadata'];
+    // Campos do formulário (regra 2026-07-12: coluna própria, sem metadata)
+    if (d['endereco']         != null) out['endereco']         = d['endereco'];
+    if (d['contato_local']    != null) out['contato_local']    = d['contato_local'];
+    if (d['valor_cache']      != null) out['valor_cache']      = String(d['valor_cache']);
+    if (d['publico_esperado'] != null) out['publico_esperado'] = d['publico_esperado'];
+    if (d['descricao']        != null) out['descricao']        = d['descricao'];
+    if (d['participantes']    != null) out['participantes']    = d['participantes'];
     return out as Partial<EventEntity>;
   }
 
