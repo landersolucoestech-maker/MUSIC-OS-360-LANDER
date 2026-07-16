@@ -57,7 +57,14 @@ export class EventsService {
     if (d['type']      != null) out['tipo']       = d['type'];
     if (d['artistId']  != null) out['artista_id'] = d['artistId'];
     if (d['venue']     != null) out['local']      = d['venue'];
-    if (d['startsAt']  != null) out['data']       = new Date(d['startsAt'] as string | Date);
+    if (d['startsAt']  != null) {
+      // C3/E2 — dual-write: o MESMO objeto Date alimenta a coluna legada `data`
+      // e a canônica futura `starts_at` (zero janela de divergência; leitura
+      // canônica só na fase E4, remoção de `data` só na E6).
+      const startValue = new Date(d['startsAt'] as string | Date);
+      out['data']      = startValue;
+      out['starts_at'] = startValue;
+    }
     if (d['endsAt']    != null) out['data_fim']   = new Date(d['endsAt'] as string | Date);
     if (d['status']    != null) out['status']     = d['status'];
     if (d['metadata']  != null) out['metadata']   = d['metadata'];
@@ -75,7 +82,11 @@ export class EventsService {
     const mapped = this.dtoToEntity(dto);
     if (!mapped.data) {
       // Coluna NOT NULL — usa "agora" como fallback seguro se startsAt não veio.
-      mapped.data = new Date();
+      // C3/E2 — dual-write: o mesmo instante alimenta `data` e `starts_at`
+      // (uma única chamada a new Date(); duas chamadas poderiam divergir em ms).
+      const fallbackValue = new Date();
+      mapped.data = fallbackValue;
+      mapped.starts_at = fallbackValue;
     }
     const entity = this.repo!.create({
       tenant_id:  tenantId,

@@ -151,12 +151,84 @@ describe('EventsService — Estado P (pré-C3, comportamento atual documentado)'
       expect(created.data.getTime()).toBeGreaterThanOrEqual(before);
     });
 
-    it('resposta permanece no shape atual: contém data, nenhum starts_at', async () => {
+    // C3/E2 — ajuste legítimo: a resposta agora contém também starts_at
+    // (dual-write). `data` permanece presente até a fase E6.
+    it('resposta contém data e starts_at com o mesmo instante (E2)', async () => {
       const saved = await service.create(TENANT, 'u1', {
         title: 'Show', type: 'show', startsAt: new Date('2026-08-01T20:00:00Z'),
-      } as never);
+      } as never) as { data: Date; starts_at: Date };
       expect(saved).toHaveProperty('data');
-      expect(saved).not.toHaveProperty('starts_at');
+      expect(saved).toHaveProperty('starts_at');
+      expect(saved.starts_at.getTime()).toBe(saved.data.getTime());
+      expect(saved).not.toHaveProperty('data_inicio');
+      expect(saved).not.toHaveProperty('startsAt');
+    });
+  });
+
+  describe('create()/update() — dual-write data/starts_at (C3/E2)', () => {
+    it('startsAt explícito grava data e starts_at com a MESMA referência Date', async () => {
+      await service.create(TENANT, 'u1', {
+        title: 'Show', type: 'show', startsAt: new Date('2026-08-01T20:00:00Z'),
+      } as never);
+      const created = mockDs._repo.create.mock.calls[0][0] as { data: Date; starts_at: Date };
+      expect(created.starts_at).toBe(created.data); // mesma referência, não só mesmo valor
+      expect(created.data.getTime()).toBe(new Date('2026-08-01T20:00:00Z').getTime());
+    });
+
+    it('fallback sem startsAt grava o mesmo instante em ambas (uma única new Date())', async () => {
+      await service.create(TENANT, 'u1', { title: 'Show', type: 'show' } as never);
+      const created = mockDs._repo.create.mock.calls[0][0] as { data: Date; starts_at: Date };
+      expect(created.starts_at).toBe(created.data);
+    });
+
+    it('endsAt continua indo somente para data_fim — não alimenta starts_at', async () => {
+      await service.update(TENANT, 'u1', EVENT_ID, { endsAt: new Date('2026-08-01T23:00:00Z') } as never);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).toMatchObject({ data_fim: new Date('2026-08-01T23:00:00Z') });
+      expect(updateCall[1]).not.toHaveProperty('starts_at');
+      expect(updateCall[1]).not.toHaveProperty('data');
+    });
+
+    it('update com startsAt atualiza ambos com o mesmo valor', async () => {
+      await service.update(TENANT, 'u1', EVENT_ID, { startsAt: new Date('2026-09-01T20:00:00Z') } as never);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).toMatchObject({
+        data: new Date('2026-09-01T20:00:00Z'),
+        starts_at: new Date('2026-09-01T20:00:00Z'),
+      });
+    });
+
+    it('PATCH sem startsAt não envia data nem starts_at', async () => {
+      await service.update(TENANT, 'u1', EVENT_ID, { venue: 'Novo Local' } as never);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).not.toHaveProperty('data');
+      expect(updateCall[1]).not.toHaveProperty('starts_at');
+    });
+
+    it('startsAt null não envia data nem starts_at (semântica atual preservada)', async () => {
+      await service.update(TENANT, 'u1', EVENT_ID, { startsAt: null } as never);
+      const updateCall = mockDs._repo.update.mock.calls[0];
+      expect(updateCall[1]).not.toHaveProperty('data');
+      expect(updateCall[1]).not.toHaveProperty('starts_at');
+    });
+
+    it('nenhum caminho de create escreve apenas uma das colunas quando há valor de início', async () => {
+      await service.create(TENANT, 'u1', {
+        title: 'A', type: 'show', startsAt: new Date('2026-08-01T20:00:00Z'),
+      } as never);
+      await service.create(TENANT, 'u1', { title: 'B', type: 'show' } as never);
+      for (const call of mockDs._repo.create.mock.calls) {
+        const payload = call[0] as { data?: Date; starts_at?: Date };
+        expect(payload.data).toBeInstanceOf(Date);
+        expect(payload.starts_at).toBeInstanceOf(Date);
+        expect(payload.starts_at!.getTime()).toBe(payload.data!.getTime());
+      }
+    });
+
+    it('list() continua ordenando por e.data — leitura canônica só na fase E4', async () => {
+      await service.list(TENANT, {} as never);
+      expect(mockDs._repo._qb.orderBy).toHaveBeenCalledWith('e.data', 'DESC');
+      expect(mockDs._repo._qb.orderBy).not.toHaveBeenCalledWith('e.starts_at', expect.anything());
     });
   });
 
