@@ -1,4 +1,4 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import { Injectable, Inject, NotFoundException, Logger, BadRequestException } from '@nestjs/common';
 import { DataSource, Repository, FindOptionsWhere } from 'typeorm';
 import type { QueryDeepPartialEntity } from 'typeorm/query-builder/QueryPartialEntity';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -10,10 +10,16 @@ import { ContractStatus } from '@music-os-360/types';
 import { WorkflowService } from '../../core/workflow/workflow.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { PlanLimitService } from '../../core/billing/plan-limit.service';
+import {
+  resolveContractAliases,
+  resolveContractQueryAliases,
+  type ResolvedContractWriteFields,
+} from './contract-legacy-alias.util';
 
 
 @Injectable()
 export class ContractsService {
+  private readonly logger = new Logger(ContractsService.name);
   private readonly ds:   DataSource | null = null;
   private readonly repo: Repository<ContractEntity> | null = null;
 
@@ -29,8 +35,24 @@ export class ContractsService {
     }
   }
 
+  /** Um warning por alias legado efetivamente recebido nesta requisição. Nunca loga valores. */
+  private logLegacyAliasUsage(
+    aliases: string[],
+    operation: 'create' | 'update' | 'list',
+    tenantId: string,
+    contractId?: string,
+  ): void {
+    for (const alias of aliases) {
+      const suffix = contractId ? ` contractId=${contractId}` : '';
+      this.logger.warn(`Contract legacy alias used: alias=${alias} operation=${operation} tenantId=${tenantId}${suffix}`);
+    }
+  }
+
   async list(tenantId: string, query: QueryContractDto) {
     const q = query as Record<string, unknown>;
+    const { normalized: resolvedQuery, legacyAliasesUsed } = resolveContractQueryAliases(q);
+    this.logLegacyAliasUsage(legacyAliasesUsed, 'list', tenantId);
+
     const qb = this.repo!
       .createQueryBuilder('c')
       .leftJoinAndMapOne(
@@ -48,10 +70,10 @@ export class ContractsService {
       .where('c.tenant_id = :tenantId', { tenantId })
       .andWhere('c.deleted_at IS NULL');
 
-    if (q['status'])     qb.andWhere('c.status = :status',        { status:    q['status'] });
-    if (q['tipo'])       qb.andWhere('c.tipo = :tipo',            { tipo:      q['tipo'] });
-    if (q['artista_id']) qb.andWhere('c.artista_id = :artistaId', { artistaId: q['artista_id'] });
-    if (q['search'])     qb.andWhere('c.titulo ILIKE :search',    { search: `%${q['search']}%` });
+    if (q['status'])              qb.andWhere('c.status = :status',        { status:    q['status'] });
+    if (resolvedQuery.tipo)       qb.andWhere('c.tipo = :tipo',            { tipo:      resolvedQuery.tipo });
+    if (resolvedQuery.artista_id) qb.andWhere('c.artista_id = :artistaId', { artistaId: resolvedQuery.artista_id });
+    if (q['search'])              qb.andWhere('c.titulo ILIKE :search',    { search: `%${q['search']}%` });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -95,40 +117,26 @@ export class ContractsService {
   }
 
   /**
-   * Normaliza DTO: aceita tanto camelCase EN quanto snake_case pt-BR.
-   * Mapeia tudo para o formato pt-BR esperado pela ContractEntity.
-   * Strip de campos auxiliares do frontend que não pertencem à entity
-   * (ex: `signers` vai para metadata).
+   * Monta o payload final para persistência a partir dos campos canônicos já
+   * resolvidos (titulo/tipo/artista_id/data_inicio/data_fim/arquivo_url/valor
+   * — ver resolveContractAliases()) e dos demais campos não relacionados a
+   * aliases, que continuam passando direto para a entity.
    */
-  private normalizeContractDto(dto: Record<string, unknown>): Record<string, unknown> {
-    const out: Record<string, unknown> = {};
+  private buildEntityPayload(dto: Record<string, unknown>, resolved: ResolvedContractWriteFields): Record<string, unknown> {
+    const out: Record<string, unknown> = { ...resolved };
 
-    // pt-BR vence sobre EN se ambos estiverem presentes
-    out.titulo        = dto['titulo']        ?? dto['title']      ?? null;
-    out.tipo          = dto['tipo']          ?? dto['type']       ?? null;
-    out.artista_id    = dto['artista_id']    ?? dto['artistId']   ?? null;
     out.cliente_id    = dto['cliente_id']    ?? null;
     out.lancamento_id = dto['lancamento_id'] ?? null;
-    out.data_inicio   = dto['data_inicio']   ?? dto['startsAt']   ?? null;
-    out.data_fim      = dto['data_fim']      ?? dto['expiresAt']  ?? null;
     out.exclusivo     = dto['exclusivo']     ?? false;
     out.observacoes   = dto['observacoes']   ?? null;
-    out.arquivo_url   = dto['arquivo_url']   ?? dto['fileUrl']    ?? null;
     out.autentique_doc_id = dto['autentique_doc_id'] ?? null;
     out.signing_platform  = dto['signing_platform']  ?? null;
     out.versoes       = (dto['versoes'] as unknown[] | undefined) ?? [];
-    // Campos do wizard (regra 2026-07-12: 1 coluna por campo, nome exato)
+    // Campos do wizard (regra 2026-07-12: 1 coluna por campo, nome exato) — não são aliases.
     out.template_id   = dto['template_id'] ?? null;
     if (Array.isArray(dto['signers'])) out.signers = dto['signers'];
 
-    // valor: aceita number ou IsNumberString
-    const valorRaw = dto['valor'] ?? dto['value'];
-    if (valorRaw != null) {
-      const n = typeof valorRaw === 'number' ? valorRaw : Number(valorRaw);
-      out.valor = Number.isFinite(n) ? String(n) : null;
-    }
-
-    // parties + extras EN → metadata (signers agora tem coluna própria)
+    // parties/currency/signedAt → metadata: fora do escopo do C1 (C1.1), comportamento inalterado.
     const metaIn = (dto['metadata'] as Record<string, unknown> | undefined) ?? {};
     const meta: Record<string, unknown> = { ...metaIn };
     if (Array.isArray(dto['parties']))  meta['parties']  = dto['parties'];
@@ -136,7 +144,7 @@ export class ContractsService {
     if (dto['signedAt'])                meta['signed_at'] = dto['signedAt'];
     if (Object.keys(meta).length > 0)   out.metadata = meta;
 
-    // Remove nulls/empties para não sobrescrever defaults da entity sem necessidade
+    // Remove nulls/undefined — preserva a semântica atual de PATCH (null não limpa coluna).
     return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== null && v !== undefined));
   }
 
@@ -144,9 +152,21 @@ export class ContractsService {
     await this.planLimit.enforce(tenantId, orgId ?? tenantId, 'contracts');
     const { status: _ignoredStatus, ...rest } = dto as unknown as Record<string, unknown>;
     void _ignoredStatus;
-    const normalized = this.normalizeContractDto(rest);
+
+    const { normalized: resolved, legacyAliasesUsed } = resolveContractAliases(rest);
+    if (resolved.titulo === undefined) {
+      throw new BadRequestException({
+        code: 'CONTRACT_TITLE_REQUIRED',
+        message: 'Título é obrigatório.',
+        fields: [{ canonical: 'titulo', legacy: 'title' }],
+      });
+    }
+    this.logLegacyAliasUsage(legacyAliasesUsed, 'create', tenantId);
+
+    const normalized = this.buildEntityPayload(rest, resolved);
     // contracts.tipo é NOT NULL; o wizard pode não ter tipo de serviço definido.
     if (normalized['tipo'] == null) normalized['tipo'] = 'outro';
+
     const entity = this.repo!.create({
       tenant_id:  tenantId,
       ...normalized,
@@ -187,7 +207,14 @@ export class ContractsService {
 
     const { status: _s, ...restFields } = dtoMap;
     void _s;
-    const normalized = this.normalizeContractDto(restFields);
+
+    const { normalized: resolved, legacyAliasesUsed } = resolveContractAliases(restFields);
+    // update: ausência de título é válida (PATCH parcial); se enviado, o
+    // próprio resolveContractAliases() já garantiu conteúdo/conflito válidos.
+    this.logLegacyAliasUsage(legacyAliasesUsed, 'update', tenantId, id);
+
+    const normalized = this.buildEntityPayload(restFields, resolved);
+    // Sem default de tipo='outro' aqui — PATCH ausente não deve forçar um valor.
 
     const nonStatusUpdates: Record<string, unknown> = {
       updated_at: new Date(),

@@ -6,27 +6,30 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * CreateContractDto aceita BOTH English camelCase e pt-BR snake_case.
- * Os campos pt-BR são repassados directamente para colunas da tabela `contracts`
- * (que usa nomes em pt-BR). Os campos English são suportados para clientes API
- * externos e novos serviços.
  *
- * Quando ambos estão presentes, pt-BR vence.
+ * Fase 5 / C1: pt-BR é o contrato canônico. Os 7 aliases EN abaixo
+ * (title/type/artistId/value/startsAt/expiresAt/fileUrl) estão em
+ * depreciação temporária — ainda aceitos, resolvidos e validados por
+ * contract-legacy-alias.util.ts, mas marcados `deprecated` no Swagger.
+ * Conflitos entre o par PT/EN são rejeitados com 400
+ * (CONTRACT_ALIAS_CONFLICT). currency/signedAt/parties não fazem parte
+ * desta depreciação (ver C1.1 — dívida separada, fora deste escopo).
  */
 export class CreateContractDto {
-  // ── English (API public contract) ─────────────────────────────────────────
-  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC' })
+  // ── English legado (depreciado — ver contract-legacy-alias.util.ts) ────────
+  @ApiPropertyOptional({ example: 'Contrato de Gravação — Artista ABC', deprecated: true, description: 'Use "titulo".' })
   @IsOptional()
   @IsString()
   @MaxLength(500)
   title?: string;
 
-  @ApiPropertyOptional({ example: 'recording' })
+  @ApiPropertyOptional({ example: 'recording', deprecated: true, description: 'Use "tipo".' })
   @IsOptional()
   @IsString()
   @MaxLength(100)
   type?: string;
 
-  @ApiPropertyOptional({ example: 'uuid-do-artista' })
+  @ApiPropertyOptional({ example: 'uuid-do-artista', deprecated: true, description: 'Use "artista_id".' })
   @IsOptional()
   @IsUUID()
   artistId?: string;
@@ -39,7 +42,7 @@ export class CreateContractDto {
   @IsString()
   status?: string;
 
-  @ApiPropertyOptional({ example: '15000.00' })
+  @ApiPropertyOptional({ example: '15000.00', deprecated: true, description: 'Use "valor".' })
   @IsOptional()
   @IsNumberString()
   value?: string;
@@ -50,12 +53,12 @@ export class CreateContractDto {
   @MaxLength(3)
   currency?: string = 'BRL';
 
-  @ApiPropertyOptional({ example: '2024-01-01T00:00:00.000Z' })
+  @ApiPropertyOptional({ example: '2024-01-01T00:00:00.000Z', deprecated: true, description: 'Use "data_inicio".' })
   @IsOptional()
   @IsDateString()
   startsAt?: string;
 
-  @ApiPropertyOptional({ example: '2025-01-01T00:00:00.000Z' })
+  @ApiPropertyOptional({ example: '2025-01-01T00:00:00.000Z', deprecated: true, description: 'Use "data_fim".' })
   @IsOptional()
   @IsDateString()
   expiresAt?: string;
@@ -65,7 +68,7 @@ export class CreateContractDto {
   @IsDateString()
   signedAt?: string;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ deprecated: true, description: 'Use "arquivo_url".' })
   @IsOptional()
   @IsString()
   fileUrl?: string;
