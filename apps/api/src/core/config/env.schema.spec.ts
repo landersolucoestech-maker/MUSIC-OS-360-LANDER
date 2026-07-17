@@ -46,6 +46,11 @@ describe('env.schema — matriz de isolamento de ambientes Supabase (incidente 2
       expect(errors.some((e) => e.includes('OUTRO ambiente') && e.includes(SUPABASE_MAIN_REF))).toBe(true);
     });
 
+    it('development + DEV antigo excluído (sxdhnhoupjrnntrmjtyn) → falha (denylist absoluta)', () => {
+      const errors = collectSupabaseEnvErrors({ SUPABASE_URL: url('sxdhnhoupjrnntrmjtyn') }, 'development');
+      expect(errors.some((e) => e.includes('banido'))).toBe(true);
+    });
+
     it('development + PROD_REF → falha', () => {
       const errors = collectSupabaseEnvErrors({ SUPABASE_URL: url(SUPABASE_PROD_REF) }, 'development');
       expect(errors.length).toBeGreaterThan(0);

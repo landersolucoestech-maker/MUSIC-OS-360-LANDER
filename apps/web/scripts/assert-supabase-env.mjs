@@ -15,8 +15,8 @@ import { loadEnv } from "vite";
 export const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 export const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
 export const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
-export const SUPABASE_DEV_REF = "sxdhnhoupjrnntrmjtyn";
-export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
+export const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
+export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
 const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
 

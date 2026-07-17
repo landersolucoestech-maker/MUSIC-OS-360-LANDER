@@ -8,7 +8,7 @@
 
 | NODE_ENV | Ref permitido | URL | Observações |
 |---|---|---|---|
-| `development` | `sxdhnhoupjrnntrmjtyn` | https://sxdhnhoupjrnntrmjtyn.supabase.co | Branch **dev** do projeto. Único aceito localmente. |
+| `development` | `rypnevnfipygyhysqpdo` | https://rypnevnfipygyhysqpdo.supabase.co | Branch **DEV** do projeto (criado 2026-07-17, `persistent`, sem dados do MAIN). Único aceito localmente. |
 | `test` | *(nenhum remoto)* | — | Sem fallback silencioso: qualquer ref Supabase resolvido é erro. Postgres local é permitido. |
 | `staging` | `khnaxcgjnvhhtgkozsif` | https://khnaxcgjnvhhtgkozsif.supabase.co | Confirmar por fonte administrativa antes do primeiro uso. |
 | `production` | `jtizbxbrwyczbkdiruoq` | https://jtizbxbrwyczbkdiruoq.supabase.co | Confirmar por fonte administrativa antes do primeiro uso. |
@@ -16,7 +16,9 @@
 **Branch MAIN** (`sxmfeocztlztvpdnxayk`, https://sxmfeocztlztvpdnxayk.supabase.co)
 é a branch principal do projeto Supabase — **não é sinônimo de produção** e não
 é aceita por nenhum `NODE_ENV` de runtime. Refs banidos permanentes:
-`mkyvkciwyhfawmvluugb` (branch preview sem tabelas públicas).
+`mkyvkciwyhfawmvluugb` (branch preview sem tabelas públicas) e
+`sxdhnhoupjrnntrmjtyn` (primeiro branch DEV, vazio/`MIGRATIONS_FAILED`,
+excluído em 2026-07-17 — referência mantida apenas como registro histórico).
 
 ## Regras de seleção
 

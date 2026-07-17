@@ -17,9 +17,12 @@ export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif'; // confirmar por fon
 /** Branch MAIN do projeto Supabase (contém o schema real; ≠ produção). */
 export const SUPABASE_MAIN_REF = 'sxmfeocztlztvpdnxayk';
 /** Branch DEV do projeto Supabase (único ref aceito em development). */
-export const SUPABASE_DEV_REF = 'sxdhnhoupjrnntrmjtyn';
-/** Refs banidos de QUALQUER runtime (ex.: branch preview sem tabelas públicas). */
-export const SUPABASE_REF_DENYLIST: readonly string[] = ['mkyvkciwyhfawmvluugb'];
+export const SUPABASE_DEV_REF = 'rypnevnfipygyhysqpdo';
+/** Refs banidos de QUALQUER runtime (previews/branches excluídos). */
+export const SUPABASE_REF_DENYLIST: readonly string[] = [
+  'mkyvkciwyhfawmvluugb',
+  'sxdhnhoupjrnntrmjtyn', // branch DEV antigo, excluído em 2026-07-17
+];
 export const SUPABASE_ALLOWED_REFS: readonly string[] = [
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,

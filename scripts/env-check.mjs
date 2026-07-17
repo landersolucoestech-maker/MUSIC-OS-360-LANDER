@@ -28,8 +28,8 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
 const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
-const SUPABASE_DEV_REF = "sxdhnhoupjrnntrmjtyn";
-const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
+const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
+const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
 const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
 
@@ -64,10 +64,12 @@ function jwtClaims(token) {
 // Únicos arquivos autorizados a MENCIONAR refs banidos: são os próprios guards.
 const GUARD_FILE_ALLOWLIST = new Set([
   "apps/api/src/core/config/env.schema.ts",
+  "apps/api/src/core/config/env.schema.spec.ts",
   "apps/web/src/shared/lib/env.ts",
   "apps/web/scripts/assert-supabase-env.mjs",
   "scripts/env-check.mjs",
   "scripts/cleanup/cleanup-check.mjs",
+  "docs/SUPABASE_ENVIRONMENTS.md",
 ]);
 
 const errors = [];
