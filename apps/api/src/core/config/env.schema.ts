@@ -4,10 +4,20 @@ import { z } from 'zod';
 // Fonte única de verdade dos refs permitidos por ambiente. O frontend espelha
 // esta lista em apps/web/scripts/assert-supabase-env.mjs e o gate de repo em
 // scripts/env-check.mjs — qualquer alteração deve ser feita nos três lugares.
-export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq';
-export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif';
-/** Projeto Supabase de DESENVOLVIMENTO (branch dev isolado; nunca produção). */
-export const SUPABASE_DEV_REF = 'hoiigqoocaivdaapetia';
+//
+// MATRIZ DE AMBIENTES (incidente de isolamento 2026-07-16/17):
+//   development → SOMENTE DEV_REF; MAIN/STAGING/PROD explicitamente proibidos.
+//   test        → NENHUM projeto remoto (sem fallback silencioso para DEV).
+//   staging     → SOMENTE STAGING_REF.
+//   production  → SOMENTE PROD_REF.
+// MAIN_REF é a branch principal do projeto Supabase — NÃO é sinônimo de
+// produção e não é aceito por nenhum NODE_ENV de runtime.
+export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq'; // confirmar por fonte administrativa antes de usar
+export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif'; // confirmar por fonte administrativa antes de usar
+/** Branch MAIN do projeto Supabase (contém o schema real; ≠ produção). */
+export const SUPABASE_MAIN_REF = 'sxmfeocztlztvpdnxayk';
+/** Branch DEV do projeto Supabase (único ref aceito em development). */
+export const SUPABASE_DEV_REF = 'sxdhnhoupjrnntrmjtyn';
 /** Refs banidos de QUALQUER runtime (ex.: branch preview sem tabelas públicas). */
 export const SUPABASE_REF_DENYLIST: readonly string[] = ['mkyvkciwyhfawmvluugb'];
 export const SUPABASE_ALLOWED_REFS: readonly string[] = [
@@ -15,15 +25,138 @@ export const SUPABASE_ALLOWED_REFS: readonly string[] = [
   SUPABASE_STAGING_REF,
   SUPABASE_DEV_REF,
 ];
+/** Todos os refs conhecidos (para a denylist cruzada por ambiente). */
+export const SUPABASE_KNOWN_REFS: readonly string[] = [
+  SUPABASE_PROD_REF,
+  SUPABASE_STAGING_REF,
+  SUPABASE_MAIN_REF,
+  SUPABASE_DEV_REF,
+];
 
 /**
- * Ref esperado por NODE_ENV — isolamento absoluto: development EXIGE o projeto
- * DEV; prod/staging (e qualquer outro ref) ficam proibidos localmente.
+ * Ref esperado por NODE_ENV — isolamento absoluto: cada ambiente aceita SOMENTE
+ * o seu projeto. `null` significa "nenhum projeto remoto é aceito" (test):
+ * qualquer ref Supabase resolvido é erro, sem fallback silencioso.
  */
-export function expectedSupabaseRef(nodeEnv: string | undefined): string {
+export function expectedSupabaseRef(nodeEnv: string | undefined): string | null {
   if (nodeEnv === 'production') return SUPABASE_PROD_REF;
   if (nodeEnv === 'staging') return SUPABASE_STAGING_REF;
+  if (nodeEnv === 'test') return null;
   return SUPABASE_DEV_REF;
+}
+
+/**
+ * Denylist cruzada explícita: refs conhecidos de OUTROS ambientes são proibidos
+ * mesmo que uma allowlist tenha sido editada incorretamente. Prevalece sobre
+ * qualquer configuração permissiva.
+ */
+export function forbiddenSupabaseRefs(nodeEnv: string | undefined): readonly string[] {
+  const expected = expectedSupabaseRef(nodeEnv);
+  return SUPABASE_KNOWN_REFS.filter((ref) => ref !== expected);
+}
+
+/**
+ * Núcleo puro e testável do guard de bootstrap (consumido por main.ts).
+ * Valida conjuntamente URLs, connection strings, JWTs e coerência entre elas.
+ * Retorna a lista de erros (vazia = ambiente válido). Nunca expõe secrets.
+ */
+export function collectSupabaseEnvErrors(
+  env: Record<string, string | undefined>,
+  nodeEnvInput?: string,
+): string[] {
+  const nodeEnv = nodeEnvInput ?? env['NODE_ENV'] ?? 'development';
+  const expectedRef = expectedSupabaseRef(nodeEnv);
+  const forbidden = forbiddenSupabaseRefs(nodeEnv);
+  const prodLike = nodeEnv === 'production' || nodeEnv === 'staging';
+  const errors: string[] = [];
+
+  const refSources: Array<[string, string | undefined]> = [
+    ['SUPABASE_URL', env['SUPABASE_URL']],
+    ['DATABASE_URL', env['DATABASE_URL']],
+    ['DIRECT_DATABASE_URL', env['DIRECT_DATABASE_URL']],
+    ['APP_DATABASE_URL', env['APP_DATABASE_URL']],
+    ['VITE_SUPABASE_URL', env['VITE_SUPABASE_URL']],
+  ];
+
+  const resolved: Array<[string, string]> = [];
+  for (const [key, raw] of refSources) {
+    if (!raw) continue;
+    const ref = extractSupabaseRef(raw);
+    if (ref === null) {
+      // Hostname Supabase malformado (presente mas sem ref extraível) é erro;
+      // conexões não-Supabase (ex.: Postgres local em test) passam sem ref.
+      if (/supabase\.(co|com)/i.test(raw)) {
+        errors.push(`${key} tem hostname Supabase malformado — ref não extraível`);
+      }
+      continue;
+    }
+    resolved.push([key, ref]);
+    if (SUPABASE_REF_DENYLIST.includes(ref)) {
+      errors.push(`${key} aponta para o ref Supabase banido "${ref}"`);
+      continue;
+    }
+    // Denylist cruzada: ref conhecido de OUTRO ambiente é sempre proibido.
+    if (forbidden.includes(ref)) {
+      errors.push(
+        `${key} usa ref "${ref}" de OUTRO ambiente — proibido em NODE_ENV=${nodeEnv} (denylist cruzada)`,
+      );
+      continue;
+    }
+    if (expectedRef === null) {
+      errors.push(
+        `${key} usa ref remoto "${ref}" mas NODE_ENV=${nodeEnv} não aceita nenhum projeto Supabase remoto`,
+      );
+    } else if (ref !== expectedRef) {
+      errors.push(
+        `${key} usa ref "${ref}" mas NODE_ENV=${nodeEnv} exige o projeto "${expectedRef}"`,
+      );
+    }
+  }
+
+  // Coerência: todas as fontes resolvidas devem apontar para o MESMO projeto.
+  const distinctRefs = new Set(resolved.map(([, ref]) => ref));
+  if (distinctRefs.size > 1) {
+    errors.push(
+      `Refs Supabase divergentes entre variáveis: ${resolved
+        .map(([key, ref]) => `${key}=${ref}`)
+        .join(' · ')} — todas devem apontar para o mesmo projeto`,
+    );
+  }
+
+  // Coerência ref × payload dos JWTs (sem expor o token).
+  const jwtSources: Array<[string, string | undefined, string]> = [
+    ['SUPABASE_ANON_KEY', env['SUPABASE_ANON_KEY'], 'anon'],
+    ['VITE_SUPABASE_ANON_KEY', env['VITE_SUPABASE_ANON_KEY'], 'anon'],
+    ['SUPABASE_SERVICE_ROLE_KEY', env['SUPABASE_SERVICE_ROLE_KEY'], 'service_role'],
+  ];
+  for (const [key, token, expectedRole] of jwtSources) {
+    if (!token) continue;
+    const claims = decodeSupabaseJwtClaims(token);
+    if (!claims) {
+      errors.push(`${key} nao e um JWT decodificavel`);
+      continue;
+    }
+    if (claims.ref && forbidden.includes(claims.ref)) {
+      errors.push(
+        `${key} tem payload ref "${claims.ref}" de OUTRO ambiente — proibido em NODE_ENV=${nodeEnv}`,
+      );
+    } else if (claims.ref && expectedRef !== null && claims.ref !== expectedRef) {
+      errors.push(`${key} tem payload ref "${claims.ref}" != projeto esperado "${expectedRef}"`);
+    } else if (claims.ref && expectedRef === null) {
+      errors.push(`${key} tem payload ref "${claims.ref}" mas NODE_ENV=${nodeEnv} não aceita projeto remoto`);
+    }
+    if (claims.role && claims.role !== expectedRole) {
+      errors.push(`${key} tem role "${claims.role}" (esperado "${expectedRole}" — chaves invertidas?)`);
+    }
+  }
+
+  if (prodLike) {
+    for (const key of ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'] as const) {
+      if (!env[key]) errors.push(`${key} e obrigatorio em NODE_ENV=${nodeEnv}`);
+    }
+  }
+
+  return errors;
 }
 
 /** Decodifica só o payload público do JWT ({ ref, role }). Nunca expõe o token. */

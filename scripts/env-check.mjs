@@ -22,21 +22,32 @@ import { fileURLToPath } from "node:url";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
+// MATRIZ DE AMBIENTES (espelho de env.schema.ts; incidente 2026-07-16/17):
+//   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
+//   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
 const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
-const SUPABASE_DEV_REF = "hoiigqoocaivdaapetia";
+const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
+const SUPABASE_DEV_REF = "sxdhnhoupjrnntrmjtyn";
 const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
+const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
 
 /**
  * Ref Supabase esperado para cada NODE_ENV — isolamento absoluto de ambientes.
- * development EXIGE o projeto DEV; prod/staging (e qualquer outro ref) ficam
- * PROIBIDOS localmente. Fecha o buraco de dev apontar para produção.
+ * `null` (test) = nenhum projeto remoto aceito, sem fallback silencioso.
  */
 function expectedRefFor(nodeEnv) {
   if (nodeEnv === "production") return SUPABASE_PROD_REF;
   if (nodeEnv === "staging") return SUPABASE_STAGING_REF;
+  if (nodeEnv === "test") return null;
   return SUPABASE_DEV_REF;
+}
+
+/** Denylist cruzada: refs conhecidos de OUTROS ambientes — prevalece sobre allowlist. */
+function forbiddenRefsFor(nodeEnv) {
+  const expected = expectedRefFor(nodeEnv);
+  return SUPABASE_KNOWN_REFS.filter((ref) => ref !== expected);
 }
 
 /** Decodifica só o payload público do JWT e devolve { ref, role }. Nunca imprime o token. */
@@ -163,14 +174,27 @@ const refSources = [
 ];
 
 const expectedRef = expectedRefFor(nodeEnv);
+const forbiddenRefs = forbiddenRefsFor(nodeEnv);
 
 for (const [label, ref] of refSources) {
-  if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
+  if (!ref) continue;
+  if (SUPABASE_REF_DENYLIST.includes(ref)) {
     errors.push(`${label} usa o ref banido "${ref}" (branch preview sem tabelas públicas)`);
+    continue;
   }
-  // Isolamento: cada ambiente só aceita o SEU projeto. Em development, prod e
-  // staging são tão proibidos quanto qualquer ref desconhecido.
-  if (ref && ref !== expectedRef) {
+  // Denylist cruzada: ref conhecido de OUTRO ambiente é sempre proibido,
+  // mesmo que uma allowlist tenha sido editada incorretamente.
+  if (forbiddenRefs.includes(ref)) {
+    errors.push(
+      `${label} usa ref "${ref}" de OUTRO ambiente — proibido em NODE_ENV=${nodeEnv} (denylist cruzada)`,
+    );
+    continue;
+  }
+  if (expectedRef === null) {
+    errors.push(
+      `${label} usa ref remoto "${ref}" mas NODE_ENV=${nodeEnv} não aceita nenhum projeto Supabase remoto`,
+    );
+  } else if (ref !== expectedRef) {
     errors.push(
       `${label} usa ref "${ref}" mas NODE_ENV=${nodeEnv} exige o projeto ${nodeEnv} "${expectedRef}"`,
     );
@@ -201,8 +225,12 @@ for (const [label, token, expectedRole] of jwtSources) {
     errors.push(`${label} não é um JWT decodificável`);
     continue;
   }
-  if (claims.ref && claims.ref !== expectedRef) {
+  if (claims.ref && forbiddenRefs.includes(claims.ref)) {
+    errors.push(`${label} tem payload ref "${claims.ref}" de OUTRO ambiente — proibido em NODE_ENV=${nodeEnv}`);
+  } else if (claims.ref && expectedRef !== null && claims.ref !== expectedRef) {
     errors.push(`${label} tem payload ref "${claims.ref}" ≠ projeto esperado "${expectedRef}"`);
+  } else if (claims.ref && expectedRef === null) {
+    errors.push(`${label} tem payload ref "${claims.ref}" mas NODE_ENV=${nodeEnv} não aceita projeto remoto`);
   }
   if (claims.role && claims.role !== expectedRole) {
     errors.push(`${label} tem role "${claims.role}" no payload (esperado "${expectedRole}" — chaves invertidas?)`);

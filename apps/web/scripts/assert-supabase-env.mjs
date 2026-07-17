@@ -9,17 +9,29 @@
  */
 import { loadEnv } from "vite";
 
+// MATRIZ DE AMBIENTES (espelho de env.schema.ts; incidente 2026-07-16/17):
+//   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
+//   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
 export const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
 export const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
-export const SUPABASE_DEV_REF = "hoiigqoocaivdaapetia";
+export const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
+export const SUPABASE_DEV_REF = "sxdhnhoupjrnntrmjtyn";
 export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb"];
 const SUPABASE_ALLOWED_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_DEV_REF];
+const SUPABASE_KNOWN_REFS = [SUPABASE_PROD_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_DEV_REF];
 
-/** Ref esperado por ambiente — development EXIGE o projeto DEV. */
+/** Ref esperado por ambiente. `null` (test) = nenhum projeto remoto aceito. */
 function expectedRefFor(nodeEnv) {
   if (nodeEnv === "production") return SUPABASE_PROD_REF;
   if (nodeEnv === "staging") return SUPABASE_STAGING_REF;
+  if (nodeEnv === "test") return null;
   return SUPABASE_DEV_REF;
+}
+
+/** Denylist cruzada: refs conhecidos de OUTROS ambientes — prevalece sobre allowlist. */
+function forbiddenRefsFor(nodeEnv) {
+  const expected = expectedRefFor(nodeEnv);
+  return SUPABASE_KNOWN_REFS.filter((ref) => ref !== expected);
 }
 
 /** Payload público do JWT ({ ref, role }). Nunca expõe o token. */
@@ -74,24 +86,29 @@ export function assertWebSupabaseEnv(mode, envDir) {
   }
 
   // Isolamento por ambiente (vale SEMPRE, inclusive em development): o ref usado
-  // precisa ser o do ambiente atual. Fecha o buraco de dev apontar para produção.
+  // precisa ser o do ambiente atual. Denylist cruzada prevalece sobre allowlist.
   const expectedRef = expectedRefFor(nodeEnv);
-  if (webRef && webRef !== expectedRef) {
-    errors.push(
-      `VITE_SUPABASE_URL uses ref "${webRef}" but NODE_ENV=${nodeEnv} requires the "${expectedRef}" project`,
-    );
-  }
-  if (backendRef && backendRef !== expectedRef) {
-    errors.push(
-      `SUPABASE_URL uses ref "${backendRef}" but NODE_ENV=${nodeEnv} requires the "${expectedRef}" project`,
-    );
+  const forbidden = forbiddenRefsFor(nodeEnv);
+  for (const [key, ref] of [["VITE_SUPABASE_URL", webRef], ["SUPABASE_URL", backendRef]]) {
+    if (!ref) continue;
+    if (forbidden.includes(ref)) {
+      errors.push(`${key} uses ref "${ref}" from ANOTHER environment — forbidden in NODE_ENV=${nodeEnv} (cross denylist)`);
+    } else if (expectedRef === null) {
+      errors.push(`${key} uses remote ref "${ref}" but NODE_ENV=${nodeEnv} accepts no remote Supabase project`);
+    } else if (ref !== expectedRef) {
+      errors.push(`${key} uses ref "${ref}" but NODE_ENV=${nodeEnv} requires the "${expectedRef}" project`);
+    }
   }
 
   // Coerência ref × payload do anon JWT (sem expor o token).
   const anonClaims = jwtClaims(env.VITE_SUPABASE_ANON_KEY);
   if (anonClaims) {
-    if (anonClaims.ref && anonClaims.ref !== expectedRef) {
+    if (anonClaims.ref && forbidden.includes(anonClaims.ref)) {
+      errors.push(`VITE_SUPABASE_ANON_KEY payload ref "${anonClaims.ref}" is from ANOTHER environment — forbidden in NODE_ENV=${nodeEnv}`);
+    } else if (anonClaims.ref && expectedRef !== null && anonClaims.ref !== expectedRef) {
       errors.push(`VITE_SUPABASE_ANON_KEY payload ref "${anonClaims.ref}" != expected "${expectedRef}"`);
+    } else if (anonClaims.ref && expectedRef === null) {
+      errors.push(`VITE_SUPABASE_ANON_KEY payload ref "${anonClaims.ref}" but NODE_ENV=${nodeEnv} accepts no remote project`);
     }
     if (anonClaims.role && anonClaims.role !== "anon") {
       errors.push(`VITE_SUPABASE_ANON_KEY role "${anonClaims.role}" (expected "anon" — keys swapped?)`);

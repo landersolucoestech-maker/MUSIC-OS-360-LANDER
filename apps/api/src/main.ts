@@ -43,12 +43,7 @@ import { AppModule } from './app.module';
 import { GlobalExceptionFilter } from './core/filters/global-exception.filter';
 import { TransformInterceptor } from './core/interceptors/transform.interceptor';
 import { LoggingInterceptor } from './core/interceptors/logging.interceptor';
-import {
-  SUPABASE_REF_DENYLIST,
-  decodeSupabaseJwtClaims,
-  expectedSupabaseRef,
-  extractSupabaseRef,
-} from './core/config/env.schema';
+import { collectSupabaseEnvErrors } from './core/config/env.schema';
 import { isProdLike } from './core/config/runtime-environment';
 
 // Silencia erros de conexão Redis inacessível em ambiente de desenvolvimento
@@ -61,69 +56,16 @@ let __netLastLogAt = 0;
 function assertApiRuntimeEnv(logger: Logger): void {
   const nodeEnv = process.env.NODE_ENV ?? 'development';
   const prodLike = isProdLike(nodeEnv);
-  const expectedRef = expectedSupabaseRef(nodeEnv);
-  const errors: string[] = [];
-
-  const refSources: Array<[string, string | null]> = [
-    ['SUPABASE_URL', extractSupabaseRef(process.env.SUPABASE_URL)],
-    ['DATABASE_URL', extractSupabaseRef(process.env.DATABASE_URL)],
-    ['APP_DATABASE_URL', extractSupabaseRef(process.env.APP_DATABASE_URL)],
-    ['VITE_SUPABASE_URL', extractSupabaseRef(process.env.VITE_SUPABASE_URL)],
-  ];
-
-  for (const [key, ref] of refSources) {
-    if (ref && SUPABASE_REF_DENYLIST.includes(ref)) {
-      errors.push(`${key} aponta para o ref Supabase banido "${ref}"`);
-    }
-    // Isolamento por ambiente: cada NODE_ENV só aceita o SEU projeto. Em
-    // development, prod/staging são tão proibidos quanto qualquer ref estranho.
-    if (ref && ref !== expectedRef) {
-      errors.push(
-        `${key} usa ref "${ref}" mas NODE_ENV=${nodeEnv} exige o projeto "${expectedRef}"`,
-      );
-    }
-  }
-
-  // Coerência ref × payload dos JWTs (sem expor o token).
-  const jwtSources: Array<[string, string | undefined, string]> = [
-    ['SUPABASE_ANON_KEY', process.env.SUPABASE_ANON_KEY, 'anon'],
-    ['VITE_SUPABASE_ANON_KEY', process.env.VITE_SUPABASE_ANON_KEY, 'anon'],
-    ['SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY, 'service_role'],
-  ];
-  for (const [key, token, expectedRole] of jwtSources) {
-    if (!token) continue;
-    const claims = decodeSupabaseJwtClaims(token);
-    if (!claims) {
-      errors.push(`${key} nao e um JWT decodificavel`);
-      continue;
-    }
-    if (claims.ref && claims.ref !== expectedRef) {
-      errors.push(`${key} tem payload ref "${claims.ref}" != projeto esperado "${expectedRef}"`);
-    }
-    if (claims.role && claims.role !== expectedRole) {
-      errors.push(`${key} tem role "${claims.role}" (esperado "${expectedRole}" — chaves invertidas?)`);
-    }
-  }
+  // Núcleo puro e testável do guard (matriz de ambientes, denylist cruzada,
+  // coerência URL×JWT×connection strings) vive em env.schema.ts.
+  const errors = collectSupabaseEnvErrors(process.env as Record<string, string | undefined>, nodeEnv);
 
   if (prodLike) {
-    for (const key of ['DATABASE_URL', 'SUPABASE_URL', 'SUPABASE_ANON_KEY'] as const) {
-      if (!process.env[key]) errors.push(`${key} e obrigatorio em NODE_ENV=${nodeEnv}`);
-    }
     for (const flag of ['USE_MOCK', 'MOCK_MODE', 'AUTH_DISABLED'] as const) {
       if (process.env[flag] === 'true') {
         errors.push(`${flag}=true e proibido em NODE_ENV=${nodeEnv}`);
       }
     }
-  }
-
-  const resolved = refSources.filter((entry): entry is [string, string] => entry[1] !== null);
-  const distinctRefs = [...new Set(resolved.map(([, ref]) => ref))];
-  if (distinctRefs.length > 1) {
-    errors.push(
-      `refs Supabase divergentes: ${resolved
-        .map(([key, ref]) => `${key}=${ref}`)
-        .join(' | ')}`,
-    );
   }
 
   if (errors.length > 0) {
