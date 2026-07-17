@@ -14,6 +14,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from '../src/database/entities';
+import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 
 const API = (process.env['API_URL'] ?? 'http://localhost:3001').replace(/\/$/, '');
 const TAG = `HTTPSMOKE_${Date.now()}`;
@@ -36,6 +37,7 @@ async function main(): Promise<void> {
   console.log(`\n[reports:smoke] API=${API}`);
   const envText = fs.existsSync(path.resolve(process.cwd(), '.env')) ? fs.readFileSync(path.resolve(process.cwd(), '.env'), 'utf8') : '';
   const url = (envText.match(/^DATABASE_URL=(.+)$/m)?.[1] ?? '').trim().replace(/^["']|["']$/g, '');
+  assertDatabaseCommandEnv('reports-smoke', { ...process.env, DATABASE_URL: url });
   const ds = await new DataSource({ type: 'postgres', url, entities: ALL_ENTITIES, synchronize: false, logging: false, ssl: false }).initialize();
 
   try {

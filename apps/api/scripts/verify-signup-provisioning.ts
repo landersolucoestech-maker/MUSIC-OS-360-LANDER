@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { randomBytes } from 'crypto';
 import { createClient } from '@supabase/supabase-js';
 import { DataSource } from 'typeorm';
+import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 require('dotenv').config();
@@ -48,6 +49,7 @@ async function main() {
   const anonKey = env('SUPABASE_ANON_KEY');
   const serviceRoleKey = env('SUPABASE_SERVICE_ROLE_KEY');
   const databaseUrl = env('DATABASE_URL');
+  assertDatabaseCommandEnv('verify-signup-provisioning', { ...process.env, DATABASE_URL: databaseUrl });
   const suffix = `${Date.now()}-${randomBytes(3).toString('hex')}`;
   const email = `signup.smoke.${suffix.replace(/-/g, '.')}@gmail.com`;
   const password = `Signup!${randomBytes(8).toString('hex')}A1`;

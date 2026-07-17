@@ -15,6 +15,7 @@ import 'reflect-metadata';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './entities';
+import { assertDatabaseCommandEnv } from '../core/config/env.schema';
 
 // ─── Carregar variáveis de ambiente se dotenv estiver disponível ───────────────
 try {
@@ -34,6 +35,11 @@ if (!DATABASE_URL) {
   );
   process.exit(1);
 }
+
+// Guard fail-closed em NÍVEL DE MÓDULO: qualquer importador (db-ops, seeds,
+// verify-*, TypeORM CLI) é bloqueado ANTES de existir um DataSource se o alvo
+// não for o autorizado para o NODE_ENV (dev → somente o branch DEV).
+assertDatabaseCommandEnv('datasource');
 
 const isProduction = process.env['NODE_ENV'] === 'production';
 const dbSslDisabled = process.env['DB_SSL'] === 'false';

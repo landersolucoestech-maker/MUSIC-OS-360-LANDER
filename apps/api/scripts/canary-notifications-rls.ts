@@ -17,6 +17,7 @@ import { randomUUID } from 'crypto';
 import { ALL_ENTITIES, NotificationEntity } from '../src/database/entities';
 import { NotificationsService } from '../src/modules/notifications/notifications.service';
 import { DatabaseContextService } from '../src/database/database-context.service';
+import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 
 try {
   require('dotenv').config({ path: path.resolve(process.cwd(), '.env'), override: true });
@@ -44,6 +45,13 @@ function dsFor(url: string) {
 
 async function main() {
   if (!OWNER_URL || !APP_URL) throw new Error('DATABASE_URL and APP_DATABASE_URL required');
+
+  // Valida as URLs realmente usadas (parseadas do .env), não só process.env.
+  assertDatabaseCommandEnv('canary-notifications-rls', {
+    ...process.env,
+    DATABASE_URL: OWNER_URL,
+    APP_DATABASE_URL: APP_URL,
+  });
 
   const owner = await dsFor(OWNER_URL).initialize();
   const app = await dsFor(APP_URL).initialize();

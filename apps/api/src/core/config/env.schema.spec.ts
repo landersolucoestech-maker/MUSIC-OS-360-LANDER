@@ -3,6 +3,7 @@ import {
   SUPABASE_MAIN_REF,
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,
+  collectDatabaseCommandErrors,
   collectSupabaseEnvErrors,
   expectedSupabaseRef,
   extractSupabaseRef,
@@ -175,6 +176,76 @@ describe('env.schema — matriz de isolamento de ambientes Supabase (incidente 2
       expect(extractSupabaseRef(direct(SUPABASE_DEV_REF))).toBe(SUPABASE_DEV_REF);
       expect(extractSupabaseRef(pooler(SUPABASE_DEV_REF))).toBe(SUPABASE_DEV_REF);
       expect(extractSupabaseRef('postgresql://postgres:pw@localhost:5432/x')).toBeNull();
+    });
+  });
+
+  describe('collectDatabaseCommandErrors — guard de comandos de banco (fail-closed)', () => {
+    it('development + DATABASE_URL do novo DEV → permitido', () => {
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_DEV_REF) }, 'development')).toEqual([]);
+    });
+
+    it('development + MAIN → bloqueado', () => {
+      const errors = collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_MAIN_REF) }, 'development');
+      expect(errors.some((e) => e.includes('OUTRO ambiente'))).toBe(true);
+    });
+
+    it('development + PROD → bloqueado', () => {
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: direct(SUPABASE_PROD_REF) }, 'development').length).toBeGreaterThan(0);
+    });
+
+    it('development + DEV antigo excluído → bloqueado (denylist)', () => {
+      const errors = collectDatabaseCommandErrors({ DATABASE_URL: direct('sxdhnhoupjrnntrmjtyn') }, 'development');
+      expect(errors.some((e) => e.includes('banido'))).toBe(true);
+    });
+
+    it('development + ref aleatório desconhecido → bloqueado', () => {
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: direct('aaaabbbbccccddddeeee') }, 'development').length).toBeGreaterThan(0);
+    });
+
+    it('DATABASE_URL ausente → bloqueado', () => {
+      expect(collectDatabaseCommandErrors({}, 'development').some((e) => e.includes('ausente'))).toBe(true);
+    });
+
+    it('DATABASE_URL vazia → bloqueado', () => {
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: '   ' }, 'development').some((e) => e.includes('ausente'))).toBe(true);
+    });
+
+    it('DATABASE_URL malformada (não parseável) → bloqueado', () => {
+      const errors = collectDatabaseCommandErrors({ DATABASE_URL: 'not a url at all' }, 'development');
+      expect(errors.some((e) => e.includes('não identificável') || e.includes('malformada'))).toBe(true);
+    });
+
+    it('host remoto não-Supabase → bloqueado (ambiente não identificável)', () => {
+      const errors = collectDatabaseCommandErrors(
+        { DATABASE_URL: 'postgresql://user:pw@db.example-somewhere.com:5432/postgres' },
+        'development',
+      );
+      expect(errors.some((e) => e.includes('não identificável'))).toBe(true);
+    });
+
+    it('URL e ref divergentes (SUPABASE_URL=DEV, DATABASE_URL=MAIN) → bloqueado', () => {
+      const errors = collectDatabaseCommandErrors(
+        { SUPABASE_URL: url(SUPABASE_DEV_REF), DATABASE_URL: pooler(SUPABASE_MAIN_REF) },
+        'development',
+      );
+      expect(errors.length).toBeGreaterThan(0);
+      expect(errors.some((e) => e.includes('divergentes') || e.includes('OUTRO ambiente'))).toBe(true);
+    });
+
+    it('senha com caracteres especiais no pooler do DEV → parse seguro, permitido', () => {
+      const weird = `postgresql://musicos_migrator.${SUPABASE_DEV_REF}:p%40s$!x*(1)@aws-0-us-east-1.pooler.supabase.com:5432/postgres`;
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: weird }, 'development')).toEqual([]);
+    });
+
+    it('test + Postgres local (com senha especial) → permitido', () => {
+      expect(collectDatabaseCommandErrors(
+        { DATABASE_URL: 'postgresql://postgres:p%23w!x@localhost:5432/musicos_test' },
+        'test',
+      )).toEqual([]);
+    });
+
+    it('test + remoto (mesmo o DEV autorizado de development) → bloqueado', () => {
+      expect(collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_DEV_REF) }, 'test').length).toBeGreaterThan(0);
     });
   });
 });

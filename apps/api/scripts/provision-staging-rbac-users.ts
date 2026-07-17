@@ -7,6 +7,7 @@ import 'reflect-metadata';
 import { createClient } from '@supabase/supabase-js';
 import { DataSource } from 'typeorm';
 import { randomBytes } from 'crypto';
+import { SUPABASE_STAGING_REF, extractSupabaseRef } from '../src/core/config/env.schema';
 
 const ROLES = ['owner', 'admin', 'manager', 'editor', 'viewer', 'accounting', 'artist'] as const;
 const PASSWORD = process.env['PROVISION_PASSWORD']
@@ -34,6 +35,17 @@ async function main(): Promise<void> {
     throw new Error('STAGING_TENANT_IDS precisa conter pelo menos 1 tenant.');
   }
   const emailSuffix = process.env['EMAIL_SUFFIX'] ?? '';
+
+  // Guard fail-closed: este script SÓ pode atingir o projeto STAGING canônico.
+  // MAIN, DEV, PROD, refs desconhecidos ou URLs sem ref extraível são recusados.
+  for (const [name, value] of [['STAGING_SUPABASE_URL', supabaseUrl], ['STAGING_DATABASE_URL', dbUrl]] as const) {
+    const ref = extractSupabaseRef(value);
+    if (ref !== SUPABASE_STAGING_REF) {
+      throw new Error(
+        `Recusado: ${name} resolve para o ref "${ref ?? 'não identificável'}" — somente o projeto staging "${SUPABASE_STAGING_REF}" é aceito.`,
+      );
+    }
+  }
 
   const supabase = createClient(supabaseUrl, serviceKey, {
     auth: { autoRefreshToken: false, persistSession: false },

@@ -192,6 +192,68 @@ export function extractSupabaseRef(value: string | undefined | null): string | n
   return null;
 }
 
+/** Hosts locais aceitos quando a URL não é Supabase (identificação inequívoca). */
+const LOCAL_DB_HOSTS: readonly string[] = ['localhost', '127.0.0.1', '::1', '[::1]'];
+
+/**
+ * Guard de COMANDOS de banco (migrate/rollback/reset/seed/scripts): além da
+ * matriz completa de collectSupabaseEnvErrors, exige DATABASE_URL presente e
+ * identificável — Supabase do ambiente esperado ou Postgres local explícito.
+ * Host remoto não-Supabase ou URL não parseável = bloqueio fail-closed.
+ * Puro e testável; nunca inclui credenciais nas mensagens.
+ */
+export function collectDatabaseCommandErrors(
+  env: Record<string, string | undefined>,
+  nodeEnvInput?: string,
+): string[] {
+  const nodeEnv = nodeEnvInput ?? env['NODE_ENV'] ?? 'development';
+  const errors = collectSupabaseEnvErrors(env, nodeEnv);
+  const url = env['DATABASE_URL'];
+  if (!url || url.trim() === '') {
+    errors.push('DATABASE_URL ausente/vazia — comandos de banco exigem alvo explícito');
+    return errors;
+  }
+  if (extractSupabaseRef(url) === null) {
+    let host: string | null = null;
+    try {
+      host = new URL(url).hostname;
+    } catch {
+      host = null;
+    }
+    if (!host) {
+      errors.push('DATABASE_URL malformada — ambiente não identificável (bloqueio fail-closed)');
+    } else if (!LOCAL_DB_HOSTS.includes(host.toLowerCase())) {
+      errors.push(
+        `DATABASE_URL aponta para host remoto não-Supabase "${host}" — ambiente não identificável (bloqueio fail-closed)`,
+      );
+    }
+  }
+  return errors;
+}
+
+/**
+ * Aborta o processo ANTES de qualquer conexão quando o alvo de banco não é o
+ * autorizado para o NODE_ENV. Usado por datasource.ts (nível de módulo — quem
+ * importa o DataSource não consegue contornar), seed.ts e scripts de banco.
+ * `envOverride` permite validar URLs obtidas fora de process.env (ex.: .env
+ * parseado manualmente). Nunca imprime URL completa, usuário ou senha.
+ */
+export function assertDatabaseCommandEnv(
+  context: string,
+  envOverride?: Record<string, string | undefined>,
+): void {
+  const env = envOverride ?? (process.env as Record<string, string | undefined>);
+  const errors = collectDatabaseCommandErrors(env, env['NODE_ENV']);
+  if (errors.length > 0) {
+    console.error(`\n[${context}] BLOQUEADO — alvo de banco não autorizado para este ambiente:`);
+    for (const err of errors) console.error(`  • ${err}`);
+    console.error(
+      'Nenhuma conexão foi aberta. Matriz de ambientes: docs/SUPABASE_ENVIRONMENTS.md\n',
+    );
+    process.exit(1);
+  }
+}
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'staging', 'production', 'test'])

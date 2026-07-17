@@ -11,6 +11,7 @@
 import 'dotenv/config';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './src/database/entities';
+import { assertDatabaseCommandEnv } from './src/core/config/env.schema';
 
 const url = process.env.DATABASE_URL;
 
@@ -18,6 +19,8 @@ if (!url) {
   console.error('❌  Defina DATABASE_URL no ficheiro apps/api/.env');
   process.exit(1);
 }
+
+assertDatabaseCommandEnv('seed');
 
 const ds = new DataSource({
   type:        'postgres',

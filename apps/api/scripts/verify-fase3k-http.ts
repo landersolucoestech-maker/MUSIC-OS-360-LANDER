@@ -15,6 +15,7 @@ import {
 } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DataSource } from 'typeorm';
+import { assertDatabaseCommandEnv } from '../src/core/config/env.schema';
 import * as jwt from 'jsonwebtoken';
 import type { Request } from 'express';
 import { AppModule } from '../src/app.module';
@@ -316,6 +317,7 @@ async function main(): Promise<void> {
   const tag = `PHASE3K_HTTP_${Date.now()}`;
   const userA = `phase3k-a-${randomUUID()}`;
   const userB = `phase3k-b-${randomUUID()}`;
+  assertDatabaseCommandEnv('verify-fase3k-http', { ...process.env, DATABASE_URL: env('DATABASE_URL') });
   const owner = await new DataSource({
     type: 'postgres',
     url: env('DATABASE_URL'),
