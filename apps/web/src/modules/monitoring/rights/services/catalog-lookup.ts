@@ -10,8 +10,6 @@ export interface CatalogObra {
   titulo: string;
   compositor: string;
   compositores: string;
-  co_compositores: string | null;
-  detentores: string;
   editora: string;
   isrc: string;
   iswc: string | null;

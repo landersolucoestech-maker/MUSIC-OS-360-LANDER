@@ -93,11 +93,7 @@ export function ExecucaoDetailModal({ exec, open, onOpenChange }: Props) {
             {catalog ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 rounded-lg border border-border/60 bg-muted/20 p-3">
                 <Row icon={<User className="h-3.5 w-3.5" />} label="Compositor(es)" value={catalog.compositores} />
-                {catalog.co_compositores && (
-                  <Row icon={<User className="h-3.5 w-3.5" />} label="Co-compositor(es)" value={catalog.co_compositores} />
-                )}
                 <Row icon={<BookOpen className="h-3.5 w-3.5" />} label="Publisher / Editora" value={catalog.editora} />
-                <Row icon={<BookOpen className="h-3.5 w-3.5" />} label="Detentores" value={catalog.detentores} />
                 <Row icon={<Tag className="h-3.5 w-3.5" />} label="Gênero" value={catalog.genero} />
                 <Row icon={<Clock3 className="h-3.5 w-3.5" />} label="Duração" value={catalog.duracao} />
                 {catalog.iswc && (

@@ -11,8 +11,6 @@ export interface Obra {
   compositor?: string | null;
   compositores?: string | string[] | null;
   letristas?: string | string[] | null;
-  co_compositores?: string | null;
-  detentores?: string | null;
   editora?: string | null;
   isrc?: string | null;
   iswc?: string | null;

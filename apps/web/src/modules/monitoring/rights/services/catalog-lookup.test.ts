@@ -13,8 +13,6 @@ const makeObra = (overrides: Partial<CatalogObra> = {}): CatalogObra => ({
   titulo: "Test Song",
   compositor: "Test Composer",
   compositores: "Test Composer",
-  co_compositores: null,
-  detentores: "Test Publisher",
   editora: "Test Publisher",
   isrc: "BRTEST000001",
   iswc: "T-000.000.001-0",

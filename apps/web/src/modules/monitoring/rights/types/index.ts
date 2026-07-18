@@ -20,9 +20,7 @@ export type ExecutionStatus = "confirmado" | "pendente" | "divergencia" | "nao_r
 export interface RightsExecutionCatalogInfo {
   compositor: string;
   compositores: string;
-  co_compositores: string | null;
   editora: string;
-  detentores: string;
   iswc: string | null;
   cod_ecad: string | null;
   cod_abramus: string | null;
