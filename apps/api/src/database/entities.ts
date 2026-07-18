@@ -2435,6 +2435,7 @@ export class MarketingProjectEntity {
   @Column({ type: 'jsonb', default: {} }) metrics: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) context: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  @Column({ type: 'uuid', nullable: true }) financial_project_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
@@ -2786,6 +2787,7 @@ export class AudiovisualProjectEntity {
   @Column({ type: 'text', nullable: true }) concept: string | null;
   @Column({ type: 'text', nullable: true }) observations: string | null;
   @Column({ type: 'varchar', length: 30, nullable: true }) final_status: string | null;
+  @Column({ type: 'uuid', nullable: true }) financial_project_id: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;
