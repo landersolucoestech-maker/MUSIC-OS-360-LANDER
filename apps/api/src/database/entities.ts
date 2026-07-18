@@ -2707,6 +2707,25 @@ export class AudiovisualProjectEntity {
   @Column({ type: 'timestamptz', nullable: true }) completed_at: Date | null;
   @Column({ type: 'timestamptz', nullable: true }) archived_at: Date | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  // ── Campos do formulário (1 coluna por campo — nome EXATO da chave do form) ──
+  // migration AudiovisualProjectsFormFieldColumns20260718000012. music_id→phonogram_id
+  // e budget/real_cost→budget_estimated/budget_actual foram resolvidos no
+  // frontend (mesma coluna já existente), não geraram coluna nova.
+  @Column({ type: 'varchar', length: 500, nullable: true }) music_title: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) artist_name: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) format: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) videomaker: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) editor: string | null;
+  @Column({ type: 'date', nullable: true }) shooting_date: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) location: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) capture_status: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) editing_status: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) approval_status: string | null;
+  @Column({ type: 'date', nullable: true }) pre_release_date: string | null;
+  @Column({ type: 'date', nullable: true }) release_date: string | null;
+  @Column({ type: 'text', nullable: true }) concept: string | null;
+  @Column({ type: 'text', nullable: true }) observations: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) final_status: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
   @CreateDateColumn({ type: 'timestamptz' }) created_at: Date;

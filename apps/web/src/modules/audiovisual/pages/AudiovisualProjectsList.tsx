@@ -92,7 +92,7 @@ function KpiCards({ rows }: { rows: AudiovisualProject[] }) {
       String(row(p).final_status ?? row(p).status ?? row(p).approval_status),
     ),
   ).length;
-  const orcamento = rows.reduce((sum, p) => sum + (Number(row(p).budget) || 0), 0);
+  const orcamento = rows.reduce((sum, p) => sum + (Number(row(p).budget_estimated ?? row(p).budget) || 0), 0);
   const cards = [
     { label: "Total de produções", value: String(total), icon: Film },
     { label: "Em produção", value: String(emProducao), icon: ClipboardList },

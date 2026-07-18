@@ -77,6 +77,26 @@ export class QueryAudiovisualProjectDto extends PaginationDto {
   @ApiPropertyOptional() @IsOptional() @IsUUID() release_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() campaign_id?: string;
   @ApiPropertyOptional() @IsOptional() @IsUUID() event_id?: string;
+
+  // ── Campos do formulário (chaves EXATAS de AudiovisualProjectFormModal) ──────
+  // Regra de produto: cada campo do form tem a sua coluna física
+  // (migration 20260718000012). music_id/budget/real_cost usam os nomes
+  // reais já existentes (phonogram_id/budget_estimated/budget_actual).
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(500) music_title?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) artist_name?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(20) format?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) videomaker?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) editor?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() shooting_date?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) location?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) capture_status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) editing_status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) approval_status?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() pre_release_date?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() release_date?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() concept?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() observations?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) final_status?: string;
 }
 
 // ── Briefings ─────────────────────────────────────────────────────────────────

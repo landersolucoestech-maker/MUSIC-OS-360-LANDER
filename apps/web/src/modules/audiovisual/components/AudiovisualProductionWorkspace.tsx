@@ -318,7 +318,7 @@ function ProjectTable({
                     <TableCell className="whitespace-nowrap">{dateBR(project.pre_release_date)}</TableCell>
                     <TableCell className="whitespace-nowrap">{dateBR(project.release_date)}</TableCell>
                     <TableCell className="whitespace-nowrap font-semibold text-foreground">
-                      {money(project.budget)}
+                      {money(project.budget_estimated ?? project.budget)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       <AudiovisualStatusBadge kind="final" value={project.final_status} />
@@ -657,8 +657,8 @@ function DetailPanel({ project, onClose }: { project: AudiovisualProject; onClos
         </div>
 
         <div className="grid min-w-[330px] grid-cols-3 gap-4 border-l border-border pl-6">
-          <Metric label="Orçamento" value={money(project.budget)} />
-          <Metric label="Custo Real" value={money(project.real_cost)} />
+          <Metric label="Orçamento" value={money(project.budget_estimated ?? project.budget)} />
+          <Metric label="Custo Real" value={money(project.budget_actual ?? project.real_cost)} />
 
           <div>
             <div className="mb-2 text-[10px] tracking-[.04em] text-muted-foreground">Status Final</div>
@@ -766,7 +766,7 @@ function KpiCards({ rows }: { rows: AudiovisualProject[] }) {
   const emProducao = rows.filter((p) => ["production", "post_production"].includes(String(p.final_status ?? p.status))).length;
   const aguardando = rows.filter((p) => ["pending", "review"].includes(String(p.approval_status))).length;
   const concluidas = rows.filter((p) => ["finished", "published", "delivered"].includes(String(p.final_status ?? p.status))).length;
-  const orcamento = rows.reduce((sum, p) => sum + (Number(p.budget) || 0), 0);
+  const orcamento = rows.reduce((sum, p) => sum + (Number(p.budget_estimated ?? p.budget) || 0), 0);
 
   const cards = [
     { label: "Total de produções", value: String(total), icon: Film },

@@ -12,8 +12,8 @@ export type EditingStatus = "not_started" | "editing" | "finished";
 export type ApprovalStatus = "pending" | "review" | "approved" | "rejected";
 export type FinalStatus = "planned" | "production" | "finished" | "published" | "archived";
 export type DeliverableType = "master" | "cutdown" | "reels" | "thumbnail" | "teaser" | "other";
-export type TeamRole = "director" | "videomaker" | "editor" | "producer" | "assistant" | "photographer" | "makeup" | "stylist" | "other";
-export type TaskStatus = "todo" | "doing" | "done" | "blocked";
+export type TeamRole = "director" | "producer" | "camera" | "editor" | "colorist" | "motion_designer" | "photographer" | "stylist" | "makeup" | "actor" | "assistant" | "drone_operator" | "other";
+export type TaskStatus = "pending" | "in_progress" | "blocked" | "done" | "cancelled";
 export type TaskPriority = "low" | "normal" | "high" | "urgent";
 export type AssetKind = "reference" | "moodboard" | "raw" | "edit" | "final" | "document" | "other";
 
@@ -57,6 +57,7 @@ export interface AudiovisualProject {
   preview_image?: string | null;
   type: AudiovisualProjectType;
   project_type?: AudiovisualProjectType | null;
+  phonogram_id?: string | null;
   format?: AudiovisualFormat | null;
   shooting_date?: string | null;
   recording_date?: string | null;
@@ -68,6 +69,8 @@ export interface AudiovisualProject {
   editor?: string | null;
   budget?: string | number | null;
   real_cost?: string | number | null;
+  budget_estimated?: string | number | null;
+  budget_actual?: string | number | null;
   status: AudiovisualProjectStatus;
   priority?: "low" | "normal" | "high" | "urgent" | string;
   final_status?: FinalStatus | null;

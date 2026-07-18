@@ -254,9 +254,9 @@ export function AudiovisualProjectDetailsModal({
                   {date(project.release_date)}
                 </DetailItem>
 
-                <DetailItem label="Orçamento Previsto">{money(project.budget)}</DetailItem>
+                <DetailItem label="Orçamento Previsto">{money(project.budget_estimated ?? project.budget)}</DetailItem>
 
-                <DetailItem label="Custo Real">{money(project.real_cost)}</DetailItem>
+                <DetailItem label="Custo Real">{money(project.budget_actual ?? project.real_cost)}</DetailItem>
               </div>
             </Section>
 

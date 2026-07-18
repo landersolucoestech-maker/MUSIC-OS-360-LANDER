@@ -248,7 +248,7 @@ export function AudiovisualProductionTable({
               </TableCell>
               <TableCell className="whitespace-nowrap">{date(project.pre_release_date)}</TableCell>
               <TableCell className="whitespace-nowrap">{date(project.release_date)}</TableCell>
-              <TableCell className="whitespace-nowrap font-semibold text-foreground">{money(project.budget)}</TableCell>
+              <TableCell className="whitespace-nowrap font-semibold text-foreground">{money(project.budget_estimated ?? project.budget)}</TableCell>
               <TableCell className="text-right">
                 <ActionsMenu project={project} onAction={handleAction} />
               </TableCell>

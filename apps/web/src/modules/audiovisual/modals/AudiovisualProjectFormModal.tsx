@@ -69,7 +69,7 @@ const toText = (value: unknown) => value == null ? "" : String(value);
 function projectToForm(project?: AudiovisualProject | null): FormState {
   if (!project) return initialForm;
   return {
-    music_id: toText(project.music_id),
+    music_id: toText(project.phonogram_id),
     music_title: toText(project.music_title ?? project.title ?? project.name),
     artist_name: toText(project.artist_name ?? project.artist?.name),
     type: project.type ?? "music_video",
@@ -84,10 +84,50 @@ function projectToForm(project?: AudiovisualProject | null): FormState {
     approval_status: toText(project.approval_status ?? "pending"),
     pre_release_date: toDateInput(project.pre_release_date),
     release_date: toDateInput(project.release_date),
-    budget: toText(project.budget),
-    real_cost: toText(project.real_cost),
+    budget: toText(project.budget_estimated ?? project.budget),
+    real_cost: toText(project.budget_actual ?? project.real_cost),
     concept: toText(project.concept),
     observations: toText(project.observations),
+  };
+}
+
+/**
+ * Form state → payload real do backend (CreateAudiovisualProjectDto /
+ * UpdateAudiovisualProjectDto). Regra de produto: cada campo do form tem sua
+ * coluna própria (migration 20260718000012). `music_id`/`budget`/`real_cost`
+ * não são colunas reais: `music_id` é a mesma relação de `phonogram_id`, e
+ * `budget`/`real_cost` duplicariam `budget_estimated`/`budget_actual` (já
+ * somados pelo dashboard financeiro) — por isso mapeiam para os nomes reais
+ * em vez de criar coluna nova. `name` nunca é enviado: é idêntico a `title`.
+ */
+export function buildAudiovisualProjectPayload(
+  form: FormState,
+  mode: "create" | "edit",
+  project?: AudiovisualProject | null,
+): Partial<AudiovisualProject> {
+  return {
+    phonogram_id: form.music_id || undefined,
+    music_title: form.music_title,
+    artist_name: form.artist_name,
+    title: form.music_title,
+    type: form.type,
+    format: form.format,
+    director: form.director,
+    videomaker: form.videomaker,
+    editor: form.editor,
+    shooting_date: form.shooting_date,
+    location: form.location,
+    capture_status: form.capture_status as AudiovisualProject["capture_status"],
+    editing_status: form.editing_status as AudiovisualProject["editing_status"],
+    approval_status: form.approval_status as AudiovisualProject["approval_status"],
+    pre_release_date: form.pre_release_date,
+    release_date: form.release_date,
+    budget_estimated: form.budget,
+    budget_actual: form.real_cost,
+    concept: form.concept,
+    observations: form.observations,
+    status: mode === "create" ? "draft" : project?.status,
+    final_status: mode === "create" ? "planned" : project?.final_status,
   };
 }
 
@@ -150,34 +190,8 @@ export function AudiovisualProjectFormModal({
 
   const update = <K extends keyof FormState>(key: K, value: FormState[K]) => setForm((current) => ({ ...current, [key]: value }));
   const handleMusicSelect = (music: AudiovisualMusicCatalogOption) => setForm((current) => ({ ...current, music_id: music.id, music_title: music.title, artist_name: music.primaryArtist }));
-  const payload = (): Partial<AudiovisualProject> => ({
-    music_id: form.music_id,
-    music_title: form.music_title,
-    artist_name: form.artist_name,
-    title: form.music_title,
-    name: form.music_title,
-    type: form.type,
-    format: form.format,
-    director: form.director,
-    videomaker: form.videomaker,
-    editor: form.editor,
-    shooting_date: form.shooting_date,
-    location: form.location,
-    capture_status: form.capture_status as AudiovisualProject["capture_status"],
-    editing_status: form.editing_status as AudiovisualProject["editing_status"],
-    approval_status: form.approval_status as AudiovisualProject["approval_status"],
-    pre_release_date: form.pre_release_date,
-    release_date: form.release_date,
-    budget: form.budget,
-    real_cost: form.real_cost,
-    concept: form.concept,
-    observations: form.observations,
-    status: mode === "create" ? "draft" : project?.status,
-    final_status: mode === "create" ? "planned" : project?.final_status,
-  });
-
   const handleSubmit = () => {
-    onSubmit?.(payload());
+    onSubmit?.(buildAudiovisualProjectPayload(form, mode, project));
     if (mode === "create") setForm(initialForm);
     onClose();
   };
