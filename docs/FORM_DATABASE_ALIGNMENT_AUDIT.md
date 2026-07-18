@@ -505,3 +505,110 @@ backend, `vitest run` para frontend) nesta rodada.
 - Migração arquitetural de `works.detentores` (texto livre) para uma relação
   estruturada equivalente a `shares.rights_holder_id → rights_holders` —
   decisão de produto, não executada.
+
+## 12. Rodada 4 — normalização de `participantes` e remoção de órfãos comprovados (2026-07-18)
+
+O usuário rejeitou a conclusão de §11 de "manter `detentores`/`co_compositores`
+com justificativa" e de manter `participantes` em jsonb, exigindo prova mais
+rigorosa (rastrear TODOS os writers, não só os readers) antes de aceitar
+qualquer "manter". Nova investigação, mais estrita, mudou a decisão:
+
+### 12.1 `works.detentores` e `works.co_compositores` — reclassificados de MANTER para REMOVIDOS
+
+Prova de que **nenhum writer ativo existe** para nenhuma das duas colunas:
+- Sem input no formulário ativo (`grep detentor` em `ObraFormModal.tsx`/
+  `obra-schema.ts` retorna zero).
+- Ausentes de `CreateWorkDto`/`UpdateWorkDto` — a API não aceita gravação
+  direta.
+- `report-form-contracts.ts::WORKS_CONTRACT` marca ambas `ro(...)`
+  (`importable: false`) — o pipeline de bulk-import (`import-mapper.service.ts`,
+  filtro `f.importable !== false`) também nunca as grava.
+- Único uso real encontrado era LEITURA (`external-data-exchange.service.ts`,
+  `RightsMonitoring.tsx`) de um valor que nunca é escrito — sempre `null`.
+
+Conclusão: são colunas órfãs por definição do próprio mandato ("sem uso ativo
+comprovado em formulário/payload/DTO/service"), não "legado com justificativa".
+Removidas na migration `WorkParticipantsNormalization20260718000011`, com
+validação fail-fast que aborta se houver dado remanescente (não descartado
+cegamente). Todos os 4 leitores mortos foram corrigidos para não referenciá-las
+mais: `external-data-exchange.service.ts` (removeu `co_composers`/`holders` do
+payload externo — não havia substituto real e nada consumia essas chaves),
+`catalog-metadata-validator.automation.ts` (SELECT e `toComposers()` ajustados),
+`report-form-contracts.ts` (`ro()` removidos, motivo documentado em
+`excludedFormFields`), `RightsMonitoring.tsx`/`ExecucaoDetailModal.tsx`/
+`catalog-lookup.ts` (deixaram de ler/exibir os dois campos).
+
+### 12.2 `works.participantes` normalizado em `work_participants`
+
+`participantes[]` é uma lista de registros com forma fixa e conhecida
+(`{id, nome, classeFuncao, link, percentual}`) — por definição do mandato,
+uma coluna jsonb não pode representar isso; vira tabela filha.
+
+Criada `work_participants` (mesma migration): `id uuid PK` (preserva o id
+gerado no cliente — round-trip estável), `tenant_id`, `work_id` (FK
+`ON DELETE CASCADE`), `nome`, `classe_funcao`, `link`, `percentual`
+(`numeric(6,3)`, CHECK 0–100), `ordem` (preserva a ordem de exibição do
+formulário), `created_at`/`updated_at`. RLS habilitada com a policy
+`tenant_isolation` (mesmo padrão de `20260613000008`). Sem FK para `artists`:
+`ParticipanteForm` não tem `artista_id` — o formulário real aceita
+participante não cadastrado, então `nome` é texto livre por design, não uma
+lacuna de modelagem.
+
+`WorksService` foi reescrito para traduzir a relação de forma transparente
+para quem consome a API: `create()`/`update()` persistem os itens de
+`participantes[]` como linhas (delete-then-insert no update); `findById()`/
+`list()` reidratam o array no MESMO formato que o frontend sempre recebeu
+(`{id, nome, classeFuncao, link, percentual}`), então **nenhuma mudança foi
+necessária em `ObraFormModal.tsx` ou no mapper do frontend** — o contrato de
+API é idêntico, só o armazenamento interno mudou.
+
+Migração de dados (na própria migration, antes de dropar a coluna): 1 INSERT
+por item do array, com `ordinality` preservando a ordem; fail-fast aborta se
+algum item não tiver a chave `nome`; uma segunda verificação compara
+`COUNT` de origem × destino e aborta se não baterem — a coluna só é
+efetivamente removida depois de comprovado que nenhum item foi perdido.
+`down()` reconstrói o jsonb a partir das linhas (`jsonb_agg`).
+
+### 12.3 `compositor` e `editora` — reconfirmados MANTER (não reclassificados)
+
+Ao contrário de `detentores`/`co_compositores`, estes **têm** writer real:
+`CreateWorkDto` os aceita, `WORKS_CONTRACT` os marca `col()` (importável via
+bulk-import de Reports), e são lidos por `catalog-metadata-validator`. Nenhuma
+mudança.
+
+### 12.4 Migration nova
+
+`20260718000011_WorkParticipantsNormalization.ts` — **não executada**, timestamp
+posterior à anterior (`20260718000010`). Cria `work_participants`; migra dados
+de `works.participantes` com validação de forma e contagem; remove
+`works.participantes`, `works.detentores`, `works.co_compositores` só depois
+de as validações passarem. `down()` recria as 3 colunas e reconstrói o jsonb.
+Não usa `CASCADE` em nenhum `DROP`.
+
+### 12.5 Testes novos desta rodada
+
+- `apps/api/src/modules/works/works.service.spec.ts` — 5 testes novos: `create()`
+  não envia `participantes` como coluna; persiste cada item como linha própria
+  com `tenant_id`/`ordem` corretos; `findById()` reidrata no formato exato do
+  frontend; `update()` substitui (delete+insert); `update()` sem o campo não
+  mexe nas linhas existentes.
+- `apps/api/src/modules/works/works-field-contract.spec.ts` — 2 testes novos:
+  `detentores`/`co_compositores` rejeitados pelo DTO; `participantes[]` ainda
+  aceito (mapeado para a relação pelo service).
+- `apps/api/src/database/work-participants-normalization.spec.ts` (novo, 9
+  testes) — guarda estática: `WorkEntity` não redeclara as 3 colunas
+  removidas; `WorkParticipantEntity` tem as colunas reais; a migration tem as
+  validações fail-fast, não usa CASCADE, e tem `down()` honesto.
+  Durante a escrita deste teste foi encontrado e corrigido um bug real no
+  helper `entityBlock()` (usado também em `form-field-dto-parity.spec.ts`):
+  `entities.ts` usa CRLF, e `indexOf('\n}\n')` nunca casava, fazendo o "bloco"
+  de uma entity vazar para o arquivo inteiro — mascarado até então porque os
+  únicos asserts existentes eram positivos (presença), não negativos.
+  Corrigido com um regex tolerante a `\r?\n`.
+
+Total: 16 testes novos nesta rodada (25 novos = 19 da rodada anterior + 16,
+descontado que nenhum teste anterior foi removido). Todos executados e
+passando: `jest` backend (37/37 nos arquivos de works + parity), suíte
+completa do backend sem regressão introduzida por esta rodada (1 falha
+pré-existente e não relacionada, `supabase-data-api-hardening.migration.spec.ts`,
+commit `f840fc7f`, anterior a toda esta sessão).
