@@ -4,9 +4,12 @@
  * Guarda permanente (auditoria 2026-07-18 — contrato de works): fixa
  * comportamentalmente o contrato canônico do formulário de obras, para que
  * nenhuma alteração futura reintroduza os anti-padrões já corrigidos:
- *   - "codigo_abramus" nunca existiu como nome de campo; o nome real e
- *     canônico, usado em todas as camadas (schema Zod, DTO, entity,
- *     migration, coluna, contrato de Reports), é `cod_abramus`/`codAbramus`.
+ *   - Rodada 8 (correção): `cod_abramus` foi renomeado para `cod_entidade`
+ *     (migration RestoreEcadAddEntityCodeColumn 20260718000017) — continua
+ *     sendo UMA coluna simples, só que o nome não amarra o campo a uma única
+ *     sociedade (o valor pode ser um código na ABRAMUS, na UBC, na SOCINPRO,
+ *     entre outras). `cod_ecad` CONTINUA existindo como coluna própria — ECAD
+ *     é entidade central e obrigatória, não fungível com `cod_entidade`.
  *   - `compositor` (singular) e `editora` são campos legados/bulk — o
  *     formulário interativo NUNCA os envia; a fonte real de autoria é
  *     `participantes`, da qual `compositores`/`letristas` são derivados.
@@ -25,8 +28,8 @@ function baseInput(participantes: ParticipanteForm[] = []) {
     generoMusical: "MPB",
     idioma: "pt-BR",
     iswc: "",
-    codAbramus: "ABR-123",
-    codEcad: "",
+    codEcad: "ECAD-456",
+    codEntidade: "ABR-123",
     duracaoMin: "3",
     duracaoSeg: "30",
     instrumental: "nao",
@@ -48,11 +51,12 @@ function baseInput(participantes: ParticipanteForm[] = []) {
 }
 
 describe("formToObraPayload — contrato canônico de works", () => {
-  it("nunca envia `codigo_abramus`, apenas `cod_abramus` (nome canônico real)", () => {
+  it("envia `cod_ecad` e `cod_entidade` (nomes canônicos reais) — nunca `cod_abramus`/`codigo_abramus`/`codigo_entidade`", () => {
     const payload = formToObraPayload(baseInput());
-    expect(payload).toHaveProperty("cod_abramus", "ABR-123");
+    expect(payload).toHaveProperty("cod_ecad", "ECAD-456");
+    expect(payload).toHaveProperty("cod_entidade", "ABR-123");
+    expect(payload).not.toHaveProperty("cod_abramus");
     expect(payload).not.toHaveProperty("codigo_abramus");
-    expect(payload).not.toHaveProperty("cod_entidade");
     expect(payload).not.toHaveProperty("codigo_entidade");
   });
 

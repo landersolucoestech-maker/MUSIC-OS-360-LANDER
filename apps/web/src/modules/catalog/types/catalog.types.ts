@@ -14,8 +14,10 @@ export interface Obra {
   editora?: string | null;
   isrc?: string | null;
   iswc?: string | null;
-  cod_abramus?: string | null;
   cod_ecad?: string | null;
+  // Renomeado de `cod_abramus` (20260718000017) — código em qualquer entidade
+  // de gestão coletiva (ABRAMUS, UBC, SOCINPRO, ...), não só ABRAMUS.
+  cod_entidade?: string | null;
   tipo?: ObraTipo | string | null;
   genero?: string | null;
   status?: ObraStatus | string | null;
@@ -53,8 +55,10 @@ export interface Fonograma {
   produtores?: string | null;
   gravadora?: string | null;
   agregadora?: string | null;
-  cod_abramus?: string | null;
   cod_ecad?: string | null;
+  // Renomeado de `cod_abramus` (20260718000017) — código em qualquer entidade
+  // de gestão coletiva (ABRAMUS, UBC, SOCINPRO, ...), não só ABRAMUS.
+  cod_entidade?: string | null;
   isrc_pais?: string | null;
   isrc_registrante?: string | null;
   isrc_ano?: string | null;

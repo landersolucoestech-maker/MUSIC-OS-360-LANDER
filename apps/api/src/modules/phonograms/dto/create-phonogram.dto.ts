@@ -1,6 +1,6 @@
 import { IsString, IsOptional, IsInt, IsObject, IsUUID, IsArray, IsBoolean, MaxLength, Min } from 'class-validator';
 import { Type } from 'class-transformer';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreatePhonogramDto {
   // Título: o formulário envia `titulo`; `title` é o alias EN legado,
@@ -64,8 +64,10 @@ export class CreatePhonogramDto {
 
   // ── Campos do formulário de Fonograma (chaves EXATAS do buildPayload) ────────
   // Regra de produto 2026-07-12: cada campo do form tem a sua coluna física.
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) cod_abramus?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) cod_ecad?: string;
+  // Renomeado de `cod_abramus` (20260718000017) — código em qualquer entidade
+  // de gestão coletiva (ABRAMUS, UBC, SOCINPRO, ...), não só ABRAMUS.
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) cod_entidade?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) agregadora?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(5) isrc_pais?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(10) isrc_registrante?: string;

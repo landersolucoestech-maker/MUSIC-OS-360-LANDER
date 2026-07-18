@@ -9,14 +9,16 @@ export const obraSchema = z.object({
   idioma: z.string().optional().or(z.literal("")),
   situacao: z.string().optional().or(z.literal("")),
   iswc: z.string().max(20, "ISWC inválido").optional().or(z.literal("")),
-  codAbramus: z.string().max(50, "Código inválido").optional().or(z.literal("")),
   codEcad: z.string().max(50, "Código ECAD inválido").optional().or(z.literal("")),
+  // Renomeado de codAbramus — código em qualquer entidade de gestão coletiva
+  // (ABRAMUS, UBC, SOCINPRO, ...), não só ABRAMUS.
+  codEntidade: z.string().max(50, "Código inválido").optional().or(z.literal("")),
   duracaoMin: z.string().optional().or(z.literal("")),
   duracaoSeg: z.string().optional().or(z.literal("")),
   instrumental: z.enum(["sim", "nao"]).default("nao"),
   criadaPorIA: z.union([z.boolean(), z.enum(["sim", "nao"])]).default(false),
   letraCompleta: z.string().optional().or(z.literal("")),
   aceitaTermos: z.boolean().default(false),
-});
+}).strict();
 
 export type ObraFormData = z.infer<typeof obraSchema>;

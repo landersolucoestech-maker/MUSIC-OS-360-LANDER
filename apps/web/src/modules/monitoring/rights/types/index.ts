@@ -23,7 +23,7 @@ export interface RightsExecutionCatalogInfo {
   editora: string;
   iswc: string | null;
   cod_ecad: string | null;
-  cod_abramus: string | null;
+  cod_entidade: string | null;
   genero: string;
   duracao: string;
   catalog_id: string;

@@ -194,13 +194,13 @@ export function ObraViewModal({
             </div>
 
             {/* Códigos de Registro — exibido apenas quando há algum código */}
-            {(obra.cod_abramus || obra.cod_ecad || obra.isrc || obra.iswc) && (
+            {(obra.cod_entidade || obra.cod_ecad || obra.isrc || obra.iswc) && (
               <>
                 <Separator />
                 <div>
                   <SectionTitle>Códigos de Registro</SectionTitle>
                   <div className="grid grid-cols-2 gap-3">
-                    {obra.cod_abramus && <MonoField label="Código de Cadastro da Sociedade" value={obra.cod_abramus} />}
+                    {obra.cod_entidade && <MonoField label="Código de Cadastro da Sociedade" value={obra.cod_entidade} />}
                     {obra.cod_ecad && <MonoField label="Código ECAD" value={obra.cod_ecad} />}
                     {obra.isrc && <MonoField label="ISRC" value={obra.isrc} />}
                     {obra.iswc && <MonoField label="ISWC" value={obra.iswc} />}

@@ -236,10 +236,10 @@ export function ObraFormModal({
   const debouncedBuscaProjeto = useDebounce(buscaProjeto, 300);
   const [buscaProjetoOpen, setBuscaProjetoOpen] = useState(false);
   const initialDuracao = parseDuracao(obra?.duracao);
-  const [codAbramus, setCodAbramus] = useState(
-    obra?.cod_abramus ?? obra?.codAbramus ?? "",
-  );
   const [codEcad, setCodEcad] = useState(obra?.cod_ecad ?? obra?.codEcad ?? "");
+  const [codEntidade, setCodEntidade] = useState(
+    obra?.cod_entidade ?? obra?.codEntidade ?? "",
+  );
   const [iswc, setIswc] = useState(obra?.iswc || "");
   const [tituloObra, setTituloObra] = useState(obraTitulo(obra));
   const [situacao, setSituacao] = useState(dbStatusToSelect(obra?.status));
@@ -281,8 +281,8 @@ export function ObraFormModal({
     setDuracaoMin(f.duracaoMin);
     setDuracaoSeg(f.duracaoSeg);
     setInstrumental(f.instrumental);
-    setCodAbramus(f.codAbramus);
     setCodEcad(f.codEcad);
+    setCodEntidade(f.codEntidade);
     setIswc(f.iswc);
     setCriadaPorIA(f.criadaPorIA);
     setTipoIA(f.tipoIA);
@@ -439,8 +439,8 @@ export function ObraFormModal({
       idioma,
       situacao,
       iswc,
-      codAbramus,
       codEcad,
+      codEntidade,
       duracaoMin: String(duracaoMin),
       duracaoSeg: String(duracaoSeg),
       instrumental: instrumental as "sim" | "nao",
@@ -467,8 +467,8 @@ export function ObraFormModal({
       generoMusical,
       idioma,
       iswc,
-      codAbramus,
       codEcad,
+      codEntidade,
       duracaoMin,
       duracaoSeg,
       instrumental,
@@ -734,15 +734,15 @@ export function ObraFormModal({
               Dados Principais da Obra
             </h3>
             <div className="grid grid-cols-12 gap-3 items-end">
-              {/* Código de Cadastro da Sociedade — col-span-2 | Row 1 */}
+              {/* Código de Cadastro da Entidade — col-span-2 | Row 1 */}
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">
                   Código de Cadastro da Sociedade
                 </span>
                 <Input
                   className="h-8 text-sm min-w-0"
-                  value={codAbramus}
-                  onChange={(e) => setCodAbramus(e.target.value)}
+                  value={codEntidade}
+                  onChange={(e) => setCodEntidade(e.target.value)}
                   disabled={isViewMode}
                 />
               </div>

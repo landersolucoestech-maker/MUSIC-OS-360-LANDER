@@ -108,8 +108,8 @@ export function ExecucaoDetailModal({ exec, open, onOpenChange }: Props) {
                       : <span className="text-warning text-xs">Não cadastrado — sem cod_ecad</span>
                   }
                 />
-                {catalog.cod_abramus && (
-                  <Row icon={<Hash className="h-3.5 w-3.5" />} label="Cód. Sociedade" value={catalog.cod_abramus} mono />
+                {catalog.cod_entidade && (
+                  <Row icon={<Hash className="h-3.5 w-3.5" />} label="Cód. Sociedade" value={catalog.cod_entidade} mono />
                 )}
                 <Row
                   icon={<Tag className="h-3.5 w-3.5" />}

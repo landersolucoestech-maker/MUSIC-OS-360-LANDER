@@ -13,8 +13,8 @@ export interface CatalogObra {
   editora: string;
   isrc: string;
   iswc: string | null;
-  cod_abramus: string | null;
   cod_ecad: string | null;
+  cod_entidade: string | null;
   genero: string;
   status: string;
   duracao: string;

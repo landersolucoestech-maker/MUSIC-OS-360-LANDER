@@ -259,7 +259,7 @@ export default function RegistroMusicas() {
     { key: "artista_id",    label: "Artista Responsável",             transform: (r) => artistasPorId.get(r.artista_id as string) ?? "" },
     { key: "projeto_id",    label: "Projeto Vinculado",               transform: (r) => projetosPorId.get(r.projeto_id as string) ?? (r.projetos as { titulo?: string } | null | undefined)?.titulo ?? "" },
     { key: "status",        label: "Status",                          transform: (r) => statusObraLabel(r.status as string) },
-    { key: "cod_abramus",   label: "Código ABRAMUS" },
+    { key: "cod_entidade",  label: "Código de Cadastro da Sociedade" },
     { key: "cod_ecad",      label: "Código ECAD" },
     { key: "isrc",          label: "ISRC" },
     { key: "iswc",          label: "ISWC" },
@@ -290,7 +290,7 @@ export default function RegistroMusicas() {
       { key: "titulo",          label: "Título" },
       { key: "status",          label: "Status",                transform: (r) => statusObraLabel(r.status as string) },
       { key: "obra_id",         label: "Obra Vinculada",        transform: (r) => obrasPorId.get(r.obra_id as string)?.titulo ?? "" },
-      { key: "cod_abramus",     label: "Código ABRAMUS" },
+      { key: "cod_entidade",    label: "Código de Cadastro da Sociedade" },
       { key: "cod_ecad",        label: "Código ECAD" },
       { key: "agregadora",      label: "Agregadora" },
       { key: "isrc",            label: "ISRC" },
@@ -482,7 +482,7 @@ export default function RegistroMusicas() {
               obra_id,
               status:            normStatusObra(col(row, "Status", "status")),
               isrc:              col(row, "ISRC", "isrc") || null,
-              cod_abramus:       col(row, "Código ABRAMUS", "Cód. ABRAMUS", "cod_abramus") || null,
+              cod_entidade:      col(row, "Código de Cadastro da Sociedade", "Código ABRAMUS", "Cód. ABRAMUS", "cod_entidade", "cod_abramus") || null,
               cod_ecad:          col(row, "Código ECAD", "Cód. ECAD", "cod_ecad") || null,
               agregadora:        col(row, "Agregadora", "agregadora") || null,
               criada_por_ia:     parseBool(col(row, "Criada por IA", "criada_por_ia")),
@@ -554,7 +554,7 @@ export default function RegistroMusicas() {
               status:       normStatusObraMapper(col(row, "Status", "status")),
               genero:       col(row, "Gênero", "Gênero Musical", "genero") || null,
               iswc:         col(row, "ISWC", "iswc") || null,
-              cod_abramus:  col(row, "Código ABRAMUS", "Cód. ABRAMUS", "cod_abramus") || null,
+              cod_entidade: col(row, "Código de Cadastro da Sociedade", "Código ABRAMUS", "Cód. ABRAMUS", "cod_entidade", "cod_abramus") || null,
               duracao:      col(row, "Duração", "duracao") || null,
               artista_id,
               projeto_id,
@@ -826,7 +826,7 @@ export default function RegistroMusicas() {
                         <TableHead className="w-8"></TableHead>
                         <SortableTableHead sortKey="titulo" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[180px]">Título</SortableTableHead>
                         <SortableTableHead sortKey="status" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[112px]">Status</SortableTableHead>
-                        <SortableTableHead sortKey="cod_abramus" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. Sociedade</SortableTableHead>
+                        <SortableTableHead sortKey="cod_entidade" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. Sociedade</SortableTableHead>
                         <SortableTableHead sortKey="cod_ecad" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[120px]">Cód. ECAD</SortableTableHead>
                         <SortableTableHead sortKey="isrc" sortState={fonogramaSort} onSort={toggleFonogramaSort}>ISRC</SortableTableHead>
                         <SortableTableHead sortKey="compositores" sortState={fonogramaSort} onSort={toggleFonogramaSort} className="min-w-[130px]">Compositores</SortableTableHead>
@@ -867,7 +867,7 @@ export default function RegistroMusicas() {
                               {fonograma.status === "registrado" ? "Registrado" : fonograma.status === "analise" ? "Em Análise" : "Pendente"}
                             </Badge>
                           </TableCell>
-                          <TableCell className="py-3 text-sm">{fonograma.cod_abramus || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{fonograma.cod_entidade || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{fonograma.cod_ecad || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{fonograma.isrc || "-"}</TableCell>
                           <TableCell className="py-3 text-sm max-w-[140px] truncate" title={fonograma.compositores || undefined}>{fonograma.compositores || "-"}</TableCell>
@@ -978,7 +978,7 @@ export default function RegistroMusicas() {
                         <SortableTableHead sortKey="titulo" sortState={obraSort} onSort={toggleObraSort}>Título</SortableTableHead>
                         <SortableTableHead sortKey="status" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Status</SortableTableHead>
                         <SortableTableHead sortKey="tipo_obra" sortState={obraSort} onSort={toggleObraSort} className="min-w-[112px]">Tipo</SortableTableHead>
-                        <SortableTableHead sortKey="cod_abramus" sortState={obraSort} onSort={toggleObraSort}>Cód. Sociedade</SortableTableHead>
+                        <SortableTableHead sortKey="cod_entidade" sortState={obraSort} onSort={toggleObraSort}>Cód. Sociedade</SortableTableHead>
                         <SortableTableHead sortKey="cod_ecad" sortState={obraSort} onSort={toggleObraSort}>Cód. ECAD</SortableTableHead>
                         <SortableTableHead sortKey="iswc" sortState={obraSort} onSort={toggleObraSort}>ISWC</SortableTableHead>
                         <SortableTableHead sortKey="compositores" sortState={obraSort} onSort={toggleObraSort}>Compositores</SortableTableHead>
@@ -1011,7 +1011,7 @@ export default function RegistroMusicas() {
                           <TableCell className="py-3">
                             <ObraTipoBadge tipo={obra.tipo_obra as string | null | undefined} />
                           </TableCell>
-                          <TableCell className="py-3 text-sm">{obra.cod_abramus || "-"}</TableCell>
+                          <TableCell className="py-3 text-sm">{obra.cod_entidade || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{obra.cod_ecad || "-"}</TableCell>
                           <TableCell className="py-3 text-sm">{obra.iswc || "-"}</TableCell>
                           <TableCell className="py-3 text-sm max-w-[140px] truncate">{obra.compositores || "-"}</TableCell>

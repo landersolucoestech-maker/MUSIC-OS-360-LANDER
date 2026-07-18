@@ -374,8 +374,8 @@ export interface ObraFormFields {
   duracaoMin: string;
   duracaoSeg: string;
   instrumental: string;
-  codAbramus: string;
   codEcad: string;
+  codEntidade: string;
   iswc: string;
   criadaPorIA: "sim" | "nao";
   tipoIA: string;
@@ -400,8 +400,8 @@ export function obraToFormFields(obra: any): ObraFormFields {
     duracaoMin: obra?.duracaoMin ?? dur.min,
     duracaoSeg: obra?.duracaoSeg ?? dur.seg,
     instrumental: obra?.instrumental || "nao",
-    codAbramus: obra?.cod_abramus ?? obra?.codAbramus ?? "",
     codEcad: obra?.cod_ecad ?? obra?.codEcad ?? "",
+    codEntidade: obra?.cod_entidade ?? obra?.codEntidade ?? "",
     iswc: obra?.iswc || "",
     criadaPorIA: obraCriadaPorIA(obra),
     tipoIA: obraTipoIAValue(obra),
@@ -421,8 +421,8 @@ export interface FormToObraInput {
   generoMusical: string;
   idioma: string;
   iswc: string;
-  codAbramus: string;
   codEcad: string;
+  codEntidade: string;
   duracaoMin: string;
   duracaoSeg: string;
   instrumental: string;
@@ -460,13 +460,15 @@ export function formToObraPayload(input: FormToObraInput): Record<string, unknow
     input.iaLetra.ferramenta || input.iaLetra.prompt ? input.iaLetra : null;
   const outros = input.outrosTitulos.filter(Boolean);
   const refs = input.referenciasConexas.filter(Boolean);
+  // Uma chave por campo do formulário (snake_case = nome exato da coluna física).
+  // org_id não é campo do form: o tenant vem do contexto autenticado da API.
   return {
     titulo: input.titulo.trim(),
     genero: input.generoMusical || null,
     idioma: input.idioma || null,
     iswc: input.iswc || null,
-    cod_abramus: input.codAbramus || null,
     cod_ecad: input.codEcad || null,
+    cod_entidade: input.codEntidade || null,
     duracao,
     instrumental: input.instrumental || null,
     criada_por_ia: input.criadaPorIA === "sim",
@@ -484,15 +486,14 @@ export function formToObraPayload(input: FormToObraInput): Record<string, unknow
     projeto_id: input.projetoId ?? null,
     artista_id: input.artistaId ?? null,
     tipo_obra: input.tipoObra,
-    org_id: input.orgId,
   };
 }
 
 // ── Fonograma: form fields interface + readers ───────────────────────────────
 
 export interface FonogramaFormFields {
-  codAbramus: string;
   codEcad: string;
+  codEntidade: string;
   agregadora: string;
   isrcPais: string;
   isrcRegistrante: string;
@@ -531,8 +532,8 @@ export function fonogramaToFormFields(f: any): FonogramaFormFields {
     return false;
   };
   return {
-    codAbramus: ps(f?.cod_abramus ?? f?.codAbramus),
     codEcad: ps(f?.cod_ecad ?? f?.codEcad),
+    codEntidade: ps(f?.cod_entidade ?? f?.codEntidade),
     agregadora: ps(f?.agregadora ?? f?.gravadora),
     isrcPais: ps(f?.isrc_pais ?? f?.isrcPais) || isrc.pais || "BR",
     isrcRegistrante: ps(f?.isrc_registrante ?? f?.isrcRegistrante) || isrc.registrante,

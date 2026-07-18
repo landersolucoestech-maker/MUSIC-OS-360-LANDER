@@ -72,7 +72,7 @@ export interface RightsRegistrationStatus {
   kind: RightsKind;
   local_id: string;
   external_id?: string | null;
-  /** Código de registro na entidade (ex.: cod_ecad, cod_abramus, cod_ubc) */
+  /** Código de registro na entidade (ex.: cod_ecad, cod_entidade) */
   code?: string | null;
   registered: boolean;
   registered_at?: string | null;

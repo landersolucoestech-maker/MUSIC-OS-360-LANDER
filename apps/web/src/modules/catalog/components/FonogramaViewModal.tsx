@@ -56,8 +56,8 @@ export interface FonogramaViewData {
   gravadora?: string | null;
   observacoes?: string | null;
   // ABRAMUS / ECAD codes
-  codAbramus?: string | null;
-  cod_abramus?: string | null;
+  codEntidade?: string | null;
+  cod_entidade?: string | null;
   codEcad?: string | null;
   cod_ecad?: string | null;
   agregadora?: string | null;
@@ -246,7 +246,7 @@ export function FonogramaViewModal({
   const gravadora = pickStr(fonograma.gravadora);
   const observacoes = pickStr(fonograma.observacoes);
 
-  const codAbramus = pickStr(fonograma.codAbramus, fonograma.cod_abramus);
+  const codEntidade = pickStr(fonograma.codEntidade, fonograma.cod_entidade);
   const codEcad = pickStr(fonograma.codEcad, fonograma.cod_ecad);
   const agregadora = pickStr(fonograma.agregadora);
 
@@ -480,7 +480,7 @@ export function FonogramaViewModal({
               </p>
               <div className="grid grid-cols-3 gap-3">
                 <MonoField label="ISRC" value={isrcDisplay} />
-                <MonoField label="Código de Cadastro da Sociedade" value={codAbramus} />
+                <MonoField label="Código de Cadastro da Sociedade" value={codEntidade} />
                 <MonoField label="Código ECAD" value={codEcad} />
               </div>
             </div>

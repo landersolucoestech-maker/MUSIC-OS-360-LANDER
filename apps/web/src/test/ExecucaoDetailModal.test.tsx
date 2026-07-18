@@ -31,7 +31,7 @@ const BASE_EXEC: RightsExecution = {
     detentores: "MusicOS Publishing",
     iswc: "T-123.456.789-0",
     cod_ecad: "ECAD-0001-VL",
-    cod_abramus: "ABR-001-2025",
+    cod_entidade: "ABR-001-2025",
     genero: "Pop",
     duracao: "3:42",
     catalog_id: "obra-001",
@@ -83,7 +83,7 @@ describe("<ExecucaoDetailModal /> — with catalog data", () => {
     expect(screen.getByText("Vitória Carvalho, Lucas Mendes")).toBeInTheDocument();
   });
 
-  it("shows cod_ecad from obra_catalog", () => {
+  it("shows ECAD identifier from obra_catalog", () => {
     renderModal(BASE_EXEC);
     expect(screen.getByText("ECAD-0001-VL")).toBeInTheDocument();
   });

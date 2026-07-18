@@ -98,7 +98,7 @@ export class SocietyPayloadBuilderService {
 
     const legacy: PayloadIdentifier[] = [];
     if (work.iswc) legacy.push({ provider: IdentifierProvider.CISAC, type: IdentifierType.ISWC, value: work.iswc, is_primary: true });
-    if (work.cod_abramus) legacy.push({ provider: IdentifierProvider.ABRAMUS, type: IdentifierType.ABRAMUS_PROTOCOL, value: work.cod_abramus, is_primary: false });
+    if (work.cod_entidade) legacy.push({ provider: IdentifierProvider.ABRAMUS, type: IdentifierType.ABRAMUS_PROTOCOL, value: work.cod_entidade, is_primary: false });
     if (work.cod_ecad) legacy.push({ provider: IdentifierProvider.ECAD, type: IdentifierType.ECAD_WORK_CODE, value: work.cod_ecad, is_primary: false });
 
     const parties = shares.map(shareToParty);
@@ -138,7 +138,7 @@ export class SocietyPayloadBuilderService {
 
     const legacy: PayloadIdentifier[] = [];
     if (rec.isrc) legacy.push({ provider: IdentifierProvider.ISRC, type: IdentifierType.ISRC, value: rec.isrc, is_primary: true });
-    if (rec.cod_abramus) legacy.push({ provider: IdentifierProvider.ABRAMUS, type: IdentifierType.ABRAMUS_PROTOCOL, value: rec.cod_abramus, is_primary: false });
+    if (rec.cod_entidade) legacy.push({ provider: IdentifierProvider.ABRAMUS, type: IdentifierType.ABRAMUS_PROTOCOL, value: rec.cod_entidade, is_primary: false });
 
     return {
       kind: 'RECORDING',

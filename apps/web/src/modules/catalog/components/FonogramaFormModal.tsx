@@ -67,8 +67,8 @@ interface ArquivoAudioInput {
 
 export type FonogramaFormInput = Partial<FonogramaRow> & {
   // camelCase aliases used by some callers / earlier in-memory shape
-  codAbramus?: string | null;
   codEcad?: string | null;
+  codEntidade?: string | null;
   isrcPais?: string | null;
   isrcRegistrante?: string | null;
   isrcAno?: string | null;
@@ -286,8 +286,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
   const initialDuracao = parseDuracao(fonograma?.duracao);
   const initialIsrc = parseIsrc(fonograma?.isrc);
 
-  const [codAbramus, setCodAbramus] = useState(pickStr(fonograma?.codAbramus, fonograma?.cod_abramus));
   const [codEcad, setCodEcad] = useState(pickStr(fonograma?.codEcad, fonograma?.cod_ecad));
+  const [codEntidade, setCodEntidade] = useState(pickStr(fonograma?.codEntidade, fonograma?.cod_entidade));
   const [agregadora, setAgregadora] = useState(pickStr(fonograma?.agregadora) || pickStr(fonograma?.gravadora));
   const [isrcPais, setIsrcPais] = useState(pickStr(fonograma?.isrcPais, fonograma?.isrc_pais) || initialIsrc.pais || "BR");
   const [isrcRegistrante, setIsrcRegistrante] = useState(pickStr(fonograma?.isrcRegistrante, fonograma?.isrc_registrante) || initialIsrc.registrante);
@@ -346,8 +346,8 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
     setBuscaObra("");
     setBuscaOpen(false);
     setObraVinculada(initialObra());
-    setCodAbramus(f.codAbramus);
     setCodEcad(f.codEcad);
+    setCodEntidade(f.codEntidade);
     setAgregadora(f.agregadora);
     setIsrcPais(f.isrcPais);
     setIsrcRegistrante(f.isrcRegistrante);
@@ -525,11 +525,11 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
 
   const buildPayload = (): FonogramaInsert => {
     const tituloFinal = (titulo && titulo.trim()) || obraVinculada?.title || "Sem título";
+    // org_id não é campo do formulário — o tenant vem do contexto autenticado da API.
     return {
       titulo: tituloFinal,
-      org_id: orgId as string,
-      cod_abramus: codAbramus || null,
       cod_ecad: codEcad || null,
+      cod_entidade: codEntidade || null,
       agregadora: agregadora || null,
       isrc: isrcConcat,
       isrc_pais: isrcPais || null,
@@ -958,11 +958,11 @@ export function FonogramaFormModal({ open, onOpenChange, fonograma, mode, onSave
           <div className="border border-border rounded-lg p-6 space-y-4 bg-muted/10">
             <h3 className="font-semibold text-base">Dados do Fonograma</h3>
 
-            {/* Linha 1: Código ABRAMUS | Código ECAD | Agregadora | ISRC | Criada por IA */}
+            {/* Linha 1: Código de Cadastro da Sociedade | Código ECAD | Agregadora | ISRC | Criada por IA */}
             <div className="grid grid-cols-12 gap-3 items-end">
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Código de Cadastro da Sociedade</span>
-                <Input value={codAbramus} onChange={(e) => setCodAbramus(e.target.value)} disabled={isViewMode} placeholder="Código de Cadastro da Sociedade" className="h-8 text-sm min-w-0" />
+                <Input value={codEntidade} onChange={(e) => setCodEntidade(e.target.value)} disabled={isViewMode} placeholder="Código de Cadastro da Sociedade" className="h-8 text-sm min-w-0" />
               </div>
               <div className="col-span-2">
                 <span className="text-xs text-muted-foreground mb-1 block">Código ECAD</span>
