@@ -158,7 +158,7 @@ const getInitialFormData = (evento?: any) => {
       tipoEventoAliases,
     ),
     artista: evento?.artista || evento?.artista_id || evento?.artistId || "",
-    participantes: normalizeAgendaParticipants(meta["participants"]),
+    participantes: normalizeAgendaParticipants(evento?.participantes ?? meta["participants"]),
     status: normalizeSelectValue(evento?.status, statusAliases) || "agendado",
     dataInicio: normalizeEventDate(
       evento?.dataInicio || evento?.data_inicio || evento?.data || evento?.startsAt,
@@ -418,9 +418,11 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
   /**
    * Maps form state → backend CreateEventDto / UpdateEventDto shape.
    *
-   * Backend NestJS ValidationPipe runs with whitelist + forbidNonWhitelisted,
-   * so any pt-BR field rejects com 400. Campos sem mapeamento DTO direto
-   * (descricao, observacoes, status legado, valores, etc.) vão para metadata.
+   * Backend NestJS ValidationPipe roda com whitelist + forbidNonWhitelisted,
+   * então qualquer campo fora do DTO rejeita com 400. Regra de produto
+   * 2026-07-12: cada campo do formulário tem coluna própria no DTO/entity
+   * (endereco, contato_local, valor_cache, publico_esperado, descricao,
+   * observacoes, participantes) — nenhum campo formal vai para `metadata`.
    *
    * @param forUpdate quando true, inclui campo `status` (válido em UpdateEventDto,
    *                  proibido em CreateEventDto).
@@ -431,16 +433,6 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
 
     const startsAt = combineDateAndTime(dataInicio, data.horarioInicio);
     const endsAt   = combineDateAndTime(dataFim, data.horarioFim);
-
-    const metadata: Record<string, unknown> = {};
-    if (data.endereco)           metadata["endereco"]           = data.endereco;
-    if (data.contatoLocal)       metadata["contato_local"]      = data.contatoLocal;
-    if (data.valorCache != null && data.valorCache !== "") metadata["valor_cache"] = data.valorCache;
-    if (data.publicoEsperado != null && data.publicoEsperado !== "") metadata["publico_esperado"] = data.publicoEsperado;
-    if (data.descricao)          metadata["descricao"]          = data.descricao;
-    if (data.observacoes)        metadata["observacoes"]        = data.observacoes;
-    if (data.status)             metadata["status_legado"]      = data.status;
-    if (data.participantes.length > 0) metadata["participants"] = data.participantes;
 
     const payload: Record<string, unknown> = {
       title: String(data.titulo || "").trim(),
@@ -457,7 +449,15 @@ export function SchedulerFormModal({ open, onOpenChange, evento, mode }: Schedul
     const capacity = toNumberOrUndefined(data.capacidadePublico);
     if (capacity !== undefined) payload["capacity"] = capacity;
 
-    if (Object.keys(metadata).length > 0) payload["metadata"] = metadata;
+    if (data.endereco)      payload["endereco"]      = data.endereco;
+    if (data.contatoLocal)  payload["contato_local"]  = data.contatoLocal;
+    const valorCache = toNumberOrUndefined(data.valorCache);
+    if (valorCache !== undefined) payload["valor_cache"] = valorCache;
+    const publicoEsperado = toNumberOrUndefined(data.publicoEsperado);
+    if (publicoEsperado !== undefined) payload["publico_esperado"] = publicoEsperado;
+    if (data.descricao)   payload["descricao"]   = data.descricao;
+    if (data.observacoes) payload["observacoes"] = data.observacoes;
+    if (data.participantes.length > 0) payload["participantes"] = data.participantes;
 
     if (forUpdate) {
       const mappedStatus = mapStatusToBackend(data.status);
