@@ -699,3 +699,144 @@ novas de `audiovisual_projects`. Adicionados os 13 labels pt-BR
 correspondentes em `field-labels.pt-br.ts` — mesmo arquivo entrelaçado com
 mudanças pré-existentes já registrado em §11/§13.6, então este ajuste também
 fica fora dos commits, presente e verificado no working tree.
+
+## 14. Rodada 6 — projects, execução real no DEV (2026-07-18)
+
+Segundo CRÍTICO confirmado da ordem obrigatória. Mais severo que audiovisual:
+zero sobreposição de nomes entre o payload real e o DTO.
+
+### 14.1 Fluxo real confirmado
+
+`ProjetoFormModal.tsx` → `useProjetos()` → `storage.create("projetos", ...)`
+→ `TABLE_ENDPOINT["projetos"] = "/projects"` → `CreateProjectDto`. Payload
+real: `titulo, tipo, status, observacoes, descricao, genero, artista_id,
+musicas[]`. DTO antigo: `title, type, artistId, budget, currency, startsAt,
+deadlineAt, releasedAt, metadata` — zero campos em comum. Com
+`forbidNonWhitelisted`, toda criação/edição de projeto retornava 400.
+
+Achado adicional: mesmo que o DTO antigo fosse aceito, `ProjectsService`
+fazia spread direto (`...dto`) sobre `ProjectEntity`, cuja coluna física já
+era `nome` (não `title`) — os campos do DTO antigo nunca teriam persistido
+de qualquer forma, por dupla causa independente.
+
+### 14.2 Contrato canônico — sem inventar vocabulário
+
+Usados os nomes reais do formulário ativo, como exigido: `titulo, tipo,
+status, observacoes, descricao, genero, artista_id`. Coluna `nome` renomeada
+para `titulo` (RENAME COLUMN — DEV com 0 linhas de negócio, sem risco de
+perda). Nenhuma duplicidade `titulo`/`title`/`nome` mantida — única coluna
+canônica.
+
+### 14.3 musicas[] normalizada — 2 writers reais corrigidos
+
+`musicas[]` (nome, soloFeat, originalRemix, instrumental, duracaoMin/Seg,
+genero, idioma, compositores[], interpretes[], produtores[], letra,
+audioUrl) era serializada com `JSON.stringify()` dentro de `descricao` —
+encontrados **dois** writers reais com o mesmo anti-padrão:
+`ProjetoFormModal.tsx` (formulário principal) e o import em massa (CSV) em
+`Projetos.tsx`. Ambos corrigidos.
+
+Pesquisados nomes de tabela equivalentes existentes (`project_tracks`,
+`project_songs`, `tracks`, `songs`, `release_tracks`) — nenhum encontrado;
+criada `project_tracks` (colunas reais extraídas de `MusicaData`:
+`nome, solo_feat, original_remix, instrumental, duracao_min, duracao_seg,
+genero, idioma, letra, audio_url, ordem` — `arquivoAudio` não persistido,
+confirmado local-only pelo próprio comentário de `musica-helpers.ts`).
+
+`compositores[]`/`interpretes[]`/`produtores[]` têm a mesma estrutura (nome
+livre, sem vínculo a artista cadastrado) diferindo só pelo papel — modelados
+em uma única tabela `project_track_participants` com `role IN ('compositor',
+'interprete', 'produtor')` (CHECK), não três tabelas nem um enum inventado.
+
+`ProjectsService` reidrata em `projeto.musicas` no mesmo formato que o
+frontend sempre consumiu (`getMusicaInfo`/`getFirstMusicaInfo`/
+`parseMusicasFromProjeto` em `musica-helpers.ts`, `ProjetoViewModal.tsx`,
+`Projetos.tsx`, `RegistroMusicas.tsx`) — nenhuma mudança de contrato de API,
+só a origem interna dos dados mudou.
+
+### 14.4 Arquivos órfãos removidos
+
+`apps/api/src/modules/projects/entities/project.entity.ts` e
+`repositories/project.repository.ts`: uma segunda classe `@Entity('projects')`
+com apenas `id/created_at/updated_at`, nunca importada por
+`projects.module.ts`/`projects.controller.ts` — confirmado morto por busca
+exaustiva antes da remoção. Removida também a entrada correspondente em
+`repositories-tenant-isolation.spec.ts` (testava o repository morto).
+
+### 14.5 Migration, testes, execução
+
+`20260718000013_ProjectsFormFieldAlignment.ts` — rename `nome→titulo`, novas
+colunas `observacoes`/`genero`, cria `project_tracks`/
+`project_track_participants` com RLS, migra `descricao` JSON legada com
+validação de forma e contagem antes de limpar a coluna (defensivo — DEV não
+tinha nenhum dado a migrar). **Executada no DEV nesta rodada** — ver §14.6.
+
+Testes novos: `projects.dto.spec.ts` (4 — payload real aceito; nomes em
+inglês do DTO antigo rejeitados), `projects.service.spec.ts` (6 —
+persistência dos campos corretos, musicas não vira coluna direta, round-trip
+completo de musicas via project_tracks, reidratação no formato do frontend,
+substituição delete+insert no update), `ProjetoFormModal.metadata-guard.test.ts`
+(3) e `Projetos.metadata-guard.test.ts` (2) — guardas estáticas contra
+regressão do `JSON.stringify` em `descricao`.
+
+Regressão real encontrada rodando a suíte completa (mesma classe de bug já
+visto em §12/§13): `entity-metadata.service.spec.ts` falhou por
+`project_tracks`/`project_track_participants` sem classificação — corrigido
+(mesmo arquivo entrelaçado, fora do commit, presente no working tree).
+
+Suíte completa final desta rodada: backend 1182/1185 (3 falhas
+pré-existentes confirmadas, não relacionadas); frontend 49/49 arquivos,
+452/452 testes.
+
+### 14.6 Execução real autorizada no DEV (proibição revogada para este ambiente)
+
+`pnpm env:check` confirmado (ref `rypnevnfipygyhysqpdo`) antes e imediatamente
+antes da conexão. Runner (`tmp-f13b-runner.ts`, temporário, não commitado)
+executado como `musicos_migrator`, `transaction: 'each'`.
+
+**1ª tentativa**: 92 legadas (75–92) + M0–M9 + releases (103 migrations)
+aplicadas com sucesso; `WorkParticipantsNormalization20260718000011` falhou
+(`operator does not exist: record ->> unknown` — bug real de sintaxe SQL,
+`WITH ORDINALITY` sem lista de colunas) e foi revertida pela própria
+transação da migration (nenhuma migration commitada foi perdida).
+
+Bug corrigido (commit `c247cd8b`, ver §14.6 acima) e a cadeia reexecutada:
+**106/106 migrations registradas com sucesso** — nenhuma falha.
+
+**Comprovação física (`information_schema`, consultas reais no DEV):**
+- `works`: `participantes`/`detentores`/`co_compositores` confirmadas
+  **ausentes**. `work_participants`: 10 colunas presentes com tipos corretos.
+- `projects`: `titulo` (renomeada de `nome`), `observacoes`, `genero`
+  confirmadas presentes. `project_tracks`: 15 colunas. `project_track_participants`:
+  7 colunas.
+- `audiovisual_projects`: 15/15 colunas novas confirmadas presentes.
+- `releases`: 9/9 colunas novas confirmadas presentes.
+- `events`: 7/7 colunas confirmadas presentes.
+- RLS habilitada (`rls_enabled=true`) e policy `tenant_isolation` presente
+  em `work_participants`, `project_tracks`, `project_track_participants`.
+- FKs confirmadas: `project_track_participants.project_track_id →
+  project_tracks.id`, `project_tracks.project_id → projects.id`,
+  `work_participants.work_id → works.id`, todas `ON DELETE CASCADE`.
+
+**Teste de round-trip real (transação `BEGIN`/`ROLLBACK`, nunca commitado,
+contexto de tenant via `set_config('app.current_tenant_id', ...)`):**
+criado 1 projeto (titulo/tipo/status/observacoes/descricao/genero) + 2
+faixas + 3 participantes (compositor/interprete/produtor) → round-trip via
+SELECT confirma todos os campos e contagens → `descricao` contém só texto
+(não é array JSON) → `metadata` vazio (`{}`) → Tenant B não enxerga o
+projeto do Tenant A (RLS, 0 linhas) → update parcial preserva
+titulo/descricao → DELETE do projeto propaga CASCADE para tracks e
+participantes (0/0 restantes). Testes adicionais de INSERT real (mesma
+transação com rollback) confirmaram os campos novos de
+`audiovisual_projects`, `works`/`work_participants`, `releases` e `events`
+funcionando fim a fim. **ROLLBACK executado em todos os casos — zero dado
+sintético persistido.**
+
+**Contagem final de migrations**: 106 (92 legadas + 10 financeiras + 1
+releases + 1 work_participants + 1 audiovisual + 1 projects), todas
+registradas em `musicos360_migrations` no DEV.
+
+**MAIN**: nenhuma conexão, query ou comando foi executado contra
+`sxmfeocztlztvpdnxayk` nesta sessão — apenas o ref DEV
+(`rypnevnfipygyhysqpdo`) foi usado, confirmado por `env:check` antes de cada
+conexão.
