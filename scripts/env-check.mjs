@@ -65,7 +65,7 @@ function jwtClaims(token) {
 const GUARD_FILE_ALLOWLIST = new Set([
   "apps/api/src/core/config/env.schema.ts",
   "apps/api/src/core/config/env.schema.spec.ts",
-  "apps/api/src/database/migrations/financial-migrations.static.spec.ts",
+  "apps/api/src/database/financial-migrations.static.spec.ts",
   "apps/web/src/shared/lib/env.ts",
   "apps/web/scripts/assert-supabase-env.mjs",
   "scripts/env-check.mjs",

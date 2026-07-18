@@ -5,7 +5,7 @@ import * as path from 'path';
  * Fase 13A Etapa 15 — testes ESTÁTICOS das migrations financeiras M0–M9.
  * Leem os arquivos como texto; NUNCA conectam a banco, NUNCA executam SQL.
  */
-const MIGRATIONS_DIR = __dirname;
+const MIGRATIONS_DIR = path.join(__dirname, 'migrations');
 
 const FILES = [
   '20260718000000_FinancialPrereqs.ts',
