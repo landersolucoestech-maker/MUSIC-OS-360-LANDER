@@ -35,6 +35,7 @@ export class HardenContactsLeadUploadsRls20260620000002
         DECLARE
           has_authenticated boolean;
           has_musicos_app boolean;
+          policy_roles text;
         BEGIN
           SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') INTO has_authenticated;
           SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') INTO has_musicos_app;
@@ -44,18 +45,19 @@ export class HardenContactsLeadUploadsRls20260620000002
           EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_update', '${table}');
           EXECUTE format('DROP POLICY IF EXISTS %I ON public.%I', '${table}_tenant_delete', '${table}');
 
-          IF has_authenticated THEN
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO authenticated WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO authenticated USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}');
-          END IF;
+          -- Um nome de policy é único por tabela (não por role): quando ambos
+          -- os papéis existem simultaneamente, a policy é criada UMA vez com
+          -- a lista de roles combinada, em vez de duas policies homônimas.
+          policy_roles := concat_ws(', ',
+            CASE WHEN has_authenticated THEN 'authenticated' END,
+            CASE WHEN has_musicos_app THEN 'musicos_app' END
+          );
 
-          IF has_musicos_app THEN
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO musicos_app WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}');
-            EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO musicos_app USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}');
+          IF policy_roles IS NOT NULL THEN
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}', policy_roles);
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO %s WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}', policy_roles);
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}', policy_roles);
+            EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}', policy_roles);
           END IF;
 
           EXECUTE format('REVOKE ALL PRIVILEGES ON TABLE public.%I FROM PUBLIC', '${table}');
