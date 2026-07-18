@@ -1140,20 +1140,79 @@ export class EventEntity {
 export class ProjectEntity {
   @PrimaryGeneratedColumn('uuid') id: string;
   @Column({ type: 'uuid' }) tenant_id: string;
-  @Column({ type: 'varchar', length: 255 }) nome: string;
+  // Renomeada de `nome` (migration ProjectsFormFieldAlignment20260718000013) —
+  // `titulo` é o nome real e único enviado pelo formulário ativo.
+  @Column({ type: 'varchar', length: 255 }) titulo: string;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 50, default: ProjectStatus.PLANEJAMENTO }) status: ProjectStatus;
   @Column({ type: 'uuid', nullable: true }) artista_id: string | null;
   @Column({ type: 'timestamp', nullable: true }) data_inicio: Date | null;
   @Column({ type: 'timestamp', nullable: true }) data_fim: Date | null;
   @Column({ type: 'decimal', precision: 15, scale: 2, nullable: true }) orcamento: string | null;
+  // `descricao` volta a ser texto livre puro — musicas[] normalizada em project_tracks.
   @Column({ type: 'text', nullable: true }) descricao: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) genero: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) created_by: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) updated_by: string | null;
+
+  @OneToMany(() => ProjectTrackEntity, (t) => t.project)
+  musicas_rel: Relation<ProjectTrackEntity[]>;
+}
+
+// ─── Project Tracks (migration 20260718000013) ────────────────────────────────
+// Tabela filha normalizada para as músicas em desenvolvimento de um projeto
+// (álbum/EP/single) — substitui a antiga serialização JSON dentro de
+// `projects.descricao`.
+@Entity('project_tracks')
+@Index(['tenant_id', 'project_id'])
+export class ProjectTrackEntity {
+  @PrimaryColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) project_id: string;
+  @Column({ type: 'varchar', length: 500 }) nome: string;
+  @Column({ type: 'varchar', length: 20, nullable: true }) solo_feat: string | null;
+  @Column({ type: 'varchar', length: 20, nullable: true }) original_remix: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) instrumental: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) duracao_min: string | null;
+  @Column({ type: 'varchar', length: 10, nullable: true }) duracao_seg: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) genero: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) idioma: string | null;
+  @Column({ type: 'text', nullable: true }) letra: string | null;
+  @Column({ type: 'text', nullable: true }) audio_url: string | null;
+  @Column({ type: 'integer', default: 0 }) ordem: number;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+
+  @ManyToOne(() => ProjectEntity, (p) => p.musicas_rel, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'project_id' })
+  project: Relation<ProjectEntity>;
+
+  @OneToMany(() => ProjectTrackParticipantEntity, (pp) => pp.track)
+  participantes: Relation<ProjectTrackParticipantEntity[]>;
+}
+
+// ─── Project Track Participants (migration 20260718000013) ────────────────────
+// compositores/interpretes/produtores de uma faixa — mesma estrutura (nome
+// livre, sem vínculo a artista cadastrado), diferindo apenas pelo papel.
+@Entity('project_track_participants')
+@Index(['tenant_id', 'project_track_id'])
+export class ProjectTrackParticipantEntity {
+  @PrimaryColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) project_track_id: string;
+  @Column({ type: 'varchar', length: 255 }) nome: string;
+  @Column({ type: 'varchar', length: 20 }) role: 'compositor' | 'interprete' | 'produtor';
+  @Column({ type: 'integer', default: 0 }) ordem: number;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+
+  @ManyToOne(() => ProjectTrackEntity, (t) => t.participantes, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'project_track_id' })
+  track: Relation<ProjectTrackEntity>;
 }
 
 // ─── Releases (Lançamentos) ───────────────────────────────────────────────────
@@ -3105,6 +3164,8 @@ export const ALL_ENTITIES = [
   BriefingEntity,
   EventEntity,
   ProjectEntity,
+  ProjectTrackEntity,
+  ProjectTrackParticipantEntity,
   ReleaseEntity,
   ShareEntity,
   TakedownEntity,

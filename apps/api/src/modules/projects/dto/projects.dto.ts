@@ -1,25 +1,32 @@
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
-import { IsString, IsOptional, IsIn, IsNumber, IsDate, MaxLength } from 'class-validator';
+import { IsString, IsOptional, IsIn, IsNumber, IsUUID, IsArray, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 import { ProjectStatus } from '@music-os-360/types';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
-const TYPES    = ['album', 'ep', 'single', 'video', 'tour', 'podcast', 'other'] as const;
+const TYPES = ['album', 'ep', 'single', 'video', 'tour', 'podcast', 'other'] as const;
 const STATUSES = Object.values(ProjectStatus) as string[];
 
+/**
+ * Contrato canônico (auditoria 2026-07-18): nomes EXATOS do formulário real
+ * ativo (ProjetoFormModal.tsx / bulk-import em Projetos.tsx), não os nomes em
+ * inglês do DTO anterior (title/type/artistId/budget/currency/startsAt/
+ * deadlineAt/releasedAt) — que nunca tinham writer real e, mesmo se
+ * aceitos, não batiam com as colunas físicas (nome/tipo/status/descricao).
+ */
 export class CreateProjectDto {
-  @ApiProperty() @IsString() @MaxLength(500) title!: string;
-  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) type!: string;
-  @ApiPropertyOptional() @IsOptional() @IsString() artistId?: string;
-  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(()=>Number) budget?: number;
-  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(3) currency?: string;
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
-  @IsOptional() @Type(() => Date) @IsDate() startsAt?: Date;
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
-  @IsOptional() @Type(() => Date) @IsDate() deadlineAt?: Date;
-  @ApiPropertyOptional({ type: String, format: 'date-time' })
-  @IsOptional() @Type(() => Date) @IsDate() releasedAt?: Date;
+  @ApiProperty() @IsString() @MaxLength(500) titulo!: string;
+  @ApiProperty({ enum: TYPES }) @IsIn(TYPES) tipo!: typeof TYPES[number];
+  @ApiPropertyOptional() @IsOptional() @IsUUID() artista_id?: string;
+  @ApiPropertyOptional() @IsOptional() @IsNumber() @Type(() => Number) orcamento?: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() descricao?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) genero?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+
+  // Lista de faixas em desenvolvimento — normalizada em project_tracks pelo
+  // service (não é mais serializada em `descricao`).
+  @ApiPropertyOptional({ type: [Object] }) @IsOptional() @IsArray() musicas?: Record<string, unknown>[];
 }
 
 export class UpdateProjectDto extends PartialType(CreateProjectDto) {

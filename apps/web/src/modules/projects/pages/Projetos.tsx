@@ -264,9 +264,9 @@ export default function Projetos() {
         musicas.push({ id: Math.random().toString(36).slice(2), nome: titulo } as MusicaData);
       }
 
-      // Strip the local-only arquivoAudio field before persisting (matches form-modal behaviour)
+      // Strip the local-only arquivoAudio field before persisting (matches form-modal behaviour).
+      // musicas[] vai para colunas próprias (project_tracks), nunca mais serializada em descricao.
       const musicasParaSalvar = musicas.map(({ arquivoAudio: _a, ...m }) => m);
-      const descricao = musicasParaSalvar.length > 0 ? JSON.stringify(musicasParaSalvar) : null;
       const genero = musicas[0]?.genero || null;
 
       const rawStatus = (col(firstRow, "Status") || "planejamento")
@@ -285,7 +285,7 @@ export default function Projetos() {
           observacoes: col(firstRow, "Observações") || null,
           artista_id,
           genero,
-          descricao,
+          musicas: musicasParaSalvar,
         });
         importados++;
       } catch {}

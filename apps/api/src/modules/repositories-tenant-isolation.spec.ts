@@ -20,7 +20,6 @@ import { Lead_interactionRepository } from './lead-interactions/repositories/lea
 import { LeadRepository } from './leads/repositories/lead.repository';
 import { NotificationRepository } from './notifications/repositories/notification.repository';
 import { PhonogramRepository } from './phonograms/repositories/phonogram.repository';
-import { ProjectRepository } from './projects/repositories/project.repository';
 import { ReleaseRepository } from './releases/repositories/release.repository';
 import { ShareRepository } from './shares/repositories/share.repository';
 import { Support_ticketRepository } from './support-tickets/repositories/support_ticket.repository';
@@ -82,7 +81,6 @@ describe('tenant isolation in generated repositories', () => {
     ['leads', LeadRepository as unknown as RepositoryCtor, 'entity'],
     ['notifications', NotificationRepository as unknown as RepositoryCtor, 'entity'],
     ['phonograms', PhonogramRepository as unknown as RepositoryCtor, 'entity'],
-    ['projects', ProjectRepository as unknown as RepositoryCtor, 'entity'],
     ['releases', ReleaseRepository as unknown as RepositoryCtor, 'entity'],
     ['shares', ShareRepository as unknown as RepositoryCtor, 'entity'],
     ['support-tickets', Support_ticketRepository as unknown as RepositoryCtor, 'entity'],

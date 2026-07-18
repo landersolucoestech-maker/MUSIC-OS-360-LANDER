@@ -16,6 +16,8 @@ export interface Projeto {
   descricao?: string | null;
   genero?: string | null;
   observacoes?: string | null;
+  /** Faixas em desenvolvimento — normalizadas em project_tracks (migration 20260718000013). */
+  musicas?: import("../utils/musica-helpers").MusicaData[];
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

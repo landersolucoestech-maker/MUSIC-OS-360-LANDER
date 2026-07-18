@@ -182,21 +182,19 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
   const [nomeEP, setNomeEP] = useState(() => (mode !== "create" && projeto?.tipo !== "single") ? (projeto?.titulo || "") : "");
   const [musicas, setMusicas] = useState<MusicaData[]>(() => {
     if (mode === "create" || !projeto) return [createEmptyMusica()];
-    if (projeto?.descricao) {
-      try {
-        const saved = JSON.parse(projeto.descricao as string);
-        if (Array.isArray(saved) && saved.length > 0) {
-          return saved.map((m: MusicaData) => ({
-            ...createEmptyMusica(), ...m,
-            soloFeat: normEnum(m.soloFeat, "solo"),
-            originalRemix: normEnum(m.originalRemix, "original"),
-            instrumental: normEnum(m.instrumental, "nao"),
-            genero: normEnum(m.genero, ""),
-            idioma: normEnum(m.idioma, ""),
-            id: m.id || crypto.randomUUID(),
-          }));
-        }
-      } catch { /* plain text descricao — use fallback */ }
+    // musicas[] normalizada em project_tracks (migration 20260718000013) —
+    // a API já retorna o array hidratado em projeto.musicas.
+    const saved = (projeto as { musicas?: MusicaData[] }).musicas;
+    if (Array.isArray(saved) && saved.length > 0) {
+      return saved.map((m) => ({
+        ...createEmptyMusica(), ...m,
+        soloFeat: normEnum(m.soloFeat, "solo"),
+        originalRemix: normEnum(m.originalRemix, "original"),
+        instrumental: normEnum(m.instrumental, "nao"),
+        genero: normEnum(m.genero, ""),
+        idioma: normEnum(m.idioma, ""),
+        id: m.id || crypto.randomUUID(),
+      }));
     }
     const tipo = normTipo(projeto?.tipo);
     const generoHerdado = normEnum(projeto?.genero as string | undefined, "");
@@ -244,9 +242,9 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
         : `Digite o nome do ${tipoLancamento === "ep" ? "EP" : "Álbum"}!`);
       return;
     }
-    // Serializa dados das músicas — remove campos apenas locais (File metadata, flag de upload)
+    // Remove campos apenas locais (File metadata, flag de upload) antes de enviar —
+    // musicas[] vai para colunas próprias (project_tracks), nunca mais serializada em descricao.
     const musicasParaSalvar = musicas.map(({ arquivoAudio: _a, _uploading: _u, ...m }) => m);
-    const descricao = JSON.stringify(musicasParaSalvar);
 
     // Persiste o gênero da primeira música como campo direto para filtros eficientes
     const genero = musicas[0]?.genero || null;
@@ -256,8 +254,8 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
       tipo: tipoLancamento,
       status,
       observacoes: observacoes || null,
-      descricao,
       genero,
+      musicas: musicasParaSalvar,
     };
 
     try {
@@ -269,8 +267,8 @@ export function ProjetoFormModal({ open, onOpenChange, projeto, mode, onConcluid
           tipo: tipoLancamento,
           status,
           observacoes: observacoes || null,
-          descricao,
           genero,
+          musicas: musicasParaSalvar,
         };
         const created = await addProjeto.mutateAsync(insertPayload) as { id: string };
         savedId = created?.id;

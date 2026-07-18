@@ -33,13 +33,13 @@ export interface MusicaInfo {
   audioUrl: string;
 }
 
-export function parseMusicasFromProjeto(projeto: { descricao?: string | null } | null | undefined): MusicaData[] {
-  if (!projeto?.descricao) return [];
-  try {
-    const parsed = JSON.parse(projeto.descricao);
-    if (Array.isArray(parsed) && parsed.length > 0) return parsed as MusicaData[];
-  } catch { /* ignore */ }
-  return [];
+/**
+ * musicas[] normalizada em project_tracks (migration 20260718000013) — a API
+ * já retorna o array hidratado em `projeto.musicas`. `descricao` voltou a ser
+ * texto livre puro e não é mais usada como origem das músicas.
+ */
+export function parseMusicasFromProjeto(projeto: { musicas?: MusicaData[] } | null | undefined): MusicaData[] {
+  return Array.isArray(projeto?.musicas) ? projeto!.musicas! : [];
 }
 
 function joinArray(arr: string[] | string | undefined | null): string {
@@ -68,7 +68,7 @@ export function getMusicaInfo(m: MusicaData): MusicaInfo {
   };
 }
 
-export function getFirstMusicaInfo(projeto: { descricao?: string | null } | null | undefined): MusicaInfo {
+export function getFirstMusicaInfo(projeto: { musicas?: MusicaData[] } | null | undefined): MusicaInfo {
   const musicas = parseMusicasFromProjeto(projeto);
   if (musicas.length === 0) {
     return {
