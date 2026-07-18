@@ -109,20 +109,66 @@ migrations foram relidas por completo nesta auditoria: `up()`/`down()`
 simétricos, sem `CASCADE` amplo, sem dado de negócio inserido (apenas
 migração de valores já existentes de `metadata`→coluna, quando havia).
 
-## 6. Escopo NÃO coberto por esta rodada (transparência obrigatória)
+## 6. Rodada 2 — auditoria exaustiva (autorizada pelo usuário após §6 original)
 
-O repositório tem mais de 100 tabelas e dezenas de módulos de frontend.
-Esta auditoria **verificou em profundidade** apenas `artists` (citado
-explicitamente como caso confirmado) e **verificou estruturalmente** (leitura
-completa das migrations, sem comparação campo-a-campo com o frontend) os
-outros 14 tabelas de §3. Módulos **não auditados nesta rodada** — sem
-evidência de problema, mas também sem verificação: audiovisual, marketing,
-releases/lançamentos, billing/subscriptions, inventory, RH além de
-employees/leave/payroll, settings/usuários, notifications, support,
-musicchat, integrations, RBAC/permissions, dashboard/reports. Nenhuma
-migration corretiva nova foi criada especulativamente para esses módulos —
-o mandato desta fase proíbe inventar sem evidência concreta de campo
-descartado.
+A rodada 1 (acima) cobriu só `artists` em profundidade + verificação
+estrutural das 14 tabelas irmãs. O usuário optou explicitamente por
+"auditoria exaustiva completa antes de prosseguir" — segue o resultado,
+módulo a módulo, com evidência de código (payload real enviado no submit,
+não apenas o schema Zod de validação — vários módulos têm schemas Zod
+**mortos/não usados**, o payload real é montado separadamente).
+
+### 6.1 Domínios CORRETOS (payload real ↔ colunas confirmadas)
+`artists`, `inventory`, `crm-relationships`/`leads` (memória estava
+desatualizada — já reconciliado), `catalog`/phonograms, `rh`/employees,
+`monitoring`/takedowns, `licensing`, `contracts`. `releases` é funcional
+(sem perda de dados) mas usa `metadata` deliberadamente para campos extras —
+inconsistente com a "regra sem-metadata" das 15 tabelas, porém documentado
+e não quebrado (categoria F — JSONB justificado).
+
+### 6.2 Achados CRÍTICOS confirmados (evidência: DTO + payload real lidos)
+
+Pré-requisito verificado: `apps/api/src/main.ts` configura
+`ValidationPipe({ whitelist: true, forbidNonWhitelisted: true })`
+globalmente — qualquer propriedade não declarada no DTO **rejeita a
+requisição inteira com 400**, não apenas descarta o campo silenciosamente.
+
+| # | Módulo | Evidência | Efeito |
+|---|---|---|---|
+| 1 | **audiovisual** (`AudiovisualProjectFormModal.tsx:153-177`) | payload envia `music_id, music_title, artist_name, format, videomaker, editor, shooting_date, location, capture_status, editing_status, approval_status, pre_release_date, release_date, budget, real_cost, concept, observations, final_status` — `CreateAudiovisualProjectDto` não declara NENHUM desses (usa `recording_date`, `budget_estimated`, `budget_actual`, `publish_date`, `description`, sem `format/videomaker/editor/location/capture_status/editing_status/approval_status`) | **Criação de projeto audiovisual sempre falha (400)**; mesmo sem o whitelist, `artist_id`/`phonogram_id` nunca seriam setados (vínculo com catálogo perdido) |
+| 2 | **projects** (genérico) (`ProjetoFormModal.tsx:254-274`) | payload envia `titulo, tipo, status, observacoes, descricao, genero` — `CreateProjectDto` exige `title`+`type` (nomes em inglês, ausentes do payload) e não tem `observacoes`/`genero`; `ProjectEntity` tem `nome` (não `titulo`) | **Criação de projeto sempre falha (400)** — campos obrigatórios do DTO nunca chegam |
+| 3 | **settings/usuarios** (`useUsuarios.ts:34-53`) | update envia `{full_name, phone, cargo}` — `UpdateUserDto` espera `{fullName, avatarUrl, role, status}`; comentário do hook ainda descreve "abstração de MOCK_DATA" mas `usuarios→/users` já é endpoint real | **Editar usuário sempre falha (400)**; comentário do código está desatualizado |
+| 4 | **marketing_tasks** (`marketing-forms.ts:459-477`, usado por `Tarefas.tsx`) | `toTaskInput` não inclui `marketing_project_id`/`task_key` (NOT NULL na entity); envia `targetType/targetName/owner/sector/deadline` sem coluna correspondente (`MarketingTaskEntity` tem `kind/assigned_to/due_date`) | Criação de tarefa de marketing provavelmente falha ou perde campos |
+
+### 6.3 Achado retratado (falso positivo da primeira leitura)
+`marketing` — a leitura inicial de `toProjectInput`/`projectFields` sugeria
+quebra na criação de "Projeto de Marketing", mas **essas funções não têm
+NENHUMA referência fora do próprio arquivo `marketing-forms.ts`** — são
+código morto (categoria L). O caminho realmente usado (`MarketingFormModal`
+por `Briefing.tsx`/`Tarefas.tsx`) foi auditado separadamente (ver 6.2 #4).
+
+### 6.4 Achado de severidade MÉDIA/ALTA (não é perda de dado, é desperdício da reconciliação)
+**`events`** (`SchedulerFormModal.tsx:435-460`): a migration
+`CrmFinanceOpsFormFieldColumns` já criou colunas dedicadas
+(`endereco, contato_local, valor_cache, publico_esperado, descricao,
+participantes`), mas o formulário **continua roteando esses valores para
+`metadata` jsonb** em vez das colunas — a "regra sem-metadata" foi aplicada
+no banco mas não no frontend deste módulo especificamente. Dado é salvo (sem
+perda), mas fica no lugar errado; qualquer leitura direta da coluna
+(relatórios, dashboards) encontrará `NULL`.
+
+### 6.5 Módulos com formulários simples/sem forms complexos (risco baixo, não aprofundado)
+`admin`/`billing` (ações administrativas simples, poucos campos, sem
+formulário rico), `support`, `musicchat`, `integrations`, `auth`,
+`workspace` — nenhum `*FormModal*` de negócio complexo encontrado.
+`dashboard`/`reports` são meta-módulos de leitura agregada, sem persistência
+própria.
+
+### 6.6 Escopo ainda não verificado nesta rodada (transparência obrigatória)
+Sub-entidades do audiovisual além do projeto principal (shots, production
+days, team, deliverables, tasks, assets — 8 tabelas satélite, DTOs não
+localizados/lidos); billing/subscriptions em profundidade; RBAC/permissions;
+notifications. Nenhuma migration especulativa foi criada para eles.
 
 ## 7. Testes de contrato
 
@@ -149,9 +195,22 @@ escopo "sem banco" desta fase de auditoria).
 ```text
 92 legadas (incluindo as 5 FormFieldColumns já existentes — SEM alteração)
 10 financeiras (M0–M9, Fase 13A)
-0 migrations corretivas NOVAS (nenhuma lacuna nova confirmada)
+0 migrations corretivas NOVAS criadas nesta fase
 TOTAL = 102 (inalterado)
 ```
+
+**Nuance importante**: dos 4 achados CRÍTICOS da rodada 2 (§6.2), **nenhum
+precisa necessariamente de migration nova**:
+- `audiovisual_projects` é o único caso que genuinamente falta COLUNA no
+  banco (format, videomaker, editor, location, capture_status,
+  editing_status, approval_status, pre_release_date) — os demais 3 achados
+  são divergência de nomes entre frontend/DTO/hook, com as colunas já
+  existindo (ou existindo sob outro nome) na entity — a correção é de
+  **código** (DTO + payload), não de schema.
+- Nenhum dos 4 achados pertence às tabelas do domínio financeiro
+  (`financial_transactions`, `transaction_allocations`, `budgets`,
+  `performance_metric_entries`) nem depende delas — **não bloqueiam
+  tecnicamente** a continuação do replay M0–M9.
 
 ## 10. Ordem final de replay (recomendada)
 
