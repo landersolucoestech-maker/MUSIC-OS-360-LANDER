@@ -911,3 +911,59 @@ fisicamente. Nenhuma outra migration necessária (financial_project_id já
 existia desde M9; marketing/tarefas não precisava de mudança).
 
 **Contagem final de migrations: 107** (106 da Rodada 6 + 1 nova).
+
+## 16. Rodada 8 — generalização de entidades de gestão coletiva; recusa técnica de reordenação física de colunas (2026-07-18)
+
+### 16.1 Correção técnica: ordem física de colunas não é uma questão de correção de dados
+
+Solicitado reconstruir fisicamente as tabelas para que a `ordinal_position`
+das colunas acompanhe a ordem visual dos campos no formulário. **Não
+executado.** Motivo, com evidência: `pg`/TypeORM (100% dos services deste
+projeto) acessam colunas por nome, nunca por posição; os 5 usos de
+`SELECT *` do backend (`audit.interceptor.ts`, `rbac-mutation.service.ts`,
+`billing-enforcement.service.ts`) também retornam objetos indexados por
+nome via o driver `pg`. `ordinal_position` não é lida por nenhuma query,
+FK, índice, trigger ou policy deste sistema. Reordenar fisicamente exigiria
+recriar cada tabela (novo `CREATE TABLE`, copiar dado por dado, reconstruir
+PK/FK/índices/triggers/RLS/policies/grants) — a operação de maior risco
+real do schema, para ganho funcional zero. Isso corresponde exatamente à
+condição de parada "risco real de perda de dados" já definida em mandato
+anterior desta sessão. A ordem canônica dos campos permanece documentada
+nesta auditoria (por domínio); novas colunas continuam sendo adicionadas
+respeitando a ordem do formulário (já era a prática desde a Rodada 1).
+
+### 16.2 cod_abramus/cod_ecad — generalizados sem quebrar o que já funciona
+
+Confirmado por evidência que a plataforma **já tinha decidido** generalizar
+o vínculo com entidades de gestão coletiva: `external_identifiers`
+(migration `RegistryRightsHoldersIdentifiers`, 2026-06-01) já existe, com
+CHECK cobrindo `provider IN ('ABRAMUS','ECAD','CISAC','IFPI','PRO_MUSICA',
+'ISRC','INTERNAL','OTHER')` e enums TS (`SocietyName`) já incluindo UBC,
+SBACEM, AMAR, SICAM, SOCINPRO, ASSIM. Código real e ativo
+(`society-payload-builder.service.ts`) já converte
+`work.cod_abramus`/`cod_ecad` para esse formato genérico on-the-fly. O que
+faltava era só migrar os dados legados — feito nesta rodada
+(`20260718000015_BackfillLegacySocietyCodesToExternalIdentifiers`,
+executada e verificada no DEV, 108/108).
+
+**Não removidas** as colunas `cod_abramus`/`cod_ecad` de `works`/
+`phonograms` nesta rodada: são o único campo exposto no formulário
+interativo ativo (`ObraFormModal.tsx`), no contrato oficial de Reports
+(`WORKS_CONTRACT`) e na integração real com a API externa da ABRAMUS
+(`abramus.service.ts`, `RegisterAbramusWorkDto`). Removê-las exige
+redesenhar o formulário para suportar múltiplas entidades por obra (hoje
+são 2 campos fixos; generalizar significa uma lista dinâmica
+entidade+código) — decisão de produto/UX que não foi tomada
+unilateralmente. Nenhuma coluna nova por sociedade foi criada
+(`cod_ubc`/`cod_socinpro`/etc. permanecem proibidas, consistente com a
+regra).
+
+### 16.3 Escopo não coberto nesta rodada
+
+Auditoria exaustiva de finalidade comprovada para as 108 migrations/~160
+tabelas (matriz completa tabela-a-tabela com writer/reader/volume/decisão)
+não foi refeita do zero nesta rodada — reaproveita o levantamento já feito
+em §6.7/§6.8 e as remoções já executadas (`works.participantes`/
+`detentores`/`co_compositores`). Reconstrução do formulário de artistas
+para redesenhar o fluxo de avatar/upload como lista multi-entidade não foi
+abordada (é uma mudança de UX, não uma correção de contrato).
