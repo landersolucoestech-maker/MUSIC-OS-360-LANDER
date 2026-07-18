@@ -612,3 +612,90 @@ passando: `jest` backend (37/37 nos arquivos de works + parity), suíte
 completa do backend sem regressão introduzida por esta rodada (1 falha
 pré-existente e não relacionada, `supabase-data-api-hardening.migration.spec.ts`,
 commit `f840fc7f`, anterior a toda esta sessão).
+
+## 13. Rodada 5 — audiovisual (1º item da ordem obrigatória) (2026-07-18)
+
+Confirmado o CRÍTICO já apontado em rodadas anteriores (§6.2), desta vez com
+correção completa: `AudiovisualProjectFormModal.tsx` envia o payload direto
+para `api.post`/`api.patch` (`audiovisual.service.ts`), sem nenhum mapper
+intermediário. `CreateAudiovisualProjectDto` não declarava 15 dos ~22 campos
+do formulário real. Com `ValidationPipe({ whitelist: true,
+forbidNonWhitelisted: true })`, **toda** criação/edição de produção
+audiovisual retornava 400 — confirmado, não hipotético.
+
+### 13.1 Duas divergências de nome resolvidas SEM criar coluna nova
+
+- `music_id` (form) → a mesma relação já modelada pela FK existente
+  `phonogram_id` (`audiovisual_projects.phonogram_id`, já em
+  `CreateAudiovisualProjectDto`). Corrigido no frontend, não no banco.
+- `budget`/`real_cost` (form) → todo ponto de leitura do frontend usa os
+  rótulos "Orçamento Previsto"/"Custo Real", e
+  `projects.service.ts::dashboard()` já soma `budget_estimated`/
+  `budget_actual` **desta mesma tabela** (linha 136: `qb.select([...,
+  'p.budget_estimated', 'p.budget_actual', ...])`). Se o formulário
+  continuasse gravando em colunas novas `budget`/`real_cost`, o dashboard
+  financeiro ficaria zerado silenciosamente após a correção do 400 — bug pior
+  que o original. Corrigido no frontend (`budget_estimated`/`budget_actual`),
+  com fallback de leitura `project.budget_estimated ?? project.budget` em
+  todos os 6 pontos de exibição, para não quebrar dados já existentes.
+
+### 13.2 Um caso de rename já em andamento, identificado e completado
+
+Todo ponto de leitura do frontend já fazia
+`project.shooting_date ?? project.recording_date` — prova de que o produto
+já tratava `shooting_date` como nome canônico novo e `recording_date` como
+fallback legado, sem que o backend tivesse a coluna nova ainda. `shooting_date`
+criada como coluna nova; `recording_date` mantida (não removida — pode ter
+dado histórico e nenhuma prova de que esteja descontinuada).
+
+### 13.3 Campos genuinamente novos (sem coluna equivalente, sem evidência de duplicação)
+
+`music_title`, `artist_name`, `format`, `videomaker`, `editor`, `location`,
+`capture_status`, `editing_status`, `approval_status`, `pre_release_date`,
+`release_date`, `concept`, `observations`, `final_status`. `release_date` foi
+mantida DISTINTA de `publish_date` (que continua sendo escrita
+automaticamente por `transitionStatus()` ao mover para "published") — não há
+evidência de que sejam o mesmo conceito; `release_date` é a data planejada.
+`concept` foi mantida DISTINTA de `objective` (exibido em outro ponto da UI,
+sem evidência de sobreposição). Nenhuma das duas foi mesclada sem prova.
+
+### 13.4 Correção adicional: `name` duplicado
+
+O payload enviava `title` e `name` com o MESMO valor (`form.music_title`).
+`name` não é coluna real — removido do payload; `title` já cobre o dado.
+
+### 13.5 Migration, DTO, entity, testes
+
+- `20260718000012_AudiovisualProjectsFormFieldColumns.ts` — 15 colunas novas
+  em `audiovisual_projects`, **não executada**.
+- `CreateAudiovisualProjectDto`/entity atualizados; `capture_status` validado
+  como string simples (não `@IsIn`) para não introduzir uma trava mais
+  rígida do que a já existente nos demais campos de status deste DTO.
+- `buildAudiovisualProjectPayload` extraída para função pura exportada
+  (mesmo padrão de `formToObraPayload`/`formToLancamentoPayload`), tornando
+  o contrato testável sem renderizar o componente.
+- Testes novos: `audiovisual.dto.spec.ts` (+3, reproduz o payload real e
+  prova que era rejeitado antes da correção) e
+  `AudiovisualProjectFormModal.payload.test.ts` (5, novo).
+- Suíte audiovisual backend: 60/60 (32 + 28). Frontend: suite completa sem
+  regressão.
+
+### 13.6 Nota sobre commits desta rodada
+
+`entities.ts` e `audiovisual.dto.ts` já tinham alterações não commitadas e
+não relacionadas (reconciliação de enums "Fase 4": `TASK_STATUSES`,
+`CAPTURE_STATUSES`, `ASSET_KINDS`, `SeedDeliverableDefaultsDto`, entre
+outras) — mesmo padrão já registrado em §11 para outros arquivos. Meus hunks
+foram isolados e commitados separadamente; as mudanças pré-existentes não
+relacionadas permanecem no working tree, não reivindicadas nos meus commits.
+`audiovisual.dto.spec.ts` está `untracked` no git (arquivo inteiro, de uma
+fase anterior desta mesma sessão) — meus testes novos ali ficam
+temporariamente fora de commit pela mesma razão; continuam presentes e
+passando no working tree.
+
+Rodando a suíte completa após esta rodada, `report-entity-definition.service.spec.ts`
+quebrou (mesmo teste de paridade label↔coluna do §11) para as 13 colunas
+novas de `audiovisual_projects`. Adicionados os 13 labels pt-BR
+correspondentes em `field-labels.pt-br.ts` — mesmo arquivo entrelaçado com
+mudanças pré-existentes já registrado em §11/§13.6, então este ajuste também
+fica fora dos commits, presente e verificado no working tree.
