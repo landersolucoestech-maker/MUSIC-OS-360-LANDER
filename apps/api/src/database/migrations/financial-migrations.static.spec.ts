@@ -72,7 +72,50 @@ describe('migrations financeiras M0–M9 — contratos estáticos', () => {
     const src = all();
     expect(/DROP\s+\w+[^;`]*CASCADE/i.test(src)).toBe(false);
     const onDeleteCascades = src.match(/ON DELETE CASCADE/g) ?? [];
-    expect(onDeleteCascades.length).toBe(2); // allocations←transaction, revisions←budget
+    // 2 do schema novo (allocations←transaction, revisions←budget) + 3 na
+    // RESTAURAÇÃO legada do down() da M2 (transcrição fiel do DDL Enterprise:
+    // category_centers/links/favorites ← categories).
+    expect(onDeleteCascades.length).toBe(5);
+  });
+
+  it('M2 revisada: substituição fail-fast do módulo legado (autorização Fase 13B)', () => {
+    const src = read(FILES[2]);
+    // valida existência explícita + zero registros + assinatura, não só IF EXISTS
+    expect(src).toContain(`to_regclass('public.' || v_table) IS NULL`);
+    expect(src).toMatch(/possui % registro\(s\)/);
+    expect(src).toContain(`column_name = 'slug'`);
+    expect(src).toMatch(/nature', 'includes_in_pnl/);
+    // dependências externas via catálogo (FKs de fora do conjunto + views)
+    expect(src).toContain('pg_constraint');
+    expect(src).toContain('view_table_usage');
+    // remoção em ordem reversa e SEM CASCADE nos DROPs
+    const order = [
+      'financial_category_rule_runs', 'financial_category_rules',
+      'financial_category_favorites', 'financial_category_links',
+      'financial_category_centers', 'financial_categories',
+    ];
+    let last = -1;
+    for (const t of order) {
+      const i = src.indexOf(`'${t}'`);
+      expect(i).toBeGreaterThan(last >= 0 ? -1 : -1);
+      last = i;
+    }
+    expect(/DROP TABLE [^;`]*CASCADE/.test(src)).toBe(false);
+    // estrutura nova criada SOMENTE depois da remoção
+    const lastDrop = src.indexOf('DROP TABLE "${table}"');
+    const firstCreate = src.indexOf('CREATE TABLE "financial_category_templates"');
+    expect(lastDrop).toBeGreaterThan(-1);
+    expect(firstCreate).toBeGreaterThan(lastDrop);
+    // down(): restauração completa do módulo legado (Opção 1), sem seeds
+    const down = src.slice(src.indexOf('public async down'));
+    expect(down).toContain('CREATE TABLE financial_categories');
+    expect(down).toContain('CREATE TABLE financial_category_rule_runs');
+    expect(down).toContain('depth_level');
+    expect(down).toContain('tenant_isolation_');
+    expect(/INSERT INTO/i.test(down)).toBe(false);
+    // shape do ponto da cadeia: junction SEM center_id (D8) e rules SEM colunas flat (D7)
+    expect(down.includes('center_id')).toBe(false);
+    expect(down.includes('counterparty_type')).toBe(false);
   });
 
   it('nenhum seed de dados reais (INSERTs apenas ausentes nas migrations)', () => {

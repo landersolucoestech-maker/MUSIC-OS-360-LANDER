@@ -1,20 +1,138 @@
 import { MigrationInterface, QueryRunner } from 'typeorm';
 
 /**
- * Fase 13A / M2 — classificação financeira (Fase 12 §2.1–2.2).
+ * Fase 13A / M2 — classificação financeira (Fase 12 §2.1–2.2), REVISADA na
+ * Fase 13B (autorização formal) para resolver o conflito comprovado com o
+ * módulo legado de categorias (20260526000002_FinancialCategoriesEnterprise).
  *
- * - financial_category_templates: catálogo GLOBAL somente-leitura (sem
- *   tenant_id; escrita apenas pelo provisionamento/seed técnico — NUNCA nesta
- *   migration: estrutura e carga são separadas por decisão da Fase 12 §14).
- * - financial_categories: hierarquia por tenant (grupo>categoria>subcategoria,
- *   nível 1..3), com NATUREZA (define a linha do P&L), desativação lógica e
- *   PROIBIÇÃO de exclusão física quando referenciada (I9/I10 — FKs RESTRICT
- *   nas tabelas consumidoras, M4).
+ * CONTEXTO DO CONFLITO: a cadeia legada cria `financial_categories` (+5
+ * satélites vivos no ponto desta migration: category_centers [sem center_id,
+ * removido por D8], links, favorites, rules [shape Enterprise pós-D7] e
+ * rule_runs). A `financial_category_templates` legada e a `financial_centers`
+ * já foram removidas pela própria cadeia (D5/D8 em 20260705000003). A Fase 12
+ * classificou o módulo legado como SUBSTITUÍDO pela definição nova.
+ *
+ * ESTRATÉGIA (normativa da autorização):
+ *  1. fail-fast: as 6 tabelas legadas devem EXISTIR, ter a ASSINATURA legada
+ *     esperada e estar com 0 REGISTROS; a estrutura nova não pode existir;
+ *  2. checagem de dependências no catálogo: nenhuma FK externa ao conjunto e
+ *     nenhuma view pode referenciar as tabelas; caso contrário ABORTA;
+ *  3. remoção em ordem reversa de dependência, SEM CASCADE;
+ *  4. criação da estrutura oficial nova (templates global + categorias tenant).
+ *
+ * down(): Opção 1 da autorização — RESTAURAÇÃO COMPLETA: remove a estrutura
+ * nova e recria fielmente as 6 tabelas legadas no shape exato do ponto da
+ * cadeia (DDL transcrito de 20260526000002, ajustado por 20260705000003
+ * D7/D8), com índices, RLS FORCE e policies harmonizadas
+ * (20260613000015). Sem qualquer seed/dado.
  */
 export class FinancialCategories20260718000002 implements MigrationInterface {
   name = 'FinancialCategories20260718000002';
 
+  /** Ordem REVERSA de dependência para remoção (satélites antes da base). */
+  private static readonly LEGACY_TABLES_REVERSE = [
+    'financial_category_rule_runs',
+    'financial_category_rules',
+    'financial_category_favorites',
+    'financial_category_links',
+    'financial_category_centers',
+    'financial_categories',
+  ] as const;
+
   public async up(queryRunner: QueryRunner): Promise<void> {
+    // ── 1. Pré-condições fail-fast (existência, assinatura e zero registros) ──
+    await queryRunner.query(`
+      DO $$
+      DECLARE
+        v_table text;
+        v_count bigint;
+      BEGIN
+        FOREACH v_table IN ARRAY ARRAY[
+          'financial_category_rule_runs', 'financial_category_rules',
+          'financial_category_favorites', 'financial_category_links',
+          'financial_category_centers', 'financial_categories'
+        ] LOOP
+          IF to_regclass('public.' || v_table) IS NULL THEN
+            RAISE EXCEPTION 'M2: tabela legada % ausente — ponto da cadeia inesperado; abortando sem alterar nada', v_table;
+          END IF;
+          EXECUTE format('SELECT count(*) FROM %I', v_table) INTO v_count;
+          IF v_count <> 0 THEN
+            RAISE EXCEPTION 'M2: tabela legada % possui % registro(s) — substituição proibida com dados; abortando', v_table, v_count;
+          END IF;
+        END LOOP;
+
+        -- Assinatura legada da base (colunas distintivas presentes)…
+        IF NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'financial_categories' AND column_name = 'slug'
+        ) OR NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'financial_categories' AND column_name = 'category_kind'
+        ) OR NOT EXISTS (
+          SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'financial_categories' AND column_name = 'depth_level'
+        ) THEN
+          RAISE EXCEPTION 'M2: financial_categories não tem a assinatura LEGADA esperada (slug/category_kind/depth_level) — abortando';
+        END IF;
+        -- …e colunas da estrutura NOVA ausentes (M2 ainda não aplicada).
+        IF EXISTS (
+          SELECT 1 FROM information_schema.columns
+           WHERE table_schema = 'public' AND table_name = 'financial_categories'
+             AND column_name IN ('nature', 'includes_in_pnl')
+        ) THEN
+          RAISE EXCEPTION 'M2: financial_categories já possui colunas da estrutura nova — M2 aparenta já aplicada; abortando';
+        END IF;
+        IF to_regclass('public.financial_category_templates') IS NOT NULL THEN
+          RAISE EXCEPTION 'M2: financial_category_templates já existe (legada deveria ter sido removida por D5; nova ainda não criada) — ambiente inesperado; abortando';
+        END IF;
+      END $$
+    `);
+
+    // ── 2. Dependências externas no catálogo (FKs de fora do conjunto, views) ─
+    await queryRunner.query(`
+      DO $$
+      DECLARE
+        v_offender text;
+      BEGIN
+        SELECT string_agg(conrelid::regclass::text || '.' || conname, ', ')
+          INTO v_offender
+          FROM pg_constraint
+         WHERE contype = 'f'
+           AND confrelid::regclass::text = ANY (ARRAY[
+             'financial_categories', 'financial_category_centers',
+             'financial_category_links', 'financial_category_favorites',
+             'financial_category_rules', 'financial_category_rule_runs'
+           ])
+           AND conrelid::regclass::text <> ALL (ARRAY[
+             'financial_categories', 'financial_category_centers',
+             'financial_category_links', 'financial_category_favorites',
+             'financial_category_rules', 'financial_category_rule_runs'
+           ]);
+        IF v_offender IS NOT NULL THEN
+          RAISE EXCEPTION 'M2: FKs externas inesperadas referenciam o módulo legado (%) — abortando', v_offender;
+        END IF;
+
+        SELECT string_agg(DISTINCT view_name, ', ')
+          INTO v_offender
+          FROM information_schema.view_table_usage
+         WHERE table_schema = 'public'
+           AND table_name IN (
+             'financial_categories', 'financial_category_centers',
+             'financial_category_links', 'financial_category_favorites',
+             'financial_category_rules', 'financial_category_rule_runs'
+           );
+        IF v_offender IS NOT NULL THEN
+          RAISE EXCEPTION 'M2: views dependem do módulo legado (%) — abortando', v_offender;
+        END IF;
+      END $$
+    `);
+
+    // ── 3. Remoção validada, ordem reversa, SEM CASCADE ───────────────────────
+    for (const table of FinancialCategories20260718000002.LEGACY_TABLES_REVERSE) {
+      await queryRunner.query(`DROP TABLE "${table}"`);
+    }
+
+    // ── 4. Estrutura oficial nova (definição aprovada na Fase 12) ─────────────
     await queryRunner.query(`
       CREATE TABLE "financial_category_templates" (
         "id"              uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -62,8 +180,6 @@ export class FinancialCategories20260718000002 implements MigrationInterface {
         ON "financial_categories" ("tenant_id", "is_active")
     `);
 
-    // Hierarquia consistente: raiz tem level 1; filho tem level = pai + 1.
-    // (CHECK não alcança outra linha — proteção via trigger, decisão M2.)
     await queryRunner.query(`
       CREATE FUNCTION "fn_fincat_level_guard"() RETURNS trigger
       LANGUAGE plpgsql AS $$
@@ -96,9 +212,149 @@ export class FinancialCategories20260718000002 implements MigrationInterface {
   }
 
   public async down(queryRunner: QueryRunner): Promise<void> {
+    // ── Remove a estrutura nova ───────────────────────────────────────────────
     await queryRunner.query(`DROP TRIGGER "trg_fincat_level_guard" ON "financial_categories"`);
     await queryRunner.query(`DROP FUNCTION "fn_fincat_level_guard"()`);
     await queryRunner.query(`DROP TABLE "financial_categories"`);
     await queryRunner.query(`DROP TABLE "financial_category_templates"`);
+
+    // ── Restauração COMPLETA do módulo legado no shape do ponto da cadeia ─────
+    // DDL transcrito de 20260526000002 (Enterprise), ajustado por 20260705000003:
+    // D7 (rules sem as colunas flat) e D8 (junction sem a coluna de centro).
+    // Sem seeds, sem dados, sem CASCADE.
+    await queryRunner.query(`
+      CREATE TABLE financial_categories (
+        id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id             UUID NOT NULL,
+        parent_id             UUID,
+        path                  TEXT NOT NULL,
+        depth_level           INTEGER NOT NULL DEFAULT 0,
+        tree_order            INTEGER NOT NULL DEFAULT 0,
+        name                  VARCHAR(255) NOT NULL,
+        slug                  VARCHAR(255) NOT NULL,
+        code                  VARCHAR(80) NOT NULL,
+        description           TEXT,
+        color                 VARCHAR(40),
+        icon                  VARCHAR(80),
+        transaction_types     TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+        category_kind         VARCHAR(30) NOT NULL DEFAULT 'operational',
+        system_category       BOOLEAN NOT NULL DEFAULT false,
+        protected             BOOLEAN NOT NULL DEFAULT false,
+        active                BOOLEAN NOT NULL DEFAULT true,
+        archived              BOOLEAN NOT NULL DEFAULT false,
+        allow_manual_usage    BOOLEAN NOT NULL DEFAULT true,
+        allow_ai_suggestions  BOOLEAN NOT NULL DEFAULT true,
+        usage_count           INTEGER NOT NULL DEFAULT 0,
+        sort_order            INTEGER NOT NULL DEFAULT 0,
+        metadata              JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_by            VARCHAR(255),
+        updated_by            VARCHAR(255),
+        created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at            TIMESTAMPTZ,
+        CONSTRAINT chk_financial_categories_depth CHECK (depth_level >= 0),
+        CONSTRAINT chk_financial_categories_kind CHECK (category_kind IN ('operational','managerial','accounting','tax','internal','automation','reporting')),
+        CONSTRAINT chk_financial_categories_types CHECK (transaction_types <@ ARRAY['REVENUE','EXPENSE','INVESTMENT','TAX','TRANSFER']::TEXT[]),
+        CONSTRAINT fk_financial_categories_parent FOREIGN KEY (parent_id) REFERENCES financial_categories(id) ON DELETE SET NULL
+      );
+      CREATE UNIQUE INDEX uq_financial_categories_slug_active ON financial_categories (tenant_id, slug) WHERE deleted_at IS NULL;
+      CREATE UNIQUE INDEX uq_financial_categories_code_active ON financial_categories (tenant_id, code) WHERE deleted_at IS NULL;
+      CREATE INDEX idx_financial_categories_parent_order ON financial_categories (tenant_id, parent_id, tree_order);
+      CREATE INDEX idx_financial_categories_path ON financial_categories (tenant_id, path);
+      CREATE INDEX idx_financial_categories_kind ON financial_categories (tenant_id, category_kind);
+      CREATE INDEX idx_financial_categories_status ON financial_categories (tenant_id, active, archived, deleted_at);
+      CREATE INDEX idx_financial_categories_types_gin ON financial_categories USING GIN (transaction_types);
+      CREATE INDEX idx_financial_categories_metadata_gin ON financial_categories USING GIN (metadata)
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE financial_category_centers (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id     UUID NOT NULL,
+        category_id   UUID NOT NULL REFERENCES financial_categories(id) ON DELETE CASCADE,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_financial_category_centers_category ON financial_category_centers (tenant_id, category_id)
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE financial_category_links (
+        id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id       UUID NOT NULL,
+        category_id     UUID NOT NULL REFERENCES financial_categories(id) ON DELETE CASCADE,
+        entity_type     VARCHAR(80) NOT NULL,
+        entity_id       UUID,
+        entity_label    VARCHAR(255),
+        relation_role   VARCHAR(40) NOT NULL,
+        metadata        JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_by      VARCHAR(255),
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at      TIMESTAMPTZ,
+        CONSTRAINT chk_financial_category_links_role CHECK (relation_role IN ('payable_to','receivable_from','vendor','customer','partner','beneficiary'))
+      );
+      CREATE INDEX idx_financial_category_links_category ON financial_category_links (tenant_id, category_id, deleted_at);
+      CREATE INDEX idx_financial_category_links_entity ON financial_category_links (tenant_id, entity_type, entity_id, deleted_at);
+      CREATE INDEX idx_financial_category_links_metadata_gin ON financial_category_links USING GIN (metadata)
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE financial_category_favorites (
+        id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id     UUID NOT NULL,
+        category_id   UUID NOT NULL REFERENCES financial_categories(id) ON DELETE CASCADE,
+        user_id       VARCHAR(255) NOT NULL,
+        created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        UNIQUE (tenant_id, category_id, user_id)
+      )
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE financial_category_rules (
+        id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id           UUID NOT NULL,
+        category_id         UUID REFERENCES financial_categories(id) ON DELETE SET NULL,
+        name                VARCHAR(255) NOT NULL,
+        description         TEXT,
+        priority            INTEGER NOT NULL DEFAULT 100,
+        active              BOOLEAN NOT NULL DEFAULT true,
+        conditions          JSONB NOT NULL DEFAULT '{}'::jsonb,
+        actions             JSONB NOT NULL DEFAULT '{}'::jsonb,
+        last_triggered_at   TIMESTAMPTZ,
+        trigger_count       INTEGER NOT NULL DEFAULT 0,
+        created_by          VARCHAR(255),
+        updated_by          VARCHAR(255),
+        created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+        deleted_at          TIMESTAMPTZ
+      );
+      CREATE INDEX idx_financial_category_rules_active ON financial_category_rules (tenant_id, active, priority, deleted_at);
+      CREATE INDEX idx_financial_category_rules_category ON financial_category_rules (tenant_id, category_id, deleted_at);
+      CREATE INDEX idx_financial_category_rules_conditions_gin ON financial_category_rules USING GIN (conditions)
+    `);
+
+    await queryRunner.query(`
+      CREATE TABLE financial_category_rule_runs (
+        id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        tenant_id      UUID NOT NULL,
+        rule_id        UUID REFERENCES financial_category_rules(id) ON DELETE SET NULL,
+        category_id    UUID REFERENCES financial_categories(id) ON DELETE SET NULL,
+        context        JSONB NOT NULL DEFAULT '{}'::jsonb,
+        result         JSONB NOT NULL DEFAULT '{}'::jsonb,
+        matched        BOOLEAN NOT NULL DEFAULT false,
+        created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+      );
+      CREATE INDEX idx_financial_category_rule_runs_rule ON financial_category_rule_runs (tenant_id, rule_id, created_at DESC)
+    `);
+
+    // RLS + policies harmonizadas (20260613000015) do ponto da cadeia.
+    for (const table of [...FinancialCategories20260718000002.LEGACY_TABLES_REVERSE].reverse()) {
+      await queryRunner.query(`ALTER TABLE ${table} ENABLE ROW LEVEL SECURITY`);
+      await queryRunner.query(`ALTER TABLE ${table} FORCE ROW LEVEL SECURITY`);
+      await queryRunner.query(`
+        CREATE POLICY tenant_isolation_${table} ON ${table}
+          USING (tenant_id = private_get_tenant_id())
+          WITH CHECK (tenant_id = private_get_tenant_id())
+      `);
+    }
   }
 }
