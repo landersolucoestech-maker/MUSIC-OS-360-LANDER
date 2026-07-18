@@ -1,0 +1,135 @@
+/**
+ * Algoritmo normativo de MAIOR RESTO para rateios financeiros
+ * (Fases 11 §13 / 12 §10 / 13A Etapa 12) — equivalente exato da função SQL
+ * fn_largest_remainder (migration 20260718000005_TransactionAllocations).
+ *
+ * Aritmética 100% inteira (BigInt) — NUNCA float (invariante de precisão):
+ * - valores monetários em centavos (amount com até 2 casas decimais);
+ * - percentuais em décimos-de-milésimo (numeric(7,4) → inteiro ×10.000).
+ *
+ * Regras:
+ * 1. total_alvo = round(amount × Σpct / 100, 2)  [half-up]
+ * 2. bruto_i = amount × pct_i / 100 (exato); piso_i = trunc(bruto_i, 2)
+ * 3. resíduo (centavos) distribuído em passos de 0,01 por MAIOR fração;
+ *    empate → MENOR índice de entrada (determinístico e estável)
+ * 4. Σ resultado = total_alvo (conciliação exata — I7)
+ * 5. Σpct > 100, pct ≤ 0, pct > 100, amount ≤ 0 → erro (I5/validações)
+ * 6. parcela resultante de R$ 0,00 → erro (CHECK allocated_amount > 0)
+ */
+
+const PCT_SCALE = 10_000n; // numeric(7,4)
+const HUNDRED = 100n * PCT_SCALE; // 100% em décimos-de-milésimo
+
+export class LargestRemainderError extends Error {
+  constructor(
+    readonly code:
+      | 'INVALID_AMOUNT'
+      | 'EMPTY_PERCENTAGES'
+      | 'INVALID_PERCENTAGE'
+      | 'SUM_EXCEEDS_100'
+      | 'SHARE_ROUNDS_TO_ZERO',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'LargestRemainderError';
+  }
+}
+
+/** "1234.56" | 1234.56 → 123456n (centavos). Rejeita >2 casas e não-numérico. */
+function toCents(value: string | number): bigint {
+  const s = typeof value === 'number' ? value.toFixed(2) : String(value).trim();
+  const m = /^(\d+)(?:\.(\d{1,2}))?$/.exec(s);
+  if (!m) throw new LargestRemainderError('INVALID_AMOUNT', `valor monetário inválido: "${s}"`);
+  const frac = (m[2] ?? '').padEnd(2, '0');
+  return BigInt(m[1]) * 100n + BigInt(frac);
+}
+
+/** "33.3333" | 60 → 333333n | 600000n (décimos-de-milésimo). Máx. 4 casas. */
+function toPctScaled(value: string | number, index: number): bigint {
+  const s = typeof value === 'number' ? value.toFixed(4) : String(value).trim();
+  const m = /^(\d+)(?:\.(\d{1,4}))?$/.exec(s);
+  if (!m) {
+    throw new LargestRemainderError('INVALID_PERCENTAGE', `percentual inválido na posição ${index}: "${s}"`);
+  }
+  const frac = (m[2] ?? '').padEnd(4, '0');
+  return BigInt(m[1]) * PCT_SCALE + BigInt(frac);
+}
+
+function centsToString(cents: bigint): string {
+  const abs = cents < 0n ? -cents : cents;
+  return `${abs / 100n}.${(abs % 100n).toString().padStart(2, '0')}`;
+}
+
+/**
+ * Distribui `amount` pelos `percentages` de UMA dimensão.
+ * Retorna os valores alocados como strings decimais de 2 casas ("600.00").
+ */
+export function largestRemainder(
+  amount: string | number,
+  percentages: Array<string | number>,
+): string[] {
+  const amountCents = toCents(amount);
+  if (amountCents <= 0n) {
+    throw new LargestRemainderError('INVALID_AMOUNT', 'amount deve ser > 0');
+  }
+  if (percentages.length === 0) {
+    throw new LargestRemainderError('EMPTY_PERCENTAGES', 'lista de percentuais vazia');
+  }
+
+  const pcts = percentages.map((p, i) => {
+    const scaled = toPctScaled(p, i);
+    if (scaled <= 0n || scaled > HUNDRED) {
+      throw new LargestRemainderError(
+        'INVALID_PERCENTAGE',
+        `percentual fora do intervalo (0,100] na posição ${i}`,
+      );
+    }
+    return scaled;
+  });
+
+  const sumPct = pcts.reduce((a, b) => a + b, 0n);
+  if (sumPct > HUNDRED) {
+    throw new LargestRemainderError('SUM_EXCEEDS_100', 'soma de percentuais excede 100 (I5)');
+  }
+
+  // Unidade de trabalho: amountCents × pctScaled  (centavos × 10^6).
+  // total_alvo em centavos = round(amountCents × sumPct / 10^6) [half-up].
+  const UNIT = 100n * PCT_SCALE; // 10^6
+  const targetRaw = amountCents * sumPct;
+  const targetCents = targetRaw / UNIT + (targetRaw % UNIT >= UNIT / 2n ? 1n : 0n);
+
+  const floors: bigint[] = [];
+  const fracs: bigint[] = [];
+  for (const pct of pcts) {
+    const raw = amountCents * pct; // centavos × 10^6, exato
+    floors.push(raw / UNIT);
+    fracs.push(raw % UNIT);
+  }
+
+  let residue = targetCents - floors.reduce((a, b) => a + b, 0n);
+  // resíduo < n centavos por construção; distribui por maior fração,
+  // empate → menor índice (varredura ascendente com comparação estrita).
+  while (residue > 0n) {
+    let pick = -1;
+    let best = -1n;
+    for (let i = 0; i < fracs.length; i++) {
+      if (fracs[i] > best) {
+        best = fracs[i];
+        pick = i;
+      }
+    }
+    floors[pick] += 1n;
+    fracs[pick] = -2n; // consumido
+    residue -= 1n;
+  }
+
+  return floors.map((cents, i) => {
+    if (cents === 0n) {
+      throw new LargestRemainderError(
+        'SHARE_ROUNDS_TO_ZERO',
+        `rateio inviável: parcela da posição ${i} resulta em R$ 0,00 (allocated_amount > 0)`,
+      );
+    }
+    return centsToString(cents);
+  });
+}
