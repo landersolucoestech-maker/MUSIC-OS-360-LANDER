@@ -61,6 +61,21 @@ export class HardenSupabaseDataApiSurface20260620000006 implements MigrationInte
 
         IF to_regclass('public.musicos360_migrations') IS NOT NULL THEN
           ALTER TABLE public.musicos360_migrations ENABLE ROW LEVEL SECURITY;
+
+          -- Bookkeeping do próprio TypeORM: sem esta policy, FORCE RLS abaixo
+          -- bloquearia o INSERT que a migration seguinte faz para se
+          -- registrar — mesmo o dono da tabela (musicos_migrator) é sujeito a
+          -- FORCE RLS. Restrita exclusivamente a musicos_migrator; nenhuma
+          -- outra role (authenticated/anon/musicos_app/service_role/PUBLIC)
+          -- recebe acesso de runtime por aqui.
+          DROP POLICY IF EXISTS migrator_admin_all ON public.musicos360_migrations;
+          IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_migrator') THEN
+            CREATE POLICY migrator_admin_all
+              ON public.musicos360_migrations
+              FOR ALL TO musicos_migrator
+              USING (true) WITH CHECK (true);
+          END IF;
+
           ALTER TABLE public.musicos360_migrations FORCE ROW LEVEL SECURITY;
           REVOKE ALL ON public.musicos360_migrations FROM authenticated;
         END IF;
@@ -101,8 +116,18 @@ export class HardenSupabaseDataApiSurface20260620000006 implements MigrationInte
     `);
   }
 
-  async down(): Promise<void> {
-    // Security hardening is intentionally irreversible. Restoring anonymous
-    // grants would reopen the Data API surface and requires an explicit migration.
+  async down(queryRunner: QueryRunner): Promise<void> {
+    // Reverte exclusivamente a policy administrativa adicionada nesta correção.
+    // O restante do hardening desta migration permanece intencionalmente
+    // irreversível: restaurar grants anônimos reabriria a superfície pública
+    // e exigiria uma migration explícita própria.
+    await queryRunner.query(`
+      DO $$
+      BEGIN
+        IF to_regclass('public.musicos360_migrations') IS NOT NULL THEN
+          DROP POLICY IF EXISTS migrator_admin_all ON public.musicos360_migrations;
+        END IF;
+      END $$;
+    `);
   }
 }
