@@ -107,9 +107,7 @@ export default function RightsMonitoring() {
         obra_catalog: {
           compositor: obra.compositor,
           compositores: obra.compositores,
-          co_compositores: obra.co_compositores,
           editora: obra.editora,
-          detentores: obra.detentores,
           iswc: obra.iswc,
           cod_ecad: obra.cod_ecad,
           cod_abramus: obra.cod_abramus,
