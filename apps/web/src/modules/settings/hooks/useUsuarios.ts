@@ -45,10 +45,14 @@ export function useUsuarios() {
     }) => {
       const existing = await storage.getById<Record<string, unknown> & { id: string }>("usuarios", id);
       if (!existing) throw new Error(`Usuário ${id} não encontrado`);
+      // UpdateUserDto usa camelCase (fullName) e o slug de papel real é `role`
+      // (não `cargo` — `cargo` nunca foi uma coluna real; o valor enviado é
+      // sempre um nível de acesso/role, então vai para o campo que já existe
+      // e já aciona a resolução de role_id no service).
       await storage.update<Record<string, unknown> & { id: string }>("usuarios", id, {
-        ...(full_name !== undefined && { full_name }),
+        ...(full_name !== undefined && { fullName: full_name }),
         ...(phone !== undefined && { phone }),
-        ...(cargo !== undefined && { cargo }),
+        ...(cargo !== undefined && { role: cargo }),
       });
     },
     onSuccess: () => {

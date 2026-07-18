@@ -15,6 +15,7 @@ export class CreateUserDto {
   @ApiProperty() @IsEmail() email!: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) fullName?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(30) phone?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
 
   @ApiProperty({ description: 'Slug de papel global ou customizado do tenant' })

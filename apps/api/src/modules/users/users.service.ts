@@ -77,6 +77,7 @@ export class UsersService {
       auth_user_id: dto.userId,
       email:         dto.email,
       full_name:     dto.fullName ?? null,
+      phone:         dto.phone ?? null,
       role:          dto.role,
       role_id:       roleId,
       is_active:     true,
@@ -105,6 +106,7 @@ export class UsersService {
     const current = await this.findById(tenantId, id);
     const updates: Record<string, unknown> = { updated_at: new Date() };
     if (dto.fullName != null) updates.full_name = dto.fullName;
+    if (dto.phone    != null) updates.phone     = dto.phone;
     // Dual-write (PASSO 12-G): ao mudar `role`, resolve e grava `role_id` junto.
     if (dto.role     != null) {
       updates.role    = dto.role;

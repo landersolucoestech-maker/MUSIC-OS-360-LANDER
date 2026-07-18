@@ -117,6 +117,7 @@ export class OrgMemberEntity {
   @Column({ type: 'varchar', length: 255 }) auth_user_id: string;
   @Column({ type: 'varchar', length: 255 }) email: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) full_name: string | null;
+  @Column({ type: 'varchar', length: 30, nullable: true }) phone: string | null;
   /** Role armazenado como string — fonte LEGADA, mantida durante a transição RBAC. */
   @Column({ type: 'varchar', length: 50, default: SystemRole.VIEWER }) role: string;
   /** RBAC Enterprise (FASE 4) — colunas aditivas nullable; coexistem com `role`. */
