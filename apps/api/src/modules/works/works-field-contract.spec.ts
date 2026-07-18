@@ -59,4 +59,16 @@ describe('CreateWorkDto — contrato canônico de campos', () => {
     const errors = await validateDto({ ...MINIMAL_VALID, holders: ['x'], titulares: ['y'] });
     expect(errors.length).toBeGreaterThan(0);
   });
+
+  it('rejeita `detentores`/`co_compositores` — colunas removidas (migration 20260718000011, sem writer ativo)', async () => {
+    const errors = await validateDto({ ...MINIMAL_VALID, detentores: 'x', co_compositores: 'y' });
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  it('rejeita `participantes[]` bruto como coluna — normalizado em work_participants (migration 20260718000011)', async () => {
+    // `participantes` continua aceito no DTO (o service o traduz para linhas
+    // filhas), mas não pode mais existir como coluna direta em `works`.
+    const errors = await validateDto({ ...MINIMAL_VALID, participantes: [{ nome: 'X', classeFuncao: 'compositor/autor' }] });
+    expect(errors).toHaveLength(0);
+  });
 });

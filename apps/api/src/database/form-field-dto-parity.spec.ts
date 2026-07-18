@@ -28,8 +28,12 @@ const entitiesSrc = fs.readFileSync(
 function entityBlock(entityClassName: string): string {
   const start = entitiesSrc.indexOf(`export class ${entityClassName}`);
   if (start === -1) throw new Error(`Entity ${entityClassName} não encontrada em entities.ts`);
-  const end = entitiesSrc.indexOf('\n}\n', start);
-  return entitiesSrc.slice(start, end === -1 ? undefined : end);
+  // CRLF no arquivo real — indexOf('\n}\n') não bate e faz o slice ir até o
+  // fim do arquivo (bug encontrado na auditoria 2026-07-18, que mascarava
+  // asserts negativos ao capturar entities subsequentes por engano).
+  const closingBrace = /\r?\n\}\r?\n/.exec(entitiesSrc.slice(start));
+  if (!closingBrace) throw new Error(`Não foi possível localizar o fechamento da classe ${entityClassName}`);
+  return entitiesSrc.slice(start, start + closingBrace.index);
 }
 
 function dtoSrc(relativePath: string): string {

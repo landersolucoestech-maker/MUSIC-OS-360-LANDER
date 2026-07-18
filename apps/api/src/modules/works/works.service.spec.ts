@@ -7,6 +7,7 @@ import { WorksService }      from './works.service';
 import { CreateWorkDto }     from './dto/create-work.dto';
 import { DATA_SOURCE }       from '../../database/database.module';
 import { EventsService }     from '../../core/events/events.service';
+import { WorkEntity, WorkParticipantEntity } from '../../database/entities';
 
 async function validateDto(payload: Record<string, unknown>) {
   const instance = plainToInstance(CreateWorkDto, payload);
@@ -41,7 +42,24 @@ const buildMockQb = (getOneValue: any = mockWork) => {
   return qb;
 };
 
-const buildMockDs = (getOneValue: any = mockWork) => {
+const buildMockParticipantsRepo = (rows: any[] = []) => {
+  const qb: any = {
+    where:    jest.fn(),
+    orderBy:  jest.fn(),
+    getMany:  jest.fn().mockResolvedValue(rows),
+  };
+  qb.where.mockReturnValue(qb);
+  qb.orderBy.mockReturnValue(qb);
+  return {
+    createQueryBuilder: jest.fn(() => qb),
+    create: jest.fn((v: any) => v),
+    save:   jest.fn((v: any) => Promise.resolve(v)),
+    delete: jest.fn().mockResolvedValue({ affected: 0 }),
+    _qb: qb,
+  };
+};
+
+const buildMockDs = (getOneValue: any = mockWork, participantRows: any[] = []) => {
   const qb   = buildMockQb(getOneValue);
   const repo = {
     createQueryBuilder: jest.fn(() => qb),
@@ -50,9 +68,11 @@ const buildMockDs = (getOneValue: any = mockWork) => {
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     _qb: qb,
   };
+  const participantsRepo = buildMockParticipantsRepo(participantRows);
   return {
-    getRepository: jest.fn(() => repo),
+    getRepository: jest.fn((entity: any) => (entity === WorkParticipantEntity ? participantsRepo : repo)),
     _repo: repo,
+    _participantsRepo: participantsRepo,
   };
 };
 
@@ -176,6 +196,68 @@ describe('WorksService', () => {
       await service.update(TENANT, 'u1', WORK_ID, { observacoes: 'x' } as any);
       const updateCall = mockDs._repo.update.mock.calls[0];
       expect(updateCall[1]).not.toHaveProperty('tipo');
+    });
+  });
+
+  describe('participantes — normalizado em work_participants (migration 20260718000011)', () => {
+    it('create() não envia participantes para o repo de WorkEntity (não é mais coluna)', async () => {
+      await service.create(TENANT, 'u1', {
+        titulo: 'Nova', tipo: 'original',
+        participantes: [{ id: 'p1', nome: 'Fulano', classeFuncao: 'compositor/autor', link: '', percentual: '50' }],
+      } as any);
+      expect(mockDs._repo.create).toHaveBeenCalledWith(
+        expect.not.objectContaining({ participantes: expect.anything() }),
+      );
+    });
+
+    it('create() persiste cada participante como linha própria em work_participants', async () => {
+      await service.create(TENANT, 'u1', {
+        titulo: 'Nova', tipo: 'original',
+        participantes: [
+          { id: 'p1', nome: 'Fulano', classeFuncao: 'compositor/autor', link: 'https://x', percentual: '60' },
+          { id: 'p2', nome: 'Beltrano', classeFuncao: 'tradutor', link: '', percentual: '40' },
+        ],
+      } as any);
+      expect(mockDs._participantsRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ id: 'p1', tenant_id: TENANT, nome: 'Fulano', classe_funcao: 'compositor/autor', percentual: '60', ordem: 0 }),
+        expect.objectContaining({ id: 'p2', tenant_id: TENANT, nome: 'Beltrano', classe_funcao: 'tradutor', percentual: '40', ordem: 1 }),
+      ]);
+    });
+
+    it('findById() reidrata participantes no formato esperado pelo frontend (id/nome/classeFuncao/link/percentual)', async () => {
+      const rows = [
+        { id: 'p1', work_id: WORK_ID, nome: 'Fulano', classe_funcao: 'compositor/autor', link: null, percentual: '60' },
+      ];
+      mockDs = buildMockDs(mockWork, rows);
+      const module = await Test.createTestingModule({
+        providers: [
+          WorksService,
+          { provide: DATA_SOURCE, useValue: mockDs },
+          { provide: EventsService, useValue: { emitTyped: jest.fn() } },
+        ],
+      }).compile();
+      service = module.get<WorksService>(WorksService);
+
+      const found = await service.findById(TENANT, WORK_ID);
+      expect(found.participantes).toEqual([
+        { id: 'p1', nome: 'Fulano', classeFuncao: 'compositor/autor', link: null, percentual: '60' },
+      ]);
+    });
+
+    it('update() substitui os participantes (delete + insert) quando o DTO envia o array', async () => {
+      await service.update(TENANT, 'u1', WORK_ID, {
+        participantes: [{ id: 'p1', nome: 'Novo Nome', classeFuncao: 'compositor/autor', link: '', percentual: '100' }],
+      } as any);
+      expect(mockDs._participantsRepo.delete).toHaveBeenCalledWith({ work_id: WORK_ID, tenant_id: TENANT });
+      expect(mockDs._participantsRepo.save).toHaveBeenCalledWith([
+        expect.objectContaining({ nome: 'Novo Nome', percentual: '100' }),
+      ]);
+    });
+
+    it('update() não mexe em participantes quando o DTO não envia o campo', async () => {
+      await service.update(TENANT, 'u1', WORK_ID, { observacoes: 'x' } as any);
+      expect(mockDs._participantsRepo.delete).not.toHaveBeenCalled();
+      expect(mockDs._participantsRepo.save).not.toHaveBeenCalled();
     });
   });
 });
