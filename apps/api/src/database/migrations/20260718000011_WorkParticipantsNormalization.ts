@@ -84,15 +84,15 @@ export class WorkParticipantsNormalization20260718000011 implements MigrationInt
     await queryRunner.query(`
       INSERT INTO work_participants (id, tenant_id, work_id, nome, classe_funcao, link, percentual, ordem)
       SELECT
-        COALESCE(NULLIF(item->>'id', '')::uuid, gen_random_uuid()),
+        COALESCE(NULLIF(elem.item->>'id', '')::uuid, gen_random_uuid()),
         w.tenant_id,
         w.id,
-        item->>'nome',
-        COALESCE(NULLIF(item->>'classeFuncao', ''), 'não_informado'),
-        NULLIF(item->>'link', ''),
-        NULLIF(item->>'percentual', '')::numeric,
-        ordinality - 1
-      FROM works w, jsonb_array_elements(COALESCE(w.participantes, '[]'::jsonb)) WITH ORDINALITY AS item
+        elem.item->>'nome',
+        COALESCE(NULLIF(elem.item->>'classeFuncao', ''), 'não_informado'),
+        NULLIF(elem.item->>'link', ''),
+        NULLIF(elem.item->>'percentual', '')::numeric,
+        elem.ordinality - 1
+      FROM works w, jsonb_array_elements(COALESCE(w.participantes, '[]'::jsonb)) WITH ORDINALITY AS elem(item, ordinality)
       ON CONFLICT (id) DO NOTHING
     `);
 
