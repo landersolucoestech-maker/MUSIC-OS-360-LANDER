@@ -7,7 +7,7 @@
  */
 
 import {
-  Entity, PrimaryGeneratedColumn, Column,
+  Entity, PrimaryGeneratedColumn, PrimaryColumn, Column,
   CreateDateColumn, UpdateDateColumn, Index,
   ManyToOne, OneToMany, ManyToMany, JoinColumn, JoinTable, Relation,
 } from 'typeorm';
@@ -559,9 +559,11 @@ export class WorkEntity {
   @Column({ type: 'uuid' }) tenant_id: string;
   @Column({ type: 'varchar', length: 500 }) titulo: string;
   @Column({ type: 'varchar', length: 255, nullable: true }) compositor: string | null;
+  // `compositores`/`letristas` são derivados de `participantes` (hoje work_participants)
+  // e persistidos para leitura rápida em listas/relatórios sem join — justificativa
+  // técnica (auditoria 2026-07-18). `co_compositores`/`detentores` removidos: sem
+  // writer ativo (migration WorkParticipantsNormalization20260718000011).
   @Column({ type: 'jsonb', nullable: true }) compositores: unknown[] | null;
-  @Column({ type: 'text', nullable: true }) co_compositores: string | null;
-  @Column({ type: 'text', nullable: true }) detentores: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) editora: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) isrc: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) iswc: string | null;
@@ -606,7 +608,8 @@ export class WorkEntity {
   @Column({ type: 'jsonb', nullable: true }) outros_titulos: unknown[] | null;
   @Column({ type: 'jsonb', nullable: true }) referencias_conexas: unknown[] | null;
   @Column({ type: 'text', nullable: true }) letra_completa: string | null;
-  @Column({ type: 'jsonb', nullable: true }) participantes: unknown[] | null;
+  // `participantes` normalizado em work_participants (migration
+  // WorkParticipantsNormalization20260718000011) — não é mais coluna jsonb.
   @Column({ type: 'jsonb', nullable: true }) letristas: unknown[] | null;
   @Column({ type: 'uuid', nullable: true }) projeto_id: string | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) tipo_obra: string | null;
@@ -624,6 +627,32 @@ export class WorkEntity {
 
   @ManyToMany(() => ReleaseEntity, (r) => r.works)
   releases: Relation<ReleaseEntity[]>;
+
+  @OneToMany(() => WorkParticipantEntity, (p) => p.work)
+  participantes_rel: Relation<WorkParticipantEntity[]>;
+}
+
+// ─── Work Participants (migration 20260718000011) ─────────────────────────────
+// Tabela filha normalizada para autoria de `works` — substitui a antiga coluna
+// jsonb `works.participantes`. Participante nunca precisa ser uma entidade
+// cadastrada (o formulário real não vincula a `artists`); `nome` é texto livre.
+@Entity('work_participants')
+@Index(['tenant_id', 'work_id'])
+export class WorkParticipantEntity {
+  @PrimaryColumn('uuid') id: string;
+  @Column({ type: 'uuid' }) tenant_id: string;
+  @Column({ type: 'uuid' }) work_id: string;
+  @Column({ type: 'varchar', length: 255 }) nome: string;
+  @Column({ type: 'varchar', length: 100 }) classe_funcao: string;
+  @Column({ type: 'text', nullable: true }) link: string | null;
+  @Column({ type: 'decimal', precision: 6, scale: 3, nullable: true }) percentual: string | null;
+  @Column({ type: 'integer', default: 0 }) ordem: number;
+  @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
+  @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
+
+  @ManyToOne(() => WorkEntity, (w) => w.participantes_rel, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'work_id' })
+  work: Relation<WorkEntity>;
 }
 
 // ─── Phonograms (fonogramas) ───────────────────────────────────────────────────
@@ -3044,6 +3073,7 @@ export const ALL_ENTITIES = [
   ArtistEntity,
   ArtistPlatformProfileEntity,
   WorkEntity,
+  WorkParticipantEntity,
   PhonogramEntity,
   ContractEntity,
   ContractTemplateEntity,

@@ -45,7 +45,6 @@ interface WorkRow {
   titulo: string;
   compositor: string | null;
   compositores: string | null;
-  co_compositores: string | null;
   editora: string | null;
   isrc: string | null;
   metadata: Record<string, unknown> | null;
@@ -156,7 +155,7 @@ export class CatalogMetadataValidatorAutomation {
   ): Promise<WorkRow | null> {
     if (!this.ds) return null;
     const rows = (await manager.query(
-      `SELECT titulo, compositor, compositores, co_compositores, editora, isrc, metadata
+      `SELECT titulo, compositor, compositores, editora, isrc, metadata
          FROM works
         WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
         LIMIT 1`,
@@ -218,7 +217,7 @@ export class CatalogMetadataValidatorAutomation {
     const input: CatalogMetadataValidatorInput = {
       title: work.titulo,
       type: 'work',
-      composers: toComposers(work.compositor, work.compositores, work.co_compositores),
+      composers: toComposers(work.compositor, work.compositores),
       language: 'pt-BR',
     };
     if (work.editora) input.publisher = work.editora;

@@ -442,9 +442,7 @@ export class ExternalDataExchangeService {
           isrc: w.isrc,
           iswc: w.iswc,
           composers: w.compositores ?? w.compositor,
-          co_composers: w.co_compositores,
           publisher: w.editora,
-          holders: w.detentores,
           genre: w.genero,
         })),
         phonograms: phonograms.map((p) => ({
