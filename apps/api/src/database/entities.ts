@@ -1144,6 +1144,16 @@ export class ReleaseEntity {
   @Column({ type: 'jsonb', default: [] }) plataformas: unknown[];
   @Column({ type: 'text', nullable: true }) capa_url: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  // ── Campos do formulário de Lançamento (1 coluna por campo — nome exato) ─────
+  @Column({ type: 'varchar', length: 50, nullable: true }) isrc_global: string | null;
+  @Column({ type: 'text', nullable: true }) notas_internas: string | null;
+  @Column({ type: 'text', nullable: true }) observacoes: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) gravadora: string | null;
+  @Column({ type: 'varchar', length: 255, nullable: true }) copyright: string | null;
+  @Column({ type: 'varchar', length: 100, nullable: true }) genero: string | null;
+  @Column({ type: 'varchar', length: 50, nullable: true }) idioma: string | null;
+  @Column({ type: 'jsonb', nullable: true }) assets: Record<string, unknown> | null;
+  @Column({ type: 'jsonb', nullable: true }) cronograma: Record<string, unknown> | null;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;

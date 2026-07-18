@@ -85,6 +85,15 @@ export class ReleasesService {
       capa_url:        dto.coverUrl    ?? null,
       status:          ReleaseStatus.DRAFT,
       metadata:        dto.metadata    ?? {},
+      isrc_global:     dto.isrc_global    ?? null,
+      notas_internas:  dto.notas_internas ?? null,
+      observacoes:     dto.observacoes    ?? null,
+      gravadora:       dto.gravadora      ?? null,
+      copyright:       dto.copyright      ?? null,
+      genero:          dto.genero         ?? null,
+      idioma:          dto.idioma         ?? null,
+      assets:          dto.assets         ?? null,
+      cronograma:      dto.cronograma     ?? null,
       created_by:      userId,
       updated_by:      userId,
     });
@@ -136,6 +145,15 @@ export class ReleasesService {
     if (dto.platforms   != null) nonStatusUpdates.plataformas     = dto.platforms;
     if (dto.coverUrl    != null) nonStatusUpdates.capa_url        = dto.coverUrl;
     if (dto.metadata    != null) nonStatusUpdates.metadata        = dto.metadata;
+    if (dto.isrc_global    != null) nonStatusUpdates.isrc_global    = dto.isrc_global;
+    if (dto.notas_internas != null) nonStatusUpdates.notas_internas = dto.notas_internas;
+    if (dto.observacoes    != null) nonStatusUpdates.observacoes    = dto.observacoes;
+    if (dto.gravadora      != null) nonStatusUpdates.gravadora      = dto.gravadora;
+    if (dto.copyright      != null) nonStatusUpdates.copyright      = dto.copyright;
+    if (dto.genero         != null) nonStatusUpdates.genero         = dto.genero;
+    if (dto.idioma         != null) nonStatusUpdates.idioma         = dto.idioma;
+    if (dto.assets         != null) nonStatusUpdates.assets         = dto.assets;
+    if (dto.cronograma     != null) nonStatusUpdates.cronograma     = dto.cronograma;
 
     if (statusChanging) {
       const req = {

@@ -3,11 +3,16 @@
  * Form field values → backend DTO payload (camelCase, matching CreateReleaseDto / UpdateReleaseDto).
  *
  * Backend expects:
- *   POST /releases  → CreateReleaseDto  { title, type, artistId, upc, distributor, releasedAt, platforms, coverUrl, metadata }
+ *   POST /releases  → CreateReleaseDto  { title, type, artistId, upc, distributor, releasedAt,
+ *                                         platforms, coverUrl, metadata, isrc_global, notas_internas,
+ *                                         observacoes, gravadora, copyright, genero, idioma, assets, cronograma }
  *   PATCH /releases → UpdateReleaseDto  (all optional + status: ReleaseStatus)
  *
  * NestJS ValidationPipe runs with { whitelist: true, forbidNonWhitelisted: true } —
  * any snake_case or unknown field causes a 400. Only DTO fields must be sent.
+ *
+ * Regra de produto 2026-07-12 (migration ReleasesFormFieldColumns20260718000010):
+ * cada campo do formulário tem coluna própria — nenhum campo formal vai para `metadata`.
  */
 
 import type { LancamentoFormFields } from "./entity-to-form.mapper";
@@ -64,18 +69,6 @@ export function formToLancamentoPayload(f: LancamentoFormFields, mode: "create" 
   const hasAssets = Object.values(assets).some(Boolean);
   const hasCron = Object.values(cronograma).some(Boolean);
 
-  // Extra fields not in the DTO go into metadata
-  const metadata: Record<string, unknown> = {};
-  if (ns(f.isrcGlobal))        metadata["isrc_global"]    = ns(f.isrcGlobal);
-  if (ns(f.notasInternas))     metadata["notas_internas"] = ns(f.notasInternas);
-  if (ns(f.notasDistribuicao)) metadata["observacoes"]    = ns(f.notasDistribuicao);
-  if (ns(f.gravadora))         metadata["gravadora"]      = ns(f.gravadora);
-  if (ns(f.copyright))         metadata["copyright"]      = ns(f.copyright);
-  if (ns(f.genero))            metadata["genero"]         = ns(f.genero);
-  if (ns(f.idioma))            metadata["idioma"]         = ns(f.idioma);
-  if (hasAssets)               metadata["assets"]         = assets;
-  if (hasCron)                 metadata["cronograma"]     = cronograma;
-
   const payload: Record<string, unknown> = {
     title:       f.titulo.trim(),
     type:        ns(f.tipo) ?? "single",
@@ -93,13 +86,21 @@ export function formToLancamentoPayload(f: LancamentoFormFields, mode: "create" 
   if (releasedAt) payload["releasedAt"]  = releasedAt;
   if (coverUrl)   payload["coverUrl"]    = coverUrl;
 
+  if (ns(f.isrcGlobal))        payload["isrc_global"]    = ns(f.isrcGlobal);
+  if (ns(f.notasInternas))     payload["notas_internas"] = ns(f.notasInternas);
+  if (ns(f.notasDistribuicao)) payload["observacoes"]    = ns(f.notasDistribuicao);
+  if (ns(f.gravadora))         payload["gravadora"]      = ns(f.gravadora);
+  if (ns(f.copyright))         payload["copyright"]      = ns(f.copyright);
+  if (ns(f.genero))            payload["genero"]         = ns(f.genero);
+  if (ns(f.idioma))            payload["idioma"]         = ns(f.idioma);
+  if (hasAssets)               payload["assets"]         = assets;
+  if (hasCron)                 payload["cronograma"]     = cronograma;
+
   // status is not in CreateReleaseDto — only send on edit (backend always sets DRAFT on create)
   if (mode === "edit") {
     const mappedStatus = mapStatus(f.status);
     if (mappedStatus) payload["status"] = mappedStatus;
   }
-
-  if (Object.keys(metadata).length > 0) payload["metadata"] = metadata;
 
   return payload;
 }

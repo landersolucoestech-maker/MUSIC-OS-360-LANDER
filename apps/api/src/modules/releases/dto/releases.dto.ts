@@ -21,6 +21,18 @@ export class CreateReleaseDto {
   @ApiPropertyOptional() @IsOptional() platforms?: string[];
   @ApiPropertyOptional() @IsOptional() coverUrl?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+
+  // ── Campos do formulário (chaves EXATAS do LancamentoFormModal) ──────────────
+  // Regra de produto 2026-07-12: cada campo do form tem a sua coluna física.
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) isrc_global?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notas_internas?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() observacoes?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) gravadora?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) copyright?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(100) genero?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50) idioma?: string;
+  @ApiPropertyOptional() @IsOptional() assets?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() cronograma?: Record<string, unknown>;
 }
 
 export class UpdateReleaseDto extends PartialType(CreateReleaseDto) {
