@@ -164,7 +164,68 @@ formulário rico), `support`, `musicchat`, `integrations`, `auth`,
 `dashboard`/`reports` são meta-módulos de leitura agregada, sem persistência
 própria.
 
-### 6.6 Escopo ainda não verificado nesta rodada (transparência obrigatória)
+### 6.7 Auditoria estrutural programática (entity ↔ migrations, TODAS as 120 entities × 160 tabelas)
+
+Em vez de reler manualmente cada formulário restante — impraticável para o
+volume total do repositório —, foi escrito um script que extrai
+programaticamente (a) toda coluna declarada em cada `@Entity`/`@Column` de
+`entities.ts` e (b) toda coluna efetivamente materializada por
+`CREATE TABLE`/`ALTER TABLE ... ADD COLUMN` em **todas** as 102 migrations
+(92 legadas + 10 financeiras), e comparou os dois conjuntos para as 120
+entities × 160 tabelas físicas totais.
+
+**Resultado: 0 tabelas de entity sem `CREATE TABLE` correspondente; 0
+colunas fantasma** (nenhuma entity declara coluna que nenhuma migration
+materializa) — depois de corrigido um bug do próprio script (não tratava
+`ALTER TABLE IF EXISTS <tabela>`, gerando 1 falso positivo em `leads` que foi
+verificado e descartado por `grep` direto nas migrations).
+
+Colunas **órfãs** (migration cria, entity não mapeia — direção seguramente
+inofensiva, dado não perdido, apenas não exposto via TypeORM neste momento):
+- `financial_category_rules`/`financial_categories`/`financial_category_centers`
+  — módulo legado que a M2 (Fase 13B) substitui deliberadamente; esperado.
+- `artists.banner_url`/`video_apresentacao_url` — removidas por
+  `RemoveArtistBannerVideoFields` (o script não modela `DROP COLUMN`, por
+  isso aparecem como "órfãs"; na prática já não existem após o replay).
+- `audiovisual_projects.financial_project_id` / `marketing_projects.financial_project_id`
+  — **achado real de menor severidade**: a ponte opcional criada pela M9
+  (`FinancialOperationalBridges`, Fase 13A) ainda não foi refletida nas
+  classes `AudiovisualProjectEntity`/`MarketingProjectEntity` — a coluna
+  existirá no banco após o replay, mas o TypeORM não a lê/escreve até a
+  entity ser atualizada (sem impacto agora: nenhum código ainda usa essa
+  ponte). Registrar para a Fase 14 (entities do domínio financeiro).
+- `content_detections.detectado_em`, `domain_event_log.occurred_at`,
+  `lead_interactions.data`, `leads.tags` — colunas físicas existentes sem
+  mapeamento na entity; BAIXA severidade (não são usadas pelos formulários
+  auditados nas rodadas 1-2).
+
+**Enums**: o domínio legado usa majoritariamente `varchar`+`CHECK`/enum
+TypeScript (31 tipos com sufixo Status/Type/Tipo/Kind/Role) em vez de
+`CREATE TYPE ... AS ENUM` nativo do Postgres — só 4 enums nativos legados
+existem (`conversation_status`, `conversation_channel`,
+`message_sender_type`, `form_status`), mais os 9 enums novos do domínio
+financeiro (M1). Isso é uma escolha de arquitetura consistente, não uma
+divergência.
+
+**Sub-entidades de audiovisual** (shots, production-days, team-members,
+deliverables, tasks, assets, approvals): confirmada a existência de DTO de
+criação para as 7 (`CreateShotDto`, `CreateProductionDayDto`,
+`CreateTeamMemberDto`, `CreateDeliverableDto`, `CreateTaskDto`,
+`CreateAssetDto` — todos em `audiovisual.dto.ts`); **não foi feita a
+comparação campo-a-campo com os formulários correspondentes** (mesmo perfil
+de risco do achado #1 em §6.2, já que compartilham autoria/padrão com o
+formulário principal de projeto — candidato prioritário para auditoria
+futura).
+
+**Billing, RBAC/permissions, notifications**: fazem parte das 120 entities
+verificadas estruturalmente acima — **nenhuma apareceu na lista de colunas
+fantasma**, ou seja, estruturalmente consistentes entre entity e migrations.
+Não foi feita auditoria de formulário-a-formulário para esses domínios
+(poucos/nenhum formulário complexo de criação identificado em rodada
+anterior para billing/admin; RBAC e notifications não têm formulário de
+usuário final, são geridos internamente).
+
+### 6.8 Escopo ainda não verificado nesta rodada (transparência obrigatória)
 Sub-entidades do audiovisual além do projeto principal (shots, production
 days, team, deliverables, tasks, assets — 8 tabelas satélite, DTOs não
 localizados/lidos); billing/subscriptions em profundidade; RBAC/permissions;
