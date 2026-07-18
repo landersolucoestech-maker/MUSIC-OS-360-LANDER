@@ -840,3 +840,74 @@ registradas em `musicos360_migrations` no DEV.
 `sxmfeocztlztvpdnxayk` nesta sessão — apenas o ref DEV
 (`rypnevnfipygyhysqpdo`) foi usado, confirmado por `env:check` antes de cada
 conexão.
+
+## 15. Rodada 7 — settings/usuários, M9 e verificação de marketing/tarefas (2026-07-18)
+
+### 15.1 settings/usuários — bug real confirmado e corrigido
+
+`UsuarioFormModal.tsx` → `useUsuarios()` → `storage.update("usuarios", id,
+{full_name, phone, cargo})` → `PATCH /users/:id` → `UpdateUserDto`, que só
+aceitava `fullName`/`role` (camelCase, convenção já consistente neste
+módulo) — `full_name` e `cargo` eram sempre rejeitados pelo whitelist;
+`phone` não tinha coluna nem campo de DTO em nenhuma camada.
+
+Corrigido no hook (traduz `full_name`→`fullName`, `cargo`→`role` no payload
+HTTP, sem mudar a API pública do hook) e no backend (`phone` adicionado em
+`org_members` + DTO + service). Migration `OrgMembersPhoneColumn20260718000014`
+**executada no DEV** — coluna `phone` confirmada fisicamente via
+`information_schema` (107/107 migrations).
+
+**Achado não resolvido nesta rodada, documentado para decisão de produto**:
+os 8 valores de `NIVEIS_ACESSO` do formulário (`admin_master`, `ar_gestao`,
+`financeiro_contabil`, `juridico`, `marketing`, `artista`, `colaborador`,
+`leitor`) foram comparados com os slugs de role reais e seedados no DEV
+(`admin, artist, artista, colaborador, comercial, editor, financial,
+juridico, manager, marketing, marketing_manager, owner, produtor, radio,
+rh_manager, super_admin, tenant_owner, tv, viewer, accounting`). Apenas 4
+batem exatamente (`juridico`, `marketing`, `artista`, `colaborador`); os
+outros 4 não têm correspondência direta (`admin_master`→`admin` ou
+`super_admin`? `financeiro_contabil`→`accounting` ou `financial`?
+`leitor`→`viewer`; `ar_gestao` não tem equivalente algum). Corrigir apenas
+o nome da chave (`cargo`→`role`, já feito) NÃO resolve esse mapeamento —
+requer decisão de produto sobre qual slug real cada opção da UI deve
+assumir. Não resolvido às cegas.
+
+Também identificado, não investigado a fundo nesta rodada: `useUserSettings.ts`/
+`Perfil.tsx` (fluxo de autoatendimento do próprio usuário) grava
+`full_name`/`phone`/`cargo`/`setor` num objeto `metaUpdate` — parece ser um
+caminho de escrita SEPARADO do fluxo administrativo (`Usuarios.tsx`/
+`UsuarioFormModal.tsx`) já corrigido aqui, possivelmente via metadata do
+Supabase Auth em vez de `org_members`. Fica como escopo não coberto.
+
+### 15.2 M9 — financial_project_id mapeado
+
+`FinancialOperationalBridges20260718000009` (já executada) criou
+`financial_project_id` (FK composta tenant-safe, `RESTRICT`) em
+`audiovisual_projects` e `marketing_projects`, mas nenhuma das duas
+entities TypeORM mapeava a coluna — phantom column confirmada pelo script
+de auditoria estrutural. Corrigido (mapeamento puro, sem migration nova —
+a coluna já existe desde M9). Nenhum campo de DTO exposto: a própria
+migration documenta que não há associação automática (FK existe para uma
+integração futura definir).
+
+### 15.3 marketing/tarefas — investigado, nenhum bug encontrado
+
+`marketing_project_id` já está corretamente mapeado em entity + DTO
+(`CreateMarketingTaskDto.marketingProjectId`). `task_key` é gerado
+internamente pelo backend (`manual:${randomUUID()}` em
+`marketing-tasks.service.ts`, ou derivado de templates em
+`marketing-projects.service.ts`/`marketing-strategy.service.ts`) — não é
+campo de formulário, por isso corretamente ausente do DTO. Busca exaustiva
+não encontrou nenhum formulário interativo de criação de tarefa de
+marketing no frontend (tarefas são geradas a partir de templates/
+estratégias, não digitadas por um usuário) — não há, portanto, o padrão de
+bug "formulário envia campo que o DTO rejeita" neste domínio. Nenhuma
+correção necessária; não fabricada.
+
+### 15.4 Migrations executadas nesta rodada
+
+`20260718000014_OrgMembersPhoneColumn` — executada e confirmada
+fisicamente. Nenhuma outra migration necessária (financial_project_id já
+existia desde M9; marketing/tarefas não precisava de mudança).
+
+**Contagem final de migrations: 107** (106 da Rodada 6 + 1 nova).
