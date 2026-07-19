@@ -1,0 +1,203 @@
+import { MigrationInterface, QueryRunner } from 'typeorm';
+
+/**
+ * Reconstrução física de `marketing_tasks` — auditoria 2026-07-19.
+ *
+ * Ordem canônica seguindo `CreateMarketingTaskDto` (único contrato real —
+ * criado/editado via `/marketing/tasks`, formulário genérico `MarketingFormModal`
+ * com `taskCreateFields`/`taskEditFields` em Tarefas.tsx): marketing_project_id
+ * (FK do pai) → title → description → status → priority → kind → assigned_to
+ * → due_date → dependencies → metrics. Duas correções em relação à ordem
+ * física anterior:
+ *
+ * 1. `task_key` (gerada pelo próprio service — `manual:${randomUUID()}`,
+ *    nunca vem do formulário/DTO) estava entre marketing_project_id e title;
+ *    é campo de controle técnico, não funcional — movida para junto de
+ *    `metadata`.
+ * 2. `completed_at` (setado pelo service quando status muda para
+ *    completed/concluida — MarketingTasksService.update) estava depois de
+ *    updated_at; é derivado de negócio, não auditoria — movido para logo
+ *    após `status`, mesmo padrão de audiovisual_projects.completed_at.
+ */
+export class RebuildMarketingTasksInCanonicalFormOrder20260719000009 implements MigrationInterface {
+  name = 'RebuildMarketingTasksInCanonicalFormOrder20260719000009';
+
+  private readonly newColumns = `
+    id                     uuid NOT NULL DEFAULT gen_random_uuid(),
+    tenant_id              uuid NOT NULL,
+    marketing_project_id   uuid NOT NULL,
+    title                  varchar(500) NOT NULL,
+    description            text,
+    status                 varchar(50) NOT NULL DEFAULT 'pending',
+    completed_at           timestamptz,
+    priority               varchar(20) NOT NULL DEFAULT 'normal',
+    kind                   varchar(80),
+    assigned_to            varchar(255),
+    due_date               timestamptz,
+    dependencies           jsonb NOT NULL DEFAULT '[]'::jsonb,
+    metrics                jsonb NOT NULL DEFAULT '{}'::jsonb,
+    task_key               varchar(120) NOT NULL,
+    metadata               jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_at             timestamptz NOT NULL DEFAULT now(),
+    updated_at             timestamptz NOT NULL DEFAULT now(),
+    created_by             varchar(255),
+    updated_by             varchar(255),
+    deleted_at             timestamptz
+  `;
+
+  private readonly copyColumns = [
+    'id', 'tenant_id', 'marketing_project_id', 'title', 'description', 'status', 'completed_at',
+    'priority', 'kind', 'assigned_to', 'due_date', 'dependencies', 'metrics', 'task_key',
+    'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ].join(', ');
+
+  private readonly statusCheck =
+    `CHECK (((status)::text = ANY ((ARRAY['pending'::character varying, 'in_progress'::character varying, ` +
+    `'review'::character varying, 'blocked'::character varying, 'done'::character varying, ` +
+    `'cancelled'::character varying])::text[])))`;
+
+  private readonly priorityCheck =
+    `CHECK (((priority)::text = ANY ((ARRAY['low'::character varying, 'normal'::character varying, ` +
+    `'high'::character varying, 'urgent'::character varying])::text[])))`;
+
+  public async up(queryRunner: QueryRunner): Promise<void> {
+    const [{ total }] = await queryRunner.query(`SELECT count(*)::int AS total FROM marketing_tasks`);
+
+    await queryRunner.query(`CREATE TABLE marketing_tasks_new (${this.newColumns})`);
+    await queryRunner.query(`INSERT INTO marketing_tasks_new (${this.copyColumns}) SELECT ${this.copyColumns} FROM marketing_tasks`);
+
+    const [{ c: newCount }] = await queryRunner.query(`SELECT count(*)::int AS c FROM marketing_tasks_new`);
+    if (Number(newCount) !== Number(total)) {
+      throw new Error(`RebuildMarketingTasksInCanonicalFormOrder: contagem divergente (original=${total}, nova=${newCount}) — abortada.`);
+    }
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks_new ADD CONSTRAINT marketing_tasks_new_pkey PRIMARY KEY (id)`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_new ADD CONSTRAINT chk_marketing_tasks_status_new ${this.statusCheck}`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_new ADD CONSTRAINT chk_marketing_tasks_priority_new ${this.priorityCheck}`);
+
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_tenant_new ON marketing_tasks_new (tenant_id)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_project_new ON marketing_tasks_new (tenant_id, marketing_project_id)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_status_new ON marketing_tasks_new (tenant_id, status)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_due_new ON marketing_tasks_new (tenant_id, due_date)`);
+    await queryRunner.query(`CREATE UNIQUE INDEX uq_marketing_tasks_project_key_new ON marketing_tasks_new (tenant_id, marketing_project_id, task_key)`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME TO marketing_tasks_old`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_old RENAME CONSTRAINT marketing_tasks_pkey TO marketing_tasks_old_pkey`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_old RENAME CONSTRAINT chk_marketing_tasks_status TO chk_marketing_tasks_status_old`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_old RENAME CONSTRAINT chk_marketing_tasks_priority TO chk_marketing_tasks_priority_old`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_tenant RENAME TO idx_marketing_tasks_tenant_old`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_project RENAME TO idx_marketing_tasks_project_old`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_status RENAME TO idx_marketing_tasks_status_old`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_due RENAME TO idx_marketing_tasks_due_old`);
+    await queryRunner.query(`ALTER INDEX uq_marketing_tasks_project_key RENAME TO uq_marketing_tasks_project_key_old`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks_new RENAME TO marketing_tasks`);
+    await queryRunner.query(`ALTER INDEX marketing_tasks_new_pkey RENAME TO marketing_tasks_pkey`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME CONSTRAINT chk_marketing_tasks_status_new TO chk_marketing_tasks_status`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME CONSTRAINT chk_marketing_tasks_priority_new TO chk_marketing_tasks_priority`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_tenant_new RENAME TO idx_marketing_tasks_tenant`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_project_new RENAME TO idx_marketing_tasks_project`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_status_new RENAME TO idx_marketing_tasks_status`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_due_new RENAME TO idx_marketing_tasks_due`);
+    await queryRunner.query(`ALTER INDEX uq_marketing_tasks_project_key_new RENAME TO uq_marketing_tasks_project_key`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks ENABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks FORCE ROW LEVEL SECURITY`);
+    await queryRunner.query(`
+      CREATE POLICY tenant_isolation ON marketing_tasks
+        AS PERMISSIVE FOR ALL TO authenticated
+        USING (tenant_id = private_get_tenant_id()) WITH CHECK (tenant_id = private_get_tenant_id())
+    `);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks OWNER TO musicos_migrator`);
+    await queryRunner.query(`GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON marketing_tasks TO musicos_migrator`);
+
+    await queryRunner.query(`DROP TABLE marketing_tasks_old`);
+    await queryRunner.query(`ANALYZE marketing_tasks`);
+  }
+
+  private readonly originalColumns = `
+    id                     uuid NOT NULL DEFAULT gen_random_uuid(),
+    tenant_id              uuid NOT NULL,
+    marketing_project_id   uuid NOT NULL,
+    task_key               varchar(120) NOT NULL,
+    title                  varchar(500) NOT NULL,
+    description            text,
+    status                 varchar(50) NOT NULL DEFAULT 'pending',
+    priority               varchar(20) NOT NULL DEFAULT 'normal',
+    kind                   varchar(80),
+    assigned_to            varchar(255),
+    due_date               timestamptz,
+    dependencies           jsonb NOT NULL DEFAULT '[]'::jsonb,
+    metrics                jsonb NOT NULL DEFAULT '{}'::jsonb,
+    metadata               jsonb NOT NULL DEFAULT '{}'::jsonb,
+    created_by             varchar(255),
+    updated_by             varchar(255),
+    created_at             timestamptz NOT NULL DEFAULT now(),
+    updated_at             timestamptz NOT NULL DEFAULT now(),
+    completed_at           timestamptz,
+    deleted_at             timestamptz
+  `;
+
+  private readonly restoreCopyColumns = [
+    'id', 'tenant_id', 'marketing_project_id', 'task_key', 'title', 'description', 'status',
+    'priority', 'kind', 'assigned_to', 'due_date', 'dependencies', 'metrics', 'metadata',
+    'created_by', 'updated_by', 'created_at', 'updated_at', 'completed_at', 'deleted_at',
+  ].join(', ');
+
+  public async down(queryRunner: QueryRunner): Promise<void> {
+    const [{ total }] = await queryRunner.query(`SELECT count(*)::int AS total FROM marketing_tasks`);
+
+    await queryRunner.query(`CREATE TABLE marketing_tasks_restore (${this.originalColumns})`);
+    await queryRunner.query(`INSERT INTO marketing_tasks_restore (${this.restoreCopyColumns}) SELECT ${this.restoreCopyColumns} FROM marketing_tasks`);
+
+    const [{ c: restoredCount }] = await queryRunner.query(`SELECT count(*)::int AS c FROM marketing_tasks_restore`);
+    if (Number(restoredCount) !== Number(total)) {
+      throw new Error(`RebuildMarketingTasksInCanonicalFormOrder.down: contagem divergente (original=${total}, restaurada=${restoredCount}) — abortado.`);
+    }
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks_restore ADD CONSTRAINT marketing_tasks_restore_pkey PRIMARY KEY (id)`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_restore ADD CONSTRAINT chk_marketing_tasks_status_restore ${this.statusCheck}`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_restore ADD CONSTRAINT chk_marketing_tasks_priority_restore ${this.priorityCheck}`);
+
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_tenant_restore ON marketing_tasks_restore (tenant_id)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_project_restore ON marketing_tasks_restore (tenant_id, marketing_project_id)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_status_restore ON marketing_tasks_restore (tenant_id, status)`);
+    await queryRunner.query(`CREATE INDEX idx_marketing_tasks_due_restore ON marketing_tasks_restore (tenant_id, due_date)`);
+    await queryRunner.query(`CREATE UNIQUE INDEX uq_marketing_tasks_project_key_restore ON marketing_tasks_restore (tenant_id, marketing_project_id, task_key)`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME TO marketing_tasks_canonical`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_canonical RENAME CONSTRAINT marketing_tasks_pkey TO marketing_tasks_canonical_pkey`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_canonical RENAME CONSTRAINT chk_marketing_tasks_status TO chk_marketing_tasks_status_canonical`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks_canonical RENAME CONSTRAINT chk_marketing_tasks_priority TO chk_marketing_tasks_priority_canonical`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_tenant RENAME TO idx_marketing_tasks_tenant_canonical`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_project RENAME TO idx_marketing_tasks_project_canonical`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_status RENAME TO idx_marketing_tasks_status_canonical`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_due RENAME TO idx_marketing_tasks_due_canonical`);
+    await queryRunner.query(`ALTER INDEX uq_marketing_tasks_project_key RENAME TO uq_marketing_tasks_project_key_canonical`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks_restore RENAME TO marketing_tasks`);
+    await queryRunner.query(`ALTER INDEX marketing_tasks_restore_pkey RENAME TO marketing_tasks_pkey`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME CONSTRAINT chk_marketing_tasks_status_restore TO chk_marketing_tasks_status`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks RENAME CONSTRAINT chk_marketing_tasks_priority_restore TO chk_marketing_tasks_priority`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_tenant_restore RENAME TO idx_marketing_tasks_tenant`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_project_restore RENAME TO idx_marketing_tasks_project`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_status_restore RENAME TO idx_marketing_tasks_status`);
+    await queryRunner.query(`ALTER INDEX idx_marketing_tasks_due_restore RENAME TO idx_marketing_tasks_due`);
+    await queryRunner.query(`ALTER INDEX uq_marketing_tasks_project_key_restore RENAME TO uq_marketing_tasks_project_key`);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks ENABLE ROW LEVEL SECURITY`);
+    await queryRunner.query(`ALTER TABLE marketing_tasks FORCE ROW LEVEL SECURITY`);
+    await queryRunner.query(`
+      CREATE POLICY tenant_isolation ON marketing_tasks
+        AS PERMISSIVE FOR ALL TO authenticated
+        USING (tenant_id = private_get_tenant_id()) WITH CHECK (tenant_id = private_get_tenant_id())
+    `);
+
+    await queryRunner.query(`ALTER TABLE marketing_tasks OWNER TO musicos_migrator`);
+    await queryRunner.query(`GRANT SELECT, INSERT, UPDATE, DELETE, TRUNCATE, REFERENCES, TRIGGER ON marketing_tasks TO musicos_migrator`);
+
+    await queryRunner.query(`DROP TABLE marketing_tasks_canonical`);
+    await queryRunner.query(`ANALYZE marketing_tasks`);
+  }
+}

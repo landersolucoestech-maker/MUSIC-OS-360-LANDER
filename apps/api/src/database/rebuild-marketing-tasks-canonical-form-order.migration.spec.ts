@@ -1,0 +1,58 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `marketing_tasks` na ordem de CreateMarketingTaskDto/taskCreateFields.
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000009_RebuildMarketingTasksInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildMarketingTasksInCanonicalFormOrder20260719000009', () => {
+  it('marketing_project_id (FK do pai) vem logo após id/tenant_id, seguido de title', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const idIdx = block.indexOf('id ');
+    const tenantIdx = block.indexOf('tenant_id ');
+    const parentIdx = block.indexOf('marketing_project_id');
+    const titleIdx = block.indexOf('title ');
+    expect(tenantIdx).toBeGreaterThan(idIdx);
+    expect(parentIdx).toBeGreaterThan(tenantIdx);
+    expect(titleIdx).toBeGreaterThan(parentIdx);
+  });
+
+  it('completed_at (derivado de negócio) vem logo após status, e task_key (controle, gerado pelo service) fica junto de metadata', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const statusIdx = block.search(/\bstatus\s+varchar/);
+    const completedIdx = block.indexOf('completed_at');
+    const dependenciesIdx = block.indexOf('dependencies');
+    const taskKeyIdx = block.indexOf('task_key');
+    const metadataIdx = block.search(/\bmetadata\s+jsonb/);
+    expect(completedIdx).toBeGreaterThan(statusIdx);
+    expect(completedIdx - statusIdx).toBeLessThan(80);
+    expect(taskKeyIdx).toBeGreaterThan(dependenciesIdx);
+    expect(metadataIdx).toBeGreaterThan(taskKeyIdx);
+  });
+
+  it('nenhum campo funcional aparece depois de metadata/created_at/updated_at/deleted_at', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const deletedAtIdx = block.indexOf('deleted_at');
+    const afterDeletedAt = block.slice(deletedAtIdx + 'deleted_at'.length).trim();
+    expect(afterDeletedAt.replace(/timestamptz,?/, '').trim()).toBe('');
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria os 2 CHECK constraints, o índice único (tenant/project/task_key), RLS + policy e possui down() honesto', () => {
+    expect(migrationSrc).toMatch(/chk_marketing_tasks_status/);
+    expect(migrationSrc).toMatch(/chk_marketing_tasks_priority/);
+    expect(migrationSrc).toMatch(/uq_marketing_tasks_project_key/);
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

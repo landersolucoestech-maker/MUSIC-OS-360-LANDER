@@ -100,6 +100,17 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'descricao', 'observacoes', 'artista_id', 'metadata', 'created_at', 'updated_at',
     'created_by', 'updated_by', 'deleted_at',
   ],
+  marketing_projects: [
+    'id', 'tenant_id', 'type', 'title', 'description', 'status', 'priority', 'source_project_id',
+    'artist_id', 'company_id', 'label_id', 'publisher_id', 'studio_id', 'event_id', 'campaign_id',
+    'financial_project_id', 'starts_at', 'ends_at', 'goals', 'metrics', 'context', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
+  marketing_tasks: [
+    'id', 'tenant_id', 'marketing_project_id', 'title', 'description', 'status', 'completed_at',
+    'priority', 'kind', 'assigned_to', 'due_date', 'dependencies', 'metrics', 'task_key',
+    'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
