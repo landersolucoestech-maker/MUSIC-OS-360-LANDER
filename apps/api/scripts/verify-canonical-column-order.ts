@@ -52,6 +52,19 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'id', 'tenant_id', 'work_id', 'nome', 'classe_funcao', 'link', 'percentual', 'ordem',
     'created_at', 'updated_at',
   ],
+  phonograms: [
+    'id', 'tenant_id', 'obra_id', 'titulo', 'cod_entidade', 'cod_ecad', 'agregadora', 'isrc',
+    'isrc_pais', 'isrc_registrante', 'isrc_ano', 'isrc_designacao', 'criada_por_ia',
+    'instrumental', 'emissao', 'gravacao_original', 'data_lancamento', 'duracao', 'duracao_min',
+    'duracao_seg', 'genero_musical', 'midia', 'nacional', 'pub_simultanea', 'pais_origem',
+    'pais_publicacao', 'classificacao', 'status', 'participacao', 'arquivo_audio', 'observacoes',
+    'artista_id', 'tipo', 'compositores', 'interpretes', 'produtores', 'gravadora',
+    'version_title', 'recording_date', 'release_date', 'phonographic_producer_id',
+    'main_artist_id', 'label_id', 'copyright_year', 'copyright_owner', 'country_of_recording',
+    'audio_file_id', 'duration_seconds', 'registry_status', 'external_reference',
+    'origem_externa', 'origem_externa_id', 'origem_externa_sincronizado_em', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
