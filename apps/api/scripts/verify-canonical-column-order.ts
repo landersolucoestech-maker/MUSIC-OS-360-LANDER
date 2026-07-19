@@ -188,6 +188,19 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'escalation_rules', 'notification_channels', 'supervisor_user_id', 'manager_user_id',
     'created_at', 'updated_at', 'updated_by',
   ],
+  campaigns: [
+    'id', 'tenant_id', 'nome', 'tipo', 'status', 'objetivo', 'orcamento', 'data_inicio',
+    'data_fim', 'artista_id', 'metadata', 'created_at', 'updated_at', 'created_by',
+    'updated_by', 'deleted_at',
+  ],
+  campaign_tasks: [
+    'id', 'tenant_id', 'campaign_id', 'title', 'description', 'status', 'priority',
+    'assigned_to', 'due_date', 'completed_at', 'created_at', 'updated_at', 'created_by',
+  ],
+  campaign_assets: [
+    'id', 'tenant_id', 'campaign_id', 'name', 'asset_type', 'file_url', 'description',
+    'metadata', 'created_at', 'created_by', 'deleted_at',
+  ],
 };
 
 async function main() {
