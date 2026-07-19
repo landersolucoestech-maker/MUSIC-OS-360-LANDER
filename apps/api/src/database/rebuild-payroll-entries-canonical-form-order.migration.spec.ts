@@ -1,0 +1,76 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `payroll_entries` — segue FolhaPagamentoFormModal.tsx. Pares mirrorados
+ * funcionario_id/employee_id e mes_referencia/competencia; arquivo_url/
+ * pago_em mantidos como zona legada (DTO-aceitos, sem campo visual atual).
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000019_RebuildPayrollEntriesInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildPayrollEntriesInCanonicalFormOrder20260719000019', () => {
+  const block = () => migrationSrc.split('newColumns = `')[1].split('`;')[0];
+
+  it('funcionario_id/employee_id e mes_referencia/competencia ficam em pares adjacentes (campo real primeiro)', () => {
+    const b = block();
+    const funcionarioIdx = b.indexOf('funcionario_id');
+    const employeeIdx = b.indexOf('employee_id');
+    const mesRefIdx = b.indexOf('mes_referencia');
+    const competenciaIdx = b.indexOf('competencia');
+    expect(employeeIdx).toBeGreaterThan(funcionarioIdx);
+    expect(competenciaIdx).toBeGreaterThan(mesRefIdx);
+    expect(mesRefIdx).toBeGreaterThan(employeeIdx);
+  });
+
+  it('bonus/data_pagamento/observacoes vêm em ordem visual do form, antes de arquivo_url/pago_em (legado)', () => {
+    const b = block();
+    const bonusIdx = b.indexOf('bonus');
+    const salarioLiquidoIdx = b.indexOf('salario_liquido');
+    const dataPagamentoIdx = b.indexOf('data_pagamento');
+    const arquivoUrlIdx = b.indexOf('arquivo_url');
+    const pagoEmIdx = b.indexOf('pago_em');
+    expect(salarioLiquidoIdx).toBeGreaterThan(bonusIdx);
+    expect(dataPagamentoIdx).toBeGreaterThan(salarioLiquidoIdx);
+    expect(arquivoUrlIdx).toBeGreaterThan(dataPagamentoIdx);
+    expect(pagoEmIdx).toBeGreaterThan(arquivoUrlIdx);
+  });
+
+  it('bloco de auditoria é created_at -> updated_at -> deleted_at (sem created_by/updated_by, lacuna preexistente)', () => {
+    const b = block();
+    const createdAtIdx = b.indexOf('created_at');
+    const updatedAtIdx = b.indexOf('updated_at');
+    const deletedAtIdx = b.indexOf('deleted_at');
+    expect(updatedAtIdx).toBeGreaterThan(createdAtIdx);
+    expect(deletedAtIdx).toBeGreaterThan(updatedAtIdx);
+    expect(b).not.toMatch(/created_by|updated_by/);
+    expect(migrationSrc.split('originalColumns = `')[1].split('`;')[0]).not.toMatch(/created_by|updated_by/);
+  });
+
+  it('não remove nenhuma coluna (reconstrução pura de ordem)', () => {
+    const newBlock = block();
+    const origBlock = migrationSrc.split('originalColumns = `')[1].split('`;')[0];
+    const extractCols = (b: string) => [...b.matchAll(/^\s*(\w+)\s+/gm)].map((m) => m[1]);
+    const newCols = new Set(extractCols(newBlock));
+    const origCols = new Set(extractCols(origBlock));
+    expect(newCols.size).toBe(origCols.size);
+    for (const col of origCols) expect(newCols.has(col)).toBe(true);
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria FK fk_payroll_entries_employee_id (ON DELETE RESTRICT) e recria RLS + policies, com down() honesto', () => {
+    expect(migrationSrc.match(/FOREIGN KEY \(employee_id\) REFERENCES employees\(id\) ON DELETE RESTRICT/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/CREATE POLICY tenant_isolation/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc.match(/CREATE POLICY super_admin_full_access/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

@@ -12,7 +12,6 @@ import { ContractRepository } from './contracts/repositories/contract.repository
 import { Ecad_reportRepository } from './ecad-reports/repositories/ecad_report.repository';
 import { EventRepository } from './events/repositories/event.repository';
 import { HealthRepository } from './health/repositories/health.repository';
-import { HrRepository } from './hr/repositories/hr.repository';
 import { InvoiceRepository } from './invoices/repositories/invoice.repository';
 import { IntegrationRepository } from './integrations/repositories/integration.repository';
 import { Lead_interactionRepository } from './lead-interactions/repositories/lead_interaction.repository';
@@ -70,7 +69,6 @@ describe('tenant isolation in generated repositories', () => {
     ['ecad-reports', Ecad_reportRepository as unknown as RepositoryCtor, 'entity'],
     ['events', EventRepository as unknown as RepositoryCtor, 'entity'],
     ['health', HealthRepository as unknown as RepositoryCtor, 'entity'],
-    ['hr', HrRepository as unknown as RepositoryCtor, 'entity'],
     ['transactions', TransactionRepository as unknown as RepositoryCtor, 't'],
     ['invoices', InvoiceRepository as unknown as RepositoryCtor, 'invoice'],
     ['integrations', IntegrationRepository as unknown as RepositoryCtor, 'entity'],

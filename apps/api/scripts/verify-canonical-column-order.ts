@@ -159,6 +159,23 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'plataforma', 'url_infracao', 'motivo', 'data_identificacao', 'descricao', 'evidencias',
     'observacoes', 'metadata', 'created_at', 'updated_at', 'created_by', 'deleted_at',
   ],
+  inventory_items: [
+    'id', 'tenant_id', 'nome', 'categoria', 'quantidade', 'valor_unitario', 'localizacao',
+    'status', 'responsavel', 'setor', 'data_entrada', 'local_compra', 'numero_nota_fiscal',
+    'observacoes', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
+  employees: [
+    'id', 'tenant_id', 'nome_completo', 'nome', 'cpf_encrypted', 'rg', 'data_nascimento',
+    'email_encrypted', 'telefone_encrypted', 'endereco', 'cargo', 'setor', 'departamento',
+    'tipo_contrato', 'data_admissao', 'data_demissao', 'salario_base', 'salario', 'status',
+    'observacoes', 'vinculo_usuario_id', 'documentos', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'deleted_at',
+  ],
+  payroll_entries: [
+    'id', 'tenant_id', 'funcionario_id', 'employee_id', 'mes_referencia', 'competencia',
+    'salario_bruto', 'descontos', 'bonus', 'salario_liquido', 'data_pagamento', 'status',
+    'observacoes', 'arquivo_url', 'pago_em', 'metadata', 'created_at', 'updated_at', 'deleted_at',
+  ],
 };
 
 async function main() {
