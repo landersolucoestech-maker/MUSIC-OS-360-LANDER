@@ -1,0 +1,90 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `leave_requests` — segue FeriasAusenciasFormModal.tsx. Par mirrorado
+ * funcionario_id/employee_id; motivo/documento_url mantidos como zona
+ * legada (DTO-aceitos, sem campo visual atual).
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000025_RebuildLeaveRequestsInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildLeaveRequestsInCanonicalFormOrder20260719000025', () => {
+  const block = () => migrationSrc.split('newColumns = `')[1].split('`;')[0];
+
+  it('funcionario_id/employee_id ficam adjacentes (campo real primeiro) logo após tenant_id', () => {
+    const b = block();
+    const tenantIdx = b.indexOf('tenant_id');
+    const funcionarioIdx = b.indexOf('funcionario_id');
+    const employeeIdx = b.indexOf('employee_id');
+    expect(funcionarioIdx).toBeGreaterThan(tenantIdx);
+    expect(employeeIdx).toBeGreaterThan(funcionarioIdx);
+  });
+
+  it('segue a ordem visual do form: tipo -> data_inicio -> data_fim -> dias_totais -> status -> aprovado_por -> observacoes', () => {
+    const b = block();
+    const tipoIdx = b.search(/\btipo\s+varchar/);
+    const inicioIdx = b.indexOf('data_inicio');
+    const fimIdx = b.indexOf('data_fim');
+    const diasIdx = b.indexOf('dias_totais');
+    const statusIdx = b.search(/\bstatus\s+varchar/);
+    const aprovadoIdx = b.indexOf('aprovado_por');
+    const obsIdx = b.indexOf('observacoes');
+    expect(inicioIdx).toBeGreaterThan(tipoIdx);
+    expect(fimIdx).toBeGreaterThan(inicioIdx);
+    expect(diasIdx).toBeGreaterThan(fimIdx);
+    expect(statusIdx).toBeGreaterThan(diasIdx);
+    expect(aprovadoIdx).toBeGreaterThan(statusIdx);
+    expect(obsIdx).toBeGreaterThan(aprovadoIdx);
+  });
+
+  it('motivo/documento_url (zona legada, sem campo visual) vêm depois de observacoes e antes de metadata', () => {
+    const b = block();
+    const obsIdx = b.indexOf('observacoes');
+    const motivoIdx = b.indexOf('motivo');
+    const docIdx = b.indexOf('documento_url');
+    const metadataIdx = b.indexOf('metadata');
+    expect(motivoIdx).toBeGreaterThan(obsIdx);
+    expect(docIdx).toBeGreaterThan(motivoIdx);
+    expect(metadataIdx).toBeGreaterThan(docIdx);
+  });
+
+  it('bloco de auditoria é created_at -> updated_at -> created_by -> deleted_at (sem updated_by, lacuna preexistente)', () => {
+    const b = block();
+    const createdAtIdx = b.indexOf('created_at');
+    const updatedAtIdx = b.indexOf('updated_at');
+    const createdByIdx = b.indexOf('created_by');
+    const deletedAtIdx = b.indexOf('deleted_at');
+    expect(updatedAtIdx).toBeGreaterThan(createdAtIdx);
+    expect(createdByIdx).toBeGreaterThan(updatedAtIdx);
+    expect(deletedAtIdx).toBeGreaterThan(createdByIdx);
+    expect(b).not.toMatch(/updated_by/);
+  });
+
+  it('não remove nenhuma coluna (reconstrução pura de ordem)', () => {
+    const newBlock = block();
+    const origBlock = migrationSrc.split('originalColumns = `')[1].split('`;')[0];
+    const extractCols = (b: string) => [...b.matchAll(/^\s*(\w+)\s+/gm)].map((m) => m[1]);
+    const newCols = new Set(extractCols(newBlock));
+    const origCols = new Set(extractCols(origBlock));
+    expect(newCols.size).toBe(origCols.size);
+    for (const col of origCols) expect(newCols.has(col)).toBe(true);
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria FK fk_leave_requests_employee_id (ON DELETE RESTRICT) e RLS + as duas policies, com down() honesto', () => {
+    expect(migrationSrc.match(/FOREIGN KEY \(employee_id\) REFERENCES employees\(id\) ON DELETE RESTRICT/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/CREATE POLICY tenant_isolation/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc.match(/CREATE POLICY super_admin_full_access/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

@@ -201,6 +201,11 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'id', 'tenant_id', 'campaign_id', 'name', 'asset_type', 'file_url', 'description',
     'metadata', 'created_at', 'created_by', 'deleted_at',
   ],
+  leave_requests: [
+    'id', 'tenant_id', 'funcionario_id', 'employee_id', 'tipo', 'data_inicio', 'data_fim',
+    'dias_totais', 'status', 'aprovado_por', 'observacoes', 'motivo', 'documento_url',
+    'metadata', 'created_at', 'updated_at', 'created_by', 'deleted_at',
+  ],
 };
 
 async function main() {
