@@ -176,6 +176,11 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'salario_bruto', 'descontos', 'bonus', 'salario_liquido', 'data_pagamento', 'status',
     'observacoes', 'arquivo_url', 'pago_em', 'metadata', 'created_at', 'updated_at', 'deleted_at',
   ],
+  org_members: [
+    'id', 'tenant_id', 'auth_user_id', 'email', 'full_name', 'phone', 'role', 'is_active',
+    'org_id', 'role_id', 'department_id', 'position_id', 'joined_at',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
