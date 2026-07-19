@@ -139,6 +139,21 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'country', 'ipi_cae', 'society', 'society_member_code', 'holder_type', 'metadata',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  shares: [
+    'id', 'tenant_id', 'obra_id', 'fonograma_id', 'titular_nome', 'titular_doc', 'papel',
+    'rights_holder_id', 'publisher_id', 'role', 'territory', 'instrument', 'credited_name',
+    'is_primary', 'is_featured', 'start_date', 'end_date', 'share_type', 'percentual', 'status',
+    'acordo_notas', 'acordo_url', 'observacoes', 'direcao', 'lancamento_id', 'nome_musica',
+    'detentor', 'destinatario', 'tipo', 'artista_externo', 'artista_projeto_id', 'artista_id',
+    'pagador', 'pagador_contato', 'origem_acordo', 'data_prevista', 'documentos', 'versao',
+    'historico', 'metadata', 'created_at', 'updated_at', 'deleted_at',
+  ],
+  licenses: [
+    'id', 'tenant_id', 'titulo', 'obra_id', 'obra_musical', 'artista', 'cliente_id', 'cliente',
+    'projeto', 'tipo', 'tipo_uso', 'midia_destino', 'territorio', 'status', 'data_inicio',
+    'data_fim', 'valor', 'moeda', 'observacoes', 'remuneration_type', 'artista_id', 'created_at',
+    'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
