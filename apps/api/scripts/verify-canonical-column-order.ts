@@ -111,6 +111,15 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'priority', 'kind', 'assigned_to', 'due_date', 'dependencies', 'metrics', 'task_key',
     'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  clients: [
+    'id', 'tenant_id', 'tipo_pessoa', 'categoria', 'perfil', 'nome', 'foto', 'nome_pf',
+    'razao_social', 'nome_fantasia', 'cpf_cnpj_encrypted', 'email_encrypted',
+    'telefone_encrypted', 'instagram', 'funcao', 'logradouro', 'numero', 'complemento',
+    'bairro', 'cidade', 'estado', 'cep', 'endereco_completo', 'status_contato',
+    'prioridade_contato', 'responsavel_nome', 'responsavel_cargo', 'responsavel_email',
+    'responsavel_telefone', 'attachments', 'observacoes', 'interacoes', 'status', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
