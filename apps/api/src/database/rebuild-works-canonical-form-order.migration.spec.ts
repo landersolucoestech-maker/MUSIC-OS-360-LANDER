@@ -1,0 +1,60 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de `works`
+ * na ordem do formulário real (ObraFormModal) — projeto_id é o primeiro
+ * campo funcional (vínculo de projeto aparece antes de "Dados Principais da
+ * Obra" na árvore de renderização real).
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000002_RebuildWorksInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildWorksInCanonicalFormOrder20260719000002', () => {
+  it('projeto_id é o primeiro campo funcional após id/tenant_id (vínculo de projeto é a 1ª seção do form)', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const idIdx = block.indexOf('id ');
+    const tenantIdx = block.indexOf('tenant_id ');
+    const projetoIdx = block.indexOf('projeto_id ');
+    const codEntidadeIdx = block.indexOf('cod_entidade ');
+    const tituloIdx = block.indexOf('titulo ');
+    expect(tenantIdx).toBeGreaterThan(idIdx);
+    expect(projetoIdx).toBeGreaterThan(tenantIdx);
+    expect(codEntidadeIdx).toBeGreaterThan(projetoIdx);
+    expect(tituloIdx).toBeGreaterThan(codEntidadeIdx);
+  });
+
+  it('nenhum campo funcional aparece depois de metadata/created_at/updated_at/deleted_at', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const metadataIdx = block.indexOf('metadata ');
+    const deletedAtIdx = block.indexOf('deleted_at ');
+    expect(deletedAtIdx).toBeGreaterThan(metadataIdx);
+    const afterDeletedAt = block.slice(deletedAtIdx + 'deleted_at'.length).trim();
+    expect(afterDeletedAt.replace(/timestamp,?/, '').trim()).toBe('');
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria as 4 FKs dependentes (release_works, phonograms, shares, work_participants)', () => {
+    for (const table of ['release_works', 'phonograms', 'shares', 'work_participants']) {
+      expect(migrationSrc.match(new RegExp(`ALTER TABLE ${table} DROP CONSTRAINT`, 'g'))?.length).toBeGreaterThanOrEqual(1);
+      expect(migrationSrc.match(new RegExp(`ALTER TABLE ${table} ADD CONSTRAINT`, 'g'))?.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('recria o CHECK de registry_status e RLS + policies', () => {
+    expect(migrationSrc).toMatch(/chk_works_registry_status/);
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/tenant_isolation/);
+  });
+
+  it('valida contagem antes de trocar (up e down) e possui down() honesto', () => {
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

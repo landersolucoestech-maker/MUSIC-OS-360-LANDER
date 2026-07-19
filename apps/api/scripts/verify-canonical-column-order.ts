@@ -37,6 +37,17 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by',
     'deleted_at',
   ],
+  works: [
+    'id', 'tenant_id',
+    'projeto_id', 'cod_entidade', 'cod_ecad', 'iswc', 'titulo', 'genero', 'idioma',
+    'duracao', 'instrumental', 'criada_por_ia', 'status', 'tipo_ia', 'ia_harmonia',
+    'ia_melodia', 'ia_letra', 'outros_titulos', 'referencias_conexas', 'letra_completa',
+    'artista_id', 'tipo', 'tipo_obra', 'compositor', 'compositores', 'editora', 'letristas',
+    'isrc', 'alternative_titles', 'language', 'lyrics', 'is_instrumental', 'duration_seconds',
+    'registry_status', 'external_reference', 'ai_used', 'ai_tools', 'ai_prompts',
+    'origem_externa', 'origem_externa_id', 'origem_externa_sincronizado_em',
+    'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
