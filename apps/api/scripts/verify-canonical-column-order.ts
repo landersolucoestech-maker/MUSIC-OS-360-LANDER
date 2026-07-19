@@ -65,6 +65,12 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'origem_externa', 'origem_externa_id', 'origem_externa_sincronizado_em', 'metadata',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  releases: [
+    'id', 'tenant_id', 'titulo', 'tipo', 'artista_id', 'genero', 'idioma', 'gravadora',
+    'copyright', 'upc', 'distribuidora', 'data_lancamento', 'capa_url', 'plataformas',
+    'isrc_global', 'assets', 'cronograma', 'notas_internas', 'observacoes', 'status',
+    'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
