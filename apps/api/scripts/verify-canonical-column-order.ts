@@ -120,6 +120,14 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'responsavel_telefone', 'attachments', 'observacoes', 'interacoes', 'status', 'metadata',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  leads: [
+    'id', 'tenant_id', 'nome', 'nome_completo', 'empresa', 'email_encrypted', 'whatsapp',
+    'instagram', 'cidade', 'estado', 'tipo_cliente', 'tipo_servico', 'payload_servico',
+    'origem_lead', 'responsavel', 'status', 'prioridade', 'proximo_follow_up', 'valor_estimado',
+    'temperatura', 'dados_internos_crm', 'uploads', 'pais', 'probabilidade_fechamento',
+    'nome_artistico', 'telefone_encrypted', 'cliente_id', 'fonte', 'tags', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
