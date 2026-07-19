@@ -128,6 +128,12 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'nome_artistico', 'telefone_encrypted', 'cliente_id', 'fonte', 'tags', 'metadata',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  contracts: [
+    'id', 'tenant_id', 'template_id', 'titulo', 'tipo', 'status', 'artista_id', 'cliente_id',
+    'lancamento_id', 'data_inicio', 'data_fim', 'valor', 'exclusivo', 'observacoes',
+    'arquivo_url', 'autentique_doc_id', 'signing_platform', 'versoes', 'signers', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
