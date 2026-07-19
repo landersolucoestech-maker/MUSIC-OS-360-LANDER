@@ -22,7 +22,6 @@ import { PhonogramRepository } from './phonograms/repositories/phonogram.reposit
 import { ReleaseRepository } from './releases/repositories/release.repository';
 import { ShareRepository } from './shares/repositories/share.repository';
 import { Support_ticketRepository } from './support-tickets/repositories/support_ticket.repository';
-import { TakedownRepository } from './takedowns/repositories/takedown.repository';
 import { TransactionRepository } from './transactions/repositories/transaction.repository';
 import { UploadRepository } from './uploads/repositories/upload.repository';
 import { UserRepository } from './users/repositories/user.repository';
@@ -82,7 +81,6 @@ describe('tenant isolation in generated repositories', () => {
     ['releases', ReleaseRepository as unknown as RepositoryCtor, 'entity'],
     ['shares', ShareRepository as unknown as RepositoryCtor, 'entity'],
     ['support-tickets', Support_ticketRepository as unknown as RepositoryCtor, 'entity'],
-    ['takedowns', TakedownRepository as unknown as RepositoryCtor, 'entity'],
     ['uploads', UploadRepository as unknown as RepositoryCtor, 'entity'],
     ['users', UserRepository as unknown as RepositoryCtor, 'entity'],
   ];

@@ -154,6 +154,11 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'data_fim', 'valor', 'moeda', 'observacoes', 'remuneration_type', 'artista_id', 'created_at',
     'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  takedowns: [
+    'id', 'tenant_id', 'titulo', 'tipo', 'obra_afetada', 'artista', 'status', 'prioridade',
+    'plataforma', 'url_infracao', 'motivo', 'data_identificacao', 'descricao', 'evidencias',
+    'observacoes', 'metadata', 'created_at', 'updated_at', 'created_by', 'deleted_at',
+  ],
 };
 
 async function main() {
