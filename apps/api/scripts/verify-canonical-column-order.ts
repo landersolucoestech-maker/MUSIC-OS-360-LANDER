@@ -48,6 +48,10 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'origem_externa', 'origem_externa_id', 'origem_externa_sincronizado_em',
     'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  work_participants: [
+    'id', 'tenant_id', 'work_id', 'nome', 'classe_funcao', 'link', 'percentual', 'ordem',
+    'created_at', 'updated_at',
+  ],
 };
 
 async function main() {
