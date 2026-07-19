@@ -1,0 +1,70 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `projects` na ordem do formulário real (ProjetoFormModal) — "Tipo de
+ * Lançamento" é a primeira seção real, seguida de "Nome do EP/Álbum".
+ * `data_inicio`/`data_fim` são removidas por serem órfãs comprovadas.
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000005_RebuildProjectsInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildProjectsInCanonicalFormOrder20260719000005', () => {
+  it('tipo é o primeiro campo funcional após id/tenant_id, seguido de titulo', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const idIdx = block.indexOf('id ');
+    const tenantIdx = block.indexOf('tenant_id ');
+    const tipoIdx = block.indexOf('tipo ');
+    const tituloIdx = block.indexOf('titulo ');
+    const statusIdx = block.indexOf('status ');
+    expect(tenantIdx).toBeGreaterThan(idIdx);
+    expect(tipoIdx).toBeGreaterThan(tenantIdx);
+    expect(tituloIdx).toBeGreaterThan(tipoIdx);
+    expect(statusIdx).toBeGreaterThan(tituloIdx);
+  });
+
+  it('artista_id (relação técnica, só escrita por import em massa) vem depois de status', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const statusIdx = block.indexOf('status ');
+    const artistaIdx = block.indexOf('artista_id ');
+    expect(artistaIdx).toBeGreaterThan(statusIdx);
+  });
+
+  it('remove data_inicio/data_fim (órfãs comprovadas) com validação fail-fast', () => {
+    expect(migrationSrc).not.toMatch(/newColumns = `[^`]*data_inicio/);
+    expect(migrationSrc).not.toMatch(/newColumns = `[^`]*data_fim/);
+    expect(migrationSrc).toMatch(/count\(data_inicio\)::int \+ count\(data_fim\)::int/);
+    expect(migrationSrc).toMatch(/presumidas órfãs, mas há dado real/);
+  });
+
+  it('nenhum campo funcional aparece depois de metadata/created_at/updated_at/deleted_at', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const deletedAtIdx = block.indexOf('deleted_at ');
+    const afterDeletedAt = block.slice(deletedAtIdx + 'deleted_at'.length).trim();
+    expect(afterDeletedAt.replace(/timestamp,?/, '').trim()).toBe('');
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria as 6 FKs dependentes (transaction_allocations, budgets, performance_metric_entries, marketing_projects, audiovisual_projects, project_tracks)', () => {
+    for (const table of [
+      'transaction_allocations', 'budgets', 'performance_metric_entries',
+      'marketing_projects', 'audiovisual_projects', 'project_tracks',
+    ]) {
+      expect(migrationSrc.match(new RegExp(`ALTER TABLE ${table} DROP CONSTRAINT`, 'g'))?.length).toBeGreaterThanOrEqual(1);
+      expect(migrationSrc.match(new RegExp(`ALTER TABLE ${table} ADD CONSTRAINT`, 'g'))?.length).toBeGreaterThanOrEqual(1);
+    }
+  });
+
+  it('recria RLS + FORCE RLS + policies, valida contagem antes de trocar e possui down() honesto', () => {
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

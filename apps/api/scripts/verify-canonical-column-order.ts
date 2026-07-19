@@ -71,6 +71,19 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'isrc_global', 'assets', 'cronograma', 'notas_internas', 'observacoes', 'status',
     'metadata', 'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  projects: [
+    'id', 'tenant_id', 'tipo', 'titulo', 'genero', 'observacoes', 'status', 'artista_id',
+    'orcamento', 'descricao', 'metadata', 'created_at', 'updated_at', 'created_by',
+    'updated_by', 'deleted_at',
+  ],
+  project_tracks: [
+    'id', 'tenant_id', 'project_id', 'nome', 'solo_feat', 'original_remix', 'instrumental',
+    'duracao_min', 'duracao_seg', 'genero', 'idioma', 'letra', 'audio_url', 'ordem',
+    'created_at', 'updated_at',
+  ],
+  project_track_participants: [
+    'id', 'tenant_id', 'project_track_id', 'nome', 'role', 'ordem', 'created_at',
+  ],
 };
 
 async function main() {

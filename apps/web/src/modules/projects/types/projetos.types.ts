@@ -10,8 +10,6 @@ export interface Projeto {
   tipo?: ProjetoTipo | string | null;
   status?: ProjetoStatus | string | null;
   artista_id?: string | null;
-  data_inicio?: string | null;
-  data_fim?: string | null;
   orcamento?: number | null;
   descricao?: string | null;
   genero?: string | null;
