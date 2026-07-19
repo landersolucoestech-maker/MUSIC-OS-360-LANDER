@@ -134,6 +134,11 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'arquivo_url', 'autentique_doc_id', 'signing_platform', 'versoes', 'signers', 'metadata',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  rights_holders: [
+    'id', 'tenant_id', 'legal_name', 'artistic_name', 'document_type', 'document_number',
+    'country', 'ipi_cae', 'society', 'society_member_code', 'holder_type', 'metadata',
+    'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
