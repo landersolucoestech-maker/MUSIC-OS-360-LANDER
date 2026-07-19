@@ -94,6 +94,12 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'start_date', 'recording_date', 'delivery_date', 'metadata', 'created_at', 'updated_at',
     'created_by', 'updated_by', 'deleted_at',
   ],
+  events: [
+    'id', 'tenant_id', 'titulo', 'tipo', 'participantes', 'status', 'data', 'starts_at',
+    'data_fim', 'local', 'contato_local', 'endereco', 'valor_cache', 'publico_esperado',
+    'descricao', 'observacoes', 'artista_id', 'metadata', 'created_at', 'updated_at',
+    'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {
