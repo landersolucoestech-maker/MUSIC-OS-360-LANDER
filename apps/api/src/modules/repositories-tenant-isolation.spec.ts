@@ -1,6 +1,5 @@
 import { AiRepository } from './ai/repositories/ai.repository';
 import { Artist_goalRepository } from './artist-goals/repositories/artist_goal.repository';
-import { ArtistRepository } from './artists/repositories/artist.repository';
 import { Audit_logRepository } from './audit-log/repositories/audit_log.repository';
 import { AuthRepository } from './auth/repositories/auth.repository';
 import { BillingRepository } from './billing/repositories/billing.repository';
@@ -59,7 +58,6 @@ describe('tenant isolation in generated repositories', () => {
   const cases: Array<[string, RepositoryCtor, string]> = [
     ['ai', AiRepository as unknown as RepositoryCtor, 'entity'],
     ['artist-goals', Artist_goalRepository as unknown as RepositoryCtor, 'entity'],
-    ['artists', ArtistRepository as unknown as RepositoryCtor, 'entity'],
     ['audit-log', Audit_logRepository as unknown as RepositoryCtor, 'entity'],
     ['auth', AuthRepository as unknown as RepositoryCtor, 'entity'],
     ['billing', BillingRepository as unknown as RepositoryCtor, 'entity'],

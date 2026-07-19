@@ -152,6 +152,7 @@ interface FieldRendererCtx {
   watch: UseFormWatch<ArtistaFormValues>;
   files: Record<FileFieldId, UploadedFile[]>;
   setFile: (id: FileFieldId, value: UploadedFile[]) => void;
+  artistaId?: string;
 }
 
 function FieldLabel({ field }: { field: ArtistFormField }) {
@@ -163,7 +164,7 @@ function FieldLabel({ field }: { field: ArtistFormField }) {
 }
 
 function renderArtistField(field: ArtistFormField, ctx: FieldRendererCtx) {
-  const { register, control, watch, files, setFile } = ctx;
+  const { register, control, watch, files, setFile, artistaId } = ctx;
   const span = field.fullWidth ? "col-span-2" : "";
   const rhfId = field.id as keyof ArtistaFormValues;
 
@@ -177,6 +178,8 @@ function renderArtistField(field: ArtistFormField, ctx: FieldRendererCtx) {
             accept={field.file!.accept}
             maxSize={field.file!.maxSize}
             circular={field.file!.circular}
+            entity="artist"
+            entityId={artistaId}
             value={files[field.id as FileFieldId]}
             onChange={(v) => setFile(field.id as FileFieldId, v)}
           />
@@ -493,7 +496,7 @@ export function ArtistaFormModal({ open, onOpenChange, onSuccess, artista }: Art
     if (first) toast.error(first.message);
   };
 
-  const rendererCtx: FieldRendererCtx = { register, control, watch, files, setFile };
+  const rendererCtx: FieldRendererCtx = { register, control, watch, files, setFile, artistaId: artista?.id };
   const currentValues = watch();
 
   // ── JSX (seções e campos iterados da definição única) ──────────

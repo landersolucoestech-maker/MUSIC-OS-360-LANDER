@@ -27,6 +27,7 @@
     "verify:rls": "tsx scripts/verify-rls.ts",
     "verify:critical-rls": "tsx scripts/verify-critical-rls.ts",
     "verify:migrations": "tsx scripts/db-ops.ts check",
+    "verify:canonical-order": "tsx scripts/verify-canonical-column-order.ts",
     "verify:tenant-isolation": "tsx scripts/verify-tenant-isolation.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
     "provision": "pnpm run verify:supabase && pnpm run verify:rls && pnpm run verify:tenant-isolation",
@@ -37,7 +38,8 @@
     "validate:i18n": "tsx scripts/validate-i18n.ts",
     "reports:smoke": "tsx scripts/reports-smoke.ts",
     "rbac:readiness": "tsx scripts/rbac-shadow-readiness.ts",
-    "verify:signup-provisioning": "tsx scripts/verify-signup-provisioning.ts"
+    "verify:signup-provisioning": "tsx scripts/verify-signup-provisioning.ts",
+    "verify:no-inline-body": "tsx scripts/verify-no-inline-body.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

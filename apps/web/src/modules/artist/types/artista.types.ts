@@ -131,7 +131,6 @@ export interface Artista {
     email: string;
     distribuidoras: Array<{ id: string; email: string; nomeCustom?: string }>;
   }> | null;
-  org_slug?: string | null;
   created_at?: string;
   updated_at?: string;
   [key: string]: unknown;

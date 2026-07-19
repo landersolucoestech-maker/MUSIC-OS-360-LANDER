@@ -1,0 +1,27 @@
+import { describe, it, expect } from "vitest";
+import * as fs from "fs";
+import * as path from "path";
+
+/**
+ * Guarda permanente (auditoria 2026-07-19 — reconstrução de artists):
+ * `FileUpload` (usado por artists/accounting/contracts/rh) tinha um stub fake
+ * de upload (`setTimeout` + path fictício) e, para imagens, persistia um data
+ * URL base64 na própria coluna de texto — nenhuma das duas é uma referência
+ * real de storage. Agora usa `useUploadToR2` (presigned URL real).
+ */
+const src = fs.readFileSync(path.resolve(__dirname, "FileUpload.tsx"), "utf8");
+
+describe("FileUpload — upload real (R2), nunca stub/base64", () => {
+  it("usa useUploadToR2 para persistir o arquivo", () => {
+    expect(src).toMatch(/useUploadToR2/);
+  });
+
+  it("não usa mais o stub de setTimeout nem path fictício", () => {
+    expect(src).not.toMatch(/setTimeout\(r, 40\)/);
+    expect(src).not.toMatch(/\$\{options\?\.folder/);
+  });
+
+  it("não persiste mais data URL base64 como fonte de verdade do arquivo", () => {
+    expect(src).not.toMatch(/readAsDataURL/);
+  });
+});

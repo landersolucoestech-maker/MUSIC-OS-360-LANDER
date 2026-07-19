@@ -4,33 +4,15 @@ import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
 import { Progress } from "@/shared/ui/progress";
 import { toast } from "sonner";
+import { useUploadToR2, R2NotConfiguredError, type UploadCategory } from "@/shared/hooks/useUploadToR2";
 
-async function uploadFile(
-  file: File,
-  options?: { folder?: string; onProgress?: (p: number) => void },
-): Promise<{ path: string }> {
-  for (let i = 0; i <= 100; i += 25) {
-    options?.onProgress?.(i);
-    await new Promise((r) => setTimeout(r, 40));
-  }
-  return { path: `${options?.folder ?? "uploads"}/${Date.now()}-${file.name}` };
-}
-
-function getPublicUrl(path: string): string {
-  return path;
-}
-
-/**
- * Lê o arquivo como data URL base64 — usado para imagens em modo standalone
- * (sem storage real), garantindo um `url` renderável e persistível.
- */
-function readAsDataURL(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
+/** Deriva a categoria de upload (contrato real do backend) a partir do `accept` do campo. */
+function inferCategory(accept?: string): UploadCategory {
+  if (!accept) return "documents";
+  if (accept.includes("image/")) return "images";
+  if (accept.includes("audio/")) return "audio";
+  if (accept.includes("spreadsheet") || accept.includes(".xlsx") || accept.includes(".csv")) return "spreadsheets";
+  return "documents";
 }
 
 export interface UploadedFile {
@@ -49,6 +31,12 @@ interface FileUploadProps {
   multiple?: boolean;
   disabled?: boolean;
   circular?: boolean; // Para avatar/foto circular
+  /** Categoria de upload real (R2) — se omitida, é inferida do `accept`. */
+  category?: UploadCategory;
+  /** Nome da entidade dona do arquivo (ex.: "artist", "release") — organiza a pasta no R2. */
+  entity?: string;
+  /** id da entidade, se já existir (edição) — undefined em criação. */
+  entityId?: string;
   onUploadComplete?: (files: UploadedFile[]) => void;
   onUploadError?: (error: string) => void;
   value?: UploadedFile[];
@@ -138,6 +126,9 @@ export function FileUpload({
   multiple = false,
   disabled = false,
   circular = false,
+  category,
+  entity,
+  entityId,
   onUploadComplete,
   onUploadError,
   value = [],
@@ -147,6 +138,7 @@ export function FileUpload({
   const [isDragOver, setIsDragOver] = useState(false);
   const [uploadingFiles, setUploadingFiles] = useState<Map<string, number>>(new Map());
   const inputRef = useRef<HTMLInputElement>(null);
+  const { upload: uploadToR2 } = useUploadToR2();
 
   const handleFiles = useCallback(
     async (fileList: FileList | null) => {
@@ -188,35 +180,36 @@ export function FileUpload({
         setUploadingFiles((prev) => new Map(prev).set(fileId, 0));
 
         try {
-          const result = await uploadFile(file, {
-            folder,
-            onProgress: (progress) => {
-              setUploadingFiles((prev) => new Map(prev).set(fileId, progress));
-            },
+          setUploadingFiles((prev) => new Map(prev).set(fileId, 10));
+          const publicUrl = await uploadToR2({
+            file,
+            category: category ?? inferCategory(accept),
+            entity,
+            entityId,
           });
+          setUploadingFiles((prev) => new Map(prev).set(fileId, 100));
 
-          if (result) {
-            const uploadedFile: UploadedFile = {
-              name: file.name,
-              size: file.size,
-              type: file.type,
-              path: result.path,
-              url: getPublicUrl(result.path),
-            };
+          const uploadedFile: UploadedFile = {
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            path: publicUrl,
+            url: publicUrl,
+          };
 
-            // Generate preview for images and persist a renderable data URL.
-            if (file.type.startsWith("image/")) {
-              uploadedFile.preview = URL.createObjectURL(file);
-              uploadedFile.url = await readAsDataURL(file);
-            }
-
-            if (!multiple) {
-              uploadedFiles.length = 0;
-            }
-            uploadedFiles.push(uploadedFile);
+          // Preview local instantâneo (blob URL) — não é o que é persistido.
+          if (file.type.startsWith("image/")) {
+            uploadedFile.preview = URL.createObjectURL(file);
           }
+
+          if (!multiple) {
+            uploadedFiles.length = 0;
+          }
+          uploadedFiles.push(uploadedFile);
         } catch (error: any) {
-          onUploadError?.(error.message);
+          const message = error instanceof R2NotConfiguredError ? error.message : (error?.message ?? "Falha no upload");
+          toast.error(`${file.name}: ${message}`);
+          onUploadError?.(message);
         } finally {
           setUploadingFiles((prev) => {
             const next = new Map(prev);
@@ -231,7 +224,7 @@ export function FileUpload({
         onUploadComplete?.(uploadedFiles);
       }
     },
-    [accept, folder, maxSize, multiple, onChange, onUploadComplete, onUploadError, uploadFile, value]
+    [accept, category, entity, entityId, maxSize, multiple, onChange, onUploadComplete, onUploadError, uploadToR2, value]
   );
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
