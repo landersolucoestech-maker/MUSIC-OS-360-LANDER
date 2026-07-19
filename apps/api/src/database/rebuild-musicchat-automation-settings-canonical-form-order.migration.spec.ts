@@ -1,0 +1,58 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `musicchat_automation_settings` — ordem já batia com
+ * UpdateMusicChatAutomationSettingsDto, exceto updated_by (estava antes de
+ * created_at/updated_at) — corrigido para o fim do bloco de auditoria.
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000021_RebuildMusicchatAutomationSettingsInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildMusicchatAutomationSettingsInCanonicalFormOrder20260719000021', () => {
+  const block = () => migrationSrc.split('newColumns = `')[1].split('`;')[0];
+
+  it('segue a ordem do DTO: enabled -> welcome_message -> ... -> manager_user_id', () => {
+    const b = block();
+    const enabledIdx = b.indexOf('enabled');
+    const welcomeIdx = b.indexOf('welcome_message');
+    const supervisorIdx = b.indexOf('supervisor_user_id');
+    const managerIdx = b.indexOf('manager_user_id');
+    expect(welcomeIdx).toBeGreaterThan(enabledIdx);
+    expect(managerIdx).toBeGreaterThan(supervisorIdx);
+  });
+
+  it('updated_by vem depois de created_at/updated_at (não antes)', () => {
+    const b = block();
+    const createdAtIdx = b.indexOf('created_at');
+    const updatedAtIdx = b.indexOf('updated_at');
+    const updatedByIdx = b.indexOf('updated_by');
+    expect(updatedAtIdx).toBeGreaterThan(createdAtIdx);
+    expect(updatedByIdx).toBeGreaterThan(updatedAtIdx);
+  });
+
+  it('não remove nenhuma coluna (reconstrução pura de ordem)', () => {
+    const newBlock = block();
+    const origBlock = migrationSrc.split('originalColumns = `')[1].split('`;')[0];
+    const extractCols = (b: string) => [...b.matchAll(/^\s*(\w+)\s+/gm)].map((m) => m[1]);
+    const newCols = new Set(extractCols(newBlock));
+    const origCols = new Set(extractCols(origBlock));
+    expect(newCols.size).toBe(origCols.size);
+    for (const col of origCols) expect(newCols.has(col)).toBe(true);
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria RLS + policy tenant_isolation (role public, preservada como estava) e possui down() honesto', () => {
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/CREATE POLICY tenant_isolation ON musicchat_automation_settings\s*\n\s*AS PERMISSIVE FOR ALL TO public/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});

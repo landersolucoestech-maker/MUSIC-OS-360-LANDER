@@ -181,6 +181,13 @@ const CANONICAL_ORDER: Record<string, string[]> = {
     'org_id', 'role_id', 'department_id', 'position_id', 'joined_at',
     'created_at', 'updated_at', 'created_by', 'updated_by', 'deleted_at',
   ],
+  musicchat_automation_settings: [
+    'id', 'tenant_id', 'enabled', 'welcome_message', 'main_menu_message', 'menu_options',
+    'templates', 'required_fields', 'optional_fields', 'invalid_option_message',
+    'absence_message', 'out_of_hours_message', 'closing_message', 'return_to_menu_rule',
+    'escalation_rules', 'notification_channels', 'supervisor_user_id', 'manager_user_id',
+    'created_at', 'updated_at', 'updated_by',
+  ],
 };
 
 async function main() {
