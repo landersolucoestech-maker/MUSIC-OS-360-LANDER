@@ -84,6 +84,16 @@ const CANONICAL_ORDER: Record<string, string[]> = {
   project_track_participants: [
     'id', 'tenant_id', 'project_track_id', 'nome', 'role', 'ordem', 'created_at',
   ],
+  audiovisual_projects: [
+    'id', 'tenant_id', 'phonogram_id', 'music_title', 'title', 'artist_name', 'type', 'format',
+    'director', 'videomaker', 'editor', 'shooting_date', 'location', 'capture_status',
+    'editing_status', 'approval_status', 'pre_release_date', 'release_date', 'budget_estimated',
+    'budget_actual', 'concept', 'observations', 'status', 'final_status', 'completed_at',
+    'publish_date', 'artist_id', 'release_id', 'campaign_id', 'event_id', 'financial_project_id',
+    'slug', 'description', 'objective', 'priority', 'stage', 'production_company', 'producer',
+    'start_date', 'recording_date', 'delivery_date', 'metadata', 'created_at', 'updated_at',
+    'created_by', 'updated_by', 'deleted_at',
+  ],
 };
 
 async function main() {

@@ -1,0 +1,70 @@
+import * as fs from 'fs';
+import * as path from 'path';
+
+/**
+ * Guarda permanente (auditoria 2026-07-19): reconstrução física de
+ * `audiovisual_projects` na ordem do formulário real
+ * (AudiovisualProjectFormModal) — a seção "Música" (phonogram_id/
+ * music_title/title/artist_name) é a primeira do grid real.
+ */
+const migrationSrc = fs.readFileSync(
+  path.resolve(__dirname, 'migrations/20260719000006_RebuildAudiovisualProjectsInCanonicalFormOrder.ts'),
+  'utf8',
+);
+
+describe('RebuildAudiovisualProjectsInCanonicalFormOrder20260719000006', () => {
+  it('phonogram_id/music_title/title/artist_name vêm antes de type (seção Música é a primeira)', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const idIdx = block.indexOf('id ');
+    const tenantIdx = block.indexOf('tenant_id ');
+    const phonoIdx = block.indexOf('phonogram_id ');
+    const titleIdx = block.indexOf('title ');
+    const typeIdx = block.indexOf('type ');
+    expect(tenantIdx).toBeGreaterThan(idIdx);
+    expect(phonoIdx).toBeGreaterThan(tenantIdx);
+    expect(titleIdx).toBeGreaterThan(phonoIdx);
+    expect(typeIdx).toBeGreaterThan(titleIdx);
+  });
+
+  it('status/final_status vêm depois dos campos do formulário, e completed_at/publish_date (derivados do service) depois deles', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const observacoesIdx = block.indexOf('observations ');
+    const statusIdx = block.search(/\bstatus\s+varchar/);
+    const completedIdx = block.indexOf('completed_at ');
+    expect(statusIdx).toBeGreaterThan(observacoesIdx);
+    expect(completedIdx).toBeGreaterThan(statusIdx);
+  });
+
+  it('remove organization_id/archived_at (órfãs comprovadas) com validação fail-fast', () => {
+    expect(migrationSrc).not.toMatch(/newColumns = `[^`]*organization_id/);
+    expect(migrationSrc).not.toMatch(/newColumns = `[^`]*archived_at/);
+    expect(migrationSrc).toMatch(/count\(organization_id\)::int \+ count\(archived_at\)::int/);
+    expect(migrationSrc).toMatch(/presumidas órfãs, mas há dado real/);
+  });
+
+  it('nenhum campo funcional aparece depois de metadata/created_at/updated_at/deleted_at', () => {
+    const block = migrationSrc.split('newColumns = `')[1].split('`;')[0];
+    const deletedAtIdx = block.indexOf('deleted_at');
+    const afterDeletedAt = block.slice(deletedAtIdx + 'deleted_at'.length).trim();
+    expect(afterDeletedAt.replace(/timestamptz,?/, '').trim()).toBe('');
+  });
+
+  it('não usa DROP ... CASCADE', () => {
+    expect(migrationSrc).not.toMatch(/DROP\s+\w+[^;]*CASCADE/i);
+  });
+
+  it('recria os 2 CHECK constraints (status/type), a FK financeira e a única policy (tenant_isolation, sem super_admin)', () => {
+    expect(migrationSrc).toMatch(/chk_av_projects_status/);
+    expect(migrationSrc).toMatch(/chk_av_projects_type/);
+    expect(migrationSrc).toMatch(/fk_audiovisual_projects_financial_project/);
+    expect(migrationSrc).not.toMatch(/super_admin_full_access ON audiovisual_projects/);
+    expect(migrationSrc.match(/CREATE POLICY tenant_isolation ON audiovisual_projects/g)?.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('recria RLS + FORCE RLS, valida contagem antes de trocar e possui down() honesto', () => {
+    expect(migrationSrc).toMatch(/ENABLE ROW LEVEL SECURITY/);
+    expect(migrationSrc).toMatch(/FORCE ROW LEVEL SECURITY/);
+    expect(migrationSrc.match(/contagem divergente/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(migrationSrc).toMatch(/async down/);
+  });
+});
