@@ -492,6 +492,32 @@ export const FIELD_LABELS_PT_BR = {
   dataPrimeiraParcela: 'Data da primeira parcela',
   anexoUrl: 'Link do anexo',
   anexoNome: 'Nome do anexo',
+  // ── Produções audiovisuais (migration AudiovisualProjectsFormFieldColumns
+  // 20260718000012) e Lançamentos — campos confirmados via
+  // AudiovisualProjectFormModal.tsx / LancamentoViewModal.tsx (Parte 50) ──────
+  musicTitle: 'Título da música',
+  artistName: 'Nome do artista',
+  videomaker: 'Videomaker',
+  editor: 'Editor',
+  shootingDate: 'Data da gravação',
+  // Mesmo conceito de `local` (linha acima) — chave técnica desta tabela é
+  // `location`, não `local`; rótulo reaproveitado por regra de consistência.
+  location: 'Local',
+  captureStatus: 'Status da captação',
+  editingStatus: 'Status da edição',
+  approvalStatus: 'Status da aprovação',
+  finalStatus: 'Status final',
+  preReleaseDate: 'Data de pré-lançamento',
+  // Mesmo conceito de `notes`/`observacoes` (acima) — chave técnica desta
+  // tabela é `observations`.
+  observations: 'Observações',
+  // Compartilhado por audiovisual_projects e audiovisual_briefings — conceito
+  // criativo inicial da produção (roteiro/estética/referências).
+  concept: 'Conceito',
+  isrcGlobal: 'ISRC Global',
+  // Distinto de `copyrightOwner` (linha acima, "Titular do direito autoral")
+  // — campo técnico diferente, rótulo real confirmado em LancamentoViewModal.
+  copyright: 'Titular do copyright',
 } as const satisfies Record<string, string>;
 
 export type FieldLabelKey = keyof typeof FIELD_LABELS_PT_BR;
