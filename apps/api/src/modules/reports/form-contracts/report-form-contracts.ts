@@ -197,22 +197,26 @@ const WORKS_CONTRACT: ReportFormContract = {
     col('compositor'), col('compositores'), col('editora'),
     col('isrc'), col('iswc'),
     // Campos do formulário de Obra (regra 2026-07-12: 1 coluna por campo, nome exato)
-    col('idioma'), col('cod_abramus'), col('cod_ecad'), col('duracao'),
+    col('idioma'), col('cod_entidade'), col('cod_ecad'), col('duracao'),
     col('instrumental'), col('criada_por_ia'), col('tipo_ia'),
     col('ia_harmonia'), col('ia_melodia'), col('ia_letra'),
     col('outros_titulos'), col('referencias_conexas'), col('letra_completa'),
-    col('participantes'), col('letristas'), col('projeto_id'),
+    col('letristas'), col('projeto_id'),
     col('artista_id'), col('tipo_obra'),
     // Somente leitura: registro/sociedades e enriquecimento (não são do form de criação)
-    ro('co_compositores'), ro('detentores'), ro('duration_seconds'),
+    ro('duration_seconds'),
     ro('language'), ro('lyrics'), ro('is_instrumental'), ro('ai_used'),
-    ro('abramus_protocol'), ro('registry_status'),
+    ro('registry_status'),
     ro('external_reference'), ro('origem_externa'), ro('origem_externa_sincronizado_em'),
   ],
   excludedFormFields: {
     metadata: 'objeto jsonb interno bruto',
     authors: 'relacionamento (autores/percentuais) gerido na tela própria de shares',
     shares: 'relacionamento em tabela própria (shares), reportável separadamente',
+    participantes: 'relacionamento normalizado em work_participants (migration 20260718000011), reportável separadamente',
+    co_compositores: 'coluna removida (20260718000011) — sem writer ativo, nenhum dado real perdido',
+    detentores: 'coluna removida (20260718000011) — sem writer ativo, nenhum dado real perdido',
+    abramus_protocol: 'coluna órfã removida (20260718000016) — nunca escrita por nenhum fluxo real',
   },
 };
 
@@ -224,7 +228,7 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
     col('titulo'), col('status'), col('genero_musical'), col('isrc'),
     col('duracao'), col('artista_id'), col('obra_id'),
     // Campos do formulário de Fonograma (regra 2026-07-12: 1 coluna por campo, nome exato)
-    col('cod_abramus'), col('cod_ecad'), col('agregadora'),
+    col('cod_entidade'), col('cod_ecad'), col('agregadora'),
     col('isrc_pais'), col('isrc_registrante'), col('isrc_ano'), col('isrc_designacao'),
     col('criada_por_ia'), col('instrumental'), col('nacional'), col('pub_simultanea'),
     col('emissao'), col('gravacao_original'), col('data_lancamento'),
@@ -236,12 +240,13 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
     ro('produtores'), ro('duration_seconds'),
     ro('recording_date'), ro('release_date'), ro('copyright_year'),
     ro('copyright_owner'), ro('country_of_recording'),
-    ro('abramus_protocol'), ro('registry_status'),
+    ro('registry_status'),
     ro('external_reference'), ro('origem_externa'), ro('origem_externa_sincronizado_em'),
   ],
   excludedFormFields: {
     metadata: 'objeto jsonb interno bruto',
     fileUrl: 'arquivo de áudio gerido pelo fluxo de upload (audio_file_id)',
+    abramus_protocol: 'coluna órfã removida (20260718000016) — nunca escrita por nenhum fluxo real',
   },
   formFieldAliases: {
     title: 'titulo',
