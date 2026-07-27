@@ -568,7 +568,10 @@ export class WorkEntity {
   @Column({ type: 'varchar', length: 255, nullable: true }) editora: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) isrc: string | null;
   @Column({ type: 'varchar', length: 20, nullable: true }) iswc: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) cod_abramus: string | null;
+  // Renomeada de `cod_abramus` (20260718000017) — o valor pode ser um código
+  // em ABRAMUS, UBC, SOCINPRO ou outra entidade de gestão coletiva; coluna
+  // física já recriada com este nome pela migration, entity estava defasada.
+  @Column({ type: 'varchar', length: 100, nullable: true }) cod_entidade: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) cod_ecad: string | null;
   @Column({ type: 'varchar', length: 100 }) tipo: string;
   @Column({ type: 'varchar', length: 100, nullable: true }) genero: string | null;
@@ -593,7 +596,6 @@ export class WorkEntity {
   @Column({ type: 'integer', nullable: true }) duration_seconds: number | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) registry_status: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) external_reference: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) abramus_protocol: string | null;
   @Column({ type: 'boolean', nullable: true }) ai_used: boolean | null;
   @Column({ type: 'jsonb', nullable: true }) ai_tools: unknown[] | null;
   @Column({ type: 'jsonb', nullable: true }) ai_prompts: unknown[] | null;
@@ -676,7 +678,10 @@ export class PhonogramEntity {
   @Column({ type: 'text', nullable: true }) interpretes: string | null;
   @Column({ type: 'text', nullable: true }) produtores: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) gravadora: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) cod_abramus: string | null;
+  // Renomeada de `cod_abramus` (20260718000017) — o valor pode ser um código
+  // em ABRAMUS, UBC, SOCINPRO ou outra entidade de gestão coletiva; coluna
+  // física já recriada com este nome pela migration, entity estava defasada.
+  @Column({ type: 'varchar', length: 100, nullable: true }) cod_entidade: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) cod_ecad: string | null;
   @Column({ type: 'varchar', length: 100, nullable: true }) origem_externa: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) origem_externa_id: string | null;
@@ -702,7 +707,6 @@ export class PhonogramEntity {
   @Column({ type: 'integer', nullable: true }) duration_seconds: number | null;
   @Column({ type: 'varchar', length: 50, nullable: true }) registry_status: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) external_reference: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) abramus_protocol: string | null;
   // migration 20260605000001_AddGenreToPhonograms
   @Column({ type: 'varchar', length: 100, nullable: true }) genero_musical: string | null;
 

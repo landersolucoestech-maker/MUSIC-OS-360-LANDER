@@ -110,7 +110,7 @@ export default function RightsMonitoring() {
           editora: obra.editora,
           iswc: obra.iswc,
           cod_ecad: obra.cod_ecad,
-          cod_abramus: obra.cod_abramus,
+          cod_entidade: obra.cod_entidade,
           genero: obra.genero,
           duracao: obra.duracao,
           catalog_id: obra.id,
