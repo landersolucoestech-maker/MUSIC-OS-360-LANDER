@@ -19,8 +19,10 @@ paths = [
   '''apps/api/scripts/fase94b-tokens\.js''',
   '''apps/api/scripts/fase10-prod-env-check\.cjs''',
   '''apps/api/scripts/fase1d-recovery\.ts''',
-  # Internal audit/QA docs containing illustrative (non-real) key/token examples.
-  '''docs/.*\.md''',
+  # SECRET-01: a blanket `docs/.*\.md` path allowlist used to live here, exempting
+  # the entire docs tree (including every audit doc this project generates) from
+  # secret scanning. Illustrative examples in docs are covered by the specific
+  # regexes below instead — a real secret pasted into any doc is now detected.
 ]
 regexes = [
   # Intentionally-invalid JWT fixture used in tests.
