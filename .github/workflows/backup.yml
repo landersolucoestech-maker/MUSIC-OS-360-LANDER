@@ -32,6 +32,20 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq age postgresql-client awscli
 
+      # BACKUP-01: fail fast, before wasting a pg_dump, if the encryption
+      # recipient secrets are missing/empty (e.g. never configured in repo
+      # settings). scripts/pg-backup-cron.sh now refuses to run either way —
+      # this preflight just surfaces the misconfiguration earlier and louder.
+      - name: Preflight — encryption recipient configured
+        env:
+          BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+          BACKUP_GPG_RECIPIENT: ${{ secrets.BACKUP_GPG_RECIPIENT }}
+        run: |
+          if [ -z "$BACKUP_AGE_RECIPIENT" ] && [ -z "$BACKUP_GPG_RECIPIENT" ]; then
+            echo "::error::Neither BACKUP_AGE_RECIPIENT nor BACKUP_GPG_RECIPIENT secret is configured — refusing to run (would produce an unencrypted backup)"
+            exit 1
+          fi
+
       - name: Run backup
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PROD }}
@@ -40,6 +54,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.BACKUP_R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.BACKUP_R2_SECRET_ACCESS_KEY }}
           BACKUP_AGE_RECIPIENT: ${{ secrets.BACKUP_AGE_RECIPIENT }}
+          BACKUP_GPG_RECIPIENT: ${{ secrets.BACKUP_GPG_RECIPIENT }}
           BACKUP_RETENTION_DAYS: "30"
           BACKUP_PREFIX: ${{ github.event.inputs.prefix || 'musicos360-prod/' }}
         run: bash scripts/pg-backup-cron.sh

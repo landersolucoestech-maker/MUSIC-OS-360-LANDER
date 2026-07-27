@@ -123,3 +123,24 @@ jobs:
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # SECRET-01 regression: the .gitleaks.toml allowlist used to blanket-exempt
+      # docs/**/*.md from scanning entirely. Prove that's fixed by planting a
+      # synthetic (never-real) secret under docs/ and confirming gitleaks still
+      # catches it. Uses the official gitleaks image directly (docker is
+      # preinstalled on ubuntu-latest) — same maintainer as gitleaks-action above.
+      - name: SECRET-01 regression — synthetic secret in docs/ must be detected
+        run: |
+          TARGET="docs/__gitleaks_regression_test__.md"
+          echo "Synthetic AWS key (never real): AKIAIOSFODNN7EXAMPLE" > "$TARGET"
+          trap 'rm -f "$TARGET"' EXIT
+          set +e
+          docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest \
+            detect --source /repo --no-git -v
+          code=$?
+          set -e
+          if [ "$code" -eq 0 ]; then
+            echo "::error::gitleaks did NOT detect the synthetic secret under docs/ — the SECRET-01 fix may have regressed"
+            exit 1
+          fi
+          echo "OK — gitleaks detected the synthetic secret under docs/ (SECRET-01 regression test passed)"

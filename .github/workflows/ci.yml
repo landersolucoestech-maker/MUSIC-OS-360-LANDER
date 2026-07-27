@@ -34,6 +34,12 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # RELEASE-01: cheap structural check, runs before any build — catches a
+      # workflow file being deleted/emptied on this branch again in the future.
+      # Does NOT prove the workflows are merged into `main` (that step is external).
+      - name: Verify critical workflows present
+        run: node scripts/verify-critical-workflows.mjs
+
       - name: TypeCheck (all workspaces)
         run: pnpm turbo typecheck
 
