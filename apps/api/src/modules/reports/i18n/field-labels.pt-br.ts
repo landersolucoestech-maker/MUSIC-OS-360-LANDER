@@ -217,7 +217,9 @@ export const FIELD_LABELS_PT_BR = {
   channel: 'Canal',
   cliente: 'Cliente',
   coCompositores: 'Co-compositores',
-  codAbramus: 'Código ABRAMUS',
+  // Renomeado de `codAbramus` (20260718000017) — código em qualquer entidade
+  // de gestão coletiva (ABRAMUS/UBC/SOCINPRO/outras), não só ABRAMUS.
+  codEntidade: 'Código de Cadastro da Sociedade',
   codEcad: 'Código ECAD',
   code: 'Código',
   color: 'Cor',

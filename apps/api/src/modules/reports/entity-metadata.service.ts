@@ -76,6 +76,14 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   society_accounts: EntityCategory.REPORTABLE,
 
   // ── Operacionais NÃO reportáveis (sub-entidades / ruído) ──────────────────
+  // work_participants: relação normalizada de autoria de works (migration
+  // 20260718000011) — reportável separadamente, como shares/rights_holders.
+  work_participants: EntityCategory.NOT_REPORTABLE,
+  // project_tracks/project_track_participants: relação normalizada de
+  // musicas[] de projects (migration 20260718000013) — reportável
+  // separadamente, mesmo padrão de work_participants.
+  project_tracks: EntityCategory.NOT_REPORTABLE,
+  project_track_participants: EntityCategory.NOT_REPORTABLE,
   notifications: EntityCategory.NOT_REPORTABLE,
   uploads: EntityCategory.NOT_REPORTABLE,
   form_submissions: EntityCategory.NOT_REPORTABLE,
