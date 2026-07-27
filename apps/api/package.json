@@ -39,7 +39,8 @@
     "reports:smoke": "tsx scripts/reports-smoke.ts",
     "rbac:readiness": "tsx scripts/rbac-shadow-readiness.ts",
     "verify:signup-provisioning": "tsx scripts/verify-signup-provisioning.ts",
-    "verify:no-inline-body": "tsx scripts/verify-no-inline-body.ts"
+    "verify:no-inline-body": "tsx scripts/verify-no-inline-body.ts",
+    "verify:production-flags": "tsx scripts/verify-production-flags.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.2",

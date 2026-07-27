@@ -254,6 +254,72 @@ export function assertDatabaseCommandEnv(
   }
 }
 
+/**
+ * RELEASE-01/RBAC-SHADOW-01/DBCTX-01: em produção, estas duas flags nunca podem
+ * ficar no default silencioso do zod. Precisam ser declaradas explicitamente no
+ * ambiente. RBAC_PERSISTED_AUTHORITY só pode permanecer em SHADOW mediante waiver
+ * explícito e temporário (ALLOW_RBAC_SHADOW_IN_PRODUCTION=true) enquanto o rollout
+ * do harness (test/rbac-shadow-harness) não foi aprovado; OFF é sempre proibido.
+ * DATABASE_SESSION_CONTEXT_ENABLED=true sem APP_DATABASE_URL não falha aqui por
+ * acidente — o DatabaseModule cai silenciosamente para a conexão bypassrls
+ * (ver database.module.ts), então essa combinação também é bloqueada.
+ * Recebe o env CRU (não o objeto já parseado pelo zod) porque só assim é possível
+ * distinguir "declarado explicitamente" de "ausente e coberto pelo default".
+ */
+export function collectProductionAuthorityErrors(
+  env: Record<string, string | undefined>,
+  nodeEnvInput?: string,
+): string[] {
+  const nodeEnv = nodeEnvInput ?? env['NODE_ENV'] ?? 'development';
+  if (nodeEnv !== 'production') return [];
+
+  const errors: string[] = [];
+
+  const dbCtxRaw = env['DATABASE_SESSION_CONTEXT_ENABLED'];
+  if (dbCtxRaw === undefined || dbCtxRaw === '') {
+    errors.push(
+      'DATABASE_SESSION_CONTEXT_ENABLED não declarado em produção — o default silencioso ' +
+        '("false") desliga o isolamento de sessão por tenant no DataSource de app (DBCTX-01).',
+    );
+  } else if (dbCtxRaw !== 'true') {
+    errors.push(
+      'DATABASE_SESSION_CONTEXT_ENABLED=false em produção — isolamento de sessão por tenant desligado (DBCTX-01).',
+    );
+  } else {
+    const appUrl = env['APP_DATABASE_URL'];
+    if (!appUrl || appUrl.trim() === '') {
+      errors.push(
+        'DATABASE_SESSION_CONTEXT_ENABLED=true mas APP_DATABASE_URL ausente — o DatabaseModule ' +
+          'cai silenciosamente de volta para DATABASE_URL (bypassrls), anulando o isolamento de ' +
+          'sessão por tenant que a flag deveria garantir (DBCTX-01).',
+      );
+    }
+  }
+
+  const rbacRaw = env['RBAC_PERSISTED_AUTHORITY'];
+  if (rbacRaw === undefined || rbacRaw === '') {
+    errors.push(
+      'RBAC_PERSISTED_AUTHORITY não declarado em produção — o default silencioso ("SHADOW") ' +
+        'significa que a autorização real ainda roda apenas no motor legado (RBAC-SHADOW-01).',
+    );
+  } else if (rbacRaw === 'OFF') {
+    errors.push('RBAC_PERSISTED_AUTHORITY=OFF é proibido em produção (RBAC-SHADOW-01).');
+  } else if (rbacRaw === 'SHADOW') {
+    const waiver = env['ALLOW_RBAC_SHADOW_IN_PRODUCTION'] === 'true';
+    if (!waiver) {
+      errors.push(
+        'RBAC_PERSISTED_AUTHORITY=SHADOW em produção sem waiver — defina ' +
+          'ALLOW_RBAC_SHADOW_IN_PRODUCTION=true apenas como exceção temporária formal enquanto o ' +
+          'harness (test/rbac-shadow-harness) ainda não aprovou a promoção a ON (RBAC-SHADOW-01).',
+      );
+    }
+  } else if (rbacRaw !== 'ON') {
+    errors.push(`RBAC_PERSISTED_AUTHORITY="${rbacRaw}" não é um valor reconhecido (RBAC-SHADOW-01).`);
+  }
+
+  return errors;
+}
+
 const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'staging', 'production', 'test'])
@@ -292,6 +358,11 @@ const envSchema = z.object({
   REDIS_PORT: z.coerce.number().optional(),
   REDIS_PASSWORD: z.string().optional(),
   RBAC_PERSISTED_AUTHORITY: z.enum(['OFF', 'SHADOW', 'ON']).default('SHADOW'),
+  // Waiver temporário e explícito (RBAC-SHADOW-01): permite RBAC_PERSISTED_AUTHORITY=SHADOW
+  // em produção enquanto o rollout do harness (test/rbac-shadow-harness) ainda não foi
+  // aprovado. Nunca deixar "true" permanentemente — remover assim que a flag for promovida a ON.
+  // Validado por collectProductionAuthorityErrors, não pelo zod (precisa do valor cru, não do default).
+  ALLOW_RBAC_SHADOW_IN_PRODUCTION: z.enum(['true', 'false']).default('false'),
   RBAC_DUAL_READ_TELEMETRY: z.enum(['true', 'false']).default('true'),
   RBAC_DISTRIBUTED_CACHE_ENABLED: z.enum(['true', 'false']).default('true'),
   RBAC_AUDIT_MIRROR_ENABLED: z.enum(['true', 'false']).default('true'),
@@ -556,6 +627,12 @@ export function validateEnv(config: Record<string, unknown>): EnvConfig {
     result.error.issues.forEach((issue) => {
       console.error(`  ${issue.path.join('.')}: ${issue.message}`);
     });
+    process.exit(1);
+  }
+  const authorityErrors = collectProductionAuthorityErrors(config as Record<string, string | undefined>);
+  if (authorityErrors.length > 0) {
+    console.error('Invalid environment variables (RBAC-SHADOW-01 / DBCTX-01 production gate):');
+    authorityErrors.forEach((err) => console.error(`  ${err}`));
     process.exit(1);
   }
   return result.data;

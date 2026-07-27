@@ -4,6 +4,7 @@ import {
   SUPABASE_PROD_REF,
   SUPABASE_STAGING_REF,
   collectDatabaseCommandErrors,
+  collectProductionAuthorityErrors,
   collectSupabaseEnvErrors,
   expectedSupabaseRef,
   extractSupabaseRef,
@@ -247,5 +248,87 @@ describe('env.schema — matriz de isolamento de ambientes Supabase (incidente 2
     it('test + remoto (mesmo o DEV autorizado de development) → bloqueado', () => {
       expect(collectDatabaseCommandErrors({ DATABASE_URL: pooler(SUPABASE_DEV_REF) }, 'test').length).toBeGreaterThan(0);
     });
+  });
+});
+
+describe('collectProductionAuthorityErrors — RBAC-SHADOW-01 / DBCTX-01 (Parte 45)', () => {
+  const base = { APP_DATABASE_URL: 'postgresql://musicos_app@host/db' };
+
+  it('development, RBAC ausente, DB context ausente → passa (flags só se aplicam em produção)', () => {
+    expect(collectProductionAuthorityErrors({}, 'development')).toEqual([]);
+  });
+
+  it('test, RBAC ausente, DB context ausente → passa', () => {
+    expect(collectProductionAuthorityErrors({}, 'test')).toEqual([]);
+  });
+
+  it('production, RBAC ausente, DB context ausente → falha (ambas as flags reportadas)', () => {
+    const errors = collectProductionAuthorityErrors({}, 'production');
+    expect(errors.some((e) => e.includes('DATABASE_SESSION_CONTEXT_ENABLED') && e.includes('não declarado'))).toBe(true);
+    expect(errors.some((e) => e.includes('RBAC_PERSISTED_AUTHORITY') && e.includes('não declarado'))).toBe(true);
+  });
+
+  it('production, RBAC=SHADOW declarado, DB context=true, sem waiver → falha', () => {
+    const errors = collectProductionAuthorityErrors(
+      { ...base, DATABASE_SESSION_CONTEXT_ENABLED: 'true', RBAC_PERSISTED_AUTHORITY: 'SHADOW' },
+      'production',
+    );
+    expect(errors.some((e) => e.includes('SHADOW') && e.includes('sem waiver'))).toBe(true);
+  });
+
+  it('production, RBAC=SHADOW, DB context=true, com waiver explícito → passa temporariamente', () => {
+    const errors = collectProductionAuthorityErrors(
+      {
+        ...base,
+        DATABASE_SESSION_CONTEXT_ENABLED: 'true',
+        RBAC_PERSISTED_AUTHORITY: 'SHADOW',
+        ALLOW_RBAC_SHADOW_IN_PRODUCTION: 'true',
+      },
+      'production',
+    );
+    expect(errors).toEqual([]);
+  });
+
+  it('production, RBAC=ON, DB context=true, APP_DATABASE_URL presente → passa', () => {
+    expect(collectProductionAuthorityErrors(
+      { ...base, DATABASE_SESSION_CONTEXT_ENABLED: 'true', RBAC_PERSISTED_AUTHORITY: 'ON' },
+      'production',
+    )).toEqual([]);
+  });
+
+  it('production, RBAC=ON, DB context=false → falha (DB context)', () => {
+    const errors = collectProductionAuthorityErrors(
+      { DATABASE_SESSION_CONTEXT_ENABLED: 'false', RBAC_PERSISTED_AUTHORITY: 'ON' },
+      'production',
+    );
+    expect(errors.some((e) => e.includes('DATABASE_SESSION_CONTEXT_ENABLED=false'))).toBe(true);
+  });
+
+  it('production, RBAC=ON, DB context ausente → falha (DB context não declarado)', () => {
+    const errors = collectProductionAuthorityErrors({ RBAC_PERSISTED_AUTHORITY: 'ON' }, 'production');
+    expect(errors.some((e) => e.includes('DATABASE_SESSION_CONTEXT_ENABLED') && e.includes('não declarado'))).toBe(true);
+  });
+
+  it('production, RBAC=OFF → falha, mesmo com DB context correto', () => {
+    const errors = collectProductionAuthorityErrors(
+      { ...base, DATABASE_SESSION_CONTEXT_ENABLED: 'true', RBAC_PERSISTED_AUTHORITY: 'OFF' },
+      'production',
+    );
+    expect(errors.some((e) => e.includes('OFF') && e.includes('proibido'))).toBe(true);
+  });
+
+  it('production, DB context=true sem APP_DATABASE_URL → falha (fallback silencioso para bypassrls)', () => {
+    const errors = collectProductionAuthorityErrors(
+      { DATABASE_SESSION_CONTEXT_ENABLED: 'true', RBAC_PERSISTED_AUTHORITY: 'ON' },
+      'production',
+    );
+    expect(errors.some((e) => e.includes('APP_DATABASE_URL ausente'))).toBe(true);
+  });
+
+  it('production, waiver=true mas RBAC=ON → waiver é ignorado (não é mais SHADOW, nada a perdoar)', () => {
+    expect(collectProductionAuthorityErrors(
+      { ...base, DATABASE_SESSION_CONTEXT_ENABLED: 'true', RBAC_PERSISTED_AUTHORITY: 'ON', ALLOW_RBAC_SHADOW_IN_PRODUCTION: 'true' },
+      'production',
+    )).toEqual([]);
   });
 });
