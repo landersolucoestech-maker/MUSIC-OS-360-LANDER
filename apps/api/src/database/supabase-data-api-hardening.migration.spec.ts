@@ -22,6 +22,27 @@ describe('HardenSupabaseDataApiSurface20260620000006', () => {
     expect(sql).toContain(
       'REVOKE ALL ON FUNCTION public.private_get_tenant_id() FROM PUBLIC, anon',
     );
-    expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)/i);
+
+    // A migration TEM uma policy legítima com USING (true): migrator_admin_all,
+    // em public.musicos360_migrations, escopada exclusivamente ao role
+    // musicos_migrator (bookkeeping do próprio TypeORM — sem ela, FORCE RLS
+    // bloquearia a migration seguinte de se registrar). Um "not.toMatch"
+    // genérico para USING(true) daria falso-negativo aqui; a invariante real
+    // de segurança é que USING(true) NUNCA aparece associado a nenhum role
+    // que sirva tráfego de aplicação (authenticated/anon/musicos_app/
+    // service_role/PUBLIC) — só ao role administrativo do migrator.
+    // Extrai cada statement CREATE POLICY inteiro (até o ';' que o fecha) —
+    // não "até a próxima CREATE POLICY", que vazaria statements não
+    // relacionados (ex.: os GRANT EXECUTE ... TO authenticated do bloco de
+    // hardening dos resolvers, que não têm relação com esta policy).
+    const trueUsingBlocks = (sql.match(/CREATE POLICY[\s\S]*?;/g) ?? [])
+      .filter((block) => /USING\s*\(\s*true\s*\)/i.test(block));
+
+    expect(trueUsingBlocks).toHaveLength(1);
+    expect(trueUsingBlocks[0]).toContain('CREATE POLICY migrator_admin_all');
+    expect(trueUsingBlocks[0]).toContain('FOR ALL TO musicos_migrator');
+    for (const applicationRole of ['authenticated', 'anon', 'musicos_app', 'service_role', 'PUBLIC']) {
+      expect(trueUsingBlocks[0]).not.toContain(`TO ${applicationRole}`);
+    }
   });
 });

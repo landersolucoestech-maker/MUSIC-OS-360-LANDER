@@ -25,20 +25,46 @@ describe('HardenContactsLeadUploadsRls20260620000002', () => {
       expect(sql).toContain(
         `ALTER TABLE public."${table}" FORCE ROW LEVEL SECURITY`,
       );
+      // Policies são criadas com a lista de roles resolvida em runtime
+      // (policy_roles), não com um nome de role fixo — ver invariante de
+      // "fail-closed por role ausente" abaixo. O texto do EXECUTE format(...)
+      // em si permanece literal e é verificado por completo.
       expect(sql).toContain(
-        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated`,
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}', policy_roles)`,
       );
-      expect(sql).toContain(`'${table}_tenant_select', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_insert', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_update', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_delete', '${table}'`);
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO %s WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}', policy_roles)`,
+      );
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}', policy_roles)`,
+      );
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}', policy_roles)`,
+      );
     }
 
-    expect(sql.match(/CREATE POLICY %I ON public\.%I/g)).toHaveLength(40);
+    // 4 policies (select/insert/update/delete) por tabela — número decorre da
+    // lista de tabelas, não de um valor mágico independente dela.
+    expect(sql.match(/CREATE POLICY %I ON public\.%I/g)).toHaveLength(TABLES.length * 4);
     expect(sql).toContain(
       '"tenant_id" = (SELECT public.app_current_tenant_id())',
     );
     expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)|WITH CHECK\s*\(\s*true\s*\)/i);
+
+    // Invariante fail-closed: policy_roles só inclui roles que realmente
+    // existem no banco (checado dinamicamente), e a policy inteira só é
+    // criada quando pelo menos um role qualifica — nunca cai para um nome de
+    // role hardcoded que poderia não existir num banco novo/local.
+    expect(sql).toContain(
+      "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') INTO has_authenticated",
+    );
+    expect(sql).toContain(
+      "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') INTO has_musicos_app",
+    );
+    expect(sql).toContain("policy_roles := concat_ws(', ',");
+    expect(sql).toContain("CASE WHEN has_authenticated THEN 'authenticated' END");
+    expect(sql).toContain("CASE WHEN has_musicos_app THEN 'musicos_app' END");
+    expect(sql).toContain('IF policy_roles IS NOT NULL THEN');
   });
 
   it('restringe ACLs e endurece os resolvers SECURITY DEFINER', async () => {

@@ -6,12 +6,14 @@ describe('ReconcileOperationalSchema20260620000004', () => {
     await new ReconcileOperationalSchema20260620000004().up(qr as never);
     const sql = qr.query.mock.calls.map(([statement]) => statement).join('\n');
 
-    for (const table of [
+    const TABLES = [
       'operational_tasks',
       'campaign_tasks',
       'campaign_assets',
       'ai_usage_logs',
-    ]) {
+    ];
+
+    for (const table of TABLES) {
       expect(sql).toContain(`CREATE TABLE IF NOT EXISTS public."${table}"`);
       expect(sql).toContain(
         `ALTER TABLE public."${table}" ENABLE ROW LEVEL SECURITY`,
@@ -19,16 +21,32 @@ describe('ReconcileOperationalSchema20260620000004', () => {
       expect(sql).toContain(
         `ALTER TABLE public."${table}" FORCE ROW LEVEL SECURITY`,
       );
+      // Policies são criadas com a lista de roles resolvida em runtime
+      // (policy_roles) — invariante fail-closed verificada abaixo — não com
+      // um nome de role fixo.
       expect(sql).toContain(
-        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO authenticated`,
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR SELECT TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_select', '${table}', policy_roles)`,
       );
-      expect(sql).toContain(`'${table}_tenant_select', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_insert', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_update', '${table}'`);
-      expect(sql).toContain(`'${table}_tenant_delete', '${table}'`);
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR INSERT TO %s WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_insert', '${table}', policy_roles)`,
+      );
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR UPDATE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id())) WITH CHECK ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_update', '${table}', policy_roles)`,
+      );
+      expect(sql).toContain(
+        `EXECUTE format('CREATE POLICY %I ON public.%I FOR DELETE TO %s USING ("tenant_id" = (SELECT public.app_current_tenant_id()))', '${table}_tenant_delete', '${table}', policy_roles)`,
+      );
     }
+    expect(sql.match(/CREATE POLICY %I ON public\.%I/g)).toHaveLength(TABLES.length * 4);
     expect(sql).not.toMatch(/USING\s*\(\s*true\s*\)/i);
     expect(sql).toContain('fk_campaign_tasks_campaign_tenant');
     expect(sql).toContain('fk_campaign_assets_campaign_tenant');
+
+    // Invariante fail-closed: policy_roles só inclui roles que realmente
+    // existem no banco — nunca hardcoded, para não falhar aberto num banco
+    // novo/local sem os roles 'authenticated'/'musicos_app'.
+    expect(sql).toContain("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'authenticated') INTO has_authenticated");
+    expect(sql).toContain("SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'musicos_app') INTO has_musicos_app");
+    expect(sql).toContain('IF policy_roles IS NOT NULL THEN');
   });
 });
