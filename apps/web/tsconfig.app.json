@@ -20,7 +20,8 @@
     "paths": {
       "@/*": ["src/*"],
       "@music-os-360/config/environment": ["../../packages/config/src/environment.ts"],
-      "@music-os-360/ai-skills": ["../../packages/ai-skills/src/index.ts"]
+      "@music-os-360/ai-skills": ["../../packages/ai-skills/src/index.ts"],
+      "@music-os-360/types": ["../../packages/types/src/index.ts"]
     }
   },
   "include": ["src"],

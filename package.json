@@ -26,6 +26,7 @@
     "repo:clean": "node scripts/cleanup/local-safe-cleanup.mjs --apply",
     "env:check": "node scripts/env-check.mjs",
     "cleanup:check": "node scripts/cleanup/cleanup-check.mjs",
+    "verify:critical-workflows": "node scripts/verify-critical-workflows.mjs",
     "release:check": "node scripts/release-check.mjs",
     "release:migrate": "node scripts/release-check.mjs --migrate"
   },

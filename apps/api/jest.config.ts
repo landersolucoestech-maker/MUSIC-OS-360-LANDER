@@ -38,6 +38,11 @@ const config: Config = {
     '^@/(.*)$': '<rootDir>/$1',
     // Pacote compartilhado de AI Skills (consumido como fonte TS; sem symlink em testes).
     '^@music-os-360/ai-skills$': '<rootDir>/../../../packages/ai-skills/src/index.ts',
+    // Mesma razão: @music-os-360/types é consumido por database/entities.ts e ~59
+    // outros arquivos; sem este mapeamento, qualquer ambiente sem o symlink do
+    // workspace (ex.: node-linker isolado sem link, ou filesystem sem symlink)
+    // quebra toda a suíte que importa entities.ts, não só specs de types.
+    '^@music-os-360/types$': '<rootDir>/../../../packages/types/src/index.ts',
   },
 };
 

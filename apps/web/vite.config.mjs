@@ -19,6 +19,7 @@ export default defineConfig({
         "@": path.resolve(__dirname, "src"),
         "@music-os-360/config/environment": path.resolve(__dirname, "../../packages/config/src/environment.ts"),
         "@music-os-360/ai-skills": path.resolve(__dirname, "../../packages/ai-skills/src/index.ts"),
+        "@music-os-360/types": path.resolve(__dirname, "../../packages/types/src/index.ts"),
       },
     },
     optimizeDeps: {

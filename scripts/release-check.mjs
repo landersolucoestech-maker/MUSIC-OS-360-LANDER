@@ -22,6 +22,9 @@ const MIGRATE = process.argv.includes("--migrate");
 
 /** @type {{ name: string, cmd: string, writes?: boolean }[]} */
 const steps = [
+  // Checks baratos e sem build primeiro (RELEASE-01, RBAC-SHADOW-01, DBCTX-01).
+  { name: "Workflows críticos presentes",   cmd: "node scripts/verify-critical-workflows.mjs" },
+  { name: "Flags de produção (RBAC/DBCTX)", cmd: "corepack pnpm --filter @music-os-360/api verify:production-flags" },
   { name: "Web typecheck (0 erros)",        cmd: "corepack pnpm --filter @music-os-360/web typecheck" },
   { name: "API build (tsc)",                cmd: "corepack pnpm --filter @music-os-360/api build" },
   { name: "Web build (vite, MOCK off)",     cmd: "corepack pnpm --filter @music-os-360/web build" },
