@@ -111,7 +111,15 @@ curl https://api.musicos360.com.br/api/v1/health
 
 ## Disaster Recovery
 
-- **RTO:** 30 minutes (restore from Supabase daily backup)
-- **RPO:** 24 hours (daily Supabase Point-in-Time Recovery available on paid plans)
-- **Backup test:** Run quarterly — restore to staging and verify data integrity
-- **R2 files:** Cloudflare R2 provides 99.999999999% durability — no separate backup needed
+> **DOC-01 (fixed):** this section used to describe RTO/RPO as if Supabase PITR
+> and a managed "daily Supabase backup" already covered recovery, and claimed R2
+> needed no separate backup. Neither claim is confirmed: Supabase PITR is an
+> opt-in paid feature not verified as enabled, and R2 durability protects against
+> storage-layer loss, not application-level mistakes (accidental delete, bad
+> migration, compromised key) — none of which R2 durability helps with.
+>
+> **`docs/runbooks/dr.md` is the single source of truth for disaster recovery.**
+> It documents the actual mechanism (`pg_dump` → age/gpg encryption →
+> `.github/workflows/backup.yml` → R2, weekly automated restore drill) and its
+> real current status, including any open blockers. Read that file, not this
+> section, before relying on backup/restore during an incident.
