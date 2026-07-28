@@ -166,10 +166,14 @@ jobs:
 
       - name: Smoke — image starts and /health/live responds
         env:
-          CI_POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+          # Ephemeral, CI-only password: this Postgres container is created and
+          # destroyed entirely within this job (see Cleanup step below), never
+          # reused across runs/jobs, and never holds anything but throwaway
+          # smoke-test data. No production/staging credential, no repo secret —
+          # there is nothing here worth persisting or protecting beyond the job.
+          CI_POSTGRES_PASSWORD: ci_only_ephemeral_password_ba3f0d
         run: |
           docker network create ci-net || true
-          CI_POSTGRES_PASSWORD="${CI_POSTGRES_PASSWORD:?CI_POSTGRES_PASSWORD secret is required}"
           docker run -d --rm --name pg --network ci-net \
             -e POSTGRES_USER=musicos360 -e POSTGRES_PASSWORD="$CI_POSTGRES_PASSWORD" -e POSTGRES_DB=musicos360 \
             postgres:16-alpine
@@ -282,12 +286,18 @@ jobs:
         image: postgres:16-alpine
         env:
           POSTGRES_USER: musicos360
-          POSTGRES_PASSWORD: ${{ secrets.CI_POSTGRES_PASSWORD }}
+          # Ephemeral, CI-only password (same rationale as Docker Build's
+          # smoke-test): this service container lives only for this job's
+          # duration and is torn down automatically by GitHub Actions when
+          # the job ends. No production/staging credential, no repo secret.
+          POSTGRES_PASSWORD: ci_only_ephemeral_password_ba3f0d
           POSTGRES_DB: musicos360
         ports: ['5432:5432']
         options: --health-cmd pg_isready --health-interval 10s --health-timeout 5s --health-retries 10
     env:
-      DATABASE_URL: ${{ secrets.CI_DATABASE_URL }}
+      # Built directly from the same ephemeral value above — no second secret
+      # needed just to duplicate what the service container already knows.
+      DATABASE_URL: postgresql://musicos360:ci_only_ephemeral_password_ba3f0d@localhost:5432/musicos360
       DB_SSL: 'false'
       ENCRYPTION_KEY: '33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217'
     steps:
@@ -306,7 +316,11 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Apply Supabase auth shim (local Postgres needs auth.jwt() etc.)
-        run: PGPASSWORD=musicos360_dev psql -h localhost -U musicos360 -d musicos360 -f apps/api/scripts/local-auth-shim.sql
+        # Must match services.postgres.env.POSTGRES_PASSWORD above — the
+        # previous hardcoded "musicos360_dev" never matched the service
+        # container's actual password and would have failed here regardless
+        # of CI_POSTGRES_PASSWORD.
+        run: PGPASSWORD=ci_only_ephemeral_password_ba3f0d psql -h localhost -U musicos360 -d musicos360 -f apps/api/scripts/local-auth-shim.sql
 
       - name: Run migrations
         run: pnpm --filter @music-os-360/api db:migrate
