@@ -141,7 +141,13 @@ describe("ObraFormModal edit mode", () => {
     expect(callArg.compositores).toEqual(["Alice", "Bob"]);
     expect(callArg.letristas).toEqual(["Carol"]);
     expect(callArg.iswc).toBe("T-123.456.789-0");
-    expect(callArg.org_id).toBe("org-1");
+    // Tenant isolation: org_id/orgId must NEVER be part of the payload the
+    // frontend sends — the API derives the tenant from the authenticated
+    // request context (see registro-musicas.mapper.ts::formToObraPayload).
+    // A client-supplied org_id would be a tenant-spoofing vector; this
+    // assertion is a regression guard against that ever being reintroduced.
+    expect(callArg.org_id).toBeUndefined();
+    expect(callArg.orgId).toBeUndefined();
     expect(callArg.genero).toBe("pop");
   });
 });

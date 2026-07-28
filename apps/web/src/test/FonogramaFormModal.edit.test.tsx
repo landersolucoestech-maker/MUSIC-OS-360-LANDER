@@ -152,6 +152,12 @@ describe("FonogramaFormModal edit mode", () => {
     );
     expect(produtoresNames).toEqual(expect.arrayContaining(["Pedro", "Marta"]));
     expect(callArg.status).toBe("analise");
-    expect(callArg.org_id).toBe("org-1");
+    // Tenant isolation: org_id/orgId must NEVER be part of the payload the
+    // frontend sends — the API derives the tenant from the authenticated
+    // request context (see registro-musicas.mapper.ts). A client-supplied
+    // org_id would be a tenant-spoofing vector; this assertion is a
+    // regression guard against that ever being reintroduced.
+    expect(callArg.org_id).toBeUndefined();
+    expect(callArg.orgId).toBeUndefined();
   });
 });
