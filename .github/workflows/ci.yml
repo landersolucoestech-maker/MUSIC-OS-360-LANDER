@@ -217,6 +217,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: RolesGuard fail-closed in code
         run: |
           grep -q "WRITE_METHODS.has" apps/api/src/core/guards/roles.guard.ts || (echo "::error::RolesGuard fail-closed regression"; exit 1)
@@ -242,9 +254,12 @@ jobs:
           grep -q "isPostHogPlaceholder" apps/api/src/core/analytics/posthog.service.ts || (echo "::error::PostHog placeholder detection missing"; exit 1)
 
       - name: Body limit + 413 handler present
-        run: |
-          grep -q "express.json({ limit:" apps/api/src/main.ts || (echo "::error::Body parser limit missing"; exit 1)
-          grep -q "entity.too.large" apps/api/src/core/filters/global-exception.filter.ts || (echo "::error::PayloadTooLarge handler missing"; exit 1)
+        # Structural (AST-based) check — see scripts/verify-body-limit-guard.mjs.
+        # The previous single-line grep for "express.json({ limit:" broke as a
+        # false negative whenever that call was reformatted across lines; this
+        # is immune to formatting and also validates the ceiling value and the
+        # rawBody capture needed for Stripe webhook signature verification.
+        run: node scripts/verify-body-limit-guard.mjs
 
       - name: CORS silent reject (no Error throw)
         run: |
