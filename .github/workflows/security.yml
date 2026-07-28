@@ -135,7 +135,14 @@ jobs:
       - name: SECRET-01 regression — synthetic secret in docs/ must be detected
         run: |
           TARGET="docs/__gitleaks_regression_test__.md"
-          echo "Synthetic AWS key (never real): AKIAIOSFODNN7EXAMPLE" > "$TARGET"
+          # NOT AWS's canonical "AKIAIOSFODNN7EXAMPLE" placeholder: gitleaks'
+          # own default ruleset carries a built-in allowlist regex
+          # (`.+EXAMPLE$` on rule aws-access-token) that exempts exactly that
+          # value, so it would never be flagged regardless of .gitleaks.toml —
+          # confirmed by this step actually failing to detect it. This value
+          # matches the same AKIA+16-char shape without hitting that
+          # exemption, and is unambiguously synthetic.
+          echo "Synthetic AWS key (never real): AKIA7Q2M9XZKPL4WYVBN" > "$TARGET"
           trap 'rm -f "$TARGET"' EXIT
           set +e
           docker run --rm -v "${{ github.workspace }}:/repo" zricethezav/gitleaks:latest \

@@ -15,7 +15,15 @@ set -uo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="$ROOT/docs/__gitleaks_regression_test__.md"
-SYNTHETIC_SECRET="AKIAIOSFODNN7EXAMPLE" # AWS's own well-known example key — never real, never valid
+# NOT AWS's canonical "AKIAIOSFODNN7EXAMPLE" placeholder: gitleaks' own default
+# ruleset (config/gitleaks.toml, rule aws-access-token) carries a built-in
+# rule-level allowlist regex `.+EXAMPLE$` that exempts exactly that value —
+# it would never be flagged regardless of .gitleaks.toml, making it useless
+# as a regression test. This value matches the same AKIA+16-char shape,
+# has Shannon entropy ~4.0 (above the rule's threshold of 3 — computed and
+# verified before use), and was hand-typed for this test only: never a real
+# or provisioned credential, never reused anywhere else in this repo.
+SYNTHETIC_SECRET="AKIA7Q2M9XZKPL4WYVBN"
 
 cleanup() { rm -f "$TARGET"; }
 trap cleanup EXIT
