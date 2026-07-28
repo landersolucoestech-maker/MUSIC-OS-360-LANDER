@@ -36,4 +36,11 @@ regexes = [
   '''eyJanon''',
   '''eyJservice''',
   '''re_realdev_prod_key''',
+  # SECRET-01 regression-test fixture (scripts/test-gitleaks-docs-coverage.sh +
+  # security.yml): a synthetic, hand-typed, high-entropy AWS-key-shaped string
+  # used ONLY to prove gitleaks still scans docs/**/*.md. Never a real key,
+  # never provisioned, never reused anywhere else. Allowlisting the literal
+  # value (not the file) keeps every other line of both files subject to
+  # normal scanning.
+  '''AKIA7Q2M9XZKPL4WYVBN''',
 ]
