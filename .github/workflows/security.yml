@@ -1,13 +1,13 @@
 name: Security Scan
 
 on:
+  # dev = development/integration/staging, main = production. release/** was
+  # a temporary carve-out for the now-retired release/music-os-360-hardening-dev
+  # publication branch — removed now that dev is the canonical branch.
   push:
-    # release/** carries the controlled publication of previously-local
-    # history (see release/music-os-360-hardening-dev) — PRs against it need
-    # real secret-scanning coverage too, not just main/develop.
-    branches: [main, develop, "release/**"]
+    branches: [dev, main]
   pull_request:
-    branches: [main, develop, "release/**"]
+    branches: [dev, main]
   schedule:
     # Run weekly on Monday at 08:00 UTC regardless of pushes
     - cron: "0 8 * * 1"

@@ -1,10 +1,13 @@
 name: CI
 
 on:
+  # dev = development/integration/staging, main = production. Only these two
+  # branches are permanent in this project's topology; no develop/staging/
+  # release/feature-pattern branches remain.
   push:
-    branches: [main, develop, dev, "feat/**", "fix/**", "chore/**"]
+    branches: [dev, main]
   pull_request:
-    branches: [main, develop, dev]
+    branches: [dev, main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
