@@ -91,6 +91,36 @@
 
 ---
 
+## Git Flow
+
+Only two permanent branches exist in this repository:
+
+```
+DESENVOLVIMENTO
+      ↓
+     dev              development / integration / staging
+      ↓
+ validação/staging     CI on every push (Tests, Migrations Check, Docker
+      ↓                Build, Security Regression, gitleaks, CodeQL)
+ PR dev → main
+      ↓
+    main               production
+      ↓
+  produção
+```
+
+No `develop`, no long-lived `release/*` or `staging` branch, no CI/CD
+dependency on any Replit-hosted environment. Short-lived feature branches
+(`feat/**`, `fix/**`, etc.) may exist locally or as temporary GitHub
+branches while work is in progress, but they are never part of the
+permanent topology — merge to `dev` and delete once done. Both `main` and
+`dev` are currently unprotected on GitHub (confirmed via the branch
+protection API, 2026-07-31); adding required-status-check + no-force-push
+protection to both, and required review on `main`, is a recommended
+follow-up, not yet enabled.
+
+---
+
 ## Rollback Procedure
 
 ```bash
