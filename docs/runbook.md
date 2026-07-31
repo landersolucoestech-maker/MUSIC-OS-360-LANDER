@@ -110,7 +110,7 @@ DESENVOLVIMENTO
 ```
 
 No `develop`, no long-lived `release/*` or `staging` branch, no CI/CD
-dependency on any Replit-hosted environment. Short-lived feature branches
+dependency on any third-party AI-IDE hosting environment. Short-lived feature branches
 (`feat/**`, `fix/**`, etc.) may exist locally or as temporary GitHub
 branches while work is in progress, but they are never part of the
 permanent topology — merge to `dev` and delete once done. Both `main` and
