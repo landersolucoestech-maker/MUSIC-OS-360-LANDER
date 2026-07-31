@@ -41,6 +41,7 @@ import { TenantBootstrapResolver } from '../../database/tenant-bootstrap.resolve
 import { RolesGuard } from '../../core/guards/roles.guard';
 import { PermissionsGuard } from '../../core/guards/permissions.guard';
 import { RbacDecisionService } from '../../core/rbac/rbac-decision.service';
+import { createTestTenant, createTestUser, createTestArtist } from '../../../test/helpers/tenant-fixtures';
 
 let privateKey: string;
 
@@ -60,13 +61,18 @@ function makeToken(payload: Record<string, unknown>): string {
   } as jwt.SignOptions);
 }
 
-// ParseUUIDPipe exige UUID valido no :id — dataset fixo com dois tenants,
-// simulando o que o RLS/tenant_id garantiria no banco real.
-const ARTIST_A_ID = '11111111-1111-4111-8111-111111111111';
-const ARTIST_B_ID = '22222222-2222-4222-8222-222222222222';
+// ParseUUIDPipe exige UUID valido no :id — dataset com dois tenants gerados pela
+// factory (nunca hardcoded), simulando o que o RLS/tenant_id garantiria no banco real.
+const tenantA = createTestTenant();
+const tenantB = createTestTenant();
+const userA = createTestUser();
+const artistA = createTestArtist();
+const artistB = createTestArtist();
+const ARTIST_A_ID = artistA.id;
+const ARTIST_B_ID = artistB.id;
 const ARTISTS_BY_TENANT: Record<string, Record<string, { id: string; nome_artistico: string }>> = {
-  'tenant-a': { [ARTIST_A_ID]: { id: ARTIST_A_ID, nome_artistico: 'Artista da Tenant A' } },
-  'tenant-b': { [ARTIST_B_ID]: { id: ARTIST_B_ID, nome_artistico: 'Artista da Tenant B' } },
+  [tenantA.tenantId]: { [ARTIST_A_ID]: { id: ARTIST_A_ID, nome_artistico: artistA.nomeArtistico } },
+  [tenantB.tenantId]: { [ARTIST_B_ID]: { id: ARTIST_B_ID, nome_artistico: artistB.nomeArtistico } },
 };
 
 describe('Cross-tenant IDOR — GET /artists/:id via HTTP real', () => {
@@ -124,14 +130,14 @@ describe('Cross-tenant IDOR — GET /artists/:id via HTTP real', () => {
   afterEach(() => jest.clearAllMocks());
 
   it('tenant A autenticado le o proprio artista -> 200', async () => {
-    const token = makeToken({ sub: 'user-a', app_metadata: { org_id: 'org-a', role: 'viewer' } });
-    resolveTenant.mockResolvedValue({ id: 'tenant-a', org_id: 'org-a', active: true });
-    resolveMembership.mockResolvedValue({ role: 'viewer', role_id: 'role-viewer' });
+    const token = makeToken({ sub: userA.userId, app_metadata: { org_id: tenantA.orgId, role: userA.role } });
+    resolveTenant.mockResolvedValue({ id: tenantA.tenantId, org_id: tenantA.orgId, active: true });
+    resolveMembership.mockResolvedValue({ role: userA.role, role_id: 'role-viewer' });
 
     await request(app.getHttpServer())
       .get(`/artists/${ARTIST_A_ID}`)
       .set('Authorization', `Bearer ${token}`)
-      .set('X-Tenant-ID', 'org-a')
+      .set('X-Tenant-ID', tenantA.orgId)
       .expect(200)
       .expect((res) => {
         expect(res.body.id).toBe(ARTIST_A_ID);
@@ -139,27 +145,27 @@ describe('Cross-tenant IDOR — GET /artists/:id via HTTP real', () => {
   });
 
   it('tenant A autenticado pede o ID do artista da tenant B -> 404 (service filtra por tenant_id)', async () => {
-    const token = makeToken({ sub: 'user-a', app_metadata: { org_id: 'org-a', role: 'viewer' } });
-    resolveTenant.mockResolvedValue({ id: 'tenant-a', org_id: 'org-a', active: true });
-    resolveMembership.mockResolvedValue({ role: 'viewer', role_id: 'role-viewer' });
+    const token = makeToken({ sub: userA.userId, app_metadata: { org_id: tenantA.orgId, role: userA.role } });
+    resolveTenant.mockResolvedValue({ id: tenantA.tenantId, org_id: tenantA.orgId, active: true });
+    resolveMembership.mockResolvedValue({ role: userA.role, role_id: 'role-viewer' });
 
     await request(app.getHttpServer())
       .get(`/artists/${ARTIST_B_ID}`)
       .set('Authorization', `Bearer ${token}`)
-      .set('X-Tenant-ID', 'org-a')
+      .set('X-Tenant-ID', tenantA.orgId)
       .expect(404);
   });
 
   it('usuario da tenant A tenta forjar X-Tenant-ID da tenant B sem ser membro -> 403 do TenantGuard (nunca chega no controller)', async () => {
-    const token = makeToken({ sub: 'user-a', app_metadata: { org_id: 'org-a', role: 'viewer' } });
-    // auth.orgId (org-a) diverge do X-Tenant-ID forjado (org-b) -> TenantGuard rejeita
-    // antes mesmo de resolver o tenant/membership.
-    resolveTenant.mockResolvedValue({ id: 'tenant-a', org_id: 'org-a', active: true });
+    const token = makeToken({ sub: userA.userId, app_metadata: { org_id: tenantA.orgId, role: userA.role } });
+    // auth.orgId (tenantA) diverge do X-Tenant-ID forjado (tenantB) -> TenantGuard
+    // rejeita antes mesmo de resolver o tenant/membership.
+    resolveTenant.mockResolvedValue({ id: tenantA.tenantId, org_id: tenantA.orgId, active: true });
 
     await request(app.getHttpServer())
       .get(`/artists/${ARTIST_B_ID}`)
       .set('Authorization', `Bearer ${token}`)
-      .set('X-Tenant-ID', 'org-b')
+      .set('X-Tenant-ID', tenantB.orgId)
       .expect(403);
 
     expect(resolveMembership).not.toHaveBeenCalled();

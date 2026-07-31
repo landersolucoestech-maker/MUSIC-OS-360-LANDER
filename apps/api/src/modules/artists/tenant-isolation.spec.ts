@@ -4,6 +4,7 @@ import { EncryptionService } from '../../core/security/encryption.service';
 import { EventsService } from '../../core/events/events.service';
 import { PlanLimitService } from '../../core/billing/plan-limit.service';
 import { NotFoundException } from '@nestjs/common';
+import { createTestTenant, createTestUser, createTestArtist } from '../../../test/helpers/tenant-fixtures';
 
 function makePlanLimitMock() {
   return { enforce: jest.fn().mockResolvedValue(undefined) } as unknown as PlanLimitService;
@@ -30,12 +31,13 @@ function makeEncryptionMock(): jest.Mocked<EncryptionService> {
   } as unknown as jest.Mocked<EncryptionService>;
 }
 
-const TENANT_A = 'tenant-alpha';
-const TENANT_B = 'tenant-beta';
-const USER_ID = 'user-system';
+const { tenantId: TENANT_A } = createTestTenant();
+const { tenantId: TENANT_B } = createTestTenant();
+const { userId: USER_ID } = createTestUser();
+const fixtureArtist = createTestArtist();
 
 const artistOfA = {
-  id: 'artist-aaa-001',
+  id: fixtureArtist.id,
   tenant_id: TENANT_A,
   nome_artistico: 'Artista do Tenant A',
   deleted_at: null,
@@ -69,7 +71,7 @@ function makeDataSource(getOneValue: unknown = artistOfA) {
     createQueryBuilder: jest.fn(() => qb),
     create: jest.fn((value: unknown) => value),
     save: jest.fn((value: Record<string, unknown>) =>
-      Promise.resolve({ id: 'artist-aaa-001', ...value }),
+      Promise.resolve({ id: fixtureArtist.id, ...value }),
     ),
     update: jest.fn().mockResolvedValue({ affected: 1 }),
     _qb: qb,
