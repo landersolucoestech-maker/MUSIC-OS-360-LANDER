@@ -19,10 +19,20 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'musicos_app') THEN
     CREATE ROLE musicos_app NOLOGIN NOINHERIT NOBYPASSRLS;
   END IF;
+  -- Migration-runner/table-owner role. In real Supabase-hosted environments
+  -- this is the connection role migrations already run as, so it "just
+  -- exists" there; local/CI Postgres connects as musicos360 instead, so 27
+  -- migrations' `ALTER TABLE ... OWNER TO musicos_migrator` / admin-only RLS
+  -- policies (e.g. migrator_admin_all) had never been exercised against a
+  -- fresh database until this fix — confirmed by reproducing db:migrate
+  -- locally end-to-end.
+  IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'musicos_migrator') THEN
+    CREATE ROLE musicos_migrator NOLOGIN NOINHERIT;
+  END IF;
 END $$;
 
 GRANT USAGE ON SCHEMA auth TO anon, authenticated, service_role, musicos_app;
-GRANT anon, authenticated, service_role, musicos_app TO musicos360;
+GRANT anon, authenticated, service_role, musicos_app, musicos_migrator TO musicos360;
 -- App role inherits the `authenticated`-scoped RLS policies (Supabase convention).
 GRANT authenticated TO musicos_app;
 

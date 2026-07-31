@@ -86,6 +86,7 @@ export class RebuildContractsInCanonicalFormOrder20260719000012 implements Migra
     await queryRunner.query(`CREATE INDEX idx_contracts_status_new ON contracts_new (tenant_id, status) WHERE (deleted_at IS NULL)`);
 
     await queryRunner.query(`ALTER TABLE financial_transactions DROP CONSTRAINT fk_fintx_contract`);
+    await queryRunner.query(`ALTER TABLE contact_contracts DROP CONSTRAINT fk_contact_contracts_contract_tenant`);
 
     await queryRunner.query(`ALTER TABLE contracts RENAME TO contracts_old`);
     await queryRunner.query(`ALTER TABLE contracts_old RENAME CONSTRAINT contracts_pkey TO contracts_old_pkey`);
@@ -112,6 +113,7 @@ export class RebuildContractsInCanonicalFormOrder20260719000012 implements Migra
     await queryRunner.query(`ALTER INDEX idx_contracts_status_new RENAME TO idx_contracts_status`);
 
     await queryRunner.query(`ALTER TABLE financial_transactions ADD CONSTRAINT fk_fintx_contract FOREIGN KEY (tenant_id, contract_id) REFERENCES contracts(tenant_id, id)`);
+    await queryRunner.query(`ALTER TABLE contact_contracts ADD CONSTRAINT fk_contact_contracts_contract_tenant FOREIGN KEY (contract_id, tenant_id) REFERENCES contracts(id, tenant_id)`);
 
     await queryRunner.query(`ALTER TABLE contracts ENABLE ROW LEVEL SECURITY`);
     await queryRunner.query(`ALTER TABLE contracts FORCE ROW LEVEL SECURITY`);
@@ -184,6 +186,7 @@ export class RebuildContractsInCanonicalFormOrder20260719000012 implements Migra
     await queryRunner.query(`CREATE INDEX idx_contracts_status_restore ON contracts_restore (tenant_id, status) WHERE (deleted_at IS NULL)`);
 
     await queryRunner.query(`ALTER TABLE financial_transactions DROP CONSTRAINT fk_fintx_contract`);
+    await queryRunner.query(`ALTER TABLE contact_contracts DROP CONSTRAINT fk_contact_contracts_contract_tenant`);
 
     await queryRunner.query(`ALTER TABLE contracts RENAME TO contracts_canonical`);
     await queryRunner.query(`ALTER TABLE contracts_canonical RENAME CONSTRAINT contracts_pkey TO contracts_canonical_pkey`);
@@ -210,6 +213,7 @@ export class RebuildContractsInCanonicalFormOrder20260719000012 implements Migra
     await queryRunner.query(`ALTER INDEX idx_contracts_status_restore RENAME TO idx_contracts_status`);
 
     await queryRunner.query(`ALTER TABLE financial_transactions ADD CONSTRAINT fk_fintx_contract FOREIGN KEY (tenant_id, contract_id) REFERENCES contracts(tenant_id, id)`);
+    await queryRunner.query(`ALTER TABLE contact_contracts ADD CONSTRAINT fk_contact_contracts_contract_tenant FOREIGN KEY (contract_id, tenant_id) REFERENCES contracts(id, tenant_id)`);
 
     await queryRunner.query(`ALTER TABLE contracts ENABLE ROW LEVEL SECURITY`);
     await queryRunner.query(`ALTER TABLE contracts FORCE ROW LEVEL SECURITY`);
