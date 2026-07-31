@@ -55,3 +55,16 @@ LANGUAGE sql STABLE AS $$
 $$;
 
 GRANT EXECUTE ON FUNCTION auth.jwt(), auth.uid(), auth.role() TO anon, authenticated, service_role;
+
+-- Real Supabase projects grant SELECT/INSERT/UPDATE/DELETE on every
+-- public-schema table to anon/authenticated/service_role as a platform-level
+-- default (RLS policies alone don't grant access — Postgres still requires
+-- the base table privilege). This project's migrations never issue that
+-- grant themselves because they assume that platform baseline exists
+-- already; replicate it here as a default-privileges rule so tables created
+-- by later migrations (owned by musicos360 or musicos_migrator) inherit it
+-- automatically, same root cause as the musicos_migrator bootstrap above.
+ALTER DEFAULT PRIVILEGES FOR ROLE musicos360, musicos_migrator IN SCHEMA public
+  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
+ALTER DEFAULT PRIVILEGES FOR ROLE musicos360, musicos_migrator IN SCHEMA public
+  GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
