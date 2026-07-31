@@ -51,6 +51,16 @@ import { UbcConfigDialog } from "@/modules/integrations/components/UbcConfigDial
 import { useUbcStatus } from "@/modules/integrations/hooks/useUbc";
 import { NfeConfigDialog } from "@/modules/integrations/components/NfeConfigDialog";
 import { useNfeStatus } from "@/modules/integrations/hooks/useNfe";
+import { SpotifyConfigDialog } from "@/modules/integrations/components/SpotifyConfigDialog";
+import { useSpotifyStatus } from "@/modules/integrations/hooks/useSpotify";
+import { YouTubeConfigDialog } from "@/modules/integrations/components/YouTubeConfigDialog";
+import { useYouTubeStatus } from "@/modules/integrations/hooks/useYouTube";
+import { DeezerConfigDialog } from "@/modules/integrations/components/DeezerConfigDialog";
+import { useDeezerStatus } from "@/modules/integrations/hooks/useDeezer";
+import { SoundCloudConfigDialog } from "@/modules/integrations/components/SoundCloudConfigDialog";
+import { useSoundCloudStatus } from "@/modules/integrations/hooks/useSoundCloud";
+import { AppleMusicConfigDialog } from "@/modules/integrations/components/AppleMusicConfigDialog";
+import { useAppleMusicStatus } from "@/modules/integrations/hooks/useAppleMusic";
 import {
   IntegrationStatusBadges,
   type IntegrationNotice,
@@ -185,6 +195,11 @@ export default function Configuracoes() {
   const [clicksignConfigOpen, setClicksignConfigOpen] = useState(false);
   const [ubcConfigOpen, setUbcConfigOpen] = useState(false);
   const [nfeConfigOpen, setNfeConfigOpen] = useState(false);
+  const [spotifyConfigOpen, setSpotifyConfigOpen] = useState(false);
+  const [youtubeConfigOpen, setYoutubeConfigOpen] = useState(false);
+  const [deezerConfigOpen, setDeezerConfigOpen] = useState(false);
+  const [soundcloudConfigOpen, setSoundcloudConfigOpen] = useState(false);
+  const [appleMusicConfigOpen, setAppleMusicConfigOpen] = useState(false);
   const [externalOAuthConnections, setExternalOAuthConnections] = useState<
     Partial<Record<"docusign", boolean>>
   >(() => {
@@ -200,6 +215,11 @@ export default function Configuracoes() {
   const { data: autentiqueStatus } = useAutentiqueStatus();
   const { data: clicksignStatus } = useClicksignStatus();
   const { data: ubcStatus } = useUbcStatus();
+  const { data: spotifyStatus } = useSpotifyStatus();
+  const { data: youtubeStatus } = useYouTubeStatus();
+  const { data: deezerStatus } = useDeezerStatus();
+  const { data: soundcloudStatus } = useSoundCloudStatus();
+  const { data: appleMusicStatus } = useAppleMusicStatus();
   const {
     isConnected: isMarketingConnected,
     connect: connectMarketing,
@@ -503,6 +523,47 @@ export default function Configuracoes() {
       category: "Direitos Autorais",
       configurable: true,
     },
+    // ── Streaming — métricas de catálogo por plataforma ────────────────────────
+    {
+      id: "spotify",
+      name: "Spotify",
+      status: spotifyStatus?.connected ? "conectado" : "desconectado",
+      description: "Dados de streams, ouvintes mensais e desempenho de catálogo",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "youtube",
+      name: "YouTube Music",
+      status: youtubeStatus?.connected ? "conectado" : "desconectado",
+      description: "Métricas de visualizações, receita e crescimento de canal",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "deezer",
+      name: "Deezer",
+      status: deezerStatus?.connected ? "conectado" : "desconectado",
+      description: "Relatórios de streams e royalties da plataforma Deezer",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "soundcloud",
+      name: "SoundCloud",
+      status: soundcloudStatus?.connected ? "conectado" : "desconectado",
+      description: "Estatísticas de reprodução e engajamento no SoundCloud",
+      category: "Streaming",
+      configurable: true,
+    },
+    {
+      id: "apple-music",
+      name: "Apple Music",
+      status: appleMusicStatus?.connected ? "conectado" : "desconectado",
+      description: "Dados de streams e relatórios do Apple Music for Artists",
+      category: "Streaming",
+      configurable: true,
+    },
     // ── Marketing Digital — contas corporativas (métricas + tráfego pago) ──────
     // Todas as plataformas coexistem num único ecossistema operacional.
     // Plataformas de ARTISTAS são automáticas via links do cadastro de cada artista.
@@ -604,6 +665,11 @@ export default function Configuracoes() {
     ubc:           () => setUbcConfigOpen(true),
     website_leads: () => setWebsiteLeadOpen(true),
     nfe:           () => setNfeConfigOpen(true),
+    spotify:       () => setSpotifyConfigOpen(true),
+    youtube:       () => setYoutubeConfigOpen(true),
+    deezer:        () => setDeezerConfigOpen(true),
+    soundcloud:    () => setSoundcloudConfigOpen(true),
+    "apple-music": () => setAppleMusicConfigOpen(true),
   };
 
   const handleSaveProfile = () => {
@@ -1318,6 +1384,7 @@ export default function Configuracoes() {
                 {[
                   { key: "Assinatura Digital",   icon: <FileText className="h-4 w-4" /> },
                   { key: "Direitos Autorais",     icon: <Shield className="h-4 w-4" /> },
+                  { key: "Streaming",             icon: <Music className="h-4 w-4" /> },
                   { key: "Monitoramento Musical", icon: <Music className="h-4 w-4" /> },
                   { key: "Marketing Digital",     icon: <Zap className="h-4 w-4" /> },
                   { key: "Fiscal",                icon: <DollarSign className="h-4 w-4" /> },
@@ -1561,6 +1628,26 @@ export default function Configuracoes() {
             <UbcConfigDialog
               open={ubcConfigOpen}
               onOpenChange={setUbcConfigOpen}
+            />
+            <SpotifyConfigDialog
+              open={spotifyConfigOpen}
+              onOpenChange={setSpotifyConfigOpen}
+            />
+            <YouTubeConfigDialog
+              open={youtubeConfigOpen}
+              onOpenChange={setYoutubeConfigOpen}
+            />
+            <DeezerConfigDialog
+              open={deezerConfigOpen}
+              onOpenChange={setDeezerConfigOpen}
+            />
+            <SoundCloudConfigDialog
+              open={soundcloudConfigOpen}
+              onOpenChange={setSoundcloudConfigOpen}
+            />
+            <AppleMusicConfigDialog
+              open={appleMusicConfigOpen}
+              onOpenChange={setAppleMusicConfigOpen}
             />
             {oauthDialogPlatform && (
               <MarketingOAuthDialog
