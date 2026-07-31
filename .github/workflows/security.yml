@@ -40,10 +40,16 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: pnpm audit (critical + high)
-        run: pnpm audit --audit-level=high --prod
-        # Fail the pipeline for high/critical vulnerabilities in production deps
+      - name: Dependency audit policy (waivers)
+        run: node scripts/verify-production-audit.mjs
+        # Runs the real `pnpm audit --prod` and fails only on advisories that
+        # are NOT covered by an explicit, non-expired waiver in
+        # scripts/dependency-audit-waivers.json — see that file for the
+        # currently-accepted advisories, owners and review dates.
         continue-on-error: false
+
+      - name: Dependency audit verifier unit tests
+        run: node --test scripts/verify-production-audit.test.mjs
 
   # ─── SBOM generation ─────────────────────────────────────────────────────────
   sbom:
