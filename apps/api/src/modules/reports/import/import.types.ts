@@ -5,6 +5,15 @@
  */
 export type ImportFormat = 'xlsx';
 export const IMPORT_MAX_ROWS = 5000;
+/**
+ * Defense-in-depth cap on raw bytes handed to XLSX.read(), independent of
+ * the global JSON body-size limit (see scripts/verify-body-limit-guard.mjs).
+ * xlsx has no patched release for its known prototype-pollution/ReDoS
+ * advisories (scripts/dependency-audit-waivers.json) — bounding input size
+ * here protects this path even if the body-parser's own limit ever changes.
+ */
+export const IMPORT_MAX_BYTES = 1024 * 1024;
+export const IMPORT_MAX_SHEETS = 20;
 
 export interface ParsedFile {
   format: ImportFormat;
