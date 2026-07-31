@@ -16,14 +16,21 @@ set -uo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TARGET="$ROOT/docs/__gitleaks_regression_test__.md"
 # NOT AWS's canonical "AKIAIOSFODNN7EXAMPLE" placeholder: gitleaks' own default
-# ruleset (config/gitleaks.toml, rule aws-access-token) carries a built-in
-# rule-level allowlist regex `.+EXAMPLE$` that exempts exactly that value —
-# it would never be flagged regardless of .gitleaks.toml, making it useless
-# as a regression test. This value matches the same AKIA+16-char shape,
-# has Shannon entropy ~4.0 (above the rule's threshold of 3 — computed and
-# verified before use), and was hand-typed for this test only: never a real
-# or provisioned credential, never reused anywhere else in this repo.
-SYNTHETIC_SECRET="AKIA7Q2M9XZKPL4WYVBN"
+# ruleset carries a built-in rule-level allowlist regex `.+EXAMPLE$` that
+# exempts exactly that value, regardless of .gitleaks.toml.
+#
+# Also NOT an arbitrary AKIA+16-alphanumeric string: gitleaks v8.30.1
+# tightened the aws-access-token regex from [A-Z0-9]{16} to [A-Z2-7]{16}
+# (real AWS access key IDs are Base32-encoded — digits 0/1/8/9 never appear).
+# `:latest` in security.yml's Docker-based regression step floats to
+# whatever version is newest (confirmed v8.30.1 at the time of writing, vs.
+# v8.24.3 pinned by gitleaks-action@v2 earlier in the same job — a real,
+# pre-existing version drift between the two gitleaks invocations), so this
+# value uses ONLY [A-Z2-7] in its 16-char suffix to match both versions'
+# regex. Shannon entropy ~4.0 (above the rule's threshold of 3 — computed
+# and verified against the real image before use). Hand-typed for this test
+# only: never a real or provisioned credential, never reused elsewhere.
+SYNTHETIC_SECRET="AKIAQZM3XKPL4WYVB2RS"
 
 cleanup() { rm -f "$TARGET"; }
 trap cleanup EXIT
