@@ -12,10 +12,13 @@ name: Staging CI/CD
 # NAO usar secrets de producao aqui.
 
 on:
-  push:
-    branches: [staging]
-  pull_request:
-    branches: [staging]
+  # Staging is an environment, not a branch — there is no "staging" branch in
+  # this project's topology (dev/main only). Promotion to staging is a
+  # deliberate, manual action (Actions tab -> Run workflow), not an automatic
+  # side effect of every push to dev. Wiring this to `push: branches: [dev]`
+  # would trigger a real staging deployment attempt on every dev commit,
+  # which is a bigger behavior change than this cleanup is meant to make —
+  # left as a documented future option, not enabled here.
   workflow_dispatch: {}
 
 permissions:
