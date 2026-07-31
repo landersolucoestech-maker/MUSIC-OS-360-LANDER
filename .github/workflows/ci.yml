@@ -183,13 +183,19 @@ jobs:
             docker exec pg pg_isready -U musicos360 && break
             sleep 2
           done
-          docker run -d --rm --name api --network ci-net -p 3001:3001 \
+          # No --rm on this one: a crashed container auto-removes itself the
+          # instant it exits, which previously destroyed `docker logs api`
+          # before the failure branch below could ever read it (confirmed:
+          # every failure here read as "No such container: api" instead of a
+          # real stack trace). Cleanup step below removes it explicitly once
+          # logs have been captured either way.
+          docker run -d --name api --network ci-net -p 3001:3001 \
             -e NODE_ENV=development \
             -e DATABASE_URL="postgresql://musicos360:$CI_POSTGRES_PASSWORD@pg:5432/musicos360" \
             -e DB_SSL=false \
             -e REDIS_URL=redis://redis:6379 \
             -e REDIS_QUEUE_URL=redis://redis:6379 \
-            -e SUPABASE_URL=https://placeholder.supabase.co \
+            -e SUPABASE_URL=https://ci-smoke-test.invalid \
             -e ENCRYPTION_KEY=33b29b3d331d95a7a029160cbbb4c64cc7e094271b0a6f501da19a596ade7217 \
             -e CORS_ORIGINS=http://localhost:5000 \
             musicos360-api:ci-${{ github.sha }}
@@ -198,16 +204,31 @@ jobs:
           for i in $(seq 1 45); do
             code=$(curl -s -o /dev/null -w "%{http_code}" http://localhost:3001/api/v1/health/live || true)
             if [ "$code" = "200" ]; then ok=1; break; fi
+            # Container exited early (crash) — no point waiting out the full 90s.
+            status=$(docker inspect -f '{{.State.Status}}' api 2>/dev/null || echo "gone")
+            if [ "$status" = "exited" ] || [ "$status" = "gone" ]; then break; fi
             sleep 2
           done
           if [ "$ok" != "1" ]; then
             echo "::error::API did not become healthy in 90s"
-            docker logs api | tail -100
             exit 1
           fi
           echo "API healthy ✓"
           curl -s http://localhost:3001/api/v1/health/live
         shell: bash
+
+      - name: API container logs and state on failure
+        if: failure()
+        run: |
+          echo "::group::docker ps -a"
+          docker ps -a --filter name=api || true
+          echo "::endgroup::"
+          echo "::group::docker inspect api (state only, no env/secrets)"
+          docker inspect --format='ExitCode={{.State.ExitCode}} Error={{.State.Error}} OOMKilled={{.State.OOMKilled}} Status={{.State.Status}}' api 2>&1 || true
+          echo "::endgroup::"
+          echo "::group::docker logs api"
+          docker logs api 2>&1 || true
+          echo "::endgroup::"
 
       - name: Cleanup
         if: always()
