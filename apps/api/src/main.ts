@@ -1,6 +1,7 @@
 ﻿// ── .env carregado ANTES de qualquer módulo (garante process.env para QueueModule.register) ──
 // Carrega apps/api/.env explicitamente (path relativo ao CWD = apps/api/ via `npm run dev`).
-// Replit Secrets já estão em process.env — valores existentes não são sobrepostos.
+// Variáveis já presentes em process.env (secrets do provedor de hosting, Docker -e,
+// secrets de CI) não são sobrepostas — só preenche o que ainda não foi definido.
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -185,11 +186,8 @@ async function bootstrap() {
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) return callback(null, true);
-      // In dev, accept Replit preview domains and any localhost port
+      // In dev, accept any localhost port
       if (isDevEnv) {
-        if (origin.endsWith('.replit.dev') || origin.endsWith('.replit.app')) {
-          return callback(null, true);
-        }
         if (/^https?:\/\/localhost(:\d+)?$/.test(origin)) {
           return callback(null, true);
         }

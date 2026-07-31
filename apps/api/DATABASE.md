@@ -10,7 +10,7 @@
 
 ## Pré-requisitos
 
-Definir o secret `DATABASE_URL` no Replit antes de qualquer operação:
+Definir a variável de ambiente `DATABASE_URL` (no seu gerenciador de secrets/`.env` local) antes de qualquer operação:
 
 ```
 DATABASE_URL=postgresql://postgres:<password>@<host>:5432/postgres
@@ -124,7 +124,7 @@ npm run db:migrate
 
 ## Troubleshooting
 
-**`DATABASE_URL não definida`** — Definir o secret no Replit (não em .env em produção).
+**`DATABASE_URL não definida`** — Definir a variável de ambiente no seu gerenciador de secrets (não em `.env` em produção).
 
 **`Existem migrations pendentes`** — Executar `npm run db:migrate`.
 

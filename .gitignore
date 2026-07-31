@@ -2,9 +2,8 @@
 dist/
 build/
 
-# Replit internal
+# Local scratch/state directories
 .local/
-.replit_integration_files/
 
 # Dependencies
 node_modules/

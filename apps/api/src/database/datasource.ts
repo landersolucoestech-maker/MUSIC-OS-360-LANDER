@@ -31,7 +31,7 @@ const DATABASE_URL = process.env['DATABASE_URL'];
 if (!DATABASE_URL) {
   console.error(
     '\n[MUSIC OS 360] DATABASE_URL não definida.\n' +
-    'Defina DATABASE_URL como Secret do Replit antes de correr migrations.\n',
+    'Defina a variável de ambiente DATABASE_URL antes de correr migrations.\n',
   );
   process.exit(1);
 }

@@ -861,7 +861,7 @@ client/src/test/
 
 ### Mantidos apesar de 0 importadores directos (infra arquitectural)
 - `shared/lib/tenant.ts` — helpers `getCurrentOrgId`, `withTenantFilter`, `stampTenant` para modo produção (JWT)
-- `shared/lib/tenant-isolation.ts` — `isolateByTenant`, `assertTenantOwnership`, `stampTenantId` documentados em `replit.md`
+- `shared/lib/tenant-isolation.ts` — `isolateByTenant`, `assertTenantOwnership`, `stampTenantId`
 - `shared/hooks/useCanAccess.ts` — RBAC hook para controlo de permissões por módulo/acção (referenciado em `useIsAdmin.ts`)
 
 ### Resultado
