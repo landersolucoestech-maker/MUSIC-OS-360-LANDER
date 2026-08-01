@@ -450,8 +450,11 @@ jobs:
     needs: [quality]
     environment: development
     # Always runs on main/dev (never silently "skipped" from the Actions UI) —
-    # the gate step below reports loudly to the job summary when disabled, instead
-    # of the whole job vanishing without explanation.
+    # the gate step below reports loudly when disabled, instead of the whole
+    # job vanishing without explanation. Unlike a deliberate DB_VERIFY_ENABLED
+    # opt-out (a legitimate skip), DB_VERIFY_ENABLED=true with no DATABASE_URL
+    # secret FAILS this job outright (scripts/db-verify-gate.mjs) — a green
+    # checkmark here must never happen without a real connection to DEV.
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
@@ -460,16 +463,10 @@ jobs:
 
       - name: Check DB verification gate
         id: gate
-        run: |
-          if [ "${{ vars.DB_VERIFY_ENABLED }}" != "true" ]; then
-            echo "::warning::DB_VERIFY_ENABLED repo variable is not 'true' — Supabase DEV checks are SKIPPED this run. Set DB_VERIFY_ENABLED=true and configure the DATABASE_URL secret (development environment) under Settings > Actions to enable." | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          elif [ -z "${{ secrets.DATABASE_URL }}" ]; then
-            echo "::warning::DB_VERIFY_ENABLED is true but the DATABASE_URL secret is not configured (development environment) — Supabase DEV checks are SKIPPED this run." | tee -a "$GITHUB_STEP_SUMMARY"
-            echo "enabled=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "enabled=true" >> "$GITHUB_OUTPUT"
-          fi
+        # Ubuntu runners ship Node.js already — no setup-node needed for this
+        # single guard script, so it can run before anything else and fail
+        # fast without spending time on dependency installation first.
+        run: node scripts/db-verify-gate.mjs
 
       - uses: pnpm/action-setup@v4
         if: steps.gate.outputs.enabled == 'true'
@@ -485,6 +482,10 @@ jobs:
       - name: Install dependencies
         if: steps.gate.outputs.enabled == 'true'
         run: pnpm install --frozen-lockfile
+
+      - name: Validate Supabase project ref is DEV (never MAIN/prod) before any query
+        if: steps.gate.outputs.enabled == 'true'
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
 
       - name: db:check (zero pending migrations on the real DEV branch) — read-only
         if: steps.gate.outputs.enabled == 'true'
