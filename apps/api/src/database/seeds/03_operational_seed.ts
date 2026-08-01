@@ -5,16 +5,25 @@
  */
 
 import { DataSource } from 'typeorm';
+import type { SeedResult } from './01_default_tenant';
 
-export async function seedOperational(ds: DataSource): Promise<void> {
-  const orgId = process.env['SEED_ORG_ID'] ?? '10000000-0000-0000-0000-000000000001';
-  const tenantId = process.env['SEED_TENANT_ID'] ?? '10000000-0000-0000-0000-000000000002';
-  const orgSlug = process.env['SEED_ORG_SLUG'] ?? 'musicos360-demo';
+/**
+ * Reuses the org/tenant that seedDefaultTenant already created (via its
+ * returned SeedResult) instead of guessing its own IDs from independent env
+ * vars. Those defaults previously disagreed with 01_default_tenant.ts's
+ * (org ...001 here vs org == tenant ...002 there) -- wiring both into the
+ * same runner without this would have inserted a second, orphaned
+ * organizations row and silently reassigned the seeded tenant's org_id to
+ * point at it.
+ */
+export async function seedOperational(ds: DataSource, tenant: SeedResult): Promise<void> {
+  const { orgId, tenantId, orgSlug } = tenant;
   const orgName = process.env['SEED_ORG_NAME'] ?? 'MUSIC OS 360 Demo';
-  const adminSub = process.env['SEED_ADMIN_SUB'];
+  // Same defaults as 02_admin_user.ts — this must reference the same seeded
+  // admin identity, not an independent one.
+  const effectiveAdminSub = process.env['SEED_ADMIN_SUB'] ?? '00000000-0000-0000-0000-000000000099';
   const adminEmail = process.env['SEED_ADMIN_EMAIL'] ?? 'admin@musicos360.dev';
-  const adminName = process.env['SEED_ADMIN_NAME'] ?? 'Admin (Operational Seed)';
-  const effectiveAdminSub = adminSub ?? '00000000-0000-0000-0000-000000000099';
+  const adminName = process.env['SEED_ADMIN_NAME'] ?? 'Admin Dev (Seed)';
 
   console.log('\n[seed:operational] Iniciando seed operacional...');
 
