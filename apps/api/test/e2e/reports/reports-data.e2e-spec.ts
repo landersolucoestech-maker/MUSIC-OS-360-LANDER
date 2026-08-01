@@ -25,6 +25,8 @@ import { ImportEngineService } from '../../../src/modules/reports/import/import-
 import { ImportAuditService } from '../../../src/modules/reports/import/import-audit.service';
 import { ImportCommitService } from '../../../src/modules/reports/import/import-commit.service';
 import { ReportTableGuardService } from '../../../src/modules/reports/report-table-guard.service';
+import { EncryptionService } from '../../../src/core/security/encryption.service';
+import type { ConfigService } from '@nestjs/config';
 
 try {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -53,9 +55,12 @@ describe('Reports E2E — PostgreSQL real', () => {
     const metadata = new EntityMetadataService();
     const defs = new ReportEntityDefinitionService(metadata);
     const tableGuard = new ReportTableGuardService(ds);
-    exportEngine = new ExportEngineService(ds, metadata, defs, new ExportQueryBuilderService(), new ExportFormatService(), new ExportAuditService(), tableGuard);
+    const encryption = new EncryptionService({
+      get: jest.fn().mockReturnValue(process.env['ENCRYPTION_KEY']),
+    } as unknown as ConfigService);
+    exportEngine = new ExportEngineService(ds, metadata, defs, new ExportQueryBuilderService(), new ExportFormatService(), new ExportAuditService(), tableGuard, encryption);
     importEngine = new ImportEngineService(metadata, defs, new ImportParserService(), new ImportMapperService(), new ImportValidationService(), tableGuard);
-    commit = new ImportCommitService(ds, importEngine, defs, new ImportAuditService());
+    commit = new ImportCommitService(ds, importEngine, defs, new ImportAuditService(), encryption);
 
     // semente: 1 artista tenant A + 1 tenant B (isolamento)
     await ds.query(`INSERT INTO artists (id, tenant_id, nome_artistico) VALUES (gen_random_uuid(), $1, $2)`, [TENANT_A, `${TAG}_A`]);

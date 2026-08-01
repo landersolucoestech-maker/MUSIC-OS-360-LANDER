@@ -15,9 +15,20 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'service_role') THEN
     CREATE ROLE service_role NOLOGIN NOINHERIT BYPASSRLS;
   END IF;
-  -- NOBYPASSRLS application role; the RLS-hardening migrations GRANT to it.
+  -- NOBYPASSRLS application role; the RLS-hardening migrations GRANT to it
+  -- explicitly for RBAC catalog tables, but for the general tenant tables it
+  -- reads/writes at runtime it relies on inheriting `authenticated`'s
+  -- platform-default grants (see GRANT authenticated TO musicos_app below) —
+  -- confirmed by test:e2e's RLS suite, which opens a genuinely separate
+  -- connection as this role and does real CRUD against tables (e.g.
+  -- workflow_executions) that have no grant of their own to musicos_app.
+  -- Must be INHERIT (the Postgres default) for that membership grant to
+  -- actually confer privileges, and LOGIN with a throwaway, local/CI-only
+  -- password (never a real secret, never reused outside an ephemeral
+  -- container) so APP_DATABASE_URL can open that separate connection,
+  -- matching how it already works against real Supabase.
   IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = 'musicos_app') THEN
-    CREATE ROLE musicos_app NOLOGIN NOINHERIT NOBYPASSRLS;
+    CREATE ROLE musicos_app LOGIN INHERIT NOBYPASSRLS PASSWORD 'local_only_ephemeral_musicos_app_pw';
   END IF;
   -- Migration-runner/table-owner role. In real Supabase-hosted environments
   -- this is the connection role migrations already run as, so it "just
@@ -61,10 +72,41 @@ GRANT EXECUTE ON FUNCTION auth.jwt(), auth.uid(), auth.role() TO anon, authentic
 -- default (RLS policies alone don't grant access — Postgres still requires
 -- the base table privilege). This project's migrations never issue that
 -- grant themselves because they assume that platform baseline exists
--- already; replicate it here as a default-privileges rule so tables created
--- by later migrations (owned by musicos360 or musicos_migrator) inherit it
--- automatically, same root cause as the musicos_migrator bootstrap above.
-ALTER DEFAULT PRIVILEGES FOR ROLE musicos360, musicos_migrator IN SCHEMA public
-  GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO anon, authenticated, service_role;
-ALTER DEFAULT PRIVILEGES FOR ROLE musicos360, musicos_migrator IN SCHEMA public
-  GRANT USAGE, SELECT ON SEQUENCES TO anon, authenticated, service_role;
+-- already.
+--
+-- This used to be replicated via `ALTER DEFAULT PRIVILEGES`, but that rule
+-- is just another default-privileges entry — indistinguishable from any
+-- other migration's own `ALTER DEFAULT PRIVILEGES ... REVOKE` (e.g.
+-- HardenRbacAclDefaults20260613000017, which intentionally revokes the
+-- default-privileges rule for musicos360/musicos_migrator as part of
+-- least-privilege hardening for RBAC tables). Once that revoke runs, every
+-- table created afterwards — including the 2026-07-19 "canonical form
+-- order" rebuilds (artists, works, phonograms, clients, contracts,
+-- employees, ...), which DROP+CREATE the table and only explicitly
+-- re-grant musicos_migrator — silently loses the emulated platform grant
+-- locally. Real Supabase never has this problem: its auto-grant is an
+-- internal platform mechanism, not a `pg_default_acl` entry a project's own
+-- migrations can revoke. An event trigger reproduces that independence:
+-- it fires on every CREATE TABLE regardless of what any migration did to
+-- default privileges, so a later explicit REVOKE (e.g. this project's own
+-- RLS-hardening migrations) still wins, exactly like on real Supabase.
+CREATE OR REPLACE FUNCTION supabase_shim_grant_new_relations() RETURNS event_trigger
+LANGUAGE plpgsql AS $$
+DECLARE
+  obj record;
+BEGIN
+  FOR obj IN SELECT * FROM pg_event_trigger_ddl_commands() LOOP
+    IF obj.schema_name = 'public' AND obj.command_tag = 'CREATE TABLE' THEN
+      EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE %s TO anon, authenticated, service_role', obj.object_identity);
+    ELSIF obj.schema_name = 'public' AND obj.command_tag = 'CREATE SEQUENCE' THEN
+      EXECUTE format('GRANT USAGE, SELECT ON SEQUENCE %s TO anon, authenticated, service_role', obj.object_identity);
+    END IF;
+  END LOOP;
+END;
+$$;
+
+DROP EVENT TRIGGER IF EXISTS supabase_shim_grant_new_relations_trigger;
+CREATE EVENT TRIGGER supabase_shim_grant_new_relations_trigger
+  ON ddl_command_end
+  WHEN TAG IN ('CREATE TABLE', 'CREATE SEQUENCE')
+  EXECUTE FUNCTION supabase_shim_grant_new_relations();
