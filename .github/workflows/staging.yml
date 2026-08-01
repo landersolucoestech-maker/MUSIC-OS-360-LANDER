@@ -63,7 +63,15 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
-      - run: pnpm lint
+      # BUG FIXED: this used to run `pnpm lint`, which resolves to the root
+      # package.json's unscoped `eslint .` — a full-repo lint with no
+      # per-workspace config, unlike ci.yml's `pnpm turbo lint` (fans out to
+      # each workspace's own lint script/config via Turborepo). The unscoped
+      # version produced ~490 false-positive `no-explicit-any` errors on the
+      # very first real run of this workflow (it was never dispatchable
+      # before this change, so this was latent since Parte 63). Matches
+      # ci.yml now.
+      - run: pnpm turbo lint
       - run: pnpm test
       - run: pnpm build
 
