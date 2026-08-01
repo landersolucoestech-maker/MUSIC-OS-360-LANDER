@@ -489,6 +489,10 @@ const envSchema = z.object({
     .string()
     .email()
     .default('noreply@musicos360.com.br'),
+  // STAGING-01: em NODE_ENV=staging, MailService só envia para estes domínios
+  // (lista separada por vírgulas) — protege contra envio acidental para
+  // endereços reais durante testes manuais em staging. Sem efeito fora de staging.
+  STAGING_MAIL_ALLOWLIST_DOMAINS: z.string().default('example.com'),
 
   // Parte 66: authenticates Vercel Cron requests to the /internal/cron/*
   // endpoints (CronAuthGuard) — replaces the setInterval-based schedulers

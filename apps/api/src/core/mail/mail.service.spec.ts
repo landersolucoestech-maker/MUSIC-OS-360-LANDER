@@ -8,7 +8,7 @@ global.fetch = mockFetch as any;
 describe('MailService', () => {
   let service: MailService;
 
-  const makeModule = async (hasKey = true) => {
+  const makeModule = async (hasKey = true, nodeEnv = 'production', allowlist?: string) => {
     const m = await Test.createTestingModule({
       providers: [
         MailService,
@@ -18,6 +18,8 @@ describe('MailService', () => {
             get: (k: string) => {
               if (k === 'RESEND_API_KEY')    return hasKey ? 're_test' : undefined;
               if (k === 'RESEND_FROM_EMAIL') return 'noreply@test.com';
+              if (k === 'NODE_ENV')          return nodeEnv;
+              if (k === 'STAGING_MAIL_ALLOWLIST_DOMAINS') return allowlist;
             },
           },
         },
@@ -52,6 +54,47 @@ describe('MailService', () => {
     const r = await svc.send({ to: 'x@x.com', subject: 'T', html: '<p>H</p>' });
     expect(r).toEqual({ skipped: true });
     expect(mockFetch).not.toHaveBeenCalled();
+  });
+
+  describe('STAGING-01 — allowlist e prefixo em NODE_ENV=staging', () => {
+    it('prefixa o assunto com [STAGING] e envia normalmente para um domínio permitido', async () => {
+      const svc = await makeModule(true, 'staging', 'example.com');
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 'email_1' }) });
+
+      await svc.send({ to: 'qa@example.com', subject: 'Bem-vindo', html: '<p>H</p>' });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body.subject).toBe('[STAGING] Bem-vindo');
+      expect(body.to).toEqual(['qa@example.com']);
+    });
+
+    it('bloqueia destinatários fora do allowlist e não chama a API do Resend se nenhum sobrar', async () => {
+      const svc = await makeModule(true, 'staging', 'example.com');
+      const r = await svc.send({ to: 'usuario.real@gmail.com', subject: 'T', html: '<p>H</p>' });
+      expect(r).toEqual({ skipped: true });
+      expect(mockFetch).not.toHaveBeenCalled();
+    });
+
+    it('envia só para os destinatários permitidos quando a lista é mista', async () => {
+      const svc = await makeModule(true, 'staging', 'example.com');
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 'email_1' }) });
+
+      await svc.send({ to: ['qa@example.com', 'usuario.real@gmail.com'], subject: 'T', html: '<p>H</p>' });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body.to).toEqual(['qa@example.com']);
+    });
+
+    it('não filtra nem prefixa em produção (comportamento inalterado)', async () => {
+      const svc = await makeModule(true, 'production');
+      mockFetch.mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ id: 'email_1' }) });
+
+      await svc.send({ to: 'cliente.real@gmail.com', subject: 'Bem-vindo', html: '<p>H</p>' });
+
+      const body = JSON.parse((mockFetch.mock.calls[0][1] as any).body);
+      expect(body.subject).toBe('Bem-vindo');
+      expect(body.to).toEqual(['cliente.real@gmail.com']);
+    });
   });
 
   it('welcomeHtml contém o nome do usuário', () => {

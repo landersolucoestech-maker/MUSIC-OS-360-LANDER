@@ -45,10 +45,21 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
   private readonly fromEmail: string;
   private readonly apiKey:    string | undefined;
+  private readonly nodeEnv:   string;
+  /**
+   * STAGING-01: em NODE_ENV=staging, envios ficam limitados a domínios desta
+   * lista — sem isto, testar manualmente "convidar utilizador" ou qualquer
+   * outro fluxo transacional em staging enviaria emails reais para o que quer
+   * que um testador digite. Produção/development não são afetados.
+   */
+  private readonly stagingAllowedDomains: string[];
 
   constructor(@Inject(ConfigService) private readonly config: ConfigService) {
     this.apiKey    = config.get<string>('RESEND_API_KEY');
     this.fromEmail = config.get<string>('RESEND_FROM_EMAIL') ?? 'noreply@musicos360.com.br';
+    this.nodeEnv   = config.get<string>('NODE_ENV') ?? 'development';
+    this.stagingAllowedDomains = (config.get<string>('STAGING_MAIL_ALLOWLIST_DOMAINS') ?? 'example.com')
+      .split(',').map((d) => d.trim().toLowerCase()).filter(Boolean);
   }
 
   // ─── Envio base ───────────────────────────────────────────────────────────
@@ -59,6 +70,25 @@ export class MailService {
       return { skipped: true };
     }
 
+    let recipients = Array.isArray(opts.to) ? opts.to : [opts.to];
+    const isStaging = this.nodeEnv === 'staging';
+
+    if (isStaging) {
+      const allowed = recipients.filter((r) =>
+        this.stagingAllowedDomains.some((domain) => r.toLowerCase().endsWith(`@${domain}`)),
+      );
+      const blockedCount = recipients.length - allowed.length;
+      if (blockedCount > 0) {
+        this.logger.warn(
+          `MailService[STAGING]: ${blockedCount} destinatário(s) fora do allowlist (STAGING_MAIL_ALLOWLIST_DOMAINS) — não enviado(s)`,
+        );
+      }
+      recipients = allowed;
+      if (recipients.length === 0) return { skipped: true };
+    }
+
+    const subject = isStaging ? `[STAGING] ${opts.subject}` : opts.subject;
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -67,8 +97,8 @@ export class MailService {
       },
       body: JSON.stringify({
         from:     this.fromEmail,
-        to:       Array.isArray(opts.to) ? opts.to : [opts.to],
-        subject:  opts.subject,
+        to:       recipients,
+        subject,
         html:     opts.html,
         reply_to: opts.replyTo,
         tags:     opts.tags,
@@ -81,7 +111,7 @@ export class MailService {
     }
 
     const data = await res.json() as { id: string };
-    this.logger.log(`Email enviado: ${data.id} → ${Array.isArray(opts.to) ? opts.to.join(', ') : opts.to}`);
+    this.logger.log(`Email enviado: ${data.id} → ${recipients.join(', ')}`);
     return { id: data.id };
   }
 
