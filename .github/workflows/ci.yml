@@ -366,6 +366,9 @@ jobs:
       - name: Migration source-of-truth guard (no dual tracking, no drift)
         run: node scripts/verify-migration-source-of-truth.mjs
 
+      - name: DB Verify — Supabase DEV gate wiring guard (catches the "always skipped" class of bug)
+        run: node scripts/verify-db-verify-gate-wiring.mjs
+
       - name: verify:rls (all tenant tables have RLS + policies)
         run: pnpm --filter @music-os-360/api verify:rls
 
@@ -458,6 +461,7 @@ jobs:
     if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DB_VERIFY_ENABLED: ${{ vars.DB_VERIFY_ENABLED }}
     steps:
       - uses: actions/checkout@v4
 
