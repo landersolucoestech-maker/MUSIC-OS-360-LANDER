@@ -472,15 +472,6 @@ jobs:
         # fast without spending time on dependency installation first.
         run: node scripts/db-verify-gate.mjs
 
-      # TEMPORARY — diagnosing a live "password authentication failed"
-      # against a password already confirmed correct out-of-band. Prints
-      # only sanitized metadata (host/port/username/db/ref, password
-      # length, quote/newline corruption checks) — never the password
-      # itself. Remove once the root cause is found and fixed.
-      - name: TEMP diagnostic — sanitized DATABASE_URL metadata (no secrets printed)
-        if: steps.gate.outputs.enabled == 'true'
-        run: node scripts/diagnose-database-url.mjs
-
       - uses: pnpm/action-setup@v4
         if: steps.gate.outputs.enabled == 'true'
         with:
