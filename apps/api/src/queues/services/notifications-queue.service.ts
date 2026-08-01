@@ -8,7 +8,7 @@
 import { Injectable, Logger, Optional } from '@nestjs/common';
 import { InjectQueue }        from '@nestjs/bullmq';
 import { Queue, JobsOptions } from 'bullmq';
-import { QUEUE_NAMES }        from '../queue.constants';
+import { QUEUE_NAMES, NOTIFICATION_JOB_NAMES } from '../queue.constants';
 import type { NotificationPayload } from '../processors/notifications.processor';
 
 const HIGH_PRIORITY:   Partial<JobsOptions> = { priority: 1 };
@@ -30,13 +30,16 @@ export class NotificationsQueueService {
 
   async enqueue(payload: NotificationPayload, opts?: Partial<JobsOptions>): Promise<void> {
     if (!this.available) return;
-    const job = await this.queue!.add('notification', payload, { ...NORMAL_PRIORITY, ...opts });
+    // Job name deve corresponder ao switch(job.name) do NotificationsProcessor
+    // (NOTIFICATION_JOB_NAMES.SEND='send') — usar uma string arbitrária aqui
+    // faz o processor cair silenciosamente no `default:` e nunca persistir/emitir.
+    const job = await this.queue!.add(NOTIFICATION_JOB_NAMES.SEND, payload, { ...NORMAL_PRIORITY, ...opts });
     this.logger.log(`[notifications] enqueued jobId=${job.id} userId=${payload.userId} type=${payload.type}`);
   }
 
   async enqueueUrgent(payload: NotificationPayload): Promise<void> {
     if (!this.available) return;
-    const job = await this.queue!.add('notification', payload, HIGH_PRIORITY);
+    const job = await this.queue!.add(NOTIFICATION_JOB_NAMES.SEND, payload, HIGH_PRIORITY);
     this.logger.log(`[notifications] enqueued URGENT jobId=${job.id} userId=${payload.userId} type=${payload.type}`);
   }
 
