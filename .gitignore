@@ -11,6 +11,9 @@ node_modules/
 # Monorepo / task runner cache
 .turbo/
 
+# Vercel CLI project linkage (project/org IDs, not secrets — still not versioned per Vercel's own convention)
+.vercel/
+
 # Local agent/tool state
 .claude/
 .agents/
