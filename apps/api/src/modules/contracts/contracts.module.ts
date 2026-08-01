@@ -4,12 +4,13 @@ import { ContractsService }         from './contracts.service';
 import { ContractEventsHandler }    from './handlers/contract-events.handler';
 import { ContractWorkflowHandler }  from './handlers/contract-workflow.handler';
 import { ContractExpiryScheduler }  from './schedulers/contract-expiry.scheduler';
+import { ContractExpiryCronController } from './schedulers/contract-expiry-cron.controller';
 import { ActivityLogsModule }       from '../activity-logs/activity-logs.module';
 import { FinancialRulesModule }     from '../financial-rules/financial-rules.module';
 
 @Module({
   imports:     [ActivityLogsModule, FinancialRulesModule],
-  controllers: [ContractsController],
+  controllers: [ContractsController, ContractExpiryCronController],
   providers:   [ContractsService, ContractEventsHandler, ContractWorkflowHandler, ContractExpiryScheduler],
   exports:     [ContractsService],
 })
