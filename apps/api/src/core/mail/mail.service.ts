@@ -9,6 +9,24 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService }      from '@nestjs/config';
 
+/**
+ * MAIL-01: every template below interpolated tenant/user-controlled strings
+ * (tenant names, signer names, document/contract/track titles, org names)
+ * directly into HTML with no escaping — a tenant naming their org
+ * `<img src=x onerror=...>` would have that markup rendered as-is by any
+ * recipient's email client. Escapes the 5 HTML-significant characters;
+ * applied to every string template parameter below (URLs included, for
+ * defense-in-depth against quote-breakout inside href attributes).
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export interface SendMailOptions {
   to:       string | string[];
   subject:  string;
@@ -71,6 +89,7 @@ export class MailService {
 
   async sendWelcome(to: string, tenantName: string): Promise<MailResult> {
     const appUrl = this.config.get<string>('APP_URL') ?? 'https://musicos360.com.br';
+    const safeTenantName = escapeHtml(tenantName);
     return this.send({
       to,
       subject: `Bem-vindo ao MUSIC OS 360 — ${tenantName}`,
@@ -78,8 +97,8 @@ export class MailService {
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
           <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
           <p>Olá,</p>
-          <p>O tenant <strong>${tenantName}</strong> está pronto. Acesse a plataforma:</p>
-          <a href="${appUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          <p>O tenant <strong>${safeTenantName}</strong> está pronto. Acesse a plataforma:</p>
+          <a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
             Acessar MUSIC OS 360
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360 — Enterprise Music Management SaaS</p>
@@ -96,9 +115,9 @@ export class MailService {
       html: `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
           <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-          <p>Olá, <strong>${signerName}</strong>,</p>
-          <p>O documento <strong>${documentName}</strong> está aguardando a sua assinatura digital.</p>
-          <a href="${signingUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          <p>Olá, <strong>${escapeHtml(signerName)}</strong>,</p>
+          <p>O documento <strong>${escapeHtml(documentName)}</strong> está aguardando a sua assinatura digital.</p>
+          <a href="${escapeHtml(signingUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
             Assinar Documento
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:32px">
@@ -118,7 +137,7 @@ export class MailService {
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
           <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
           <p>Recebemos um pedido para redefinir a senha da sua conta.</p>
-          <a href="${resetUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+          <a href="${escapeHtml(resetUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
             Redefinir Senha
           </a>
           <p style="color:#6b7280;font-size:12px">Este link expira em 1 hora. Se não foi você, ignore este email.</p>
@@ -129,19 +148,20 @@ export class MailService {
   }
 
   async sendInvoiceReady(to: string, invoiceNumber: string, amount: string, dueDate: string, downloadUrl: string): Promise<MailResult> {
+    const safeInvoiceNumber = escapeHtml(invoiceNumber);
     return this.send({
       to,
       subject: `Nota Fiscal ${invoiceNumber} disponível`,
       html: `
         <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
           <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-          <p>A Nota Fiscal <strong>${invoiceNumber}</strong> está disponível.</p>
+          <p>A Nota Fiscal <strong>${safeInvoiceNumber}</strong> está disponível.</p>
           <table style="border-collapse:collapse;width:100%;margin:16px 0">
-            <tr><td style="padding:8px;border:1px solid #e5e7eb">Número</td><td style="padding:8px;border:1px solid #e5e7eb">${invoiceNumber}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb">Valor</td><td style="padding:8px;border:1px solid #e5e7eb">${amount}</td></tr>
-            <tr><td style="padding:8px;border:1px solid #e5e7eb">Vencimento</td><td style="padding:8px;border:1px solid #e5e7eb">${dueDate}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e5e7eb">Número</td><td style="padding:8px;border:1px solid #e5e7eb">${safeInvoiceNumber}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e5e7eb">Valor</td><td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(amount)}</td></tr>
+            <tr><td style="padding:8px;border:1px solid #e5e7eb">Vencimento</td><td style="padding:8px;border:1px solid #e5e7eb">${escapeHtml(dueDate)}</td></tr>
           </table>
-          <a href="${downloadUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px">
+          <a href="${escapeHtml(downloadUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px">
             Baixar NF-e
           </a>
           <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
@@ -161,9 +181,9 @@ export class MailService {
 <body>
   <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
     <h1 style="color:#1d4ed8">MUSIC OS 360</h1>
-    <p>Olá, <strong>${name}</strong>!</p>
+    <p>Olá, <strong>${escapeHtml(name)}</strong>!</p>
     <p>A sua conta está pronta. Acesse a plataforma:</p>
-    <a href="${appUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+    <a href="${escapeHtml(appUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
       Acessar MUSIC OS 360
     </a>
     <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360 — Enterprise Music Management SaaS</p>
@@ -176,7 +196,7 @@ export class MailService {
     return `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
         <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-        <p>⚠️ O contrato <strong>${contractTitle}</strong> vence em <strong>${daysLeft} dias</strong>.</p>
+        <p>⚠️ O contrato <strong>${escapeHtml(contractTitle)}</strong> vence em <strong>${daysLeft} dias</strong>.</p>
         <p>Acesse a plataforma para tomar as providências necessárias.</p>
         <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
       </div>
@@ -187,7 +207,7 @@ export class MailService {
     return `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
         <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-        <p>✅ O contrato <strong>${contractTitle}</strong> foi assinado com sucesso.</p>
+        <p>✅ O contrato <strong>${escapeHtml(contractTitle)}</strong> foi assinado com sucesso.</p>
         <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
       </div>
     `;
@@ -198,9 +218,9 @@ export class MailService {
     return `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
         <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-        <p>⚠️ O pagamento da sua assinatura <strong>${plan}</strong> falhou.</p>
+        <p>⚠️ O pagamento da sua assinatura <strong>${escapeHtml(plan)}</strong> falhou.</p>
         <p>Acesse o portal de billing para actualizar o método de pagamento:</p>
-        <a href="${appUrl}/configuracoes/billing" style="display:inline-block;padding:12px 24px;background:#dc2626;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+        <a href="${escapeHtml(appUrl)}/configuracoes/billing" style="display:inline-block;padding:12px 24px;background:#dc2626;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
           Actualizar Pagamento
         </a>
         <p style="color:#6b7280;font-size:12px;margin-top:32px">MUSIC OS 360</p>
@@ -212,8 +232,8 @@ export class MailService {
     return `
       <div style="font-family:sans-serif;max-width:600px;margin:0 auto;padding:32px">
         <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
-        <p>Você foi convidado para a organização <strong>${orgName}</strong> no MUSIC OS 360.</p>
-        <a href="${inviteUrl}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
+        <p>Você foi convidado para a organização <strong>${escapeHtml(orgName)}</strong> no MUSIC OS 360.</p>
+        <a href="${escapeHtml(inviteUrl)}" style="display:inline-block;padding:12px 24px;background:#1d4ed8;color:#fff;text-decoration:none;border-radius:6px;margin:16px 0">
           Aceitar Convite
         </a>
         <p style="color:#6b7280;font-size:12px;margin-top:32px">Se não esperava este convite, ignore este email.</p>
@@ -222,6 +242,8 @@ export class MailService {
   }
 
   async sendTakedownConfirmation(to: string, trackTitle: string, platform: string): Promise<MailResult> {
+    const safeTrackTitle = escapeHtml(trackTitle);
+    const safePlatform = escapeHtml(platform);
     return this.send({
       to,
       subject: `Takedown solicitado: ${trackTitle} em ${platform}`,
@@ -230,8 +252,8 @@ export class MailService {
           <h1 style="color:#1d4ed8">🎵 MUSIC OS 360</h1>
           <p>O takedown foi submetido com sucesso.</p>
           <ul>
-            <li><strong>Obra:</strong> ${trackTitle}</li>
-            <li><strong>Plataforma:</strong> ${platform}</li>
+            <li><strong>Obra:</strong> ${safeTrackTitle}</li>
+            <li><strong>Plataforma:</strong> ${safePlatform}</li>
             <li><strong>Status:</strong> Em processamento</li>
           </ul>
           <p>Você será notificado assim que o processo for concluído.</p>

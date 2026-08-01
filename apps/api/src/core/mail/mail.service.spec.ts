@@ -1,5 +1,5 @@
 import { Test }        from '@nestjs/testing';
-import { MailService } from './mail.service';
+import { MailService, escapeHtml } from './mail.service';
 import { ConfigService } from '@nestjs/config';
 
 const mockFetch = jest.fn();
@@ -64,5 +64,25 @@ describe('MailService', () => {
     const html = service.contractExpiringHtml('Contrato XYZ', 7);
     expect(html).toContain('Contrato XYZ');
     expect(html).toContain('7');
+  });
+
+  describe('escapeHtml (MAIL-01)', () => {
+    it('escapa os 5 caracteres HTML-significativos', () => {
+      expect(escapeHtml(`<img src=x onerror="alert('xss')">&`)).toBe(
+        '&lt;img src=x onerror=&quot;alert(&#39;xss&#39;)&quot;&gt;&amp;',
+      );
+    });
+
+    it('welcomeHtml neutraliza markup injetado no nome do usuário', () => {
+      const html = service.welcomeHtml('<img src=x onerror=alert(1)>');
+      expect(html).not.toContain('<img src=x onerror=alert(1)>');
+      expect(html).toContain('&lt;img src=x onerror=alert(1)&gt;');
+    });
+
+    it('contractExpiringHtml neutraliza markup injetado no título do contrato', () => {
+      const html = service.contractExpiringHtml('<script>alert(1)</script>', 7);
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).toContain('&lt;script&gt;alert(1)&lt;/script&gt;');
+    });
   });
 });
