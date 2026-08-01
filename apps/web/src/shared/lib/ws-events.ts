@@ -1,11 +1,10 @@
 /**
- * Shared contract between backend WsEventsMapper and frontend useWsEvent.
+ * Shared contract between the backend RealtimeService and frontend
+ * useWsEvent. Each key is a Supabase Realtime broadcast event name; the
+ * value is the expected payload shape. Use `WsEventMap[E]` in generic
+ * constraints so TypeScript catches wrong payload types at compile time.
  *
- * Each key is a Socket.IO event name emitted by the WsGateway; the value is
- * the expected payload shape. Use `WsEventMap[E]` in generic constraints so
- * TypeScript catches wrong payload types at compile time.
- *
- * Keep in sync with apps/api/src/core/websocket/ws.gateway.ts
+ * Keep in sync with apps/api/src/core/realtime/realtime.service.ts.
  */
 
 export interface WsBasePayload {
@@ -65,4 +64,37 @@ export interface WsEventMap {
 
 /** Union of all known WS event names (useful for exhaustive switches). */
 export type WsEventName = keyof WsEventMap;
+
+/**
+ * Runtime list of every event name in WsEventMap. Supabase Realtime requires
+ * each broadcast event to have a listener registered (`channel.on('broadcast',
+ * { event }, cb)`) before `subscribe()` — there is no wildcard/catch-all
+ * broadcast listener in the client SDK — so ws-client.ts binds one generic
+ * dispatcher per name in this list to every channel it opens. The `satisfies`
+ * clause makes TypeScript fail the build if an entry here isn't a real
+ * WsEventMap key; keeping the reverse in sync (every WsEventMap key present
+ * here) is manual — update this list whenever ws-events.ts gains a new key.
+ */
+export const ALL_WS_EVENT_NAMES = [
+  'artist.created',
+  'artist.updated',
+  'artist.deleted',
+  'catalog.music.registered',
+  'catalog.phonogram.registered',
+  'contract.created',
+  'contract.updated',
+  'contract.signed',
+  'crm.lead.captured',
+  'crm.lead.converted',
+  'finance.transaction.created',
+  'finance.transaction.updated',
+  'finance.calculated',
+  'audit.entry.created',
+  'notification:new',
+  'billing:plan_upgraded',
+  'billing:trial_ending',
+  'billing:payment_failed',
+  'billing:cancelled',
+  'data:changed',
+] as const satisfies readonly WsEventName[];
 

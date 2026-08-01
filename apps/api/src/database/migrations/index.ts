@@ -147,6 +147,7 @@ import { RebuildCampaignAssetsInCanonicalFormOrder20260719000023 } from './20260
 import { RebuildCampaignsInCanonicalFormOrder20260719000024 } from './20260719000024_RebuildCampaignsInCanonicalFormOrder';
 import { RebuildLeaveRequestsInCanonicalFormOrder20260719000025 } from './20260719000025_RebuildLeaveRequestsInCanonicalFormOrder';
 import { HardenRbacCatalogRls20260731000001 } from './20260731000001_HardenRbacCatalogRls';
+import { RealtimeBroadcastAuthorization20260801000001 } from './20260801000001_RealtimeBroadcastAuthorization';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -282,4 +283,5 @@ export const ALL_MIGRATIONS = [
   RebuildCampaignsInCanonicalFormOrder20260719000024,
   RebuildLeaveRequestsInCanonicalFormOrder20260719000025,
   HardenRbacCatalogRls20260731000001,
+  RealtimeBroadcastAuthorization20260801000001,
 ] as const;

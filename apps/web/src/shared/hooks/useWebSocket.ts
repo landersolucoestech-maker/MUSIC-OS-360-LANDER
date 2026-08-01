@@ -1,45 +1,29 @@
 import { useState, useEffect } from 'react';
-import type { Socket } from 'socket.io-client';
-import { getWsSocket, disconnectWsSocket } from '@/shared/lib/ws-client';
-import { getAccessToken } from '@/shared/lib/api-client';
+import {
+  ensureRealtimeChannels,
+  onWsConnectionChange,
+  isWsConnected,
+  disconnectRealtimeChannels,
+} from '@/shared/lib/ws-client';
 
 /**
- * Establishes and maintains a single Socket.IO connection per session.
+ * Establishes and maintains the Supabase Realtime channels for the current
+ * session (tenant + user broadcast topics — see ws-client.ts).
  *
- * - Skipped entirely in VITE_USE_MOCK mode (no backend available in dev).
- * - Authenticates via JWT (getAccessToken()) in the Socket.IO handshake.
- * - Returns the Socket instance and a `connected` flag.
- *
- * Components needing to subscribe to specific events should use `useWsEvent`.
+ * - Skipped entirely in VITE_USE_MOCK mode / when VITE_WS_ENABLED=false.
+ * - Returns only `connected`; no raw channel/socket handle is exposed here
+ *   because no consumer in this codebase needs one — everything subscribes
+ *   to named events via `useWsEvent`.
  */
-export function useWebSocket(): { socket: Socket | null; connected: boolean } {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [connected, setConnected] = useState(false);
+export function useWebSocket(): { connected: boolean } {
+  const [connected, setConnected] = useState(isWsConnected());
 
   useEffect(() => {
-
-    const token = getAccessToken();
-    if (!token) return;
-
-    const s = getWsSocket(token);
-    if (!s) return; // P0-07: WS disabled via VITE_WS_ENABLED=false — components fall back to polling
-    setSocket(s);
-
-    const onConnect    = () => setConnected(true);
-    const onDisconnect = () => setConnected(false);
-
-    s.on('connect',    onConnect);
-    s.on('disconnect', onDisconnect);
-
-    if (s.connected) setConnected(true);
-
-    return () => {
-      s.off('connect',    onConnect);
-      s.off('disconnect', onDisconnect);
-    };
+    ensureRealtimeChannels();
+    return onWsConnectionChange(setConnected);
   }, []);
 
-  return { socket, connected };
+  return { connected };
 }
 
-export { disconnectWsSocket };
+export { disconnectRealtimeChannels };

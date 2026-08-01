@@ -56,17 +56,10 @@ export const IS_DEV: boolean = import.meta.env.DEV === true;
 export const IS_PROD: boolean = import.meta.env.PROD === true;
 
 /**
- * URL do servidor WebSocket / Socket.IO.
- * String vazia = same-origin (Vite proxy resolve em dev).
- */
-export const WS_URL: string =
-  (import.meta.env.VITE_WS_URL as string | undefined) ?? "";
-
-/**
- * WS feature flag (P0-07). When false, the app does NOT attempt Socket.IO
- * connections — components fall back to polling/manual refresh.
- * Defaults to true; set VITE_WS_ENABLED=false in production env until the
- * /socket.io/ runtime gap is resolved (see FASE 9.5B / FASE 10).
+ * Realtime feature flag. When false, the app does NOT open the Supabase
+ * Realtime channels (tenant/user broadcast topics) — components relying on
+ * useWsEvent simply never fire, falling back to polling/manual refresh.
+ * Defaults to true.
  */
 export const WS_ENABLED: boolean =
   ((import.meta.env.VITE_WS_ENABLED as string | undefined) ?? "true") !== "false";

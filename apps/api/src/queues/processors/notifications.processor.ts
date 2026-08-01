@@ -14,7 +14,7 @@ import { QUEUE_NAMES, NOTIFICATION_JOB_NAMES } from '../queue.constants';
 import { DATA_SOURCE }                from '../../database/database.module';
 import { DatabaseContextService }     from '../../database/database-context.service';
 import { NotificationEntity }         from '../../database/entities';
-import { WsGateway }                  from '../../core/websocket/ws.gateway';
+import { RealtimeService }            from '../../core/realtime/realtime.service';
 
 export interface NotificationPayload {
   tenantId:  string;
@@ -36,7 +36,7 @@ export class NotificationsProcessor extends WorkerHost {
 
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
-    private readonly wsGateway: WsGateway,
+    private readonly wsGateway: RealtimeService,
     private readonly dbContext: DatabaseContextService,
   ) {
     super();

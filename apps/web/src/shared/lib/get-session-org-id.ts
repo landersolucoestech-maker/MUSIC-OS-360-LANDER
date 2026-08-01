@@ -31,3 +31,15 @@ export function getSessionOrgId(): string | null {
     return null;
   } catch { return null; }
 }
+
+/** Lê o `sub` (user id) do token JWT em memória — mesmo claim que o backend
+ * usa como identificador de usuário nas policies de Realtime Authorization
+ * (`realtime.topic() = 'user:' || auth.jwt()->>'sub'`). */
+export function getSessionUserId(): string | null {
+  const token = getAccessToken();
+  if (!token) return null;
+  try {
+    const p = decodeJwtPayload(token);
+    return typeof p["sub"] === "string" ? p["sub"] : null;
+  } catch { return null; }
+}

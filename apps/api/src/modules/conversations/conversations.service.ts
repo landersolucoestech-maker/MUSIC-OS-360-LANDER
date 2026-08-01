@@ -17,7 +17,7 @@ import {
   ConversationNoteEntity,
 } from '../../database/entities';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
-import { WsGateway }                    from '../../core/websocket/ws.gateway';
+import { RealtimeService }              from '../../core/realtime/realtime.service';
 import type {
   CreateConversationDto,
   UpdateConversationDto,
@@ -40,7 +40,7 @@ export class ConversationsService {
   constructor(
     @Inject(DATA_SOURCE) ds: DataSource | null,
     private readonly events: EventsService,
-    private readonly ws: WsGateway,
+    private readonly ws: RealtimeService,
   ) {
     if (ds) {
       this.convRepo  = ds.getRepository(ConversationEntity);

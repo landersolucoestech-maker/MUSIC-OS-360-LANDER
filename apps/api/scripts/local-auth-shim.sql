@@ -110,3 +110,33 @@ CREATE EVENT TRIGGER supabase_shim_grant_new_relations_trigger
   ON ddl_command_end
   WHEN TAG IN ('CREATE TABLE', 'CREATE SEQUENCE')
   EXECUTE FUNCTION supabase_shim_grant_new_relations();
+
+-- Realtime Authorization shim (Parte 66 — WS→Supabase Realtime migration).
+-- Real Supabase's Realtime server validates channel access by inserting a
+-- row into realtime.messages and rolling back the transaction, checking the
+-- RLS policies along the way; realtime.topic() returns the channel topic
+-- being validated. This shim reproduces just enough of that surface —
+-- schema, minimal messages table, and topic() reading a session-local GUC —
+-- for 20260801000001_RealtimeBroadcastAuthorization's migration and its
+-- spec to run against local/CI Postgres. It is not a functional Realtime
+-- server; actual broadcast delivery is only ever exercised against real
+-- Supabase (DEV/STAGING).
+CREATE SCHEMA IF NOT EXISTS realtime;
+
+CREATE TABLE IF NOT EXISTS realtime.messages (
+  id          bigserial PRIMARY KEY,
+  topic       text NOT NULL,
+  extension   text NOT NULL,
+  event       text,
+  payload     jsonb,
+  private     boolean DEFAULT true,
+  inserted_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE OR REPLACE FUNCTION realtime.topic() RETURNS text
+LANGUAGE sql STABLE AS $$
+  SELECT NULLIF(current_setting('realtime.topic', true), '')::text;
+$$;
+
+GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
+GRANT EXECUTE ON FUNCTION realtime.topic() TO anon, authenticated, service_role;

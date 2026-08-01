@@ -9,7 +9,7 @@ import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { randomUUID } from 'crypto';
 import { DataSource, EntityManager, Repository } from 'typeorm';
-import { WsGateway } from '../websocket/ws.gateway';
+import { RealtimeService } from '../realtime/realtime.service';
 import { DOMAIN_EVENTS } from './events.service';
 import { CorrelationContext } from './correlation.context';
 import { DATA_SOURCE } from '../../database/database.module';
@@ -99,7 +99,7 @@ export class NotificationHandler {
   private readonly notifRepo: Repository<NotificationEntity> | null = null;
 
   constructor(
-    @Optional() private readonly wsGateway: WsGateway,
+    @Optional() private readonly wsGateway: RealtimeService,
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {

@@ -9,7 +9,7 @@ import {
   WebhookEventEntity,
 } from '../../database/entities';
 import { WebhookEventStatus } from '@music-os-360/types';
-import { WsGateway } from '../../core/websocket/ws.gateway';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { BillingEnforcementService } from './billing-enforcement.service';
 import { BillingPlansService } from './billing-plans.service';
@@ -169,7 +169,7 @@ export class BillingService {
   constructor(
     @Optional() @Inject(ConfigService) private readonly config: ConfigService | undefined,
     @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
-    private readonly ws: WsGateway,
+    private readonly ws: RealtimeService,
     private readonly events: EventsService,
     private readonly enforcement: BillingEnforcementService,
     private readonly plans: BillingPlansService,

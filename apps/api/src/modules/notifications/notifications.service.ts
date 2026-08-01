@@ -12,7 +12,7 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../database/database.module';
 import { DatabaseContextService } from '../../database/database-context.service';
 import { NotificationEntity } from '../../database/entities';
-import { WsGateway } from '../../core/websocket/ws.gateway';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { QUEUE_NAMES, NOTIFICATION_JOB_NAMES } from '../../queues/queue.constants';
 import type { CreateNotificationDto } from './dto/create-notification.dto';
 import type { PaginationDto }         from '../../common/dto/pagination.dto';
@@ -35,7 +35,7 @@ export class NotificationsService {
     @Inject(DATA_SOURCE) ds: DataSource | null,
     @Optional()
     @InjectQueue(QUEUE_NAMES.NOTIFICATIONS) private readonly queue: Queue | null,
-    private readonly ws: WsGateway,
+    private readonly ws: RealtimeService,
     private readonly dbContext: DatabaseContextService,
   ) {
     if (ds) this.repo = ds.getRepository(NotificationEntity);

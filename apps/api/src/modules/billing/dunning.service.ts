@@ -21,7 +21,7 @@ import {
   TenantEntity,
   OrganizationEntity,
 } from '../../database/entities';
-import { WsGateway }     from '../../core/websocket/ws.gateway';
+import { RealtimeService } from '../../core/realtime/realtime.service';
 import { PLAN_FEATURES } from './billing.service';
 
 const DUNNING_REMINDER_DAYS     = 4;
@@ -38,13 +38,17 @@ export class DunningService implements OnApplicationBootstrap {
 
   constructor(
     @Optional() @Inject(DATA_SOURCE) private readonly ds: DataSource | null,
-    private readonly ws: WsGateway,
+    private readonly ws: RealtimeService,
     @Optional() @InjectQueue('notifications') private readonly notifQueue: Queue | null,
   ) {}
 
   onApplicationBootstrap(): void {
     // Run once at startup, then every 24h. Only runs when DB is available.
     if (!this.ds) return;
+
+    // Parte 66: see ContractExpiryScheduler's identical guard — Vercel Cron
+    // now triggers this via POST /internal/cron/dunning instead.
+    if (process.env['VERCEL']) return;
 
     this.runDunningCycle().catch((err: unknown) =>
       this.logger.warn(`Dunning initial run falhou: ${String(err)}`),

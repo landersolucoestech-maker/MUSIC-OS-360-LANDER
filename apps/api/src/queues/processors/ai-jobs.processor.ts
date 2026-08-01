@@ -11,7 +11,7 @@ import { Injectable, Logger }    from '@nestjs/common';
 import { Job }                   from 'bullmq';
 import { QUEUE_NAMES }           from '../queue.constants';
 import { AIService, AICompletionOptions } from '../../modules/ai/ai.service';
-import { WsGateway }             from '../../core/websocket/ws.gateway';
+import { RealtimeService }       from '../../core/realtime/realtime.service';
 
 // ─── Payload ──────────────────────────────────────────────────────────────────
 
@@ -29,7 +29,7 @@ export class AIJobsProcessor extends WorkerHost {
 
   constructor(
     private readonly ai:        AIService,
-    private readonly wsGateway: WsGateway,
+    private readonly wsGateway: RealtimeService,
   ) { super(); }
 
   async process(job: Job<AIJobPayload>): Promise<void> {

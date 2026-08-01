@@ -1,9 +1,10 @@
 import { useEffect, useRef } from 'react';
 import type { WsEventMap } from '@/shared/lib/ws-events';
-import { useWebSocket } from './useWebSocket';
+import { onWsEvent } from '@/shared/lib/ws-client';
 
 /**
- * Subscribes to a typed Socket.IO event from the backend WebSocket gateway.
+ * Subscribes to a typed Supabase Realtime broadcast event (tenant or user
+ * topic — see ws-client.ts for which).
  *
  * The generic `E` is constrained to `keyof WsEventMap` so TypeScript enforces
  * the correct payload type for every known event name. Use the string overload
@@ -33,19 +34,10 @@ export function useWsEvent<T = unknown>(
   event: string,
   handler: (data: T) => void,
 ): void {
-  const { socket } = useWebSocket();
-
   const handlerRef = useRef(handler);
   handlerRef.current = handler;
 
   useEffect(() => {
-    if (!socket) return;
-
-    const cb = (data: T) => handlerRef.current(data);
-    socket.on(event, cb as (...args: unknown[]) => void);
-
-    return () => {
-      socket.off(event, cb as (...args: unknown[]) => void);
-    };
-  }, [socket, event]);
+    return onWsEvent(event, (data) => handlerRef.current(data as T));
+  }, [event]);
 }

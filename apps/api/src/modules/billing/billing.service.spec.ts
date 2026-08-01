@@ -3,7 +3,7 @@ import { ConfigService }       from '@nestjs/config';
 import { BadRequestException } from '@nestjs/common';
 import { BillingService }      from './billing.service';
 import { DATA_SOURCE }         from '../../database/database.module';
-import { WsGateway }           from '../../core/websocket/ws.gateway';
+import { RealtimeService }     from '../../core/realtime/realtime.service';
 import { EventsService }       from '../../core/events/events.service';
 import { BillingEnforcementService } from './billing-enforcement.service';
 import { BillingPlansService } from './billing-plans.service';
@@ -121,7 +121,7 @@ describe('BillingService', () => {
           },
         },
         { provide: DATA_SOURCE, useValue: mockDs },
-        { provide: WsGateway,   useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
+        { provide: RealtimeService, useValue: { sendToTenant: jest.fn(), sendToUser: jest.fn() } },
         { provide: EventsService, useValue: { emitTyped: jest.fn(), emitAsync: jest.fn().mockResolvedValue([]) } },
         { provide: BillingEnforcementService, useValue: enforcement },
         { provide: BillingPlansService, useValue: plans },

@@ -2,7 +2,7 @@ import { Test } from '@nestjs/testing';
 import { NotificationsProcessor } from './notifications.processor';
 import { DATA_SOURCE }             from '../../database/database.module';
 import { DatabaseContextService }  from '../../database/database-context.service';
-import { WsGateway }               from '../../core/websocket/ws.gateway';
+import { RealtimeService }         from '../../core/realtime/realtime.service';
 import { NOTIFICATION_JOB_NAMES }   from '../queue.constants';
 
 const mockNotif = { id: 'n1', title: 'T', type: 'info', created_at: new Date() };
@@ -35,7 +35,7 @@ describe('NotificationsProcessor', () => {
       providers: [
         NotificationsProcessor,
         { provide: DATA_SOURCE, useValue: mockDs },
-        { provide: WsGateway,   useValue: mockWs },
+        { provide: RealtimeService, useValue: mockWs },
         { provide: DatabaseContextService, useValue: mockDbContext },
       ],
     }).compile();

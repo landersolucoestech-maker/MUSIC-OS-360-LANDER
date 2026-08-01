@@ -35,7 +35,7 @@ import { WorksModule }          from './modules/works/works.module';
 import { PhonogramsModule }     from './modules/phonograms/phonograms.module';
 import { ContractsModule }      from './modules/contracts/contracts.module';
 import { TransactionsModule }   from './modules/transactions/transactions.module';
-import { WsModule }             from './core/websocket/ws.module';
+import { RealtimeModule }       from './core/realtime/realtime.module';
 import { NotificationsModule }     from './modules/notifications/notifications.module';
 import { UploadsModule }           from './modules/uploads/uploads.module';
 import { ContractTemplatesModule } from './modules/contract-templates/contract-templates.module';
@@ -129,8 +129,8 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     // ── BullBoard admin dashboard (/admin/queues, basic-auth) ─────────────────
     AdminQueuesModule.register(),
 
-    // ── WebSocket Gateway ─────────────────────────────────────────────────────
-    WsModule,
+    // ── Realtime (Supabase Realtime Broadcast — replaces Socket.IO WsGateway) ──
+    RealtimeModule,
 
     // ── Módulos de domínio ────────────────────────────────────────────────────
     HealthModule,

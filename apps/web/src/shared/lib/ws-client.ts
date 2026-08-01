@@ -1,59 +1,131 @@
-import { io, Socket } from 'socket.io-client';
-import { WS_URL, WS_ENABLED } from "@/shared/lib/env";
+import type { RealtimeChannel } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase';
+import { WS_ENABLED } from '@/shared/lib/env';
+import { getSessionOrgId, getSessionUserId } from '@/shared/lib/get-session-org-id';
+import { ALL_WS_EVENT_NAMES } from '@/shared/lib/ws-events';
 
 /**
- * Singleton Socket.IO client.
+ * Realtime transport for domain-event delivery — replaces the previous
+ * Socket.IO client (`socket.io-client` + a persistent WS connection to the
+ * NestJS API). Vercel Functions can't hold a persistent WebSocket between
+ * invocations, so broadcasts now travel through Supabase Realtime instead:
+ * the backend publishes to `tenant:<org_id>` / `user:<user_id>` topics
+ * (see apps/api/src/core/realtime/realtime.service.ts), and this module
+ * subscribes to both as PRIVATE channels — access is enforced by the RLS
+ * policies in 20260801000001_RealtimeBroadcastAuthorization, not by
+ * anything in this file. The Supabase client already forwards the current
+ * session's JWT to Realtime automatically (same `supabase` singleton used
+ * for Auth), so no separate auth wiring is needed here.
  *
- * The connection URL defaults to "" (same origin) which works correctly when
- * Vite proxies /socket.io → backend:3001 in development. In production, set
- * VITE_WS_URL to the backend URL explicitly.
- *
- * Auth: JWT access_token is passed in handshake.auth.token so the backend
- * WsGateway can validate it on connection.
+ * Two channels are kept open per session — one for tenant-wide domain
+ * events, one for events addressed to this specific user — mirroring the
+ * two Socket.IO rooms (`tenant:<org_id>`, `user:<user_id>`) the old
+ * WsGateway joined every socket to.
  */
 
-let _socket: Socket | null = null;
-let _currentToken: string | null = null;
+type Listener = (payload: unknown) => void;
+type ConnectionListener = (connected: boolean) => void;
 
-/**
- * Returns the existing socket when the token is unchanged, regardless of
- * `connected` state — socket.io manages reconnection internally. Creating a
- * new socket instance while the old one is mid-reconnect causes churn and
- * duplicate connection attempts from concurrent component mounts.
- */
-export function getWsSocket(token: string): Socket | null {
-  // P0-07: WS disabled via env flag — no connection attempted, no churn.
-  if (!WS_ENABLED) {
-    return null;
-  }
+let tenantChannel: RealtimeChannel | null = null;
+let userChannel:   RealtimeChannel | null = null;
+let boundOrgId:    string | null = null;
+let boundUserId:   string | null = null;
+let tenantReady = false;
+let userReady   = false;
+let connected   = false;
 
-  if (_socket && _currentToken === token) {
-    return _socket;
-  }
+const eventListeners      = new Map<string, Set<Listener>>();
+const connectionListeners = new Set<ConnectionListener>();
 
-  if (_socket) {
-    _socket.removeAllListeners();
-    _socket.disconnect();
-    _socket = null;
-  }
-
-  _socket = io(WS_URL, {
-    auth:                { token },
-    transports:          ['websocket', 'polling'],
-    reconnectionAttempts: 5,
-    reconnectionDelay:    2_000,
-    timeout:             10_000,
-  });
-
-  _currentToken = token;
-  return _socket;
+function setConnected(value: boolean): void {
+  if (value === connected) return;
+  connected = value;
+  connectionListeners.forEach((cb) => cb(value));
 }
 
-export function disconnectWsSocket(): void {
-  if (_socket) {
-    _socket.removeAllListeners();
-    _socket.disconnect();
-    _socket        = null;
-    _currentToken  = null;
+function dispatch(event: string, payload: unknown): void {
+  eventListeners.get(event)?.forEach((cb) => cb(payload));
+}
+
+/** Registers a dispatcher for every known event name — Realtime has no
+ * wildcard broadcast listener, so each name needs its own `.on()` call. */
+function bindKnownEvents(channel: RealtimeChannel): void {
+  for (const event of ALL_WS_EVENT_NAMES) {
+    channel.on('broadcast', { event }, ({ payload }: { payload: unknown }) => {
+      dispatch(event, payload);
+    });
   }
+}
+
+/**
+ * Ensures both Realtime channels are subscribed for the currently
+ * authenticated session. Safe to call repeatedly — no-ops if already
+ * connected for the same identity, and re-subscribes if it changed (e.g.
+ * a different user logged in without a full page reload).
+ */
+export function ensureRealtimeChannels(): void {
+  if (!WS_ENABLED) return;
+
+  const orgId  = getSessionOrgId();
+  const userId = getSessionUserId();
+  if (!orgId || !userId) return;
+
+  if (orgId === boundOrgId && userId === boundUserId && tenantChannel && userChannel) {
+    return;
+  }
+
+  disconnectRealtimeChannels();
+  boundOrgId  = orgId;
+  boundUserId = userId;
+
+  tenantChannel = supabase.channel(`tenant:${orgId}`, { config: { private: true } });
+  bindKnownEvents(tenantChannel);
+  tenantChannel.subscribe((status: string) => {
+    tenantReady = status === 'SUBSCRIBED';
+    setConnected(tenantReady && userReady);
+  });
+
+  userChannel = supabase.channel(`user:${userId}`, { config: { private: true } });
+  bindKnownEvents(userChannel);
+  userChannel.subscribe((status: string) => {
+    userReady = status === 'SUBSCRIBED';
+    setConnected(tenantReady && userReady);
+  });
+}
+
+export function disconnectRealtimeChannels(): void {
+  if (tenantChannel) {
+    supabase.removeChannel(tenantChannel);
+    tenantChannel = null;
+  }
+  if (userChannel) {
+    supabase.removeChannel(userChannel);
+    userChannel = null;
+  }
+  boundOrgId  = null;
+  boundUserId = null;
+  tenantReady = false;
+  userReady   = false;
+  setConnected(false);
+}
+
+/** Subscribes to a named broadcast event; returns an unsubscribe function. */
+export function onWsEvent(event: string, handler: Listener): () => void {
+  ensureRealtimeChannels();
+  if (!eventListeners.has(event)) eventListeners.set(event, new Set());
+  eventListeners.get(event)!.add(handler);
+  return () => {
+    eventListeners.get(event)?.delete(handler);
+  };
+}
+
+/** Subscribes to connection state changes; calls back immediately with the current state. */
+export function onWsConnectionChange(cb: ConnectionListener): () => void {
+  connectionListeners.add(cb);
+  cb(connected);
+  return () => connectionListeners.delete(cb);
+}
+
+export function isWsConnected(): boolean {
+  return connected;
 }
