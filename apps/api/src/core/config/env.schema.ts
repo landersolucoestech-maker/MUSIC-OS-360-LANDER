@@ -568,6 +568,13 @@ const envSchema = z.object({
   GOOGLE_ADS_CLIENT_SECRET: z.string().optional(),
   GOOGLE_ADS_REDIRECT_URI: z.string().optional(),
 
+  // Generic Google OAuth (corp_youtube/google_business exchange in
+  // integrations.controller.ts) — falls back to GOOGLE_ADS_CLIENT_ID/SECRET
+  // when unset, but was previously read via bare process.env with no schema
+  // validation at all.
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+
   // Flags de conveniência LOCAL — bloqueadas fora de development pelo superRefine.
   USE_MOCK: z.string().optional(),
   MOCK_MODE: z.string().optional(),
