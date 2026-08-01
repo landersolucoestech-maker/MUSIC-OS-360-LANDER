@@ -14,7 +14,7 @@ Só promover se o ambiente de staging existir e estiver isolado:
 - [ ] Migrations aplicam em staging (RLS/FORCE/policies OK)
 
 ## Ordem de promoção
-1. **Merge para `staging`** → workflow `staging.yml` roda (quality + migrations-staging + deploy-staging).
+1. **Disparar `staging.yml` manualmente** (Actions tab → Run workflow, ref `dev`) → roda quality + migrations-staging + deploy-staging. Staging é um ambiente (GitHub Environment `staging`), não uma branch — a topologia deste projeto tem somente `dev` e `main`.
 2. **Validação em staging** (evidência obrigatória por área):
    - Auth/tenant: login + isolamento A×B (403/404).
    - Billing (quando liberado): checkout+webhook+idempotência+portal (Stripe TEST).

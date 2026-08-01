@@ -19,7 +19,12 @@ on:
   # would trigger a real staging deployment attempt on every dev commit,
   # which is a bigger behavior change than this cleanup is meant to make —
   # left as a documented future option, not enabled here.
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      apply_migrations:
+        description: "Apply pending TypeORM migrations to staging (unchecked = read-only db:check + RLS/isolation verification only)"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -52,40 +57,53 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment: staging
+    env:
+      DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
+      APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
+      DATABASE_SESSION_CONTEXT_ENABLED: "true"
+      DATABASE_RLS_ENFORCEMENT: "true"
+      NODE_ENV: staging
     steps:
       - uses: actions/checkout@v4
+
+      - name: Require staging secrets present
+        run: |
+          test -n "$DATABASE_URL" || { echo "::error::STAGING_DATABASE_URL secret not configured (staging environment)"; exit 1; }
+          test -n "$APP_DATABASE_URL" || { echo "::error::STAGING_APP_DATABASE_URL secret not configured (staging environment)"; exit 1; }
+
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - name: db:migrate staging
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
-          DATABASE_SESSION_CONTEXT_ENABLED: "true"
-          DATABASE_RLS_ENFORCEMENT: "true"
-          NODE_ENV: staging
-        run: |
-          test -n "$DATABASE_URL"
-          test -n "$APP_DATABASE_URL"
-          pnpm --filter @music-os-360/api db:migrate
-      - name: db:check staging
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
-          DATABASE_SESSION_CONTEXT_ENABLED: "true"
-          DATABASE_RLS_ENFORCEMENT: "true"
-          NODE_ENV: staging
+
+      - name: Validate Supabase project ref is STAGING (never DEV/MAIN) before any query
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-staging-ref.ts
+
+      - name: db:check staging (read-only — always runs)
+        id: check
         run: pnpm --filter @music-os-360/api db:check
+        continue-on-error: true
+
+      - name: Require explicit authorization to apply pending migrations
+        if: steps.check.outcome == 'failure' && github.event.inputs.apply_migrations != 'true'
+        run: |
+          echo "::error::Pending migrations found on staging, but apply_migrations was not checked. Re-run this workflow (Actions tab) with 'Apply pending TypeORM migrations to staging' checked to authorize."
+          exit 1
+
+      - name: db:migrate staging (only with explicit authorization)
+        if: steps.check.outcome == 'failure' && github.event.inputs.apply_migrations == 'true'
+        run: pnpm --filter @music-os-360/api db:migrate
+
+      - name: db:check staging (confirm zero pending after migrate)
+        if: steps.check.outcome == 'failure' && github.event.inputs.apply_migrations == 'true'
+        run: pnpm --filter @music-os-360/api db:check
+
+      - name: Migration source-of-truth guard (no dual tracking, no drift)
+        run: node scripts/verify-migration-source-of-truth.mjs
+
       - name: blocking RLS and tenant checks
-        env:
-          DATABASE_URL: ${{ secrets.STAGING_DATABASE_URL }}
-          APP_DATABASE_URL: ${{ secrets.STAGING_APP_DATABASE_URL }}
-          DATABASE_SESSION_CONTEXT_ENABLED: "true"
-          DATABASE_RLS_ENFORCEMENT: "true"
-          NODE_ENV: staging
         run: |
           pnpm --filter @music-os-360/api verify:rls
           pnpm --filter @music-os-360/api verify:tenant-isolation
@@ -93,7 +111,15 @@ jobs:
   deploy-staging:
     name: deploy staging
     needs: [migrations-staging]
-    if: github.ref == 'refs/heads/staging'
+    # BUG FIXED: this used to check `github.ref == 'refs/heads/staging'` — a
+    # branch that structurally can never exist in this project (staging is
+    # an environment, not a branch; topology is dev/main only). That made
+    # this job (and smoke-staging below) permanently unreachable dead code,
+    # regardless of how the workflow was triggered. workflow_dispatch is the
+    # only trigger, always run against dev; this also doubles as the
+    # anti-MAIN guard (a manual dispatch against main would fail this check
+    # and never deploy).
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: staging
@@ -110,7 +136,7 @@ jobs:
   smoke-staging:
     name: smoke staging
     needs: [deploy-staging]
-    if: github.ref == 'refs/heads/staging'
+    if: github.ref == 'refs/heads/dev'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: staging

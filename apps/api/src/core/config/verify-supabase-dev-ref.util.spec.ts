@@ -1,5 +1,5 @@
-import { validateSupabaseDevRef } from './verify-supabase-dev-ref.util';
-import { SUPABASE_DEV_REF, SUPABASE_MAIN_REF, SUPABASE_PROD_REF } from './env.schema';
+import { validateSupabaseDevRef, validateSupabaseStagingRef } from './verify-supabase-dev-ref.util';
+import { SUPABASE_DEV_REF, SUPABASE_STAGING_REF, SUPABASE_MAIN_REF, SUPABASE_PROD_REF } from './env.schema';
 
 function pooler(ref: string): string {
   return `postgresql://postgres.${ref}:pw@aws-0-us-east-1.pooler.supabase.com:6543/postgres`;
@@ -57,5 +57,30 @@ describe('validateSupabaseDevRef', () => {
     const result = validateSupabaseDevRef(secretLookingUrl);
     expect(result.ok).toBe(false);
     if (!result.ok) expect(result.reason).not.toContain('sUp3rS3cr3tPassw0rd');
+  });
+});
+
+describe('validateSupabaseStagingRef', () => {
+  it('accepts the real STAGING ref', () => {
+    const result = validateSupabaseStagingRef(pooler(SUPABASE_STAGING_REF));
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.ref).toBe(SUPABASE_STAGING_REF);
+  });
+
+  it('rejects the DEV ref (staging must never accept DEV)', () => {
+    const result = validateSupabaseStagingRef(pooler(SUPABASE_DEV_REF));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/not the expected STAGING ref/);
+  });
+
+  it('rejects the MAIN ref explicitly', () => {
+    const result = validateSupabaseStagingRef(pooler(SUPABASE_MAIN_REF));
+    expect(result.ok).toBe(false);
+    if (!result.ok) expect(result.reason).toMatch(/MAIN/);
+  });
+
+  it('rejects the production ref', () => {
+    const result = validateSupabaseStagingRef(pooler(SUPABASE_PROD_REF));
+    expect(result.ok).toBe(false);
   });
 });
