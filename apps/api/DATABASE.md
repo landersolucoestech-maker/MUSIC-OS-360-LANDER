@@ -8,6 +8,72 @@
 
 ---
 
+## Fonte única de migrations (canonical source)
+
+**As migrations oficiais deste projeto vivem exclusivamente em
+`apps/api/src/database/migrations/` e são executadas pelo runner TypeORM do
+próprio projeto (`db:migrate` / `db:check`, ver [scripts/db-ops.ts](scripts/db-ops.ts)).
+O tracking canônico do que já foi aplicado é a tabela `musicos360_migrations`.**
+
+Não existe — e não deve passar a existir — um segundo tracker concorrente:
+
+- `supabase/migrations/` contém apenas 2 arquivos SQL antigos (snapshot inicial
+  + uma reconciliação pontual). **Não é a fonte de verdade e não deve ser
+  atualizado em paralelo** a cada migration TypeORM nova. Não criar backfill
+  artificial ali só para "sincronizar" com o Supabase Branching — isso criaria
+  exatamente o tracker duplo que este documento existe para evitar, sem
+  nenhum ganho real (o schema já é validado por `db:check` + fresh-DB CI).
+- **Supabase Branching** (o mecanismo nativo de branches do Supabase, visível
+  no dashboard) observa `supabase/migrations/` para decidir o status de uma
+  branch. Como este projeto nunca alimentou esse mecanismo, o badge de status
+  de uma branch (ex.: `MIGRATIONS_FAILED` na branch DEV) é **metadata
+  histórica do Supabase Branching, sem relação com a saúde real do schema**.
+  Não reflete migrations pendentes, RLS quebrado, ou qualquer problema atual —
+  só reflete que o Branching nunca reconheceu o histórico real de migrations
+  (que está inteiramente em `musicos360_migrations`).
+- A saúde real do banco é determinada por, nesta ordem: `db:check` (zero
+  migrations pendentes), a suíte de fresh-DB em CI (migrations aplicam limpo
+  em um Postgres novo), e as verificações de RLS/tenant-isolation
+  (`verify:rls`, `verify:tenant-isolation`) — nunca pelo status de branch do
+  Supabase.
+- Nenhuma migration deve ser aplicada manualmente (SQL solto via editor/CLI)
+  sem passar pelo runner e sem ficar registrada em `musicos360_migrations`.
+  Uma aplicação que não registra a migration cria exatamente a divergência
+  entre "schema real" e "tracking oficial" que este documento existe para
+  prevenir.
+- Não editar tabelas internas do Supabase (`supabase_migrations.*` ou
+  equivalentes) para forjar/"consertar" o status de uma branch. Se o
+  Branching precisar reconhecer o histórico real algum dia, isso é uma
+  decisão arquitetural separada (backfillar `supabase/migrations/` de forma
+  deliberada, ou desativar formalmente o Branching para este projeto) — não
+  um ajuste manual de estado interno.
+
+Um guard de CI (`scripts/verify-migration-source-of-truth.mjs`) falha o build
+se essa fonte única for violada silenciosamente — ver seção de CI abaixo.
+
+### Nota: dois DataSources dentro do próprio TypeORM
+
+Existem hoje dois `DataSource` distintos dentro de `apps/api`, e isso **não**
+é o mesmo problema que `supabase/migrations` — é uma divergência interna,
+pré-existente, entre dois arquivos que deveriam concordar:
+
+- `src/database/datasource.ts` — usado pelo runner real (`db-ops.ts`, logo
+  `db:migrate`/`db:check`/CI). Descobre migrations via glob
+  (`migrations/*.{ts,js}`), então nunca fica "desatualizado" por arquivo.
+- `src/database/database.module.ts` — DataSource da própria aplicação NestJS
+  em runtime, com um array `ALL_MIGRATIONS` explícito (import por import).
+  Hoje esse array está **defasado em ~50 migrations** (não inclui nada entre
+  `20260712000001` e `20260719000025`) — descoberto ao escrever o guard
+  acima, não corrigido nesta parte por ser cirurgia não-relacionada em
+  código de terceiros sem revisão dedicada.
+
+Isso não compromete `db:check`/fresh-DB/RLS (que usam `datasource.ts`), mas é
+uma reconciliação pendente: decidir se `database.module.ts` deve passar a
+usar o mesmo glob, ou se seu array explícito tem um propósito que exige
+listagem manual — e, nesse caso, atualizá-lo.
+
+---
+
 ## Pré-requisitos
 
 Definir a variável de ambiente `DATABASE_URL` (no seu gerenciador de secrets/`.env` local) antes de qualquer operação:
