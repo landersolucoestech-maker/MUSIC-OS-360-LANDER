@@ -51,4 +51,4 @@
 
 ## Branches relacionadas / backlog
 
-<!-- Se esta PR implementa algo de uma branch subrepl-*, referencie aqui. -->
+<!-- Se esta PR implementa um item do BACKLOG.md, referencie o ID aqui (ex.: BACKLOG-007). -->

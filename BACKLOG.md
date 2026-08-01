@@ -1,10 +1,10 @@
-# Feature Backlog — Branches subrepl-*
+# Feature Backlog
 
-Auditado em: 2026-05-20  
-Branch base atual: `feat/supabase-auth`  
-Critério de reintegração: cherry-pick ou reimplementação manual (todas estão 42–575 commits atrás do HEAD).
+Auditado em: 2026-05-20 (grupos/prioridades preservados; ver nota de proveniência abaixo).
 
-> **Regra**: Não fazer merge direto de nenhuma branch subrepl-* em main. Reimplementar a feature em uma branch nova a partir de `feat/supabase-auth`, passando pelo PR checklist.
+> **Regra**: implementar cada item como uma branch nova a partir de `dev`, passando pelo PR checklist normal. Nenhum destes itens tem código-fonte recuperável hoje — são ideias de feature a reimplementar do zero.
+
+> **Nota de proveniência**: esta lista documentava originalmente um conjunto de branches de sessões de agente (antigo fluxo de desenvolvimento) que já não existem — nem localmente, nem no remoto. Não há commits para recuperar ou portar; os identificadores dessas branches foram substituídos por IDs sequenciais neutros (`BACKLOG-NNN`). O conteúdo de cada item (a ideia de feature) é preservado abaixo.
 
 ---
 
@@ -12,13 +12,13 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Alta — feature core para fluxo de contratos
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-q8g4xsgz` | 1 | Dialogs de configuração Clicksign e DocuSign na página de integrações |
-| `subrepl-upmlui2l` | 3 | Badge de plataforma de assinatura em cada contrato + atualização de dados mock |
-| `subrepl-e5jplqf9` | 4 | Wire Clicksign e DocuSign no fluxo de assinatura de contrato + local de storage de arquivo |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-001` | Dialogs de configuração Clicksign e DocuSign na página de integrações |
+| `BACKLOG-002` | Badge de plataforma de assinatura em cada contrato + atualização de dados mock |
+| `BACKLOG-003` | Wire Clicksign e DocuSign no fluxo de assinatura de contrato + local de storage de arquivo |
 
-**O que fazer**: Criar branch `feat/contract-signing-integration` a partir de `feat/supabase-auth`, reimplementar as 3 features em ordem (q8g4xsgz → upmlui2l → e5jplqf9).
+**O que fazer**: Criar branch `feat/contract-signing-integration` a partir de `dev`, implementar as 3 features em ordem (001 → 002 → 003).
 
 ---
 
@@ -26,15 +26,15 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Alta — funcionalidade core de catalog
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-aiyr3su8` | 1 | Badge de status ECAD na lista de obras |
-| `subrepl-a0mijmfo` | 1 | Badge de status ECAD na lista de fonogramas |
-| `subrepl-48mt2ag0` | 1 | Filtro por status ECAD na lista de fonogramas |
-| `subrepl-mgpejyg1` | 2 | Filtro por status ECAD na lista de obras (handle vazio/whitespace) |
-| `subrepl-t4rhp45f` | 2 | Preenchimento em lote de códigos ECAD com error handling |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-004` | Badge de status ECAD na lista de obras |
+| `BACKLOG-005` | Badge de status ECAD na lista de fonogramas |
+| `BACKLOG-006` | Filtro por status ECAD na lista de fonogramas |
+| `BACKLOG-007` | Filtro por status ECAD na lista de obras (handle vazio/whitespace) |
+| `BACKLOG-008` | Preenchimento em lote de códigos ECAD com error handling |
 
-**O que fazer**: Criar branch `feat/ecad-catalog-enhancements` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/ecad-catalog-enhancements` a partir de `dev`.
 
 ---
 
@@ -42,14 +42,14 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Alta — módulo de monitoramento ECAD
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-3betyet5` | 2 | Página de detalhe de execução com timeline ECAD (#595) |
-| `subrepl-tvi8lmhc` | 2 | Conectar execuções com ISRC/obra real do catalog |
-| `subrepl-asapacyj` | 3 | Filtro por data, artista e exportação CSV na tabela de execuções |
-| `subrepl-r83ta6w1` | 3 | Testes automatizados: modal de detalhe + catalog lookup |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-009` | Página de detalhe de execução com timeline ECAD (#595) |
+| `BACKLOG-010` | Conectar execuções com ISRC/obra real do catalog |
+| `BACKLOG-011` | Filtro por data, artista e exportação CSV na tabela de execuções |
+| `BACKLOG-012` | Testes automatizados: modal de detalhe + catalog lookup |
 
-**O que fazer**: Criar branch `feat/rights-monitoring-v2` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/rights-monitoring-v2` a partir de `dev`.
 
 ---
 
@@ -57,12 +57,12 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Média — configuração de plataformas de streaming
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-zr4rm8cu` | 1 | Página de integrações reorganizada por categoria, remove Google Drive |
-| `subrepl-bd341rfr` | 4 | Dialogs de configuração: Spotify, YouTube, Deezer, SoundCloud, Apple Music |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-013` | Página de integrações reorganizada por categoria, remove Google Drive |
+| `BACKLOG-014` | Dialogs de configuração: Spotify, YouTube, Deezer, SoundCloud, Apple Music |
 
-**O que fazer**: Criar branch `feat/integrations-streaming-config` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/integrations-streaming-config` a partir de `dev`.
 
 ---
 
@@ -70,12 +70,12 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Média — melhoria no fluxo de cadastro
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-4vpask7l` | 1 | Formulário de cadastro de artista: múltiplas distribuidoras |
-| `subrepl-bym04bmb` | 2 | Exibir apenas distribuidoras preenchidas no resumo do step 3 |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-015` | Formulário de cadastro de artista: múltiplas distribuidoras |
+| `BACKLOG-016` | Exibir apenas distribuidoras preenchidas no resumo do step 3 |
 
-**O que fazer**: Criar branch `feat/artist-signup-distribuidoras` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/artist-signup-distribuidoras` a partir de `dev`.
 
 ---
 
@@ -83,12 +83,12 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Média — relacionado à migração Supabase (Phase 2 roadmap)
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-fkmza3eb` | 1 | Limpar chaves legadas de credenciais do sessionStorage/localStorage na inicialização |
-| `subrepl-u6s4k3bu` | 1 | Sistema de migração versionada para limpeza do browser storage (#658) |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-017` | Limpar chaves legadas de credenciais do sessionStorage/localStorage na inicialização |
+| `BACKLOG-018` | Sistema de migração versionada para limpeza do browser storage (#658) |
 
-**O que fazer**: Criar branch `feat/storage-cleanup-migration` a partir de `feat/supabase-auth`. Avaliar compatibilidade com remoção do MOCK_MODE (Phase 2 do roadmap).
+**O que fazer**: Criar branch `feat/storage-cleanup-migration` a partir de `dev`. Avaliar compatibilidade com remoção do MOCK_MODE (Phase 2 do roadmap).
 
 ---
 
@@ -96,11 +96,11 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Alta — alinhado diretamente com Phase 5 do roadmap
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-hu4gmyxy` | 11 | Validação Zod server-side para endpoints POST, PUT e PATCH de transactions + documentação |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-019` | Validação Zod server-side para endpoints POST, PUT e PATCH de transactions + documentação |
 
-**O que fazer**: Criar branch `feat/zod-server-validation` a partir de `feat/supabase-auth`. Tem 11 commits — revisar cuidadosamente antes de reimplementar.
+**O que fazer**: Criar branch `feat/zod-server-validation` a partir de `dev`. Escopo maior — revisar cuidadosamente antes de implementar.
 
 ---
 
@@ -108,11 +108,11 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Alta — alinhado diretamente com Phase 6 do roadmap
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-i3hcqiwh` | 2 | Testes unitários para regras de negócio do formulário de transação + scripts de teste no web app |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-020` | Testes unitários para regras de negócio do formulário de transação + scripts de teste no web app |
 
-**O que fazer**: Criar branch `feat/frontend-unit-tests` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/frontend-unit-tests` a partir de `dev`.
 
 ---
 
@@ -120,11 +120,11 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Média
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-ynmkoezp` | 3 | NotaFiscalFormModal: arquitetura modular |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-021` | NotaFiscalFormModal: arquitetura modular |
 
-**O que fazer**: Criar branch `feat/nota-fiscal-modal-refactor` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/nota-fiscal-modal-refactor` a partir de `dev`.
 
 ---
 
@@ -132,11 +132,11 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Baixa
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-ck008ff5` | 2 | CalendarCards com engagement stats reais de publicações |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-022` | CalendarCards com engagement stats reais de publicações |
 
-**O que fazer**: Criar branch `feat/calendar-engagement-stats` a partir de `feat/supabase-auth`.
+**O que fazer**: Criar branch `feat/calendar-engagement-stats` a partir de `dev`.
 
 ---
 
@@ -144,51 +144,51 @@ Critério de reintegração: cherry-pick ou reimplementação manual (todas est�
 
 **Prioridade**: Baixa — feature avançada, avaliar escopo
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-45z13hnk` | 13 | Conectar publicação real Instagram, TikTok e YouTube quando integrações estiverem ativas |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-023` | Conectar publicação real Instagram, TikTok e YouTube quando integrações estiverem ativas |
 
-**O que fazer**: Avaliar se o escopo está dentro das integrações previstas antes de reimplementar. 13 commits — mais complexo.
+**O que fazer**: Avaliar se o escopo está dentro das integrações previstas antes de implementar. Escopo maior — mais complexo.
 
 ---
 
 ## Grupo 12 — Contract Template UI
 
-**Prioridade**: Baixa (já no HEAD via `feat/supabase-auth`)
+**Prioridade**: Baixa (verificar se já incorporado)
 
-| Branch | Commits únicos | Feature |
-|--------|---------------|---------|
-| `subrepl-565dy2jg` | 1 | Layout lado a lado no template de contrato (Task #86) |
+| ID | Feature |
+|----|---------|
+| `BACKLOG-024` | Layout lado a lado no template de contrato (Task #86) |
 
-**O que fazer**: Verificar se já foi incorporado nos commits recentes de contratos no `feat/supabase-auth`. Pode ser descartada.
+**O que fazer**: Verificar se já foi incorporado nos commits recentes de contratos em `dev`. Pode ser descartada se sim.
 
 ---
 
-## Status das branches
+## Status
 
-| Branch | Grupo | Prioridade | Status |
-|--------|-------|-----------|--------|
-| subrepl-q8g4xsgz | Contract Signing | Alta | Backlog |
-| subrepl-upmlui2l | Contract Signing | Alta | Backlog |
-| subrepl-e5jplqf9 | Contract Signing | Alta | Backlog |
-| subrepl-hu4gmyxy | Zod Validation | Alta | Backlog |
-| subrepl-i3hcqiwh | Frontend Tests | Alta | Backlog |
-| subrepl-r83ta6w1 | Rights Monitoring | Alta | Backlog |
-| subrepl-3betyet5 | Rights Monitoring | Alta | Backlog |
-| subrepl-tvi8lmhc | Rights Monitoring | Alta | Backlog |
-| subrepl-asapacyj | Rights Monitoring | Alta | Backlog |
-| subrepl-aiyr3su8 | ECAD Catalog | Alta | Backlog |
-| subrepl-a0mijmfo | ECAD Catalog | Alta | Backlog |
-| subrepl-48mt2ag0 | ECAD Catalog | Alta | Backlog |
-| subrepl-mgpejyg1 | ECAD Catalog | Alta | Backlog |
-| subrepl-t4rhp45f | ECAD Catalog | Alta | Backlog |
-| subrepl-4vpask7l | Artist Signup | Média | Backlog |
-| subrepl-bym04bmb | Artist Signup | Média | Backlog |
-| subrepl-zr4rm8cu | Integrations | Média | Backlog |
-| subrepl-bd341rfr | Integrations | Média | Backlog |
-| subrepl-fkmza3eb | Storage Cleanup | Média | Backlog |
-| subrepl-u6s4k3bu | Storage Cleanup | Média | Backlog |
-| subrepl-ynmkoezp | Accounting | Média | Backlog |
-| subrepl-ck008ff5 | Marketing | Baixa | Backlog |
-| subrepl-45z13hnk | Social Media | Baixa | Avaliar escopo |
-| subrepl-565dy2jg | Contract UI | Baixa | Verificar se já incorporado |
+| ID | Grupo | Prioridade | Status |
+|----|-------|-----------|--------|
+| BACKLOG-001 | Contract Signing | Alta | Backlog |
+| BACKLOG-002 | Contract Signing | Alta | Backlog |
+| BACKLOG-003 | Contract Signing | Alta | Backlog |
+| BACKLOG-019 | Zod Validation | Alta | Backlog |
+| BACKLOG-020 | Frontend Tests | Alta | Backlog |
+| BACKLOG-012 | Rights Monitoring | Alta | Backlog |
+| BACKLOG-009 | Rights Monitoring | Alta | Backlog |
+| BACKLOG-010 | Rights Monitoring | Alta | Backlog |
+| BACKLOG-011 | Rights Monitoring | Alta | Backlog |
+| BACKLOG-004 | ECAD Catalog | Alta | Backlog |
+| BACKLOG-005 | ECAD Catalog | Alta | Backlog |
+| BACKLOG-006 | ECAD Catalog | Alta | Backlog |
+| BACKLOG-007 | ECAD Catalog | Alta | Backlog |
+| BACKLOG-008 | ECAD Catalog | Alta | Backlog |
+| BACKLOG-015 | Artist Signup | Média | Backlog |
+| BACKLOG-016 | Artist Signup | Média | Backlog |
+| BACKLOG-013 | Integrations | Média | Backlog |
+| BACKLOG-014 | Integrations | Média | Backlog |
+| BACKLOG-017 | Storage Cleanup | Média | Backlog |
+| BACKLOG-018 | Storage Cleanup | Média | Backlog |
+| BACKLOG-021 | Accounting | Média | Backlog |
+| BACKLOG-022 | Marketing | Baixa | Backlog |
+| BACKLOG-023 | Social Media | Baixa | Avaliar escopo |
+| BACKLOG-024 | Contract UI | Baixa | Verificar se já incorporado |
