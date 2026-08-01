@@ -15,6 +15,7 @@ import 'reflect-metadata';
 import * as path from 'path';
 import { DataSource } from 'typeorm';
 import { ALL_ENTITIES } from './entities';
+import { ALL_MIGRATIONS } from './migrations/index';
 import { assertDatabaseCommandEnv } from '../core/config/env.schema';
 
 // ─── Carregar variáveis de ambiente se dotenv estiver disponível ───────────────
@@ -52,9 +53,14 @@ export const AppDataSource = new DataSource({
   logging:      !isProduction,
   ssl:          dbSslDisabled ? false : { rejectUnauthorized: false },
 
-  migrations: [
-    path.join(__dirname, 'migrations', '*.{ts,js}'),
-  ],
+  // Was a glob (path.join(__dirname, 'migrations', '*.{ts,js}')) — replaced
+  // with the shared ALL_MIGRATIONS registry (./migrations/index.ts) so this
+  // and database.module.ts's runtime DataSource can never drift again (the
+  // glob auto-discovered new files silently; database.module.ts's own
+  // explicit list did not, which is exactly how the two fell ~50 migrations
+  // out of sync before this fix). Adding a migration now means adding it to
+  // migrations/index.ts — see apps/api/DATABASE.md.
+  migrations: [...ALL_MIGRATIONS],
   migrationsTableName: 'musicos360_migrations',
   migrationsRun:       false,
 });

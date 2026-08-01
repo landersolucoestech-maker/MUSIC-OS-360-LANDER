@@ -4,6 +4,7 @@ import {
   checkSupabaseMigrationsAllowlist,
   checkNoParallelTimestampCollision,
   checkCanonicalRunnerConfig,
+  checkRegistryParity,
   SUPABASE_MIGRATIONS_ALLOWLIST,
 } from './verify-migration-source-of-truth.mjs';
 
@@ -62,11 +63,10 @@ test('collision: allowlisted legacy file coincidentally shares a name -> PASS (a
   assert.equal(result.ok, true);
 });
 
-test('runner config: canonical table name and migrations glob present -> PASS', () => {
+test('runner config: canonical table name and shared registry import present -> PASS', () => {
   const source = `
-    migrations: [
-      path.join(__dirname, 'migrations', '*.{ts,js}'),
-    ],
+    import { ALL_MIGRATIONS } from './migrations/index';
+    migrations: [...ALL_MIGRATIONS],
     migrationsTableName: 'musicos360_migrations',
   `;
   const result = checkCanonicalRunnerConfig(source);
@@ -75,7 +75,8 @@ test('runner config: canonical table name and migrations glob present -> PASS', 
 
 test('runner config: tracking table name silently changed -> FAIL', () => {
   const source = `
-    migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
+    import { ALL_MIGRATIONS } from './migrations/index';
+    migrations: [...ALL_MIGRATIONS],
     migrationsTableName: 'some_other_table',
   `;
   const result = checkCanonicalRunnerConfig(source);
@@ -83,12 +84,53 @@ test('runner config: tracking table name silently changed -> FAIL', () => {
   assert.match(result.reasons[0], /musicos360_migrations/);
 });
 
-test('runner config: no longer globs ./migrations -> FAIL', () => {
+test('runner config: no longer imports the shared registry (e.g. reverted to a private list or glob) -> FAIL', () => {
   const source = `
-    migrations: [path.join(__dirname, 'somewhere-else', '*.{ts,js}')],
+    migrations: [path.join(__dirname, 'migrations', '*.{ts,js}')],
     migrationsTableName: 'musicos360_migrations',
   `;
   const result = checkCanonicalRunnerConfig(source);
   assert.equal(result.ok, false);
-  assert.match(result.reasons[0], /migrations/);
+  assert.match(result.reasons[0], /ALL_MIGRATIONS/);
+});
+
+test('registry parity: every file on disk is exported, every export has a file -> PASS', () => {
+  const indexSource = `
+    import { Foo20260101000000 } from './20260101000000_Foo';
+    export const ALL_MIGRATIONS = [
+      Foo20260101000000,
+    ] as const;
+  `;
+  const result = checkRegistryParity(['Foo20260101000000'], indexSource);
+  assert.equal(result.ok, true);
+});
+
+test('registry parity: a file on disk was never added to the registry -> FAIL', () => {
+  const indexSource = `export const ALL_MIGRATIONS = [] as const;`;
+  const result = checkRegistryParity(['Foo20260101000000'], indexSource);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.missingFromIndex, ['Foo20260101000000']);
+});
+
+test('registry parity: the registry references a class with no backing file -> FAIL', () => {
+  const indexSource = `
+    import { Ghost20260101000000 } from './20260101000000_Ghost';
+    export const ALL_MIGRATIONS = [
+      Ghost20260101000000,
+    ] as const;
+  `;
+  const result = checkRegistryParity([], indexSource);
+  assert.equal(result.ok, false);
+  assert.deepEqual(result.orphanedInIndex, ['Ghost20260101000000']);
+});
+
+test('registry parity: a class name with an underscore separator (real-world exception) is not mishandled', () => {
+  const indexSource = `
+    import { RemoveDeadStructuresD1D8_20260705000003 } from './20260705000003_RemoveDeadStructuresD1D8';
+    export const ALL_MIGRATIONS = [
+      RemoveDeadStructuresD1D8_20260705000003,
+    ] as const;
+  `;
+  const result = checkRegistryParity(['RemoveDeadStructuresD1D8_20260705000003'], indexSource);
+  assert.equal(result.ok, true);
 });

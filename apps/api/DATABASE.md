@@ -51,26 +51,32 @@ Não existe — e não deve passar a existir — um segundo tracker concorrente:
 Um guard de CI (`scripts/verify-migration-source-of-truth.mjs`) falha o build
 se essa fonte única for violada silenciosamente — ver seção de CI abaixo.
 
-### Nota: dois DataSources dentro do próprio TypeORM
+### Registro único de migrations (resolvido na Parte 61)
 
-Existem hoje dois `DataSource` distintos dentro de `apps/api`, e isso **não**
-é o mesmo problema que `supabase/migrations` — é uma divergência interna,
-pré-existente, entre dois arquivos que deveriam concordar:
+`src/database/migrations/index.ts` exporta `ALL_MIGRATIONS` — a única lista
+de migrations do projeto. Tanto `src/database/datasource.ts` (o runner real
+por trás de `db:migrate`/`db:check`/CI) quanto `src/database/database.module.ts`
+(o `ADMIN_DATA_SOURCE` da aplicação NestJS, usado por `MigrationValidatorService`
+para checar migrations pendentes no boot) importam exatamente o mesmo array.
 
-- `src/database/datasource.ts` — usado pelo runner real (`db-ops.ts`, logo
-  `db:migrate`/`db:check`/CI). Descobre migrations via glob
-  (`migrations/*.{ts,js}`), então nunca fica "desatualizado" por arquivo.
-- `src/database/database.module.ts` — DataSource da própria aplicação NestJS
-  em runtime, com um array `ALL_MIGRATIONS` explícito (import por import).
-  Hoje esse array está **defasado em ~50 migrations** (não inclui nada entre
-  `20260712000001` e `20260719000025`) — descoberto ao escrever o guard
-  acima, não corrigido nesta parte por ser cirurgia não-relacionada em
-  código de terceiros sem revisão dedicada.
+Isso substitui um estado anterior onde `datasource.ts` descobria migrations
+via glob (`migrations/*.{ts,js}`, sempre atualizado automaticamente) enquanto
+`database.module.ts` mantinha seu próprio array explícito, import por import —
+que ficou **defasado em ~50 migrations** (nada entre `20260712000001` e
+`20260719000025`) sem que ninguém notasse, porque nada comparava os dois.
+Isso é um risco real, não cosmético: `MigrationValidatorService` usa esse
+array para decidir, no boot, se existem migrations pendentes (fatal em
+produção) — um array defasado significa que esse último-recurso de segurança
+fica cego exatamente para as migrations mais recentes.
 
-Isso não compromete `db:check`/fresh-DB/RLS (que usam `datasource.ts`), mas é
-uma reconciliação pendente: decidir se `database.module.ts` deve passar a
-usar o mesmo glob, ou se seu array explícito tem um propósito que exige
-listagem manual — e, nesse caso, atualizá-lo.
+`scripts/verify-migration-source-of-truth.mjs` roda em CI e falha o build se
+`migrations/index.ts` e o conteúdo real de `migrations/` voltarem a divergir
+(arquivo sem entrada no registro, ou entrada sem arquivo correspondente).
+
+**Ao adicionar uma nova migration**: depois de gerar o arquivo (ver "Fluxo de
+desenvolvimento normal" abaixo), adicionar o import + a entrada em
+`migrations/index.ts`. Esse é o único lugar a atualizar — nem `datasource.ts`
+nem `database.module.ts` precisam de nenhuma alteração.
 
 ---
 
@@ -115,9 +121,12 @@ npm run db:generate -- NomeDaMigration
 1. Alterar entidade em src/database/entities.ts
 2. npm run db:generate -- DescricaoDaMudanca
 3. Revisar o ficheiro gerado em src/database/migrations/
-4. npm run db:migrate
-5. Testar localmente
-6. Commit do ficheiro de migration junto com a alteração da entidade
+4. Adicionar o import + a entrada em src/database/migrations/index.ts
+   (verify-migration-source-of-truth.mjs falha o CI se esquecer este passo)
+5. npm run db:migrate
+6. Testar localmente
+7. Commit do ficheiro de migration + a atualização de index.ts junto com a
+   alteração da entidade
 ```
 
 ---

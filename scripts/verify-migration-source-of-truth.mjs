@@ -13,15 +13,13 @@
  *   2. No *new* file in supabase/migrations/ shares a timestamp prefix or
  *      normalized name with a TypeORM migration (a hand-mirrored duplicate).
  *   3. datasource.ts — the config db-ops.ts (db:migrate/db:check) actually
- *      loads — still globs apps/api/src/database/migrations and still uses
- *      musicos360_migrations as the tracking table name.
- *
- * Deliberately out of scope: database.module.ts also declares a second,
- * explicit ALL_MIGRATIONS array for the NestJS runtime DataSource, and it
- * has drifted out of sync with the migrations directory (pre-existing,
- * unrelated to supabase/migrations — see apps/api/DATABASE.md). Reconciling
- * that is a separate, dedicated piece of work, not something this guard
- * silently papers over or enforces.
+ *      loads — still imports the shared ALL_MIGRATIONS registry and still
+ *      uses musicos360_migrations as the tracking table name.
+ *   4. migrations/index.ts (the single shared registry both datasource.ts
+ *      AND database.module.ts import) has exactly one entry per migration
+ *      file on disk, and vice versa — this is what used to be impossible to
+ *      check meaningfully (database.module.ts had its own, separate, silently
+ *      drifting list) until Parte 61 unified both consumers onto one file.
  *
  * Usage:
  *   node scripts/verify-migration-source-of-truth.mjs
@@ -41,7 +39,7 @@ export const SUPABASE_MIGRATIONS_ALLOWLIST = [
   '20260617233000_reconcile_custom_access_token_hook_tenant_selection.sql',
 ];
 
-const TYPEORM_FILENAME_RE = /^(\d{14})_([A-Za-z0-9]+)\.ts$/;
+const TYPEORM_FILENAME_RE = /^(\d{14})_([A-Za-z0-9_]+)\.ts$/;
 
 export function checkSupabaseMigrationsAllowlist(actualFiles, allowlist = SUPABASE_MIGRATIONS_ALLOWLIST) {
   const allowed = new Set(allowlist);
@@ -83,35 +81,67 @@ export function checkNoParallelTimestampCollision(typeormFiles, supabaseFiles, a
   return { ok: collisions.length === 0, collisions };
 }
 
-// datasource.ts (not database.module.ts) is what db-ops.ts actually loads
-// for db:migrate/db:check — its `migrations: [path.join(__dirname,
-// 'migrations', '*.{ts,js}')]` glob is the real canonical runner config.
+// datasource.ts is what db-ops.ts actually loads for db:migrate/db:check —
+// confirms it still imports the shared registry (not a private list, not a
+// glob) and still uses the canonical tracking table name.
 export function checkCanonicalRunnerConfig(datasourceSource) {
   const reasons = [];
   if (!datasourceSource.includes("migrationsTableName: 'musicos360_migrations'")) {
     reasons.push("musicos360_migrations tracking table name not found in datasource.ts — did it silently change?");
   }
-  // Matches a standalone quoted 'migrations' path segment only — not a
-  // substring hit inside an identifier like 'musicos360_migrations'.
-  if (!/(['"])migrations\1/.test(datasourceSource)) {
-    reasons.push("no migrations glob pointing at './migrations' found — TypeORM runner may no longer point at apps/api/src/database/migrations");
+  if (!/from ['"]\.\/migrations\/index['"]/.test(datasourceSource) || !datasourceSource.includes('ALL_MIGRATIONS')) {
+    reasons.push("datasource.ts no longer imports ALL_MIGRATIONS from ./migrations/index — TypeORM runner may no longer point at the shared registry");
   }
   return { ok: reasons.length === 0, reasons };
+}
+
+// migrations/index.ts is the single shared registry — every file on disk
+// must have exactly one entry there, and every entry must correspond to a
+// real file. This is the "registry parity" check: with one shared file
+// (Parte 61) instead of two independently-maintained lists, a real,
+// meaningful comparison against disk finally exists.
+//
+// Takes the *actual* exported class names (read from each file's `export
+// class X` declaration by the caller), not a name reconstructed from the
+// filename — at least one migration (RemoveDeadStructuresD1D8_20260705000003)
+// breaks the usual {Name}{Timestamp} convention with an underscore
+// separator, and reconstructing names from filenames silently mismatches it.
+export function checkRegistryParity(classNamesOnDisk, indexSource) {
+  const onDisk = new Set(classNamesOnDisk);
+  const missingFromIndex = [...onDisk].filter((className) => !indexSource.includes(className));
+
+  const exportedMatch = indexSource.match(/export const ALL_MIGRATIONS = \[([\s\S]*?)\] as const;/);
+  const exportedNames = exportedMatch
+    ? exportedMatch[1].split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+  const orphanedInIndex = exportedNames.filter((name) => !onDisk.has(name));
+
+  return {
+    ok: missingFromIndex.length === 0 && orphanedInIndex.length === 0,
+    missingFromIndex,
+    orphanedInIndex,
+  };
 }
 
 function main() {
   const supabaseMigrationsDir = path.join(REPO_ROOT, 'supabase', 'migrations');
   const typeormMigrationsDir = path.join(REPO_ROOT, 'apps', 'api', 'src', 'database', 'migrations');
   const datasourcePath = path.join(REPO_ROOT, 'apps', 'api', 'src', 'database', 'datasource.ts');
+  const indexPath = path.join(typeormMigrationsDir, 'index.ts');
 
   const supabaseFiles = readdirSync(supabaseMigrationsDir);
-  const typeormFiles = readdirSync(typeormMigrationsDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts'));
+  const typeormFiles = readdirSync(typeormMigrationsDir).filter((f) => f.endsWith('.ts') && !f.endsWith('.spec.ts') && f !== 'index.ts');
   const datasourceSource = readFileSync(datasourcePath, 'utf8');
+  const indexSource = readFileSync(indexPath, 'utf8');
+  const classNamesOnDisk = typeormFiles
+    .map((f) => readFileSync(path.join(typeormMigrationsDir, f), 'utf8').match(/export class (\w+)/)?.[1])
+    .filter(Boolean);
 
   const results = [
     ['supabase/migrations/ matches the frozen allowlist', checkSupabaseMigrationsAllowlist(supabaseFiles)],
     ['no TypeORM/Supabase migration name or timestamp collision', checkNoParallelTimestampCollision(typeormFiles, supabaseFiles)],
     ['datasource.ts still points at the canonical runner/tracking table', checkCanonicalRunnerConfig(datasourceSource)],
+    ['migrations/index.ts registry matches disk exactly (no drift)', checkRegistryParity(classNamesOnDisk, indexSource)],
   ];
 
   let failed = false;
