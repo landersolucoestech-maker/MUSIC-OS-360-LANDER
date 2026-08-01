@@ -14,7 +14,7 @@ Duas opções, ambas com custo recorrente real neste plano (Pro):
 | Branch persistente no projeto MUSIC OS 360 (mesmo modelo já usado pela branch DEV) | ~$0.01344/hora ≈ $9.68/mês | Schema/dados sempre próprios (branch nova nunca copia dados reais); mesmo projeto físico |
 | Projeto Supabase separado | $10/mês fixo | Isolamento total, incluindo infraestrutura de projeto |
 
-**Pendente de aprovação humana** (custo recorrente não previamente autorizado — ver `SUPABASE_STAGING_REF` já reservado em `env.schema.ts` como `khnaxcgjnvhhtgkozsif`, aguardando o recurso real ser criado). Nenhum dos dois foi criado nesta parte.
+**Decidido e criado na Parte 65** (2026-08-01): branch persistente no projeto MUSIC OS 360 (custo ~$9.68/mês, aprovado explicitamente). Ref real: `jjnnjnxjkqipgqebijen` — `SUPABASE_STAGING_REF` em `env.schema.ts`/`assert-supabase-env.mjs`/`env-check.mjs` foi atualizado para este valor, substituindo o placeholder `khnaxcgjnvhhtgkozsif` que nunca correspondeu a um recurso real.
 
 ## Fonte única de migrations (staging incluído)
 

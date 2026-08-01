@@ -13,7 +13,11 @@ import { z } from 'zod';
 // MAIN_REF é a branch principal do projeto Supabase — NÃO é sinônimo de
 // produção e não é aceito por nenhum NODE_ENV de runtime.
 export const SUPABASE_PROD_REF = 'jtizbxbrwyczbkdiruoq'; // confirmar por fonte administrativa antes de usar
-export const SUPABASE_STAGING_REF = 'khnaxcgjnvhhtgkozsif'; // confirmar por fonte administrativa antes de usar
+/** Branch STAGING persistente do projeto Supabase MAIN, criada na Parte 65
+ * (2026-08-01) via mcp__Supabase__create_branch. Substitui o valor reservado
+ * anteriormente ('khnaxcgjnvhhtgkozsif') que nunca correspondeu a um recurso
+ * real — o placeholder ficou sem uso até este ref ser confirmado. */
+export const SUPABASE_STAGING_REF = 'jjnnjnxjkqipgqebijen';
 /** Branch MAIN do projeto Supabase (contém o schema real; ≠ produção). */
 export const SUPABASE_MAIN_REF = 'sxmfeocztlztvpdnxayk';
 /** Branch DEV do projeto Supabase (único ref aceito em development). */

@@ -26,7 +26,10 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."
 //   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
 //   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
 const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
-const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
+// Branch STAGING persistente do projeto MAIN, criada na Parte 65 (2026-08-01).
+// Substitui o placeholder reservado ('khnaxcgjnvhhtgkozsif') que nunca
+// correspondeu a um recurso real.
+const SUPABASE_STAGING_REF = "jjnnjnxjkqipgqebijen";
 const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
 const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
 const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];

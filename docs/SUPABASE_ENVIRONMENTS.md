@@ -10,7 +10,7 @@
 |---|---|---|---|
 | `development` | `rypnevnfipygyhysqpdo` | https://rypnevnfipygyhysqpdo.supabase.co | Branch **DEV** do projeto (criado 2026-07-17, `persistent`, sem dados do MAIN). Único aceito localmente. |
 | `test` | *(nenhum remoto)* | — | Sem fallback silencioso: qualquer ref Supabase resolvido é erro. Postgres local é permitido. |
-| `staging` | `khnaxcgjnvhhtgkozsif` | https://khnaxcgjnvhhtgkozsif.supabase.co | Confirmar por fonte administrativa antes do primeiro uso. |
+| `staging` | `jjnnjnxjkqipgqebijen` | https://jjnnjnxjkqipgqebijen.supabase.co | Branch **staging** persistente do projeto MAIN (criada 2026-08-01, Parte 65, via `create_branch`). Substitui o placeholder `khnaxcgjnvhhtgkozsif`, que nunca correspondeu a um recurso real. |
 | `production` | `jtizbxbrwyczbkdiruoq` | https://jtizbxbrwyczbkdiruoq.supabase.co | Confirmar por fonte administrativa antes do primeiro uso. |
 
 **Branch MAIN** (`sxmfeocztlztvpdnxayk`, https://sxmfeocztlztvpdnxayk.supabase.co)

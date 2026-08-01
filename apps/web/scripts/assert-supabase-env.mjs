@@ -13,7 +13,10 @@ import { loadEnv } from "vite";
 //   development→DEV_REF · test→nenhum remoto · staging→STAGING_REF · production→PROD_REF.
 //   MAIN_REF é a branch principal do Supabase — NÃO é produção, proibido em runtime.
 export const SUPABASE_PROD_REF = "jtizbxbrwyczbkdiruoq";
-export const SUPABASE_STAGING_REF = "khnaxcgjnvhhtgkozsif";
+// Branch STAGING persistente do projeto MAIN, criada na Parte 65 (2026-08-01).
+// Substitui o placeholder reservado ('khnaxcgjnvhhtgkozsif') que nunca
+// correspondeu a um recurso real.
+export const SUPABASE_STAGING_REF = "jjnnjnxjkqipgqebijen";
 export const SUPABASE_MAIN_REF = "sxmfeocztlztvpdnxayk";
 export const SUPABASE_DEV_REF = "rypnevnfipygyhysqpdo";
 export const SUPABASE_REF_DENYLIST = ["mkyvkciwyhfawmvluugb", "sxdhnhoupjrnntrmjtyn"];
