@@ -106,6 +106,7 @@ import { BillingRlsHardening20260701000003 } from './migrations/20260701000003_B
 import { ReconcileInventoryLicensesColumns20260705000001 } from './migrations/20260705000001_ReconcileInventoryLicensesColumns';
 import { RemoveArtistBannerVideoFields20260705000002 } from './migrations/20260705000002_RemoveArtistBannerVideoFields';
 import { RemoveDeadStructuresD1D8_20260705000003 } from './migrations/20260705000003_RemoveDeadStructuresD1D8';
+import { HardenRbacCatalogRls20260731000001 } from './migrations/20260731000001_HardenRbacCatalogRls';
 
 // ── Source of truth: TypeORM migrations only ─────────────────────────────────
 // The apps/api/drizzle/ directory contains legacy SQL snapshots that are
@@ -194,6 +195,7 @@ const ALL_MIGRATIONS = [
   ReconcileInventoryLicensesColumns20260705000001,
   RemoveArtistBannerVideoFields20260705000002,
   RemoveDeadStructuresD1D8_20260705000003,
+  HardenRbacCatalogRls20260731000001,
 ] as const;
 
 // Re-export from tokens file — services should import from database.tokens

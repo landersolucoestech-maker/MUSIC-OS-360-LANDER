@@ -395,7 +395,7 @@ jobs:
         continue-on-error: true
 
   # ─── DB Verification — RLS + tenant isolation (needs real Supabase) ──────────
-  # Runs on main/develop only. Requires DATABASE_URL (owner/bypassrls role) and
+  # Runs on main/dev only. Requires DATABASE_URL (owner/bypassrls role) and
   # APP_DATABASE_URL (musicos_app, NOBYPASSRLS — used by the test:e2e RLS suite)
   # secrets in repo settings — point both at a non-production Supabase ref/branch:
   # verify-tenant-isolation.ts and the e2e specs INSERT/UPDATE/DELETE real rows,
@@ -408,10 +408,10 @@ jobs:
     name: DB Verify (RLS + Tenant Isolation)
     runs-on: ubuntu-latest
     needs: [quality]
-    # Always runs on main/develop (never silently "skipped" from the Actions UI) —
+    # Always runs on main/dev (never silently "skipped" from the Actions UI) —
     # the gate step below reports loudly to the job summary when disabled, instead
     # of the whole job vanishing without explanation.
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/dev'
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       APP_DATABASE_URL: ${{ secrets.APP_DATABASE_URL }}
