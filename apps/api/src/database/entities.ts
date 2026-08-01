@@ -72,6 +72,8 @@ export class OrganizationEntity {
   @Column({ type: 'jsonb', default: {} }) address: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) config: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
+  /** Marca o tenant-zero institucional (LANDER RECORDS). Nunca lido por RLS/RBAC/billing — ver tenant-zero.constants.ts. */
+  @Column({ type: 'boolean', default: false }) is_system_tenant: boolean;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;
@@ -97,6 +99,8 @@ export class TenantEntity {
   @Column({ type: 'timestamptz', nullable: true }) public_registration_revoked_at: Date | null;
   @Column({ type: 'integer', default: 0 }) public_registration_access_count: number;
   @Column({ type: 'integer', default: 0 }) public_registration_conversion_count: number;
+  /** Marca o tenant-zero institucional (LANDER RECORDS). Nunca lido por RLS/RBAC/billing — ver tenant-zero.constants.ts. */
+  @Column({ type: 'boolean', default: false }) is_system_tenant: boolean;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
   @Column({ type: 'timestamp', nullable: true }) deleted_at: Date | null;

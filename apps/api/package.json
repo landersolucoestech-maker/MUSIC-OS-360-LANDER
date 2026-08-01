@@ -19,6 +19,7 @@
     "db:migrate": "tsx scripts/db-ops.ts migrate",
     "db:rollback": "tsx scripts/db-ops.ts rollback",
     "db:seed": "tsx src/database/seeds/index.ts",
+    "db:bootstrap:tenant-zero": "tsx src/database/bootstrap-tenant-zero.cli.ts",
     "db:reset": "tsx scripts/db-ops.ts reset",
     "db:check": "tsx scripts/db-ops.ts check",
     "db:generate": "tsx scripts/db-ops.ts generate",
