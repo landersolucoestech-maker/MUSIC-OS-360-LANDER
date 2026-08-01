@@ -1,58 +1,67 @@
 /**
  * integrations/hooks/useTikTok.ts
  *
- * Hook stub para integração TikTok for Business.
+ * Hook para integração TikTok orgânico (Login Kit — distinto de TikTok Ads,
+ * ver useTikTokAds.ts). O backend tem um fluxo OAuth real e funcional
+ * (GET /integrations/tiktok/auth, POST /integrations/tiktok/callback,
+ * GET /integrations/tiktok/status, DELETE /integrations/tiktok/disconnect —
+ * apps/api/src/modules/integrations/tiktok/tiktok.service.ts), mas a TikTok
+ * Display API não expõe endpoints de métricas de vídeo/som para esta conta
+ * de desenvolvedor — por isso useTikTokVideoMetrics/useTikTokSoundMetrics
+ * permanecem indisponíveis (não é um mock, é uma limitação real da API).
  *
- * ESTADO ACTUAL: standalone — métricas são MOCK_DATA.
- * MIGRAÇÃO FUTURA:
- *   1. OAuth 2.0 com TikTok Login Kit
- *   2. TikTok for Business API para métricas de vídeo e sons virais
- *   3. TikTok Ads API para campanhas publicitárias
- *
- * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider / IAdsProvider
+ * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider
  */
 
-import { useQuery } from "@tanstack/react-query";
-import type { IntegrationRuntimeStatus } from "@/shared/integrations/types";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
+import { api } from "@/shared/lib/api-client";
 import { disabledIntegration } from "@/shared/lib/disabled-integration";
 
 // ─── Tipos específicos do TikTok ──────────────────────────────────────────────
 
-export interface TikTokStatus extends IntegrationRuntimeStatus {
-  integration_id: "tiktok";
-  open_id?: string | null;
-  advertiser_id?: string | null;
-  oauth_scope?: string | null;
-  token_expires_at?: string | null;
+/** Espelha exatamente o retorno de IntegrationBaseService.getOAuthStatus() —
+ * não estender IntegrationRuntimeStatus aqui, que teria campos (integration_id,
+ * status) que o endpoint real não retorna. */
+export interface TikTokStatus {
+  connected: boolean;
 }
 
-// ─── Hook de status ───────────────────────────────────────────────────────────
+// ─── Hook de status (real — GET /integrations/tiktok/status) ────────────────
 
 export function useTikTokStatus() {
   return useQuery<TikTokStatus>({
     queryKey: ["integrations", "tiktok", "status"],
-    queryFn: async (): Promise<TikTokStatus> => ({
-      integration_id: "tiktok",
-      status: "disabled",
-      connected: false,
-      open_id: null,
-      advertiser_id: null,
-      oauth_scope: null,
-      token_expires_at: null,
-      last_error: null,
-      last_checked_at: new Date().toISOString(),
-    }),
-    staleTime: Infinity,
+    queryFn: async () => api.get<TikTokStatus>("/integrations/tiktok/status"),
+    staleTime: 30_000,
   });
 }
 
-// ─── Stubs desabilitados ──────────────────────────────────────────────────────
+export function useTikTokAuthUrl() {
+  return useMutation({
+    mutationFn: async () => api.get<{ url: string }>("/integrations/tiktok/auth"),
+  });
+}
+
+export function useTikTokDisconnect() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => api.delete("/integrations/tiktok/disconnect"),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["integrations", "tiktok"] });
+      toast.success("TikTok desconectado.");
+    },
+    onError: (err: Error) => toast.error(err.message),
+  });
+}
+
+// ─── Métricas indisponíveis (limitação real da TikTok Display API) ──────────
 
 export function useTikTokVideoMetrics() {
   return {
     data: null,
     isLoading: false,
-    fetch: () => disabledIntegration("TikTok for Business"),
+    fetch: () => disabledIntegration("TikTok video metrics (TikTok Display API não expõe este endpoint)"),
   };
 }
 
@@ -60,15 +69,7 @@ export function useTikTokSoundMetrics() {
   return {
     data: null,
     isLoading: false,
-    fetch: (_isrc: string) => disabledIntegration("TikTok for Business"),
+    fetch: (_isrc: string) =>
+      disabledIntegration("TikTok sound metrics (TikTok Display API não expõe este endpoint)"),
   };
 }
-
-export function useTikTokAdsCampaigns() {
-  return {
-    data: null,
-    isLoading: false,
-    fetch: () => disabledIntegration("TikTok Ads"),
-  };
-}
-

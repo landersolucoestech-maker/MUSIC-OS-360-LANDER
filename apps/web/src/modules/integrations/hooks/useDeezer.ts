@@ -3,18 +3,20 @@
  *
  * Hook para integração Deezer.
  *
- * ESTADO ACTUAL: standalone — credenciais persistidas em localStorage.
- * MIGRAÇÃO FUTURA:
- *   1. OAuth implícito via Deezer Connect
- *   2. Deezer API v2 para métricas de streams e favoritos
- *   3. Foco nos mercados brasileiro e francês
+ * O backend (apps/api/.../integrations/deezer/deezer.service.ts) é uma API
+ * pública sem necessidade de credenciais (isConfigured() sempre true) — o
+ * fluxo de "conectar" abaixo (app_id/secret_key em sessionStorage) é apenas
+ * uma preferência cosmética de UI para guardar um artist_id de referência,
+ * já que a API pública do Deezer não expõe endpoints de configure/status/
+ * disconnect. useDeezerArtistMetrics/useDeezerTopTracks chamam os endpoints
+ * reais e funcionais (GET /integrations/deezer/artist/:id[/top]).
  *
  * Contrato: @/shared/integrations/contracts/streaming.contract → IStreamingProvider
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { disabledIntegration } from "@/shared/lib/disabled-integration";
+import { api } from "@/shared/lib/api-client";
 
 const LS_KEY = "musicos360_deezer_credentials";
 
@@ -110,11 +112,50 @@ export function useDeezerDeleteCredentials() {
   });
 }
 
-export function useDeezerArtistMetrics() {
-  return { data: null, isLoading: false, fetch: () => disabledIntegration("Deezer") };
+export interface DeezerArtistStats {
+  artistId: string;
+  name: string;
+  fans: number;
+  albums: number;
+  picture: string;
+  link: string;
+  syncedAt: string;
 }
 
-export function useDeezerTrackMetrics() {
-  return { data: null, isLoading: false, fetch: (_isrc: string) => disabledIntegration("Deezer") };
+export interface DeezerTopTrack {
+  id: string;
+  title: string;
+  rank: number;
+  duration: number;
+  preview: string;
+  album: string;
+  cover: string;
+}
+
+/**
+ * Deezer's backend (GET /integrations/deezer/artist/:id) is a real, working
+ * public-API wrapper — no credentials required (isConfigured() is always
+ * true server-side). This calls it directly; there is no "disabled" state
+ * for Deezer artist stats, unlike platforms that genuinely require OAuth.
+ */
+export function useDeezerArtistMetrics(artistId?: string) {
+  return useQuery<DeezerArtistStats>({
+    queryKey: ["integrations", "deezer", "artist", artistId],
+    queryFn: async () => api.get<DeezerArtistStats>(`/integrations/deezer/artist/${artistId}`),
+    enabled: !!artistId,
+    staleTime: 60_000,
+  });
+}
+
+/** Top tracks for an artist — GET /integrations/deezer/artist/:id/top. Deezer
+ * has no track-by-ISRC lookup, so this takes an artist id, not an ISRC. */
+export function useDeezerTopTracks(artistId?: string, limit = 10) {
+  return useQuery<DeezerTopTrack[]>({
+    queryKey: ["integrations", "deezer", "artist", artistId, "top", limit],
+    queryFn: async () =>
+      api.get<DeezerTopTrack[]>(`/integrations/deezer/artist/${artistId}/top?limit=${limit}`),
+    enabled: !!artistId,
+    staleTime: 60_000,
+  });
 }
 

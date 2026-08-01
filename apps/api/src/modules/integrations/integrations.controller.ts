@@ -612,6 +612,22 @@ export class IntegrationsController {
     return this.tiktok.handleOAuthCallback(body.code, body.state);
   }
 
+  @Get('tiktok/status')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Status integração TikTok orgânico' })
+  tiktokStatus(@Request() req: any) {
+    return this.tiktok.getOrganicStatus(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId);
+  }
+
+  @Delete('tiktok/disconnect')
+  @RequireRole('admin')
+  @Audit('integration.disconnected')
+  @ApiOperation({ summary: 'Desconectar TikTok orgânico (admin+)' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  tiktokDisconnect(@Request() req: any) {
+    return this.tiktok.disconnectOrganic(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId);
+  }
+
   // ─── Google Ads ────────────────────────────────────────────────────────────
 
   @Post('google-ads/configure')
