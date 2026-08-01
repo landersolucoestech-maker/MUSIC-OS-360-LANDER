@@ -205,8 +205,11 @@ describe('Reports E2E — PostgreSQL real', () => {
 
     beforeAll(async () => {
       // Lead com colunas antes órfãs preenchidas — valida export dos campos reconciliados.
+      // Column names are the real physical ones (snake_case since
+      // RebuildLeadsInCanonicalFormOrder20260719000011) — the entity maps
+      // its tipoServico/origemLead TS properties onto these via `name:`.
       await ds.query(
-        `INSERT INTO leads (id, tenant_id, nome, status, cidade, "tipoServico", "origemLead", tags)
+        `INSERT INTO leads (id, tenant_id, nome, status, cidade, tipo_servico, origem_lead, tags)
          VALUES (gen_random_uuid(), $1, $2, 'novo', 'São Paulo', 'distribuicao', 'indicacao', ARRAY['vip']::text[])`,
         [TENANT_A, `${LEAD_TAG}_A`],
       );

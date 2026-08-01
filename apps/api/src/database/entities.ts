@@ -1010,15 +1010,22 @@ export class LeadEntity {
   @Column({ type: 'varchar', length: 80, nullable: true }) estado: string | null;
   @Column({ type: 'varchar', length: 80, nullable: true }) pais: string | null;
   @Column({ type: 'varchar', length: 80, nullable: true }) tipo_cliente: string | null;
-  @Column({ type: 'varchar', length: 120, nullable: true }) tipoServico: string | null;
+  // RebuildLeadsInCanonicalFormOrder20260719000011 renamed these 3 physical
+  // columns to snake_case (tipoServico -> tipo_servico, origemLead ->
+  // origem_lead, probabilidadeFechamento -> probabilidade_fechamento) but
+  // this entity was never updated to match — every TypeORM read/write of
+  // these fields was silently targeting columns that no longer exist.
+  // `name:` maps the (unchanged) TS property to the real physical column,
+  // so nothing outside this file needs to change.
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'tipo_servico' }) tipoServico: string | null;
   @Column({ type: 'jsonb', default: {} }) payload_servico: Record<string, unknown>;
   @Column({ type: 'jsonb', default: {} }) dados_internos_crm: Record<string, unknown>;
   @Column({ type: 'varchar', length: 255, nullable: true }) responsavel: string | null;
   @Column({ type: 'varchar', length: 40, nullable: true }) prioridade: string | null;
   @Column({ type: 'varchar', length: 40, nullable: true }) temperatura: string | null;
-  @Column({ type: 'varchar', length: 120, nullable: true }) origemLead: string | null;
+  @Column({ type: 'varchar', length: 120, nullable: true, name: 'origem_lead' }) origemLead: string | null;
   @Column({ type: 'numeric', precision: 15, scale: 2, nullable: true }) valor_estimado: string | null;
-  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true }) probabilidadeFechamento: string | null;
+  @Column({ type: 'numeric', precision: 5, scale: 2, nullable: true, name: 'probabilidade_fechamento' }) probabilidadeFechamento: string | null;
   @Column({ type: 'timestamptz', nullable: true }) proximo_follow_up: Date | null;
   @Column({ type: 'text', array: true, default: () => "'{}'" }) tags: string[];
   // Campo do formulário de Lead (regra 2026-07-12: 1 coluna por campo)
