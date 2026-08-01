@@ -111,7 +111,17 @@ jobs:
     runs-on: ubuntu-latest
     needs: [quality, test]
     env:
-      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://placeholder.supabase.co' }}
+      # BUG FIXED: 'https://placeholder.supabase.co' is 11 chars — shorter
+      # than extractSupabaseRef()'s 18-22 char ref pattern, so it always
+      # resolved to ref "unknown", which assert-supabase-env.mjs then always
+      # rejected as "outside allowlist" whenever NODE_ENV=production (this
+      # job never actually connects to Supabase — it's a pure compile smoke
+      # test). NODE_ENV=production below requires specifically the PROD ref
+      # (assert-supabase-env.mjs's cross-environment denylist rejects DEV/
+      # STAGING refs just as hard as an unrecognized one) — not a secret,
+      # just a project identifier, and syntactically satisfies the allowlist
+      # check without ever making a real network call.
+      VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL || 'https://jtizbxbrwyczbkdiruoq.supabase.co' }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY || 'placeholder' }}
       VITE_API_URL: ${{ secrets.VITE_API_URL || 'http://localhost:3001/api/v1' }}
       # Mock mode OFF in CI builds — validates that production paths compile
@@ -262,12 +272,21 @@ jobs:
         run: |
           grep -q "WRITE_METHODS.has" apps/api/src/core/guards/roles.guard.ts || (echo "::error::RolesGuard fail-closed regression"; exit 1)
 
-      - name: WS gateway uses TokenVerifierService (not decodeJwtPayload)
+      - name: Realtime broadcasts use service_role (not client-decoded JWTs)
+        # Replaces the old "WS gateway uses TokenVerifierService" check —
+        # core/websocket/ws.gateway.ts (Socket.IO) no longer exists, replaced
+        # by core/realtime/realtime.service.ts (Supabase Realtime Broadcast).
+        # The equivalent regression here isn't "decodeJwtPayload" (that was
+        # specific to the old gateway's own connection-time auth) — it's
+        # RealtimeService doing ANY of its own client-JWT verification at
+        # all, which would duplicate (and could drift from) the RLS policies
+        # in 20260801000001_RealtimeBroadcastAuthorization that are the
+        # actual, sole authorization boundary for who can subscribe to what.
         run: |
-          if grep -q "decodeJwtPayload" apps/api/src/core/websocket/ws.gateway.ts; then
-            echo "::error::WS gateway re-introduced decodeJwtPayload (unsafe)"; exit 1
+          if grep -qE "decodeJwtPayload|jwt\.verify|jsonwebtoken" apps/api/src/core/realtime/realtime.service.ts; then
+            echo "::error::RealtimeService should never verify client JWTs itself — Postgres RLS (auth.jwt()) is the only decision point"; exit 1
           fi
-          grep -q "tokenVerifier.verify" apps/api/src/core/websocket/ws.gateway.ts || (echo "::error::WS gateway missing tokenVerifier.verify"; exit 1)
+          grep -q "SUPABASE_SERVICE_ROLE_KEY" apps/api/src/core/realtime/realtime.service.ts || (echo "::error::RealtimeService missing service_role key usage"; exit 1)
 
       - name: Upload MIME extension validation present
         run: |
