@@ -58,8 +58,12 @@ export class MetricsService implements OnModuleInit {
     registers: [this.registry],
   });
 
+  // METRICS-01: tenant_id is a UUID with effectively unbounded cardinality —
+  // one new Prometheus time series per tenant, per metric below, forever.
+  // Per-tenant RBAC drill-down belongs in logs/traces (which already carry
+  // tenantId — see rbac-telemetry.service.ts's audit insert and Sentry tag),
+  // not in Prometheus label values. Deliberately excluded from labelNames.
   private readonly rbacLabels = [
-    'tenant',
     'role',
     'resource',
     'action',
@@ -129,7 +133,6 @@ export class MetricsService implements OnModuleInit {
 
   recordRbacDecision(event: RbacEvent): void {
     const labels = {
-      tenant: event.tenantId ?? 'unknown',
       role: event.roleSlug ?? 'unknown',
       resource: event.resource,
       action: event.action,
