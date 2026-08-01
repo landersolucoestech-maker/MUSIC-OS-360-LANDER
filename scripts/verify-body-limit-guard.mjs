@@ -24,7 +24,12 @@ import path from 'node:path';
 import ts from 'typescript';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const TARGET = path.resolve(__dirname, '..', 'apps/api/src/main.ts');
+// BUG FIXED: was apps/api/src/main.ts — the express.json({...}) body-limit
+// middleware moved to create-app.ts when main.ts's bootstrap() was
+// extracted into a shared createApp() (Vercel packaging part), so this
+// path check had gone stale and started reporting a false "missing
+// entirely" the moment CI actually ran to completion again.
+const TARGET = path.resolve(__dirname, '..', 'apps/api/src/create-app.ts');
 const APPROVED_MAX_BYTES = 1024 * 1024; // 1mb — current approved ceiling.
 
 function parseByteLimit(literal) {

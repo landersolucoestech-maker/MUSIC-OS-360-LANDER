@@ -16,6 +16,23 @@ Duas opções, ambas com custo recorrente real neste plano (Pro):
 
 **Decidido e criado na Parte 65** (2026-08-01): branch persistente no projeto MUSIC OS 360 (custo ~$9.68/mês, aprovado explicitamente). Ref real: `jjnnjnxjkqipgqebijen` — `SUPABASE_STAGING_REF` em `env.schema.ts`/`assert-supabase-env.mjs`/`env-check.mjs` foi atualizado para este valor, substituindo o placeholder `khnaxcgjnvhhtgkozsif` que nunca correspondeu a um recurso real.
 
+## Migrations que tocam schemas do próprio Supabase (`realtime`, `auth`, `storage`)
+
+Descoberto na Parte 67 ao tentar aplicar `20260801000001_RealtimeBroadcastAuthorization`
+em DEV real: **`execute_sql` e `apply_migration` do MCP falham com
+`must be owner of table messages`** para qualquer DDL em `realtime.messages`
+(e, por extensão, qualquer tabela nos schemas `realtime`/`auth`/`storage`,
+que pertencem à própria plataforma Supabase, não ao role usado pela Management
+API). Toda migration anterior deste projeto só tocou o schema `public`
+(dono = role da própria migration/`musicos_migrator`), por isso esse limite
+nunca tinha aparecido.
+
+**Única forma de aplicar essas migrations em DEV/STAGING/MAIN**: SQL Editor
+do Dashboard do Supabase (conexão como owner real), ou uma conexão direta
+via `DATABASE_URL` com o role `postgres` real do projeto — nenhuma das duas
+está disponível a um agente sem essas credenciais. Ver PARTE 67 para o SQL
+exato pendente em DEV.
+
 ## Fonte única de migrations (staging incluído)
 
 Staging usa exatamente o mesmo `migrations/index.ts` que DEV/MAIN — não existe

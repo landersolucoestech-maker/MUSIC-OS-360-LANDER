@@ -310,8 +310,12 @@ jobs:
         run: node scripts/verify-body-limit-guard.mjs
 
       - name: CORS silent reject (no Error throw)
+        # BUG FIXED: CORS config moved from main.ts to create-app.ts (Vercel
+        # packaging part) — this negative check (fails only if the BAD
+        # pattern is found) was silently passing by checking an empty file
+        # that no longer has any CORS code at all, good or bad.
         run: |
-          if grep -q "callback(new Error(\`CORS:" apps/api/src/main.ts; then
+          if grep -q "callback(new Error(\`CORS:" apps/api/src/create-app.ts; then
             echo "::error::CORS still throws Error (would 500)"; exit 1
           fi
 
