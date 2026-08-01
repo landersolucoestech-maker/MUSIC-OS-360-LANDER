@@ -10,6 +10,8 @@ import { DeezerService }       from './deezer/deezer.service';
 import { SoundCloudService }   from './soundcloud/soundcloud.service';
 import { AppleMusicService }   from './apple-music/apple-music.service';
 import { InstagramService }    from './instagram/instagram.service';
+import { InstagramTokenRefreshScheduler } from './instagram/instagram-token-refresh.scheduler';
+import { InstagramTokenRefreshCronController } from './instagram/instagram-token-refresh-cron.controller';
 import { TikTokService }       from './tiktok/tiktok.service';
 import { GoogleAdsService }    from './google-ads/google-ads.service';
 import { AbramusService }      from './abramus/abramus.service';
@@ -28,6 +30,7 @@ const ALL_SERVICES = [
   SoundCloudService,
   AppleMusicService,
   InstagramService,
+  InstagramTokenRefreshScheduler,
   TikTokService,
   GoogleAdsService,
   AbramusService,
@@ -36,7 +39,7 @@ const ALL_SERVICES = [
 
 @Module({
   imports:     [QueueModule, AppCacheModule],
-  controllers: [IntegrationsController, AutentiqueController, ExternalDataController],
+  controllers: [IntegrationsController, AutentiqueController, ExternalDataController, InstagramTokenRefreshCronController],
   providers:   ALL_SERVICES,
   exports:     ALL_SERVICES,
 })

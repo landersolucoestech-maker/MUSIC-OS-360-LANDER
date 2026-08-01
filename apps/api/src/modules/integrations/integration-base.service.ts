@@ -134,13 +134,32 @@ export class IntegrationBaseService {
       .execute();
   }
 
-  async getOAuthStatus(tenantId: string, userId: string, provider: string): Promise<{ connected: boolean }> {
+  async getOAuthStatus(tenantId: string, userId: string, provider: string): Promise<{ connected: boolean; needs_reauth?: boolean }> {
     const conn = await this.oauthRepo!
       .createQueryBuilder('o')
-      .select('o.id')
+      .select(['o.id', 'o.metadata'])
       .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider })
       .getOne();
-    return { connected: !!conn };
+    if (!conn) return { connected: false };
+    return { connected: true, needs_reauth: conn.metadata?.['needs_reauth'] === true };
+  }
+
+  /**
+   * Marca uma conexão OAuth como precisando de nova autorização — usado quando
+   * uma tentativa automática de refresh falha (ex.: token de longa duração do
+   * Meta expirado/revogado). Não apaga a linha: preserva o histórico e permite
+   * ao utilizador ver "precisa reconectar" em vez de "nunca conectou".
+   */
+  async markOAuthNeedsReauth(tenantId: string, userId: string, provider: string): Promise<void> {
+    const conn = await this.oauthRepo!
+      .createQueryBuilder('o')
+      .where('o.tenant_id = :tenantId AND o.user_id = :userId AND o.provider = :provider', { tenantId, userId, provider })
+      .getOne();
+    if (!conn) return;
+    await this.oauthRepo!.update({ id: conn.id } as any, {
+      metadata: { ...conn.metadata, needs_reauth: true, needs_reauth_at: new Date().toISOString() },
+      updated_at: new Date(),
+    } as any);
   }
 
   // ── Signed OAuth state ───────────────────────────────────────────────────────

@@ -65,10 +65,16 @@ export class IntegrationsController {
   @RequireRole('editor')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Emite exchange_token de uso único para iniciar fluxo OAuth de marketing' })
-  oauthInit(@Body() dto: OAuthInitDto): { exchange_token: string } {
+  oauthInit(@Body() dto: OAuthInitDto, @Request() req: any): { exchange_token: string } {
     const token = randomUUID();
-    // TTL: 10 min — enough for the popup OAuth flow to complete.
-    this.cache.set(`oauth_exchange:${token}`, { platform: dto.platform }, 10 * 60 * 1000);
+    // tenantId/userId do chamador autenticado viajam com o exchange_token para
+    // que oauthExchange saiba a quem associar o token persistido (Meta
+    // corporativo — ver isInstagram branch abaixo).
+    this.cache.set(`oauth_exchange:${token}`, {
+      platform: dto.platform,
+      tenantId: req.tenant?.id ?? req.tenantId,
+      userId:   req.auth?.userId ?? req.userId,
+    }, 10 * 60 * 1000);
     return { exchange_token: token };
   }
 
@@ -96,7 +102,7 @@ export class IntegrationsController {
 
     // Validate and consume the server-issued exchange token.
     const cacheKey = `oauth_exchange:${exchange_token}`;
-    const entry = this.cache.get<{ platform: string }>(cacheKey);
+    const entry = this.cache.get<{ platform: string; tenantId?: string; userId?: string }>(cacheKey);
     if (!entry) {
       throw new BadRequestException('exchange_token inválido ou expirado. Inicie a autorização novamente.');
     }
@@ -127,7 +133,31 @@ export class IntegrationsController {
           const errObj = json['error'] as Record<string, unknown>;
           throw new BadRequestException((errObj['message'] as string | undefined) ?? 'Meta OAuth error');
         }
-        return { access_token: json['access_token'] as string, platform };
+
+        // Troca o token curto pelo de longa duração (~60 dias) — o mesmo grant
+        // usado pelo fluxo orgânico do Instagram (instagram.service.ts). Sem
+        // isto, o token corporativo expiraria em ~1-2h e seria inútil para
+        // qualquer sincronização de métricas fora do popup OAuth.
+        const longRes  = await fetch(`https://graph.facebook.com/v18.0/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${json['access_token']}`);
+        const longJson = await longRes.json() as Record<string, unknown>;
+        const accessToken = (longJson['error'] ? json['access_token'] : longJson['access_token']) as string;
+        const expiresIn    = (longJson['error'] ? undefined : longJson['expires_in']) as number | undefined;
+
+        // Persiste (criptografado, associado ao tenant/utilizador que iniciou o
+        // fluxo em oauth/init) em vez de devolver o token só para a resposta —
+        // sem isto a conexão corporativa desaparecia ao fechar o popup.
+        // entry.tenantId/userId vêm de oauth/init, chamado por uma rota
+        // autenticada (@RequireRole('editor')) — ausentes só em cache
+        // corrompido/expirado, caso já coberto pelo `if (!entry)` acima.
+        if (entry.tenantId && entry.userId) {
+          await this.instagram.saveOAuthTokens({
+            tenantId: entry.tenantId, userId: entry.userId, provider: platform,
+            accessToken, expiresIn: expiresIn ?? 5_184_000,
+            scopes: 'pages_show_list,ads_management,business_management,read_insights,instagram_basic',
+          });
+        }
+
+        return { access_token: accessToken, platform };
       }
 
       if (isTikTok) {
@@ -542,6 +572,32 @@ export class IntegrationsController {
   @HttpCode(HttpStatus.NO_CONTENT)
   instagramDisconnect(@Request() req: any) {
     return this.instagram.disconnectProvider(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId);
+  }
+
+  // ─── Meta corporativo (Business/Ads/Instagram — ver oauth/exchange acima) ──
+
+  private static readonly META_CORP_PLATFORMS = ['corp_instagram', 'meta_business', 'meta_ads'];
+
+  @Get('meta-corporate/status')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Status da conexão Meta corporativa (Business/Ads/Instagram)' })
+  metaCorporateStatus(@Query('platform') platform: string, @Request() req: any) {
+    if (!IntegrationsController.META_CORP_PLATFORMS.includes(platform)) {
+      throw new BadRequestException(`Plataforma Meta corporativa inválida: ${platform}`);
+    }
+    return this.instagram.getProviderStatus(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId, platform);
+  }
+
+  @Delete('meta-corporate/disconnect')
+  @RequireRole('admin')
+  @Audit('integration.disconnected')
+  @ApiOperation({ summary: 'Desconectar conta Meta corporativa (admin+) — tenta revogar no Meta' })
+  @HttpCode(HttpStatus.NO_CONTENT)
+  metaCorporateDisconnect(@Query('platform') platform: string, @Request() req: any) {
+    if (!IntegrationsController.META_CORP_PLATFORMS.includes(platform)) {
+      throw new BadRequestException(`Plataforma Meta corporativa inválida: ${platform}`);
+    }
+    return this.instagram.disconnectProvider(req.tenant?.id ?? req.tenantId, req.auth?.userId ?? req.userId, platform);
   }
 
   // ─── TikTok Ads ────────────────────────────────────────────────────────────

@@ -50,22 +50,82 @@ export class InstagramService extends IntegrationBaseService {
     this.logger.log(`Instagram OAuth: ${userId}@${tenantId} conectado`);
   }
 
-  async getProviderStatus(tenantId: string, userId: string) {
-    return this.getOAuthStatus(tenantId, userId, PROVIDER);
+  async getProviderStatus(tenantId: string, userId: string, provider: string = PROVIDER) {
+    return this.getOAuthStatus(tenantId, userId, provider);
   }
 
-  async disconnectProvider(tenantId: string, userId: string): Promise<void> {
-    await this.disconnectOAuth(tenantId, userId, PROVIDER);
+  /**
+   * Desconecta e tenta revogar o token no lado do Meta (best-effort — DELETE
+   * /me/permissions). A revogação nunca bloqueia o disconnect local: se a API
+   * do Meta estiver indisponível, o utilizador ainda consegue desconectar.
+   */
+  async disconnectProvider(tenantId: string, userId: string, provider: string = PROVIDER): Promise<void> {
+    const conn = await this.getOAuthConnection(tenantId, userId, provider);
+    if (conn?.accessToken) {
+      try {
+        await fetch(`${META_API}/me/permissions?access_token=${conn.accessToken}`, { method: 'DELETE' });
+      } catch (err) {
+        this.logger.warn(`Instagram/Meta: falha ao revogar token no Meta (${userId}@${tenantId}, ${provider}) — ${String(err)}`);
+      }
+    }
+    await this.disconnectOAuth(tenantId, userId, provider);
+  }
+
+  /**
+   * Renova o token de longa duração re-trocando o token ainda válido pelo
+   * grant `fb_exchange_token` (o Meta não emite refresh_token separado — o
+   * próprio token de 60 dias, enquanto ainda válido, é re-trocável por um
+   * novo de 60 dias). Usado tanto pelo acesso sob-demanda (getAccountMetrics)
+   * quanto pelo cron de renovação (instagram-token-refresh.scheduler.ts).
+   * Em falha, marca a conexão como needs_reauth em vez de a deixar
+   * silenciosamente obsoleta.
+   */
+  async refreshLongLivedToken(tenantId: string, userId: string, provider: string = PROVIDER): Promise<boolean> {
+    const conn = await this.getOAuthConnection(tenantId, userId, provider);
+    if (!conn) return false;
+
+    const appId     = this.config.get<string>('META_APP_ID')     ?? '';
+    const appSecret = this.config.get<string>('META_APP_SECRET') ?? '';
+
+    try {
+      const res  = await fetch(`${META_API}/oauth/access_token?grant_type=fb_exchange_token&client_id=${appId}&client_secret=${appSecret}&fb_exchange_token=${conn.accessToken}`);
+      const json = await res.json() as any;
+      if (json.error) throw new Error(json.error.message);
+
+      await this.saveOAuthTokens({
+        tenantId, userId, provider,
+        accessToken: json.access_token,
+        expiresIn:   json.expires_in ?? 5_184_000,
+        scopes:      conn.scopes ?? SCOPES,
+      });
+      this.logger.log(`Instagram/Meta: token renovado (${userId}@${tenantId}, ${provider})`);
+      return true;
+    } catch (err) {
+      await this.markOAuthNeedsReauth(tenantId, userId, provider);
+      this.logger.warn(`Instagram/Meta: falha ao renovar token (${userId}@${tenantId}, ${provider}) — ${String(err)}`);
+      return false;
+    }
   }
 
   async getAccountMetrics(tenantId: string, userId: string) {
-    const conn = await this.getOAuthConnection(tenantId, userId, PROVIDER);
+    let conn = await this.getOAuthConnection(tenantId, userId, PROVIDER);
+    if (!conn) return { error: 'Instagram não conectado' };
+
+    const REFRESH_WINDOW_MS = 7 * 24 * 60 * 60 * 1000; // renova a partir de 7 dias antes de expirar
+    const expiringSoon = !!conn.expires_at && conn.expires_at.getTime() - Date.now() < REFRESH_WINDOW_MS;
+    if (expiringSoon) {
+      const refreshed = await this.refreshLongLivedToken(tenantId, userId, PROVIDER);
+      conn = refreshed ? await this.getOAuthConnection(tenantId, userId, PROVIDER) : conn;
+    }
     if (!conn) return { error: 'Instagram não conectado' };
     const token = conn.accessToken;
 
     const pagesRes = await fetch(`${META_API}/me/accounts?access_token=${token}`);
     const pages    = await pagesRes.json() as any;
-    if (pages.error) return { error: pages.error.message };
+    if (pages.error) {
+      if (pages.error.code === 190) await this.markOAuthNeedsReauth(tenantId, userId, PROVIDER);
+      return { error: pages.error.message };
+    }
 
     const pageData = pages.data?.[0];
     if (!pageData) return { error: 'Nenhuma página Facebook encontrada' };

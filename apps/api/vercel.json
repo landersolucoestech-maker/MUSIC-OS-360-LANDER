@@ -15,6 +15,7 @@
   "crons": [
     { "path": "/internal/cron/contract-expiry", "schedule": "0 3 * * *" },
     { "path": "/internal/cron/invoice-overdue", "schedule": "0 4 * * *" },
-    { "path": "/internal/cron/dunning", "schedule": "0 5 * * *" }
+    { "path": "/internal/cron/dunning", "schedule": "0 5 * * *" },
+    { "path": "/internal/cron/instagram-token-refresh", "schedule": "0 6 * * *" }
   ]
 }
