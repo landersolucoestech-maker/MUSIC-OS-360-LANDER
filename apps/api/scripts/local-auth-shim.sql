@@ -140,3 +140,10 @@ $$;
 
 GRANT USAGE ON SCHEMA realtime TO anon, authenticated, service_role;
 GRANT EXECUTE ON FUNCTION realtime.topic() TO anon, authenticated, service_role;
+-- Real Supabase grants SELECT on realtime.messages to anon/authenticated by
+-- default at the platform level — RLS (20260801000001_RealtimeBroadcastAuthorization)
+-- is the actual gate, not this grant. Without it here, every SELECT would
+-- fail with "permission denied for table messages" before RLS is even
+-- evaluated, which would mask real policy bugs behind a grant error instead.
+GRANT SELECT ON realtime.messages TO anon, authenticated;
+GRANT ALL ON realtime.messages TO service_role;
