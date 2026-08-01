@@ -8,7 +8,6 @@
  *   - Email             → useResend
  *   - Payments          → useStripe
  *   - Signing           → useAutentique
- *   - App Monitoring    → usePostHog, useSentry
  *   - Streaming/Ads     → useSpotify, useYouTube, useTikTok,
  *                         useInstagram, useGoogleAds,
  *                         useDeezer, useAppleMusic, useSoundCloud
@@ -28,10 +27,6 @@ export * from "./useStripe";
 
 // ─── Signing ──────────────────────────────────────────────────────────────────
 export * from "./useAutentique";
-
-// ─── App Monitoring ───────────────────────────────────────────────────────────
-export * from "./usePostHog";
-export * from "./useSentry";
 
 // ─── Streaming & Ads ──────────────────────────────────────────────────────────
 export * from "./useSpotify";
