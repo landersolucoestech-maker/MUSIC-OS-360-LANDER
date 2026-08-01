@@ -157,7 +157,7 @@ export class UsersService {
     if (!tenant) throw new NotFoundException('Tenant não encontrado ou inativo');
 
     const supabase = this.supabaseAdmin();
-    const redirectBase = this.config.get<string>('WEB_URL') ?? 'http://localhost:5000';
+    const redirectBase = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5000';
     const { data, error } = await supabase.auth.admin.inviteUserByEmail(email, {
       redirectTo: `${redirectBase}/reset-password`,
       data: { org_id: tenant.org_id, tenant_id: tenantId, tenant_slug: tenant.slug, role },
@@ -228,7 +228,7 @@ export class UsersService {
     if (!invitation) throw new NotFoundException('Convite pendente não encontrado');
     await this.assertCanAssignRole(tenantId, actorRole, String(invitation['role_slug']));
 
-    const redirectBase = this.config.get<string>('WEB_URL') ?? 'http://localhost:5000';
+    const redirectBase = this.config.get<string>('FRONTEND_URL') ?? 'http://localhost:5000';
     const { data, error } = await this.supabaseAdmin().auth.admin.generateLink({
       type: 'invite',
       email: String(invitation['email']),
