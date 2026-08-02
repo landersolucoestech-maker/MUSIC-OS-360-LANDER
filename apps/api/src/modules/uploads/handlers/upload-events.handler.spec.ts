@@ -8,10 +8,9 @@ describe('UploadEventsHandler — P2-9', () => {
       update: jest.fn().mockResolvedValue({}),
     };
     const ds = { getRepository: jest.fn(() => uploadRepo) };
-    const queue = { addNotification: jest.fn().mockResolvedValue(undefined) };
     const dbContext = { runInTenantContext: jest.fn((_c: unknown, w: (m: unknown) => unknown) => w(undefined)) };
-    const handler = new UploadEventsHandler(ds as any, queue as any, dbContext as any);
-    return { handler, uploadRepo, queue, dbContext };
+    const handler = new UploadEventsHandler(ds as any, dbContext as any);
+    return { handler, uploadRepo, dbContext };
   }
 
   const basePayload = {

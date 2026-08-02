@@ -5,7 +5,6 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { NotificationEntity, SupportTicketEntity } from '../../../database/entities';
-import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type { TicketResolvedPayload } from '../../../core/events/domain-events.types';
@@ -18,7 +17,6 @@ export class TicketEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) {
@@ -119,24 +117,6 @@ export class TicketEventsHandler {
           }
         }
       });
-    }
-
-    if (!this.queue) return;
-    try {
-      await this.queue.addMail({
-        template: 'ticket-resolved-satisfaction',
-        ticketId,
-        titulo,
-        resolvedBy,
-        resolvedAt,
-        slaCompliant: slaCompliant ?? null,
-        tenantId,
-        correlationId: event.correlationId ?? null,
-      });
-    } catch (err) {
-      this.logger.warn(
-        `TicketEventsHandler: failed to enqueue satisfaction email for ticket "${ticketId}" - ${String(err)}`,
-      );
     }
   }
 

@@ -130,7 +130,6 @@ describe('P2-9 event handlers context propagation', () => {
     const dbContext = managerContext(manager);
     const handler = new CampaignEventsHandler(
       { getRepository: jest.fn(() => repo) } as any,
-      null as any,
       dbContext as any,
     );
 
@@ -152,7 +151,7 @@ describe('P2-9 event handlers context propagation', () => {
     ]);
     const manager = { getRepository: jest.fn((entity) => repos.get(entity)) };
     const dbContext = managerContext(manager);
-    const handler = new LeadEventsHandler({ getRepository: jest.fn((entity) => repos.get(entity)) } as any, null as any, dbContext as any);
+    const handler = new LeadEventsHandler({ getRepository: jest.fn((entity) => repos.get(entity)) } as any, dbContext as any);
 
     await handler.onLeadConverted({
       type: DOMAIN_EVENTS.LEAD_CONVERTED,
@@ -226,7 +225,6 @@ describe('P2-9 event handlers context propagation', () => {
       null as any,
       null as any,
       null as any,
-      null as any,
       dbContext as any,
     );
 
@@ -247,7 +245,7 @@ describe('P2-9 event handlers context propagation', () => {
     const repo = { create: jest.fn((v) => v), save: jest.fn().mockResolvedValue(undefined) };
     const manager = { getRepository: jest.fn(() => repo) };
     const dbContext = managerContext(manager);
-    const handler = new ReleaseEventsHandler({ getRepository: jest.fn(() => repo) } as any, null as any, dbContext as any);
+    const handler = new ReleaseEventsHandler({ getRepository: jest.fn(() => repo) } as any, dbContext as any);
 
     await handler.onReleaseApproved({
       type: DOMAIN_EVENTS.RELEASE_APPROVED,
@@ -263,7 +261,7 @@ describe('P2-9 event handlers context propagation', () => {
     const repo = { create: jest.fn((v) => v), save: jest.fn().mockResolvedValue(undefined) };
     const manager = { getRepository: jest.fn(() => repo) };
     const dbContext = managerContext(manager);
-    const handler = new ArtistEventsHandler({ getRepository: jest.fn(() => repo) } as any, null as any, null as any, null as any, dbContext as any);
+    const handler = new ArtistEventsHandler({ getRepository: jest.fn(() => repo) } as any, null as any, null as any, dbContext as any);
 
     await handler.onArtistCreated({
       type: DOMAIN_EVENTS.ARTIST_CREATED,
@@ -283,7 +281,7 @@ describe('P2-9 event handlers context propagation', () => {
     const notifRepo = { create: jest.fn((v) => v), save: jest.fn().mockResolvedValue(undefined) };
     const manager = { getRepository: jest.fn((entity) => (entity === SupportTicketEntity ? ticketRepo : notifRepo)) };
     const dbContext = managerContext(manager);
-    const handler = new TicketEventsHandler({ getRepository: jest.fn((entity) => (entity === SupportTicketEntity ? ticketRepo : notifRepo)) } as any, null as any, dbContext as any);
+    const handler = new TicketEventsHandler({ getRepository: jest.fn((entity) => (entity === SupportTicketEntity ? ticketRepo : notifRepo)) } as any, dbContext as any);
 
     await handler.onTicketResolved({
       type: DOMAIN_EVENTS.TICKET_RESOLVED,

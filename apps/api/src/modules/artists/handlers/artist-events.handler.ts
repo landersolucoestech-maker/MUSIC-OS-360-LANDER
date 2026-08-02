@@ -5,7 +5,6 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { ArtistGoalEntity } from '../../../database/entities';
-import { QueueService } from '../../../core/queue/queue.service';
 import { EventsService, DOMAIN_EVENTS } from '../../../core/events/events.service';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
 import type { DomainEvent } from '../../../core/events/events.service';
@@ -29,7 +28,6 @@ export class ArtistEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly activityLogs: ActivityLogsService,
     @Optional() private readonly events: EventsService,
     @Optional() private readonly dbContext?: DatabaseContextService,
@@ -94,19 +92,6 @@ export class ArtistEventsHandler {
       } catch (err) {
         this.logger.warn(`Failed to write activity log for artist created "${artistId}" - ${String(err)}`);
       }
-    }
-
-    if (!this.queue) return;
-    try {
-      await this.queue.addNotification({
-        job: 'create-artist-media-folder',
-        artistId,
-        tenantId,
-        nome: nomeArtistico,
-        correlationId: event.correlationId ?? null,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to enqueue media folder job for "${artistId}" - ${String(err)}`);
     }
   }
 
@@ -197,20 +182,6 @@ export class ArtistEventsHandler {
   async onArtistUpdated(event: DomainEvent<ArtistUpdatedPayload>): Promise<void> {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
-
-    const { artistId, changedFields } = event.payload;
-    if (!this.queue) return;
-    try {
-      await this.queue.addNotification({
-        job: 'invalidate-artist-cache',
-        artistId,
-        tenantId,
-        changedFields,
-        correlationId: event.correlationId ?? null,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to enqueue cache invalidation for "${artistId}" - ${String(err)}`);
-    }
   }
 
   private failClosed(eventType: string): void {

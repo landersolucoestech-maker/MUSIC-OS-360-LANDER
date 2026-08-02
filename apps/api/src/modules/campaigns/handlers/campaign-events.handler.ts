@@ -5,7 +5,6 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { NotificationEntity } from '../../../database/entities';
-import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type { CampaignEndedPayload, CampaignStartedPayload } from '../../../core/events/domain-events.types';
@@ -17,7 +16,6 @@ export class CampaignEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) this.notifRepo = ds.getRepository(NotificationEntity);
@@ -29,26 +27,6 @@ export class CampaignEventsHandler {
     if (!tenantId) return this.failClosed(event.type);
 
     const { campaignId, titulo, startedBy, startedAt } = event.payload;
-
-    if (this.queue) {
-      try {
-        await this.queue.addNotification({
-          job: 'setup-campaign-monitoring',
-          campaignId,
-          tenantId,
-          titulo,
-          startedAt,
-          correlationId: event.correlationId ?? null,
-        });
-        this.logger.log(
-          `CampaignEventsHandler: monitoring setup enqueued for campaign "${campaignId}" ("${titulo}") by ${startedBy}`,
-        );
-      } catch (err) {
-        this.logger.warn(
-          `CampaignEventsHandler: failed to enqueue monitoring for campaign "${campaignId}" - ${String(err)}`,
-        );
-      }
-    }
 
     if (!this.notifRepo || !event.userId) return;
     try {
@@ -83,25 +61,6 @@ export class CampaignEventsHandler {
     if (!tenantId) return this.failClosed(event.type);
 
     const { campaignId, titulo, endedAt } = event.payload;
-
-    if (this.queue) {
-      try {
-        await this.queue.addReport('campaign-performance', {
-          campaignId,
-          titulo,
-          tenantId,
-          endedAt,
-          correlationId: event.correlationId ?? null,
-        });
-        this.logger.log(
-          `CampaignEventsHandler: performance report enqueued for campaign "${campaignId}" ("${titulo}") endedAt=${endedAt}`,
-        );
-      } catch (err) {
-        this.logger.warn(
-          `CampaignEventsHandler: failed to enqueue performance report for campaign "${campaignId}" - ${String(err)}`,
-        );
-      }
-    }
 
     if (!this.notifRepo || !event.userId) return;
     try {

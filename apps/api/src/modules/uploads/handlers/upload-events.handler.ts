@@ -8,7 +8,6 @@
  *   2. Validate MIME type against allowed list; reject if unsupported.
  *   3. Validate file size; reject if exceeds per-category limit.
  *   4. Keep UploadEntity.status = 'confirmed' after validation.
- *   5. Enqueue media processing job for valid audio/video/image assets.
  */
 
 import { Injectable, Inject, Logger, Optional } from '@nestjs/common';
@@ -18,7 +17,6 @@ import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { UploadEntity } from '../../../database/entities';
 import { UploadStatus } from '@music-os-360/types';
-import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type { AssetUploadedPayload } from '../../../core/events/domain-events.types';
@@ -53,13 +51,6 @@ function getMaxSize(mimeType: string): number {
   return 10 * 1024 * 1024; // 10 MB fallback
 }
 
-/** MIME-type categories that require post-upload media processing */
-const PROCESSABLE_MIME_PREFIXES = ['audio/', 'video/', 'image/'] as const;
-
-function requiresProcessing(mimeType: string): boolean {
-  return PROCESSABLE_MIME_PREFIXES.some((prefix) => mimeType.startsWith(prefix));
-}
-
 // ─────────────────────────────────────────────────────────────────────────────
 
 @Injectable()
@@ -69,7 +60,6 @@ export class UploadEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) this.uploadRepo = ds.getRepository(UploadEntity);
@@ -77,7 +67,7 @@ export class UploadEventsHandler {
 
   @OnEvent(DOMAIN_EVENTS.ASSET_UPLOADED)
   async onAssetUploaded(event: DomainEvent<AssetUploadedPayload>): Promise<void> {
-    const { uploadId, tenantId, entityType, entityId, fileName, mimeType, uploadedBy } = event.payload;
+    const { uploadId, tenantId, fileName, mimeType } = event.payload;
 
     // Fail-closed: an async handler without a tenant must not touch tenant data.
     if (!tenantId) {
@@ -118,16 +108,6 @@ export class UploadEventsHandler {
             { status: UploadStatus.ERROR, metadata: { rejectionReason: `MIME type "${mimeType}" not allowed` } },
           ).catch(() => {/* ignore */});
         }
-        if (this.queue) {
-          await this.queue.addNotification({
-            job:       'upload-rejected',
-            uploadId,
-            tenantId,
-            fileName,
-            reason:    `Tipo de arquivo não permitido: ${mimeType}`,
-            uploadedBy,
-          }).catch(() => {/* ignore */});
-        }
         return;
       }
 
@@ -145,16 +125,6 @@ export class UploadEventsHandler {
             { status: UploadStatus.ERROR, metadata: { rejectionReason: `File size ${sizeMb} MB exceeds limit ${maxMb} MB` } },
           ).catch(() => {/* ignore */});
         }
-        if (this.queue) {
-          await this.queue.addNotification({
-            job:       'upload-rejected',
-            uploadId,
-            tenantId,
-            fileName,
-            reason:    `Arquivo muito grande (${sizeMb} MB). Limite: ${maxMb} MB`,
-            uploadedBy,
-          }).catch(() => {/* ignore */});
-        }
         return;
       }
 
@@ -171,31 +141,6 @@ export class UploadEventsHandler {
         } catch (err) {
           this.logger.error(
             `UploadEventsHandler: failed to update upload status for "${uploadId}" — ${String(err)}`,
-          );
-        }
-      }
-
-      // 5. Enqueue media processing when applicable
-      if (this.queue && requiresProcessing(mimeType)) {
-        try {
-          await this.queue.addNotification({
-            job:           'process-media-asset',
-            uploadId,
-            tenantId,
-            entityType,
-            entityId,
-            fileName,
-            mimeType,
-            sizeBytes,
-            uploadedBy,
-            correlationId: event.correlationId ?? null,
-          });
-          this.logger.log(
-            `UploadEventsHandler: media processing job enqueued for upload "${uploadId}" (${mimeType}, ${Math.round(sizeBytes / 1024)} KB)`,
-          );
-        } catch (err) {
-          this.logger.warn(
-            `UploadEventsHandler: failed to enqueue processing job for upload "${uploadId}" — ${String(err)}`,
           );
         }
       }

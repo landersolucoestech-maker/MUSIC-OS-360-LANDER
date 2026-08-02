@@ -4,7 +4,6 @@ import { DataSource, EntityManager, Repository } from 'typeorm';
 import { DATA_SOURCE } from '../../../database/database.module';
 import { DatabaseContextService } from '../../../database/database-context.service';
 import { ArtistEntity, ContractEntity, TransactionEntity } from '../../../database/entities';
-import { QueueService } from '../../../core/queue/queue.service';
 import { EventsService, DOMAIN_EVENTS } from '../../../core/events/events.service';
 import { ActivityLogsService } from '../../activity-logs/activity-logs.service';
 import { FinancialRulesService } from '../../financial-rules/financial-rules.service';
@@ -28,7 +27,6 @@ export class ContractEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly activityLogs: ActivityLogsService,
     @Optional() private readonly events: EventsService,
     @Optional() private readonly financialRules: FinancialRulesService,
@@ -199,33 +197,6 @@ export class ContractEventsHandler {
       });
     }
 
-    if (this.queue) {
-      try {
-        await this.queue.addMail({
-          template: 'contract-signed',
-          contractId,
-          titulo,
-          signedBy,
-          signedAt,
-          artistId: artistId ?? null,
-          tenantId,
-          correlationId: event.correlationId ?? null,
-        });
-        await this.queue.addNotification({
-          tenantId,
-          userId: 'role:juridico',
-          type: 'contract.signed.juridico',
-          title: `Contrato assinado para arquivo juridico: "${titulo}"`,
-          message: `O contrato "${titulo}" foi assinado por ${signedBy} em ${signedAt}.`,
-          entityType: 'contract',
-          entityId: contractId,
-          metadata: { contractId, titulo, signedBy, signedAt, artistId: artistId ?? null, correlationId: event.correlationId ?? null },
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to enqueue signed-contract side effects for "${contractId}" - ${String(err)}`);
-      }
-    }
-
     if (!this.activityLogs || !signedBy) return;
     try {
       await this.runInTenantContext(tenantId, async () => {
@@ -274,23 +245,6 @@ export class ContractEventsHandler {
     const { contractId, titulo, artistId, dataFim, daysLeft } = event.payload;
     this.logger.warn(`Contract expiring soon: "${titulo}" (${contractId}) in ${daysLeft} days (${dataFim})`);
 
-    if (this.queue) {
-      try {
-        await this.queue.addNotification({
-          tenantId,
-          userId: 'role:manager',
-          type: 'contract.expiring_soon',
-          title: `Contrato vencendo em ${daysLeft} dias: "${titulo}"`,
-          message: `O contrato "${titulo}" vence em ${dataFim}. Providencie renovacao ou encerramento.`,
-          entityType: 'contract',
-          entityId: contractId,
-          metadata: { contractId, titulo, dataFim, daysLeft, artistId: artistId ?? null, correlationId: event.correlationId ?? null },
-        });
-      } catch (err) {
-        this.logger.warn(`Failed to enqueue expiry notification for "${contractId}" - ${String(err)}`);
-      }
-    }
-
     if (!this.activityLogs) return;
     try {
       await this.runInTenantContext(tenantId, async () => {
@@ -311,30 +265,6 @@ export class ContractEventsHandler {
   async onContractExpired(event: DomainEvent<ContractExpiredPayload>): Promise<void> {
     const tenantId = event.tenantId;
     if (!tenantId) return this.failClosed(event.type);
-
-    const { contractId, titulo, artistId, expiredAt } = event.payload;
-    if (!this.queue) return;
-    try {
-      await this.queue.addMail({
-        template: 'contract-expired-alert',
-        contractId,
-        titulo,
-        artistId: artistId ?? null,
-        expiredAt,
-        tenantId,
-        correlationId: event.correlationId ?? null,
-      });
-      await this.queue.addReport('contract-expiry', {
-        contractId,
-        titulo,
-        artistId: artistId ?? null,
-        expiredAt,
-        tenantId,
-        correlationId: event.correlationId ?? null,
-      });
-    } catch (err) {
-      this.logger.warn(`Failed to enqueue expiry jobs for "${contractId}" - ${String(err)}`);
-    }
   }
 
   private failClosed(eventType: string): void {

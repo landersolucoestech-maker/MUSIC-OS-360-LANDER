@@ -12,11 +12,6 @@ export const QUEUE_NAMES = {
   AI_JOBS:            'ai-jobs',
   INTEGRATIONS_SYNC:  'integrations-sync',
   STREAMING_SYNC:     'streaming-sync',
-  WEBHOOKS:           'webhooks',
-  EXPORTS:            'exports',
-  IMPORTS:            'imports',
-  BILLING:            'billing',
-  UPLOADS_PROCESS:    'uploads-process',
   MARKETING_PUBLISHING: 'marketing-publishing',
   ARTIST_PLATFORM_SYNC: 'artist-platform-sync',
 } as const;

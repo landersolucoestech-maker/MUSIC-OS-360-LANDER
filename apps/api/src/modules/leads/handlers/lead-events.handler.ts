@@ -10,7 +10,6 @@ import {
   ClientEntity,
   LeadEntity,
 } from '../../../database/entities';
-import { QueueService } from '../../../core/queue/queue.service';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { DomainEvent } from '../../../core/events/events.service';
 import type { LeadConvertedPayload } from '../../../core/events/domain-events.types';
@@ -24,7 +23,6 @@ export class LeadEventsHandler {
 
   constructor(
     @Inject(DATA_SOURCE) @Optional() ds: DataSource | null,
-    @Optional() private readonly queue: QueueService,
     @Optional() private readonly dbContext?: DatabaseContextService,
   ) {
     if (ds) {
@@ -127,22 +125,6 @@ export class LeadEventsHandler {
           }
         }
       });
-    }
-
-    if (!this.queue || !clientId) return;
-    try {
-      await this.queue.addMail({
-        template: 'lead-converted-welcome',
-        clientId,
-        nome,
-        empresa: empresa ?? null,
-        tenantId,
-        correlationId: event.correlationId ?? null,
-      });
-    } catch (err) {
-      this.logger.warn(
-        `LeadEventsHandler: failed to enqueue welcome email for client "${clientId}" - ${String(err)}`,
-      );
     }
   }
 

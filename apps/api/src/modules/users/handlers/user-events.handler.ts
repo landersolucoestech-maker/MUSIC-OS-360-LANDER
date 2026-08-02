@@ -1,8 +1,7 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { OnEvent } from '@nestjs/event-emitter';
 import { DOMAIN_EVENTS } from '../../../core/events/events.service';
 import type { UserInvitedPayload } from '../../../core/events/domain-events.types';
-import { QueueService } from '../../../core/queue/queue.service';
 
 type Envelope<P> = {
   tenantId:      string;
@@ -12,42 +11,25 @@ type Envelope<P> = {
   payload:       P;
 };
 
+/**
+ * The in-app "user invited" notification is created generically by
+ * core/events/notification.handler.ts (EVENT_MESSAGE[USER_INVITED]) — this
+ * handler only logs. It used to also enqueue an invite email/notification
+ * through a QueueService that was never registered as a provider anywhere
+ * (dead code, silently a no-op in every environment). Sending a real invite
+ * email needs an actual invite link/token, which nothing in the invite flow
+ * generates yet — that's a real gap to wire up with EmailQueueService.enqueueInviteUserEmail,
+ * not something to fake here.
+ */
 @Injectable()
 export class UserEventsHandler {
   private readonly logger = new Logger(UserEventsHandler.name);
 
-  constructor(@Optional() private readonly queue: QueueService | null) {}
-
-  /** Send invite email + create in-app welcome notification */
   @OnEvent(DOMAIN_EVENTS.USER_INVITED, { async: true })
   async onUserInvited(envelope: Envelope<UserInvitedPayload>): Promise<void> {
     const { payload } = envelope;
     this.logger.log(
       `[USER_INVITED] email=${payload.email} role=${payload.role} tenant=${payload.tenantId}`,
     );
-
-    if (this.queue) {
-      await this.queue.addMail({
-        to:       payload.email,
-        subject:  'Você foi convidado para o MUSIC OS 360',
-        template: 'user-invite',
-        context: {
-          email:     payload.email,
-          role:      payload.role,
-          invitedBy: payload.invitedBy,
-          tenantId:  payload.tenantId,
-        },
-      });
-
-      await this.queue.addNotification({
-        tenantId:  payload.tenantId,
-        userId:    payload.userId,
-        type:      'user_invited',
-        title:     'Bem-vindo ao MUSIC OS 360',
-        message:   `Você foi convidado como ${payload.role}. Acesse sua conta para começar.`,
-        entityType: 'user',
-        entityId:   payload.userId,
-      });
-    }
   }
 }
