@@ -324,7 +324,9 @@ export function collectProductionAuthorityErrors(
   return errors;
 }
 
-const envSchema = z.object({
+// Exportado (Parte 76) só para testes diretos do superRefine (ex.: AUTH_DISABLED
+// proibido fora de development) sem precisar acionar validateEnv()'s process.exit.
+export const envSchema = z.object({
   NODE_ENV: z
     .enum(['development', 'staging', 'production', 'test'])
     .default('development'),
