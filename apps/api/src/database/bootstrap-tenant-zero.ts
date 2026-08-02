@@ -167,7 +167,7 @@ export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTena
   await ds.query(
     `
     INSERT INTO audit_logs (tenant_id, org_id, actor_role, action, entity, entity_id, after)
-    VALUES ($1, $1, 'system', $2, 'organizations', $1, $3::jsonb)
+    VALUES ($1::uuid, $1::uuid, 'system', $2, 'organizations', $1::text, $3::jsonb)
     `,
     [
       TENANT_ZERO_ORG_ID,
