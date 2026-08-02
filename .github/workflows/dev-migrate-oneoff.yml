@@ -11,7 +11,17 @@ name: Dev Migrate Oneoff (Parte 71 — temporary, removed after use)
 # removed in a follow-up commit — not meant to be a permanent CI job.
 
 on:
-  workflow_dispatch: {}
+  # workflow_dispatch only registers from the repo's default branch (main),
+  # which this workflow must never touch or require — so it triggers on a
+  # push that touches this exact file instead, scoped to dev only. Bumping
+  # RUN_MARKER below and pushing is how this gets (re-)triggered.
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/dev-migrate-oneoff.yml"
+
+env:
+  RUN_MARKER: "1"
 
 concurrency:
   group: dev-migrate-oneoff
