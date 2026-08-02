@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentMember } from '../../core/decorators/current-member.decorator';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
@@ -12,6 +12,7 @@ import { OnboardingService } from './onboarding.service';
 import { AuthBootstrap } from '../../core/decorators/auth-bootstrap.decorator';
 import { ProvisionWorkspaceDto } from './dto/provision-workspace.dto';
 import { WorkspaceProvisioningService } from './workspace-provisioning.service';
+import { AuthPasswordService } from './auth-password.service';
 
 @ApiTags('Auth')
 @ApiBearerAuth()
@@ -21,6 +22,7 @@ export class AuthController {
     private readonly context: AuthContextService,
     private readonly onboarding: OnboardingService,
     private readonly provisioning: WorkspaceProvisioningService,
+    private readonly password: AuthPasswordService,
   ) {}
 
   @Get('context')
@@ -41,6 +43,17 @@ export class AuthController {
     @Body() dto: ProvisionWorkspaceDto,
   ) {
     return this.provisioning.provision(user, dto);
+  }
+
+  @Post('clear-must-change-password')
+  @RequireRole('viewer')
+  @ApiOperation({ summary: 'Confirmar que a senha provisória foi trocada (chamado após updateUser({ password }) no Supabase ter sucesso)' })
+  clearMustChangePassword(
+    @CurrentUser() user: JwtAuth,
+    @CurrentTenant() tenant: Record<string, unknown>,
+  ) {
+    const tenantId = typeof tenant?.['id'] === 'string' ? tenant['id'] as string : null;
+    return this.password.clearMustChangePassword(user, tenantId);
   }
 
   @Patch('onboarding')

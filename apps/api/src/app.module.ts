@@ -25,6 +25,7 @@ import { StorageModule }        from './storage/storage.module';
 import { HealthModule }         from './modules/health/health.module';
 import { QueueModule }          from './queues/queue.module';
 import { AuthModule }           from './modules/auth/auth.module';
+import { CompanySettingsModule } from './modules/company-settings/company-settings.module';
 import { CoreModule }           from './core/core.module';
 import { AutomationModule }     from './core/automation/automation.module';
 import { MetricsModule }        from './core/metrics/metrics.module';
@@ -81,6 +82,7 @@ import { AudiovisualModule }      from './modules/audiovisual/audiovisual.module
 import { RegistryModule }         from './modules/registry/registry.module';
 import { ReportsModule }          from './modules/reports/reports.module';
 import { JwtAuthGuard }    from './core/guards/auth.guard';
+import { MustChangePasswordGuard } from './core/guards/must-change-password.guard';
 import { TenantGuard }     from './core/guards/tenant.guard';
 import { BillingEnforcementGuard } from './core/guards/billing-enforcement.guard';
 import { RolesGuard }      from './core/guards/roles.guard';
@@ -122,6 +124,7 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
 
     // ── Auth (JWT) ────────────────────────────────────────────────────────────
     AuthModule,
+    CompanySettingsModule,
 
     // ── Filas (BullMQ) — só quando Redis ioredis está disponível ─────────────
     QueueModule.register(),
@@ -237,6 +240,10 @@ import { RateLimitGuard }  from './core/guards/rate-limit.guard';
     {
       provide:  APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide:  APP_GUARD,
+      useClass: MustChangePasswordGuard,
     },
     {
       provide:  APP_GUARD,

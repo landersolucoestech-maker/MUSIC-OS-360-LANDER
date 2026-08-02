@@ -17,6 +17,7 @@ import { DevAuthController } from './dev-auth.controller';
 import { AuthContextService } from './auth-context.service';
 import { OnboardingService } from './onboarding.service';
 import { WorkspaceProvisioningService } from './workspace-provisioning.service';
+import { AuthPasswordService } from './auth-password.service';
 
 // DevAuthController is only registered outside production — the route must not
 // exist at all in production (defense-in-depth beyond the 403 guard in the controller).
@@ -30,6 +31,7 @@ const DEV_CONTROLLERS =
     AuthContextService,
     OnboardingService,
     WorkspaceProvisioningService,
+    AuthPasswordService,
   ],
   exports:     [AuthContextService],
 })

@@ -1,11 +1,14 @@
 /**
  * TEST-04 (auditoria 2026-07-05): os 6 guards globais de app.module.ts eram testados
  * apenas isoladamente (ExecutionContext mockado à mão) — nenhum teste provava que a
- * ORDEM real de execução (RateLimit → JWT → Tenant → Billing → Roles) produz o
- * comportamento esperado quando montada via APP_GUARD, como em produção. Este spec
- * sobe um módulo Nest mínimo com os guards reais nessa ordem e bate via HTTP real
- * (supertest), para que um reordenamento acidental do array APP_GUARD em
- * app.module.ts quebre este teste.
+ * ORDEM real de execução (RateLimit → JWT → MustChangePassword → Tenant → Billing →
+ * Roles) produz o comportamento esperado quando montada via APP_GUARD, como em
+ * produção. Este spec sobe um módulo Nest mínimo com os guards reais nessa ordem e
+ * bate via HTTP real (supertest), para que um reordenamento acidental do array
+ * APP_GUARD em app.module.ts quebre este teste.
+ *
+ * MustChangePasswordGuard (Parte 73) foi adicionado à cadeia real logo após
+ * JwtAuthGuard — coberto abaixo.
  */
 import 'reflect-metadata';
 import { generateKeyPairSync } from 'crypto';
@@ -31,6 +34,7 @@ import * as request from 'supertest';
 import { RateLimitGuard } from './rate-limit.guard';
 import { RateLimitService } from '../security/rate-limit.service';
 import { JwtAuthGuard } from './auth.guard';
+import { MustChangePasswordGuard } from './must-change-password.guard';
 import { RbacErrorLogService } from '../rbac/rbac-error-log.service';
 import { TenantGuard } from './tenant.guard';
 import { TenantBootstrapResolver } from '../../database/tenant-bootstrap.resolver';
@@ -72,6 +76,13 @@ class TestController {
   protectedRoute() {
     return { ok: true };
   }
+
+  // Rota allowlisted pelo MustChangePasswordGuard mesmo quando a flag está true.
+  @Roles('viewer')
+  @Get('auth/context')
+  authContext() {
+    return { ok: true };
+  }
 }
 
 describe('Guard chain composition (RateLimit -> JWT -> Tenant -> Billing -> Roles)', () => {
@@ -106,6 +117,7 @@ describe('Guard chain composition (RateLimit -> JWT -> Tenant -> Billing -> Role
         // Ordem exata de apps/api/src/app.module.ts — não reordenar sem atualizar as expectativas abaixo.
         { provide: APP_GUARD, useClass: RateLimitGuard },
         { provide: APP_GUARD, useClass: JwtAuthGuard },
+        { provide: APP_GUARD, useClass: MustChangePasswordGuard },
         { provide: APP_GUARD, useClass: TenantGuard },
         { provide: APP_GUARD, useClass: BillingEnforcementGuard },
         { provide: APP_GUARD, useClass: RolesGuard },
@@ -184,5 +196,49 @@ describe('Guard chain composition (RateLimit -> JWT -> Tenant -> Billing -> Role
 
     expect(rateLimitCheck).toHaveBeenCalled();
     expect(resolveTenant).toHaveBeenCalledWith('org-1');
+  });
+
+  it('must_change_password=true bloqueia rota comum mesmo com tenant/role válidos (prova que MustChangePassword roda logo após JWT)', async () => {
+    const token = makeToken({ sub: 'user-1', app_metadata: { org_id: 'org-1', role: 'admin', must_change_password: true } });
+    resolveTenant.mockResolvedValue({ id: 'tenant-1', org_id: 'org-1', active: true });
+    resolveMembership.mockResolvedValue({ role: 'admin', role_id: 'role-admin' });
+    getBillingState.mockResolvedValue({ status: 'active' });
+
+    await request(app.getHttpServer())
+      .get('/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Tenant-ID', 'org-1')
+      .expect(403)
+      .expect((res) => {
+        expect(res.body.message?.error ?? res.body.error).toBe('MUST_CHANGE_PASSWORD');
+      });
+    // Nunca chega a resolver tenant — bloqueado antes do TenantGuard rodar.
+    expect(resolveTenant).not.toHaveBeenCalled();
+  });
+
+  it('must_change_password=true ainda permite rota allowlisted (/auth/context)', async () => {
+    const token = makeToken({ sub: 'user-1', app_metadata: { org_id: 'org-1', role: 'admin', must_change_password: true } });
+    resolveTenant.mockResolvedValue({ id: 'tenant-1', org_id: 'org-1', active: true });
+    resolveMembership.mockResolvedValue({ role: 'admin', role_id: 'role-admin' });
+    getBillingState.mockResolvedValue({ status: 'active' });
+
+    await request(app.getHttpServer())
+      .get('/auth/context')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Tenant-ID', 'org-1')
+      .expect(200);
+  });
+
+  it('must_change_password ausente (default) não afeta rotas comuns', async () => {
+    const token = makeToken({ sub: 'user-1', app_metadata: { org_id: 'org-1', role: 'admin' } });
+    resolveTenant.mockResolvedValue({ id: 'tenant-1', org_id: 'org-1', active: true });
+    resolveMembership.mockResolvedValue({ role: 'admin', role_id: 'role-admin' });
+    getBillingState.mockResolvedValue({ status: 'active' });
+
+    await request(app.getHttpServer())
+      .get('/artists')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Tenant-ID', 'org-1')
+      .expect(200);
   });
 });
