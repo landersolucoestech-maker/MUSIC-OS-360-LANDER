@@ -57,6 +57,7 @@ jobs:
 
       - name: db:check (before) — list pending migrations
         run: pnpm --filter @music-os-360/api db:check
+        continue-on-error: true
 
       - name: db:migrate — apply every pending canonical migration
         run: pnpm --filter @music-os-360/api db:migrate
