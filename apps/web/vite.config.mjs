@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { execSync } from "node:child_process";
 import { assertWebSupabaseEnv } from "./scripts/assert-supabase-env.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -12,7 +13,24 @@ const guardMode =
 
 assertWebSupabaseEnv(guardMode, __dirname);
 
+// Parte 75 — commit realmente empacotado no bundle, para a tela de login
+// exibir um identificador seguro de ambiente/build (nunca URLs/keys completas)
+// e eliminar ambiguidade sobre "qual deploy é este". Vercel expõe o SHA via
+// VERCEL_GIT_COMMIT_SHA (não prefixado com VITE_, então nunca chega ao
+// cliente sozinho); fora da Vercel (build local), cai para o HEAD real do git.
+function resolveCommitSha() {
+  if (process.env.VERCEL_GIT_COMMIT_SHA) return process.env.VERCEL_GIT_COMMIT_SHA;
+  try {
+    return execSync("git rev-parse HEAD", { cwd: __dirname }).toString().trim();
+  } catch {
+    return "unknown";
+  }
+}
+
 export default defineConfig({
+    define: {
+      "import.meta.env.VITE_COMMIT_SHA": JSON.stringify(resolveCommitSha()),
+    },
     plugins: [react()],
     resolve: {
       alias: {

@@ -72,6 +72,50 @@ export const ENV_MODE: string = (import.meta.env.MODE as string) ?? "development
 export const IS_PROD_LIKE: boolean = isProdLike(ENV_MODE);
 
 /**
+ * Parte 75 — identificador seguro de ambiente de autenticação, exibido na
+ * tela de login (nunca a URL nem a anon key completas) para eliminar
+ * ambiguidade sobre "para qual Supabase este build está apontando" — a
+ * causa mais provável de um "Invalid login" real com credenciais corretas
+ * é o usuário estar numa superfície apontando para o projeto/ambiente errado.
+ */
+const SUPABASE_ENV_LABELS: Readonly<Record<string, string>> = {
+  rypnevnfipygyhysqpdo: "DEV",
+  jjnnjnxjkqipgqebijen: "STAGING",
+  sxmfeocztlztvpdnxayk: "MAIN (proibido)",
+};
+
+/** Extraída como função pura (recebe a URL em vez de ler import.meta.env) para ser testável sem mockar o Vite. */
+export function extractSupabaseRef(url: string | undefined): string | null {
+  return (url ?? "").match(/https:\/\/([a-z0-9]+)\.supabase\.co/)?.[1] ?? null;
+}
+
+/** "DEV" | "STAGING" | "MAIN (proibido)" | "desconhecido" — nunca a URL completa. */
+export function deriveAuthEnvironmentLabel(url: string | undefined): string {
+  const ref = extractSupabaseRef(url);
+  if (!ref) return "desconhecido";
+  return SUPABASE_ENV_LABELS[ref] ?? "desconhecido";
+}
+
+/** "rypn…qpdo" — só os 4 primeiros/últimos caracteres do ref, nunca a key. */
+export function deriveMaskedSupabaseRef(url: string | undefined): string {
+  const ref = extractSupabaseRef(url);
+  if (!ref || ref.length < 8) return "????…????";
+  return `${ref.slice(0, 4)}…${ref.slice(-4)}`;
+}
+
+export function authEnvironmentLabel(): string {
+  return deriveAuthEnvironmentLabel(import.meta.env.VITE_SUPABASE_URL as string | undefined);
+}
+
+export function maskedSupabaseRef(): string {
+  return deriveMaskedSupabaseRef(import.meta.env.VITE_SUPABASE_URL as string | undefined);
+}
+
+/** 7 primeiros caracteres do commit realmente empacotado neste bundle (ver vite.config.mjs). */
+export const BUILD_COMMIT_SHA: string =
+  ((import.meta.env.VITE_COMMIT_SHA as string | undefined) ?? "unknown").slice(0, 7);
+
+/**
  * validateFrontendEnv — called once at app startup (main.tsx).
  *
  * In production builds, halts rendering and shows an error page if any

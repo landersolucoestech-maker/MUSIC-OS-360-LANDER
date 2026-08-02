@@ -23,8 +23,22 @@ import {
   UsersRound,
 } from "lucide-react";
 import { authRateLimiter } from "@/shared/lib/security";
-import { AUTH_DISABLED } from "@/shared/lib/env";
+import { AUTH_DISABLED, authEnvironmentLabel, maskedSupabaseRef, BUILD_COMMIT_SHA } from "@/shared/lib/env";
+import { describeAuthError } from "@/shared/lib/auth-error-messages";
 import { Button } from "@/shared/ui/button";
+
+/**
+ * Parte 75 — identificador seguro de ambiente na própria tela de login.
+ * Elimina ambiguidade sobre qual Supabase/build este frontend está usando
+ * sem nunca expor a URL completa ou a anon key.
+ */
+function AuthEnvironmentBadge() {
+  return (
+    <p className="mt-4 text-center text-[10px] uppercase tracking-wider text-muted-foreground/60">
+      Ambiente: {authEnvironmentLabel()} · Projeto: {maskedSupabaseRef()} · Build: {BUILD_COMMIT_SHA}
+    </p>
+  );
+}
 
 const loginSchema = z.object({
   email: z.string().trim().email("E-mail inválido"),
@@ -126,6 +140,7 @@ function AuthPage() {
             <p className="text-center text-[11px] text-muted-foreground">
               © MUSIC OS 360. Todos os direitos reservados.
             </p>
+            <AuthEnvironmentBadge />
           </footer>
         </div>
       </section>
@@ -243,7 +258,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
       const { error } = await signIn(data.email, data.password);
       if (error) {
         toast.error(
-          `${error.message}. ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`,
+          `${describeAuthError(error)} ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`,
         );
       } else {
         authRateLimiter.reset(data.email);
@@ -251,9 +266,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
         navigate("/", { replace: true });
       }
     } catch (err: unknown) {
-      toast.error(
-        (err as { message?: string })?.message ?? "Erro ao fazer login.",
-      );
+      toast.error(describeAuthError({ message: (err as { message?: string })?.message ?? "" }));
     } finally {
       setLoading(false);
     }
