@@ -1,5 +1,8 @@
 import * as XLSX from 'xlsx';
-import { ExportFormatService, sanitizeExcelCellValue, EXCEL_CELL_MAX_CHARS } from './export-format.service';
+import {
+  ExportFormatService, sanitizeExcelCellValue, EXCEL_CELL_MAX_CHARS,
+  neutralizeFormulaInjection,
+} from './export-format.service';
 
 describe('ExportFormatService — serialização XLSX', () => {
   const svc = new ExportFormatService();
@@ -60,6 +63,40 @@ describe('ExportFormatService — serialização XLSX', () => {
       const absurd = 'Z'.repeat(200000);
       const out = sanitizeExcelCellValue(absurd, { entity: 'briefings', column: 'descricao' });
       expect(out.length).toBeLessThanOrEqual(EXCEL_CELL_MAX_CHARS);
+    });
+
+    describe('formula/CSV injection (OWASP) — nenhuma célula pode virar fórmula ao abrir no Excel/LibreOffice', () => {
+      it('neutraliza payloads clássicos de injeção de fórmula', () => {
+        expect(sanitizeExcelCellValue('=HYPERLINK("http://evil.test","clique")', { entity: 'clients', column: 'nome' })).toBe(
+          "'=HYPERLINK(\"http://evil.test\",\"clique\")",
+        );
+        expect(sanitizeExcelCellValue('@SUM(1+1)', { entity: 'clients', column: 'nome' })).toBe("'@SUM(1+1)");
+        expect(sanitizeExcelCellValue('+cmd|\'/c calc\'!A1', { entity: 'clients', column: 'nome' })).toBe(
+          "'+cmd|'/c calc'!A1",
+        );
+        expect(sanitizeExcelCellValue('-2+3+cmd|\' /c calc\'!A1', { entity: 'clients', column: 'nome' })).toBe(
+          "'-2+3+cmd|' /c calc'!A1",
+        );
+      });
+
+      it('neutraliza tab/CR como primeiro caractere (vetores menos comuns de injeção)', () => {
+        expect(sanitizeExcelCellValue('\t=1+1', { entity: 'clients', column: 'nome' })).toBe("'\t=1+1");
+      });
+
+      it('NÃO neutraliza telefone legítimo começado por "+" (dado real e comum nesta aplicação)', () => {
+        expect(sanitizeExcelCellValue('+5511999990000', { entity: 'clients', column: 'telefone' })).toBe(
+          '+5511999990000',
+        );
+      });
+
+      it('NÃO neutraliza valor monetário negativo legítimo começado por "-"', () => {
+        expect(sanitizeExcelCellValue('-42.50', { entity: 'transactions', column: 'valor' })).toBe('-42.50');
+        expect(sanitizeExcelCellValue('-1234,56', { entity: 'transactions', column: 'valor' })).toBe('-1234,56');
+      });
+
+      it('texto comum sem prefixo perigoso não é alterado', () => {
+        expect(neutralizeFormulaInjection('Cliente Exemplo Ltda')).toBe('Cliente Exemplo Ltda');
+      });
     });
   });
 });

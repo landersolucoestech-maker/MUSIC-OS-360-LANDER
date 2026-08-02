@@ -9,6 +9,24 @@ export interface CSVColumn {
   transform?: (row: Record<string, any>) => string;
 }
 
+// CSV/formula injection (OWASP): células iniciadas por =, @, tab/CR são
+// reinterpretadas como fórmula por Excel/LibreOffice ao abrir. `+`/`-` também
+// são o primeiro caractere de dados legítimos comuns (telefone "+55...",
+// valores negativos) — só neutraliza quando o resto da célula não é um
+// padrão plausível de telefone/número, evitando falso-positivo.
+const ALWAYS_DANGEROUS_PREFIXES = ["=", "@", "\t", "\r"];
+const PLAUSIBLE_PHONE = /^\+[\d\s()-]+$/;
+const PLAUSIBLE_NEGATIVE_NUMBER = /^-[\d.,]+$/;
+
+function neutralizeFormulaInjection(text: string): string {
+  if (text.length === 0) return text;
+  const first = text[0];
+  if (ALWAYS_DANGEROUS_PREFIXES.includes(first)) return `'${text}`;
+  if (first === "+" && !PLAUSIBLE_PHONE.test(text)) return `'${text}`;
+  if (first === "-" && !PLAUSIBLE_NEGATIVE_NUMBER.test(text)) return `'${text}`;
+  return text;
+}
+
 // Export data to XLSX
 export function exportToCSV<T extends Record<string, any>>(
   data: T[],
@@ -27,7 +45,8 @@ export function exportToCSV<T extends Record<string, any>>(
     columns.map(col => {
       const value = col.transform ? col.transform(item) : item[col.key];
       if (value === null || value === undefined) return "";
-      return Array.isArray(value) ? value.join(", ") : String(value);
+      const text = Array.isArray(value) ? value.join(", ") : String(value);
+      return neutralizeFormulaInjection(text);
     })
   );
 

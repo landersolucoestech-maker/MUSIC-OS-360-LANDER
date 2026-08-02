@@ -23,6 +23,28 @@ export const EXCEL_CELL_MAX_CHARS = 32767;
 const EXCEL_CELL_SAFE_CHARS = 32000;
 const TRUNCATION_SUFFIX = '… [truncado: excede o limite de célula do Excel]';
 
+// CSV/formula injection (OWASP): células iniciadas por =, +, -, @ (ou tab/CR)
+// são reinterpretadas como fórmula por Excel/LibreOffice ao abrir — um nome de
+// cliente como "=HYPERLINK(...)" vira execução, não texto. Prefixo com aspas
+// simples neutraliza sem apagar o valor visível.
+//
+// `+` e `-` também são o primeiro caractere de dados legítimos e comuns nesta
+// aplicação (telefone "+55...", valores monetários negativos "-42.50") — só
+// são neutralizados quando o restante da célula NÃO é um padrão plausível de
+// telefone/número, evitando falso-positivo em cima de dado real.
+const ALWAYS_DANGEROUS_PREFIXES = ['=', '@', '\t', '\r'];
+const PLAUSIBLE_PHONE = /^\+[\d\s()-]+$/;
+const PLAUSIBLE_NEGATIVE_NUMBER = /^-[\d.,]+$/;
+
+export function neutralizeFormulaInjection(text: string): string {
+  if (text.length === 0) return text;
+  const first = text[0];
+  if (ALWAYS_DANGEROUS_PREFIXES.includes(first)) return `'${text}`;
+  if (first === '+' && !PLAUSIBLE_PHONE.test(text)) return `'${text}`;
+  if (first === '-' && !PLAUSIBLE_NEGATIVE_NUMBER.test(text)) return `'${text}`;
+  return text;
+}
+
 export interface CellContext {
   entity: string;
   column: string;
@@ -59,9 +81,9 @@ export function sanitizeExcelCellValue(value: unknown, context: CellContext): st
       `[reports-export] campo truncado para exportação: ${context.entity}.${context.column} ` +
       `tinha ${text.length} caracteres (limite Excel: ${EXCEL_CELL_MAX_CHARS})`,
     );
-    return text.slice(0, EXCEL_CELL_SAFE_CHARS - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
+    text = text.slice(0, EXCEL_CELL_SAFE_CHARS - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX;
   }
-  return text;
+  return neutralizeFormulaInjection(text);
 }
 
 @Injectable()
