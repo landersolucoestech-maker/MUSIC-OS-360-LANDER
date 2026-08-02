@@ -52,6 +52,17 @@ describe('evaluateRealtimeState', () => {
     expect(result.reason).toContain('ainda não foi aplicada');
   });
 
+  it('PENDING_EXTERNAL_PRIVILEGE: RLS já habilitada por padrão do Supabase, mas nenhuma policy ainda (caso real confirmado contra Supabase DEV na Parte 72 — não é DRIFT)', () => {
+    const result = evaluateRealtimeState({
+      tableExists: true,
+      rlsEnabled: true,
+      owner: 'supabase_realtime_admin',
+      currentUser: 'postgres',
+      policies: [],
+    });
+    expect(result.state).toBe('PENDING_EXTERNAL_PRIVILEGE');
+  });
+
   it('UNSAFE_PUBLIC_ACCESS: qualquer policy com USING (true), mesmo com as outras corretas', () => {
     const result = evaluateRealtimeState({
       tableExists: true,

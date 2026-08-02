@@ -32,6 +32,14 @@ export async function migrateApplication(dataSource: DataSource): Promise<Migrat
   executor.transaction = 'each';
 
   try {
+    // showMigrations() is the public method that creates the tracking table
+    // (and the typeorm_metadata table) if it doesn't exist yet — the same
+    // bootstrap executePendingMigrations() does internally before it calls
+    // getPendingMigrations(). Calling it here (ignoring its boolean return)
+    // is required on a genuinely fresh database; on Supabase DEV/STAGING the
+    // table already exists, so this is a fast no-op there.
+    await executor.showMigrations();
+
     const pending = await executor.getPendingMigrations();
     const applicationPending = pending.filter((m: Migration) => getMigrationCategory(m.name) === MigrationCategory.APPLICATION);
     const nonApplicationPending = pending.filter((m: Migration) => getMigrationCategory(m.name) !== MigrationCategory.APPLICATION);
@@ -69,6 +77,7 @@ export async function checkApplication(dataSource: DataSource): Promise<CheckApp
   const executor = new MigrationExecutor(dataSource, queryRunner);
 
   try {
+    await executor.showMigrations(); // ensures the tracking table exists — see migrateApplication() above
     const pending = await executor.getPendingMigrations();
     return {
       applicationPending: pending.filter((m: Migration) => getMigrationCategory(m.name) === MigrationCategory.APPLICATION).map((m) => m.name),

@@ -67,11 +67,19 @@ export function evaluateRealtimeState(input: RealtimeStateInput): RealtimeStateR
     return { state: 'UNSAFE_PUBLIC_ACCESS', reason: `Policy "${publicPolicy.policyname}" usa USING (true) — acesso público a canais privados.` };
   }
 
-  if (!input.rlsEnabled && input.policies.length === 0) {
+  // Nenhuma policy ainda — a migration simplesmente não foi aplicada. Isto
+  // vale independente de rlsEnabled: Supabase provisiona realtime.messages
+  // com RLS já habilitada por padrão (fail-closed) antes de qualquer policy
+  // existir (confirmado empiricamente na Parte 72 contra Supabase DEV real —
+  // ALTER TABLE ENABLE ROW LEVEL SECURITY falha por ownership mesmo já
+  // estando habilitada, então "RLS=true, zero policies" é o estado inicial
+  // normal, não uma migration parcialmente aplicada). Tratar isso como DRIFT
+  // classificaria o estado inicial normal do Supabase como uma regressão.
+  if (input.policies.length === 0) {
     const ownerNote = input.owner === input.currentUser
       ? 'a role de conexão já é a owner, mas a migration ainda não foi aplicada'
       : `a role de conexão ("${input.currentUser}") não é a owner ("${input.owner}") de realtime.messages`;
-    return { state: 'PENDING_EXTERNAL_PRIVILEGE', reason: `RLS desabilitada, nenhuma policy — ${ownerNote}.` };
+    return { state: 'PENDING_EXTERNAL_PRIVILEGE', reason: `Nenhuma policy (RLS=${input.rlsEnabled}) — ${ownerNote}.` };
   }
 
   const expectedNames = Object.keys(EXPECTED_POLICIES);
