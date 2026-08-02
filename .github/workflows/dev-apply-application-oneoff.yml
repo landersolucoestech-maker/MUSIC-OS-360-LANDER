@@ -9,6 +9,7 @@ name: Dev Apply Application Migrations Oneoff (Parte 72 — temporary, removed a
 # does NOT touch RealtimeBroadcastAuthorization20260801000001
 # (EXTERNAL_MANAGED, confirmed blocked by Supabase-managed schema ownership).
 # Committed, run once, then removed in a follow-up commit.
+# Re-run marker: attempt 2 (fixed audit_logs parameter type inference bug).
 
 on:
   push:
