@@ -47,10 +47,16 @@ export class LeadsService {
       notes:              metadata['notes'] ?? null,
       assignedTo:         metadata['assignedTo'] ?? null,
       value:              metadata['value'] ?? null,
+      stage:              metadata['stage'] ?? null,
       email:              this.enc.decryptNullable(l.email_encrypted),
       phone:              this.enc.decryptNullable(l.telefone_encrypted),
       email_encrypted:    undefined as unknown as string,
       telefone_encrypted: undefined as unknown as string,
+      // Aliases camelCase para o CRM musical (mesmas colunas físicas de `l`).
+      nomeArtistico:      l.nome_artistico,
+      tipoCliente:        l.tipo_cliente,
+      payloadServico:     l.payload_servico,
+      dadosInternosCRM:   l.dados_internos_crm,
     };
   }
 
@@ -410,11 +416,29 @@ export class LeadsService {
   }
 
   private normalizeLeadPayload(input: Record<string, unknown>, existingMetadata: Record<string, unknown> = {}) {
-    const { name, source, stage, notes, assignedTo, value, metadata, ...rest } = input;
+    const {
+      name, source, stage, notes, assignedTo, value, metadata,
+      nomeArtistico, empresa, whatsapp, instagram, cidade, estado, pais,
+      tipoCliente, tipoServico, payloadServico, dadosInternosCRM, uploads,
+      ...rest
+    } = input;
     const mapped: Record<string, unknown> = { ...rest };
     if (name !== undefined) mapped['nome'] = name;
     if (source !== undefined) mapped['fonte'] = source;
-    if (stage !== undefined) mapped['pipeline_stage'] = stage;
+    // `pipeline_stage` foi removida fisicamente (RebuildLeadsInCanonicalFormOrder,
+    // órfã comprovada) — `stage` do DTO vai para metadata, como notes/assignedTo/value.
+    if (nomeArtistico !== undefined) mapped['nome_artistico'] = nomeArtistico;
+    if (empresa !== undefined) mapped['empresa'] = empresa;
+    if (whatsapp !== undefined) mapped['whatsapp'] = whatsapp;
+    if (instagram !== undefined) mapped['instagram'] = instagram;
+    if (cidade !== undefined) mapped['cidade'] = cidade;
+    if (estado !== undefined) mapped['estado'] = estado;
+    if (pais !== undefined) mapped['pais'] = pais;
+    if (tipoCliente !== undefined) mapped['tipo_cliente'] = tipoCliente;
+    if (tipoServico !== undefined) mapped['tipoServico'] = tipoServico;
+    if (payloadServico !== undefined) mapped['payload_servico'] = payloadServico;
+    if (dadosInternosCRM !== undefined) mapped['dados_internos_crm'] = dadosInternosCRM;
+    if (uploads !== undefined) mapped['uploads'] = uploads;
 
     const mergedMetadata = {
       ...existingMetadata,
@@ -423,11 +447,13 @@ export class LeadsService {
     if (notes !== undefined) mergedMetadata['notes'] = notes;
     if (assignedTo !== undefined) mergedMetadata['assignedTo'] = assignedTo;
     if (value !== undefined) mergedMetadata['value'] = value;
+    if (stage !== undefined) mergedMetadata['stage'] = stage;
     if (
       metadata !== undefined ||
       notes !== undefined ||
       assignedTo !== undefined ||
-      value !== undefined
+      value !== undefined ||
+      stage !== undefined
     ) {
       mapped['metadata'] = mergedMetadata;
     }

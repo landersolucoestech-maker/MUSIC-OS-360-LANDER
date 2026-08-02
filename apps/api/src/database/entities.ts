@@ -990,9 +990,7 @@ export class LeadEntity {
   @Column({ type: 'text', nullable: true }) telefone_encrypted: string | null;
   @Column({ type: 'varchar', length: 255, nullable: true }) empresa: string | null;
   @Column({ type: 'varchar', length: 50, default: LeadStatus.NOVO }) status: LeadStatus;
-  @Column({ type: 'integer', default: 0 }) score: number;
   @Column({ type: 'varchar', length: 100, nullable: true }) fonte: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) pipeline_stage: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
 
   // ── Colunas operacionais reais (FASE 2B — reconciliação leads) ───────────────
