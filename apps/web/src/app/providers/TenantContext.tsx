@@ -5,6 +5,7 @@ import { AUTH_DISABLED, IS_DEV } from "@/shared/lib/env";
 import { ROLE_PERMISSIONS } from "./tenant-labels";
 import { tenantModulePermissionKeys } from "@/shared/lib/permission-map";
 import { api, getAccessToken } from "@/shared/lib/api-client";
+import { IntegrationError } from "@/shared/lib/errors";
 import { useAuth } from "./AuthContext";
 import type { SaasAuthContext } from "@/shared/types/saas-context";
 import { SYSTEM_REGIONAL_SETTINGS } from "@/shared/lib/system-regional-settings";
@@ -163,6 +164,16 @@ interface TenantContextType {
   setTenant:        React.Dispatch<React.SetStateAction<Tenant>>;
   /** FONTE ÚNICA de autorização: membership.permissions (resource:action). null = ainda não carregado. */
   permissionKeys:   string[] | null;
+  /** true enquanto a primeira chamada a /auth/context ainda não resolveu (sucesso ou erro). */
+  contextLoading:   boolean;
+  /**
+   * Parte 76 — antes, uma falha em /auth/context (ex.: 503 por dependência de
+   * banco indisponível) era silenciosamente engolida: `tenant` ficava para
+   * sempre no placeholder vazio, sem nenhum sinal de erro — dando a
+   * impressão de "carregando para sempre" quando na verdade a chamada já
+   * tinha falhado de vez. Mensagem sanitizada (nunca o erro cru do backend).
+   */
+  contextError:     string | null;
   isFeatureEnabled: (flag: keyof FeatureFlags) => boolean;
   hasPermission:    (module: TenantModuleKey, action: keyof TenantModulePermission) => boolean;
   canRead:          (module: TenantModuleKey) => boolean;
@@ -234,15 +245,21 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   // FONTE ÚNICA de autorização: permissões resource:action vindas de membership.permissions.
   // null = ainda não carregado (ou MOCK/AUTH_DISABLED) → usePermissions faz fail-open de UI.
   const [permissionKeys, setPermissionKeys] = useState<string[] | null>(null);
+  const [contextLoading, setContextLoading] = useState<boolean>(!AUTH_DISABLED);
+  const [contextError, setContextError] = useState<string | null>(null);
 
   useEffect(() => {
     if (AUTH_DISABLED) return;
     if (!session?.access_token) return;
 
     let active = true;
+    setContextLoading(true);
+    setContextError(null);
     api.get<SaasAuthContext>("/auth/context")
       .then((context) => {
         if (!active) return;
+        setContextLoading(false);
+        setContextError(null);
         const tenantRole = appRoleToTenantRole(context.membership.role);
         setPermissionKeys(Array.isArray(context.membership.permissions) ? context.membership.permissions : []);
         setTenant(prev => ({
@@ -272,7 +289,14 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
         });
       })
       .catch((error: unknown) => {
+        if (!active) return;
         devTenantLog("Falha ao sincronizar /auth/context; usando JWT/localStorage", error);
+        setContextLoading(false);
+        setContextError(
+          error instanceof IntegrationError && error.statusCode === 503
+            ? "Serviço de contexto indisponível — o banco de dados da aplicação não respondeu."
+            : "Não foi possível carregar o contexto da organização.",
+        );
       });
 
     return () => { active = false; };
@@ -296,7 +320,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const canExport = (m: TenantModuleKey) => hasPermission(m, "export");
 
   return (
-    <TenantContext.Provider value={{ tenant, setTenant, permissionKeys, isFeatureEnabled, hasPermission, canRead, canWrite, canDelete, canExport }}>
+    <TenantContext.Provider value={{ tenant, setTenant, permissionKeys, contextLoading, contextError, isFeatureEnabled, hasPermission, canRead, canWrite, canDelete, canExport }}>
       {children}
     </TenantContext.Provider>
   );

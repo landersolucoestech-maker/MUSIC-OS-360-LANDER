@@ -111,6 +111,44 @@ const SuperAdminRoute: SuspenseRouteComponent = ({ children }) => (
   </SuspenseRoute>
 );
 
+/**
+ * Parte 76 — banner crítico, sempre visível, quando AUTH_DISABLED está ativo.
+ * Sem isso, um usuário real podia ver "LANDER RECORDS" / "Owner" no menu e
+ * não perceber que está navegando um workspace sentinela falso (auth-disabled
+ * user/tenant, ver apps/api/src/core/auth-disabled.ts), sem sessão Supabase
+ * real nenhuma por trás.
+ */
+function AuthDisabledBanner() {
+  if (!AUTH_DISABLED) return null;
+  return (
+    <div
+      role="alert"
+      className="fixed inset-x-0 top-0 z-[9999] bg-destructive px-4 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-destructive-foreground"
+    >
+      ⚠ AUTH_DISABLED ativo — sessão, tenant e permissões são falsos (dev bypass). Nunca use para validar login real.
+    </div>
+  );
+}
+
+/**
+ * Parte 76 — antes, uma falha em /auth/context (ex.: banco de aplicação
+ * indisponível) deixava a organização/usuário em branco para sempre sem
+ * nenhum aviso — indistinguível de "ainda carregando". Este banner torna o
+ * estado "Contexto indisponível" visível em vez de um skeleton silencioso.
+ */
+function TenantContextErrorBanner() {
+  const { contextError } = useTenant();
+  if (!contextError) return null;
+  return (
+    <div
+      role="alert"
+      className="fixed inset-x-0 top-0 z-[9998] bg-amber-600 px-4 py-1.5 text-center text-xs font-semibold text-white"
+    >
+      ⚠ Contexto indisponível — {contextError}
+    </div>
+  );
+}
+
 const App = () => {
   const [queryClient] = useState(() => createQueryClient());
   return (
@@ -123,6 +161,8 @@ const App = () => {
             <TooltipProvider>
               <Sonner />
               <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+                <AuthDisabledBanner />
+                <TenantContextErrorBanner />
                 <BillingNotice />
                 <Routes>
                   {publicRoutes(SuspenseRoute)}
