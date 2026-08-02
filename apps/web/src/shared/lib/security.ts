@@ -117,45 +117,46 @@ class AuthRateLimiter {
   private windowMs = 15 * 60 * 1000; // 15 minutes
   private blockDurationMs = 30 * 60 * 1000; // 30 minutes
 
-  check(identifier: string): boolean {
+  /**
+   * Parte 77 — somente LEITURA: diz se `identifier` está bloqueado agora,
+   * sem nunca incrementar nada. `check()` (abaixo) permanece por
+   * compatibilidade mas incrementava a cada chamada mesmo sem nenhuma
+   * tentativa de login real ter acontecido — usar `isBlocked` + `recordFailure`
+   * separadamente evita contar erro de rede/servidor como tentativa.
+   */
+  isBlocked(identifier: string): boolean {
+    const entry = this.attempts.get(identifier);
+    if (!entry?.blockedUntil) return false;
+    return Date.now() < entry.blockedUntil;
+  }
+
+  /**
+   * Registra uma tentativa GENUINAMENTE malsucedida (credenciais erradas
+   * confirmadas pelo Supabase) — nunca chamar para erro de rede, 5xx, ou
+   * crash do frontend, senão um problema de infraestrutura pode bloquear
+   * um usuário legítimo por 30 minutos sem nenhuma tentativa de senha errada.
+   */
+  recordFailure(identifier: string): void {
     const now = Date.now();
     const entry = this.attempts.get(identifier);
 
-    if (!entry) {
-      this.attempts.set(identifier, {
-        attempts: 1,
-        lastAttempt: now,
-        blockedUntil: null,
-      });
-      return true;
+    if (!entry || now - entry.lastAttempt > this.windowMs) {
+      this.attempts.set(identifier, { attempts: 1, lastAttempt: now, blockedUntil: null });
+      return;
     }
 
-    // Check if blocked
-    if (entry.blockedUntil && now < entry.blockedUntil) {
-      return false;
-    }
-
-    // Reset if window expired
-    if (now - entry.lastAttempt > this.windowMs) {
-      this.attempts.set(identifier, {
-        attempts: 1,
-        lastAttempt: now,
-        blockedUntil: null,
-      });
-      return true;
-    }
-
-    // Increment attempts
     entry.attempts += 1;
     entry.lastAttempt = now;
-
-    // Block if exceeded
     if (entry.attempts > this.maxAttempts) {
       entry.blockedUntil = now + this.blockDurationMs;
-      return false;
     }
+  }
 
-    return true;
+  /** @deprecated usar isBlocked() antes da tentativa e recordFailure() só após falha de credencial confirmada. */
+  check(identifier: string): boolean {
+    if (this.isBlocked(identifier)) return false;
+    this.recordFailure.call(this, identifier);
+    return !this.isBlocked(identifier);
   }
 
   getRemainingAttempts(identifier: string): number {

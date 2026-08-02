@@ -1,6 +1,5 @@
 import { useState, forwardRef } from "react";
 import { Navigate, Link, useLocation, useNavigate } from "react-router-dom";
-import { z } from "zod";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useAuth } from "@/app/providers/AuthContext";
@@ -24,8 +23,9 @@ import {
 } from "lucide-react";
 import { authRateLimiter } from "@/shared/lib/security";
 import { AUTH_DISABLED, authEnvironmentLabel, maskedSupabaseRef, BUILD_COMMIT_SHA } from "@/shared/lib/env";
-import { describeAuthError } from "@/shared/lib/auth-error-messages";
+import { describeAuthError, isCredentialsError } from "@/shared/lib/auth-error-messages";
 import { Button } from "@/shared/ui/button";
+import { loginSchema, forgotSchema, type LoginData, type ForgotData } from "./login-schema";
 
 /**
  * Parte 75 — identificador seguro de ambiente na própria tela de login.
@@ -40,17 +40,6 @@ function AuthEnvironmentBadge() {
   );
 }
 
-const loginSchema = z.object({
-  email: z.string().trim().email("E-mail inválido"),
-  password: z.string().min(1, "Senha é obrigatória"),
-});
-
-const forgotSchema = z.object({
-  email: z.string().trim().email("E-mail inválido"),
-});
-
-type LoginData = z.infer<typeof loginSchema>;
-type ForgotData = z.infer<typeof forgotSchema>;
 type Mode = "login" | "forgot";
 
 export default function Auth() {
@@ -245,7 +234,7 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
   });
 
   const onSubmit = async (data: LoginData) => {
-    if (!authRateLimiter.check(data.email)) {
+    if (authRateLimiter.isBlocked(data.email)) {
       const min = Math.ceil(
         authRateLimiter.getTimeUntilReset(data.email) / 60000,
       );
@@ -257,9 +246,16 @@ function LoginForm({ onForgot }: { onForgot: () => void }) {
     try {
       const { error } = await signIn(data.email, data.password);
       if (error) {
-        toast.error(
-          `${describeAuthError(error)} ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`,
-        );
+        // Parte 77 — só uma credencial genuinamente errada consome uma
+        // tentativa; rede/servidor indisponível nunca bloqueia o usuário.
+        if (isCredentialsError(error)) {
+          authRateLimiter.recordFailure(data.email);
+          toast.error(
+            `${describeAuthError(error)} ${authRateLimiter.getRemainingAttempts(data.email)} tentativas restantes.`,
+          );
+        } else {
+          toast.error(describeAuthError(error));
+        }
       } else {
         authRateLimiter.reset(data.email);
         toast.success("Bem-vindo ao MUSIC OS 360!");

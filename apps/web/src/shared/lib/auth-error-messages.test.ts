@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { describeAuthError } from "./auth-error-messages";
+import { describeAuthError, isCredentialsError } from "./auth-error-messages";
 
 describe("describeAuthError", () => {
   it("credenciais inválidas", () => {
@@ -34,5 +34,27 @@ describe("describeAuthError", () => {
     // Supabase retorna a MESMA "Invalid login credentials" para ambos os casos —
     // este teste documenta que não introduzimos nenhuma lógica que diferencie os dois.
     expect(describeAuthError({ message: "Invalid login credentials" })).toBe("Credenciais inválidas.");
+  });
+});
+
+describe("isCredentialsError (Parte 77) — só isso deve consumir uma tentativa do rate limiter", () => {
+  it("true para credenciais inválidas", () => {
+    expect(isCredentialsError({ message: "Invalid login credentials" })).toBe(true);
+  });
+
+  it("false para falha de rede — nunca deve contar como tentativa", () => {
+    expect(isCredentialsError({ message: "Failed to fetch" })).toBe(false);
+  });
+
+  it("false para erro 5xx/servidor — nunca deve contar como tentativa", () => {
+    expect(isCredentialsError({ message: "Internal server error", status: 500 })).toBe(false);
+  });
+
+  it("false para rate limit — já é tratado separadamente", () => {
+    expect(isCredentialsError({ message: "x", status: 429 })).toBe(false);
+  });
+
+  it("false para e-mail não confirmado — não é senha errada", () => {
+    expect(isCredentialsError({ message: "Email not confirmed" })).toBe(false);
   });
 });
