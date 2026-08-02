@@ -83,6 +83,15 @@ class TestController {
   authContext() {
     return { ok: true };
   }
+
+  // Endpoint atômico de troca obrigatória de senha (Parte 74) — também
+  // precisa estar acessível enquanto a flag está true, senão ninguém
+  // consegue sair desse estado.
+  @Roles('viewer')
+  @Get('auth/change-required-password')
+  changeRequiredPassword() {
+    return { ok: true };
+  }
 }
 
 describe('Guard chain composition (RateLimit -> JWT -> Tenant -> Billing -> Roles)', () => {
@@ -224,6 +233,19 @@ describe('Guard chain composition (RateLimit -> JWT -> Tenant -> Billing -> Role
 
     await request(app.getHttpServer())
       .get('/auth/context')
+      .set('Authorization', `Bearer ${token}`)
+      .set('X-Tenant-ID', 'org-1')
+      .expect(200);
+  });
+
+  it('must_change_password=true ainda permite o endpoint atômico de troca (/auth/change-required-password)', async () => {
+    const token = makeToken({ sub: 'user-1', app_metadata: { org_id: 'org-1', role: 'admin', must_change_password: true } });
+    resolveTenant.mockResolvedValue({ id: 'tenant-1', org_id: 'org-1', active: true });
+    resolveMembership.mockResolvedValue({ role: 'admin', role_id: 'role-admin' });
+    getBillingState.mockResolvedValue({ status: 'active' });
+
+    await request(app.getHttpServer())
+      .get('/auth/change-required-password')
       .set('Authorization', `Bearer ${token}`)
       .set('X-Tenant-ID', 'org-1')
       .expect(200);

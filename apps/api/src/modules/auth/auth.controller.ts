@@ -1,4 +1,5 @@
-import { Body, Controller, Get, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, Patch, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentMember } from '../../core/decorators/current-member.decorator';
 import { CurrentTenant } from '../../core/decorators/current-tenant.decorator';
@@ -13,6 +14,12 @@ import { AuthBootstrap } from '../../core/decorators/auth-bootstrap.decorator';
 import { ProvisionWorkspaceDto } from './dto/provision-workspace.dto';
 import { WorkspaceProvisioningService } from './workspace-provisioning.service';
 import { AuthPasswordService } from './auth-password.service';
+import { ChangeRequiredPasswordDto } from './dto/change-required-password.dto';
+
+function extractBearerToken(req: Request): string | null {
+  const header = req.headers['authorization'];
+  return typeof header === 'string' && header.startsWith('Bearer ') ? header.slice(7) : null;
+}
 
 @ApiTags('Auth')
 @ApiBearerAuth()
@@ -45,15 +52,17 @@ export class AuthController {
     return this.provisioning.provision(user, dto);
   }
 
-  @Post('clear-must-change-password')
+  @Post('change-required-password')
   @RequireRole('viewer')
-  @ApiOperation({ summary: 'Confirmar que a senha provisória foi trocada (chamado após updateUser({ password }) no Supabase ter sucesso)' })
-  clearMustChangePassword(
+  @ApiOperation({ summary: 'Troca atômica da senha obrigatória do primeiro login: valida, troca fisicamente no Supabase Auth e limpa must_change_password na mesma operação' })
+  changeRequiredPassword(
     @CurrentUser() user: JwtAuth,
     @CurrentTenant() tenant: Record<string, unknown>,
+    @Req() req: Request,
+    @Body() dto: ChangeRequiredPasswordDto,
   ) {
     const tenantId = typeof tenant?.['id'] === 'string' ? tenant['id'] as string : null;
-    return this.password.clearMustChangePassword(user, tenantId);
+    return this.password.changeRequiredPassword(user, tenantId, dto, extractBearerToken(req));
   }
 
   @Patch('onboarding')

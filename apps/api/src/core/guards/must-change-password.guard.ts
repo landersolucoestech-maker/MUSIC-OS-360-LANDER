@@ -11,10 +11,12 @@
  * poderia contornar).
  *
  * A allowlist inclui deliberadamente /auth/context (o frontend precisa
- * disso pra saber que deve mostrar a tela de troca de senença) e
- * /auth/clear-must-change-password (o único jeito de sair deste estado),
- * mas NÃO /auth/onboarding — a sequência é sempre trocar senha primeiro,
- * depois (se aplicável) o assistente de configuração da empresa.
+ * disso pra saber que deve mostrar a tela de troca de senha) e
+ * /auth/change-required-password (Parte 74 — o único endpoint que pode
+ * tirar a conta deste estado, e só faz isso de forma atômica: troca a
+ * senha de verdade E limpa a flag na mesma chamada Admin API), mas NÃO
+ * /auth/onboarding — a sequência é sempre trocar senha primeiro, depois
+ * (se aplicável) o assistente de configuração da empresa.
  */
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
@@ -26,7 +28,7 @@ import { AUTH_DISABLED } from '../auth-disabled';
 const ALWAYS_ALLOWED_PREFIXES = [
   '/auth/logout',
   '/auth/context',
-  '/auth/clear-must-change-password',
+  '/auth/change-required-password',
   '/health',
 ];
 

@@ -38,9 +38,9 @@ describe('MustChangePasswordGuard', () => {
     expect(guard.canActivate(context('/api/v1/auth/context', { must_change_password: true }))).toBe(true);
   });
 
-  it('permite /auth/clear-must-change-password mesmo com a flag true (única forma de sair do estado)', () => {
+  it('permite /auth/change-required-password mesmo com a flag true (única forma de sair do estado)', () => {
     const guard = setup();
-    expect(guard.canActivate(context('/api/v1/auth/clear-must-change-password', { must_change_password: true }))).toBe(true);
+    expect(guard.canActivate(context('/api/v1/auth/change-required-password', { must_change_password: true }))).toBe(true);
   });
 
   it('permite rota comum quando must_change_password é false ou ausente', () => {
