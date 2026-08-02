@@ -150,6 +150,7 @@ import { HardenRbacCatalogRls20260731000001 } from './20260731000001_HardenRbacC
 import { RealtimeBroadcastAuthorization20260801000001 } from './20260801000001_RealtimeBroadcastAuthorization';
 import { TenantZeroFormalization20260801000002 } from './20260801000002_TenantZeroFormalization';
 import { GrantMusicosAppOnAllTables20260802000001 } from './20260802000001_GrantMusicosAppOnAllTables';
+import { GrantMusicosAppAuthenticatedMembership20260802000002 } from './20260802000002_GrantMusicosAppAuthenticatedMembership';
 
 export const ALL_MIGRATIONS = [
   InitialSchema20240101000000,
@@ -288,4 +289,5 @@ export const ALL_MIGRATIONS = [
   RealtimeBroadcastAuthorization20260801000001,
   TenantZeroFormalization20260801000002,
   GrantMusicosAppOnAllTables20260802000001,
+  GrantMusicosAppAuthenticatedMembership20260802000002,
 ] as const;
