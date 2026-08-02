@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { GitBranch, Plus, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Download, GitBranch, Plus, Users } from "lucide-react";
 import { MainLayout } from "@/shared/components/MainLayout";
 import { Button } from "@/shared/ui/button";
 import { MetricCard } from "@/shared/components/MetricCard";
@@ -184,7 +185,7 @@ function leadToFormInitial(lead: Lead): Partial<LeadFormPayload> {
     nome_artista_servico: str("nome_artista_servico"),
     descricao:            str("descricao"),
     origem_lead:          (crm.origemLead         as string) ?? "",
-    status_lead:          (crm.statusLead         as string) ?? "novo_lead",
+    status_lead:          (crm.statusLead         as string) ?? "novo",
     prioridade:           (crm.prioridade         as string) ?? "media",
     campanha_marketing:   (crm.campanha_marketing as string) ?? "",
     proximo_follow_up:    (crm.proximoFollowUp    as string) ?? "",
@@ -235,6 +236,7 @@ function leadToFormInitial(lead: Lead): Partial<LeadFormPayload> {
 // Página
 // ─────────────────────────────────────────────
 export default function LeadsPage() {
+  const navigate = useNavigate();
   const { leads, metrics, createLead, updateLead, deleteLead } = useLeads();
   const { contacts, createContact }                            = useContacts();
   const { filters, setFilters }                                = useLeadFiltersStore();
@@ -294,18 +296,38 @@ export default function LeadsPage() {
     setModalOpen(true);
   }
 
-  const topbarActions =
-    activeTab === "leads" ? (
-      <Button size="sm" onClick={openCreate} data-testid="button-novo-lead">
-        <Plus className="mr-1 h-4 w-4" />
-        Novo Lead
-      </Button>
-    ) : (
-      <Button size="sm" onClick={() => setContatoModalOpen(true)} data-testid="button-novo-contato">
-        <Plus className="mr-1 h-4 w-4" />
-        Novo Contato
-      </Button>
-    );
+  // Exportação real do CRM: reaproveita a Central de Relatórios (dados
+  // completos do tenant, RBAC, tenant isolation, formula injection mitigada —
+  // ver Parte 79). Nenhuma implementação client-side paralela.
+  const exportButton = (
+    <Button
+      size="sm"
+      variant="outline"
+      onClick={() => navigate("/relatorios")}
+      title="Exporta pela Central de Relatórios (dados completos do tenant)"
+      data-testid="button-exportar-crm"
+    >
+      <Download className="mr-1 h-4 w-4" />
+      Exportar
+    </Button>
+  );
+
+  const topbarActions = (
+    <div className="flex items-center gap-2">
+      {exportButton}
+      {activeTab === "leads" ? (
+        <Button size="sm" onClick={openCreate} data-testid="button-novo-lead">
+          <Plus className="mr-1 h-4 w-4" />
+          Novo Lead
+        </Button>
+      ) : (
+        <Button size="sm" onClick={() => setContatoModalOpen(true)} data-testid="button-novo-contato">
+          <Plus className="mr-1 h-4 w-4" />
+          Novo Contato
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <MainLayout

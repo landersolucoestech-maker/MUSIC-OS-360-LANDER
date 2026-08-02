@@ -150,17 +150,20 @@ export const ORIGEM_LEAD_OPTIONS = [
 
 export type OrigemLead = (typeof ORIGEM_LEAD_OPTIONS)[number]["value"];
 
+// Alinhado 1:1 ao enum real LeadStatus (@music-os-360/types) e ao workflow
+// apps/api/src/core/workflow/definitions/leads.workflow.ts — a lista anterior
+// (novo_lead/proposta_enviada/follow_up/confirmado/arquivado) não existia no
+// backend; qualquer PATCH com esses valores era rejeitado por @IsIn(STATUSES).
 export const STATUS_LEAD_OPTIONS = [
-  { value: "novo_lead",        label: "Novo lead"         },
-  { value: "qualificado",      label: "Qualificado"       },
-  { value: "em_contato",       label: "Em contato"        },
-  { value: "proposta_enviada", label: "Proposta enviada"  },
-  { value: "negociacao",       label: "Negociação"        },
-  { value: "follow_up",        label: "Follow-up"         },
-  { value: "confirmado",       label: "Confirmado"        },
-  { value: "fechado",          label: "Fechado"           },
-  { value: "perdido",          label: "Perdido"           },
-  { value: "arquivado",        label: "Arquivado"         },
+  { value: "novo",        label: "Novo"           },
+  { value: "contato",     label: "Contato"        },
+  { value: "em_contato",  label: "Em contato"     },
+  { value: "qualificado", label: "Qualificado"    },
+  { value: "proposta",    label: "Proposta"       },
+  { value: "negociacao",  label: "Negociação"     },
+  { value: "fechado",     label: "Fechado"        },
+  { value: "perdido",     label: "Perdido"        },
+  { value: "inativo",     label: "Inativo/Arquivado" },
 ] as const satisfies ReadonlyArray<Option>;
 
 export type StatusLead = (typeof STATUS_LEAD_OPTIONS)[number]["value"];

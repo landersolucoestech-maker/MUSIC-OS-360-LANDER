@@ -242,7 +242,7 @@ const buildDefaults = (
   origem_lead:          initial?.origem_lead          ?? "",
   campanha_marketing:   initial?.campanha_marketing   ?? "",
   data_entrada:         initial?.data_entrada         ?? todayISO(),
-  status_lead:          initial?.status_lead          ?? "novo_lead",
+  status_lead:          initial?.status_lead          ?? "novo",
   prioridade:           initial?.prioridade           ?? "media",
   responsavel:          initial?.responsavel          ?? "",
   proximo_follow_up:    initial?.proximo_follow_up    ?? "",

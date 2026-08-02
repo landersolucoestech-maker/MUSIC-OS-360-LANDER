@@ -28,6 +28,20 @@ export class CreateLeadDto {
   @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) assignedTo?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+
+  // ── Campos do CRM musical (colunas físicas reais de `leads`) ───────────────
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) nomeArtistico?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) empresa?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(50)  whatsapp?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) instagram?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) cidade?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80)  estado?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80)  pais?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80)  tipoCliente?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) tipoServico?: string;
+  @ApiPropertyOptional() @IsOptional() @IsObject() payloadServico?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() @IsObject() dadosInternosCRM?: Record<string, unknown>;
+  @ApiPropertyOptional() @IsOptional() uploads?: unknown[];
 }
 
 export class UpdateLeadDto extends PartialType(CreateLeadDto) {
