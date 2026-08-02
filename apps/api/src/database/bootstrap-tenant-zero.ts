@@ -23,9 +23,15 @@
  *    tenant/organização comum com `plan='enterprise'`,
  *    `billing_status='active'` (o mesmo caminho de billing usado por
  *    qualquer cliente enterprise real, não uma isenção especial).
- *  - Em produção, exige um owner real via
- *    TENANT_ZERO_OWNER_AUTH_USER_ID/TENANT_ZERO_OWNER_EMAIL (falha se
- *    ausentes) — nunca cria o owner sintético de DEV/STAGING em produção.
+ *  - Em produção, exige um owner real (falha se ausente) — nunca cria o
+ *    owner sintético de DEV/STAGING em produção.
+ *  - Fora de produção, um owner real (`realOwner`) é opcional — quando
+ *    fornecido (ex.: TENANT_ZERO_OWNER_EMAIL setado, ver
+ *    bootstrap-tenant-zero.cli.ts), substitui o sintético mesmo em DEV/
+ *    STAGING. Só na primeira criação da linha, também semeia
+ *    `tenants.settings.onboarding.completed = false` para que o primeiro
+ *    login do owner real caia no assistente de configuração da empresa já
+ *    existente no frontend (nunca reseta isso em reruns).
  */
 import type { DataSource } from 'typeorm';
 import {
@@ -44,6 +50,19 @@ export interface BootstrapTenantZeroResult {
   orgId: string;
   tenantId: string;
   created: boolean;
+}
+
+/**
+ * Owner real do tenant-zero — já deve existir como usuário Supabase Auth de
+ * verdade (ver bootstrap-tenant-zero.cli.ts, que cria/localiza esse usuário
+ * e seta app_metadata.must_change_password=true antes de chamar esta
+ * função). Esta função pura nunca fala com a API do Supabase — só grava as
+ * linhas relacionais que apontam para o auth_user_id já existente.
+ */
+export interface RealOwnerInput {
+  authUserId: string;
+  email: string;
+  fullName?: string | null;
 }
 
 class TenantZeroInvariantError extends Error {}
@@ -89,7 +108,7 @@ async function assertIdentityMatchesIfExists(
   return { exists: true };
 }
 
-export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTenantZeroResult> {
+export async function bootstrapTenantZero(ds: DataSource, realOwner?: RealOwnerInput | null): Promise<BootstrapTenantZeroResult> {
   await assertNoConflictingSystemTenant(ds, 'organizations', TENANT_ZERO_ORG_ID);
   await assertNoConflictingSystemTenant(ds, 'tenants', TENANT_ZERO_TENANT_ID);
 
@@ -98,6 +117,12 @@ export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTena
 
   const created = !orgExists;
   const isProduction = (process.env['NODE_ENV'] ?? 'development') === 'production';
+
+  if (isProduction && !realOwner) {
+    throw new TenantZeroInvariantError(
+      'Em produção, um owner real (RealOwnerInput) é obrigatório — o owner sintético de DEV/STAGING nunca é criado em produção.',
+    );
+  }
 
   await ds.query(
     `
@@ -109,14 +134,22 @@ export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTena
     [TENANT_ZERO_ORG_ID, TENANT_ZERO_NAME, TENANT_ZERO_SLUG],
   );
 
+  // `settings` só é definido no INSERT (nunca no ON CONFLICT UPDATE) — assim
+  // reruns do bootstrap nunca resetam o progresso de onboarding que o owner
+  // real já tenha feito. Só semeia onboarding incompleto quando um owner
+  // real está sendo atribuído — o owner sintético não passa por wizard.
+  const initialTenantSettings = realOwner
+    ? JSON.stringify({ onboarding: { completed: false, currentStep: 'company_profile' } })
+    : JSON.stringify({});
+
   await ds.query(
     `
-    INSERT INTO tenants (id, org_id, name, slug, plan, active, is_system_tenant)
-    VALUES ($1, $2, $3, $4, 'enterprise', TRUE, true)
+    INSERT INTO tenants (id, org_id, name, slug, plan, active, is_system_tenant, settings)
+    VALUES ($1, $2, $3, $4, 'enterprise', TRUE, true, $5::jsonb)
     ON CONFLICT (id) DO UPDATE
       SET name = EXCLUDED.name, slug = EXCLUDED.slug, active = TRUE, is_system_tenant = true
     `,
-    [TENANT_ZERO_TENANT_ID, TENANT_ZERO_ORG_ID, TENANT_ZERO_NAME, TENANT_ZERO_SLUG],
+    [TENANT_ZERO_TENANT_ID, TENANT_ZERO_ORG_ID, TENANT_ZERO_NAME, TENANT_ZERO_SLUG, initialTenantSettings],
   );
 
   // Billing: mesmo caminho normal de qualquer tenant enterprise ativo — não
@@ -130,25 +163,17 @@ export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTena
     [TENANT_ZERO_ORG_ID],
   );
 
-  if (isProduction) {
-    const ownerAuthUserId = process.env['TENANT_ZERO_OWNER_AUTH_USER_ID'];
-    const ownerEmail = process.env['TENANT_ZERO_OWNER_EMAIL'];
-    if (!ownerAuthUserId || !ownerEmail) {
-      throw new TenantZeroInvariantError(
-        'Em produção, TENANT_ZERO_OWNER_AUTH_USER_ID e TENANT_ZERO_OWNER_EMAIL são obrigatórias ' +
-        '(um owner real, provisionado por processo seguro) — o owner sintético de DEV/STAGING nunca é criado em produção.',
-      );
-    }
+  if (realOwner) {
     await ds.query(
       `
-      INSERT INTO org_members (org_id, tenant_id, auth_user_id, email, role, role_id, is_active)
-      VALUES ($1, $2, $3, $4, 'owner',
+      INSERT INTO org_members (org_id, tenant_id, auth_user_id, email, full_name, role, role_id, is_active)
+      VALUES ($1, $2, $3, $4, $5, 'owner',
         (SELECT id FROM roles WHERE slug = 'owner' AND tenant_id IS NULL AND deleted_at IS NULL AND archived_at IS NULL LIMIT 1),
         TRUE)
       ON CONFLICT (tenant_id, auth_user_id) DO UPDATE
         SET role = EXCLUDED.role, role_id = EXCLUDED.role_id, is_active = TRUE
       `,
-      [TENANT_ZERO_ORG_ID, TENANT_ZERO_TENANT_ID, ownerAuthUserId, ownerEmail],
+      [TENANT_ZERO_ORG_ID, TENANT_ZERO_TENANT_ID, realOwner.authUserId, realOwner.email, realOwner.fullName ?? null],
     );
   } else {
     await ds.query(
@@ -172,7 +197,12 @@ export async function bootstrapTenantZero(ds: DataSource): Promise<BootstrapTena
     [
       TENANT_ZERO_ORG_ID,
       created ? TENANT_ZERO_AUDIT_ACTION_CREATED : TENANT_ZERO_AUDIT_ACTION_VERIFIED,
-      JSON.stringify({ name: TENANT_ZERO_NAME, slug: TENANT_ZERO_SLUG, is_system_tenant: true }),
+      JSON.stringify({
+        name: TENANT_ZERO_NAME,
+        slug: TENANT_ZERO_SLUG,
+        is_system_tenant: true,
+        owner_type: realOwner ? 'real' : 'synthetic',
+      }),
     ],
   );
 
