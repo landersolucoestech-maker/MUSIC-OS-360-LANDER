@@ -49,14 +49,22 @@ export async function migrateApplication(dataSource: DataSource): Promise<Migrat
       if (!migration.instance) {
         throw new Error(`Migration "${migration.name}" sem instância carregada — verifique migrations/index.ts.`);
       }
-      await queryRunner.startTransaction();
+
+      // Respeita o override por-migration (ex.: `transaction = false` em
+      // PerformanceIndexes20260521000030, que usa CREATE INDEX CONCURRENTLY —
+      // proibido dentro de um bloco de transação). Mesma regra que
+      // MigrationExecutor.executePendingMigrations() aplica internamente;
+      // ignorá-la faz qualquer migration assim falhar sempre neste executor.
+      const useTransaction = migration.instance.transaction !== false;
+
+      if (useTransaction) await queryRunner.startTransaction();
       try {
         await migration.instance.up(queryRunner);
         await executor.insertMigration(migration);
-        await queryRunner.commitTransaction();
+        if (useTransaction) await queryRunner.commitTransaction();
         applied.push(migration.name);
       } catch (err) {
-        await queryRunner.rollbackTransaction().catch(() => { /* re-lançamos o erro original abaixo */ });
+        if (useTransaction) await queryRunner.rollbackTransaction().catch(() => { /* re-lançamos o erro original abaixo */ });
         throw new Error(`Migration APPLICATION "${migration.name}" falhou: ${(err as Error).message}`);
       }
     }
