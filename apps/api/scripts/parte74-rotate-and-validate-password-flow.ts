@@ -53,13 +53,14 @@ async function startCompiledApi(): Promise<ChildProcess> {
   const deadline = Date.now() + 60_000;
   while (Date.now() < deadline) {
     try {
-      const res = await fetch(`${baseUrl}/health`);
+      // /health (raiz) exige auth — só /health/live é @Public().
+      const res = await fetch(`${baseUrl}/health/live`);
       if (res.ok) return child;
     } catch { /* ainda subindo */ }
     await sleep(1000);
   }
   child.kill('SIGKILL');
-  throw new Error('API compilada não respondeu em /health dentro do timeout.');
+  throw new Error('API compilada não respondeu em /health/live dentro do timeout.');
 }
 
 function decodeJwt(token: string): Record<string, unknown> {
