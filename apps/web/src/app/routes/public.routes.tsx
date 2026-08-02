@@ -12,6 +12,7 @@ import type { SuspenseRouteComponent } from "./types";
 const Auth = lazy(() => import("@/modules/auth/pages/Auth"));
 const Register = lazy(() => import("@/modules/auth/pages/Register"));
 const ResetPassword = lazy(() => import("@/modules/auth/pages/ResetPassword"));
+const ChangeRequiredPassword = lazy(() => import("@/modules/auth/pages/ChangeRequiredPassword"));
 const ArtistaSignupPublic = lazy(() => import("@/modules/auth/pages/ArtistaSignupPublic"));
 const NotFound = lazy(() => import("@/shared/pages/NotFound"));
 const OAuthPopupPage    = lazy(() => import("@/modules/integrations/pages/OAuthPopupPage"));
@@ -28,6 +29,7 @@ export function publicRoutes(S: SuspenseRouteComponent) {
       <Route path="/register" element={<S><Register /></S>} />
       <Route path="/signup" element={<S><Register /></S>} />
       <Route path="/reset-password" element={<S><ResetPassword /></S>} />
+      <Route path="/change-required-password" element={<S><ChangeRequiredPassword /></S>} />
       <Route path="/captar" element={<Navigate to="/leads" replace />} />
       <Route path="/cadastro/:orgSlug" element={<S><ArtistaSignupPublic /></S>} />
       <Route path="*" element={<S><NotFound /></S>} />

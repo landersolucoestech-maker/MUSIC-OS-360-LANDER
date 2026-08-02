@@ -23,6 +23,8 @@ export interface User {
   email?: string;
   role?: AppRole | string;
   org_id?: string;
+  /** app_metadata.must_change_password do JWT — troca de senha obrigatória pendente (Parte 74). */
+  mustChangePassword?: boolean;
   user_metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }

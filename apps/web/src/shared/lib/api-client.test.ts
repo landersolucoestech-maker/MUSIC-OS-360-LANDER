@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { api, setAccessToken, setTenantId } from "./api-client";
+import { PasswordChangeRequiredError, TenantError } from "./errors";
 
 function mockResponse(body: unknown, status = 200): void {
   vi.stubGlobal(
@@ -59,5 +60,17 @@ describe("api-client response contract", () => {
     mockResponse(undefined, 204);
 
     await expect(api.delete("/financial-categories/category-1")).resolves.toBeUndefined();
+  });
+
+  it("maps a 403 MUST_CHANGE_PASSWORD body to PasswordChangeRequiredError (Parte 74)", async () => {
+    mockResponse({ statusCode: 403, error: "MUST_CHANGE_PASSWORD", message: "Troca de senha obrigatória." }, 403);
+
+    await expect(api.get("/artists")).rejects.toBeInstanceOf(PasswordChangeRequiredError);
+  });
+
+  it("maps any other 403 body to the generic TenantError (unchanged behavior)", async () => {
+    mockResponse({ statusCode: 403, error: "TENANT_SUSPENDED", message: "Tenant suspenso." }, 403);
+
+    await expect(api.get("/artists")).rejects.toBeInstanceOf(TenantError);
   });
 });

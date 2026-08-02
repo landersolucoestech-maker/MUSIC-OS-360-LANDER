@@ -75,6 +75,16 @@ export class TenantError extends DomainError {
   }
 }
 
+// ─── Password change required ───────────────────────────────────────────────
+
+/** Backend recusou a requisição porque a conta tem troca de senha obrigatória pendente (Parte 74). */
+export class PasswordChangeRequiredError extends DomainError {
+  constructor(message = "Troca de senha obrigatória antes de continuar.") {
+    super(message, "MUST_CHANGE_PASSWORD", "warn");
+    this.name = "PasswordChangeRequiredError";
+  }
+}
+
 // ─── Not Found ───────────────────────────────────────────────────────────────
 
 /** Recurso não encontrado. */

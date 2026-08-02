@@ -14,6 +14,7 @@ import {
   NotFoundError,
   ConflictError,
   IntegrationError,
+  PasswordChangeRequiredError,
 } from "./errors";
 import { API_BASE_URL } from "./env";
 
@@ -100,7 +101,7 @@ export const PENDING_TABLES: Record<string, string> = {
 };
 
 async function mapError(res: Response): Promise<never> {
-  let body: { message?: string | string[] } = {};
+  let body: { message?: string | string[]; error?: string } = {};
   try {
     body = (await res.json()) as typeof body;
   } catch {}
@@ -112,6 +113,13 @@ async function mapError(res: Response): Promise<never> {
     case 400:
       throw new ValidationError(msg);
     case 403:
+      // GlobalExceptionFilter preserva o `error` code de guards como
+      // MustChangePasswordGuard (ver apps/api/.../global-exception.filter.ts) —
+      // sem isso, todo 403 virava um TenantError genérico e o frontend não
+      // tinha como saber que precisava mostrar a tela de troca de senha.
+      if (body.error === "MUST_CHANGE_PASSWORD") {
+        throw new PasswordChangeRequiredError(msg);
+      }
       throw new TenantError("", "", msg);
     case 404:
       throw new NotFoundError(msg, "");

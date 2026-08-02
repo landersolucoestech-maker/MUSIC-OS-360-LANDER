@@ -70,6 +70,15 @@ interface AuthContextType {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: AuthError | null }>;
   updatePassword: (password: string) => Promise<{ error: AuthError | null }>;
+  /**
+   * Troca atômica da senha obrigatória do primeiro login (Parte 74):
+   * chama POST /auth/change-required-password (o backend troca a senha de
+   * verdade no Supabase Auth E limpa must_change_password na mesma
+   * operação), depois força refreshSession() para que o novo JWT (sem a
+   * flag) chegue ao app — sem isso, o usuário ficaria preso na tela de
+   * troca mesmo após o backend já ter concluído com sucesso.
+   */
+  changeRequiredPassword: (newPassword: string, confirmPassword: string) => Promise<{ error: AuthError | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -83,6 +92,7 @@ function mapSupabaseUser(u: SupabaseUser, jwtAppMeta?: Record<string, unknown>):
     email: u.email,
     role: (effectiveApp?.["role"] ?? meta?.["role"]) as string | undefined,
     org_id: (effectiveApp?.["org_id"] ?? meta?.["org_id"]) as string | undefined,
+    mustChangePassword: effectiveApp?.["must_change_password"] === true,
     user_metadata: { ...meta, ...effectiveApp },
   };
 }
@@ -295,8 +305,35 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     return { error: null };
   };
 
+  const changeRequiredPassword = async (
+    newPassword: string,
+    confirmPassword: string,
+  ): Promise<{ error: AuthError | null }> => {
+    try {
+      await api.post("/auth/change-required-password", { newPassword, confirmPassword });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Não foi possível trocar a senha.";
+      return { error: { message } };
+    }
+
+    // O backend já confirmou a troca física + limpeza de must_change_password
+    // (operação atômica — ver auth-password.service.ts). O JWT que o
+    // frontend ainda tem em memória é que está desatualizado: refreshSession()
+    // busca um novo access_token já sem a flag, disparando TOKEN_REFRESHED
+    // via onAuthStateChange (acima), que atualiza session/user automaticamente.
+    const { data, error: refreshError } = await getSupabaseClient().auth.refreshSession();
+    if (refreshError || !data.session) {
+      return { error: { message: refreshError?.message ?? "Senha trocada, mas não foi possível renovar a sessão. Faça login novamente." } };
+    }
+    const mapped = applyApiSessionState(data.session);
+    setSession(mapped);
+    setUser(mapped.user);
+
+    return { error: null };
+  };
+
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword, updatePassword }}>
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword, updatePassword, changeRequiredPassword }}>
       {children}
     </AuthContext.Provider>
   );

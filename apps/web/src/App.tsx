@@ -55,6 +55,17 @@ function AuthGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function PasswordChangeGuard({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  // Espelha o MustChangePasswordGuard do backend: enquanto a flag estiver
+  // ligada, nenhuma rota de domínio é alcançável, mesmo que o backend já
+  // tivesse (por bug de UI) deixado passar — a defesa real é o guard do
+  // backend; este redirect só evita o usuário ficar preso vendo erros 403
+  // avulsos sem saber o motivo.
+  if (user?.mustChangePassword) return <Navigate to="/change-required-password" replace />;
+  return <>{children}</>;
+}
+
 function BillingGuard({ children }: { children: React.ReactNode }) {
   const billing = useBilling();
   const location = window.location.pathname;
@@ -72,6 +83,7 @@ function Home() {
   if (AUTH_DISABLED) return <Navigate to="/dashboard" replace />;
   if (loading) return <PageSkeleton />;
   if (!user) return <Landing />;
+  if (user.mustChangePassword) return <Navigate to="/change-required-password" replace />;
   if (!tenant.onboarding.completed) return <Navigate to="/onboarding" replace />;
   return <Navigate to="/dashboard" replace />;
 }
@@ -79,7 +91,7 @@ function Home() {
 const ProtectedRoute: SuspenseRouteComponent = ({ children }) => (
   <RouteErrorBoundary>
     <Suspense fallback={<PageSkeleton />}>
-      <AuthGuard><BillingGuard>{children}</BillingGuard></AuthGuard>
+      <AuthGuard><PasswordChangeGuard><BillingGuard>{children}</BillingGuard></PasswordChangeGuard></AuthGuard>
     </Suspense>
   </RouteErrorBoundary>
 );
