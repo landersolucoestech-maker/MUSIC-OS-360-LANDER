@@ -1,0 +1,78 @@
+name: Dev Apply Application Migrations Oneoff (Parte 72 — temporary, removed after use)
+
+# Manually-triggered (via scoped push, since workflow_dispatch only registers
+# from the default branch, which is never touched here), one-off workflow to
+# apply pending APPLICATION migrations (TenantZeroFormalization20260801000002)
+# and bootstrap the tenant-zero on the real Supabase DEV branch, reusing the
+# same "development" GitHub Environment DATABASE_URL secret the read-only CI
+# jobs already use. Segmented executor (db:migrate:application) — deliberately
+# does NOT touch RealtimeBroadcastAuthorization20260801000001
+# (EXTERNAL_MANAGED, confirmed blocked by Supabase-managed schema ownership).
+# Committed, run once, then removed in a follow-up commit.
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/dev-apply-application-oneoff.yml"
+
+concurrency:
+  group: dev-apply-application-oneoff
+  cancel-in-progress: false
+
+jobs:
+  apply-application-dev:
+    name: Apply APPLICATION migrations + bootstrap tenant-zero on Supabase DEV
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.ref == 'refs/heads/dev'
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NODE_VERSION: "20"
+      PNPM_VERSION: "10.11.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
+
+      - name: db:check:application (before) — informational, must not block migrate
+        run: pnpm --filter @music-os-360/api db:check:application
+        continue-on-error: true
+
+      - name: db:migrate:application — apply every pending APPLICATION migration
+        run: pnpm --filter @music-os-360/api db:migrate:application
+
+      - name: db:check:application (after) — must report zero pending
+        run: pnpm --filter @music-os-360/api db:check:application
+
+      - name: Migration source-of-truth guard
+        run: node scripts/verify-migration-source-of-truth.mjs
+
+      - name: verify:rls (all tenant tables have RLS + policies)
+        run: pnpm --filter @music-os-360/api verify:rls
+
+      - name: verify:tenant-isolation (real cross-tenant DB proof)
+        run: pnpm --filter @music-os-360/api verify:tenant-isolation
+
+      - name: verify:realtime-external — informational, Realtime stays externally blocked
+        run: pnpm --filter @music-os-360/api verify:realtime-external
+        continue-on-error: true
+
+      - name: Bootstrap tenant-zero (LANDER RECORDS) — first run
+        run: pnpm --filter @music-os-360/api db:bootstrap:tenant-zero
+
+      - name: Bootstrap tenant-zero — second run (must be idempotent, no duplication)
+        run: pnpm --filter @music-os-360/api db:bootstrap:tenant-zero
