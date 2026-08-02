@@ -7,11 +7,17 @@
  *      qualquer senha anterior no Supabase Auth, incluindo a senha
  *      comprometida da Parte 73 — sem nunca precisar reler ou retransmitir
  *      o valor antigo, que não é usado em nenhum momento deste script).
- *   2) Sobe a API real (createApp(), mesmos guards/filters/pipes de
- *      produção) e valida de ponta a ponta, contra HTTP real:
+ *   2) Sobe a API real COMPILADA (dist/apps/api/src/main.js — mesmo binário
+ *      que roda em produção/Docker, com os mesmos guards/filters/pipes) como
+ *      processo filho, e valida de ponta a ponta, contra HTTP real:
  *      bloqueio de rotas comuns, endpoint atômico de troca (mismatch,
  *      senha fraca, reuso, sucesso), auditoria, invalidação física da
  *      senha antiga, e desbloqueio real de uma rota de domínio.
+ *      (Importar AppModule diretamente dentro deste script via `tsx` NÃO
+ *      funciona — esbuild não emite decorator metadata, e o DI do Nest
+ *      passa a injetar `undefined` em providers com dependências implícitas
+ *      por tipo, como RealtimeService(ConfigService); rodar o binário já
+ *      compilado por `tsc` evita esse problema inteiramente.)
  *   3) Rotaciona novamente para a senha provisória FINAL (a que será
  *      entregue ao usuário), com must_change_password=true, e revoga as
  *      sessões de teste.
@@ -20,14 +26,41 @@
  * TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK=yes (mesmo padrão da Parte 73).
  */
 import 'reflect-metadata';
+import * as path from 'path';
+import { spawn, type ChildProcess } from 'child_process';
 import { createClient } from '@supabase/supabase-js';
-import { createApp } from '../src/create-app';
 import { generateStrongPassword } from '../src/core/security/generate-strong-password';
-import { DATA_SOURCE } from '../src/database/database.tokens';
-import { DatabaseContextService } from '../src/database/database-context.service';
-import type { DataSource } from 'typeorm';
+import { AppDataSource } from '../src/database/datasource';
 
 const EMAIL = process.env['TENANT_ZERO_OWNER_EMAIL'] ?? 'deyvisson@landerrecords.com';
+const PORT = process.env['PARTE74_VALIDATION_PORT'] ?? '3099';
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function startCompiledApi(): Promise<ChildProcess> {
+  const cwd = path.resolve(__dirname, '..'); // apps/api
+  const child = spawn('node', ['dist/apps/api/src/main.js'], {
+    cwd,
+    env: { ...process.env, PORT },
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  child.stdout?.on('data', (chunk) => process.stdout.write(`  [api] ${chunk}`));
+  child.stderr?.on('data', (chunk) => process.stderr.write(`  [api:err] ${chunk}`));
+
+  const baseUrl = `http://127.0.0.1:${PORT}/api/v1`;
+  const deadline = Date.now() + 60_000;
+  while (Date.now() < deadline) {
+    try {
+      const res = await fetch(`${baseUrl}/health`);
+      if (res.ok) return child;
+    } catch { /* ainda subindo */ }
+    await sleep(1000);
+  }
+  child.kill('SIGKILL');
+  throw new Error('API compilada não respondeu em /health dentro do timeout.');
+}
 
 function decodeJwt(token: string): Record<string, unknown> {
   const payload = token.split('.')[1];
@@ -79,16 +112,13 @@ async function main(): Promise<void> {
   assert((claimsA['app_metadata'] as Record<string, unknown>)['must_change_password'] === true, 'JWT não reflete must_change_password=true após rotação.');
   step('Login com senha de teste #1 OK — JWT confirma must_change_password=true');
 
-  // ── 4) Subir a API real (mesmos guards/filters/pipes de produção) ────────
-  const app = await createApp();
-  await app.listen(0);
-  const address = app.getHttpServer().address();
-  const port = typeof address === 'object' && address ? address.port : 0;
-  const baseUrl = `http://127.0.0.1:${port}/api/v1`;
-  step(`API real no ar em ${baseUrl}`);
+  // ── 4) Subir a API real compilada (mesmo binário de produção) ────────────
+  const apiProcess = await startCompiledApi();
+  const baseUrl = `http://127.0.0.1:${PORT}/api/v1`;
+  step(`API real (compilada) no ar em ${baseUrl}`);
 
-  const httpAs = (token: string) => (path: string, init: RequestInit = {}) =>
-    fetch(`${baseUrl}${path}`, {
+  const httpAs = (token: string) => (urlPath: string, init: RequestInit = {}) =>
+    fetch(`${baseUrl}${urlPath}`, {
       ...init,
       headers: {
         'Content-Type': 'application/json',
@@ -148,22 +178,22 @@ async function main(): Promise<void> {
     assert(successBody.data?.passwordChanged === true, 'resposta não confirma passwordChanged=true');
     step('Troca de senha bem-sucedida — Supabase Auth confirmou a atualização física');
 
-    // auditoria
-    const ds = app.get<DataSource>(DATA_SOURCE);
-    const dbCtx = app.get(DatabaseContextService);
+    // auditoria — leitura direta via a mesma DataSource "owner" usada pelos
+    // scripts de bootstrap (não passa pela RLS de aplicação, então não
+    // precisa de contexto de tenant para enxergar a linha recém-inserida).
     try {
-      const rows = await dbCtx.runInTenantContext({ orgId, role: 'owner' }, (manager) =>
-        manager.query(
-          `SELECT action, entity_id, created_at FROM audit_logs WHERE action = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 1`,
-          ['user.password_changed', userId],
-        ),
+      if (!AppDataSource.isInitialized) await AppDataSource.initialize();
+      const rows = await AppDataSource.query(
+        `SELECT action, entity_id, created_at FROM audit_logs WHERE action = $1 AND entity_id = $2 ORDER BY created_at DESC LIMIT 1`,
+        ['user.password_changed', userId],
       );
       assert(Array.isArray(rows) && rows.length > 0, 'Nenhum audit_logs.user.password_changed encontrado para este userId.');
       step('Auditoria confirmada: audit_logs.user.password_changed registrado');
     } catch (auditErr) {
       console.warn(`  (aviso, não-fatal) não foi possível confirmar auditoria via query direta: ${(auditErr as Error).message}`);
+    } finally {
+      if (AppDataSource.isInitialized) await AppDataSource.destroy();
     }
-    void ds;
 
     // senha de teste #1 (agora antiga) deve falhar
     const oldLoginAttempt = await anon.auth.signInWithPassword({ email: EMAIL, password: testPasswordA });
@@ -187,7 +217,7 @@ async function main(): Promise<void> {
     await admin.auth.admin.signOut(tokenB, 'global').catch(() => {});
     step('Sessões de teste revogadas');
   } finally {
-    await app.close();
+    apiProcess.kill('SIGTERM');
   }
 
   // ── 5) Rotação final — senha provisória para entrega real ────────────────
