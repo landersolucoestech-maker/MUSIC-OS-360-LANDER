@@ -1,0 +1,70 @@
+name: Dev Migrate Oneoff (Parte 71 — temporary, removed after use)
+
+# Manually-triggered, one-off workflow to apply pending TypeORM migrations
+# and bootstrap the tenant-zero to the real Supabase DEV branch, reusing the
+# same "development" GitHub Environment DATABASE_URL secret that "DB Verify —
+# Supabase DEV" (ci.yml) already uses read-only. No local session in this
+# repo has a working owner-level credential for DEV; this workflow lets CI's
+# already-configured, already-working secret do it instead, guarded exactly
+# like the read-only job (verify-supabase-dev-ref.ts rejects MAIN/STAGING/any
+# unrecognized ref before a single query runs). Committed, run once, then
+# removed in a follow-up commit — not meant to be a permanent CI job.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: dev-migrate-oneoff
+  cancel-in-progress: false
+
+jobs:
+  migrate-dev:
+    name: Apply pending migrations + bootstrap tenant-zero on Supabase DEV
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.ref == 'refs/heads/dev'
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NODE_VERSION: "20"
+      PNPM_VERSION: "10.11.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
+
+      - name: db:check (before) — list pending migrations
+        run: pnpm --filter @music-os-360/api db:check
+
+      - name: db:migrate — apply every pending canonical migration
+        run: pnpm --filter @music-os-360/api db:migrate
+
+      - name: db:check (after) — must report zero pending
+        run: pnpm --filter @music-os-360/api db:check
+
+      - name: Migration source-of-truth guard
+        run: node scripts/verify-migration-source-of-truth.mjs
+
+      - name: verify:rls (all tenant tables have RLS + policies)
+        run: pnpm --filter @music-os-360/api verify:rls
+
+      - name: verify:tenant-isolation (real cross-tenant DB proof)
+        run: pnpm --filter @music-os-360/api verify:tenant-isolation
+
+      - name: Bootstrap tenant-zero (LANDER RECORDS) — first run
+        run: pnpm --filter @music-os-360/api db:bootstrap:tenant-zero
+
+      - name: Bootstrap tenant-zero — second run (must be idempotent, no duplication)
+        run: pnpm --filter @music-os-360/api db:bootstrap:tenant-zero
