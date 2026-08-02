@@ -18,6 +18,7 @@
     "lint": "eslint .",
     "test": "corepack pnpm --filter @music-os-360/api test && corepack pnpm --filter @music-os-360/web test",
     "test:coverage": "pnpm --filter @music-os-360/web run test -- --coverage",
+    "test:e2e": "playwright test",
     "monorepo:dev": "turbo run dev",
     "monorepo:build": "turbo run build",
     "monorepo:typecheck": "turbo run typecheck",
@@ -32,6 +33,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.32.0",
+    "@playwright/test": "^1.62.1",
     "@types/node": "^22.16.5",
     "depcheck": "^1.4.7",
     "eslint": "^9.32.0",
