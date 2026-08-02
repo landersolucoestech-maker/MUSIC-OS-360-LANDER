@@ -495,7 +495,6 @@ export class ArtistEntity {
   @Column({ type: 'text', nullable: true }) apple_music_url: string | null;
   @Column({ type: 'text', nullable: true }) soundcloud_url: string | null;
   @Column({ type: 'uuid', nullable: true }) contrato_id: string | null;
-  @Column({ type: 'varchar', length: 100, nullable: true }) org_slug: string | null;
   @Column({ type: 'jsonb', default: {} }) metadata: Record<string, unknown>;
   @CreateDateColumn({ type: 'timestamp' }) created_at: Date;
   @UpdateDateColumn({ type: 'timestamp' }) updated_at: Date;
