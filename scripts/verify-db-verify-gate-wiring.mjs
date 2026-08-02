@@ -44,10 +44,10 @@ export function extractJobBlock(ciYamlSource, jobName) {
   return blockLines.join('\n');
 }
 
-export function checkGateJobWiring(jobBlock) {
+export function checkGateJobWiring(jobBlock, jobName = 'db-verify-supabase-dev') {
   const reasons = [];
   if (jobBlock == null) {
-    return { ok: false, reasons: ['jobs.db-verify-supabase-dev not found in .github/workflows/ci.yml — did the job get renamed?'] };
+    return { ok: false, reasons: [`jobs.${jobName} not found in .github/workflows/ci.yml — did the job get renamed?`] };
   }
   if (!/DB_VERIFY_ENABLED:\s*\$\{\{\s*vars\.DB_VERIFY_ENABLED\s*\}\}/.test(jobBlock)) {
     reasons.push('env.DB_VERIFY_ENABLED is missing or does not reference ${{ vars.DB_VERIFY_ENABLED }} — the gate script would always read it as unset');
@@ -58,19 +58,30 @@ export function checkGateJobWiring(jobBlock) {
   return { ok: reasons.length === 0, reasons };
 }
 
+// Parte 72: a antiga "db-verify-supabase-dev" foi separada em duas jobs
+// (ver migration-classification.ts / CI) — ambas dependem do mesmo gate e
+// precisam da mesma checagem de wiring.
+const GATED_JOB_NAMES = ['db-verify-application-dev', 'db-verify-realtime-external-dev'];
+
 function main() {
   const ciYamlPath = path.join(REPO_ROOT, '.github', 'workflows', 'ci.yml');
   const source = readFileSync(ciYamlPath, 'utf8');
-  const jobBlock = extractJobBlock(source, 'db-verify-supabase-dev');
-  const result = checkGateJobWiring(jobBlock);
+  let anyFailed = false;
 
-  if (result.ok) {
-    console.log('  ✓  DB Verify — Supabase DEV job correctly wires DB_VERIFY_ENABLED and DATABASE_URL into its environment');
-  } else {
-    console.error('  ✗  DB Verify — Supabase DEV job wiring is broken:');
-    for (const reason of result.reasons) console.error(`     - ${reason}`);
-    process.exitCode = 1;
+  for (const jobName of GATED_JOB_NAMES) {
+    const jobBlock = extractJobBlock(source, jobName);
+    const result = checkGateJobWiring(jobBlock, jobName);
+
+    if (result.ok) {
+      console.log(`  ✓  ${jobName} correctly wires DB_VERIFY_ENABLED and DATABASE_URL into its environment`);
+    } else {
+      console.error(`  ✗  ${jobName} wiring is broken:`);
+      for (const reason of result.reasons) console.error(`     - ${reason}`);
+      anyFailed = true;
+    }
   }
+
+  if (anyFailed) process.exitCode = 1;
 }
 
 const isMain = process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1]);
