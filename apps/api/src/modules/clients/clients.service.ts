@@ -108,7 +108,11 @@ export class ClientsService {
   private static readonly DEFAULT_PERFIL = 'outros';
 
   private normalizeClientPayload(input: Record<string, unknown>, isCreate = false) {
-    const { name, type, category, address, avatarUrl: _avatarUrl, ...rest } = input;
+    const {
+      name, type, category, address, avatarUrl: _avatarUrl,
+      city, state, instagram, zipCode, responsible, notes,
+      ...rest
+    } = input;
     void _avatarUrl;
     const mapped: Record<string, unknown> = { ...rest };
     if (name !== undefined) mapped['nome'] = name;
@@ -117,6 +121,12 @@ export class ClientsService {
     else if (isCreate) mapped['categoria'] = ClientsService.DEFAULT_CATEGORIA;
     if (isCreate) mapped['perfil'] = ClientsService.DEFAULT_PERFIL;
     if (address !== undefined) mapped['endereco_completo'] = typeof address === 'string' ? address : JSON.stringify(address);
+    if (city !== undefined) mapped['cidade'] = city;
+    if (state !== undefined) mapped['estado'] = state;
+    if (instagram !== undefined) mapped['instagram'] = instagram;
+    if (zipCode !== undefined) mapped['cep'] = zipCode;
+    if (responsible !== undefined) mapped['responsavel_nome'] = responsible;
+    if (notes !== undefined) mapped['observacoes'] = notes;
     return mapped;
   }
 }

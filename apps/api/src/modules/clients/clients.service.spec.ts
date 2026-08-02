@@ -196,4 +196,32 @@ describe('ClientsService — encryption', () => {
       expect(updateCall['deleted_at']).toBeInstanceOf(Date);
     });
   });
+
+  describe('create — campos de CRM (Parte 79: Contato = Cliente, mesma tabela física)', () => {
+    it('mapeia city/state/instagram/zipCode/responsible/notes para as colunas físicas reais', async () => {
+      const { svc, repo } = makeService();
+
+      await svc.create('tenant-1', 'user-1', {
+        name: 'Casa Aurora',
+        category: 'VENUE',
+        city: 'Sao Paulo',
+        state: 'SP',
+        instagram: '@auroralive',
+        zipCode: '01000-000',
+        responsible: 'Operacoes',
+        notes: 'Venue estrategico',
+      } as any);
+
+      const saved = (repo.save as jest.Mock).mock.calls[0][0] as Record<string, unknown>;
+      expect(saved['cidade']).toBe('Sao Paulo');
+      expect(saved['estado']).toBe('SP');
+      expect(saved['instagram']).toBe('@auroralive');
+      expect(saved['cep']).toBe('01000-000');
+      expect(saved['responsavel_nome']).toBe('Operacoes');
+      expect(saved['observacoes']).toBe('Venue estrategico');
+      // Nunca reintroduz as colunas removidas pela migration canônica.
+      expect(saved['segmento']).toBeUndefined();
+      expect(saved['endereco']).toBeUndefined();
+    });
+  });
 });

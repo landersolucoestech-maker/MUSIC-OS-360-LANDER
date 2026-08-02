@@ -12,6 +12,13 @@ export class CreateClientDto {
   @ApiPropertyOptional() @IsOptional() @IsString() avatarUrl?: string;
   @ApiPropertyOptional() @IsOptional() address?: Record<string, unknown>;
   @ApiPropertyOptional() @IsOptional() metadata?: Record<string, unknown>;
+  // ── Campos do CRM (Contatos = Clientes — mesma tabela física) ──────────────
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(120) city?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(80)  state?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(255) instagram?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(15)  zipCode?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() @MaxLength(150) responsible?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
 }
 
 export class UpdateClientDto extends PartialType(CreateClientDto) {

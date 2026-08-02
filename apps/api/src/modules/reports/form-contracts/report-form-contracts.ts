@@ -289,6 +289,13 @@ const CLIENTS_CONTRACT: ReportFormContract = {
     phone: 'telefone',
     document: 'cpf_cnpj',
     address: 'endereco_completo',
+    // Parte 79: CreateClientDto ganhou estes campos para suportar "Contatos"
+    // do CRM (mesma tabela física `clients` — Contato = Cliente).
+    city: 'cidade',
+    state: 'estado',
+    zipCode: 'cep',
+    responsible: 'responsavel_nome',
+    notes: 'observacoes',
   },
 };
 

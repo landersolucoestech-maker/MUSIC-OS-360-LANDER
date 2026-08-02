@@ -42,6 +42,13 @@ export class ContactsService {
     return contact;
   }
 
+  remove(tenantId: string, id: string) {
+    if (this.ds) return this.removeDb(tenantId, id);
+    this.getById(tenantId, id);
+    this.forTenant(tenantId).delete(id);
+    return { deleted: true };
+  }
+
   assertBelongsToTenant(tenantId: string, id: string) {
     return this.getById(tenantId, id);
   }
@@ -140,6 +147,17 @@ export class ContactsService {
     const updated = rows[0] as Record<string, unknown> | undefined;
     if (!updated) throw new NotFoundException('Contact not found');
     return this.toResponse(updated);
+  }
+
+  private async removeDb(tenantId: string, id: string): Promise<{ deleted: boolean }> {
+    const rows = await this.ds!.query(
+      `UPDATE contacts SET deleted_at = NOW()
+        WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
+        RETURNING id`,
+      [tenantId, id],
+    );
+    if (!rows[0]) throw new NotFoundException('Contact not found');
+    return { deleted: true };
   }
 
   private normalizePayload(payload: Record<string, unknown>, partial = false) {

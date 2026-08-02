@@ -77,6 +77,7 @@ const expectedRoutes: ExpectedRoute[] = [
   { controller: ContactsController, methodName: 'getById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'contact:read' },
   { controller: ContactsController, methodName: 'create', httpMethod: RequestMethod.POST, path: '', role: 'editor', permission: 'contact:create' },
   { controller: ContactsController, methodName: 'update', httpMethod: RequestMethod.PATCH, path: ':id', role: 'editor', permission: 'contact:update' },
+  { controller: ContactsController, methodName: 'remove', httpMethod: RequestMethod.DELETE, path: ':id', role: 'manager', permission: 'contact:delete' },
 
   { controller: LeadsController, methodName: 'list', httpMethod: RequestMethod.GET, path: '', role: 'viewer', permission: 'lead:read' },
   { controller: LeadsController, methodName: 'findById', httpMethod: RequestMethod.GET, path: ':id', role: 'viewer', permission: 'lead:read' },
