@@ -1,119 +1,124 @@
-import type { Lead } from "../types";
+/**
+ * services/leads.service.ts
+ *
+ * Backend real `/leads` (tabela `leads`, LeadsController/LeadsService —
+ * apps/api/src/modules/leads). Substitui a implementação anterior, um array
+ * em memória com 2 leads fictícios ("Marina Torres"/"Rafael Azevedo") que
+ * nunca chamava a API — toda criação/edição era perdida ao recarregar.
+ *
+ * `historicoInteracoes` não é embutido na resposta do lead — existe um
+ * endpoint real e separado (`/lead-interactions?lead_id=`), ainda não
+ * integrado a esta tela (ver Parte 79). Mantido vazio aqui em vez de
+ * fabricar histórico, conforme exigido para eliminação de mocks.
+ */
+import { api } from "@/shared/lib/api-client";
+import type { Lead, LeadClientType, LeadServiceType, LeadInternalCRMData } from "../types";
 
-const now = new Date().toISOString();
+interface ApiLeadResponse {
+  id: string;
+  nome: string;
+  nome_completo: string | null;
+  nomeArtistico: string | null;
+  empresa: string | null;
+  email: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  instagram: string | null;
+  cidade: string | null;
+  estado: string | null;
+  pais: string | null;
+  tipoCliente: string | null;
+  tipoServico: string | null;
+  payloadServico: Record<string, unknown> | null;
+  dadosInternosCRM: Record<string, unknown> | null;
+  status: string;
+  uploads: unknown[] | null;
+  created_at: string;
+  updated_at: string;
+}
 
-// CORRIGIDO: valores de statusLead alinhados ao STATUS_LEAD_OPTIONS de lead-form-options.ts
-// Antes: "negociacao", "proposta" → Agora: "negociacao", "proposta_enviada"
-// tipoServico dos seeds mantido como estava (valores do enum LeadServiceType são válidos)
-const seedLeads: Lead[] = [
-  {
-    id: "lead-001",
-    nomeCompleto: "Marina Torres",
-    nomeArtistico: "Mavi",
-    empresa: "Mavi Music",
-    email: "marina@mavi.example",
-    whatsapp: "+55 11 98888-1000",
-    instagram: "@mavioficial",
-    cidade: "Sao Paulo",
-    estado: "SP",
-    pais: "Brasil",
-    tipoCliente: "artist",
-    tipoServico: "marketingMusical",
-    payloadServico: {
-      tipo_lead: "artista_banda",
-      servico: "marketing_digital",
-      descricao: "Campanha de lançamento para single",
-      nome_artista_servico: "Mavi",
-    },
-    dadosInternosCRM: {
-      statusLead: "negociacao",
-      responsavel: "Comercial A&R",
-      prioridade: "alta",
-      temperatura: "quente",
-      origemLead: "instagram",
-      valorEstimado: 18000,
-      probabilidadeFechamento: 72,
-      proximoFollowUp: "2026-06-02",
-      observacoesInternas: "Lead com urgência para calendário de lançamento.",
-    },
-    uploads: [],
-    historicoInteracoes: [
-      { id: "int-001", type: "whatsapp", description: "Briefing inicial recebido via WhatsApp.", occurredAt: now },
-      { id: "int-002", type: "proposal", description: "Escopo comercial em revisao.", occurredAt: now },
-    ],
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "lead-002",
-    nomeCompleto: "Rafael Azevedo",
-    empresa: "Azul Eventos",
-    email: "rafael@azuleventos.example",
-    whatsapp: "+55 21 97777-2000",
-    cidade: "Rio de Janeiro",
-    estado: "RJ",
-    pais: "Brasil",
-    tipoCliente: "eventProducer",
-    tipoServico: "producaoEvento",
-    payloadServico: {
-      tipo_lead: "produtora_eventos",
-      servico: "contratacao_artistas",
-      descricao: "Contratação artística para festival",
-      nome_evento: "Festival Azul 2026",
-      tipo_evento: "show_publico",
-      data_evento: "2026-07-18",
-      local_evento: "Parque da Cidade",
-      cidade: "Rio de Janeiro",
-      estado: "RJ",
-      capacidade_publico: "15000",
-      nome_artista_banda: "A definir",
-      necessidades_adicionais: "",
-    },
-    dadosInternosCRM: {
-      statusLead: "proposta_enviada",
-      responsavel: "Shows",
-      prioridade: "media",
-      temperatura: "morno",
-      origemLead: "indicacao",
-      valorEstimado: 85000,
-      probabilidadeFechamento: 55,
-      proximoFollowUp: "2026-06-05",
-    },
-    uploads: [],
-    historicoInteracoes: [
-      { id: "int-003", type: "meeting", description: "Reunião de alinhamento com produtor do evento.", occurredAt: now },
-    ],
-    createdAt: now,
-    updatedAt: now,
-  },
-];
+interface ListLeadsResult {
+  data: ApiLeadResponse[];
+  meta: { total: number; offset: number; limit: number };
+}
 
-let leads = [...seedLeads];
+function fromApi(row: ApiLeadResponse): Lead {
+  const crm = (row.dadosInternosCRM ?? {}) as Partial<LeadInternalCRMData>;
+  return {
+    id: row.id,
+    nomeCompleto: row.nome_completo ?? row.nome,
+    nomeArtistico: row.nomeArtistico ?? undefined,
+    empresa: row.empresa ?? undefined,
+    email: row.email ?? undefined,
+    whatsapp: row.whatsapp ?? undefined,
+    instagram: row.instagram ?? undefined,
+    cidade: row.cidade ?? undefined,
+    estado: row.estado ?? undefined,
+    pais: row.pais ?? undefined,
+    tipoCliente: (row.tipoCliente ?? "other") as LeadClientType,
+    tipoServico: (row.tipoServico ?? "consultoria") as LeadServiceType,
+    payloadServico: row.payloadServico ?? {},
+    dadosInternosCRM: { ...crm, statusLead: row.status } as LeadInternalCRMData,
+    uploads: (row.uploads ?? []) as Lead["uploads"],
+    historicoInteracoes: [],
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+function toApiPayload(data: Omit<Lead, "id" | "createdAt" | "updatedAt" | "historicoInteracoes">): Record<string, unknown> {
+  return {
+    name: data.nomeCompleto,
+    nomeArtistico: data.nomeArtistico,
+    empresa: data.empresa,
+    email: data.email,
+    phone: data.whatsapp,
+    whatsapp: data.whatsapp,
+    instagram: data.instagram,
+    cidade: data.cidade,
+    estado: data.estado,
+    pais: data.pais,
+    tipoCliente: data.tipoCliente,
+    tipoServico: data.tipoServico,
+    payloadServico: data.payloadServico,
+    dadosInternosCRM: data.dadosInternosCRM,
+    uploads: data.uploads,
+  };
+}
 
 export const leadsService = {
   async list(): Promise<Lead[]> {
-    return [...leads].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const result = await api.get<ListLeadsResult>("/leads?limit=200");
+    return result.data.map(fromApi).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async create(data: Omit<Lead, "id" | "createdAt" | "updatedAt" | "historicoInteracoes">): Promise<Lead> {
-    const createdAt = new Date().toISOString();
-    const lead: Lead = {
-      ...data,
-      id: crypto.randomUUID(),
-      historicoInteracoes: [],
-      createdAt,
-      updatedAt: createdAt,
-    };
-    leads = [lead, ...leads];
-    return lead;
+    const created = await api.post<ApiLeadResponse>("/leads", toApiPayload(data));
+    return fromApi(created);
   },
   async update(id: string, data: Partial<Lead>): Promise<Lead> {
-    const updatedAt = new Date().toISOString();
-    leads = leads.map((lead) => (lead.id === id ? { ...lead, ...data, updatedAt } : lead));
-    const updated = leads.find((lead) => lead.id === id);
-    if (!updated) throw new Error("Lead não encontrado");
-    return updated;
+    const payload: Record<string, unknown> = {};
+    if (data.nomeCompleto !== undefined) payload.name = data.nomeCompleto;
+    if (data.nomeArtistico !== undefined) payload.nomeArtistico = data.nomeArtistico;
+    if (data.empresa !== undefined) payload.empresa = data.empresa;
+    if (data.email !== undefined) payload.email = data.email;
+    if (data.whatsapp !== undefined) { payload.phone = data.whatsapp; payload.whatsapp = data.whatsapp; }
+    if (data.instagram !== undefined) payload.instagram = data.instagram;
+    if (data.cidade !== undefined) payload.cidade = data.cidade;
+    if (data.estado !== undefined) payload.estado = data.estado;
+    if (data.pais !== undefined) payload.pais = data.pais;
+    if (data.tipoCliente !== undefined) payload.tipoCliente = data.tipoCliente;
+    if (data.tipoServico !== undefined) payload.tipoServico = data.tipoServico;
+    if (data.payloadServico !== undefined) payload.payloadServico = data.payloadServico;
+    if (data.uploads !== undefined) payload.uploads = data.uploads;
+    if (data.dadosInternosCRM !== undefined) {
+      const { statusLead, ...rest } = data.dadosInternosCRM;
+      payload.dadosInternosCRM = rest;
+      if (statusLead !== undefined) payload.status = statusLead;
+    }
+    const updated = await api.patch<ApiLeadResponse>(`/leads/${id}`, payload);
+    return fromApi(updated);
   },
   async remove(id: string): Promise<void> {
-    leads = leads.filter((lead) => lead.id !== id);
+    await api.delete(`/leads/${id}`);
   },
 };

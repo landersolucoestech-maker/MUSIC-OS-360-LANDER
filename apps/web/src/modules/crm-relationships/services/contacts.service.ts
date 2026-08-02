@@ -1,7 +1,81 @@
+/**
+ * services/contacts.service.ts
+ *
+ * Backend real `/clients` (tabela `clients`, ClientsController/ClientsService
+ * — apps/api/src/modules/clients). "Contato" e "Cliente" são a MESMA entidade
+ * física (decisão de domínio documentada em
+ * apps/api/src/database/migrations/20260719000010_RebuildClientsInCanonicalFormOrder.ts:
+ * "Contato = Cliente" — `categoria` guarda o tipo de relacionamento:
+ * CORPORATE_CLIENT/PARTNER/SUPPLIER/SERVICE_PROVIDER/INVESTOR/etc).
+ *
+ * Substitui a implementação anterior, que mantinha um array em memória com 5
+ * contatos fictícios (Casa Aurora, Beat Press, João Silva, Maria Santos,
+ * Pedro Costa) e nunca chamava a API. Também substitui o módulo backend
+ * `/contacts` (ContactsController/ContactsService) descoberto nesta Parte
+ * como código morto: a tabela física `contacts` foi removida por uma
+ * migration de limpeza (`DropOrphanContactsSatelliteTables`, presente apenas
+ * no stash local pré-existente) sem que o código correspondente fosse
+ * removido — todo POST/PATCH real ali falha com
+ * `relation "contacts" does not exist`. Nunca foi notado porque o frontend
+ * sempre usou este mock.
+ *
+ * `attachments`/`tags`/`priority`/`website`/`linkedArtistId`/`timeline` não
+ * têm coluna física equivalente em `clients` — sempre vazios/undefined na
+ * leitura, nunca enviados na escrita, em vez de fabricar dado inexistente.
+ */
 import type { Contact } from "../types";
 import type { ContatoFormPayload } from "../modals/ContatoFormModal";
+import { clientsService, type ApiClient, type CreateApiClientInput } from "./clients.service";
 
-const now = new Date().toISOString();
+function fromApi(c: ApiClient): Contact {
+  return {
+    id: c.id,
+    name: c.nome ?? c.name,
+    companyName: c.razao_social ?? c.nome_fantasia ?? undefined,
+    contactType: (c.categoria ?? "OTHER") as Contact["contactType"],
+    documentType: c.tipo_pessoa === "pessoa_fisica" ? "CPF" : "CNPJ",
+    documentNumber: c.document ?? undefined,
+    phone: c.phone ?? undefined,
+    whatsapp: c.phone ?? undefined,
+    email: c.email ?? undefined,
+    instagram: c.instagram ?? undefined,
+    address: c.endereco_completo ?? c.address ?? undefined,
+    city: c.cidade ?? undefined,
+    state: c.estado ?? undefined,
+    country: "Brasil",
+    zipCode: c.cep ?? undefined,
+    responsible: c.responsavel_nome ?? undefined,
+    notes: c.observacoes ?? undefined,
+    tags: [],
+    status: (c.status ?? "active") as Contact["status"],
+    priority: "medium",
+    payloadOperacional: c.metadata ?? {},
+    attachments: Array.isArray(c.attachments) ? (c.attachments as Contact["attachments"]) : [],
+    timeline: [],
+    createdAt: c.created_at,
+    updatedAt: c.updated_at,
+  };
+}
+
+function toApiInput(data: Partial<Omit<Contact, "id" | "createdAt" | "updatedAt">>): CreateApiClientInput & Record<string, unknown> {
+  const isCompany = data.documentType === "CNPJ" || !!data.companyName;
+  const payload: CreateApiClientInput & Record<string, unknown> = {
+    name: data.name ?? "",
+  };
+  if (data.contactType !== undefined) payload.category = data.contactType;
+  if (data.documentType !== undefined || data.companyName !== undefined) payload.type = isCompany ? "company" : "person";
+  if (data.email !== undefined) payload.email = data.email;
+  if (data.phone !== undefined || data.whatsapp !== undefined) payload.phone = data.phone ?? data.whatsapp;
+  if (data.documentNumber !== undefined) payload.document = data.documentNumber;
+  if (data.address !== undefined) payload.address = data.address;
+  if (data.city !== undefined) payload.city = data.city;
+  if (data.state !== undefined) payload.state = data.state;
+  if (data.instagram !== undefined) payload.instagram = data.instagram;
+  if (data.zipCode !== undefined) payload.zipCode = data.zipCode;
+  if (data.responsible !== undefined) payload.responsible = data.responsible;
+  if (data.notes !== undefined) payload.notes = data.notes;
+  return payload;
+}
 
 /**
  * Converte o payload emitido pelo `ContatoFormModal` no objeto de criação/edição
@@ -58,141 +132,26 @@ export function contatoPayloadToContactData(
   };
 }
 
-let contacts: Contact[] = [
-  {
-    id: "contact-001",
-    name: "Casa Aurora",
-    companyName: "Aurora Live",
-    contactType: "VENUE",
-    phone: "+55 11 3333-1000",
-    whatsapp: "+55 11 98888-3000",
-    email: "booking@auroralive.example",
-    instagram: "@auroralive",
-    website: "https://auroralive.example",
-    address: "Rua Harmonia, 100",
-    city: "Sao Paulo",
-    state: "SP",
-    country: "Brasil",
-    responsible: "Operações",
-    notes: "Venue estratégico para showcases e ativações de marca.",
-    tags: ["showcase", "venue", "sp"],
-    status: "favorite",
-    priority: "strategic",
-    payloadOperacional: { capacity: 1200, technicalContact: "Mesa e luz próprios" },
-    attachments: [],
-    timeline: [
-      { id: "timeline-001", type: "meeting", summary: "Reunião de alinhamento para calendário de shows.", occurredAt: now },
-      { id: "timeline-002", type: "contract", summary: "Minuta de parceria em análise.", occurredAt: now },
-    ],
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "contact-002",
-    name: "Lia Campos",
-    companyName: "Beat Press",
-    contactType: "PRESS",
-    email: "lia@beatpress.example",
-    whatsapp: "+55 21 97777-4000",
-    instagram: "@liacampos",
-    city: "Rio de Janeiro",
-    state: "RJ",
-    country: "Brasil",
-    responsible: "PR",
-    tags: ["imprensa", "release", "rj"],
-    status: "active",
-    priority: "high",
-    payloadOperacional: { editorialBeat: "Música independente, cultura e festivais" },
-    attachments: [],
-    timeline: [{ id: "timeline-003", type: "email", summary: "Release enviado para pauta de junho.", occurredAt: now }],
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "contact-003",
-    name: "João Silva",
-    contactType: "PHOTOGRAPHER",
-    phone: "(31) 99999-1111",
-    whatsapp: "(31) 99999-1111",
-    email: "joao.silva@fotos.example",
-    city: "Belo Horizonte",
-    state: "MG",
-    country: "Brasil",
-    responsible: "Operações",
-    tags: ["fotografia", "ensaios"],
-    status: "active",
-    priority: "medium",
-    payloadOperacional: { tipo_pessoa: "pessoa_fisica", funcao: "Fotógrafo" },
-    attachments: [],
-    timeline: [],
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "contact-004",
-    name: "Maria Santos",
-    contactType: "PRESS_OFFICE",
-    phone: "(11) 98888-2222",
-    whatsapp: "(11) 98888-2222",
-    email: "maria@assessoria.example",
-    city: "São Paulo",
-    state: "SP",
-    country: "Brasil",
-    responsible: "PR",
-    tags: ["imprensa", "assessoria"],
-    status: "active",
-    priority: "high",
-    payloadOperacional: { tipo_pessoa: "pessoa_fisica", funcao: "Assessora de Imprensa" },
-    attachments: [],
-    timeline: [],
-    createdAt: now,
-    updatedAt: now,
-  },
-  {
-    id: "contact-005",
-    name: "Pedro Costa",
-    contactType: "VIDEOMAKER",
-    phone: "(21) 97777-3333",
-    whatsapp: "(21) 97777-3333",
-    email: "pedro@video.example",
-    city: "Rio de Janeiro",
-    state: "RJ",
-    country: "Brasil",
-    responsible: "Operações",
-    tags: ["video", "clipes"],
-    status: "active",
-    priority: "medium",
-    payloadOperacional: { tipo_pessoa: "pessoa_fisica", funcao: "Videomaker" },
-    attachments: [],
-    timeline: [],
-    createdAt: now,
-    updatedAt: now,
-  },
-];
-
 export const contactsService = {
   async list(): Promise<Contact[]> {
-    return [...contacts].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    const clients = await clientsService.list();
+    return clients.map(fromApi).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   },
   async listSimple(): Promise<{ id: string; name: string }[]> {
-    return [...contacts]
-      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }))
-      .map((contact) => ({ id: contact.id, name: contact.name }));
+    const contacts = await contactsService.list();
+    return contacts
+      .map((contact) => ({ id: contact.id, name: contact.name }))
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR", { sensitivity: "base" }));
   },
   async create(data: Omit<Contact, "id" | "createdAt" | "updatedAt">): Promise<Contact> {
-    const createdAt = new Date().toISOString();
-    const contact: Contact = { ...data, id: crypto.randomUUID(), createdAt, updatedAt: createdAt };
-    contacts = [contact, ...contacts];
-    return contact;
+    const created = await clientsService.create(toApiInput(data));
+    return fromApi(created);
   },
   async update(id: string, data: Partial<Contact>): Promise<Contact> {
-    const updatedAt = new Date().toISOString();
-    contacts = contacts.map((contact) => (contact.id === id ? { ...contact, ...data, updatedAt } : contact));
-    const contact = contacts.find((item) => item.id === id);
-    if (!contact) throw new Error("Contato não encontrado");
-    return contact;
+    const updated = await clientsService.update(id, toApiInput(data));
+    return fromApi(updated);
   },
   async remove(id: string): Promise<void> {
-    contacts = contacts.filter((contact) => contact.id !== id);
+    await clientsService.remove(id);
   },
 };

@@ -188,6 +188,7 @@ export type ContactFiltersState = {
 export type Cliente = {
   id: string;
   nome: string;
+  razao_social?: string | null;
   email?: string | null;
   telefone?: string | null;
   empresa?: string | null;

@@ -5,11 +5,15 @@ import type { Lead } from "../types";
 export function useLeads() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   async function refresh() {
     setIsLoading(true);
     try {
       setLeads(await leadsService.list());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoading(false);
     }
@@ -22,11 +26,12 @@ export function useLeads() {
   return {
     leads,
     isLoading,
+    error,
     metrics: useMemo(() => ({
       total:         leads.length,
       followUps:     leads.filter((lead) => lead.dadosInternosCRM.proximoFollowUp).length,
-      // Corrigido: usar valores do novo sistema (lead-form-options STATUS_LEAD_OPTIONS)
-      propostas:     leads.filter((lead) => lead.dadosInternosCRM.statusLead === "proposta_enviada").length,
+      // Alinhado ao enum real LeadStatus (@music-os-360/types): "proposta", não "proposta_enviada".
+      propostas:     leads.filter((lead) => lead.dadosInternosCRM.statusLead === "proposta").length,
       contratos:     leads.filter((lead) => lead.dadosInternosCRM.statusLead === "fechado").length,
       valorEstimado: leads.reduce((sum, lead) => sum + Number(lead.dadosInternosCRM.valorEstimado ?? 0), 0),
     }), [leads]),

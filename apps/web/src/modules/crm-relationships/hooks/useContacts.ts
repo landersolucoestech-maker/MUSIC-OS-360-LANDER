@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { contactsService } from "../services";
+import { clientsService, type ApiClient, type CreateApiClientInput, type UpdateApiClientInput } from "../services/clients.service";
 import type { Cliente, ClienteInsert, ClienteSegmento, ClienteUpdate, Contact } from "../types";
 
 export type { Cliente, ClienteInsert, ClienteUpdate, ClienteSegmento, Contact };
@@ -7,11 +8,15 @@ export type { Cliente, ClienteInsert, ClienteUpdate, ClienteSegmento, Contact };
 export function useContacts() {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
   async function refresh() {
     setIsLoading(true);
     try {
       setContacts(await contactsService.list());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
     } finally {
       setIsLoading(false);
     }
@@ -24,6 +29,7 @@ export function useContacts() {
   return {
     contacts,
     isLoading,
+    error,
     metrics: useMemo(() => ({
       total: contacts.length,
       strategic: contacts.filter((contact) => contact.priority === "strategic").length,
@@ -57,82 +63,118 @@ export function useSimpleContacts() {
   };
 }
 
+/** Mapeia a resposta real de `/clients` (ClientsService.mapClient) para o
+ * view-model `Cliente` consumido pelos formulários de contratos/agenda/
+ * financeiro/nota fiscal/dashboard. */
+function apiClientToCliente(c: ApiClient): Cliente {
+  const isPF = c.tipo_pessoa === "pessoa_fisica";
+  return {
+    id: c.id,
+    nome: c.nome ?? c.name,
+    razao_social: c.razao_social ?? null,
+    email: c.email ?? null,
+    telefone: c.phone ?? null,
+    empresa: c.razao_social ?? c.nome_fantasia ?? null,
+    cidade: c.cidade ?? null,
+    estado: c.estado ?? null,
+    endereco: c.endereco_completo ?? c.address ?? null,
+    status: c.status ?? null,
+    cpf: isPF ? c.document ?? null : null,
+    cnpj: !isPF ? c.document ?? null : null,
+    cpf_cnpj: c.document ?? null,
+    tipo_pessoa: c.tipo_pessoa ?? null,
+    responsavel: c.responsavel_nome ?? null,
+    observacoes: c.observacoes ?? null,
+    tipo: c.tipo_pessoa ?? null,
+    segmento: c.categoria ?? null,
+  };
+}
+
+function clienteInsertToApiInput(data: ClienteInsert): CreateApiClientInput {
+  const cnpj = data.cnpj ?? (data.tipo_pessoa === "pessoa_juridica" || data.tipo_pessoa === "juridica" ? data.cpf_cnpj : undefined);
+  const cpf = data.cpf ?? (data.tipo_pessoa === "pessoa_fisica" || data.tipo_pessoa === "fisica" ? data.cpf_cnpj : undefined);
+  return {
+    name: data.nome,
+    type: cnpj ? "company" : "person",
+    category: data.segmento ?? undefined,
+    email: data.email ?? undefined,
+    phone: data.telefone ?? undefined,
+    document: cnpj ?? cpf ?? data.cpf_cnpj ?? undefined,
+    address: data.endereco ?? undefined,
+  };
+}
+
+function clienteUpdateToApiInput(data: ClienteUpdate): UpdateApiClientInput {
+  return {
+    name: data.nome,
+    category: data.segmento ?? undefined,
+    email: data.email ?? undefined,
+    phone: data.telefone ?? undefined,
+    document: data.cnpj ?? data.cpf ?? data.cpf_cnpj ?? undefined,
+    address: data.endereco ?? undefined,
+  };
+}
+
+/**
+ * Clientes reais (tabela `clients`, backend `/clients`) — usado por
+ * contratos, agenda, financeiro, nota fiscal e dashboard para selecionar/
+ * exibir o cliente de um registro. Não deve ser confundido com Contatos do
+ * CRM (useContacts/useSimpleContacts acima) — são entidades físicas
+ * distintas; ver Parte 79 para o modelo canônico completo.
+ */
 export function useClientes() {
-  const { contacts, isLoading, createContact, updateContact, deleteContact } = useContacts();
-  const clientes: Cliente[] = contacts.map((contact) => ({
-    id: contact.id,
-    nome: contact.name,
-    email: contact.email ?? null,
-    telefone: contact.phone ?? contact.whatsapp ?? null,
-    empresa: contact.companyName ?? null,
-    cidade: contact.city ?? null,
-    estado: contact.state ?? null,
-    endereco: contact.address ?? null,
-    status: contact.status,
-    cpf: contact.documentType === "cpf" ? contact.documentNumber ?? null : null,
-    cnpj: contact.documentType === "cnpj" ? contact.documentNumber ?? null : null,
-    cpf_cnpj: contact.documentNumber ?? null,
-    tipo_pessoa: contact.documentType === "cnpj" ? "juridica" : "fisica",
-    responsavel: contact.responsible ?? null,
-    observacoes: contact.notes ?? null,
-    tipo: contact.contactType,
-    segmento: "operational_contact",
-  }));
+  const [apiClientes, setApiClientes] = useState<ApiClient[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
+
+  async function refresh() {
+    setIsLoading(true);
+    try {
+      setApiClientes(await clientsService.list());
+      setError(null);
+    } catch (err) {
+      setError(err instanceof Error ? err : new Error(String(err)));
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void refresh();
+  }, []);
+
+  const clientes = useMemo(() => apiClientes.map(apiClientToCliente), [apiClientes]);
 
   return {
     clientes,
     isLoading,
-    error: null,
+    error,
+    refetch: refresh,
     addCliente: {
-      mutate: (data: ClienteInsert, options?: { onSuccess?: () => void }) => void createContact(toContact(data)).then(options?.onSuccess),
-      mutateAsync: (data: ClienteInsert) => createContact(toContact(data)),
+      mutate: (data: ClienteInsert, options?: { onSuccess?: () => void }) =>
+        void clientsService.create(clienteInsertToApiInput(data)).then(async (created) => { await refresh(); return created; }).then(options?.onSuccess),
+      mutateAsync: async (data: ClienteInsert) => {
+        const created = await clientsService.create(clienteInsertToApiInput(data));
+        await refresh();
+        return created;
+      },
     },
     updateCliente: {
-      mutate: (data: ClienteUpdate & { id: string }, options?: { onSuccess?: () => void }) => void updateContact(data.id, toContactUpdate(data)).then(options?.onSuccess),
-      mutateAsync: (data: ClienteUpdate & { id: string }) => updateContact(data.id, toContactUpdate(data)),
+      mutate: (data: ClienteUpdate & { id: string }, options?: { onSuccess?: () => void }) =>
+        void clientsService.update(data.id, clienteUpdateToApiInput(data)).then(async () => { await refresh(); }).then(options?.onSuccess),
+      mutateAsync: async (data: ClienteUpdate & { id: string }) => {
+        const updated = await clientsService.update(data.id, clienteUpdateToApiInput(data));
+        await refresh();
+        return updated;
+      },
     },
     deleteCliente: {
-      mutate: (id: string, options?: { onSuccess?: () => void }) => void deleteContact(id).then(options?.onSuccess),
-      mutateAsync: (id: string) => deleteContact(id),
+      mutate: (id: string, options?: { onSuccess?: () => void }) =>
+        void clientsService.remove(id).then(async () => { await refresh(); }).then(options?.onSuccess),
+      mutateAsync: async (id: string) => {
+        await clientsService.remove(id);
+        await refresh();
+      },
     },
-  };
-}
-
-function toContact(data: ClienteInsert): Omit<Contact, "id" | "createdAt" | "updatedAt"> {
-  return {
-    name: data.nome,
-    companyName: data.empresa ?? undefined,
-    contactType: "COMPANY",
-    documentType: data.cnpj ? "cnpj" : data.cpf ? "cpf" : data.cpf_cnpj ? "document" : undefined,
-    documentNumber: data.cnpj ?? data.cpf ?? data.cpf_cnpj ?? undefined,
-    phone: data.telefone ?? undefined,
-    email: data.email ?? undefined,
-    responsible: data.responsavel ?? undefined,
-    notes: data.observacoes ?? undefined,
-    address: data.endereco ?? undefined,
-    city: data.cidade ?? undefined,
-    state: data.estado ?? undefined,
-    tags: [],
-    status: "active",
-    priority: "medium",
-    payloadOperacional: {},
-    attachments: [],
-    timeline: [],
-  };
-}
-
-function toContactUpdate(data: ClienteUpdate): Partial<Contact> {
-  return {
-    name: data.nome,
-    companyName: data.empresa ?? undefined,
-    documentType: data.cnpj ? "cnpj" : data.cpf ? "cpf" : data.cpf_cnpj ? "document" : undefined,
-    documentNumber: data.cnpj ?? data.cpf ?? data.cpf_cnpj ?? undefined,
-    phone: data.telefone ?? undefined,
-    email: data.email ?? undefined,
-    responsible: data.responsavel ?? undefined,
-    notes: data.observacoes ?? undefined,
-    address: data.endereco ?? undefined,
-    city: data.cidade ?? undefined,
-    state: data.estado ?? undefined,
   };
 }
