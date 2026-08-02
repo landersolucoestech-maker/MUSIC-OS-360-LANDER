@@ -20,7 +20,7 @@ vi.mock("@/shared/lib/env", () => ({
   API_BASE_URL: "http://localhost:3001",
 }));
 
-import { reportsApi } from "../services/reports-api";
+import { reportsApi, triggerBlobDownload } from "../services/reports-api";
 
 describe("reportsApi — Central de Relatórios real-only", () => {
   beforeEach(() => {
@@ -101,5 +101,32 @@ describe("reportsApi — Central de Relatórios real-only", () => {
     reportsApi.importCommit("artistas", body);
 
     expect(apiClientMock.post).toHaveBeenCalledWith("/reports/entities/artistas/import/commit", body);
+  });
+
+  describe("triggerBlobDownload — não revoga a URL antes do download iniciar", () => {
+    beforeEach(() => {
+      vi.useFakeTimers();
+      vi.stubGlobal("URL", {
+        createObjectURL: vi.fn(() => "blob:fake-url"),
+        revokeObjectURL: vi.fn(),
+      });
+    });
+
+    it("clica no link ANTES de revogar a URL, e a revogação só ocorre no próximo tick", () => {
+      const anchor = { click: vi.fn(), href: "", download: "" };
+      const createSpy = vi.spyOn(document, "createElement").mockReturnValue(anchor as unknown as HTMLAnchorElement);
+
+      triggerBlobDownload(new Blob(["x"]), "arquivo.xlsx");
+
+      expect(anchor.click).toHaveBeenCalledTimes(1);
+      expect(anchor.href).toBe("blob:fake-url");
+      // A revogação NÃO pode ter acontecido ainda no mesmo tick do click().
+      expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+      vi.runAllTimers();
+      expect(URL.revokeObjectURL).toHaveBeenCalledWith("blob:fake-url");
+
+      createSpy.mockRestore();
+    });
   });
 });

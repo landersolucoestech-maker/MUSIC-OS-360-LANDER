@@ -185,5 +185,9 @@ export function triggerBlobDownload(blob: Blob, filename: string): void {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Revogar imediatamente após click() é uma corrida real: em arquivos maiores
+  // ou navegadores mais lentos para iniciar o download, a URL pode ser
+  // invalidada antes do browser terminar de lê-la. Adia a revogação para o
+  // próximo tick, dando tempo do download começar de fato.
+  setTimeout(() => URL.revokeObjectURL(url), 0);
 }
