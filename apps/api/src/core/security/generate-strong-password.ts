@@ -1,5 +1,5 @@
 /**
- * generate-strong-password.ts  (Parte 73)
+ * generate-strong-password.ts  (Parte 73, charset revisto na Parte 75)
  *
  * Gera uma senha provisória forte para o owner institucional do
  * tenant-zero (e qualquer outro fluxo que precise de uma senha temporária
@@ -7,6 +7,12 @@
  * pelo menos um caractere de cada classe exigida, e não deriva de nenhum
  * dado de entrada (nome, projeto, data) — cada chamada é independente e
  * imprevisível.
+ *
+ * Parte 75: o símbolo original incluía `()[]{}"^` — caracteres que, embora
+ * não "ambíguos" no sentido de l/O/0/1, são propensos a erro de cópia/
+ * digitação manual (parênteses/colchetes/chaves fáceis de trocar entre si
+ * ou de perder ao copiar de uma bolha de chat). Restrito a um conjunto sem
+ * aspas, crases, barras invertidas, espaços ou pares que se abrem/fecham.
  *
  * Nunca logar, commitar ou persistir o valor retornado em texto plano por
  * mais tempo do que o necessário para entregá-lo ao destinatário (ver
@@ -18,8 +24,10 @@ import { randomInt } from 'node:crypto';
 const LOWER = 'abcdefghijkmnopqrstuvwxyz'; // sem "l" (confunde com "1"/"I")
 const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ'; // sem "O" (confunde com "0")
 const DIGITS = '23456789'; // sem "0"/"1"
-const SYMBOLS = '!@#$%^&*()-_=+[]{}';
+const SYMBOLS = '!@#$%&*+-=?_'; // sem aspas/crases/barras/espaços/parênteses/colchetes/chaves
 const ALL = LOWER + UPPER + DIGITS + SYMBOLS;
+
+const MIN_LENGTH = 28;
 
 function pick(charset: string): string {
   return charset[randomInt(charset.length)];
@@ -33,9 +41,9 @@ function shuffle(chars: string[]): string[] {
   return chars;
 }
 
-export function generateStrongPassword(length = 28): string {
-  if (length < 24) {
-    throw new Error('generateStrongPassword: length deve ser >= 24');
+export function generateStrongPassword(length = MIN_LENGTH): string {
+  if (length < MIN_LENGTH) {
+    throw new Error(`generateStrongPassword: length deve ser >= ${MIN_LENGTH}`);
   }
 
   const required = [pick(LOWER), pick(UPPER), pick(DIGITS), pick(SYMBOLS)];

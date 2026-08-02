@@ -1,12 +1,12 @@
 import { generateStrongPassword } from './generate-strong-password';
 
 describe('generateStrongPassword', () => {
-  it('gera pelo menos 24 caracteres por padrão', () => {
-    expect(generateStrongPassword().length).toBeGreaterThanOrEqual(24);
+  it('gera pelo menos 28 caracteres por padrão', () => {
+    expect(generateStrongPassword().length).toBeGreaterThanOrEqual(28);
   });
 
-  it('rejeita length < 24', () => {
-    expect(() => generateStrongPassword(10)).toThrow(/>= 24/);
+  it('rejeita length < 28', () => {
+    expect(() => generateStrongPassword(20)).toThrow(/>= 28/);
   });
 
   it('contém ao menos um caractere de cada classe exigida', () => {
@@ -15,7 +15,7 @@ describe('generateStrongPassword', () => {
       expect(pw).toMatch(/[a-z]/);
       expect(pw).toMatch(/[A-Z]/);
       expect(pw).toMatch(/[0-9]/);
-      expect(pw).toMatch(/[!@#$%^&*()\-_=+[\]{}]/);
+      expect(pw).toMatch(/[!@#$%&*+\-=?_]/);
     }
   });
 
@@ -28,6 +28,13 @@ describe('generateStrongPassword', () => {
     for (let i = 0; i < 50; i++) {
       const pw = generateStrongPassword();
       expect(pw).not.toMatch(/[lO01]/);
+    }
+  });
+
+  it('nunca contém aspas, crases, barras invertidas, espaços, parênteses, colchetes ou chaves (Parte 75 — propensos a erro de cópia/digitação)', () => {
+    for (let i = 0; i < 50; i++) {
+      const pw = generateStrongPassword();
+      expect(pw).not.toMatch(/["'`\\\s()[\]{}^]/);
     }
   });
 
