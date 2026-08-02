@@ -256,6 +256,42 @@ const PHONOGRAMS_CONTRACT: ReportFormContract = {
   },
 };
 
+// ─── Clientes ─────────────────────────────────────────────────────────────────
+// Parte 78: sem contrato central, o exportador (heurística genérica) omitia
+// email/telefone/cpf_cnpj por completo (colunas *_encrypted nunca aparecem em
+// exportableColumns). Uma exportação de "Clientes" sem contato é inútil na
+// prática — registra o contrato para que o engine descriptografe esses campos
+// como faz para artists/employees.
+const CLIENTS_CONTRACT: ReportFormContract = {
+  tableName: 'clients',
+  identityColumn: 'nome',
+  fields: [
+    col('tipo_pessoa'), col('categoria'), col('perfil'), col('nome'),
+    col('foto'), col('nome_pf'), col('razao_social'), col('nome_fantasia'),
+    enc('email', 'email_encrypted'), enc('telefone', 'telefone_encrypted'),
+    enc('cpf_cnpj', 'cpf_cnpj_encrypted'),
+    col('instagram'), col('funcao'),
+    col('logradouro'), col('numero'), col('complemento'), col('bairro'),
+    col('cidade'), col('estado'), col('cep'), col('endereco_completo'),
+    col('status_contato'), col('prioridade_contato'),
+    col('responsavel_nome'), col('responsavel_email'),
+    col('responsavel_telefone'), col('responsavel_cargo'),
+    col('observacoes'), col('status'),
+  ],
+  excludedFormFields: {
+    metadata: 'objeto jsonb interno bruto — sem campos de formulário próprios',
+    avatarUrl: 'aceito pelo CreateClientDto mas descartado pelo service — sem coluna própria mapeada (normalizeClientPayload nunca persiste avatarUrl)',
+  },
+  formFieldAliases: {
+    name: 'nome',
+    type: 'tipo_pessoa',
+    category: 'categoria',
+    phone: 'telefone',
+    document: 'cpf_cnpj',
+    address: 'endereco_completo',
+  },
+};
+
 export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   artists: ARTISTS_CONTRACT,
   employees: EMPLOYEES_CONTRACT,
@@ -264,6 +300,7 @@ export const REPORT_FORM_CONTRACTS: Record<string, ReportFormContract> = {
   artist_goals: ARTIST_GOALS_CONTRACT,
   works: WORKS_CONTRACT,
   phonograms: PHONOGRAMS_CONTRACT,
+  clients: CLIENTS_CONTRACT,
 };
 
 export function getReportFormContract(tableName: string): ReportFormContract | null {

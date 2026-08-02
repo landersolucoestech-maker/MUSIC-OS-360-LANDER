@@ -28,6 +28,7 @@ import { CreateContractDto } from '../../contracts/dto/create-contract.dto';
 import { CreateContractTemplateDto } from '../../contract-templates/dto/create-contract-template.dto';
 import { CreateEmployeeDto } from '../../hr/dto/create-employee.dto';
 import { CreateArtistGoalDto } from '../../artist-goals/dto/create-artist-goal.dto';
+import { CreateClientDto } from '../../clients/dto/clients.dto';
 
 /** DTO do formulário (whitelist real da API) por tabela com contrato. */
 const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
@@ -38,6 +39,7 @@ const FORM_DTO_BY_TABLE: Record<string, new () => object> = {
   contract_templates: CreateContractTemplateDto,
   employees: CreateEmployeeDto,
   artist_goals: CreateArtistGoalDto,
+  clients: CreateClientDto,
 };
 
 function dtoFields(dto: new () => object): string[] {
