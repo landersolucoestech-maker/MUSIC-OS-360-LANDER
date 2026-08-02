@@ -33,7 +33,11 @@ jobs:
       SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
       TENANT_ZERO_OWNER_EMAIL: "deyvisson@landerrecords.com"
       TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK: "yes"
-      NODE_VERSION: "20"
+      # 22+ required: @supabase/supabase-js's realtime client needs a native
+      # global WebSocket (stable since Node 22; Node 20 has none, which
+      # made auth.admin.createUser() throw "Node.js 20 detected without
+      # native WebSocket support" even though this script never uses realtime).
+      NODE_VERSION: "22"
       PNPM_VERSION: "10.11.0"
     steps:
       - uses: actions/checkout@v4
