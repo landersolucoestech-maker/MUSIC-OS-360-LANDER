@@ -83,8 +83,6 @@ function buildFakeDataSource(seed?: { organizations?: any[]; tenants?: any[] }) 
 describe('bootstrapTenantZero', () => {
   afterEach(() => {
     delete process.env['NODE_ENV'];
-    delete process.env['TENANT_ZERO_OWNER_AUTH_USER_ID'];
-    delete process.env['TENANT_ZERO_OWNER_EMAIL'];
   });
 
   it('cria a LANDER RECORDS quando ausente (created=true) e registra auditoria de criação', async () => {
@@ -129,7 +127,7 @@ describe('bootstrapTenantZero', () => {
     await expect(bootstrapTenantZero(ds as never)).rejects.toThrow(/slug divergente|Identidade divergente/);
   });
 
-  it('em produção, exige TENANT_ZERO_OWNER_AUTH_USER_ID e TENANT_ZERO_OWNER_EMAIL — nunca cria owner sintético', async () => {
+  it('em produção, exige um RealOwnerInput — nunca cria owner sintético', async () => {
     process.env['NODE_ENV'] = 'production';
     const ds = buildFakeDataSource();
 
@@ -139,15 +137,45 @@ describe('bootstrapTenantZero', () => {
 
   it('em produção com owner real fornecido, cria org_members com os dados fornecidos (não o sintético)', async () => {
     process.env['NODE_ENV'] = 'production';
-    process.env['TENANT_ZERO_OWNER_AUTH_USER_ID'] = 'real-owner-auth-id';
-    process.env['TENANT_ZERO_OWNER_EMAIL'] = 'real-owner@landerrecords.com';
     const ds = buildFakeDataSource();
 
-    await bootstrapTenantZero(ds as never);
+    await bootstrapTenantZero(ds as never, { authUserId: 'real-owner-auth-id', email: 'real-owner@landerrecords.com', fullName: 'Real Owner' });
 
     expect(ds.state.org_members).toHaveLength(1);
     const [, , authUserId, email] = ds.state.org_members[0].params as string[];
     expect(authUserId).toBe('real-owner-auth-id');
     expect(email).toBe('real-owner@landerrecords.com');
+  });
+
+  it('owner real fora de produção também substitui o sintético (Parte 73 — owner institucional em DEV/STAGING)', async () => {
+    const ds = buildFakeDataSource();
+
+    const result = await bootstrapTenantZero(ds as never, { authUserId: 'real-id', email: 'ceo@empresa.com', fullName: 'CEO' });
+
+    expect(ds.state.org_members).toHaveLength(1);
+    const [, , authUserId, email] = ds.state.org_members[0].params as string[];
+    expect(authUserId).toBe('real-id');
+    expect(email).toBe('ceo@empresa.com');
+    expect(result.created).toBe(true);
+  });
+
+  it('owner real na criação semeia tenants.settings.onboarding.completed=false (dispara o wizard no primeiro login)', async () => {
+    const ds = buildFakeDataSource();
+
+    await bootstrapTenantZero(ds as never, { authUserId: 'real-id', email: 'ceo@empresa.com' });
+
+    const tenantInsertParams = ds.query.mock.calls.find(([sql]: [string]) => sql.includes('INSERT INTO tenants'))?.[1] as unknown[];
+    const settingsJson = tenantInsertParams[4] as string;
+    expect(JSON.parse(settingsJson)).toEqual({ onboarding: { completed: false, currentStep: 'company_profile' } });
+  });
+
+  it('owner sintético (sem realOwner) não semeia onboarding incompleto — settings fica {}', async () => {
+    const ds = buildFakeDataSource();
+
+    await bootstrapTenantZero(ds as never);
+
+    const tenantInsertParams = ds.query.mock.calls.find(([sql]: [string]) => sql.includes('INSERT INTO tenants'))?.[1] as unknown[];
+    const settingsJson = tenantInsertParams[4] as string;
+    expect(JSON.parse(settingsJson)).toEqual({});
   });
 });
