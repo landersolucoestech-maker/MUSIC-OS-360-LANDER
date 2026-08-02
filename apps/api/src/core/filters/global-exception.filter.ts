@@ -34,6 +34,12 @@ export class GlobalExceptionFilter implements ExceptionFilter {
     if (exception instanceof HttpException) {
       statusCode = exception.getStatus();
       const exceptionResponse = exception.getResponse();
+      // Default: nome da classe da exceção. Alguns guards (MustChangePasswordGuard,
+      // BillingEnforcementGuard, ...) lançam `new ForbiddenException({ error: 'CODE', message })`
+      // com um código de máquina próprio — esse código PRECISA sobreviver até o cliente,
+      // senão vira só "ForbiddenException" genérico e o frontend não consegue diferenciar
+      // (ex.: MUST_CHANGE_PASSWORD vs TENANT_SUSPENDED vs qualquer outro 403).
+      error = exception.name;
 
       if (typeof exceptionResponse === 'string') {
         message = exceptionResponse;
@@ -42,8 +48,6 @@ export class GlobalExceptionFilter implements ExceptionFilter {
         message = (resp['message'] as string | string[]) ?? exception.message;
         error   = (resp['error']   as string)            ?? exception.name;
       }
-
-      error = exception.name;
 
       // Não reportar 4xx ao Sentry (erros de cliente, não de sistema)
     } else if (exception instanceof Error) {
