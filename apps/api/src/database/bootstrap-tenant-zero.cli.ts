@@ -18,7 +18,13 @@
  *   - só é impressa em stdout quando rodando interativamente num terminal
  *     local (`process.stdout.isTTY`) — nunca em CI/execução não-interativa,
  *     onde o log seria um artefato persistente e visível a qualquer pessoa
- *     com acesso de leitura ao repositório.
+ *     com acesso de leitura ao repositório;
+ *   - EXCEÇÃO explícita e opt-in: TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK=yes
+ *     força a impressão mesmo fora de TTY. Existe só para uma execução única
+ *     e deliberada onde o operador já decidiu aceitar o risco (equivalente ao
+ *     padrão CONFIRM_ROLLBACK=YES_I_KNOW_WHAT_I_AM_DOING de db-ops.ts) — a
+ *     senha ainda expira no primeiro login (must_change_password=true), mas
+ *     fica visível no log até então. Nunca usar isso como padrão operacional.
  */
 import 'reflect-metadata';
 import { createClient } from '@supabase/supabase-js';
@@ -138,10 +144,14 @@ async function run(): Promise<void> {
     if (realOwner) {
       console.log(`  ✓ Owner real: ${realOwner.email} (${ownerCreated ? 'criado agora' : 'já existia, reutilizado'})`);
       if (provisionalPassword) {
-        if (process.stdout.isTTY) {
+        const acceptedRisk = process.env['TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK'] === 'yes';
+        if (process.stdout.isTTY || acceptedRisk) {
           console.log('\n  ⚠ SENHA PROVISÓRIA (exibida uma única vez, não persiste em nenhum lugar):');
           console.log(`    ${provisionalPassword}`);
           console.log('  Troca de senha será exigida no primeiro login.\n');
+          if (acceptedRisk && !process.stdout.isTTY) {
+            console.log('  ⚠ Impressa em execução não-interativa por TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK=yes — troque assim que possível.\n');
+          }
         } else {
           console.log('  ⚠ Senha provisória gerada, mas NÃO impressa (execução não-interativa/CI) — rode este script localmente para vê-la.');
         }
