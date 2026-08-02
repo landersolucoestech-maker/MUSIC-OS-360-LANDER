@@ -21,8 +21,8 @@ export class ClientsService {
       ...c,
       name:               c.nome,
       type:               c.tipo_pessoa,
-      category:           c.segmento,
-      address:            c.endereco,
+      category:           c.categoria,
+      address:            c.endereco_completo,
       email:              this.enc.decryptNullable(c.email_encrypted),
       phone:              this.enc.decryptNullable(c.telefone_encrypted),
       document:           this.enc.decryptNullable(c.cpf_cnpj_encrypted),
@@ -39,9 +39,9 @@ export class ClientsService {
       .where('c.tenant_id = :tenantId', { tenantId })
       .andWhere('c.deleted_at IS NULL');
 
-    if (q['status'])   qb.andWhere('c.status = :status',     { status:   q['status'] });
-    if (q['type'])     qb.andWhere('c.tipo_pessoa = :type',  { type:     q['type'] });
-    if (q['category']) qb.andWhere('c.segmento = :category', { category: q['category'] });
+    if (q['status'])   qb.andWhere('c.status = :status',      { status:   q['status'] });
+    if (q['type'])     qb.andWhere('c.tipo_pessoa = :type',   { type:     q['type'] });
+    if (q['category']) qb.andWhere('c.categoria = :category', { category: q['category'] });
 
     qb.orderBy('c.created_at', q['ascending'] ? 'ASC' : 'DESC')
       .skip(typeof q['offset'] === 'number' ? q['offset'] : 0)
@@ -65,7 +65,7 @@ export class ClientsService {
 
   async create(tenantId: string, userId: string, dto: CreateClientDto) {
     const { email, phone, document, ...rest } = dto as unknown as Record<string, unknown>;
-    const client = this.normalizeClientPayload(rest);
+    const client = this.normalizeClientPayload(rest, true);
     const entity = this.repo!.create({
       tenant_id:          tenantId,
       ...(client as Partial<ClientEntity>),
@@ -100,14 +100,23 @@ export class ClientsService {
     return { deleted: true };
   }
 
-  private normalizeClientPayload(input: Record<string, unknown>) {
+  /** categoria/perfil são NOT NULL na tabela física; a DTO pública não expõe
+   * `perfil` e trata `category` como opcional — mantemos o contrato aceitando
+   * ambos ausentes, com fallback explícito em vez de deixar o INSERT falhar
+   * por violação de NOT NULL. */
+  private static readonly DEFAULT_CATEGORIA = 'CORPORATE_CLIENT';
+  private static readonly DEFAULT_PERFIL = 'outros';
+
+  private normalizeClientPayload(input: Record<string, unknown>, isCreate = false) {
     const { name, type, category, address, avatarUrl: _avatarUrl, ...rest } = input;
     void _avatarUrl;
     const mapped: Record<string, unknown> = { ...rest };
     if (name !== undefined) mapped['nome'] = name;
     if (type !== undefined) mapped['tipo_pessoa'] = type === 'company' ? 'pessoa_juridica' : type === 'person' ? 'pessoa_fisica' : type;
-    if (category !== undefined) mapped['segmento'] = category;
-    if (address !== undefined) mapped['endereco'] = typeof address === 'string' ? address : JSON.stringify(address);
+    if (category !== undefined) mapped['categoria'] = category;
+    else if (isCreate) mapped['categoria'] = ClientsService.DEFAULT_CATEGORIA;
+    if (isCreate) mapped['perfil'] = ClientsService.DEFAULT_PERFIL;
+    if (address !== undefined) mapped['endereco_completo'] = typeof address === 'string' ? address : JSON.stringify(address);
     return mapped;
   }
 }

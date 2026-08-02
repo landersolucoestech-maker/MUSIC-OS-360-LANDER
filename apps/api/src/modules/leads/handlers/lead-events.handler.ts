@@ -52,9 +52,10 @@ export class LeadEventsHandler {
               id: randomUUID(),
               tenant_id: tenantId,
               nome,
-              segmento: null,
+              categoria: 'CORPORATE_CLIENT',
+              perfil: 'outros',
               tipo_pessoa: empresa ? 'pessoa_juridica' : 'pessoa_fisica',
-              responsavel: convertedBy,
+              responsavel_nome: convertedBy,
               observacoes: `Convertido de lead ${leadId} em ${convertedAt}`,
               metadata: {
                 leadId,
