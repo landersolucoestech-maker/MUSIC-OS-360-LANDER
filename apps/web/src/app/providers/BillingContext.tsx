@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from "react";
 import { api } from "@/shared/lib/api-client";
 import { AUTH_DISABLED } from "@/shared/lib/env";
+import { PasswordChangeRequiredError } from "@/shared/lib/errors";
+import { captureError } from "@/shared/lib/error-logger";
 import { useAuth } from "./AuthContext";
 import { useTenant, type TenantBillingStatus } from "./TenantContext";
 
@@ -65,12 +67,17 @@ function daysUntil(value?: string): number | undefined {
 }
 
 export function BillingProvider({ children }: { children: React.ReactNode }) {
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const { tenant, setTenant } = useTenant();
   const [loading, setLoading] = useState(false);
 
   const refresh = async () => {
-    if (AUTH_DISABLED || !session?.access_token) return;
+    // Parte 77 — enquanto a troca obrigatória de senha está pendente, o
+    // backend bloqueia toda rota de domínio (inclusive /billing/subscription)
+    // com 403 MUST_CHANGE_PASSWORD. Buscar billing nesse estado não serve a
+    // nenhum propósito (a UI de billing nem é exibida antes da troca) e só
+    // gera um erro sem tratamento a cada 60s.
+    if (AUTH_DISABLED || !session?.access_token || user?.mustChangePassword) return;
     setLoading(true);
     try {
       const subscription = await api.get<BillingSubscriptionResponse | null>("/billing/subscription");
@@ -90,16 +97,24 @@ export function BillingProvider({ children }: { children: React.ReactNode }) {
           invoiceUrl: subscription.latest_invoice?.hosted_invoice_url ?? prev.billing.invoiceUrl,
         },
       }));
+    } catch (error) {
+      // Nunca deixar uma falha de billing (403 must-change-password, 503
+      // dependência indisponível, rede) escapar como rejeição não tratada —
+      // isso já causou um crash real de toda a árvore React (Parte 77).
+      if (!(error instanceof PasswordChangeRequiredError)) {
+        captureError(error instanceof Error ? error : new Error(String(error)), { extra: { source: "BillingContext.refresh" } });
+      }
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
+    if (user?.mustChangePassword) return;
     void refresh();
     const timer = window.setInterval(() => void refresh(), 60_000);
     return () => window.clearInterval(timer);
-  }, [session?.access_token]);
+  }, [session?.access_token, user?.mustChangePassword]);
 
   const value = useMemo<BillingState>(() => {
     const status = tenant.billing.status;
