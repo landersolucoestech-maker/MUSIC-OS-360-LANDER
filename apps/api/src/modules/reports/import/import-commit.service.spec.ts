@@ -40,8 +40,9 @@ function makeSvc(opts: { validation?: ImportValidationResult; def?: ReportEntity
   const engine = { validateFile: jest.fn().mockReturnValue(opts.validation ?? validResult()) } as any;
   const definitions = { getDefinition: () => (opts.def ?? DEF) } as any;
   const audit = { record: jest.fn() } as any;
-  const svc = new ImportCommitService(ds, engine, definitions, audit);
-  return { svc, qr, engine, audit };
+  const encryption = { encryptNullable: jest.fn((v: string | null) => (v == null ? null : `enc:${v}`)) } as any;
+  const svc = new ImportCommitService(ds, engine, definitions, audit, encryption);
+  return { svc, qr, engine, audit, encryption };
 }
 
 const file = { filename: 'artists.xlsx', content: Buffer.from('Nome artístico\nA0\nA1') };
