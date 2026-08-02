@@ -13,6 +13,7 @@ import { RealtimeService } from '../../core/realtime/realtime.service';
 import { EventsService, DOMAIN_EVENTS } from '../../core/events/events.service';
 import { BillingEnforcementService } from './billing-enforcement.service';
 import { BillingPlansService } from './billing-plans.service';
+import { classifyStripeSecretKeyFormat } from '../../core/config/stripe-key-guard';
 import { AdminListQueryDto, UpdateAdminTenantDto } from './dto/admin-billing.dto';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
@@ -181,11 +182,21 @@ export class BillingService {
       this.webhookRepo = ds.getRepository(WebhookEventEntity);
     }
     const key = this.config?.get<string>('STRIPE_SECRET_KEY') ?? process.env.STRIPE_SECRET_KEY;
-    if (key) {
-      this.stripe = new StripeClass(key, { apiVersion: '2026-04-22.dahlia' });
-      this.logger.log('Stripe Billing inicializado');
-    } else {
-      this.logger.warn('STRIPE_SECRET_KEY nao configurada - Billing desativado');
+    const keyState = classifyStripeSecretKeyFormat(key);
+    switch (keyState) {
+      case 'VALID_TEST_KEY':
+        this.stripe = new StripeClass(key as string, { apiVersion: '2026-04-22.dahlia' });
+        this.logger.log('Stripe Billing inicializado (TEST MODE)');
+        break;
+      case 'LIVE_KEY_REJECTED':
+        this.logger.error('STRIPE_SECRET_KEY e uma chave LIVE - recusada. Este projeto opera exclusivamente em TEST MODE. Billing desativado.');
+        break;
+      case 'INVALID_FORMAT':
+        this.logger.warn('STRIPE_SECRET_KEY nao tem um formato Stripe reconhecido - Billing desativado');
+        break;
+      case 'MISSING':
+      default:
+        this.logger.warn('STRIPE_SECRET_KEY nao configurada - Billing desativado');
     }
   }
 
