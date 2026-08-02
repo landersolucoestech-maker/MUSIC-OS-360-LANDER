@@ -5,8 +5,8 @@
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/main.ts",
-    "start:dev": "ts-node-dev --respawn --transpile-only src/main.ts",
+    "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
+    "start:dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/main.ts",
     "build": "tsc -p tsconfig.build.json",
     "start": "node dist/apps/api/src/main.js",
     "lint": "eslint src --ext .ts",
