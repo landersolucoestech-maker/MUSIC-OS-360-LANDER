@@ -32,8 +32,10 @@ import { AppDataSource } from './datasource';
 import { extractSupabaseRef, SUPABASE_MAIN_REF } from '../core/config/env.schema';
 import { bootstrapTenantZero, type RealOwnerInput } from './bootstrap-tenant-zero';
 import { generateStrongPassword } from '../core/security/generate-strong-password';
+import { normalizeEmail } from '../core/security/normalize-email';
 
-async function resolveRealOwner(email: string): Promise<{ owner: RealOwnerInput; created: boolean; provisionalPassword: string | null }> {
+async function resolveRealOwner(rawEmail: string): Promise<{ owner: RealOwnerInput; created: boolean; provisionalPassword: string | null }> {
+  const email = normalizeEmail(rawEmail);
   const supabaseUrl = process.env['SUPABASE_URL'];
   const serviceRoleKey = process.env['SUPABASE_SERVICE_ROLE_KEY'];
   if (!supabaseUrl || !serviceRoleKey) {
@@ -48,7 +50,7 @@ async function resolveRealOwner(email: string): Promise<{ owner: RealOwnerInput;
   if (listError) {
     throw new Error(`Falha ao listar usuários Supabase Auth: ${listError.message}`);
   }
-  const found = existing.users.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+  const found = existing.users.find((u) => u.email && normalizeEmail(u.email) === email);
   if (found) {
     return { owner: { authUserId: found.id, email, fullName: null }, created: false, provisionalPassword: null };
   }

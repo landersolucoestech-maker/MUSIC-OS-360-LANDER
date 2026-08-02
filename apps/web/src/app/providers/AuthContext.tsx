@@ -25,6 +25,7 @@ import {
   setTenantId,
 } from "@/shared/lib/api-client";
 import { IS_DEV } from "@/shared/lib/env";
+import { normalizeEmail } from "@/shared/lib/normalize-email";
 import { getSupabaseClient } from "@/lib/supabase";
 
 function devLog(label: string, data?: unknown): void {
@@ -244,7 +245,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const signIn = async (email: string, password: string): Promise<{ error: AuthError | null }> => {
-    const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email, password });
+    const { data, error } = await getSupabaseClient().auth.signInWithPassword({ email: normalizeEmail(email), password });
     if (error) {
       return { error: { message: error.message, status: error.status } };
     }
@@ -263,13 +264,14 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
     fullName?: string,
     metadata?: Record<string, unknown>,
   ): Promise<{ error: AuthError | null }> => {
+    const normalizedEmail = normalizeEmail(email);
     const { data, error } = await getSupabaseClient().auth.signUp({
-      email,
+      email: normalizedEmail,
       password,
       options: {
         data: {
           full_name: fullName ?? "",
-          org_name: fullName?.trim() || email.split("@")[0],
+          org_name: fullName?.trim() || normalizedEmail.split("@")[0],
           ...metadata,
         },
       },
@@ -294,7 +296,7 @@ function SupabaseAuthProvider({ children }: { children: React.ReactNode }) {
 
   const resetPassword = async (email: string): Promise<{ error: AuthError | null }> => {
     const redirectTo = `${window.location.origin}/reset-password`;
-    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(email, { redirectTo });
+    const { error } = await getSupabaseClient().auth.resetPasswordForEmail(normalizeEmail(email), { redirectTo });
     if (error) return { error: { message: error.message, status: error.status } };
     return { error: null };
   };
