@@ -1,0 +1,57 @@
+name: Dev Bootstrap Real Owner Oneoff (Parte 73 — temporary, removed after use)
+
+# One-off, push-triggered (workflow_dispatch only registers from the
+# default branch, never touched here) workflow to create the real
+# institutional owner for tenant-zero on Supabase DEV. Reuses the
+# "development" GitHub Environment secrets (DATABASE_URL, SUPABASE_URL,
+# SUPABASE_SERVICE_ROLE_KEY). TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK
+# is set deliberately for this single authorized run — the operator has
+# explicitly accepted that this log is not private, and will change the
+# password at first login regardless (must_change_password=true is set
+# unconditionally). Committed, run once, then removed in a follow-up commit,
+# and the two Supabase secrets are removed right after too.
+
+on:
+  push:
+    branches: [dev]
+    paths:
+      - ".github/workflows/dev-bootstrap-real-owner-oneoff.yml"
+
+concurrency:
+  group: dev-bootstrap-real-owner-oneoff
+  cancel-in-progress: false
+
+jobs:
+  bootstrap-real-owner:
+    name: Create real tenant-zero owner on Supabase DEV
+    runs-on: ubuntu-latest
+    environment: development
+    if: github.ref == 'refs/heads/dev'
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      TENANT_ZERO_OWNER_EMAIL: "deyvisson@landerrecords.com"
+      TENANT_ZERO_PRINT_PASSWORD_I_ACCEPT_THE_RISK: "yes"
+      NODE_VERSION: "20"
+      PNPM_VERSION: "10.11.0"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate Supabase project ref is DEV (never MAIN/STAGING/prod) before any query
+        run: pnpm --filter @music-os-360/api exec tsx scripts/verify-supabase-dev-ref.ts
+
+      - name: Bootstrap real institutional owner
+        run: pnpm --filter @music-os-360/api db:bootstrap:tenant-zero
