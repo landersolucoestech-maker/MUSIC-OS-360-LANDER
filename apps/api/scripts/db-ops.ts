@@ -16,6 +16,7 @@
 
 import 'reflect-metadata';
 import { AppDataSource } from '../src/database/datasource';
+import { migrateApplication as migrateApplicationCore, checkApplication as checkApplicationCore } from '../src/database/migrate-application';
 
 const COMMAND = process.argv[2];
 const ARG     = process.argv[3];
@@ -34,6 +35,70 @@ async function migrate(): Promise<void> {
   console.log('[db:migrate] Aplicando migrations…');
   await AppDataSource.runMigrations({ transaction: 'each' });
   console.log('[db:migrate] Migrations aplicadas com sucesso.\n');
+}
+
+/**
+ * migrate:application  (Parte 72)
+ *
+ * Aplica somente migrations classificadas como APPLICATION (ver
+ * migration-classification.ts), pulando EXTERNAL_MANAGED/PRIVILEGED sem
+ * abortar a fila inteira — ao contrário de `db:migrate` (TypeORM puro), que
+ * para na primeira falha, mesmo quando a migration seguinte não tem nenhuma
+ * relação real com a que falhou.
+ *
+ * Usa apenas API pública do TypeORM (MigrationExecutor.getPendingMigrations
+ * + .insertMigration) — não reimplementa o SQL de tracking. Cada migration
+ * roda na sua própria transação (mesma semântica de `transaction: 'each'`):
+ * o tracking só é inserido depois do up() físico ter sucesso, e ambos fazem
+ * parte da mesma transação — se o INSERT falhar, o up() também é revertido.
+ */
+async function migrateApplication(): Promise<void> {
+  console.log('\n[db:migrate:application] Inicializando DataSource…');
+  await AppDataSource.initialize();
+
+  const { applied, skippedNonApplication } = await migrateApplicationCore(AppDataSource);
+
+  if (skippedNonApplication.length > 0) {
+    console.log(
+      `[db:migrate:application] ${skippedNonApplication.length} migration(s) pendente(s) fora de APPLICATION ` +
+      `(não aplicadas por este comando — ver verify:realtime-external): ${skippedNonApplication.join(', ')}`,
+    );
+  }
+
+  if (applied.length === 0) {
+    console.log('[db:migrate:application] Nenhuma migration APPLICATION pendente.\n');
+    return;
+  }
+
+  console.log(`[db:migrate:application] Aplicadas: ${applied.join(', ')}`);
+  console.log('[db:migrate:application] Migrations APPLICATION aplicadas com sucesso.\n');
+}
+
+/**
+ * check:application  (Parte 72) — como db:check, mas só considera migrations
+ * APPLICATION. Uma migration EXTERNAL_MANAGED pendente nunca faz este
+ * comando falhar (ver verify:realtime-external para o estado dela).
+ */
+async function checkApplication(): Promise<void> {
+  console.log('\n[db:check:application] Verificando migrations APPLICATION…\n');
+  await AppDataSource.initialize();
+
+  const { applicationPending, nonApplicationPending } = await checkApplicationCore(AppDataSource);
+
+  if (nonApplicationPending.length > 0) {
+    console.log(
+      `ℹ ${nonApplicationPending.length} migration(s) EXTERNAL_MANAGED/PRIVILEGED pendente(s) ` +
+      `(não bloqueiam este comando): ${nonApplicationPending.join(', ')}`,
+    );
+  }
+
+  if (applicationPending.length === 0) {
+    console.log('✓ Nenhuma migration APPLICATION pendente.\n');
+  } else {
+    console.log(`⚠ ${applicationPending.length} migration(s) APPLICATION pendente(s) — execute: npm run db:migrate:application`);
+    console.log(applicationPending.map((n) => `  [ ] ${n}`).join('\n') + '\n');
+    process.exitCode = 1;
+  }
 }
 
 async function rollback(): Promise<void> {
@@ -125,14 +190,16 @@ async function main(): Promise<void> {
   try {
     switch (COMMAND) {
       case 'migrate':            await migrate();              break;
+      case 'migrate:application': await migrateApplication();  break;
       case 'rollback':           await rollback();             break;
       case 'check':              await check();                break;
+      case 'check:application':  await checkApplication();     break;
       case 'reset':              await reset();                break;
       case 'generate':           await generate();             break;
       case 'seed:operational':   await seedOperational();      break;
       default:
         console.error(`\n[db-ops] Comando desconhecido: '${COMMAND ?? ''}'`);
-        console.error('Comandos válidos: migrate | rollback | check | reset | generate | seed:operational\n');
+        console.error('Comandos válidos: migrate | migrate:application | rollback | check | check:application | reset | generate | seed:operational\n');
         process.exit(1);
     }
   } catch (err) {
