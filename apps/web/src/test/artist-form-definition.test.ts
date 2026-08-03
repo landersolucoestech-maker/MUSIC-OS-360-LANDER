@@ -42,8 +42,8 @@ const ARTISTA: Artista = {
   deezer_url: "https://deezer.com/artist/1",
   apple_music_url: "https://music.apple.com/artist/1",
   soundcloud_url: "https://soundcloud.com/mc",
-  instagram: "https://instagram.com/mc",
-  tiktok: "https://tiktok.com/@mc",
+  instagram_url: "https://instagram.com/mc",
+  tiktok_url: "https://tiktok.com/@mc",
   tipo_perfil: "com_empresario",
   distribuidoras_gerais: [{ id: "onerpm", email: "share@onerpm.com" }],
   contatos_vinculados: [{ contactId: "c-1", distribuidoras: [{ id: "distrokid", email: "d@k.com" }] }],
@@ -89,8 +89,8 @@ describe("definição única do formulário de artista", () => {
     expect(payload.spotify_url).toBe("https://open.spotify.com/artist/4ZzZzZzZzZzZzZzZzZzZzZ");
     expect(payload.youtube_url).toBe("https://www.youtube.com/channel/UCabcdefghijklmnopqrstuv");
     expect(payload.deezer_url).toBe("https://deezer.com/artist/1");
-    expect(payload.instagram).toBe("https://instagram.com/mc");
-    expect(payload.tiktok).toBe("https://tiktok.com/@mc");
+    expect(payload.instagram_url).toBe("https://instagram.com/mc");
+    expect(payload.tiktok_url).toBe("https://tiktok.com/@mc");
     expect(payload.tipo_perfil).toBe("com_empresario");
     expect(payload.distribuidoras_gerais).toEqual([{ id: "onerpm", email: "share@onerpm.com" }]);
     expect(payload.contatos_vinculados).toEqual([

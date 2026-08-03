@@ -65,13 +65,13 @@ export interface Artista {
   deezer_url?: string | null;
   deezer_fas?: number | null;
   apple_music_url?: string | null;
-  apple_music_albuns?: number | null;
+  apple_music_albuns_url?: number | null;
   soundcloud_url?: string | null;
-  soundcloud_seguidores?: number | null;
-  instagram?: string | null;
+  soundcloud_seguidores_url?: number | null;
+  instagram_url?: string | null;
   instagram_seguidores?: number | null;
   facebook?: string | null;
-  tiktok?: string | null;
+  tiktok_url?: string | null;
   tiktok_seguidores?: number | null;
   twitter?: string | null;
   website?: string | null;

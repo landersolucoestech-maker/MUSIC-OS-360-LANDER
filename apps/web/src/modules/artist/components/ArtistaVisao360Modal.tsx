@@ -1427,14 +1427,14 @@ export function ArtistaVisao360Modal({
                 youtubeUrl={artista.youtube_url ?? null}
                 instagramUrl={artista.instagram_url ?? null}
                 instagramSeguidores={artista.instagram_seguidores ?? null}
-                tiktokUrl={artista.tiktok ?? null}
+                tiktokUrl={artista.tiktok_url ?? null}
                 tiktokSeguidores={artista.tiktok_seguidores ?? null}
                 deezerUrl={artista.deezer_url ?? null}
                 deezerFas={artista.deezer_fas ?? null}
                 appleMusicUrl={artista.apple_music_url ?? null}
-                appleMusicAlbuns={artista.apple_music_albuns ?? null}
+                appleMusicAlbuns={artista.apple_music_albuns_url ?? null}
                 soundcloudUrl={artista.soundcloud_url ?? null}
-                soundcloudSeguidores={artista.soundcloud_seguidores ?? null}
+                soundcloudSeguidores={artista.soundcloud_seguidores_url ?? null}
               />
 
               {/* Tipo de Perfil */}

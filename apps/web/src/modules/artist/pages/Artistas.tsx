@@ -471,8 +471,8 @@ export default function Artistas() {
                                 <div className="flex items-center gap-2">
                                   {(() => {
                                     const links = [
-                                      { url: artista.instagram, icon: <SiInstagram className="h-4 w-4" />, label: "Instagram" },
-                                      { url: artista.tiktok, icon: <SiTiktok className="h-4 w-4" />, label: "TikTok" },
+                                      { url: artista.instagram_url, icon: <SiInstagram className="h-4 w-4" />, label: "Instagram" },
+                                      { url: artista.tiktok_url, icon: <SiTiktok className="h-4 w-4" />, label: "TikTok" },
                                       { url: artista.youtube_url, icon: <SiYoutube className="h-4 w-4" />, label: "YouTube" },
                                       { url: artista.spotify_url, icon: <SiSpotify className="h-4 w-4" />, label: "Spotify" },
                                       { url: artista.deezer_url, icon: <DeezerIcon className="h-4 w-4" />, label: "Deezer" },
@@ -603,16 +603,16 @@ export default function Artistas() {
                     artistaId={artista.id}
                     spotifyUrl={(artista as Artista).spotify_url ?? null}
                     youtubeUrl={(artista as Artista).youtube_url ?? null}
-                    instagramUrl={(artista as Artista).instagram ?? null}
+                    instagramUrl={(artista as Artista).instagram_url ?? null}
                     instagramSeguidores={(artista as Artista).instagram_seguidores ?? null}
-                    tiktokUrl={(artista as Artista).tiktok ?? null}
+                    tiktokUrl={(artista as Artista).tiktok_url ?? null}
                     tiktokSeguidores={(artista as Artista).tiktok_seguidores ?? null}
                     deezerUrl={(artista as Artista).deezer_url ?? null}
                     deezerFas={(artista as Artista).deezer_fas ?? null}
                     appleMusicUrl={(artista as Artista).apple_music_url ?? null}
-                    appleMusicAlbuns={(artista as Artista).apple_music_albuns ?? null}
+                    appleMusicAlbuns={(artista as Artista).apple_music_albuns_url ?? null}
                     soundcloudUrl={(artista as Artista).soundcloud_url ?? null}
-                    soundcloudSeguidores={(artista as Artista).soundcloud_seguidores ?? null}
+                    soundcloudSeguidores={(artista as Artista).soundcloud_seguidores_url ?? null}
                   />
                 </div>
               );
