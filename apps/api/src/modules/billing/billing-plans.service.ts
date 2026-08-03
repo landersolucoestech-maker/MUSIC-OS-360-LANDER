@@ -32,7 +32,7 @@ export interface UpsertPlanInput {
   currency?: string;
   interval?: string;
   active?: boolean;
-  features?: Record<string, unknown>;
+  features?: unknown[];
   limits?: Record<string, unknown>;
 }
 
@@ -64,24 +64,41 @@ export class BillingPlansService {
   }
 
   // ── Reads ────────────────────────────────────────────────────────────────
-  list(opts?: { includeInactive?: boolean }): Promise<BillingPlanEntity[]> {
+  // Normaliza `features` para array em toda leitura: linhas criadas antes da
+  // correção do default (Parte 84) ainda podem ter {} persistido em jsonb, o
+  // que quebra .map() em todo consumidor (tela de billing/configurações/
+  // landing — únicos que leem via este service; o editor admin usa
+  // AdminPlansService, que já desembrulha `.labels` do lado dele). Quando o
+  // valor legado é o objeto {labels, color, price_annual, tier} gravado pelo
+  // editor admin, extrai `labels` em vez de descartar os rótulos já
+  // cadastrados. Guard único aqui em vez de em cada tela.
+  private normalize(plan: BillingPlanEntity): BillingPlanEntity {
+    if (Array.isArray(plan.features)) return plan;
+    const labels = (plan.features as { labels?: unknown } | null)?.labels;
+    plan.features = Array.isArray(labels) ? labels : [];
+    return plan;
+  }
+
+  async list(opts?: { includeInactive?: boolean }): Promise<BillingPlanEntity[]> {
     const qb = this.repo.createQueryBuilder('p').orderBy('p.amount', 'ASC');
     if (!opts?.includeInactive) qb.where('p.active = true');
-    return qb.getMany();
+    const plans = await qb.getMany();
+    return plans.map((p) => this.normalize(p));
   }
 
   async get(id: string): Promise<BillingPlanEntity> {
     const plan = await this.repo.findOne({ where: { id } });
     if (!plan) throw new NotFoundException('Plano não encontrado');
-    return plan;
+    return this.normalize(plan);
   }
 
   /** Resolve por id (uuid) ou slug; usado pelo checkout. */
   async resolve(idOrSlug: string): Promise<BillingPlanEntity | null> {
-    return this.repo
+    const plan = await this.repo
       .createQueryBuilder('p')
       .where('p.id::text = :v OR p.slug = :v', { v: idOrSlug })
       .getOne();
+    return plan ? this.normalize(plan) : null;
   }
 
   // ── Writes ───────────────────────────────────────────────────────────────
@@ -115,7 +132,7 @@ export class BillingPlansService {
       currency: input.currency ?? 'brl',
       interval: input.interval ?? 'month',
       active: input.active ?? true,
-      features: input.features ?? {},
+      features: input.features ?? [],
       limits: input.limits ?? {},
       stripe_product_id: null,
       stripe_price_id: null,

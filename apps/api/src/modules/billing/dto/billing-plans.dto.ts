@@ -1,5 +1,5 @@
 import {
-  IsString, IsInt, IsIn, IsOptional, IsBoolean, IsObject, Min, Matches, Length,
+  IsString, IsInt, IsIn, IsOptional, IsBoolean, IsArray, IsObject, Min, Matches, Length,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
@@ -32,9 +32,9 @@ export class CreatePlanDto {
   @IsOptional() @IsBoolean()
   active?: boolean;
 
-  @ApiPropertyOptional({ type: 'object', additionalProperties: true })
-  @IsOptional() @IsObject()
-  features?: Record<string, unknown>;
+  @ApiPropertyOptional({ type: 'array', items: { type: 'string' } })
+  @IsOptional() @IsArray()
+  features?: unknown[];
 
   @ApiPropertyOptional({ type: 'object', additionalProperties: true })
   @IsOptional() @IsObject()
