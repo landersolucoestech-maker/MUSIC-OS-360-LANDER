@@ -175,7 +175,7 @@ Arquitetura real encontrada:
 | Tenant/RBAC | Auth, DB, permissions catalog | Todos controllers protegidos | Postgres/RLS/cache | NÃO VALIDADO | IDOR se contexto falhar | PARCIAL |
 | Billing | Tenant, Stripe, RLS, guards | Web billing/admin, checkout/webhook | Stripe | NÃO VALIDADO | Cobrança e feature gate parcial | PARCIAL |
 | Artists | Tenant, repositories, queues platform sync | Web artist/catalog/dashboard | Spotify/Youtube indireto | NÃO VALIDADO | Fluxo grande e UI 3061 linhas | PARCIAL |
-| Reports | Metadata, table guard, import/export | Web reports | XLSX/CSV/PDF | NÃO VALIDADO | Export/import sem validação funcional local | PARCIAL |
+| Reports | Metadata, table guard, import/export | Web reports | XLSX | NÃO VALIDADO | Export/import sem validação funcional local | PARCIAL |
 | Integrations | Auth, tenant, providers, OAuth | Web integrations | Spotify, YouTube, Deezer, Google Ads etc. | NÃO VALIDADO | Muitos endpoints e mocks | PARCIAL |
 | Uploads | Storage service, R2/S3, tenant | Web upload hooks | Cloudflare R2/S3 | NÃO VALIDADO | Upload/download não homologado | NÃO VALIDADO |
 | AI | Providers, queues, skills | Web AI modules | OpenAI/Anthropic/Gemini/Perplexity | NÃO VALIDADO | Mock/fallback heurístico | PARCIAL/MOCKADO |
@@ -212,7 +212,7 @@ Arquitetura real encontrada:
 | Upload/download | `useUploadToR2.ts` | R2 + `uploads` table | file metadata | editor/viewer | `tenant_id` | DB + R2 | upload events | `storage.service.spec.ts`, upload handler specs | NÃO VALIDADO |
 | Billing checkout | Settings/Billing/Admin | Stripe checkout/session | plan/customer/subscription | auth + billing guard | tenant/org | Stripe + DB | payment_events | billing specs existem, execução não concluiu | PARCIAL |
 | Stripe webhook | Stripe | `billing.service.handleWebhook` | Stripe raw body/event | `@Public` + HMAC | org/tenant via metadata | DB | payment_events | `webhook-rawbody.integration.spec.ts` existe | API OK / FUNCIONAL NÃO VALIDADO |
-| Reports export/import | `Relatorios.tsx` | download/import commit | table rows, CSV/XLSX | viewer/editor | table guard tenant | DB | export/import audit | specs existem | PARCIAL |
+| Reports export/import | `Relatorios.tsx` | download/import commit | table rows, XLSX | viewer/editor | table guard tenant | DB | export/import audit | specs existem | PARCIAL |
 | Integrações OAuth | integrations UI | provider callback/status | tokens/provider account | editor/admin/public callback | tenant | oauth_connections/integrations | audit | NÃO VALIDADO | PARCIAL/MOCKADO |
 | AI geração | AI pages/providers | API `/ai/generate` ou mock | prompts/resultados | editor | tenant | ai_jobs/usage logs | AI analytics | automation specs existem | PARCIAL/MOCKADO |
 | Activity/audit log | controllers/interceptors | `audit_logs`/`activity_logs` | action/entity/user | role-dep | tenant | DB | sim | specs parciais | PARCIAL |

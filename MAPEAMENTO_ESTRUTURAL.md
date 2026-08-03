@@ -649,7 +649,7 @@ Formulário multi-passo (8 passos) acessível em `/cadastro/:orgSlug`
 | P&L Artistas | Agrupado por artista_id |
 
 ### Financeiro.tsx — Transações
-Filtros: tipo, categoria, status, artista, data. CRUD completo. Exportação OFX/CSV.
+Filtros: tipo, categoria, status, artista, data. CRUD completo. Exportação OFX/XLSX.
 
 ---
 
@@ -762,7 +762,7 @@ ErrorBoundary, ErrorFallback, RouteErrorBoundary, RealtimeLayer, AdminRoute
 
 ### `shared/lib/`
 storage.ts (data layer), api-client.ts, query-config.ts, format-utils.ts,
-csv.ts, normalize.ts, tenant-isolation.ts, errors.ts, feature-flags.ts,
+xlsx.ts, normalize.ts, tenant-isolation.ts, errors.ts, feature-flags.ts,
 tenant.ts, api-client.ts
 
 ### `shared/hooks/`

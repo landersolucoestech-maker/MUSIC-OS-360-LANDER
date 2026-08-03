@@ -46,7 +46,7 @@ Auditado em: 2026-05-20 (grupos/prioridades preservados; ver nota de proveniênc
 |----|---------|
 | `BACKLOG-009` | Página de detalhe de execução com timeline ECAD (#595) |
 | `BACKLOG-010` | Conectar execuções com ISRC/obra real do catalog |
-| `BACKLOG-011` | Filtro por data, artista e exportação CSV na tabela de execuções |
+| `BACKLOG-011` | Filtro por data, artista e exportação XLSX na tabela de execuções |
 | `BACKLOG-012` | Testes automatizados: modal de detalhe + catalog lookup |
 
 **O que fazer**: Criar branch `feat/rights-monitoring-v2` a partir de `dev`.
