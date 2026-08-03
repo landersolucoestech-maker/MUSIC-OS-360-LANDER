@@ -37,7 +37,6 @@ export const QUERY_KEYS = {
   TRANSACOES: ["transacoes"] as const,
   NOTAS_FISCAIS: ["notas-fiscais"] as const,
   REGRAS: ["regras"] as const,
-  REGRAS_TRANSACAO: ["regras_transacao"] as const,
   RELATORIOS_ECAD: ["relatorios-ecad"] as const,
   
   // Content
