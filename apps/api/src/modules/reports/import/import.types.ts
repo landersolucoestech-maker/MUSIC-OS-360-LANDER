@@ -26,6 +26,8 @@ export interface FieldTypeMeta {
   isEnum: boolean;
   enumValues?: string[];
   nullable: boolean;
+  /** Coluna tem DEFAULT no schema (Postgres preenche se omitida do INSERT). */
+  hasDefault: boolean;
 }
 
 export interface RowIssue {

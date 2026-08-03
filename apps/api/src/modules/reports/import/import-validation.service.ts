@@ -66,8 +66,18 @@ export class ImportValidationService {
     const activeHeaders = Object.entries(mapping).filter(([, col]) => col !== null) as [string, string][];
     const mappedColumns = new Set(activeHeaders.map(([, col]) => col));
 
+    // Obrigatórias pelo contrato (ex.: identityColumn) + obrigatórias pelo
+    // SCHEMA (coluna NOT NULL sem DEFAULT — omiti-la do INSERT quebra a
+    // constraint no commit; sem isso o erro só aparecia como 500 na
+    // persistência em vez de ser pego aqui, no preview).
+    const schemaRequired = def.importableColumns.filter((c) => {
+      const meta = typeMap[c];
+      return meta != null && meta.nullable === false && meta.hasDefault === false;
+    });
+    const requiredColumns = Array.from(new Set([...def.requiredImportColumns, ...schemaRequired]));
+
     // Colunas obrigatórias precisam estar presentes no arquivo.
-    const missingRequired = def.requiredImportColumns.filter((c) => !mappedColumns.has(c));
+    const missingRequired = requiredColumns.filter((c) => !mappedColumns.has(c));
     for (const c of missingRequired) errors.push(`Coluna obrigatória ausente no arquivo: "${c}".`);
 
     const seenIdentity = new Set<string>();
@@ -87,7 +97,7 @@ export class ImportValidationService {
       }
 
       // Obrigatórios não-vazios.
-      for (const req of def.requiredImportColumns) {
+      for (const req of requiredColumns) {
         if (mappedColumns.has(req) && (data[req] === null || data[req] === undefined || data[req] === '')) {
           rowErrors.push({ column: req, message: 'campo obrigatório vazio' });
         }

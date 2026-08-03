@@ -4,14 +4,15 @@ import { ImportEngineService } from './import-engine.service';
 import { ImportParserService } from './import-parser.service';
 import { ImportMapperService } from './import-mapper.service';
 import { ImportValidationService } from './import-validation.service';
+import { ExportFormatService } from '../export/export-format.service';
 import { EntityCategory } from '../entity-metadata.types';
 import type { ReportEntityDefinition } from '../definitions/report-entity-definition.types';
 
 const DEF: ReportEntityDefinition = {
   entityName: 'ArtistEntity', tableName: 'artists', category: EntityCategory.REPORTABLE,
   identityColumn: 'nome_artistico', displayColumn: 'nome_artistico', dateColumn: 'created_at',
-  exportableColumns: ['nome_artistico', 'email', 'status'],
-  importableColumns: ['nome_artistico', 'email', 'status'],
+  exportableColumns: ['nome_artistico', 'email', 'status', 'categoria'],
+  importableColumns: ['nome_artistico', 'email', 'status', 'categoria'],
   filterableColumns: ['status'], sortableColumns: ['nome_artistico'], searchableColumns: ['nome_artistico'],
   sensitiveColumns: ['cpf_encrypted'], requiredImportColumns: ['nome_artistico'],
   supportsExport: true, supportsImport: true,
@@ -20,11 +21,14 @@ const DEF: ReportEntityDefinition = {
 const REPORT = {
   tableName: 'artists', reportable: true, hasSoftDelete: true,
   columns: [
-    { name: 'nome_artistico', type: 'String', isEnum: false, nullable: false },
-    { name: 'email', type: 'String', isEnum: false, nullable: true },
-    { name: 'status', type: 'String', isEnum: true, enumValues: ['ativo', 'inativo'], nullable: true },
-    { name: 'cpf_encrypted', type: 'String', isEnum: false, nullable: true },
-    { name: 'tenant_id', type: 'String', isEnum: false, nullable: false },
+    { name: 'nome_artistico', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+    { name: 'email', type: 'String', isEnum: false, nullable: true, hasDefault: false },
+    { name: 'status', type: 'String', isEnum: true, enumValues: ['ativo', 'inativo'], nullable: true, hasDefault: false },
+    { name: 'cpf_encrypted', type: 'String', isEnum: false, nullable: true, hasDefault: false },
+    { name: 'tenant_id', type: 'String', isEnum: false, nullable: false, hasDefault: false },
+    // NOT NULL sem DEFAULT e fora de requiredImportColumns (só a identityColumn
+    // está lá) — reproduz o gap que causava 500 no commit (Parte 80).
+    { name: 'categoria', type: 'String', isEnum: false, nullable: false, hasDefault: false },
   ],
 };
 
@@ -33,7 +37,7 @@ function makeEngine(opts: { reportable?: boolean; hasEntity?: boolean; def?: Rep
   const metadata = { scan: () => ({ entities: report ? [report] : [] }) } as any;
   const definitions = { getDefinition: () => (opts.def === undefined ? DEF : opts.def) } as any;
   const tableGuard = { assertTableUsable: jest.fn().mockResolvedValue(undefined) } as any;
-  return new ImportEngineService(metadata, definitions, new ImportParserService(), new ImportMapperService(), new ImportValidationService(), tableGuard);
+  return new ImportEngineService(metadata, definitions, new ImportParserService(), new ImportMapperService(), new ImportValidationService(), tableGuard, new ExportFormatService());
 }
 /** Constrói um arquivo XLSX a partir de linhas CSV-like (facilita os testes). */
 function xlsx(csvText: string) {
@@ -62,6 +66,19 @@ describe('ImportEngineService — validação (FASE 2.3A, sem persistência)', (
       xlsx('Nome artístico,E-mail\n,maria@x.com'), 't');
     expect(res.validRows).toBe(0);
     expect(res.rows[0].errors[0].column).toBe('nome_artistico');
+  });
+
+  it('coluna NOT NULL sem DEFAULT ausente do arquivo → erro bloqueante mesmo fora de requiredImportColumns (Parte 80: evita 500 no commit)', async () => {
+    const res = await makeEngine().validateFile('artists',
+      xlsx('Nome artístico,E-mail\nAna,ana@x.com'), 't');
+    expect(res.errors.some((e) => e.includes('categoria'))).toBe(true);
+  });
+
+  it('coluna NOT NULL sem DEFAULT presente mas vazia na linha → linha inválida', async () => {
+    const res = await makeEngine().validateFile('artists',
+      xlsx('Nome artístico,Categoria\nAna,'), 't');
+    expect(res.rows[0].valid).toBe(false);
+    expect(res.rows[0].errors.some((e) => e.column === 'categoria')).toBe(true);
   });
 
   it('enum inválido → linha inválida', async () => {
@@ -106,5 +123,22 @@ describe('ImportEngineService — validação (FASE 2.3A, sem persistência)', (
     await expect(makeEngine().validateFile('artists', xlsx('Nome artístico\nA'), undefined)).rejects.toBeInstanceOf(ForbiddenException);
     await expect(makeEngine({ hasEntity: false }).validateFile('nope', xlsx('x\n1'), 't')).rejects.toBeInstanceOf(NotFoundException);
     await expect(makeEngine({ def: { ...DEF, supportsImport: false } }).validateFile('artists', xlsx('Nome artístico\nA'), 't')).rejects.toBeInstanceOf(BadRequestException);
+  });
+});
+
+describe('ImportEngineService — buildTemplate (Parte 80)', () => {
+  it('gera XLSX só com cabeçalho (colunas importáveis do contrato) — zero linhas de dado', async () => {
+    const result = await makeEngine().buildTemplate('artists', 't');
+    expect(result.filename).toBe('artists_template.xlsx');
+    const wb = XLSX.read(result.body, { type: 'buffer' });
+    const aoa = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]!]!, { header: 1 }) as unknown[][];
+    expect(aoa.length).toBe(1);
+    expect(aoa[0]).toHaveLength(DEF.importableColumns.length);
+  });
+
+  it('sem tenant → 403; entidade inexistente → 404; supportsImport=false → 400', async () => {
+    await expect(makeEngine().buildTemplate('artists', undefined)).rejects.toBeInstanceOf(ForbiddenException);
+    await expect(makeEngine({ hasEntity: false }).buildTemplate('nope', 't')).rejects.toBeInstanceOf(NotFoundException);
+    await expect(makeEngine({ def: { ...DEF, supportsImport: false } }).buildTemplate('artists', 't')).rejects.toBeInstanceOf(BadRequestException);
   });
 });

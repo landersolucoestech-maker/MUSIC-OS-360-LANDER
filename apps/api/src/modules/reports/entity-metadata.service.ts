@@ -79,6 +79,9 @@ const ENTITY_CATEGORY: Record<string, EntityCategory> = {
   // work_participants: relação normalizada de autoria de works (migration
   // 20260718000011) — reportável separadamente, como shares/rights_holders.
   work_participants: EntityCategory.NOT_REPORTABLE,
+  // client_attachments: metadata de anexos (Parte 80) — sub-entidade de
+  // clients, mesmo padrão de work_participants/project_tracks.
+  client_attachments: EntityCategory.NOT_REPORTABLE,
   // project_tracks/project_track_participants: relação normalizada de
   // musicas[] de projects (migration 20260718000013) — reportável
   // separadamente, mesmo padrão de work_participants.
@@ -224,6 +227,7 @@ export class EntityMetadataService {
           label: tryGetFieldLabelPtBr(dbName),
           type: typeToString(c.options.type, mode),
           nullable: c.options.nullable === true,
+          hasDefault: c.options.default !== undefined,
           primary: c.options.primary === true,
           generated: generated.has(c.propertyName) || c.options.generated != null,
           isEnum: enumOpt != null,

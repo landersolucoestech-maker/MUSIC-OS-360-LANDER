@@ -155,6 +155,34 @@ export const reportsApi = {
     };
   },
 
+  /**
+   * GET /reports/entities/:entity/import/template — XLSX só com cabeçalho
+   * (colunas importáveis do contrato) como Blob (download).
+   */
+  importTemplateBlob: async (entity: string): Promise<{ blob: Blob; filename: string }> => {
+    const headers: Record<string, string> = {};
+    const token = getAccessToken();
+    const tenant = getTenantId();
+
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    if (tenant) headers["X-Tenant-ID"] = tenant;
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/v1/reports/entities/${entity}/import/template`,
+      { headers, credentials: "include" },
+    );
+
+    if (!res.ok) {
+      const message = await res.text().catch(() => "");
+      throw new Error(`Download do template falhou (${res.status})${message ? `: ${message}` : ""}`);
+    }
+
+    const cd = res.headers.get("content-disposition") ?? "";
+    const filename = /filename="?([^"]+)"?/.exec(cd)?.[1] ?? `${entity}_template.xlsx`;
+
+    return { blob: await res.blob(), filename };
+  },
+
   /** POST /reports/entities/:entity/import/validate — preview, sem persistência. */
   importValidate: (entity: string, body: ImportUploadBody) =>
     api.post<ImportValidationResult>(`/reports/entities/${entity}/import/validate`, body),

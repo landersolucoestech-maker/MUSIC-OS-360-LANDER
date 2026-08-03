@@ -119,6 +119,20 @@ export class ReportsController {
     res.status(200).send(result.body);
   }
 
+  @Get('entities/:entity/import/template')
+  @RequireRole('manager')
+  @ApiOperation({ summary: 'Baixa o template XLSX de importação (colunas do contrato, sem dados)' })
+  async importTemplate(
+    @CurrentTenant() tenant: { id: string },
+    @Param('entity') entity: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.importEngine.buildTemplate(entity, tenant?.id);
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.status(200).send(result.body);
+  }
+
   @Post('entities/:entity/import/validate')
   @RequireRole('manager')
   @ApiOperation({ summary: 'Valida um arquivo de importação (preview) — SEM persistir (FASE 2.3A)' })

@@ -33,6 +33,8 @@ export interface ColumnMeta {
   label: string | null;
   type: string;
   nullable: boolean;
+  /** Coluna tem DEFAULT no schema (Postgres preenche se omitida do INSERT). */
+  hasDefault: boolean;
   primary: boolean;
   generated: boolean;
   isEnum: boolean;

@@ -7,9 +7,12 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
-import { Upload, Loader2, CheckCircle2, AlertTriangle } from "lucide-react";
+import { Upload, Loader2, CheckCircle2, AlertTriangle, Download } from "lucide-react";
 import { useImportValidate, useImportCommit } from "../hooks/useReports";
-import { fileToImportBody, type ImportValidationResult, type ReportEntityDefinition } from "../services/reports-api";
+import {
+  fileToImportBody, reportsApi, triggerBlobDownload,
+  type ImportValidationResult, type ReportEntityDefinition,
+} from "../services/reports-api";
 
 interface Props {
   open: boolean;
@@ -20,6 +23,7 @@ interface Props {
 export function ImportDialog({ open, onClose, definition }: Props) {
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<ImportValidationResult | null>(null);
+  const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const validate = useImportValidate();
   const commit = useImportCommit();
@@ -28,6 +32,18 @@ export function ImportDialog({ open, onClose, definition }: Props) {
 
   function reset() { setFile(null); setPreview(null); }
   function close() { reset(); onClose(); }
+
+  async function onDownloadTemplate() {
+    setIsDownloadingTemplate(true);
+    try {
+      const { blob, filename } = await reportsApi.importTemplateBlob(definition!.tableName);
+      triggerBlobDownload(blob, filename);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao baixar o template.");
+    } finally {
+      setIsDownloadingTemplate(false);
+    }
+  }
 
   async function onValidate() {
     if (!file) return;
@@ -66,6 +82,18 @@ export function ImportDialog({ open, onClose, definition }: Props) {
         </DialogHeader>
 
         <div className="space-y-4">
+          <div className="flex justify-end">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={onDownloadTemplate}
+              disabled={isDownloadingTemplate}
+              data-testid="import-download-template"
+            >
+              {isDownloadingTemplate ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Download className="mr-1.5 h-3.5 w-3.5" />}
+              Baixar template
+            </Button>
+          </div>
           <div
             className="cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center hover:border-primary/50"
             onClick={() => fileRef.current?.click()}
