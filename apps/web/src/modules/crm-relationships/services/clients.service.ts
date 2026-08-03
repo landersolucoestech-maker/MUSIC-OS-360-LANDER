@@ -113,8 +113,12 @@ export const clientsService = {
     if (params?.limit) query.set("limit", String(params.limit));
     if (params?.offset) query.set("offset", String(params.offset));
     const qs = query.toString();
-    const result = await api.get<ListApiClientsResult>(`/clients${qs ? `?${qs}` : ""}`);
-    return result.data;
+    // api.get() já desembrulha o envelope {data,timestamp} do TransformInterceptor;
+    // como o controller retorna {data: [...], meta} diretamente (sem novo wrap,
+    // ver TransformInterceptor: objeto que já tem `data` é preservado), o valor
+    // aqui já É o array — usar ListApiClientsResult e reler `.data` duplicava o
+    // unwrap e resultava em undefined.
+    return api.get<ApiClient[]>(`/clients${qs ? `?${qs}` : ""}`);
   },
   async create(data: CreateApiClientInput): Promise<ApiClient> {
     return api.post<ApiClient>("/clients", data);

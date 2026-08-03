@@ -88,8 +88,12 @@ function toApiPayload(data: Omit<Lead, "id" | "createdAt" | "updatedAt" | "histo
 
 export const leadsService = {
   async list(): Promise<Lead[]> {
-    const result = await api.get<ListLeadsResult>("/leads?limit=200");
-    return result.data.map(fromApi).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    // api.get() já desembrulha o envelope {data,timestamp}; como o controller
+    // retorna {data: [...], meta} diretamente (TransformInterceptor preserva
+    // objetos que já têm `data`, não re-envolve), o valor aqui já É o array —
+    // reler `.data` (via ListLeadsResult) duplicava o unwrap e dava undefined.
+    const result = await api.get<ApiLeadResponse[]>("/leads?limit=200");
+    return result.map(fromApi).sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   },
   async create(data: Omit<Lead, "id" | "createdAt" | "updatedAt" | "historicoInteracoes">): Promise<Lead> {
     const created = await api.post<ApiLeadResponse>("/leads", toApiPayload(data));

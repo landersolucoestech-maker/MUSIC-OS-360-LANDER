@@ -22,11 +22,6 @@ interface RawTicket {
   resolved_at?: string | null;
 }
 
-interface TicketListEnvelope {
-  data: RawTicket[];
-  meta?: { total: number; offset: number; limit: number };
-}
-
 function toAdminTicket(r: RawTicket): AdminSupportTicket {
   const created = r.created_at ?? new Date().toISOString();
   return {
@@ -48,7 +43,12 @@ function toAdminTicket(r: RawTicket): AdminSupportTicket {
 
 export const adminSupportService = {
   async list(): Promise<AdminSupportTicket[]> {
-    const res = await api.get<TicketListEnvelope>("/support-tickets?limit=200");
-    return (res?.data ?? []).map(toAdminTicket);
+    // api.get() já desembrulha o envelope {data,timestamp}; o controller
+    // retorna {data: [...], meta} diretamente (TransformInterceptor preserva
+    // objetos que já têm `data`), então o valor aqui já É o array — o
+    // `res?.data ?? []` anterior sempre caía no fallback e a tela de
+    // tickets do Admin nunca mostrava nenhum ticket real.
+    const res = await api.get<RawTicket[]>("/support-tickets?limit=200");
+    return (res ?? []).map(toAdminTicket);
   },
 };

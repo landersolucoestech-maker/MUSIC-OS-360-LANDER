@@ -22,11 +22,6 @@ interface RawAudit {
   created_at?: string;
 }
 
-interface AuditListEnvelope {
-  data: RawAudit[];
-  meta?: { total: number; offset: number; limit: number };
-}
-
 function toAdminAudit(r: RawAudit): AdminAuditLog {
   return {
     id: r.id,
@@ -46,7 +41,12 @@ function toAdminAudit(r: RawAudit): AdminAuditLog {
 
 export const adminAuditService = {
   async list(): Promise<AdminAuditLog[]> {
-    const res = await api.get<AuditListEnvelope>("/audit-logs?limit=200");
-    return (res?.data ?? []).map(toAdminAudit);
+    // api.get() já desembrulha o envelope {data,timestamp}; o controller
+    // retorna {data: [...], meta} diretamente (TransformInterceptor preserva
+    // objetos que já têm `data`), então o valor aqui já É o array — o
+    // `res?.data ?? []` anterior sempre caía no fallback e a tela de
+    // auditoria do Admin nunca mostrava nenhum registro real.
+    const res = await api.get<RawAudit[]>("/audit-logs?limit=200");
+    return (res ?? []).map(toAdminAudit);
   },
 };
