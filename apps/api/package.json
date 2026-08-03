@@ -33,6 +33,7 @@
     "verify:migrations": "tsx scripts/db-ops.ts check",
     "verify:canonical-order": "tsx scripts/verify-canonical-column-order.ts",
     "verify:tenant-isolation": "tsx scripts/verify-tenant-isolation.ts",
+    "verify:contract-service-types": "tsx scripts/verify-contract-service-types-crud.ts",
     "smoke-test": "tsx scripts/smoke-test.ts",
     "provision": "pnpm run verify:supabase && pnpm run verify:rls && pnpm run verify:tenant-isolation",
     "dump:sql": "tsx scripts/dump-migrations-sql.ts",

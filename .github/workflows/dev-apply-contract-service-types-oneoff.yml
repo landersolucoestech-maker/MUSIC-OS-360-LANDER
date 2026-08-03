@@ -67,3 +67,6 @@ jobs:
 
       - name: verify:tenant-isolation (real cross-tenant DB proof)
         run: pnpm --filter @music-os-360/api verify:tenant-isolation
+
+      - name: verify:contract-service-types (real CRUD + tenant isolation proof, synthetic data only)
+        run: pnpm --filter @music-os-360/api verify:contract-service-types
